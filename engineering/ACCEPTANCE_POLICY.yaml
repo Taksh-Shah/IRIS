@@ -1,0 +1,120 @@
+---
+# IRIS Acceptance Policy
+# Defines what "COMPLETE" means for every node type
+# Version: 0.1.0
+
+principle: "A node is never COMPLETE because code compiles. Evidence required."
+
+universal_acceptance_criteria:
+  description: "ALL of these must be true for any node to become COMPLETE"
+  criteria:
+    requirements_satisfied:
+      check: "Each acceptance criterion in node explicitly verified"
+      evidence: "Verification record in node evidence field"
+
+    tests_passing:
+      check: "100% of tests in node tests list pass"
+      evidence: "CI test run link or test output"
+
+    known_limitations_documented:
+      check: "node.known_limitations list is complete"
+      evidence: "Non-empty list OR explicit 'No known limitations'"
+
+    evidence_populated:
+      check: "node.evidence list has at least one record"
+      evidence: "Cannot be empty — must document HOW criteria were verified"
+
+per_node_type_additional:
+
+  PROTOCOL:
+    additional:
+      - "Formal specification exists in docs/protocol/"
+      - "CBOR encoding test vectors written"
+      - "Round-trip encode/decode property test passes"
+      - "Size budget verified for LoRa-constrained messages"
+      - "ADR written for key design decisions"
+    optional:
+      - "Fuzzer run on parser"
+
+  TRANSPORT:
+    additional:
+      - "TransportAdapter trait implemented and type-checked"
+      - "Capability matrix entry completed"
+      - "Platform limitations documented"
+      - "Background capability documented and tested"
+      - "Battery impact measured (BENCH-XXX)"
+      - "Physical device test performed (at least basic connect/send/receive)"
+    optional_but_recommended:
+      - "Interoperability test with other transports"
+
+  ROUTING:
+    additional:
+      - "Algorithm implementation has property-based tests"
+      - "Simulation results exist (EXP-XXX)"
+      - "Delivery ratio measured under at least 3 scenarios"
+      - "No message loop possible (hop count enforcement tested)"
+      - "Deduplication tested (same message, multiple paths)"
+
+  SECURITY:
+    additional:
+      - "Threat model section updated"
+      - "Security_Agent review completed"
+      - "Adversarial test scenarios passed"
+      - "Fuzzer run if any parsing involved"
+      - "No secrets in log output (CI check)"
+    requires_human_approval: "If touching cryptographic architecture or E2EE"
+
+  PLATFORM:
+    additional:
+      - "Compiles and runs on target platform"
+      - "Background behavior documented"
+      - "Permissions documented"
+      - "Physical device test on at least 2 devices of target platform"
+      - "OS version compatibility range tested"
+      - "Battery impact measured on real device"
+
+  COMPONENT:
+    additional:
+      - "All public API documented"
+      - "Error cases explicitly tested"
+      - "Component tested in integration with adjacent components"
+
+  SIMULATION:
+    additional:
+      - "Simulation produces reproducible results (same seed → same output)"
+      - "Simulation validated against at least one physical measurement"
+      - "Simulation-reality gap documented"
+
+  BENCHMARK:
+    additional:
+      - "Benchmark is reproducible (documented hardware + configuration)"
+      - "Baseline and target documented"
+      - "Variance reported (not just mean)"
+
+  DOCUMENTATION:
+    additional:
+      - "All sections from document quality standard present or explicitly marked N/A"
+      - "Technical claims have citations"
+      - "Document reviewed for accuracy against implementation"
+
+maturity_definition:
+  description: "A subsystem is MATURE when ALL of:"
+  criteria:
+    - Correct (meets requirements, tests passing)
+    - Secure (security review done, no known HIGH/CRITICAL issues)
+    - Tested (unit, integration, adversarial coverage)
+    - Measured (performance benchmarked)
+    - Failure_tested (failure scenarios validated)
+    - Documented (architecture, API, failure behavior documented)
+    - Observable (logging and metrics in place)
+    - Portable (works on all required platforms)
+    - Maintainable (code readable, no excessive complexity)
+  note: "This is higher than COMPLETE. Production readiness requires MATURE."
+
+safety_critical_additional:
+  applies_to: [EMERG-001, CRYPTO-001, IDENT-001, SEC-001]
+  additional_required:
+    - human_approval: true
+    - external_security_review: recommended  # Third-party audit at production
+    - adversarial_test_coverage: >95%
+    - fuzzing_duration: "24h minimum"

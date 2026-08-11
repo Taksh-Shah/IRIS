@@ -1,0 +1,100 @@
+---
+# IRIS Security Policy
+# Version: 0.1.0
+
+principle: "Security is not a phase. Security is continuous."
+
+cryptographic_rules:
+  - "NEVER implement custom cryptographic algorithms"
+  - "NEVER implement custom hash functions"
+  - "NEVER use deprecated algorithms (MD5, SHA-1, RC4, 3DES, DES)"
+  - "NEVER use ECB mode for block ciphers"
+  - "ALWAYS use established libraries: ring, dalek (Rust); Conscrypt (Android); CryptoKit (iOS)"
+  - "ALWAYS verify test vectors from authoritative source (RFC)"
+  - "ALWAYS use constant-time comparison for cryptographic equality (subtle crate)"
+  - "ALWAYS use cryptographically secure random number generation (OsRng)"
+
+approved_cryptographic_primitives:
+  signatures: "Ed25519 (RFC 8032)"
+  key_agreement: "X25519 (RFC 7748)"
+  encryption: "ChaCha20-Poly1305 (RFC 8439)"
+  hashing: "BLAKE3 (for non-security-critical), SHA-256/SHA-512 (for compatibility)"
+  kdf: "HKDF-SHA256 (RFC 5869)"
+  handshake: "Noise Protocol Framework (XX or X pattern)"
+  password_hash: "Argon2id (for user passwords, key backup)"
+
+key_storage_requirements:
+  android: "Android Keystore System (hardware-backed when available StrongBox)"
+  ios: "Secure Enclave (CryptoKit SecureEnclave) or Keychain with kSecAttrAccessibleWhenUnlockedThisDeviceOnly"
+  linux_desktop: "Encrypted file (PKCS#8, AES-256-GCM, Argon2id KDF from user password)"
+  windows: "Windows Credential Manager or DPAPI-encrypted file"
+  macos: "macOS Keychain"
+  rule: "Private keys NEVER in plaintext in storage or logs"
+
+input_validation_requirements:
+  - "Validate ALL external input before processing"
+  - "Validate message size BEFORE allocating buffers"
+  - "Validate hop count range BEFORE decrement"
+  - "Validate TTL BEFORE processing"
+  - "Reject malformed CBOR gracefully (return Err, never panic)"
+  - "Validate signature BEFORE any message processing"
+  - "Validate authority certificate BEFORE relaying emergency broadcast"
+
+logging_security_rules:
+  never_log:
+    - Private keys (any format)
+    - Decrypted message content
+    - Full contact lists
+    - Authentication tokens
+    - Raw cryptographic material
+  safe_to_log:
+    - NodeId (public identifier)
+    - Message ID (non-sensitive)
+    - Delivery status
+    - Error codes
+    - Transport type
+    - Hop count
+
+security_review_requirements:
+  required_for:
+    - All code in iris-crypto crate
+    - All network-facing parsers and deserializers
+    - All authentication and authorization logic
+    - All emergency system code
+    - All key generation and storage code
+    - All changes touching CBOR parsing
+  not_required_for:
+    - Documentation changes
+    - UI layout changes (non-functional)
+    - Pure simulation code
+  review_format: "Security review comment in node evidence field"
+
+vulnerability_handling:
+  severity_critical:
+    response_time: "48 hours"
+    action: "Immediate fix, coordinated disclosure"
+    deployment: "Emergency patch, expedited approval"
+  severity_high:
+    response_time: "7 days"
+    action: "Fix in next release, notify if active exploitation"
+  severity_medium:
+    response_time: "30 days"
+    action: "Fix in regular release cycle"
+  severity_low:
+    response_time: "90 days"
+    action: "Fix when convenient, document as known limitation"
+
+responsible_disclosure:
+  contact: "security@iris.app (not yet active — placeholder)"
+  pgp: "PGP key to be published at product launch"
+  response_time: "Acknowledge within 48h"
+  fix_window: "90 days for coordinated disclosure"
+  credit: "Security researchers credited in release notes"
+  bug_bounty: "To be established at public beta launch"
+
+supply_chain_security:
+  dependency_audit: "cargo audit on every CI run"
+  dependency_review: "New dependencies require: reason, license, maintenance status, security history"
+  lockfile: "Cargo.lock committed and verified"
+  allowed_licenses: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unlicense]
+  forbidden_licenses: [GPL, LGPL, AGPL]  # Unless in optional simulation/research code

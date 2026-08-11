@@ -1,0 +1,103 @@
+---
+# IRIS Test Policy
+# Version: 0.1.0
+
+philosophy: "Tests are not optional. Untested code is unknown code."
+
+mandatory_tests:
+  for_every_public_function:
+    - Unit test for happy path
+    - Unit test for each error case
+    - Property test for encoding/decoding functions
+
+  for_every_new_bug:
+    - Regression test that reproduces the bug BEFORE fixing it
+    - Verify test fails without fix
+    - Verify test passes with fix
+    - Regression test never removed from suite
+
+  for_every_parser:
+    - Fuzz target (cargo-fuzz)
+    - Known-bad inputs (malformed CBOR, empty input, max-size input)
+    - Valid input round-trip property
+
+  for_every_cryptographic_function:
+    - Known-answer test vectors (from RFC or standard)
+    - Rejection of invalid inputs (bad key size, wrong nonce length)
+    - Constant-time comparison verification
+
+coverage_targets:
+  minimum_line_coverage: 80
+  critical_path_coverage: 100  # Crypto, security, emergency system
+  tool: "cargo-llvm-cov or cargo-tarpaulin"
+  fail_build_if_below: 80
+
+test_types:
+  unit:
+    description: "Test a single function or module in isolation"
+    framework: "Rust built-in #[test]"
+    location: "Adjacent to source in mod tests { ... }"
+    run_on: "Every commit"
+
+  property:
+    description: "Test invariants over many generated inputs"
+    framework: "proptest crate"
+    examples:
+      - "encode(decode(x)) == x for all valid x"
+      - "hop_count never increases on relay"
+      - "priority queue always returns highest priority first"
+    run_on: "Every commit"
+
+  integration:
+    description: "Test multiple components together with in-process simulated transports"
+    framework: "Rust tests with simulated transport layer"
+    run_on: "Every commit"
+
+  fuzzing:
+    description: "Coverage-guided random input generation"
+    framework: "cargo-fuzz (libFuzzer)"
+    minimum_duration: "30 minutes for new targets"
+    continuous: "Nightly runs in CI"
+    targets:
+      - iris_envelope_parser
+      - iris_cbor_deserializer
+      - iris_routing_input
+
+  adversarial:
+    description: "Simulate malicious nodes, attack scenarios"
+    framework: "Custom adversarial node harness"
+    scenarios:
+      - blackhole_attack
+      - sybil_attack_10_nodes
+      - replay_attack
+      - flood_attack_p4
+      - malformed_message_injection
+
+  physical:
+    description: "Real devices, real transports"
+    frequency: "Weekly release candidate"
+    devices: ["Pixel 6a", "Redmi Note 11", "Samsung A53", "iPhone 13"]
+    scenarios:
+      - two_phone_ble_basic
+      - three_hop_relay
+      - gateway_discovery
+      - gateway_failure
+      - network_partition
+
+  regression:
+    naming: "BUG-{bug_id}_regression"
+    location: "tests/regression/"
+    permanence: "NEVER removed from suite"
+
+performance_testing:
+  framework: "criterion (Rust)"
+  run_on: "Every release candidate"
+  alert_on_regression: "> 5% degradation from baseline"
+  baseline_stored: "benches/baselines/"
+
+security_testing_requirements:
+  all_parsers: fuzzed
+  all_crypto: known_answer_tested
+  all_authentication: adversarially_tested
+  all_network_input: validated_before_processing
+  no_secrets_in_logs: verified_in_ci

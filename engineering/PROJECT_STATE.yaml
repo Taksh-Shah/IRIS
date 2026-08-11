@@ -1,0 +1,145 @@
+---
+# IRIS Project State
+# ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
+# Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
+# Version: 0.2.0
+# Last updated: 2026-08-11 (Architecture Validation Pass)
+
+# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-11):
+# COMPLETE: VISION-001 (1)
+# RESEARCH_COMPLETE: REQ-001, ARCH-001, LEGAL-001 (3)
+# DESIGNING: PROTO-001, CRYPTO-001, IDENT-001, TRANSPORT-001 (4)
+# DISCOVERED: STORE-001, BLE-001, BLE-002, WIFIAWARE-001, WIFIDIRECT-001, INTERNET-001,
+#             LORA-001, SAT-001, DISCO-001, MSG-001, ROUTE-001, ROUTE-002, SCF-001, GW-001,
+#             EMERG-001, SEC-001, SIM-001, ANDROID-001, IOS-001, DESKTOP-001, OBS-001,
+#             TEST-001, ML-001, PILOT-001 (24)
+
+summary:
+  total_nodes: 32
+  completed: 1               # VISION-001
+  research_complete: 3       # REQ-001, ARCH-001, LEGAL-001
+  designing: 4               # PROTO-001, CRYPTO-001, IDENT-001, TRANSPORT-001
+  discovered: 24             # All others — not yet started
+  blocked: 0
+  failed: 0
+  deprecated: 0
+
+health:
+  architecture_health: PROVISIONAL    # Architecture documents exist, need validation
+  security_health: NOT_STARTED        # Security hardening not begun
+  testing_health: NOT_STARTED         # Test infrastructure not built
+  performance_health: NOT_STARTED     # No benchmarks run yet
+  documentation_health: GOOD          # Documentation system created
+  dependency_health: GOOD             # No circular dependencies
+  technical_debt: NONE_TRACKED        # No debt nodes yet
+  research_completeness: PARTIAL      # Research docs exist but experiments not run
+  platform_completeness: NOT_STARTED  # Platform code not written
+  legal_compliance_risk: MEDIUM       # Initial research done, open questions remain
+
+high_risk_nodes:
+  - node_id: "CRYPTO-001"
+    risk: "Cryptographic architecture - requires expert review before implementation"
+    status: DESIGNING
+    requires_human_approval: true
+
+  - node_id: "EMERG-001"
+    risk: "Emergency authority model - safety-critical, requires review"
+    status: DISCOVERED
+    requires_human_approval: true
+
+  - node_id: "IDENT-001"
+    risk: "Identity architecture - privacy and security implications"
+    status: DESIGNING
+    requires_human_approval: true
+
+  - node_id: "SAT-001"
+    risk: "Satellite regulatory compliance must be verified"
+    status: DISCOVERED
+    requires_human_approval: true
+
+  - node_id: "LEGAL-001"
+    risk: "Legal compliance open questions - requires lawyer review for key questions"
+    status: RESEARCH_COMPLETE
+    requires_human_approval: true
+
+open_legal_questions:
+  - "Does IRIS qualify as Significant Social Media Intermediary under IT Rules 2021 at scale?"
+  - "Does message relay service require telecom license in India?"
+  - "What type approval is required for LoRa modules sold in India?"
+  - "Satellite terminal operation licensing requirements in India"
+
+research_gaps:
+  - id: "GAP-001"
+    topic: "iOS background BLE relay capability"
+    status: PLANNED_EXPERIMENT
+    experiment: "EXP-005"
+
+  - id: "GAP-002"
+    topic: "Optimal routing algorithm for India disaster mobility"
+    status: PLANNED_EXPERIMENT
+    experiment: "EXP-002"
+
+  - id: "GAP-003"
+    topic: "Battery drain of continuous BLE relay on Indian market phones"
+    status: PLANNED_EXPERIMENT
+    experiment: "EXP-003"
+
+  - id: "GAP-004"
+    topic: "LoRa performance in dense urban India"
+    status: REQUIRES_HARDWARE
+
+  - id: "GAP-005"
+    topic: "ML routing benefit over PRoPHET baseline"
+    status: PLANNED_EXPERIMENT
+    experiment: "EXP-002 extended"
+
+critical_path:
+  - VISION-001 → REQ-001 → ARCH-001 → PROTO-001 → MSG-001 → ROUTE-001 → SCF-001 → EMERG-001 → ANDROID-001 → PILOT-001
+  description: "Longest dependency chain to first pilot deployment"
+  estimated_nodes_on_path: 9
+
+next_recommended_nodes:
+  - id: "PROTO-001"
+    reason: "Unblocks MSG-001, CRYPTO-001, STORE-001 — highest fan-out"
+    priority: P0
+
+  - id: "CRYPTO-001"
+    reason: "Security-critical, HIGH risk, needs early review"
+    priority: P0
+    note: "Requires human approval before implementation"
+
+  - id: "BLE-001"
+    reason: "First physical transport, enables first demo"
+    priority: P0
+
+  - id: "SIM-001"
+    reason: "Enables routing algorithm validation before physical test"
+    priority: P1
+
+current_phase: DOCUMENTATION_AND_PLANNING
+next_phase: CORE_PROTOCOL_IMPLEMENTATION
+
+milestones:
+  - name: "MVP Demo"
+    description: "Two Android phones exchange message via BLE mesh with Internet disabled"
+    target_nodes_complete: [PROTO-001, CRYPTO-001, BLE-001, MSG-001, ROUTE-001, ANDROID-001]
+    estimated_completion: "Month 2"
+    status: NOT_STARTED
+
+  - name: "Alpha"
+    description: "Multi-hop, store-and-forward, emergency SOS, 5-device demo"
+    target_nodes_complete: [SCF-001, EMERG-001, GW-001, SIM-001, ANDROID-001]
+    estimated_completion: "Month 4"
+    status: NOT_STARTED
+
+  - name: "Beta"
+    description: "iOS + Desktop, security hardening, 50-device test"
+    target_nodes_complete: [IOS-001, DESKTOP-001, SEC-001, LORA-001]
+    estimated_completion: "Month 8"
+    status: NOT_STARTED
+
+  - name: "Pilot"
+    description: "Real-world NGO/campus pilot, 100+ devices"
+    target_nodes_complete: [PILOT-001]
+    estimated_completion: "Month 10"
+    status: NOT_STARTED

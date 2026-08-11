@@ -1,0 +1,323 @@
+---
+# IRIS Node Schema
+# Every node in PROJECT_GRAPH.yaml must conform to this schema
+# Version: 0.1.0
+
+node_schema:
+  # --- Identity ---
+  id:
+    type: string
+    format: "TYPE-NNN (e.g. PROTO-001, SEC-002)"
+    required: true
+    unique: true
+    description: "Globally unique node identifier"
+
+  name:
+    type: string
+    required: true
+    max_length: 80
+    description: "Human-readable short name for the node"
+
+  type:
+    type: enum
+    required: true
+    values:
+      - RESEARCH       # Investigation/study task
+      - REQUIREMENT    # Requirement definition
+      - ARCHITECTURE   # Architectural design
+      - PROTOCOL       # Protocol specification
+      - COMPONENT      # Software component
+      - TRANSPORT      # Transport implementation
+      - ROUTING        # Routing algorithm
+      - SECURITY       # Security measure/review
+      - PLATFORM       # Platform-specific integration
+      - SIMULATION     # Simulation infrastructure
+      - TEST           # Test infrastructure
+      - BENCHMARK      # Performance benchmark
+      - EXPERIMENT     # Scientific experiment
+      - DOCUMENTATION  # Documentation task
+      - PRODUCT        # Product/UX work
+      - OPERATIONS     # Operational capability
+      - COMPLIANCE     # Legal/regulatory
+      - BUSINESS       # Business/go-to-market
+      - TECHNICAL_DEBT # Known technical debt
+      - BUG            # Known bug
+      - SECURITY_REMEDIATION  # Security fix
+
+  description:
+    type: string
+    required: true
+    max_length: 500
+    description: "What this node builds or accomplishes"
+
+  # --- Priority ---
+  priority:
+    type: enum
+    required: true
+    values:
+      - P0   # Security/safety blocker or critical path blocker
+      - P1   # High value, unblocks multiple nodes
+      - P2   # Normal engineering work
+      - P3   # Nice to have
+      - P4   # Future/speculative
+
+  # --- Status ---
+  status:
+    type: enum
+    required: true
+    values:
+      - DISCOVERED              # Node identified, not yet started
+      - RESEARCHING             # Research in progress
+      - RESEARCH_COMPLETE       # Research done, ready to design
+      - REQUIREMENTS_DEFINED    # Requirements written and reviewed
+      - DESIGNING               # Architecture/design in progress
+      - DESIGN_REVIEW           # Design awaiting review
+      - IMPLEMENTING            # Code being written
+      - UNIT_TESTING            # Unit tests being written/run
+      - INTEGRATION_TESTING     # Integration tests in progress
+      - ADVERSARIAL_TESTING     # Adversarial/security testing
+      - SECURITY_REVIEW         # Security review in progress
+      - PERFORMANCE_REVIEW      # Performance benchmarking
+      - DOCUMENTATION           # Documentation being written
+      - ACCEPTANCE              # Final acceptance check
+      - COMPLETE                # Fully complete (all criteria met)
+      # Failure states:
+      - FAILED                  # Unrecoverable failure
+      - BLOCKED                 # Blocked by dependency
+      - NEEDS_RESEARCH          # Insufficient research, loop back
+      - NEEDS_REDESIGN          # Design failed, must redesign
+      - NEEDS_REFACTOR          # Implementation needs refactor
+      - SECURITY_BLOCKED        # Security issue blocking completion
+      - PERFORMANCE_BLOCKED     # Performance unacceptable
+      - HUMAN_APPROVAL_REQUIRED # Awaiting human gate
+      - DEPRECATED              # No longer needed
+
+  # --- Dependencies ---
+  dependencies:
+    type: list
+    items: node_id
+    required: false
+    description: "Node IDs that must be COMPLETE before this node begins"
+
+  dependents:
+    type: list
+    items: node_id
+    required: false
+    description: "Node IDs that depend on this node (auto-computed)"
+
+  # --- Research ---
+  research_questions:
+    type: list
+    items: string
+    required: false
+    description: "Specific questions this node must answer through research"
+    example:
+      - "What is the practical BLE throughput on Android 12?"
+      - "Does iOS 16 allow BLE advertising in background?"
+
+  research_evidence:
+    type: list
+    items:
+      claim: string
+      source: string          # URL, RFC number, paper title
+      confidence: enum        # HIGH, MEDIUM, LOW
+      implication: string     # What this means for our design
+      decision: string        # What we decided based on this
+    required: false
+
+  # --- Architecture ---
+  architecture:
+    type: object
+    required: false
+    fields:
+      design_doc: string      # Path to architecture document
+      interfaces: list        # External interfaces this node exposes
+      state_machines: list    # State machines if applicable
+      failure_modes: list     # How this component can fail
+
+  # --- Implementation ---
+  implementation_plan:
+    type: list
+    items: string
+    required: false
+    description: "Ordered list of implementation steps"
+
+  implementation_status:
+    type: object
+    required: false
+    fields:
+      language: string        # e.g. Rust, Kotlin, Swift
+      crate_or_module: string # e.g. iris-core/src/routing/
+      files: list             # Key files
+      completion_percent: int # 0-100
+
+  # --- Tests ---
+  tests:
+    type: list
+    items:
+      test_id: string         # e.g. TEST-042
+      description: string
+      type: enum              # UNIT, INTEGRATION, PROPERTY, FUZZ, ADVERSARIAL, BENCHMARK, PHYSICAL
+      status: enum            # PLANNED, WRITTEN, PASSING, FAILING
+    required: false
+
+  security_tests:
+    type: list
+    items: string
+    required: false
+    description: "Security-specific test scenarios"
+
+  adversarial_tests:
+    type: list
+    items: string
+    required: false
+    description: "Adversarial test scenarios (how could an attacker exploit this?)"
+
+  performance_tests:
+    type: list
+    items:
+      bench_id: string        # e.g. BENCH-003
+      metric: string
+      target: string
+      actual: string
+    required: false
+
+  # --- Acceptance ---
+  acceptance_criteria:
+    type: list
+    items: string
+    required: true
+    description: "Testable criteria that must ALL be true for node to be COMPLETE"
+    example:
+      - "All unit tests pass (cargo test)"
+      - "Fuzzer runs for 30 minutes without crash"
+      - "Message delivery ratio >80% in 100-node simulation"
+      - "Battery drain <5%/hour measured on Pixel 6a"
+      - "Security review completed by security agent"
+      - "Documentation updated in docs/"
+
+  # --- Evidence ---
+  evidence:
+    type: list
+    items:
+      type: string            # test_result, benchmark_result, review_record, experiment_result
+      artifact: string        # Path or identifier
+      timestamp: string
+      summary: string
+    required: false
+    description: "Collected evidence that acceptance criteria are met"
+
+  # --- Risk ---
+  risks:
+    type: list
+    items:
+      risk: string
+      likelihood: enum        # HIGH, MEDIUM, LOW
+      impact: enum            # HIGH, MEDIUM, LOW
+      mitigation: string
+    required: false
+
+  assumptions:
+    type: list
+    items: string
+    required: false
+    description: "Assumptions made during design. Must be validated."
+
+  known_limitations:
+    type: list
+    items: string
+    required: false
+    description: "Known limitations of this implementation"
+
+  # --- Technical Debt ---
+  technical_debt:
+    type: list
+    items:
+      debt_id: string
+      description: string
+      impact: string
+      priority: enum
+    required: false
+
+  # --- Follow-up ---
+  follow_up_nodes:
+    type: list
+    items: string
+    required: false
+    description: "New node IDs discovered during this node's execution"
+
+  # --- Agent Assignment ---
+  assigned_agent:
+    type: string
+    required: false
+    description: "Agent responsible for this node (from AGENT_REGISTRY.yaml)"
+
+  # --- Approval ---
+  requires_human_approval:
+    type: boolean
+    default: false
+    description: "If true, node cannot reach COMPLETE without explicit human approval"
+
+  approval_category:
+    type: enum
+    required: false
+    values:
+      - CRYPTOGRAPHIC_ARCHITECTURE
+      - E2EE_CHANGE
+      - IDENTITY_ARCHITECTURE
+      - EMERGENCY_AUTHORITY
+      - SAFETY_POLICY
+      - PRIVACY_MODEL
+      - LEGAL_COMPLIANCE
+      - DESTRUCTIVE_MIGRATION
+      - PRODUCTION_SECURITY_RELEASE
+      - EMERGENCY_BROADCAST_TRUST
+
+  # --- Metadata ---
+  platform:
+    type: enum
+    required: false
+    values: [ANDROID, IOS, WINDOWS, MACOS, LINUX, ALL, NONE]
+
+  created_at:
+    type: timestamp
+    required: true
+
+  updated_at:
+    type: timestamp
+    required: true
+
+  last_reviewed:
+    type: timestamp
+    required: false
+
+# --- Example Node ---
+example_node:
+  id: "PROTO-001"
+  name: "Protocol Design"
+  type: PROTOCOL
+  priority: P0
+  status: DESIGNING
+  description: "IRIS wire protocol: CBOR envelope, addressing, versioning, message types"
+  dependencies: ["ARCH-001"]
+  dependents: ["CRYPTO-001", "STORE-001", "MSG-001"]
+  research_questions:
+    - "Is CBOR smaller than Protobuf for our message types?"
+    - "Does P0 SOS fit in 255 bytes with CBOR?"
+  research_evidence:
+    - claim: "CBOR used by BPv7 (Bundle Protocol v7)"
+      source: "RFC 9171"
+      confidence: HIGH
+      implication: "CBOR aligns with DTN standards"
+      decision: "Use CBOR as wire format"
+  acceptance_criteria:
+    - "P0 SOS message encodes to <255 bytes (CBOR)"
+    - "All message types have CBOR schemas defined"
+    - "CBOR encode/decode round-trip property test passes"
+    - "Protocol documented in docs/protocol/"
+    - "ADR-0002 written and accepted"
+  known_limitations:
+    - "CBOR has no schema enforcement; validation is manual"
+  assigned_agent: "Protocol_Agent"
+  created_at: "2025-01-01T00:00:00Z"
+  updated_at: "2025-01-01T00:00:00Z"

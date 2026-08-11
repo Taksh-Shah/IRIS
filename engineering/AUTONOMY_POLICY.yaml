@@ -1,0 +1,132 @@
+---
+# IRIS Autonomy Policy
+# Defines levels of autonomous operation
+# Version: 0.1.0
+
+current_level: 4
+
+levels:
+  0:
+    name: "Human-Directed"
+    description: "AI does nothing without explicit human instruction for each step"
+    use_when: "Onboarding, first session, untrusted environment"
+
+  1:
+    name: "AI-Assisted"
+    description: "AI suggests, drafts, analyzes. Human approves before execution."
+    use_when: "High-risk phases, new team members"
+
+  2:
+    name: "Routine Task Execution"
+    description: "AI executes pre-approved routine tasks autonomously (tests, docs, formatting)"
+    use_when: "Stable codebase, well-understood domain"
+
+  3:
+    name: "Complete Node Loop"
+    description: "AI executes complete Research → Design → Implement → Test → Document loop for single node"
+    use_when: "Non-critical nodes with clear acceptance criteria"
+
+  4:
+    name: "Graph-Managed Autonomous Engineering"
+    description: "AI manages dependency graph, selects and executes nodes, creates new work, maintains project health"
+    use_when: "Normal engineering operation (current target)"
+    constraints:
+      - "High-risk gates enforced (see APPROVAL_POLICY.yaml)"
+      - "Evidence-based acceptance (see ACCEPTANCE_POLICY.yaml)"
+      - "Escalation on blocking decisions (see ESCALATION_POLICY.yaml)"
+
+  5:
+    name: "Continuous Autonomous Engineering with Full Oversight"
+    description: "Level 4 + automated security scanning + continuous testing + automated deployment"
+    use_when: "Production-grade autonomous CI/CD pipeline (future target)"
+
+autonomy_boundaries:
+  ai_can_autonomously:
+    research:
+      - Technical research on any topic
+      - Literature review, RFC review
+      - Competitive analysis
+      - Technology evaluation
+
+    design:
+      - Architecture proposals for non-high-risk components
+      - Interface design
+      - Algorithm selection (with evidence)
+      - ADR writing for non-high-risk decisions
+
+    implementation:
+      - Rust code for all non-cryptographic components
+      - Kotlin/Swift platform code
+      - TypeScript UI code
+      - Test code
+      - Documentation
+      - Refactoring
+      - Performance optimization
+      - Bug fixes (non-security-critical)
+
+    operations:
+      - Run tests
+      - Run benchmarks
+      - Run simulations
+      - Update documentation
+      - Create new graph nodes
+      - Update node status
+      - Generate reports
+
+  ai_cannot_autonomously:
+    cryptography:
+      - "Implement or change cryptographic algorithms"
+      - "Change key management scheme"
+      - "Modify encryption or signing logic"
+      reason: "Cryptographic errors are catastrophic and non-obvious. Require expert review."
+
+    security_critical:
+      - "Approve production security releases"
+      - "Mark security vulnerabilities as 'acceptable'"
+      - "Disable security checks"
+      reason: "Security decisions require human accountability"
+
+    privacy_model:
+      - "Change what metadata relay nodes can observe"
+      - "Change data retention policy"
+      - "Add user tracking features"
+      reason: "Privacy changes affect user trust fundamentally"
+
+    emergency_system:
+      - "Modify emergency authority verification"
+      - "Change emergency broadcast format"
+      - "Modify SOS priority rules"
+      reason: "Emergency system errors cost lives"
+
+    legal_compliance:
+      - "Make binding legal interpretations"
+      - "Decide on regulatory compliance strategy"
+      reason: "Legal decisions require licensed counsel"
+
+    destructive:
+      - "Execute irreversible data migrations"
+      - "Delete production data"
+      - "Force-push to main branch"
+      reason: "Irreversible actions require explicit human authorization"
+
+autonomy_health_checks:
+  periodic_review:
+    - "Are approved actions actually being enforced?"
+    - "Are escalations being created appropriately?"
+    - "Are high-risk gates being respected?"
+    - "Is evidence quality sufficient?"
+    - "Is documentation kept current?"
+
+  signals_of_correct_autonomy:
+    - "Human rarely asked to review routine decisions"
+    - "Human always consulted for high-risk gates"
+    - "Evidence exists for all COMPLETE nodes"
+    - "Escalations are rare but appropriate"
+    - "Project graph reflects reality"
+
+  signals_of_incorrect_autonomy:
+    - "Cryptographic code merged without human review"
+    - "Nodes marked COMPLETE without evidence"
+    - "Human asked about trivial implementation choices frequently"
+    - "High-risk nodes approved without escalation"
+    - "Security vulnerabilities not escalated immediately"

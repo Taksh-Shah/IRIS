@@ -1,0 +1,193 @@
+---
+# IRIS Formal Invariants
+# Properties the system must ALWAYS satisfy, in all states, for all inputs.
+# Each invariant must be expressed as a property test, fuzz target, or formal proof.
+# Version: 0.1.0
+
+principle: >
+  An invariant is not a soft guideline. If the system violates an invariant, it is a bug,
+  regardless of whether it was caused by an edge case, race condition, or adversarial input.
+  Invariants are the definition of correctness for IRIS.
+
+invariants:
+
+  # --- SECURITY INVARIANTS ---
+
+  INV-SEC-001:
+    name: "Relay opacity"
+    statement: "A relay node MUST NOT obtain the plaintext of a private message payload"
+    formal: "∀ relay R, ∀ message M: R.decrypt(M.payload) = FAIL unless R is M.recipient"
+    test_type: property_test
+    test_id: "PROP-SEC-001"
+    fuzz_target: "fuzz_relay_cannot_decrypt_payload"
+    consequences_of_violation: "End-to-end encryption promise broken; user data exposed"
+    current_status: UNVALIDATED
+
+  INV-SEC-002:
+    name: "Signature non-repudiation"
+    statement: "A modified signed message MUST NEVER be accepted as authentic"
+    formal: "∀ message M, ∀ modification δ: verify(M ⊕ δ, M.signature) = FAIL"
+    test_type: property_test + fuzz
+    test_id: "PROP-SEC-002"
+    fuzz_target: "fuzz_signature_verification"
+    consequences_of_violation: "Attacker can forge or modify messages"
+    current_status: UNVALIDATED
+
+  INV-SEC-003:
+    name: "Replay prevention"
+    statement: "A message seen before MUST NOT be delivered again to the application layer"
+    formal: "∀ message M: if M.id ∈ seen_ids, deliver(M) = SKIP"
+    test_type: property_test
+    test_id: "PROP-SEC-003"
+    note: "Bloom filter FP rate means relay may re-forward; recipient layer must be exact"
+    consequences_of_violation: "Duplicate SOS delivery, storage exhaustion"
+    current_status: UNVALIDATED
+
+  INV-SEC-004:
+    name: "Emergency system access control"
+    statement: "An unverified node MUST NOT generate an authenticated authority broadcast"
+    formal: "∀ broadcast B: B.is_authority_broadcast → verify_cert_chain(B.cert) = VALID"
+    test_type: property_test + adversarial_test
+    test_id: "PROP-SEC-004"
+    consequences_of_violation: "False authority broadcasts; public panic or misdirection"
+    current_status: UNVALIDATED
+    gate: HUMAN_APPROVAL_REQUIRED
+
+  # --- ROUTING INVARIANTS ---
+
+  INV-ROUTE-001:
+    name: "No message loop"
+    statement: "A message's hop count MUST NOT exceed max_hops"
+    formal: "∀ message M: M.hop_count ≤ M.max_hops"
+    test_type: property_test
+    test_id: "PROP-ROUTE-001"
+    consequences_of_violation: "Infinite routing loop; storage and bandwidth exhaustion"
+    current_status: UNVALIDATED
+
+  INV-ROUTE-002:
+    name: "TTL enforcement"
+    statement: "An expired message MUST NOT be forwarded by any relay node"
+    formal: "∀ message M, ∀ relay R: if now() > M.expires_at, R.forward(M) = DROP"
+    test_type: property_test
+    test_id: "PROP-ROUTE-002"
+    note: "300-second clock skew budget applies — must account for in test"
+    consequences_of_violation: "Stale messages delivered; storage filled with expired data"
+    current_status: UNVALIDATED
+
+  INV-ROUTE-003:
+    name: "P0 message never evicted from storage"
+    statement: "A P0 (SOS) message MUST NOT be evicted from storage during its TTL window"
+    formal: "∀ message M: M.priority = P0 ∧ not_expired(M) → store.contains(M)"
+    test_type: property_test
+    test_id: "PROP-ROUTE-003"
+    consequences_of_violation: "SOS messages silently dropped; life-safety risk"
+    current_status: UNVALIDATED
+    gate: HUMAN_APPROVAL_REQUIRED
+
+  INV-ROUTE-004:
+    name: "Routing failure does not corrupt message content"
+    statement: "A routing error MUST NOT modify message payload or signature"
+    formal: "∀ message M, ∀ routing operation op: op(M).payload = M.payload ∧ op(M).signature = M.signature"
+    test_type: property_test + fuzz
+    test_id: "PROP-ROUTE-004"
+    consequences_of_violation: "Silently corrupted messages; undetectable data loss"
+    current_status: UNVALIDATED
+
+  # --- DEDUPLICATION INVARIANTS ---
+
+  INV-DEDUP-001:
+    name: "Message ID uniqueness"
+    statement: "Two different messages originating from the same node at the same millisecond MUST have different message IDs"
+    formal: "∀ M1, M2: M1.origin = M2.origin ∧ M1.created_at_ms = M2.created_at_ms → M1.id ≠ M2.id"
+    test_type: property_test
+    test_id: "PROP-DEDUP-001"
+    note: "Random nonce in ID construction makes this nearly certain; test with forced collision attempt"
+    current_status: UNVALIDATED
+
+  INV-DEDUP-002:
+    name: "No unbounded duplicate storage"
+    statement: "The deduplication filter MUST NOT grow without bound"
+    formal: "∀ t: |dedup_filter(t)| ≤ max_filter_entries"
+    test_type: property_test + load_test
+    test_id: "PROP-DEDUP-002"
+    current_status: UNVALIDATED
+
+  # --- STORAGE INVARIANTS ---
+
+  INV-STORE-001:
+    name: "Message integrity after storage"
+    statement: "A message retrieved from storage MUST be bit-for-bit identical to what was stored"
+    formal: "∀ message M: retrieve(store(M)) = M"
+    test_type: property_test
+    test_id: "PROP-STORE-001"
+    consequences_of_violation: "Silent storage corruption"
+    current_status: UNVALIDATED
+
+  INV-STORE-002:
+    name: "Storage never silently drops a message"
+    statement: "store(M) either returns success with M persisted, or returns an explicit error"
+    formal: "∀ M: store(M) = (SUCCESS ∧ retrieve(M.id) = M) ∨ EXPLICIT_ERROR"
+    test_type: property_test + failure_injection
+    test_id: "PROP-STORE-002"
+    current_status: UNVALIDATED
+
+  # --- PRIVACY INVARIANTS ---
+
+  INV-PRIV-001:
+    name: "Contact graph not transmitted"
+    statement: "The full contact history graph of a node MUST NOT be transmitted to any other node in normal operation"
+    formal: "∀ node N, ∀ sync_message S from N: S does not contain N.contact_history"
+    test_type: protocol_analysis + traffic_analysis
+    test_id: "PROP-PRIV-001"
+    note: "Bloom filter sync shares which message IDs the node has seen — not who it contacted"
+    current_status: UNVALIDATED
+
+  INV-PRIV-002:
+    name: "No plaintext location in unencrypted fields"
+    statement: "User GPS coordinates MUST NOT appear in any cleartext envelope field"
+    formal: "∀ envelope E: E.routing_hints contains no GPS coordinates"
+    test_type: property_test + protocol_inspection
+    test_id: "PROP-PRIV-002"
+    consequences_of_violation: "Location data visible to relay nodes; tracking risk"
+    current_status: UNVALIDATED
+
+  # --- EMERGENCY INVARIANTS ---
+
+  INV-EMERG-001:
+    name: "P0 always transmits regardless of battery level"
+    statement: "An IRIS device with >0% battery MUST transmit a P0 SOS if the user triggers it"
+    formal: "∀ device D: D.battery > 0 ∧ user_triggers_SOS → D.transmits_P0"
+    test_type: integration_test + hardware_test
+    test_id: "PROP-EMERG-001"
+    consequences_of_violation: "User triggers SOS and it is silently not sent; life-safety risk"
+    current_status: UNVALIDATED
+    gate: HUMAN_APPROVAL_REQUIRED
+
+  INV-EMERG-002:
+    name: "Duty cycle never bypassed"
+    statement: "LoRa transmission MUST NOT violate the WPC 1% duty cycle limit for any message including P0"
+    formal: "∀ device D, ∀ window W of 3600s: sum(D.lora_tx_time(W)) ≤ 36s"
+    test_type: integration_test
+    test_id: "PROP-EMERG-002"
+    consequences_of_violation: "WPC regulatory violation; potential device shutdown or legal risk"
+    current_status: UNVALIDATED
+
+validation_approach:
+  property_tests:
+    framework: "proptest (Rust) for property-based tests"
+    run_on: "Every CI build"
+    coverage_requirement: "All invariants must have at least one property test"
+
+  fuzz_targets:
+    framework: "cargo-fuzz (libFuzzer) for fuzz targets"
+    minimum_duration: "24 hours for security-critical invariants (INV-SEC-*)"
+    run_schedule: "Nightly CI or on security-relevant code changes"
+
+  failure_injection:
+    framework: "Custom fault injection harness"
+    scenarios: ["storage failure", "network partition", "clock skew", "corrupt packets"]
+
+  formal_verification:
+    scope: "INV-SEC-001, INV-SEC-002 are candidates for TLA+ or Lean verification"
+    status: FUTURE_WORK
+    note: "Full formal verification is aspirational; property tests are mandatory"

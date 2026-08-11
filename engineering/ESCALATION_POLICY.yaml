@@ -1,0 +1,93 @@
+---
+# IRIS Escalation Policy
+# Version: 0.1.0
+
+principle: "Escalate only when truly blocked. Don't escalate trivial implementation choices."
+
+escalate_when:
+  security:
+    - "Critical security vulnerability discovered in production path"
+    - "Cryptographic architecture change required"
+    - "E2EE guarantee potentially weakened by design choice"
+    - "Security review identifies unacceptable HIGH risk"
+
+  architecture:
+    - "Conflicting requirements that cannot be architecturally resolved"
+    - "Fundamental design flaw discovered requiring major redesign"
+    - "Platform limitation makes core requirement impossible"
+    - "ADR choice between options with no clear winner after analysis"
+
+  legal:
+    - "Legal interpretation required for compliance decision"
+    - "Regulatory uncertainty blocking architecture decision"
+    - "Government request or legal order received"
+
+  operations:
+    - "Irreversible destructive operation (data migration, key rotation)"
+    - "Production security release approval"
+    - "Emergency broadcast system change"
+
+  resources:
+    - "Physical hardware required for experiment not available"
+    - "External service or API needed for component"
+    - "Budget required for cloud/hardware"
+
+  blocking:
+    - "Node BLOCKED for >48h with no path forward"
+    - "All unblocked nodes require human approval simultaneously"
+    - "Research exhausted but question unresolved"
+
+do_not_escalate:
+  - "Implementation choice between two equivalent approaches → pick simpler one"
+  - "Minor naming or code style decisions → follow existing conventions"
+  - "Test organization choices → follow TEST_POLICY.yaml"
+  - "Documentation structure choices → follow established pattern"
+  - "Performance optimization approaches → measure, pick better one"
+  - "Benchmark methodology → document and proceed"
+
+escalation_document_format:
+  filename: "ESCALATION-{node_id}-{YYYYMMDD}.md"
+  location: "engineering/escalations/"
+  sections:
+    - title: "Context"
+      content: "What node is affected, current status, what was attempted"
+    - title: "Problem"
+      content: "Specific question or decision that requires human input"
+    - title: "Options Considered"
+      content: "At least 2 options with trade-offs"
+    - title: "Recommendation"
+      content: "Which option the engineering system recommends and why"
+    - title: "Risk Analysis"
+      content: "Risks of each option, risks of delay"
+    - title: "What Is Needed From Human"
+      content: "Specific decision, approval, or information required"
+    - title: "Timeline"
+      content: "Impact if not resolved within 24h / 72h"
+
+escalation_response:
+  timeout_24h: "Re-escalate daily for P0 nodes"
+  timeout_72h: "Continue working other nodes, re-escalate weekly for P1 nodes"
+  action_on_no_response: "Do NOT proceed with high-risk action. Park node, work others."
+  action_on_rejection: "Create redesign node with rejected option documented as 'rejected alternative'"
+  action_on_approval: "Record approval in node evidence field, proceed with implementation"
+
+escalation_severity:
+  CRITICAL:
+    description: "Immediate halt required"
+    examples: ["Production security vulnerability", "Emergency system broken"]
+    response_time: "Human must respond within 24h"
+
+  HIGH:
+    description: "Blocking critical path"
+    examples: ["Cryptographic architecture decision", "Platform limitation blocking feature"]
+    response_time: "Human should respond within 72h"
+
+  MEDIUM:
+    description: "Blocking but workarounds exist"
+    examples: ["Legal compliance question", "Architecture trade-off"]
+    response_time: "Human should respond within 1 week"
+
+  LOW:
+    description: "Non-blocking, seeking guidance"
+    examples: ["Product direction question", "Business model choice"]
+    response_time: "When convenient"

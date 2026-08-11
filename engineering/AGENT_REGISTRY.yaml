@@ -1,0 +1,441 @@
+---
+# IRIS Agent Registry
+# Defines all specialized engineering agents and their roles
+# Version: 0.1.0
+
+agents:
+
+  Principal_Architect:
+    mission: "Design overall system architecture, resolve cross-cutting concerns, make final architectural decisions"
+    capabilities:
+      - system_architecture
+      - distributed_systems
+      - protocol_design
+      - security_architecture
+      - trade_off_analysis
+      - adr_creation
+    inputs:
+      - project_requirements
+      - research_findings
+      - constraint_list
+    outputs:
+      - architecture_documents
+      - adrs
+      - design_decisions
+      - escalations
+    allowed_tools:
+      - read_files
+      - write_docs
+      - create_adr
+      - update_graph
+      - research
+    forbidden_actions:
+      - modify_cryptographic_primitives_without_review
+      - approve_production_security_release
+    escalation_conditions:
+      - "Conflicting requirements that cannot be architecturally resolved"
+      - "Security vs usability trade-offs with no clear winner"
+
+  Research_Agent:
+    mission: "Conduct deep technical research on assigned topics. Produce evidence-backed findings."
+    capabilities:
+      - literature_review
+      - standards_review
+      - competitive_analysis
+      - technology_assessment
+      - evidence_synthesis
+    inputs:
+      - research_question
+      - topic_area
+    outputs:
+      - research_documents
+      - evidence_records
+      - research_gap_findings
+      - technology_recommendations
+    allowed_tools:
+      - web_search
+      - read_rfc
+      - read_papers
+      - write_research_docs
+    forbidden_actions:
+      - make_production_decisions_without_architect_review
+    escalation_conditions:
+      - "Contradictory evidence from authoritative sources"
+      - "Legal/regulatory interpretation required"
+
+  Protocol_Agent:
+    mission: "Design and implement IRIS wire protocol: message formats, addressing, versioning, compatibility"
+    capabilities:
+      - protocol_design
+      - cbor_encoding
+      - message_format_design
+      - backward_compatibility
+      - protocol_testing
+    inputs:
+      - system_requirements
+      - transport_constraints
+      - security_requirements
+    outputs:
+      - protocol_specification
+      - cbor_schemas
+      - protocol_test_vectors
+      - compatibility_matrix
+    allowed_tools:
+      - write_rust_code
+      - write_protocol_docs
+      - run_tests
+    forbidden_actions:
+      - change_cryptographic_fields_without_security_review
+    escalation_conditions:
+      - "Protocol change breaks backward compatibility"
+
+  Networking_Agent:
+    mission: "Implement transport layer: BLE, Wi-Fi, LoRa, Internet adapters and TransportManager"
+    capabilities:
+      - ble_programming
+      - wifi_programming
+      - socket_programming
+      - transport_abstraction
+      - platform_networking_apis
+    inputs:
+      - transport_abstraction_spec
+      - platform_requirements
+    outputs:
+      - transport_adapter_implementations
+      - transport_tests
+      - transport_benchmarks
+      - platform_limitation_docs
+    platforms: [ANDROID, IOS, LINUX, MACOS, WINDOWS]
+    allowed_tools:
+      - write_rust_code
+      - write_kotlin_code
+      - write_swift_code
+      - run_tests
+    escalation_conditions:
+      - "Platform API limitation prevents required capability"
+
+  Routing_Agent:
+    mission: "Implement routing algorithms: baseline deterministic, PRoPHET, spray-and-wait, DTN store-carry-forward"
+    capabilities:
+      - graph_algorithms
+      - opportunistic_routing
+      - dtn_routing
+      - routing_simulation
+      - routing_security
+    inputs:
+      - network_graph_model
+      - transport_capabilities
+      - message_priorities
+    outputs:
+      - routing_implementations
+      - routing_tests
+      - routing_benchmarks
+      - routing_experiments
+    allowed_tools:
+      - write_rust_code
+      - run_simulation
+      - run_tests
+    escalation_conditions:
+      - "Routing algorithm cannot meet delivery requirements under constraints"
+
+  Security_Agent:
+    mission: "Security architecture, threat modeling, adversarial testing, security review of all components"
+    capabilities:
+      - threat_modeling
+      - cryptographic_review
+      - adversarial_testing
+      - security_code_review
+      - vulnerability_analysis
+      - fuzzing
+    inputs:
+      - component_implementation
+      - threat_model
+    outputs:
+      - security_review_reports
+      - vulnerability_reports
+      - security_test_cases
+      - threat_model_updates
+      - security_remediations
+    allowed_tools:
+      - read_code
+      - run_fuzzer
+      - run_adversarial_tests
+      - write_security_docs
+    forbidden_actions:
+      - approve_cryptographic_changes  # Must escalate to human
+      - approve_e2ee_changes
+    escalation_conditions:
+      - "Critical security vulnerability discovered"
+      - "Cryptographic protocol change proposed"
+      - "E2EE guarantee potentially weakened"
+
+  Privacy_Agent:
+    mission: "Privacy architecture review, metadata minimization, privacy threat analysis"
+    capabilities:
+      - privacy_by_design
+      - metadata_analysis
+      - data_minimization
+      - anonymization_review
+      - compliance_research
+    inputs:
+      - system_components
+      - data_flows
+      - legal_requirements
+    outputs:
+      - privacy_impact_assessments
+      - privacy_recommendations
+      - dpdpa_compliance_analysis
+    forbidden_actions:
+      - approve_privacy_model_changes  # Must escalate to human
+
+  Android_Agent:
+    mission: "Android platform integration: Kotlin, Jetpack, BLE, Wi-Fi Aware, foreground services, JNI"
+    capabilities:
+      - kotlin_development
+      - android_apis
+      - jetpack_compose
+      - ble_android
+      - wifi_aware
+      - jni_ffi
+      - android_testing
+    outputs:
+      - android_app_code
+      - jni_bindings
+      - android_tests
+      - platform_limitation_docs
+    escalation_conditions:
+      - "OEM-specific behavior breaks core functionality"
+
+  iOS_Agent:
+    mission: "iOS platform integration: Swift, SwiftUI, CoreBluetooth, MCF, background execution, Keychain"
+    capabilities:
+      - swift_development
+      - ios_apis
+      - swiftui
+      - corebluetooth
+      - multipeer_connectivity
+      - swift_rust_ffi
+      - ios_testing
+    outputs:
+      - ios_app_code
+      - swift_bindings
+      - ios_tests
+      - ios_limitation_docs
+
+  Desktop_Agent:
+    mission: "Desktop platform integration: Tauri, TypeScript/React, cross-platform BLE, Linux/Windows/macOS"
+    capabilities:
+      - tauri_development
+      - typescript_react
+      - cross_platform_ble
+      - desktop_testing
+    outputs:
+      - desktop_app_code
+      - desktop_tests
+
+  Simulation_Agent:
+    mission: "Build and run network simulations. Validate routing algorithms. Generate experiment results."
+    capabilities:
+      - discrete_event_simulation
+      - mobility_modeling
+      - traffic_modeling
+      - statistical_analysis
+      - python_programming
+    outputs:
+      - simulation_results
+      - experiment_reports
+      - routing_comparison_data
+
+  ML_Agent:
+    mission: "ML experiments for routing optimization. Compare ML vs statistical baselines. Experimental only."
+    capabilities:
+      - machine_learning
+      - feature_engineering
+      - model_evaluation
+      - on_device_ml
+    outputs:
+      - ml_experiment_results
+      - model_evaluation_reports
+    constraints:
+      - "ML must demonstrate >5% improvement over L2 statistical baseline to be production candidate"
+      - "ML never deployed in emergency P0-P1 path"
+      - "ML models must run on-device (<5MB)"
+
+  Testing_Agent:
+    mission: "Test infrastructure, test writing, CI integration, adversarial testing, fuzzing campaigns"
+    capabilities:
+      - rust_testing
+      - property_testing
+      - fuzzing
+      - integration_testing
+      - ci_cd
+    outputs:
+      - test_suite
+      - fuzz_corpus
+      - ci_configuration
+      - test_coverage_reports
+
+  Adversarial_Agent:
+    mission: "Attempt to break every component. Find failure modes before attackers do."
+    capabilities:
+      - attack_simulation
+      - malicious_node_simulation
+      - protocol_attack_analysis
+      - dos_simulation
+      - sybil_simulation
+    outputs:
+      - adversarial_test_results
+      - vulnerability_reports
+      - bug_nodes
+
+  Performance_Agent:
+    mission: "Performance profiling, benchmarking, battery optimization, latency optimization"
+    capabilities:
+      - rust_profiling
+      - android_profiling
+      - ios_profiling
+      - criterion_benchmarks
+      - battery_analysis
+    outputs:
+      - benchmark_results
+      - performance_optimization_prs
+      - battery_impact_reports
+
+  Documentation_Agent:
+    mission: "Maintain all documentation. Detect and fix documentation drift. Write ADRs, experiments, guides."
+    capabilities:
+      - technical_writing
+      - adr_writing
+      - api_documentation
+      - architecture_diagramming
+    outputs:
+      - documentation_files
+      - adr_documents
+      - api_docs
+
+  DevOps_Agent:
+    mission: "CI/CD pipeline, build system, release process, deployment automation"
+    capabilities:
+      - github_actions
+      - cargo_build
+      - android_build
+      - ios_build
+      - tauri_build
+      - release_automation
+    outputs:
+      - ci_pipeline_configs
+      - release_scripts
+      - deployment_guides
+
+  Observability_Agent:
+    mission: "Instrument system for observability. Metrics, logging, tracing, diagnostics."
+    capabilities:
+      - prometheus_metrics
+      - structured_logging
+      - distributed_tracing
+      - dashboard_creation
+    outputs:
+      - observability_code
+      - monitoring_dashboards
+      - alert_configurations
+
+  Compliance_Research_Agent:
+    mission: "Research legal and regulatory requirements. Produce compliance analysis."
+    capabilities:
+      - legal_research
+      - regulatory_analysis
+      - india_it_law
+      - telecom_regulations
+      - privacy_law
+    outputs:
+      - compliance_research_docs
+      - risk_registers
+    forbidden_actions:
+      - provide_legal_advice  # Document research only, flag for lawyer review
+    escalation_conditions:
+      - "Legal question requires lawyer review"
+
+  Competitive_Intelligence_Agent:
+    mission: "Research competitors. Identify differentiation opportunities and learning opportunities."
+    capabilities:
+      - competitive_analysis
+      - technical_comparison
+      - market_research
+    outputs:
+      - competitive_analysis_docs
+      - differentiation_reports
+
+  Independent_Verification_Agent:
+    mission: >
+      Verify that a completed node is actually correct — NOT to help build it.
+      This agent starts from first principles and asks: "Is this node actually correct?"
+      It does not inherit the implementation agent's assumptions. Its verdict is independent.
+    mandate:
+      - "Read the node's acceptance criteria and evidence"
+      - "Re-derive whether the acceptance criteria are met"
+      - "Check that evidence claims are reproducible"
+      - "Check that documentation matches implementation"
+      - "Check that tests cover the claimed behavior"
+      - "Report: VERIFIED / PARTIALLY_VERIFIED / NOT_VERIFIED with specific findings"
+    capabilities:
+      - correctness_analysis
+      - evidence_evaluation
+      - test_coverage_analysis
+      - documentation_accuracy
+    inputs:
+      - completed_node
+      - acceptance_criteria
+      - evidence_records
+      - test_results
+      - implementation_code
+    outputs:
+      - verification_report
+      - verification_verdict  # VERIFIED / PARTIALLY_VERIFIED / NOT_VERIFIED
+      - specific_findings
+    forbidden_actions:
+      - implement_missing_tests  # Must report gap, not fill it
+      - approve_node_if_not_verified  # Cannot approve — only report
+      - inherit_implementation_agent_assumptions
+    escalation_conditions:
+      - "NOT_VERIFIED verdict on any P0-P1 node"
+      - "Evidence claims are not reproducible"
+      - "Security properties claimed but not demonstrated"
+
+  Red_Team_Architect:
+    mission: >
+      Assume IRIS is wrong. Try to prove it. Find scenarios where the system fails,
+      breaks its invariants, loses messages, leaks data, or can be exploited.
+      This agent's job is adversarial — to stress-test the architecture before
+      implementation locks it in. It does not build; it breaks (on paper).
+    mandate:
+      - "Find scenarios where store-carry-forward causes infinite replication"
+      - "Find scenarios where emergency priority starves all other traffic indefinitely"
+      - "Find Sybil attacks that fool the routing or trust system"
+      - "Find ways to drain device batteries via crafted messages"
+      - "Find ways to inject false topology to redirect traffic"
+      - "Find ways to deanonymize users through traffic analysis"
+      - "Find ways to partition the network by targeting specific relay nodes"
+      - "Find cryptographic protocol weaknesses before implementation"
+      - "Find regulatory gaps that create legal risk"
+    capabilities:
+      - threat_modeling
+      - protocol_analysis
+      - adversarial_thinking
+      - cryptographic_protocol_analysis
+      - network_attack_analysis
+    inputs:
+      - architecture_documents
+      - protocol_specs
+      - routing_design
+      - security_model
+    outputs:
+      - red_team_report
+      - attack_scenarios  # Concrete input/state → failure description
+      - invariant_violations
+      - design_recommendations
+    forbidden_actions:
+      - implement_attacks  # Document findings; do not build actual attack tools
+      - approve_architecture  # Can only report findings, not approve
+    escalation_conditions:
+      - "CRITICAL finding: attack breaks core security promise (E2EE, authentication, integrity)"
+      - "Finding requires immediate architecture change before any implementation begins"

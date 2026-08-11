@@ -1,0 +1,212 @@
+---
+# IRIS Agent Capabilities Matrix
+# Maps agent names to their specific capability limits and resource budgets
+# Version: 0.1.0
+# See AGENT_REGISTRY.yaml for full agent definitions
+
+capabilities:
+
+  Principal_Architect:
+    can_approve_adrs: true
+    can_create_nodes: true
+    can_modify_graph_schema: true
+    can_assign_agents: true
+    max_parallel_nodes: 1
+    requires_human_gate: [CRYPTO-001, EMERG-001, LEGAL-001]
+    output_formats: [YAML, Markdown, Rust-pseudocode]
+    llm_tools: [WebSearch, WebFetch, Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Research_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true  # only RESEARCH or EXPERIMENT type
+    can_modify_graph_schema: false
+    max_parallel_nodes: 3
+    output_formats: [Markdown, YAML]
+    llm_tools: [WebSearch, WebFetch, Read, Write, Glob, Grep]
+    forbidden_tools: [Edit, Bash]
+    evidence_minimum: 2  # must cite at least 2 sources per claim
+
+  Protocol_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    can_modify_graph_schema: false
+    max_parallel_nodes: 2
+    output_formats: [Markdown, Rust, Python-test-vectors, CBOR-hex]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: [WebSearch]
+    requires_crypto_review: true  # any encoding touching ChaCha20 or Ed25519
+
+  Networking_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 3
+    output_formats: [Markdown, Rust, Kotlin, Swift]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Routing_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Markdown, Rust, Python-sim]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Security_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    can_approve_security_acceptance: true
+    max_parallel_nodes: 1
+    output_formats: [Markdown, YAML, Rust]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch]
+    forbidden_tools: []
+    escalation_threshold: "Any CRITICAL or HIGH finding"
+
+  Privacy_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Markdown, YAML]
+    llm_tools: [Read, Write, Glob, Grep, WebSearch, WebFetch]
+    forbidden_tools: [Bash, Edit]
+
+  Android_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Kotlin, Markdown]
+    platform: android
+    min_sdk: 26  # Android 8.0
+    target_sdk: 34
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  iOS_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Swift, Markdown]
+    platform: ios
+    min_os: "15.0"
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Desktop_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 3
+    output_formats: [TypeScript, Rust, Markdown]
+    platforms: [windows, macos, linux]
+    framework: tauri
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Simulation_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Python, Markdown, CSV, YAML]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+    note: "Simulation results may NOT be fabricated. Must run actual simulation code."
+
+  ML_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 1
+    output_formats: [Python, Markdown]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+    constraint: "ML features are ENHANCEMENT only — core routing must work without ML"
+
+  Testing_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    can_approve_test_coverage: true
+    max_parallel_nodes: 3
+    output_formats: [Rust, Kotlin, Swift, Python, Markdown]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Adversarial_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    can_report_vulnerabilities: true
+    max_parallel_nodes: 2
+    output_formats: [Markdown, YAML, Rust]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch]
+    forbidden_tools: []
+    note: "Findings go to ESCALATION doc if CRITICAL or HIGH"
+
+  Performance_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Rust, Python, Markdown, CSV]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+    note: "Benchmark results must document hardware. Never fabricate numbers."
+
+  Documentation_Agent:
+    can_approve_adrs: false
+    can_create_nodes: false
+    max_parallel_nodes: 5
+    output_formats: [Markdown, YAML]
+    llm_tools: [Read, Write, Edit, Glob, Grep]
+    forbidden_tools: [Bash]
+    note: "Documentation must describe actual behavior, not aspirational behavior"
+
+  DevOps_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [YAML, Bash, Markdown]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+
+  Observability_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 2
+    output_formats: [Rust, YAML, Markdown]
+    llm_tools: [Read, Write, Edit, Glob, Grep, Bash]
+    forbidden_tools: []
+    constraint: "No PII in logs. No message contents in telemetry."
+
+  Compliance_Research_Agent:
+    can_approve_adrs: false
+    can_create_nodes: true
+    max_parallel_nodes: 1
+    output_formats: [Markdown, YAML]
+    llm_tools: [WebSearch, WebFetch, Read, Write, Glob, Grep]
+    forbidden_tools: [Edit, Bash]
+    note: "Research findings, not legal advice. Escalate to human lawyer for binding interpretations."
+
+  Competitive_Intelligence_Agent:
+    can_approve_adrs: false
+    can_create_nodes: false
+    max_parallel_nodes: 1
+    output_formats: [Markdown, YAML]
+    llm_tools: [WebSearch, WebFetch, Read, Write, Glob, Grep]
+    forbidden_tools: [Edit, Bash, Bash]
+
+# Capability tokens (scoped permissions for specific operations):
+capability_tokens:
+  CRYPTO_REVIEW:
+    issued_by: "Principal_Architect"
+    grants: "Can comment on cryptographic design choices"
+    does_not_grant: "Cannot implement crypto or approve crypto PRs autonomously"
+
+  SECURITY_ACCEPTANCE:
+    issued_by: "Security_Agent"
+    grants: "Can sign off security acceptance criteria for non-critical nodes"
+    does_not_grant: "Cannot approve CRYPTO-001, EMERG-001 security acceptance"
+
+  EMERGENCY_BROADCAST_MODIFY:
+    requires_human: true
+    reason: "Emergency broadcast changes affect life-safety systems"
+
+  CRYPTOGRAPHIC_IMPLEMENTATION:
+    requires_human: true
+    reason: "Any autonomous cryptographic implementation is prohibited"

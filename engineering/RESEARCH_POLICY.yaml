@@ -1,0 +1,197 @@
+---
+# IRIS Research Policy
+# Defines how research is conducted and evidence evaluated
+# Version: 0.1.0
+
+evidence_hierarchy:
+  level_1:
+    name: "Official Specifications"
+    description: "RFCs, platform official documentation, standards body publications"
+    examples:
+      - "RFC 9171 (BPv7)"
+      - "Android developer documentation (developer.android.com)"
+      - "Apple developer documentation (developer.apple.com)"
+      - "Bluetooth SIG specifications"
+      - "LoRa Alliance specifications"
+      - "IETF RFCs"
+    confidence: HIGH
+    use_for: "All critical technical claims"
+
+  level_2:
+    name: "Peer-Reviewed Research"
+    description: "Papers from reputable venues (IEEE, ACM, USENIX, etc.)"
+    examples:
+      - "IEEE Transactions on Mobile Computing"
+      - "ACM MobiCom, MobiHoc"
+      - "USENIX Security, NSDI"
+    confidence: HIGH
+    use_for: "Routing algorithm selection, security properties"
+
+  level_3:
+    name: "Reputable Technical Reports"
+    description: "Engineering blogs from reputable organizations, conference talks"
+    examples:
+      - "Google engineering blog"
+      - "Apple engineering blog"
+      - "Mozilla security blog"
+      - "Cloudflare blog"
+    confidence: MEDIUM
+    use_for: "Implementation guidance, performance estimates"
+
+  level_4:
+    name: "High-Quality Open Source Implementations"
+    description: "Well-maintained, widely-used open source code"
+    examples:
+      - "Linux kernel networking code"
+      - "OpenSSL, BoringSSL"
+      - "Ring (Rust crypto library)"
+    confidence: MEDIUM
+    use_for: "API design, implementation patterns"
+
+  level_5:
+    name: "Community Discussion"
+    description: "Stack Overflow, GitHub issues, Reddit, blog posts"
+    confidence: LOW
+    use_for: "Supplementary only, never primary for critical claims"
+    warning: "Verify community claims against Level 1-2 sources before acting"
+
+minimum_evidence_levels:
+  cryptography: 1           # Must be RFC or official spec
+  security_architecture: 1  # RFC or peer-reviewed
+  routing_algorithm: 2      # Peer-reviewed paper required
+  platform_api: 1           # Official platform docs required
+  performance_claim: 4      # Own benchmark preferred; Level 3 for estimates
+  legal_regulatory: 1       # Official government/regulatory source
+  market_research: 3        # Reputable analyst, news
+  competitive_analysis: 3   # Company docs, reputable review
+
+evidence_format:
+  claim: string           # The specific factual claim
+  source: string          # URL, RFC number, paper title + venue + year
+  confidence: enum        # HIGH, MEDIUM, LOW
+  verified_date: date     # When this was verified (sources change)
+  implication: string     # What this means for our design
+  decision: string        # What we decided based on this
+
+research_quality_requirements:
+  multiple_sources: "Critical claims must have 2+ independent sources"
+  primary_over_secondary: "When primary source available, cite it directly"
+  no_circular: "Do not cite community post that cites another community post"
+  date_sensitive: "Platform API behavior can change between OS versions. Note version tested."
+  no_ai_sources: "Do not cite AI answers as evidence. AI may hallucinate."
+
+research_gap_format:
+  id: "GAP-NNN"
+  topic: string
+  what_we_know: string
+  what_we_dont_know: string
+  what_we_assume: string
+  confidence_in_assumption: enum  # HIGH, MEDIUM, LOW
+  resolution_method: enum  # LITERATURE, EXPERIMENT, HARDWARE_TEST, LEGAL_REVIEW
+  experiment_id: string    # EXP-XXXX if experiment planned
+  priority: enum           # HIGH, MEDIUM, LOW
+
+research_contradiction_resolution:
+  steps:
+    - "Identify the contradiction explicitly"
+    - "Find the original source of each position"
+    - "Evaluate recency (more recent may supersede)"
+    - "Evaluate authority (official spec > paper > blog)"
+    - "Check if both can be true in different contexts (e.g., Android 11 vs Android 12)"
+    - "If unresolved: create experiment to measure empirically"
+    - "Document the contradiction and resolution in research_evidence"
+
+do_not_research:
+  - "Topics not relevant to current node"
+  - "Questions already answered in research_evidence"
+  - "Low-priority questions when high-priority gaps exist"
+  guidance: "Research is time-bounded. Focus on what unblocks decisions."
+
+# --- Evidence Maturity Model (added Architecture Validation Pass v0.2.0) ---
+# Every technical claim in IRIS must be tagged with its evidence maturity level.
+# These levels must NEVER be conflated. A RESEARCHED claim ≠ a VALIDATED claim.
+
+evidence_maturity_model:
+  levels:
+    HYPOTHESIZED:
+      description: "Team believes this is true; no research performed yet"
+      may_use_for: "Initial brainstorming, placeholder assumptions"
+      must_not_use_for: "Architecture decisions, design choices, regulatory compliance"
+
+    RESEARCHED:
+      description: "Supported by primary or secondary sources (Level 1-4)"
+      evidence_required: "At least one Level 1-3 source cited"
+      may_use_for: "Architecture decisions, design choices"
+      must_not_use_for: "Claims that require physical validation (range, battery, latency)"
+      example: "LoRa 865-868 MHz is license-exempt in India [WPC Gazette 2021]"
+
+    DESIGNED:
+      description: "System designed to use this property; not yet implemented"
+      evidence_required: "RESEARCHED level + architectural design document"
+      may_use_for: "Implementation planning"
+      must_not_use_for: "Claims that the system actually works"
+
+    IMPLEMENTED:
+      description: "Code exists that implements this behavior"
+      evidence_required: "DESIGNED + code exists and compiles"
+      may_use_for: "Internal claims about what was built"
+      must_not_use_for: "Claims that the implementation is correct"
+
+    UNIT_VALIDATED:
+      description: "Automated unit tests pass for this behavior"
+      evidence_required: "IMPLEMENTED + unit test suite passes + CI link"
+      may_use_for: "Claiming correct behavior in unit-test scenarios"
+      must_not_use_for: "Claims about multi-node or physical behavior"
+
+    INTEGRATION_VALIDATED:
+      description: "Integration tests pass; multi-component behavior verified"
+      evidence_required: "UNIT_VALIDATED + integration test suite passes"
+      may_use_for: "Claiming multi-component correctness"
+      must_not_use_for: "Physical environment claims"
+
+    SIMULATION_VALIDATED:
+      description: "Behavior confirmed in simulation (not physical hardware)"
+      evidence_required: "INTEGRATION_VALIDATED + simulation results + simulation-reality gap documented"
+      may_use_for: "Performance estimates, routing behavior under modeled conditions"
+      must_not_use_for: "Physical world guarantees"
+      note: "Simulation-reality gap must always be documented"
+
+    HARDWARE_VALIDATED:
+      description: "Confirmed on physical hardware in controlled environment"
+      evidence_required: "SIMULATION_VALIDATED + hardware test results + hardware spec documented"
+      may_use_for: "Physical performance characteristics (range, latency, battery)"
+      must_not_use_for: "Field behavior guarantees in disaster conditions"
+
+    FIELD_VALIDATED:
+      description: "Confirmed in realistic field conditions (not controlled lab)"
+      evidence_required: "HARDWARE_VALIDATED + field test report + conditions documented"
+      may_use_for: "Realistic performance claims for target environments"
+      must_not_use_for: "Regulatory compliance, certified claims"
+
+    PRODUCTION_VALIDATED:
+      description: "Confirmed in real production use by real users"
+      evidence_required: "FIELD_VALIDATED + production telemetry (privacy-respecting) + incident analysis"
+      may_use_for: "All performance and reliability claims"
+
+    CERTIFIED:
+      description: "Externally audited, certified, or formally verified"
+      evidence_required: "PRODUCTION_VALIDATED + third-party audit report or formal certification"
+      may_use_for: "Regulatory submissions, government procurement, formal compliance claims"
+
+  maturity_requirements_by_claim_type:
+    regulatory_compliance: CERTIFIED        # Must not claim compliance without external audit
+    security_guarantees: FIELD_VALIDATED    # Must be tested in realistic conditions
+    performance_benchmarks: HARDWARE_VALIDATED  # Must be measured, not estimated
+    range_claims: HARDWARE_VALIDATED        # Never cite unvalidated marketing range figures
+    battery_claims: HARDWARE_VALIDATED      # Must be measured on real devices
+    routing_delivery_ratio: SIMULATION_VALIDATED  # Simulation acceptable for algorithm comparison
+    api_behavior: RESEARCHED               # Official docs sufficient
+    legal_research: RESEARCHED             # Documents legal landscape; does not certify compliance
+
+  claim_annotation_format:
+    # Use this format when documenting any technical claim:
+    # "[CLAIM_TEXT] [MATURITY_LEVEL] — [SOURCE]"
+    # Example:
+    # "LoRa range of 5-15 km in open rural terrain [HYPOTHESIZED — needs HARDWARE_VALIDATED]"
+    # "BLE discovery works on Android 8+ [RESEARCHED — Android developer docs 2024]"
+    # "PRoPHET outperforms Epidemic by 23% in our scenario [SIMULATION_VALIDATED — EXP-ROUTE-001]"

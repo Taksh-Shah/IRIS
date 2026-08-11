@@ -1,0 +1,604 @@
+---
+# IRIS Project Graph — Initial State
+# Version: 0.1.0
+# Format: Each node is a V (vertex), edges defined in edges section
+
+meta:
+  version: "0.2.0"
+  created: "2025-01-01"
+  last_validated: "2026-08-11"
+  total_nodes: 32
+  description: "Directed dependency graph of all IRIS engineering capabilities"
+  validation_status: "Architecture Validation Pass complete — edges reconciled with node dependencies"
+  note: "PROJECT_STATE.yaml must be generated from this graph, not maintained separately"
+  known_gaps:
+    - "Graph has 32 nodes; 50+ additional nodes needed for full system coverage (see expert review)"
+    - "Dependency type model is flat — upgrade to typed {node, relationship, required_state} pending NODE_SCHEMA v0.3"
+    - "Crypto architecture unresolved: per-session vs per-message ephemeral key, HKDF-BLAKE3 non-standard"
+
+nodes:
+  - id: "VISION-001"
+    name: "Project Vision & Charter"
+    type: DOCUMENTATION
+    priority: P0
+    status: COMPLETE
+    description: "Project vision, mission, charter, and guiding principles"
+    dependencies: []
+
+  - id: "REQ-001"
+    name: "System Requirements"
+    type: REQUIREMENT
+    priority: P0
+    status: RESEARCH_COMPLETE
+    description: "Functional and non-functional system requirements"
+    dependencies: ["VISION-001"]
+
+  - id: "ARCH-001"
+    name: "System Architecture"
+    type: ARCHITECTURE
+    priority: P0
+    status: RESEARCH_COMPLETE
+    description: "Overall system architecture, layer model, component design"
+    dependencies: ["REQ-001"]
+
+  - id: "PROTO-001"
+    name: "Protocol Design"
+    type: PROTOCOL
+    priority: P0
+    status: DESIGNING
+    description: "IRIS wire protocol: CBOR envelope, addressing, versioning"
+    dependencies: ["ARCH-001"]
+
+  - id: "CRYPTO-001"
+    name: "Cryptographic Layer"
+    type: SECURITY
+    priority: P0
+    status: DESIGNING
+    description: "Ed25519 identity, X25519 key agreement, ChaCha20-Poly1305 encryption"
+    dependencies: ["PROTO-001"]
+    risk: HIGH
+    requires_human_approval: true
+    reason: "Cryptographic architecture changes require security expert review"
+
+  - id: "IDENT-001"
+    name: "Identity System"
+    type: COMPONENT
+    priority: P0
+    status: DESIGNING
+    description: "Node identity, key management, trust model, address derivation"
+    dependencies: ["CRYPTO-001"]
+    requires_human_approval: true
+
+  - id: "STORE-001"
+    name: "Storage Layer"
+    type: COMPONENT
+    priority: P0
+    status: DISCOVERED
+    description: "SQLite + SQLCipher encrypted message store, schema, eviction"
+    dependencies: ["PROTO-001"]
+
+  - id: "TRANSPORT-001"
+    name: "Transport Abstraction"
+    type: TRANSPORT
+    priority: P0
+    status: DESIGNING
+    description: "TransportAdapter trait, TransportManager, multi-transport selection"
+    dependencies: ["ARCH-001"]
+
+  - id: "BLE-001"
+    name: "BLE Transport — Android"
+    type: TRANSPORT
+    priority: P0
+    status: DISCOVERED
+    description: "Android BLE scan, advertise, GATT server/client, foreground service"
+    dependencies: ["TRANSPORT-001"]
+    platform: ANDROID
+
+  - id: "BLE-002"
+    name: "BLE Transport — iOS"
+    type: TRANSPORT
+    priority: P0
+    status: DISCOVERED
+    description: "iOS CoreBluetooth, background modes, iOS background limitations"
+    dependencies: ["TRANSPORT-001"]
+    platform: IOS
+
+  - id: "WIFIAWARE-001"
+    name: "Wi-Fi Aware Transport — Android"
+    type: TRANSPORT
+    priority: P1
+    status: DISCOVERED
+    description: "Android Wi-Fi Aware (NAN) for medium-range high-bandwidth transport"
+    dependencies: ["TRANSPORT-001"]
+    platform: ANDROID
+
+  - id: "WIFIDIRECT-001"
+    name: "Wi-Fi Direct Transport"
+    type: TRANSPORT
+    priority: P1
+    status: DISCOVERED
+    description: "Wi-Fi Direct for large file transfer between nearby devices"
+    dependencies: ["TRANSPORT-001"]
+
+  - id: "INTERNET-001"
+    name: "Internet Gateway Transport"
+    type: TRANSPORT
+    priority: P1
+    status: DISCOVERED
+    description: "Internet (TCP/QUIC) transport when connectivity available"
+    dependencies: ["TRANSPORT-001"]
+
+  - id: "LORA-001"
+    name: "LoRa Gateway Transport"
+    type: TRANSPORT
+    priority: P2
+    status: DISCOVERED
+    description: "LoRa long-range transport via external LoRa module + BLE bridge"
+    dependencies: ["TRANSPORT-001"]
+    requires_hardware: true
+
+  - id: "SAT-001"
+    name: "Satellite Gateway Transport"
+    type: TRANSPORT
+    priority: P2
+    status: DISCOVERED
+    description: "Satellite (Iridium/Starlink) last-resort gateway for P0-P2 emergency"
+    dependencies: ["TRANSPORT-001"]
+    requires_hardware: true
+    requires_human_approval: true
+    reason: "Satellite regulatory compliance must be verified before deployment"
+
+  - id: "DISCO-001"
+    name: "Discovery Engine"
+    type: COMPONENT
+    priority: P0
+    status: DISCOVERED
+    description: "Neighbor discovery, capability exchange, neighbor table management"
+    dependencies: ["BLE-001", "WIFIAWARE-001"]
+
+  - id: "MSG-001"
+    name: "Message Engine"
+    type: COMPONENT
+    priority: P0
+    status: DISCOVERED
+    description: "Message lifecycle, priority queuing, TTL, deduplication, ACK"
+    dependencies: ["PROTO-001", "STORE-001", "TRANSPORT-001"]
+
+  - id: "ROUTE-001"
+    name: "Routing Engine — Baseline"
+    type: ROUTING
+    priority: P0
+    status: DISCOVERED
+    description: "L0 deterministic routing: direct delivery, flood, store"
+    dependencies: ["MSG-001", "DISCO-001"]
+
+  - id: "ROUTE-002"
+    name: "Routing Engine — Opportunistic"
+    type: ROUTING
+    priority: P1
+    status: DISCOVERED
+    description: "L2 PRoPHET + spray-and-wait opportunistic routing"
+    dependencies: ["ROUTE-001"]
+
+  - id: "SCF-001"
+    name: "Store-Carry-Forward"
+    type: ROUTING
+    priority: P0
+    status: DISCOVERED
+    description: "DTN store-carry-forward: persist messages, forward on contact"
+    dependencies: ["ROUTE-001", "STORE-001"]
+
+  - id: "GW-001"
+    name: "Gateway Discovery & Selection"
+    type: COMPONENT
+    priority: P0
+    status: DISCOVERED
+    description: "Gateway capability detection, selection algorithm, failure handling"
+    dependencies: ["DISCO-001", "INTERNET-001"]
+
+  - id: "EMERG-001"
+    name: "Emergency System"
+    type: COMPONENT
+    priority: P0
+    status: DISCOVERED
+    description: "SOS, emergency broadcast, P0-P3 priority routing, disaster mode"
+    dependencies: ["MSG-001", "IDENT-001", "ROUTE-001"]
+    requires_human_approval: true
+    reason: "Emergency authority model requires safety review"
+
+  - id: "SEC-001"
+    name: "Security Hardening"
+    type: SECURITY
+    priority: P0
+    status: DISCOVERED
+    description: "Threat model implementation, DoS resistance, replay protection, Sybil mitigation"
+    dependencies: ["CRYPTO-001", "MSG-001", "ROUTE-001"]
+
+  - id: "SIM-001"
+    name: "Simulation Framework"
+    type: SIMULATION
+    priority: P1
+    status: DISCOVERED
+    description: "Discrete event network simulator for routing algorithm validation"
+    dependencies: ["ROUTE-001", "TRANSPORT-001"]
+
+  - id: "ANDROID-001"
+    name: "Android Platform Integration"
+    type: PLATFORM
+    priority: P0
+    status: DISCOVERED
+    description: "Full Android app: Kotlin/Compose, JNI, foreground service, BLE, Wi-Fi Aware"
+    dependencies: ["BLE-001", "WIFIAWARE-001", "MSG-001", "EMERG-001"]
+
+  - id: "IOS-001"
+    name: "iOS Platform Integration"
+    type: PLATFORM
+    priority: P0
+    status: DISCOVERED
+    description: "iOS app: Swift/SwiftUI, CoreBluetooth, MCF, background execution"
+    dependencies: ["BLE-002", "MSG-001", "EMERG-001"]
+
+  - id: "DESKTOP-001"
+    name: "Desktop Platform Integration"
+    type: PLATFORM
+    priority: P1
+    status: DISCOVERED
+    description: "Tauri desktop app: Windows/macOS/Linux, BLE, local network"
+    dependencies: ["TRANSPORT-001", "MSG-001"]
+
+  - id: "OBS-001"
+    name: "Observability System"
+    type: OPERATIONS
+    priority: P1
+    status: DISCOVERED
+    description: "Structured logging, metrics, diagnostics, telemetry (privacy-respecting)"
+    dependencies: ["MSG-001", "ROUTE-001"]
+
+  - id: "TEST-001"
+    name: "Test Infrastructure"
+    type: TEST
+    priority: P0
+    status: DISCOVERED
+    description: "Unit tests, integration tests, fuzzing, adversarial testing infrastructure"
+    dependencies: ["ROUTE-001", "MSG-001", "CRYPTO-001"]
+
+  - id: "ML-001"
+    name: "ML Routing Experiments"
+    type: EXPERIMENT
+    priority: P3
+    status: DISCOVERED
+    description: "L3 ML for delivery probability, gateway prediction. Experimental only."
+    dependencies: ["ROUTE-002", "SIM-001"]
+
+  - id: "LEGAL-001"
+    name: "Legal & Compliance Research"
+    type: COMPLIANCE
+    priority: P1
+    status: RESEARCH_COMPLETE
+    description: "India legal research: IT Act, DPDPA, spectrum regulations, telecom"
+    dependencies: ["VISION-001"]
+    requires_human_approval: true
+
+  - id: "PILOT-001"
+    name: "Field Pilot Deployment"
+    type: OPERATIONS
+    priority: P2
+    status: DISCOVERED
+    description: "First real-world deployment: NGO pilot, campus safety pilot"
+    dependencies: ["ANDROID-001", "IOS-001", "EMERG-001", "SEC-001", "LEGAL-001"]
+
+edges:
+  - from: "VISION-001"
+    to: "REQ-001"
+    relationship: enables
+    strength: strong
+
+  - from: "REQ-001"
+    to: "ARCH-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ARCH-001"
+    to: "PROTO-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ARCH-001"
+    to: "TRANSPORT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "PROTO-001"
+    to: "CRYPTO-001"
+    relationship: enables
+    strength: strong
+
+  - from: "PROTO-001"
+    to: "STORE-001"
+    relationship: enables
+    strength: strong
+
+  - from: "CRYPTO-001"
+    to: "IDENT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "BLE-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "BLE-002"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "WIFIAWARE-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "INTERNET-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "LORA-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "SAT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "BLE-001"
+    to: "DISCO-001"
+    relationship: enables
+    strength: strong
+
+  - from: "WIFIAWARE-001"
+    to: "DISCO-001"
+    relationship: enables
+    strength: strong
+
+  - from: "PROTO-001"
+    to: "MSG-001"
+    relationship: enables
+    strength: strong
+
+  - from: "STORE-001"
+    to: "MSG-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TRANSPORT-001"
+    to: "MSG-001"
+    relationship: enables
+    strength: strong
+
+  - from: "MSG-001"
+    to: "ROUTE-001"
+    relationship: enables
+    strength: strong
+
+  - from: "DISCO-001"
+    to: "ROUTE-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ROUTE-001"
+    to: "ROUTE-002"
+    relationship: enables
+    strength: strong
+
+  - from: "ROUTE-001"
+    to: "SCF-001"
+    relationship: enables
+    strength: strong
+
+  - from: "STORE-001"
+    to: "SCF-001"
+    relationship: enables
+    strength: strong
+
+  - from: "DISCO-001"
+    to: "GW-001"
+    relationship: enables
+    strength: strong
+
+  - from: "INTERNET-001"
+    to: "GW-001"
+    relationship: enables
+    strength: strong
+
+  - from: "MSG-001"
+    to: "EMERG-001"
+    relationship: enables
+    strength: strong
+
+  - from: "IDENT-001"
+    to: "EMERG-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ROUTE-001"
+    to: "EMERG-001"
+    relationship: enables
+    strength: strong
+
+  - from: "CRYPTO-001"
+    to: "SEC-001"
+    relationship: enables
+    strength: strong
+
+  - from: "MSG-001"
+    to: "SEC-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ROUTE-001"
+    to: "SIM-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ANDROID-001"
+    to: "PILOT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "IOS-001"
+    to: "PILOT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "EMERG-001"
+    to: "PILOT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "SEC-001"
+    to: "PILOT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "LEGAL-001"
+    to: "PILOT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "CRYPTO-001"
+    to: "EMERG-001"
+    relationship: depends_on
+    strength: strong
+
+  - from: "ROUTE-001"
+    to: "TEST-001"
+    relationship: implements
+    strength: strong
+
+  - from: "SIM-001"
+    to: "ML-001"
+    relationship: enables
+    strength: weak
+
+  - from: "ROUTE-002"
+    to: "ML-001"
+    relationship: enables
+    strength: weak
+
+  # --- Missing edges added in Architecture Validation Pass (v0.2.0) ---
+
+  - from: "TRANSPORT-001"
+    to: "WIFIDIRECT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "SEC-001"
+    to: "ROUTE-001"
+    relationship: validates
+    strength: strong
+    description: "Security hardening validates routing against attack scenarios"
+
+  - from: "SIM-001"
+    to: "TRANSPORT-001"
+    relationship: validates
+    strength: strong
+    description: "Simulation validates transport behavior under load"
+
+  - from: "ANDROID-001"
+    to: "BLE-001"
+    relationship: depends_on
+    strength: strong
+    description: "Android app depends on BLE Android transport implementation"
+
+  - from: "ANDROID-001"
+    to: "WIFIAWARE-001"
+    relationship: depends_on
+    strength: strong
+    description: "Android app depends on Wi-Fi Aware transport"
+
+  - from: "ANDROID-001"
+    to: "MSG-001"
+    relationship: depends_on
+    strength: strong
+    description: "Android app depends on message engine"
+
+  - from: "ANDROID-001"
+    to: "EMERG-001"
+    relationship: depends_on
+    strength: strong
+    description: "Android app depends on emergency system"
+
+  - from: "IOS-001"
+    to: "BLE-002"
+    relationship: depends_on
+    strength: strong
+    description: "iOS app depends on BLE iOS transport implementation"
+
+  - from: "IOS-001"
+    to: "MSG-001"
+    relationship: depends_on
+    strength: strong
+    description: "iOS app depends on message engine"
+
+  - from: "IOS-001"
+    to: "EMERG-001"
+    relationship: depends_on
+    strength: strong
+    description: "iOS app depends on emergency system"
+
+  - from: "DESKTOP-001"
+    to: "TRANSPORT-001"
+    relationship: depends_on
+    strength: strong
+    description: "Desktop app depends on transport abstraction"
+
+  - from: "DESKTOP-001"
+    to: "MSG-001"
+    relationship: depends_on
+    strength: strong
+    description: "Desktop app depends on message engine"
+
+  - from: "OBS-001"
+    to: "MSG-001"
+    relationship: depends_on
+    strength: strong
+    description: "Observability instruments the message engine"
+
+  - from: "OBS-001"
+    to: "ROUTE-001"
+    relationship: depends_on
+    strength: strong
+    description: "Observability instruments the routing engine"
+
+  - from: "TEST-001"
+    to: "ROUTE-001"
+    relationship: tests
+    strength: strong
+    description: "Test infrastructure tests routing correctness"
+
+  - from: "TEST-001"
+    to: "MSG-001"
+    relationship: tests
+    strength: strong
+    description: "Test infrastructure tests message engine"
+
+  - from: "TEST-001"
+    to: "CRYPTO-001"
+    relationship: tests
+    strength: strong
+    description: "Test infrastructure includes cryptographic test vectors"
+
+  - from: "LEGAL-001"
+    to: "VISION-001"
+    relationship: validates
+    strength: weak
+    description: "Legal research validates that vision is legally achievable"
+
+  - from: "WIFIDIRECT-001"
+    to: "TRANSPORT-001"
+    relationship: implements
+    strength: strong
+    description: "Wi-Fi Direct implements the TransportAdapter trait"

@@ -1,0 +1,124 @@
+---
+# IRIS Graph Edge Schema
+# Defines relationship types between nodes in PROJECT_GRAPH.yaml
+# Version: 0.1.0
+
+edge_schema:
+  from_node:
+    type: node_id
+    required: true
+    description: "Source node ID"
+
+  to_node:
+    type: node_id
+    required: true
+    description: "Target node ID"
+
+  relationship:
+    type: enum
+    required: true
+    values:
+      depends_on:
+        description: "from_node cannot begin until to_node is COMPLETE"
+        direction: "from → to (to must be complete first)"
+        example: "MSG-001 depends_on PROTO-001"
+
+      blocks:
+        description: "from_node progress is prevented by to_node"
+        direction: "from → to (to is blocking from)"
+        example: "ANDROID-001 blocks PILOT-001"
+
+      enables:
+        description: "Completion of from_node makes to_node possible"
+        direction: "from → to (from unlocks to)"
+        example: "PROTO-001 enables MSG-001"
+
+      implements:
+        description: "from_node is the implementation of to_node (spec/design)"
+        direction: "from → to (from implements the spec in to)"
+        example: "BLE-001 implements TRANSPORT-001"
+
+      tests:
+        description: "from_node tests the correctness or performance of to_node"
+        direction: "from → to (from validates to)"
+        example: "TEST-001 tests ROUTE-001"
+
+      validates:
+        description: "from_node provides evidence that to_node meets requirements"
+        direction: "from → to"
+        example: "SIM-001 validates ROUTE-002"
+
+      integrates_with:
+        description: "from_node and to_node interact at runtime (bidirectional concern)"
+        direction: "bidirectional or from → to"
+        example: "MSG-001 integrates_with STORE-001"
+
+      improves:
+        description: "from_node enhances the performance or quality of to_node"
+        direction: "from → to (from is an optimization of to)"
+        example: "ML-001 improves ROUTE-002"
+
+      replaces:
+        description: "from_node supersedes to_node (to_node should be deprecated)"
+        direction: "from → to (from is the new version)"
+        example: "ROUTE-002 replaces ROUTE-001_FLOOD"
+
+      conflicts_with:
+        description: "from_node and to_node cannot both be active; mutually exclusive"
+        direction: "bidirectional"
+        example: "LORA-RAWP2P conflicts_with LORA-LORAWAN"
+
+      derived_from:
+        description: "from_node was created as follow-up from to_node's execution"
+        direction: "from → to (from discovered during to)"
+        example: "PERF-ROUTING-001 derived_from ROUTE-001"
+
+  strength:
+    type: enum
+    required: false
+    default: strong
+    values:
+      strong: "Direct dependency or tight coupling"
+      weak: "Indirect or optional relationship"
+
+  description:
+    type: string
+    required: false
+    description: "Human-readable explanation of this relationship"
+
+  bidirectional:
+    type: boolean
+    default: false
+    description: "Whether the relationship is symmetric"
+
+# Examples of well-formed edges:
+examples:
+  - from: "PROTO-001"
+    to: "MSG-001"
+    relationship: enables
+    strength: strong
+    description: "Protocol defines the message format MSG-001 implements"
+
+  - from: "CRYPTO-001"
+    to: "IDENT-001"
+    relationship: enables
+    strength: strong
+    description: "Crypto primitives are prerequisite for identity system"
+
+  - from: "SIM-001"
+    to: "ROUTE-002"
+    relationship: validates
+    strength: strong
+    description: "Simulation validates PRoPHET routing meets delivery requirements"
+
+  - from: "ML-001"
+    to: "ROUTE-002"
+    relationship: improves
+    strength: weak
+    description: "ML experiments may improve PRoPHET baseline (experimental)"
+
+  - from: "SEC-001"
+    to: "ANDROID-001"
+    relationship: depends_on
+    strength: strong
+    description: "Android app cannot launch without security hardening complete"

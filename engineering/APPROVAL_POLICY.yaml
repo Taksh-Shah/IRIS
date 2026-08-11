@@ -1,0 +1,132 @@
+---
+# IRIS Approval Policy
+# Defines mandatory human approval gates for high-risk decisions
+# Version: 0.1.0
+
+# The AI may RESEARCH and RECOMMEND but must NOT silently approve
+# any item in this list.
+
+approval_gates:
+
+  cryptographic_protocol_change:
+    description: "Any change to cryptographic algorithms, protocols, or key management"
+    scope:
+      - Changing signature algorithm (e.g., Ed25519 → anything else)
+      - Changing encryption algorithm (e.g., ChaCha20 → AES)
+      - Modifying key derivation function
+      - Changing handshake protocol
+      - Modifying nonce generation
+      - Any change to iris-crypto crate
+    approver_role: "Security Expert or Cryptographer"
+    documentation_required:
+      - Rationale for change
+      - Security comparison with previous approach
+      - Known risks of new approach
+      - Test plan
+    review_period_days: 3
+    approval_format: "Written approval with signature in APPROVAL-{date}.md"
+
+  e2ee_architecture_change:
+    description: "Changes that affect end-to-end encryption guarantees"
+    scope:
+      - Changes to encryption header format
+      - Changes to key agreement flow
+      - Any addition of relay-side decryption capability
+      - Changes to group key management
+    approver_role: "Security Expert"
+    review_period_days: 3
+
+  identity_architecture_change:
+    description: "Changes to identity model, NodeId derivation, trust hierarchy"
+    scope:
+      - Changing address derivation from public key
+      - Modifying trust levels or trust propagation
+      - Changing identity backup/recovery scheme
+      - Adding or removing identity types
+    approver_role: "Principal Architect + Privacy Expert"
+    review_period_days: 2
+
+  emergency_authority_model:
+    description: "Changes to emergency broadcast authority or certificate system"
+    scope:
+      - Certificate format for emergency authorities
+      - Broadcast verification logic changes
+      - Authority hierarchy changes
+      - New authority levels
+      - Emergency override policy
+    approver_role: "Principal Architect + Safety Reviewer"
+    review_period_days: 2
+
+  safety_policy_change:
+    description: "Changes to safety charter, abuse prevention, responsible use policy"
+    scope:
+      - Safety charter modifications
+      - Abuse prevention rule changes
+      - Changes to content that system allows/disallows
+      - Emergency governance policy
+    approver_role: "Safety Board"
+    review_period_days: 2
+
+  privacy_model_change:
+    description: "Changes that affect user privacy guarantees"
+    scope:
+      - Adding metadata fields that could enable tracking
+      - Changing data retention policy
+      - Modifying anonymization approach
+      - Changes to what relay nodes can observe
+      - Changes to BLE privacy (rotating IDs)
+    approver_role: "Privacy Expert + Legal Review"
+    review_period_days: 2
+
+  legal_compliance_decision:
+    description: "Decisions based on legal/regulatory interpretation"
+    scope:
+      - IT Act compliance architecture decisions
+      - DPDPA compliance implementation choices
+      - Traceability requirement response
+      - Data localization implementation
+    approver_role: "Legal Counsel (India telecom/IT law)"
+    review_period_days: 5
+    note: "AI provides analysis only. Lawyer provides binding opinion."
+
+  destructive_migration:
+    description: "Database schema changes or data transformations that cannot be reversed"
+    scope:
+      - Dropping database columns or tables
+      - Changing primary key format in production
+      - Non-backward-compatible storage format changes
+    approver_role: "Principal Architect"
+    documentation_required:
+      - Migration plan
+      - Rollback plan
+      - Data backup verification
+    review_period_days: 1
+
+  production_security_release:
+    description: "Security patches being released to production users"
+    scope:
+      - Any release containing security vulnerability fixes
+      - Releases touching cryptographic code
+      - Releases touching emergency system
+    approver_role: "Security Expert + Principal Architect"
+    review_period_days: 1
+    note: "Critical security patches may use expedited 24h review"
+
+  emergency_broadcast_trust_change:
+    description: "Changes to how emergency broadcast trust is established or verified"
+    scope:
+      - Root certificate changes
+      - Certificate verification logic changes
+      - Trust hierarchy modifications
+      - Certificate revocation mechanism
+    approver_role: "Security Expert + Safety Reviewer"
+    review_period_days: 3
+
+approval_process:
+  step_1: "AI creates ESCALATION document with context, options, recommendation, risk analysis"
+  step_2: "AI places node in HUMAN_APPROVAL_REQUIRED state"
+  step_3: "AI continues work on other unblocked nodes"
+  step_4: "Human reviews documentation and provides written approval or rejection"
+  step_5: "If approved: AI updates node status, proceeds with implementation"
+  step_6: "If rejected: AI creates redesign node, marks original as NEEDS_REDESIGN"
+  timeout: "72h without response → re-escalate daily, do not proceed without approval"

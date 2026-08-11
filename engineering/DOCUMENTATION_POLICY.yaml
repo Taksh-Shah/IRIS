@@ -1,0 +1,98 @@
+---
+# IRIS Documentation Policy
+# Version: 0.1.0
+
+principle: "Documentation describes actual behavior. Not intended behavior. Not aspirational behavior."
+
+document_quality_standard:
+  required_sections:
+    purpose: "What this document covers"
+    scope: "What is in scope"
+    non_goals: "What is explicitly out of scope"
+    terminology: "Key terms defined (or reference to GLOSSARY.md)"
+    context: "Background needed to understand this document"
+    architecture_or_design: "How the component works"
+    failure_modes: "How it fails and what happens"
+    security_implications: "Security properties and threats"
+    performance_characteristics: "Performance targets and measurements"
+    known_limitations: "What doesn't work or works poorly"
+    open_questions: "Unresolved questions"
+    references: "Links to RFCs, ADRs, related docs"
+
+  acceptable_omissions: "Any section can be marked 'N/A — reason' if genuinely not applicable"
+  never_acceptable: "Omitting section without explanation or leaving as placeholder"
+
+when_documentation_must_be_updated:
+  mandatory:
+    - "When API or interface changes"
+    - "When behavior changes"
+    - "When known limitation is resolved"
+    - "When new limitation discovered"
+    - "When performance characteristics measured"
+    - "When ADR is accepted or rejected"
+  best_effort:
+    - "When internal implementation details change (if significant)"
+
+documentation_drift_detection:
+  method: "Review docs against implementation on every major node completion"
+  signals:
+    - "Code comments contradict documentation"
+    - "Test names don't match documented behavior"
+    - "Documentation references non-existent functions"
+    - "Performance claims not backed by recent benchmarks"
+  action: "Create DOCUMENTATION node with specific drift to fix"
+
+adr_requirements:
+  when_required:
+    - "Choosing primary programming language for a component"
+    - "Choosing serialization format"
+    - "Choosing cryptographic primitives"
+    - "Choosing transport prioritization strategy"
+    - "Choosing routing algorithm"
+    - "Any decision that is hard to reverse"
+    - "Any decision where rationale is non-obvious"
+  not_required:
+    - "Variable naming"
+    - "Code formatting"
+    - "Choosing between equivalent helper libraries"
+
+adr_quality:
+  must_have:
+    - "Context: why decision was needed"
+    - "Problem: specific question being answered"
+    - "At least 2 options with trade-offs"
+    - "Clear decision stated"
+    - "Rationale for rejection of alternatives"
+    - "Status (PROPOSED/ACCEPTED/DEPRECATED)"
+  must_not_have:
+    - "Vague 'we chose X because it's better'"
+    - "Missing rejected alternatives"
+    - "No evidence cited for performance/security claims"
+
+experiment_documentation:
+  required_fields:
+    - hypothesis
+    - variables_independent
+    - variables_dependent
+    - method
+    - expected_result
+    - actual_result  # filled after running
+    - analysis
+    - conclusion
+    - decision  # what changed based on result
+    - limitations  # what this experiment doesn't prove
+  rule: "Never fabricate experimental results"
+
+benchmark_documentation:
+  required_fields:
+    - objective
+    - hardware_specification
+    - software_version
+    - configuration
+    - metric_definition
+    - baseline
+    - experimental_result
+    - variance
+    - analysis
+    - regression_threshold
+  rule: "Never fabricate benchmark data. Note all environmental factors."

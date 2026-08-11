@@ -1,0 +1,231 @@
+---
+# IRIS Autonomous Execution Policy
+# Defines what autonomous agents can and cannot do without human approval
+# Version: 0.1.0
+
+autonomy_level: 4
+# Level 0: Human-directed (no autonomy)
+# Level 1: AI-assisted (AI suggests, human decides)
+# Level 2: AI executes routine tasks autonomously
+# Level 3: AI executes complete node loops
+# Level 4: AI manages dependency graph and autonomous engineering
+# Level 5: Continuous autonomous engineering (future target)
+
+# ============================================================
+# ALLOWED WITHOUT HUMAN APPROVAL
+# ============================================================
+allowed_autonomously:
+  research:
+    - "Conduct technical research on any topic"
+    - "Search standards, RFCs, papers, documentation"
+    - "Summarize and synthesize research findings"
+    - "Update research_evidence fields in graph nodes"
+    - "Identify research gaps and create RESEARCH nodes"
+
+  implementation:
+    - "Write Rust code for non-cryptographic components"
+    - "Write Kotlin/Swift/TypeScript platform code"
+    - "Refactor existing code for clarity or performance"
+    - "Add or improve error handling"
+    - "Add observability (logging, metrics)"
+
+  testing:
+    - "Write unit tests for any component"
+    - "Write integration tests"
+    - "Run automated test suite"
+    - "Write property-based tests"
+    - "Set up and run fuzzing campaigns"
+    - "Write adversarial test scenarios"
+    - "Create regression tests for found bugs"
+
+  documentation:
+    - "Write or update any documentation file"
+    - "Write ADR for any non-high-risk decision"
+    - "Update glossary"
+    - "Write experiment documents"
+    - "Update requirements index"
+
+  benchmarking:
+    - "Run performance benchmarks"
+    - "Write benchmark code"
+    - "Compare benchmark results"
+    - "Identify performance bottlenecks"
+
+  graph_management:
+    - "Create new graph nodes when new work discovered"
+    - "Update node status as work progresses"
+    - "Add follow_up_nodes from completed work"
+    - "Calculate node priorities"
+    - "Select next node to work on"
+    - "Mark nodes COMPLETE when all acceptance criteria met"
+
+  bug_handling:
+    - "Identify and document bugs"
+    - "Fix non-security-critical bugs"
+    - "Create regression tests"
+    - "Mark bugs as COMPLETE after fix + test"
+
+  simulation:
+    - "Build and run network simulations"
+    - "Run experiment scenarios"
+    - "Collect and analyze simulation results"
+
+# ============================================================
+# REQUIRES HUMAN APPROVAL — HIGH-RISK GATES
+# ============================================================
+requires_human_approval:
+
+  cryptographic_architecture:
+    description: "Any change to cryptographic primitives, protocols, or key management"
+    examples:
+      - "Changing signature algorithm (Ed25519 → something else)"
+      - "Changing encryption algorithm (ChaCha20 → AES)"
+      - "Modifying key derivation"
+      - "Changing handshake protocol (Noise → custom)"
+    escalation_format: "CRYPTO-REVIEW-{date}: {change description} + {rationale} + {risk analysis}"
+    minimum_review_period: 72h
+
+  e2ee_architecture:
+    description: "Changes that affect end-to-end encryption guarantees"
+    examples:
+      - "Changes to encryption header format"
+      - "Changes to key agreement flow"
+      - "Adding decryption capability to relay nodes"
+    minimum_review_period: 72h
+
+  identity_architecture:
+    description: "Changes to identity model, NodeId derivation, trust model"
+    examples:
+      - "Changing address derivation from public key"
+      - "Modifying trust hierarchy"
+      - "Changing identity backup/recovery scheme"
+    minimum_review_period: 48h
+
+  emergency_authority_model:
+    description: "Changes to emergency broadcast authority or certificate system"
+    examples:
+      - "Changing certificate format for emergency authorities"
+      - "Modifying broadcast verification logic"
+      - "Adding new authority levels"
+    minimum_review_period: 48h
+
+  safety_policy:
+    description: "Changes to safety charter, abuse prevention, responsible use policy"
+    minimum_review_period: 24h
+
+  privacy_model:
+    description: "Changes that affect user privacy guarantees"
+    examples:
+      - "Adding metadata fields that could enable tracking"
+      - "Changing data retention policy"
+      - "Modifying anonymization approach"
+    minimum_review_period: 48h
+
+  legal_compliance:
+    description: "Decisions based on legal/regulatory interpretation"
+    examples:
+      - "Compliance architecture for IT Act traceability requirement"
+      - "Data localization implementation decisions"
+    minimum_review_period: 72h
+    note: "Always involve legal counsel for binding decisions"
+
+  destructive_migrations:
+    description: "Schema migrations or data transformations that cannot be reversed"
+    examples:
+      - "Dropping a database column"
+      - "Changing message_id format in production"
+    minimum_review_period: 24h
+
+  production_security_releases:
+    description: "Security patches being released to production users"
+    minimum_review_period: 24h
+
+  emergency_broadcast_trust:
+    description: "Changes to how emergency broadcast trust is established or verified"
+    minimum_review_period: 72h
+
+# ============================================================
+# LOOP TERMINATION CRITERIA
+# ============================================================
+node_completion_criteria:
+  required_all:
+    - requirements_satisfied: true    # All acceptance_criteria in node marked true
+    - tests_passing: true             # 100% of defined tests pass
+    - security_reviewed: true         # Security review completed (or N/A for non-security nodes)
+    - failure_behavior_validated: true # Failure modes tested
+    - performance_measured: true      # Relevant benchmarks run (or N/A)
+    - documentation_updated: true     # docs/ updated
+    - evidence_stored: true           # Evidence list populated in node
+    - known_limitations_documented: true
+
+  additional_for_safety_critical:
+    - human_approval: true
+
+# ============================================================
+# ESCALATION CONDITIONS
+# ============================================================
+escalate_when:
+  - "Unresolved security vulnerability blocks node completion"
+  - "Conflicting architectural requirements cannot be resolved by AI"
+  - "Legal uncertainty on compliance question"
+  - "Missing required hardware for physical testing"
+  - "Insufficient evidence for critical decision (research exhausted)"
+  - "Node BLOCKED for >48h with no path forward"
+  - "Discovered vulnerability in production/released code"
+
+do_not_escalate_when:
+  - "Implementation choice between equivalent options (choose the simpler one)"
+  - "Minor refactoring decisions"
+  - "Test organization choices"
+  - "Documentation wording"
+  - "Benchmark methodology (document and proceed)"
+
+escalation_format:
+  document: "ESCALATION-{node_id}-{date}.md"
+  sections:
+    - context
+    - problem
+    - options_considered
+    - recommendation
+    - risk_assessment
+    - what_is_needed_from_human
+  timeout: 24h
+  fallback_on_timeout: "PAUSE node, continue other nodes, re-escalate daily"
+
+# ============================================================
+# AUTONOMOUS ORCHESTRATOR LOOP
+# ============================================================
+orchestrator_loop:
+  cycle: |
+    while project_not_complete:
+      inspect_graph()
+      discover_new_work()
+      detect_failed_or_stale_nodes()
+      detect_security_risks()
+      detect_documentation_drift()
+      calculate_priorities()
+      select_highest_value_unblocked_node()
+      execute_node_loop()
+      evaluate_acceptance()
+      if accepted:
+        mark_complete()
+        unlock_dependents()
+      else:
+        create_remediation_nodes()
+      update_graph()
+      perform_project_health_check()
+
+  node_loop: |
+    understand_node()     # Read dependencies, existing code, docs
+    research()            # Primary + secondary sources
+    define_requirements() # Testable acceptance criteria
+    design()              # Architecture, interfaces, state machines
+    implement()           # Smallest correct implementation first
+    test()                # Unit, integration, property tests
+    attack()              # Adversarial scenarios
+    benchmark()           # Performance metrics (where relevant)
+    review()              # Security + code quality review
+    document()            # Update docs/
+    accept()              # Verify all acceptance criteria
+    integrate()           # Merge, verify no regressions
+    discover()            # Create follow-up nodes from findings

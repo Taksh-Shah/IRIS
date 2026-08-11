@@ -1,0 +1,98 @@
+---
+# IRIS Risk Policy
+# Defines risk levels, thresholds, and required responses
+# Version: 0.1.0
+
+risk_levels:
+  CRITICAL:
+    description: "Immediate stop required. Human review mandatory before proceeding."
+    response: "HALT autonomous execution of this node. Create ESCALATION document immediately. Notify human."
+    examples:
+      - "Critical security vulnerability in production code"
+      - "E2EE potentially broken by implementation bug"
+      - "Emergency system sends fake SOS"
+      - "Private keys potentially exposed"
+
+  HIGH:
+    description: "Significant risk. Flag and proceed with caution. Create risk node."
+    response: "Create RISK-XXXX node. Document mitigation. Continue with explicit risk acknowledgment in node."
+    examples:
+      - "Security design weakness identified but not exploitable yet"
+      - "Platform limitation may prevent required capability"
+      - "Performance target likely unachievable without architecture change"
+
+  MEDIUM:
+    description: "Notable risk. Document and proceed. Review at next milestone."
+    response: "Add to node risks field. Include in project health report."
+    examples:
+      - "Third-party dependency may not be maintained long-term"
+      - "Test coverage lower than target in non-critical path"
+      - "Documentation drift detected"
+
+  LOW:
+    description: "Minor risk. Proceed normally. Note in documentation."
+    response: "Note in known_limitations field. No blocking action required."
+    examples:
+      - "Minor performance degradation compared to theoretical optimum"
+      - "Platform-specific behavior slightly different than expected"
+
+risk_categories:
+  security_risk:
+    description: "Risks to security guarantees (confidentiality, integrity, availability)"
+    HIGH_threshold: "Any identified attack vector not fully mitigated"
+    CRITICAL_threshold: "Known exploitable vulnerability in production path"
+    owner_agent: Security_Agent
+
+  privacy_risk:
+    description: "Risks to user privacy guarantees"
+    HIGH_threshold: "User metadata exposed beyond design intent"
+    CRITICAL_threshold: "E2EE content potentially readable by third party"
+    owner_agent: Privacy_Agent
+    requires_human_approval: true
+
+  safety_risk:
+    description: "Risks to emergency system integrity"
+    HIGH_threshold: "Emergency broadcast possibly spoofable"
+    CRITICAL_threshold: "SOS delivery not guaranteed when physical path exists"
+    owner_agent: Security_Agent
+    requires_human_approval: true
+
+  legal_risk:
+    description: "Risks to legal/regulatory compliance"
+    HIGH_threshold: "Potential violation of Indian IT Act or DPDPA"
+    CRITICAL_threshold: "Product as designed clearly violates applicable law"
+    owner_agent: Compliance_Research_Agent
+    requires_human_approval: true
+
+  architectural_risk:
+    description: "Risks to architectural integrity and scalability"
+    HIGH_threshold: "Architectural decision blocks platform support"
+    CRITICAL_threshold: "Fundamental design flaw requiring major redesign"
+    owner_agent: Principal_Architect
+
+  performance_risk:
+    description: "Risks to meeting performance targets"
+    HIGH_threshold: "Benchmark shows >2× over target (battery, latency)"
+    CRITICAL_threshold: "P0 SOS delivery not meeting 10-second target with path available"
+    owner_agent: Performance_Agent
+
+  technical_debt:
+    description: "Accumulated shortcuts or design compromises"
+    HIGH_threshold: "Debt blocks new feature development"
+    CRITICAL_threshold: "Debt creates security or safety risk"
+    owner_agent: Principal_Architect
+
+risk_register_format:
+  id: "RISK-NNN"
+  title: string
+  category: enum  # security, privacy, safety, legal, architectural, performance, technical_debt
+  level: enum     # CRITICAL, HIGH, MEDIUM, LOW
+  description: string
+  likelihood: enum  # HIGH, MEDIUM, LOW
+  impact: enum      # HIGH, MEDIUM, LOW
+  mitigation: string
+  residual_risk: enum  # CRITICAL, HIGH, MEDIUM, LOW, NONE
+  status: enum  # OPEN, MITIGATED, ACCEPTED, CLOSED
+  owner_agent: string
+  created_at: timestamp
+  resolved_at: timestamp

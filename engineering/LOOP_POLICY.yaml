@@ -1,0 +1,250 @@
+---
+# IRIS Loop Engineering Policy
+# Defines the execution loop for every graph node
+# Version: 0.1.0
+
+# Every node executes this loop until acceptance criteria are met.
+# The loop is iterative — it may cycle multiple times.
+
+node_loop:
+  name: "Standard Engineering Loop"
+  version: "1.0"
+
+  steps:
+
+    - step: 1
+      name: UNDERSTAND
+      description: "Read all context before doing anything"
+      actions:
+        - Read parent node documentation
+        - Read all dependency nodes
+        - Read existing implementation (if any)
+        - Read existing tests
+        - Read existing documentation
+        - Read known failures, bugs, limitations
+        - Read architectural constraints (ARCH-001)
+        - Read security requirements (THREAT_MODEL.md)
+        - Summarize: what must this node accomplish?
+      output: "Clear problem statement, scope, constraints"
+      skip_if: "Node status is IMPLEMENTING or later — understanding already done"
+
+    - step: 2
+      name: RESEARCH
+      description: "Research before designing or implementing"
+      actions:
+        - Define specific research questions
+        - Search primary sources (RFCs, platform docs, standards)
+        - Search secondary sources (papers, technical reports, reputable implementations)
+        - Compare sources — identify contradictions
+        - Identify research gaps
+        - Research gaps until resolved or documented as unknown
+        - Produce research conclusions with evidence
+        - Update node research_evidence field
+      output: "Evidence-backed research conclusions"
+      skip_if: "Node status is RESEARCH_COMPLETE or later"
+      evidence_required: true
+
+    - step: 3
+      name: DEFINE_REQUIREMENTS
+      description: "Convert research into explicit, testable requirements"
+      actions:
+        - Write acceptance criteria (testable, specific, measurable where possible)
+        - If a metric cannot be determined: create experiment (EXP-XXXX)
+        - Review requirements against REQ-INDEX.md for consistency
+        - Document constraints (platform, battery, size, security)
+        - Update node acceptance_criteria field
+      output: "Acceptance criteria list in node YAML"
+      skip_if: "Node status is REQUIREMENTS_DEFINED or later"
+      rule: "Never invent performance targets. Create experiment if target unknown."
+
+    - step: 4
+      name: DESIGN
+      description: "Produce design before implementation"
+      actions:
+        - Architecture diagram (ASCII if text-only)
+        - Interface definitions (Rust traits, function signatures)
+        - State machine (if stateful)
+        - Failure mode analysis (how can this fail?)
+        - Security assumptions
+        - Performance model
+        - Concurrency model
+        - Test strategy
+        - Generate candidate alternatives (at least 2)
+        - Trade-off analysis
+        - Select design
+        - Create ADR if significant decision made
+      output: "Architecture document section + ADR if applicable"
+      high_risk_check: "If design touches HIGH-RISK categories → HUMAN_APPROVAL_REQUIRED"
+
+    - step: 5
+      name: IMPLEMENT
+      description: "Smallest correct implementation first"
+      principle: "Minimal Correct Implementation → Tests → Benchmark → Optimization"
+      actions:
+        - Implement minimum viable version
+        - Compile and verify basic correctness
+        - Do NOT optimize prematurely
+        - Do NOT add speculative features
+        - Handle error cases explicitly
+        - Add structured logging at key points
+        - Add metrics at key points
+      language_notes:
+        rust: "Use Result<T, E> throughout. No unwrap() in production paths. Use thiserror."
+        kotlin: "Use sealed classes for error states. Kotlin Flow for async."
+        swift: "Use async/await + Result. No force-unwrap in production."
+
+    - step: 6
+      name: TEST
+      description: "Write tests concurrent with or immediately after implementation"
+      required_tests:
+        - unit: "All public functions tested"
+        - property: "Encoding/decoding invariants tested with proptest"
+        - failure: "Error cases explicitly tested"
+        - regression: "Any bug found must have regression test"
+      optional_tests:
+        - integration: "When crossing component boundaries"
+        - physical: "When transport or hardware involved"
+      coverage_target: "80% line coverage minimum, 100% for crypto/security"
+      rule: "Tests must be written BEFORE marking step complete"
+
+    - step: 7
+      name: ATTACK
+      description: "Actively attempt to break the implementation"
+      questions:
+        - "How can this fail in production?"
+        - "How can an attacker exploit this?"
+        - "What if the connection disappears mid-operation?"
+        - "What if messages arrive out of order?"
+        - "What if packets are duplicated?"
+        - "What if the node runs out of storage?"
+        - "What if the clock is wrong?"
+        - "What if a relay node lies?"
+        - "What if 50% of nodes disappear?"
+        - "What if malformed data arrives?"
+      output:
+        - Failure scenarios documented
+        - Bugs found → BUG-XXXX nodes created
+        - Security issues → SEC-XXXX nodes + Security_Agent notified
+        - Design weaknesses → NEEDS_REDESIGN if critical
+
+    - step: 8
+      name: FUZZ
+      description: "Fuzz all parsers and deserializers"
+      targets:
+        - "All CBOR parsing code"
+        - "All message envelope parsing"
+        - "All routing input handlers"
+        - "Storage query builders"
+      minimum_duration: "30 minutes for new code"
+      tool: "cargo-fuzz (libFuzzer)"
+      skip_if: "Node has no parser or external input handling"
+
+    - step: 9
+      name: BENCHMARK
+      description: "Measure performance where relevant"
+      required_for:
+        - Transport implementations
+        - Routing algorithms
+        - Protocol parsers
+        - Cryptographic operations
+        - Storage operations
+      not_required_for:
+        - Documentation nodes
+        - Research nodes
+        - One-time migration scripts
+      tool: "criterion (Rust), Android Battery Historian, iOS Instruments"
+      output: "BENCH-XXXX document with reproducible results"
+
+    - step: 10
+      name: SECURITY_REVIEW
+      description: "Security review by Security_Agent"
+      actions:
+        - Review against threat model
+        - Check for new attack surfaces introduced
+        - Verify crypto usage is correct
+        - Verify input validation at boundaries
+        - Verify error messages don't leak sensitive info
+        - Check for timing attacks (constant-time comparisons)
+        - Verify no sensitive data in logs
+      output: "Security review record in node evidence field"
+      skip_if: "Node type is DOCUMENTATION or RESEARCH (non-security nodes)"
+
+    - step: 11
+      name: DOCUMENT
+      description: "Update all relevant documentation"
+      required_updates:
+        - "Architecture document for the component"
+        - "API documentation (function signatures, behavior)"
+        - "Failure behavior documentation"
+        - "Security documentation (threat model update if needed)"
+        - "Known limitations documented"
+        - "Performance characteristics documented"
+      rule: "Documentation describes ACTUAL behavior, not intended behavior"
+
+    - step: 12
+      name: ACCEPT
+      description: "Verify all acceptance criteria are met"
+      checklist:
+        - requirements_satisfied: "Each acceptance criterion individually verified"
+        - tests_passing: "cargo test passes, coverage meets target"
+        - security_reviewed: "Security_Agent review complete"
+        - failure_behavior_validated: "Failure scenarios tested"
+        - performance_measured: "Relevant benchmarks run and within budget"
+        - documentation_updated: "docs/ reflects implementation"
+        - evidence_stored: "evidence field populated in node"
+        - known_limitations_documented: "known_limitations field populated"
+        - human_approval: "If node requires_human_approval: true, must be approved"
+      if_not_met: "Return to relevant earlier step, do not force COMPLETE"
+
+    - step: 13
+      name: INTEGRATE
+      description: "Merge into main, verify no regressions"
+      actions:
+        - Run full test suite
+        - Run benchmarks, compare to baseline
+        - Run fuzzer on related targets
+        - Verify cross-component integration
+        - Tag release if milestone achieved
+
+    - step: 14
+      name: DISCOVER
+      description: "Create follow-up nodes from what was learned"
+      actions:
+        - Review all TODOs found during implementation
+        - Review all failure modes not yet addressed
+        - Review all performance opportunities identified
+        - Review all security improvements identified
+        - Create NEW-XXXX node for each meaningful finding
+        - Add to follow_up_nodes field
+        - Add new nodes to PROJECT_GRAPH.yaml
+        - Prioritize new nodes
+      rule: "Do not create nodes for trivial issues. Every new node must have: reason, impact, priority, expected value."
+
+# ============================================================
+# LOOP TERMINATION
+# ============================================================
+termination:
+  normal: "All acceptance criteria met → node marked COMPLETE → dependents unlocked"
+  blocked: "Dependency not complete → node stays BLOCKED → work other nodes"
+  failed: "Unrecoverable issue → node marked FAILED → create remediation nodes"
+  escalation: "High-risk decision needed → HUMAN_APPROVAL_REQUIRED → pause, work other nodes"
+  discovery: "New critical work discovered → create nodes → reprioritize → may interrupt current loop"
+
+# ============================================================
+# SPECIALIZED LOOPS
+# ============================================================
+research_loop:
+  steps: [define_question, search_primary, search_secondary, review_standards, review_implementations, compare_evidence, identify_contradictions, resolve_contradictions, identify_gaps, research_gaps, produce_conclusion]
+  output: "Evidence-backed conclusion with source citations"
+
+design_loop:
+  steps: [define_problem, list_constraints, generate_alternatives, trade_off_analysis, threat_analysis, performance_analysis, platform_analysis, failure_analysis, select_design, create_adr]
+  output: "Architecture document + ADR"
+
+security_loop:
+  steps: [threat_model, attack_surface, security_design, implementation, adversarial_testing, security_review, fix, regression_test]
+  note: "Security is continuous — runs at every implementation step"
+
+performance_loop:
+  steps: [baseline, measure, profile, identify_bottleneck, optimize, benchmark, regression_check]
+  note: "Never optimize without measuring first"

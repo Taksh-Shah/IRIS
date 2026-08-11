@@ -1,0 +1,93 @@
+---
+# IRIS Priority Policy
+# How nodes are prioritized for autonomous execution
+# Version: 0.1.0
+
+priority_formula:
+  description: |
+    Priority score =
+      blocking_impact (0-10)
+      + architectural_importance (0-10)
+      + risk_reduction (0-10)
+      + security_importance (0-10)
+      + user_value (0-10)
+      + dependency_centrality (0-10)   # How many nodes depend on this
+      - unnecessary_complexity (0-5)   # Penalty for over-engineering
+
+priority_levels:
+  P0:
+    name: "Critical / Blocker"
+    description: "Security/safety blocker OR architectural blocker for critical path"
+    examples:
+      - "Security vulnerability in production path"
+      - "Protocol design (blocks all implementation)"
+      - "BLE transport (blocks first demo)"
+    override_rule: "Security and safety P0s override ALL other priorities"
+
+  P1:
+    name: "High"
+    description: "High value work that unblocks multiple other nodes"
+    examples:
+      - "Message engine (enables routing, emergency, app)"
+      - "Routing engine baseline (enables SCF, gateway)"
+      - "Simulation framework (enables routing validation)"
+
+  P2:
+    name: "Normal"
+    description: "Standard engineering work"
+    examples:
+      - "Desktop platform integration"
+      - "LoRa gateway transport"
+      - "Observability system"
+
+  P3:
+    name: "Low"
+    description: "Nice-to-have, low dependency count"
+    examples:
+      - "ML routing experiments"
+      - "Business model documentation"
+      - "Advanced enterprise features"
+
+  P4:
+    name: "Future"
+    description: "Speculative, not yet justified by requirements"
+    examples:
+      - "RL routing policy"
+      - "Satellite constellation integration"
+      - "Advanced ML models"
+
+selection_algorithm:
+  step_1: "Filter: status == DISCOVERED or RESEARCH_COMPLETE (not BLOCKED, FAILED, COMPLETE)"
+  step_2: "Filter: all dependencies in status == COMPLETE"
+  step_3: "Sort by: P0 first, then P1, then P2, then P3, then P4"
+  step_4: "Within same priority: sort by dependency_centrality DESC (nodes that unblock most come first)"
+  step_5: "Within same centrality: sort by risk_reduction DESC (reduce risk early)"
+  step_6: "Select first node"
+
+overrides:
+  security_blocker: "Any SEC-XXXX node with CRITICAL severity → immediately becomes P0, bypasses queue"
+  safety_blocker: "Any safety issue blocking emergency system → immediately P0"
+  human_requested: "Node explicitly requested by human → highest priority regardless of formula"
+
+anti_patterns:
+  dont_do:
+    - "Prioritize interesting features over foundational work"
+    - "Prioritize easy nodes over critical-path nodes"
+    - "Deprioritize security nodes because they're 'not user-visible'"
+    - "Skip research to go faster (results in rework)"
+    - "Add features not justified by requirements (scope creep)"
+
+expected_node_sequence_early_project:
+  - PROTO-001       # Protocol design (highest fan-out)
+  - CRYPTO-001      # Cryptographic layer (security-critical, review needed)
+  - STORE-001       # Storage (simple, foundational)
+  - TRANSPORT-001   # Transport abstraction
+  - BLE-001         # BLE Android (first real transport)
+  - IDENT-001       # Identity (needed for security)
+  - DISCO-001       # Discovery (needs BLE)
+  - MSG-001         # Message engine
+  - ROUTE-001       # Baseline routing
+  - SCF-001         # Store-carry-forward
+  - EMERG-001       # Emergency system
+  - ANDROID-001     # Android app
+  note: "Actual sequence depends on research findings and blocking relationships"
