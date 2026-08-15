@@ -26,13 +26,13 @@ Absolute expiry is used instead of relative TTL because:
 | Priority | Default TTL | Rationale                                            |
 |----------|-------------|------------------------------------------------------|
 | P0 SOS   | 72 hours    | SOS must survive multi-day disruptions               |
-| P1 Med   | 48 hours    | Medical requests remain actionable for 2 days        |
-| P2 Loc   | 24 hours    | Location data stale after 24h                        |
+| P1 Med   | 24 hours    | Medical requests remain actionable for 1 day         |
+| P2 Loc   | 12 hours    | Location data stale after 12h                        |
 | P3 Emtx  | 12 hours    | Emergency text relevant for 12h                      |
-| P4 Norm  | 6 hours     | Normal message relevance window                      |
-| P5 Img   | 3 hours     | Images: shorter cache window                         |
-| P6 Voice | 1 hour      | Voice messages: time-sensitive                       |
-| P7 Video | 30 minutes  | Video: high storage cost, short relevance            |
+| P4 Norm  | 8 hours     | Normal message relevance window                      |
+| P5 Img   | 4 hours     | Images: shorter cache window                         |
+| P6 Voice | 2 hours     | Voice messages: time-sensitive                       |
+| P7 Video | 1 hour      | Video: high storage cost, short relevance            |
 
 Users may set shorter TTL (never longer) for P4-P7. P0-P3 TTLs are not user-configurable.
 

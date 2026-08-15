@@ -1,0 +1,19 @@
+[package]
+name = "iris-storage"
+description = "IRIS persistent message store — PostgreSQL backend for the MessageStorage seam (STORAGE.md)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+iris-core = { path = "../iris-core" }
+rand.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-postgres.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+futures-util.workspace = true

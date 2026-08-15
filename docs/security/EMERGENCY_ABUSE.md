@@ -217,8 +217,11 @@ at every relay using the area_code field.
 ### Consequence for Abuse
 
 - Certificate revocation: immediate, propagates to all nodes within minutes
-- Legal action: emergency system abuse is a criminal offense under Indian IPC Section 505
-  (public mischief) and potentially Section 420 (fraud) or Section 153A (communal disharmony)
+- Legal action: emergency system abuse is a criminal offense under the Bharatiya
+  Nyaya Sanhita (BNS) **2023**, Section **318** (public mischief; successors IPC
+  §505) and potentially Section **353(2)** (fraud/dishonest inducement;
+  successors IPC §420). Communal-disharmony offences under IPC §153A have no
+  direct BNS groove yet — mapping flagged for <LEGAL-001> (C4).
 - Permanent identity block: abusing identity blocked by all nodes that saw the abuse
 
 ## Testing Emergency Defenses

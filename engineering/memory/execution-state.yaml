@@ -1,0 +1,929 @@
+---
+# IRIS Execution State — Machine-Readable
+# Authoritative for execution control. CURRENT_STATE.md is the human-readable projection.
+# If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
+
+schema_version: "1.0"
+updated_at: "2026-08-15T22:05:00Z"
+
+# === EXECUTION CONTROL ===
+execution_status: "ACTIVE"
+# ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
+
+autonomy_mode: "AUTONOMOUS"
+# AUTONOMOUS | ASSISTED | PAUSED
+
+# === AUTONOMY TEST ===
+autonomy_test: true
+autonomy_test_start: "2026-08-11T21:30:00Z"
+autonomy_test_boundary: "Complete STORE-001 through ACCEPT, then transition to next node"
+
+# === IDENTITY ===
+mission_id: "IRIS-MAIN-001"
+mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
+
+# === CURRENT POSITION ===
+active_node: "SEC-001"
+active_stage: "IMPLEMENT"
+# UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
+active_action: "SEC-001 DESIGN COMPLETE (iter 74); STAGE_TRANSITION to IMPLEMENT. SEC_001_DESIGN.md v1.0 written (docs/implementation/SEC_001_DESIGN.md): general per-message-class hardening across P0-P7 extending EMERG-001; module security/{rate_limiter,quota,replay,reputation,spam,acl}; zero new wire fields + zero new crypto crates (D6/R11). AC-1..AC-16 defined in PROJECT_GRAPH.yaml (resolves C2 - node had NO acceptance_criteria). DEC-SEC-0001..0008 ratified in DECISIONS.md. Design absorbs RED-0002 (ACL-1), RED-0003/EMERG-RT-003/ADR-0011 (signed encryption_intent), EMERG-RT-010; reconciles DISC-0013 via doc-reconciliation matrix (AC-13). Boundary: per-message PoW REJECT (DEC-SEC-0007), SybilGuard/SybilLimit REJECT (DEC-SEC-0008), no new crypto. PROJECT_GRAPH SEC-001 status DESIGNING + ACs(16) + clean stage_note. Next: SEC-001 IMPLEMENT per SEC_001_DESIGN.md."
+next_node_if_complete: "After SEC-001: transports (BLE-001/WIFIAWARE-001/WIFIDIRECT-001/LORA-001/SAT-001, BLK-0005 device tests gated) then TEST-001 then ANDROID-001/IOS-001/PILOT-001"
+
+# === NODE TRACKING ===
+node_attempt: 1
+stage_attempt: 1
+stage_started_at: "2026-08-15T22:05:00Z"
+node_started_at: "2026-08-15T19:45:00Z"
+node_completed_at: null
+
+# === STATE TRANSITIONS ===
+last_transition: "STAGE_TRANSITION"
+# NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
+last_transition_at: "2026-08-15T22:05:00Z"
+last_checkpoint: "CHK-0006"
+last_checkpoint_at: "2026-08-13T18:30:00Z"
+
+# === CONTINUATION ===
+next_action: "SEC-001 IMPLEMENT (P0 SECURITY, STAGE_TRANSITION iter 74, DESIGN COMPLETE): build security/ module per SEC_001_DESIGN.md v1.0 against real APIs: (1) rate_limiter.rs - srTCM RFC 2697 token bucket per (sender_short[16B], class), lazy refill, silent drop, P0/P1 drop-exempt, unknown-sender aggregate bucket bounded; (2) quota.rs - per-sender storage quota + priority-reserved pool, P0/P1 never evicted by quota, TTL/lifetime order; (3) replay.rs - freshness window (per-source skew, DTN-time/monotonic) + per-sender high-water (ts,seq) + dedup Bloom+LRU snapshot + high-water persistence batched crash-safe; (4) reputation.rs - bounded per-peer Bayesian score (watchdog + verified-second-hand positives-only CORE + audit), routing weight only; (5) spam.rs - receiver-side likely_spam annotation, never relay hard-drop, P0-P3 disjoint; (6) acl.rs - ACL-1 per-class key/role allowlists reusing emergency/authority.rs verify pattern; SecurityPolicy facade + Noop default (AC-12 engine unchanged unarmed); wire into MessageEngine ingest + deliver_or_relay. Then TEST (AC-1..16 evidence incl. cross-reboot replay, adversarial >=95%, fuzz) -> SECURITY_REVIEW (redteam SEC-RT) -> VERIFY -> ACCEPT -> transports."
+# WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
+
+# === STALL DETECTION ===
+iterations_without_progress: 0
+max_iterations_without_progress: 3
+last_progress_event: "SEC-001 DESIGN COMPLETE (iter 74): SEC_001_DESIGN.md v1.0 (module security/{rate_limiter,quota,replay,reputation,spam,acl}; AC-1..16 defined - resolves C2; DEC-SEC-0001..0008 ratified; absorbs RED-0002/0003/ADR-0011/EMERG-RT-010; rejects PoW+SybilGuard/Limit; no new crypto). PROJECT_GRAPH SEC-001 DESIGNING + ACs(16). STAGE_TRANSITION -> SEC-001 IMPLEMENT."
+last_progress_at: "2026-08-15T22:05:00Z"
+
+# === RETRY / ERROR ===
+retry_count: 0
+max_retries_per_action: 3
+last_error: null
+error_classification: null
+# TRANSIENT | RETRYABLE | RESEARCH_REQUIRED | DESIGN_ERROR | IMPLEMENTATION_ERROR | ENVIRONMENT_ERROR | DEPENDENCY_ERROR | HUMAN_GATE | FATAL
+
+# === BLOCKERS ===
+blockers:
+  - id: "BLK-0005"
+    node: "BLE-001 (and WiFi/LoRa transports)"
+    type: "RESOURCE"
+    severity: "LOW"
+    description: "IMPLEMENTATION AUTHORIZED (DEC-0009). Software protocol implementations proceed. Only physical-device integration tests remain RESOURCE-gated (require physical Android/iOS hardware + mobile OS release process). Recorded as known_limitations, not implementation blockers."
+  # BLK-0001 (CRYPTO-001/IDENT-001 human gate) REMOVED — RESOLVED by DEC-0009.
+
+# === HUMAN GATES ===
+human_gate_required: false
+human_gate_reason: "RED-0001 CRITICAL gate RESOLVED 2026-08-15 (DEC-0010): operator ratified tracking to IDENT-001 with security control. CRYPTO-001 ACCEPTED. ALL GATES + HUMAN GATES UNBLOCKED per DEC-0009 (standing 2026-08-14); quality process retained."
+human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratification, 2026-08-15) + DEC-0009.md."
+
+# === EXECUTION LOG (last 5 entries) ===
+recent_log:
+  - timestamp: "2026-08-15T22:05:00Z"
+    iteration: 74
+    node: "SEC-001"
+    stage: "DESIGN"
+    action: "SEC-001 DESIGN COMPLETE (iter 74) then STAGE_TRANSITION to IMPLEMENT. Wrote docs/implementation/SEC_001_DESIGN.md v1.0: general per-message-class security hardening (P0-P7) extending EMERG-001 defenses; module layout security/{rate_limiter,quota,replay,reputation,spam,acl}; zero new wire fields + zero new crypto crates (D6, RES-0018 R11). AC-1..AC-16 defined in PROJECT_GRAPH.yaml SEC-001 node (resolves the C2 gap - node had NO acceptance_criteria entering DESIGN): rate limiter / storage quota / freshness window / per-sender high-water / cross-reboot persistence / msg-id NIST SP 800-107 / fragment replay / reputation routing-weight-only / reputation-not-a-gate / spam annotation / ACL-1 / compatibility Noop / doc reconciliation / adversarial >=95% / fuzz >=24h / Security_Agent review. DEC-SEC-0001..0008 ratified in DECISIONS.md (token bucket, quota+pool, cross-reboot replay persistence, reputation scope, spam scoring, ACL-1, PoW REJECT, SybilGuard/Limit REJECT). Design absorbs RED-0002 (ACL-1), RED-0003/EMERG-RT-003/ADR-0011 (signed encryption_intent), EMERG-RT-010; reconciles DISC-0013 doc-vs-code drift via matrix (AC-13). Verification: PROJECT_GRAPH.yaml YAML-parses; SEC-001 DESIGNING + 16 ACs + clean stage_note (fixed orphaned stage_note body via temp script). Next: SEC-001 IMPLEMENT."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "docs/implementation/SEC_001_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+    records_created: []
+  - timestamp: "2026-08-15T21:35:00Z"
+    iteration: 73
+    node: "SEC-001"
+    stage: "RESEARCH"
+    action: "SEC-001 RESEARCH COMPLETE (iter 73) then STAGE_TRANSITION to DESIGN. RES-0018 recorded (255 lines) + registered in ALLOCATION.md (next RES-0019): 2024-2026 SOTA for DTN/mesh DoS + replay + Sybil + spam + routing attacks, 12 websearch evidence passes, evidence-leveled (RFC/NIST L1; academic L2; IETF-draft/tech-report L3; OSS/internal L4), primary sources only, no AI citations, unresolvable acronyms recorded as gaps (BBPATs -> G1 citing RFC 9171/9172/9713). Q1 DoS: RFC 9171 §6.9 CL MUST rate-limit (L1) anchors convergence-layer rate limiting; ADOPT srTCM token bucket per (sender,class) lazy-refill silent-drop with P0/P1 drop-exempt (RFC 2697/2698/4115 - same shape as existing SosRateLimiter) + per-sender storage quota + priority-reserved pool + TTL-ordered eviction (Claim-Carry-and-Check Zekkori IJACSA 2021, SRED analysis) + Meshtastic CVE regression suite (CVE-2024-47065 traceroute 2:1 reflected DoS - rate-limit every response path; CVE-2025-21608/24798 want_response crash gate; CVE-2025-24797 parser robustness; CVE-2025-55293 amplification; CVE-2025-52464 cloned low-entropy keys; CVE-2026-42566 NodeID forge - key hygiene); REJECT per-message PoW (Hristozov AISEC arXiv 1911.08134 puzzles-unsuitable + measured ~695ms/24.3mA exponentiation on constrained MCUs; Springer 2017 client-puzzle MTU analysis; IRIS 1% WPC duty-cycle coupling) and DEFER identity-mint PoW (KeyChallenge ICCTA 2024, SyDeLP 2025) + VDF + RFC 7859 identity-based signatures to PROTO-001 v2 - no new crypto crates held (SHA-256/Ed25519/HMAC suffice). Q2 replay: current dedup = exact-content dedup not crypto anti-replay; cross-reboot hole CONFIRMED (dedup Bloom persistence deferred WP-2 at message_engine/mod.rs:24; REPLAY_PROTECTION.md SQLite serialization claim NOT implemented -> C3/C4); ADOPT layered defense = exact dedup + freshness window with per-source skew + per-sender high-water (ts,seq) (RFC 9171 §4.2.7 creation-timestamp lexica; RFC 4303 §3.4.3 sliding-window concept + RFC 6479 bit-shift-free; RFC 7181 §23.2 + RFC 7183 MUST HMAC-SHA256+timestamp with DTN-time substituting the POSIX-time assumption) + persistence of dedup Bloom/LRU snapshot + high-water (crash-safe batched writes; promoted WP-2 -> SEC-001 security requirement R5); message-id collision bounded by NIST SP 800-107 (128-bit truncation ~2^128 second-preimage); reassembled fragments re-enter the dedup/freshness pipeline. Q3 Sybil: per-identity limits necessary-not-sufficient (Douceur IPTPS 2002); ADOPT Ostra NSDI 2008 link-credit budgets = f(trusted links) + Briar BQP QR verified-pairing as offline identity-cost primitive (OTF 2024 OTF-005 unverified-tier annotation); REJECT SybilGuard/SybilLimit (SIGCOMM 2006 / ToN 2010) + global reputation graphs on relays (connected fast-mixing graph assumption fails sparse DTN); IDENT-001 already key-anchored (SPKI RFC 9804) - add forgery/key-hygiene regression tests. Q4 spam/abuse: ADOPT reputation = local watchdog + verified second-hand positive-only (CORE 2002 propagation rule) + iTrust (TPDS 2014) probabilistic audits as ROUTING WEIGHT ONLY, never an admission gate (Watchdog/Pathrater MobiCom 2000, ITRM ISIT 2009, Rep-AODV CMC 2024); ADOPT receiver/UI-side Bayesian spam scoring only (97.31% SMS/BERT arXiv 2406.06578 but persistent FP - Cormack CIKM 2007; no relay-side content drops, FP on emergency content intolerable); ADOPT RED-0002 ACL-1 = key-anchored per-class sender allowlists over existing emergency/authority.rs verify_authoritative (CAP v1.2 XML-DSig L1, ETSI TS 102 900 §5.5 no-UE-auth L1 -> CACM 2023 Ha et al. WEA Ed25519 ~68B preloaded-key model L2). Q5 routing attacks: OLSRv2 security pattern RFC 7181/7182/7183 as conformance target if topology messages added; blackhole = dominant DTN forwarding attack -> ADOPT replication + Ack-driven eviction (Epidemic Oracle ISCC 2025) + reputation weight; REJECT RTT/location wormhole detection (EAODV-ARP JNCA 2025 needs timely round-trips - DTN-inapplicable) + secure-position (GPS assumption vs no-GPS IRIS posture); DEFER SAND (draft-ietf-dtn-bp-sand-00) signed neighbor discovery to PROTO-001 v2. Q6 integration: CONFLICTS C1-C6 (DISC-0013 doc-vs-code drift: DOS_RESISTANCE.md:213 nonexistent src/node/dos_protection.rs; SYBIL_RESISTANCE Defenses 3/4/5 unimplemented; REPLAY_PROTECTION.md SQLite persistence + FP-0% vs ~1% documented; THREAT_MODEL.md:134 + SECURITY_ARCHITECTURE.md:169 reputation unimplemented; DOS_RESISTANCE PoW layer verdict now REJECT-on-TX) feed DESIGN C-pattern doc reconciliation; gaps G1-G7 (no standard DTN flooding/quench beyond RFC 9171 §6.9; no GPS-free secure-position result; Meshtastic rate constants community-only G4; freshness tau -> EXP-SEC-001 G6; dedup snapshot sizing -> benchmark G7; LoRaWAN ADR not a security limiter G5). State advanced: PROJECT_GRAPH SEC-001 DISCOVERED->RESEARCHING + stage_note RESEARCH COMPLETE + validation_status; PROJECT_STATE research_complete 2 / discovered 10 + next_recommended note; ACTIVE_NODE/NEXT_ACTION/CURRENT_STATE RESEARCH COMPLETE; CHANGELOG [0.3.18]; ALLOCATION next RES-0019. Workspace untouched (research-only; 431 green baseline preserved). Next: SEC-001 DESIGN (SEC_001_DESIGN.md + ACs per ACCEPTANCE_POLICY safety_critical_additional >95% adversarial coverage + 24h fuzzing + external review recommended + DEC-SEC-0001..N)."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0018.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "RES-0018"
+  - timestamp: "2026-08-15T20:05:00Z"
+    iteration: 72
+    node: "SEC-001"
+    stage: "UNDERSTAND"
+    action: "SEC-001 UNDERSTAND COMPLETE (iter 72) then STAGE_TRANSITION to RESEARCH. Threat model synthesised from docs/security/* via explore agent + file reads: adversary classes A-F (ADVERSARY_MODEL.md — A passive, B active inject/replay, C honest-but-curious relay, D malicious relay blackhole/false route ads, E compromised, F quantum-post ML-KEM-512/ML-DSA-44 v2.0), threat actors TA-1..9, explicit non-guarantees (anonymity/traffic-analysis ADVERSARY_MODEL.md:213, availability :224, strong Sybil THREAT_MODEL.md:172). AC check: SEC-001 node LACKS acceptance_criteria (PROJECT_GRAPH.yaml:469-475 description+deps only) -> C2 conflict same-as-EMERG-001; ACCEPTANCE_POLICY SECURITY-type additional + safety_critical_additional applies_to SEC-001 (adversarial_test_coverage >95%, fuzzing_duration 24h minimum, external_security_review recommended; human_approval true but DEC-0009 lifted gate, quality retained). DISCOVERY DISC-0013 (verified by glob+grep): doc-vs-code drift — SYBIL_RESISTANCE.md Defenses 3 (Rate Limiting) / 4 (Anomaly Detection L2) / 5 (Reputation) claim Implemented but no such general machinery exists; DOS_RESISTANCE.md:213 cites crates/iris-core/src/node/dos_protection.rs which DOES NOT EXIST (crates/iris-core/src/node/ absent). Real existing defenses: message dedup Bloom+exact LRU (message_engine/dedup.rs), routing ForwardedCache (routing/dedup_cache.rs), emergency SosRateLimiter + BroadcastReplayGuard (emergency/rate_limit.rs + provider.rs), trust_store replay counters (rotate.rs earliest-seen-wins). SEC-001 design must generalize DoS/replay/Sybil/spam across message classes + reconcile claimed-vs-implemented docs (C-pattern). ADR open items: ADR-0006 per-message-key ALREADY resolved (CRYPTO-001 iter 55), HDKF-SHA256 resolved, FS-honesty kept; ADR-0011 open issue (:89). SEC-001 inputs: RED-0002 (ACL-1 fail-closed), RED-0003/EMERG-RT-003/ADR-0011 (signed encryption_intent), EMERG-RT-010 (pre-gate audit gap). Workspace untouched (research-only pass). Next: SEC-001 RESEARCH (RES-0018 DoS/replay/Sybil/spam 2026 SOTA for DTN mesh + MP2P + secure-position)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/DISCOVERIES.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "DISC-0013"
+  - timestamp: "2026-08-15T19:45:00Z"
+    iteration: 71
+    node: "EMERG-001"
+    stage: "VERIFY+ACCEPT"
+    action: "EMERG-001 VERIFY + ACCEPT COMPLETE (iter 71) then NODE_TRANSITION to SEC-001. VERIFY: wrote docs/implementation/EMERG_VERIFICATION.md v1.0 AC-1..14 PASS evidence table (AC-13 = EMERG-001_SECURITY_REVIEW.md PASS-with-recorded-deviations; AC-14 = live cargo audit 0 vulns/17 desktop-transitive warnings + D6 no-new-crypto via cargo tree). Independent verifier subagent reproduced: cargo test --workspace 431 passed/0 failed (1 #[ignore]d route2_debug_undelivered), clippy --workspace --all-targets 0 warnings, cargo audit 0 vulnerabilities/516 crates, all 6 redteam fixes present with regression tests, no fake AC evidence. Verdict APPROVE_WITH_NOTES -> reconciled APPROVE: fixed provider.rs BroadcastReplayGuard docstring MAX_IDS 3096->1024 + EMERG_VERIFICATION.md ignored-test characterization + AC-2 revoked-phrasing. ACCEPT: PROJECT_GRAPH EMERG-001 status COMPLETE + evidence(6) + known_limitations(9); PROJECT_STATE completed 19->20, implementing 1->0, security_health IMPLEMENTED, next_recommended SEC-001, critical_path junction passed; CHANGELOG 0.3.16; execution-log iter 71. NODE_TRANSITION: SEC-001 (P0, deps CRYPTO-001 + MSG-001 + ROUTE-001 COMPLETE) selected per PRIORITY_POLICY (P0, lowest-index eligible). Next: SEC-001 UNDERSTAND -> RESEARCH."
+    result: "ACCEPT_PASS_NODE_TRANSITION"
+    files_changed:
+      - "docs/implementation/EMERG_VERIFICATION.md"
+      - "crates/iris-core/src/emergency/provider.rs"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created:
+      - "EMERG_VERIFICATION.md"
+  - timestamp: "2026-08-15T19:05:00Z"
+    iteration: 70
+    node: "EMERG-001"
+    stage: "SECURITY_REVIEW"
+    action: "EMERG-001 SECURITY_REVIEW COMPLETE (iter 70) then STAGE_TRANSITION to VERIFY. Redteam adversarial review (AC-13) + disposition pass. Verdict PASS-with-recorded-deviations (1 CRITICAL + 1 HIGH + 2 MEDIUM + 2 LOW FIXED; 6 RECORDED). FIXED: EMERG-RT-001 CRITICAL verify_authoritative now requires a PROVISIONED authority root (is_authority_root) — TOFU-adopted mesh peer cannot anchor a verified CRITICAL alert chain (TrustStore is_authority_root + register_authority_root plumbing; tofu_adopted_peer_cannot_be_authority_root + provisioned_authority_root_anchors_self_chain tests; all chain builders now register roots). EMERG-RT-002 HIGH sos_rate ENFORCED in receive gate pre-bookkeeping (Downgraded->SosDowngraded->P3 degraded delivery + metric/event/audit; SOS_MAX_BUCKETS LRU bound; emergency_gate_downgrades_fourth_sos_to_p3 + lru_caps_sender_buckets). EMERG-RT-006 MEDIUM bounded BroadcastReplayGuard (1024/5min) in EmergencyGateway.verify_envelope -> Drop + AuditEvent::BroadcastReplayDropped. EMERG-RT-007 MEDIUM AreaOutOfScope static discriminant (no area_code/geo_scope bytes in audit notes). EMERG-RT-009 LOW poison-safe engine RwLock acquire. EMERG-RT-011 LOW CDE duplicate-key reject (no_duplicate_keys). RECORDED: RT-003 CANCEL ledger resolution gated, RT-004 DisasterMode engine-trigger wiring deferred, RT-005 AC-11 unarmed-Noop intentional, RT-008 SOS drill reuse accepted, RT-010 pre-gate emergency audit gap tracked. records/EMERG-001_SECURITY_REVIEW.md written. Verification: iris-core 376 passed, workspace 431 passed/0 failed, clippy --workspace --all-targets 0. Next: VERIFY -> ACCEPT."
+    result: "SECURITY_PASS_WITH_RECORDED_DEVIATIONS"
+    files_changed:
+      - "crates/iris-core/src/emergency/authority.rs"
+      - "crates/iris-core/src/emergency/rate_limit.rs"
+      - "crates/iris-core/src/emergency/provider.rs"
+      - "crates/iris-core/src/emergency/codec.rs"
+      - "crates/iris-core/src/emergency/audit.rs"
+      - "crates/iris-core/src/emergency/broadcast.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "engineering/memory/records/EMERG-001_SECURITY_REVIEW.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "EMERG-001_SECURITY_REVIEW.md"
+  - timestamp: "2026-08-15T18:15:00Z"
+    iteration: 69
+    node: "EMERG-001"
+    stage: "TEST"
+    action: "EMERG-001 TEST COMPLETE (iter 69) then STAGE_TRANSITION to SECURITY_REVIEW. Per-AC evidence written to engineering/memory/records/EMERG-001_TEST.md (AC-1..12 + AC-14 test-side; AC-13 redteam deferred to SECURITY_REVIEW). TEST uncovered + CLOSED a real gap: engine had only set_emergency_provider seam, never invoked provider -> wired deliver_or_relay receive-path gate (EmergencyGateOutcome + emergency_gate() + InboundOutcome::EmergencyDropped + dropped_emergency_auth metric + observability events/metrics; SOS classify + sos_record/sos_reset bookkeeping + SosOutcome::Rejected->drop; Noop gate = identical behavior AC-11 regression). Size-budget reconciliation: measured KeyAdvertisementV1 chain elements 194-196B (vs ~150B est) -> 2-elem 690B <1KB AC-1 budget, 4-elem full chain 1277B >1KB = P3 >=64KB class; EMERG_DESIGN.md §4/2.3/AC-1 corrected to measured; BLE 512B cannot carry verified chains (known_limitation, SOS radio-native). authority_short_id SHA-256 reconciled (open item from iter 68 closed). Verification: cargo test -p iris-core emergency 65 passed, message_engine 42 passed, workspace 424 passed/0 failed, clippy 0 (-p iris-core --all-targets + --workspace). New integration tests: emergency_gate_drops_unverifiable_alert_no_reply + emergency_gate_unarmed_noop_keeps_behavior_identical. Next: SECURITY_REVIEW."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/src/emergency/broadcast.rs"
+      - "crates/iris-core/src/observability/mod.rs"
+      - "docs/implementation/EMERG_DESIGN.md"
+      - "engineering/memory/records/EMERG-001_TEST.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "EMERG-001_TEST.md"
+  - timestamp: "2026-08-15T17:30:00Z"
+    iteration: 68
+    node: "EMERG-001"
+    stage: "IMPLEMENT"
+    action: "EMERG-001 IMPLEMENT COMPLETE (iter 68) then STAGE_TRANSITION to TEST. emergency/ module built against REAL APIs (11 files: model/codec/authority/sos/rate_limit/mode/audit/drill/broadcast/provider/mod). Authority = payload-level AuthorityMeta in signed EmergencyBroadcast (KeyAdvertisementV1 reused unchanged as chain element, DEC-EMERG-0002); 9-step SPKI/RFC 9804 verify pipeline (root required, chain cap <=4, Severity::Test cap-exempt); ciborium CDE codec (wire keys B_1..15/A_1..4/S_1..9, unknown-key tolerant, SOS <=84B); SOS classify/cancel 60-min same-origin; rate limiter 3/hr/sender (16-B prefix rolling + CANCEL reset); DisasterMode guarded_transition >=15-min holds; bounded pseudonymous audit ring; EmergencyGateway (TrustStore + Mutex<SosRateLimiter> + Mutex<AuditLog>). Engine seam AC-11: MessageEngine.emergency RwLock<Arc<dyn EmergencyProvider>> + set_emergency_provider + NoopEmergencyProvider default + tokio engine test. Doc corrections C1/C3/C4/C5/C6 applied (AC-12) to EMERGENCY_BROADCAST/UX/ABUSE/GOVERNANCE. Workspace 421 green (366 iris-core incl. 62 emergency + seam test), clippy 0 -p iris-core --all-targets. Open for TEST: authority_short_id blake3 vs 'SHA-256(sender)[..16]' wording. Next: TEST -> SECURITY_REVIEW -> VERIFY -> ACCEPT."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/emergency/*.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "docs/emergency/EMERGENCY_BROADCAST.md"
+      - "docs/product/EMERGENCY_UX.md"
+      - "docs/security/EMERGENCY_ABUSE.md"
+      - "docs/safety/EMERGENCY_GOVERNANCE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created: []
+  - timestamp: "2026-08-15T16:30:00Z"
+    iteration: 67
+    node: "EMERG-001"
+    stage: "DESIGN"
+    action: "EMERG-001 DESIGN COMPLETE (iter 67) then STAGE_TRANSITION to IMPLEMENT. EMERG_DESIGN.md v1.0 written: emergency/{mod,model,codec,authority,broadcast,sos,rate_limit,mode,audit,drill}; wire reconciliation (ContentType::Sos=2/EmergencyAlert=14, EMERGENCY_BROADCAST recipient, field 18 auth_cert_chain codec-supported, P0 84B ceiling, RED-0008 chain reuse, NoopEmergencyProvider default); AC-1..14 added to PROJECT_GRAPH; C1-C6 resolved (broadcast size->96/96 compact+P3 UPDATE; 880->853+960Hz WEA; IPC->BNS; SOS cadence->ack.rs; X.509->SPKI); DEC-P0010..P0017 ratified in DECISIONS.md; PROJECT_STATE EMERG-001 DESIGNING. Next: IMPLEMENT."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "docs/implementation/EMERG_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+    records_created: []
+  - timestamp: "2026-08-15T16:00:00Z"
+    iteration: 66
+    node: "EMERG-001"
+    stage: "RESEARCH"
+    action: "EMERG-001 UNDERSTAND + RESEARCH COMPLETE (iter 66) then STAGE_TRANSITION to DESIGN. UNDERSTAND: docs/emergency/* + governance + abuse + PRIORITY_MODEL read; work-package confirmed; AC check: EMERG-001 node LACKS acceptance_criteria in PROJECT_GRAPH.yaml (ACCEPTANCE_POLICY applies_to includes EMERG-001) -> Conflict C2, DESIGN must define ACs. RESEARCH (RES-0017 recorded): alert formats (CAP v1.2 XML semantics-only, ITU-T X.1303bis ASN.1 PER, ETSI TS 102 900 V1.4.1 §5.5 NO UE auth, 3GPP TS 23.041, ATIS WEA 3.0 geo-fencing, FEMA IPAWS, NRTA GY/T 383/385-2023) -> minimal CAP-inspired CBOR subset; auth (RFC 9804 SPKI = RED-0008 fit, WEA-spoofing research CACM'23/ACM'24/arXiv 2604.24404, CVE-2025-52464) -> offline key-anchored chain; priority (EDCA 4 ACs, COSPAS-SARSAT 45-50s burst, Garmin cadence, no 15-min standard) ; disaster mode (flood-to-hop-limit + HSEEP drills -> TEST_MODE); status (RFC 9171 §6.2 off by default, RFC 9713, arXiv 2507.17403); a11y (WCAG 2.2 SC1.4.6/2.2.4, WEA tone 853+960Hz != 880Hz); legal (BNS 2023, SybilGuard/SybilLimit); wire integration (Sos=2/EmergencyAlert=14, P0 ceiling 84B, C1-C6). DEC-EMERG-0001..0008 recommendations; D6 RUSTSEC: no new crypto crates. Registered RES-0017/FAIL-0005/DISC-0011/DISC-0012 in ALLOCATION + FAILED_APPROACHES + DISCOVERIES. Research-only pass: workspace untouched (361 green baseline). Next: EMERG-001 DESIGN (EMERG_DESIGN.md + ACs + C1-C6 + DEC-EMERG formalization)."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0017.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/FAILED_APPROACHES.md"
+      - "engineering/memory/DISCOVERIES.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created:
+      - "RES-0017"
+      - "FAIL-0005"
+      - "DISC-0011"
+      - "DISC-0012"
+  - timestamp: "2026-08-15T15:30:00Z"
+    iteration: 65
+    node: "META"
+    stage: "NODE_TRANSITION"
+    action: "NODE_TRANSITION: IDENT-001 ACCEPTED/COMPLETE (iter 63c+64) -> EMERG-001 (P0, deps MSG-001 + IDENT-001 + ROUTE-001 COMPLETE). IDENT-001 ACCEPT evidence: IDENT_VERIFICATION.md v1.0 AC-1..11 all PASS; verifier APPROVE (independent reproduction). Graph-manager selection per PRIORITY_POLICY selection_algorithm: step 1 filter DISCOVERED + not COMPLETE/BLOCKED/FAILED; step 2 deps all COMPLETE -> P0 candidates BLE-001/EMERG-001/SEC-001/TEST-001 (+ WIFIAWARE P1 etc.); step 3 P0 first; step 4 dependency_centrality DESC -> EMERG-001 unblocks ANDROID-001 + IOS-001 + PILOT-001 (3, highest); step 5 risk_reduction -> safety-critical emergency authority model. EMERG-001 selected (critical path SCF-001 -> IDENT-001 -> EMERG-001 -> ANDROID-001 -> PILOT-001 junction). PROJECT_GRAPH IDENT-001 status COMPLETE + evidence(7) + known_limitations(8); PROJECT_STATE completed 18->19, verifying 1->0, high_risk IDENT-001 COMPLETE, critical_path + next_recommended updated; CHANGELOG pending [0.3.12]. Next: EMERG-001 UNDERSTAND (emergency docs + work-package + AC check) -> RESEARCH."
+    result: "NODE_TRANSITION"
+    files_changed:
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/records/execution-log.md"
+  - timestamp: "2026-08-15T15:10:00Z"
+    iteration: 63c
+    node: "IDENT-001"
+    stage: "VERIFY"
+    action: "IDENT-001 VERIFY COMPLETE (iter 63c) then STAGE_TRANSITION to ACCEPT. Wrote docs/implementation/IDENT_VERIFICATION.md v1.0: AC-1..11 PASS evidence table (identity module 67 unit tests / command filter 68, workspace 361 green, clippy 0, DEC-0010 control verified satisfied, IDENT-001_SECURITY_REVIEW.md verdict PASS-with-recorded-deviations + known_limitations RT-002/003/004/005/014). Independent verifier subagent reproduced all evidence (verdict APPROVE): 68 identity passed, 361 workspace passed / 0 failed across 15 suites, clippy 0 --workspace --all-targets, DEC-0010 verified by code read (engine_handle.rs::build 153-180: production path config.dev==false → IrisCryptoProvider + TrustKeyDirectory from persisted DesktopIdentity; DevCryptoProvider only config.dev test seams), all 9 redteam fixed findings present with regression tests, no AC row cites a nonexistent test. Doc-level observations (non-blocking, recorded in doc): 68 is command-filtered count vs 67 module-internal; IDENT-001_TEST.md cites unix-gated identity_file_is_0600 (not run on Windows); '+10 regression tests' label vs 12 named cases (net module delta +9..10 vs 58 baseline). Next: IDENT-001 ACCEPT (mark COMPLETE + evidence + known_limitations; PROJECT_STATE completed 19; CHANGELOG 0.3.12; execution-log iter 64; next-node selection + NODE_TRANSITION)."
+    result: "VERIFY_PASS"
+    files_changed:
+      - "docs/implementation/IDENT_VERIFICATION.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "IDENT_VERIFICATION.md"
+  - timestamp: "2026-08-15T14:40:00Z"
+    iteration: 63
+    node: "IDENT-001"
+    stage: "SECURITY_REVIEW"
+    action: "IDENT-001 SECURITY_REVIEW COMPLETE (iter 63) then STAGE_TRANSITION to VERIFY. Redteam FAIL-with-condition IDENT-RT-001..016 (5 HIGH / 7 MEDIUM / 2 LOW / 2 INFO). FIXED in-pass (+10 regression tests, identity unit 58→68): RT-001 trust_store replay logic (stale-counter different-key ad → Duplicate/drop, never permanent KeyChanged downgrade; equal-counter conflict → KeyChangeWarn; strictly-higher signature-verified counter → RotationAdopted + clears KeyChanged recovery), RT-009 valid_until skew budget (DEFAULT_SKEW_BUDGET_SECS 300 at adopt + rotate), RT-010 verify_peer exact-key confirmation (VerifyError::KeyMismatch + un_revoke operator healing), RT-011 chain format-version gate + RootKeyMismatch root-vs-store consistency (RED-0011 before consistency), RT-012 rotate unknown-peer → RotationError::UnknownPeer, RT-013 adopt_rotation RED-0011 re-check (Result<bool>), RT-006 FileKeyStore stale-lock reclaim (LOCK_STALE_SECS=15), RT-007 secret temp file 0600-from-birth (write_secret_file), RT-008 Zeroizing returns (load_identity→Zeroizing<Vec<u8>>, load_master_key→Zeroizing<[u8;32]>, NodeIdentityV1::to_bytes→Zeroizing<Vec<u8>>). RECORDED known_limitations/gated: RT-002 (rotation engine multi-key decrypt → PROTO-001 v2/RED-0010; AC-6 scoped to primitive), RT-003 (inbound KeyRotation feed → DISCO-001), RT-004 (PgStorage::with_sealer desktop deviation under DEC-0010), RT-005 (Windows keystore posture documented), RT-014 (provision TOCTOU single-instance). INFO RT-015/016 confirmed clean (verify_strict everywhere; no PKIX/new crypto crates). DEC-0010 security control verified satisfied. records/IDENT-001_SECURITY_REVIEW.md written. Workspace 361 green (306 iris-core incl. 68 identity), clippy 0 (iris-core+iris-desktop --workspace --all-targets). Next: IDENT-001 VERIFY -> ACCEPT."
+    result: "SECURITY_PASS_WITH_RECORDED_DEVIATIONS"
+    files_changed:
+      - "crates/iris-core/src/identity/trust_store.rs"
+      - "crates/iris-core/src/identity/rotate.rs"
+      - "crates/iris-core/src/identity/chain.rs"
+      - "crates/iris-core/src/identity/store.rs"
+      - "crates/iris-core/src/identity/provision.rs"
+      - "crates/iris-core/src/identity/peer_id.rs"
+      - "engineering/memory/records/IDENT-001_SECURITY_REVIEW.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "IDENT-001_SECURITY_REVIEW.md"
+  - timestamp: "2026-08-15T14:00:00Z"
+    iteration: 62
+    node: "IDENT-001"
+    stage: "IMPLEMENT"
+    action: "IDENT-001 IMPLEMENT COMPLETE (iter 62) then STAGE_TRANSITION to TEST. Built full identity module in crates/iris-core/src/identity/ per IDENT_DESIGN.md: provision.rs (NodeIdentityV1 versioned binary blob [format_version|reserved(4)|created_unix|ed25519_seed(32)|static_x25519_secret(32)|key_gen_counter], provision-on-first-run / load, corrupt + unknown-version FAIL LOUDLY never silent regen, IdentityManager facade peer_id/peer_short/human_uid/key_gen_counter/static_x25519_pubkey/master_key/runtime_node_identity; zeroize-on-drop proven via allocation-wipe test), store.rs (KeyStore trait + FileKeyStore protected key file under app-data/iris/keys/, atomic temp+rename, create_new advisory lock, 0600 on unix, FILE_HEADER strip on load, Zeroizing buffers), peer_id.rs (peer_id=Ed25519 verifying bytes self-authenticating; peer_short=SHA-256(pubkey)[..16] for P0; human_uid base32; no-MAC rule; 7 table tests determinism/distinct/no-MAC), advertise.rs (RED-0005 KeyAdvertisementV1 SPKI-style: CBOR signable bytes (format_version,identity_pubkey,static_x25519_pubkey,key_gen_counter,valid_until) ‖ 64B sig; build rejects small-order; verify uses verify_strict; tampered/cross-identity/small-order rejected; 6 tests), trust_store.rs (TrustStore TOFU: adoption outcome taxonomy Accepted/BoundUnverified/Verified/Refreshed/Duplicate/RotationAdopted/KeyChangeWarn/Revoked/Rejected, earliest-seen-wins, monotonic rotation counter gate, revocation blocks all, verify_peer, TrustKeyDirectory implementing the existing engine KeyDirectory seam for recipient-key lookup; 10 tests), chain.rs (RED-0008 verify_chain: key-anchored, requires trusted root, cap MAX_CHAIN_LEN=8, rejects broken link/expired/revoked/small-order; NO PKIX; 11 tests), rotate.rs (RotationEventV1: KIND_ROTATION/KIND_REVOCATION, monotonic counter, valid-until, null-rotation revokes, earliest-seen-wins, stale/equal reject; 7 tests), small_order.rs (RED-0011 known low-order U coordinate list + is_small_order guard; 4 tests). Engine seam: added MessageEngine::set_key_directory — engine crypto/recipient-key lookup now directory-backed (identity TrustKeyDirectory). Desktop RED-0001 §11 (crates/iris-desktop): src/identity.rs DesktopIdentity (provision_or_load via FileKeyStore::default_data_dir, node_id=PeerId, human_uid, runtime_identity→Arc<NodeIdentity>, master_key for future StorageKeySealer, static_x25519_pubkey, adopt_key_advertisement, trust_key_directory, crypto_provider=IrisCryptoProvider; 3 tests incl real-sign/verify/encrypt/decrypt authenticates()=true + PeerId survives reload + trust directory serves adopted keys) + engine_handle.rs production build path now uses IrisCryptoProvider + set_key_directory(TrustKeyDirectory) + node_id from persisted identity; DevCryptoProvider confined to config.dev (with_node_id/with_transport test seams); IRIS_NODE_ID documented display-only UID. Clippy 0 across iris-core + iris-desktop; workspace 296+ green. Next: IDENT-001 TEST (AC-1..11 evidence)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/identity/mod.rs"
+      - "crates/iris-core/src/identity/provision.rs"
+      - "crates/iris-core/src/identity/store.rs"
+      - "crates/iris-core/src/identity/peer_id.rs"
+      - "crates/iris-core/src/identity/advertise.rs"
+      - "crates/iris-core/src/identity/trust_store.rs"
+      - "crates/iris-core/src/identity/chain.rs"
+      - "crates/iris-core/src/identity/rotate.rs"
+      - "crates/iris-core/src/identity/small_order.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "crates/iris-core/Cargo.toml"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-desktop/src/identity.rs"
+      - "crates/iris-desktop/src/engine_handle.rs"
+      - "crates/iris-desktop/src/lib.rs"
+      - "crates/iris-desktop/Cargo.toml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created: []
+  - timestamp: "2026-08-15T13:00:00Z"
+    iteration: 61
+    node: "IDENT-001"
+    stage: "DESIGN"
+    action: "IDENT-001 DESIGN COMPLETE (iter 61) then STAGE_TRANSITION to IMPLEMENT. IDENT_DESIGN.md v1.0 written (docs/implementation/IDENT_DESIGN.md): D1-D6 executed (D1 DEC-P0005 key-derived PeerId; D2 DEC-P0006 per-platform provisioning + desktop protected-key-file store (FileKeyStore 0600 atomic lock zeroize vs keyring deferred — RUSTSEC-clean decision) + wrapped-DEK + StorageKeySealer default-on; D3 DEC-P0007 TOFU + signed ad + Verified tier; D4 DEC-P0008 rotation/revocation via KeyRotation path counter+valid-until+earliest-seen-wins+null-rotation; D5 DEC-P0009 two keypairs Ed25519-signed-X25519, no XEdDSA; D6 no new crypto crates, avoid PKIX family). Wire reconciliation section: sender_id stays 32B Ed25519 pubkey (self-authenticating, CRYPTO-001 verify() unchanged) in v1; peer_short() = SHA-256(pubkey)[..16] implemented + table-tested now for P0 abbreviated envelopes; 16-byte wire collapse deferred to PROTO-001 v2 / RED-0010. Module layout identity/{mod,provision,store,peer_id,advertise,trust_store,chain,rotate,small_order}. RED-0005 KeyAdvertisementV1 (SPKI RFC 9804 keyholder cert). RED-0008 verify_chain key-anchored cap-8 no-PKIX (rustls-webpki excluded). RED-0011 small-order rejection at ad/chain boundary. RED-0001 desktop wiring: engine_handle.rs:145 DevCryptoProvider -> IrisCryptoProvider + FileKeyStore + master-key with_sealer when PG; IRIS_NODE_ID -> non-authoritative UID. AC-1..11 defined. ADDRESSING.md BLAKE3 derivation superseded note. Next: IDENT-001 IMPLEMENT (identity module + desktop wiring, AC-1..11)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "docs/implementation/IDENT_DESIGN.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created: []
+  - timestamp: "2026-08-15T12:00:00Z"
+    iteration: 60
+    node: "IDENT-001"
+    stage: "RESEARCH"
+    action: "IDENT-001 RESEARCH COMPLETE (iter 60) then STAGE_TRANSITION to DESIGN. RES-0016 recorded (engineering/memory/records/research/RES-0016.md): 2026 SOTA for identity/key mgmt/trust/address derivation — (1) identity model: BPv7 asserts identity but keys need binding (RFC 9171/9172); NEVER MAC/hardware-derived (CVE-2025-53627 Meshtastic NodeNum spoofing); libp2p PeerId/did:key/Tor onion v3 = key-derived precedents; (2) provisioning: Android Keystore TEE/StrongBox (StrongBox keygen 9.2 s / 1MiB 3 s — master only, KeyDroid arXiv:2507.07927; AOSP keystore uses HKDF-SHA256 super keys = corroborates DEC-P0004), iOS Keychain (SE is P-256-only), desktop OS-keychain/file (RED-0001), Pi external TPM sealing-only, Stronghold 'not yet audited' (not a root of trust); (3) trust: TOFU baseline (Meshtastic hard requirement) + Briar BQP QR/pairing verified tier + SPKI RFC 9804 keyholder chains (RED-0008, NOT PKIX); (4) rotation/revocation: RFC 9172 §6 out of scope; signed rotation events + monotonic counters + valid-until + earliest-seen-wins (Ceramic), KERI null-rotation revocation, ICN gossip revocation; (5) key binding (RED-0005): Ed25519-signed-X25519 = Signal X3DH/XEdDSA + Meshtastic 2.8.x precedent (IACR 2021/509, LSEG arXiv:2511.07548); two distinct keypairs, no curve conversion in v1; (6) RUSTSEC 2026-08-15: no advisory vs keyring/android-keystore; AVOID PKIX family (rustls-webpki 2026-0104/0098/0099, pemfile 2025-0134); watch core2 2026-0105/thin-vec 2026-0103. DEC-P0005..P0009 resolved in DECISIONS.md. ALLOCATION.md RES-0016 registered (next RES-0017). PROJECT_GRAPH IDENT-001 stage_note RESEARCH COMPLETE + validation_status updated; PROJECT_STATE high_risk note + next_recommended IDENT-001 ACTIVE RESEARCH COMPLETE. Gaps recorded: 'QEMU/PLD' operator clarification; Meshtastic 2.8.x merge status; Stronghold post-2.1.0 audit; no formal proof of signed key binding in disconnected mesh. Next: IDENT-001 DESIGN (IDENT_DESIGN.md AC-1..N)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0016.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "RES-0016"
+  - timestamp: "2026-08-15T11:15:00Z"
+    iteration: 59
+    node: "IDENT-001"
+    stage: "NODE_TRANSITION"
+    action: "CRYPTO-001 VERIFY + ACCEPT COMPLETE (iter 59) then NODE_TRANSITION to IDENT-001 (P0). Operator ratified RED-0001 tracking to IDENT-001 (DEC-0010, 2026-08-15) with security control: no production deployment with DevCryptoProvider/no identity/no sealer. CRYPTO_VERIFICATION.md v1.0 written: AC-1..9 all PASS (crypto module + crate pins + KATs RFC 7748/8439/8032/5869 + verify_strict-only weak-key reject + E2E round-trip/tamper + at-rest seal round-trip/tamper/dump-resistance + engine M7 incl. fragmented encrypt reassemble+verify + no-FS honesty + no libcrux). Redteam RED-0001..0012 dispositioned (RED-0004 fragmentation E2EE FIXED + 2 latent routing bugs, RED-0002/0006/0007/0009/0012 fixed, RED-0001 ratified, RED-0003/0005/0008/0010/0011 tracked). PROJECT_GRAPH CRYPTO-001 status COMPLETE with evidence + acceptance_criteria + known_limitations (RED-0001..0011 + FS honesty + opt-in seal); validation_status updated; PROJECT_STATE reconciled (completed 18 / implementing 0 / designing 1 = IDENT-001 eligible). DEC-0010 record + ALLOCATION.md registered. CRYPTO-001_SECURITY_REVIEW.md RED-0001 marked RATIFIED. Workspace 290 green, clippy 0. Next: IDENT-001 RESEARCH."
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "docs/implementation/CRYPTO_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/DEC-0010.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/records/CRYPTO-001_SECURITY_REVIEW.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+    records_created:
+      - "DEC-0010"
+      - "CRYPTO_VERIFICATION.md"
+  - timestamp: "2026-08-15T10:30:00Z"
+    iteration: 58
+    node: "CRYPTO-001"
+    stage: "SECURITY_REVIEW"
+    action: "CRYPTO-001 SECURITY_REVIEW (redteam dispatch) verdict FAIL-with-condition + in-scope fixes. Verified workspace 284 green/clippy 0 before dispatch. Findings RED-0001..0012 (1 CRITICAL / 3 HIGH / 4 MEDIUM / 3 LOW / 1 INFO), all spot-verified in code. FIXED in-pass: RED-0004 fragmentation E2EE break (extended fragment header [index/total/orig_id/orig_payload_type/has_sig/orig_sig/chunk] FRAGMENT_HEADER_LEN=86; derive_fragment_message_id=SHA-256(orig||index)[..16]; FragmentSet::bind_sender mixed-signer reject; feed() restores AAD+signature fields; process_incoming re-verifies reassembled envelope; +7 fragment unit tests) AND two latent routing bugs (TransportSelectionRequest::fragmentable size-gate skip + deliver_outbound max_mtu MIN-over-ranked instead of usize::MAX .max()); new M7 E2E m7_fragmented_encrypted_message_reassembles_and_verifies PASS (70KiB P5 -> 2 fragments -> reassemble -> verify -> decrypt). RED-0002 mitigated (msg.sent_unencrypted warn + iris.messages.sent_unencrypted_total metric + threat model in CRYPTO_DESIGN.md; fail-closed deferred to IDENT-001/v2). RED-0006 fixed (genuine verify_strict weak-key forgery test + KAT table corrected). RED-0009 fixed (crypto::ed25519::verify renamed verify_strict, call site + doc comments). RED-0012 fixed (schema.rs payload_size comment). Tracked to IDENT-001/v2: RED-0001 (desktop wiring), RED-0003 (encryption_intent signed flag ADR-0011 v2), RED-0005 (X25519 key binding), RED-0008 (auth_cert_chain), RED-0010 (codec revision), RED-0011 (small-order hardening). Records: CRYPTO-001_SECURITY_REVIEW.md written, execution-log iter 58, CHANGELOG 0.3.6 (+0.3.5) with recovery note (0.3.0-0.3.4 prose lost via overwrite; preserved in execution-log.md). Workspace 290 green (up from 284), clippy 0. HUMAN_GATE: RED-0001 CRITICAL requires operator ratification before ACCEPT."
+    result: "SECURITY_FAIL_WITH_CONDITION"
+    files_changed:
+      - "crates/iris-core/src/message_engine/fragment.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/src/message_engine/crypto.rs"
+      - "crates/iris-core/src/transport/manager.rs"
+      - "crates/iris-core/src/crypto/ed25519.rs"
+      - "crates/iris-core/src/observability/mod.rs"
+      - "crates/iris-core/tests/crypto_e2e.rs"
+      - "crates/iris-storage/src/schema.rs"
+      - "docs/implementation/CRYPTO_DESIGN.md"
+      - "engineering/memory/records/CRYPTO-001_SECURITY_REVIEW.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "CRYPTO-001_SECURITY_REVIEW.md"
+  - timestamp: "2026-08-15T09:30:00Z"
+    iteration: 57
+    node: "CRYPTO-001"
+    stage: "IMPLEMENT"
+    action: "CRYPTO-001 IMPLEMENT COMPLETE. Full crypto stack + at-rest seal + AC-8 E2E landed, workspace 284 green, clippy -D warnings clean. Verified in place: crypto module (mod/keygen/x25519/ed25519/aead/kdf/key_directory) with KAT+structural tests; codec::encode_for_aead (fields 1-7,9-11,14) additive seam (encode_for_signing byte-exact preserved); IrisCryptoProvider (verify_strict-only, RFC 7748 §6.1 all-zero shared-secret reject, per-message ephemeral X25519 + random 12B nonce) behind the CryptoProvider seam + KeyDirectory/MemoryKeyDirectory; engine send-path encrypt (seal_outbound resolves recipient X25519 via KeyDirectory; P0 broadcast never encrypted) + deliver-path decrypt/verify; fragment re-signing in serialize_for_transport. NEW THIS PASS: (1) iris-storage at-rest seal — RowSealer trait + StorageKeySealer (AAD = message_id||priority||expires_at, per-row random 12B nonce via OsRng) + NoSealer default + PgStorage.with_sealer wired through persist/load/get_queue + schema MIGRATE_DROP_PLAINTEXT_IDENTITY (dropped sender_id/recipient_id columns + idx_messages_recipient idempotently at connect); STORAGE.md updated (at-rest no longer deferred); 7 seal unit tests + 3 pg_store DB tests (sealed-not-plaintext round-trip, wrong-key DecryptionFailed, plaintext-identity-columns-removed). (2) KDF completeness — RFC 5869 Appendix A.2 + A.3 KATs added (authoritative vectors fetched from rfc-editor.org) + sender_and_recipient_derive_identical_message_keys unit test (X25519 symmetric DH + identical message_kdf_info -> identical message_key, AC-5). (3) Workspace hygiene — fixed pre-existing kdf.rs doc-comment doctest break (pseudo-code ``` blocks) + clippy unnecessary_lazy_evaluations in message_engine/mod.rs (ok_or_else -> ok_or). (4) AC-8 — new tests/crypto_e2e.rs m7 suite (2): encrypted+signed E2E round-trip (Alice IrisCryptoProvider -> shared SimulatedTransport -> Bob verify_strict + decrypt = plaintext) + tampered wire frame rejected (outcome is Err, no plaintext surfaces). Next: CRYPTO-001 TEST (AC-1..9 evidence) -> SECURITY_REVIEW (redteam) -> VERIFY."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "crates/iris-storage/src/seal.rs"
+      - "crates/iris-storage/src/pg.rs"
+      - "crates/iris-storage/src/schema.rs"
+      - "crates/iris-storage/src/lib.rs"
+      - "crates/iris-storage/Cargo.toml"
+      - "crates/iris-storage/tests/pg_store.rs"
+      - "crates/iris-core/src/crypto/kdf.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/tests/crypto_e2e.rs"
+      - "docs/implementation/STORAGE.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/CHANGELOG.md"
+    records_created: []
+  - timestamp: "2026-08-14T20:55:00Z"
+    iteration: 56
+    node: "CRYPTO-001"
+    stage: "DESIGN"
+    action: "CRYPTO-001 DESIGN COMPLETE. CRYPTO_DESIGN.md v1.0 (docs/implementation/CRYPTO_DESIGN.md) written with AC-1..9: module layout (crates/iris-core/src/crypto/: mod/keygen/x25519/ed25519/aead/kdf/key_directory + codec::encode_for_aead additive seam + iris-storage RowSealer/PgRowSealer); wire-format contract (encryption_hdr field 16 UNCHANGED per MESSAGE_ENVELOPE.md: per-message ephemeral_pubkey bytes(32) + random nonce bytes(12) + optional key_id; AAD = encode_for_aead fields 1-7,9-11,14 excluding hop_count/payload_hash/payload/signature/extensions); KDF contracts (message_key HKDF-SHA256 salt b'iris-message-key-v1' info message_id||0x00 direction byte; storage_key salt b'iris-at-rest-v1' expand(&[]) 32B); at-rest row seal (sealed envelope_cbor; plaintext index columns message_id/priority/status/created_at/expires_at/payload_size/hop_count/max_hops; sender_id/recipient_id removed from plaintext schema + idx_messages_recipient dropped; per-row random 12B nonce; AAD = message_id||priority||expires_at row-swap defense); IrisCryptoProvider behind existing CryptoProvider seam (authenticates()=true; verify_strict-only; KeyDirectory + MemoryKeyDirectory v1); P0 SOS broadcast NOT encrypted (no recipient key); KAT line-up RFC 7748 §5.2/6.1 (all-zero reject), RFC 8439 §2.8.2, RFC 8032 §7.1 (weak-key verify_strict reject), RFC 5869 App A 1-3. Crate pins resolved: x25519-dalek 2.0.1, ed25519-dalek 2.x (3.0.0 deferred — workspace edition 2021/MSRV 1.60), chacha20poly1305 0.10.1, hkdf 0.12, sha2 0.10. FAIL-0004 (HKDF-BLAKE3 formally recorded as failed approach) + DISC-0010 (2026 libcrux RUSTSEC advisory family = Cryspen bindings, NOT RustCrypto/dalek crates) added to memory; ALLOCATION.md counters advanced (RES-0016/DISC-0011/FAIL-0005); CHANGELOG 0.3.4 entry (CRYPTO-001 RESEARCH + DEC-P0001..0004). PROJECT_GRAPH CRYPTO-001 status RESEARCH->DESIGNING stage_note DESIGN COMPLETE. Next: CRYPTO-001 IMPLEMENT (crypto module + IrisCryptoProvider + RowSealer + KAT tests, AC-1..9)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "docs/implementation/CRYPTO_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/FAILED_APPROACHES.md"
+      - "engineering/memory/DISCOVERIES.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/CHANGELOG.md"
+    records_created: []
+  - timestamp: "2026-08-14T20:30:00Z"
+    iteration: 55
+    node: "CRYPTO-001"
+    stage: "RESEARCH"
+    action: "CRYPTO-001 RESEARCH COMPLETE. RES-0015 recorded (engineering/memory/records/research/RES-0015.md) + registered in ALLOCATION.md (next RES-0016). Full RUSTSEC audit (2026-08-14 snapshot): no advisory vs x25519-dalek/chacha20poly1305(RustCrypto)/hkdf; curve25519-dalek RUSTSEC-2024-0344 timing (pin >=4.1.3); ed25519-dalek RUSTSEC-2022-0093 (2.x clean) + verify_strict-only (weak-key guard); libcrux advisory family (RUSTSEC-2026-0023/24/26/75/124) = Cryspen bindings, NOT our crates, but lessons adopted (RFC 7748 §6.1 all-zero shared-secret reject + X25519 input validation); ring RUSTSEC-2025-0009/0010 (>=0.17.9, 0.17 maintained) — ring kept as documented alternative, RustCrypto+dalek selected (pure Rust). DECISIONS.md: DEC-P0001 RESOLVED (per-message ephemeral X25519, ECIES-like), DEC-P0002 RESOLVED (RFC 5869 HKDF-SHA256 via hkdf+sha2), + new DEC-P0003 (FS honesty — no recipient-FS in v1) + DEC-P0004 (at-rest row seal HKDF(master,'iris-at-rest-v1')). ADR-0006 corrected (per-session -> per-message incl. nonce/rationale/Implementation Notes; HKDF-BLAKE3 -> HKDF-SHA256) + Issue 1/2/3 resolution notes; ADR-0011 open issue 2 resolved. PROJECT_GRAPH CRYPTO-001 stage_note RESEARCH COMPLETE; PROJECT_STATE reconciled (researching 0 / research_complete 2 / designing 2; stale CRYPTO-001 BLK-0001 duplicate entry removed). Next: CRYPTO-001 DESIGN (CRYPTO_DESIGN.md + ACs)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0015.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/DECISIONS.md"
+      - "docs/decisions/ADR-0006.md"
+      - "docs/decisions/ADR-0011.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+    records_created:
+      - "RES-0015"
+  - timestamp: "2026-08-14T19:45:00Z"
+    iteration: 54
+    node: "CRYPTO-001"
+    stage: "RESEARCH"
+    action: "OPERATOR AUTHORIZATION (DEC-0009) — all gates + HUMAN GATES unblocked, standing 2026-08-14. BLK-0001 (CRYPTO-001/IDENT-001 crypto+identity) RESOLVED; BLK-0005 (BLE/WiFi-Aware/WiFi-Direct/LoRa/SAT transports) RESOLVED for implementation (device-only integration tests remain RESOURCE-gated known_limitations); LEGAL-001/EMERG-001/SEC-001/TEST-001/ANDROID-001/IOS-001/PILOT-001 approval gates lifted. DEC-0009 recorded + registered in ALLOCATION.md (next DEC-0010). Next node CRYPTO-001 (P0): RESEARCH stage — resolve DEC-P0001/P0002 (per-session vs per-message key; HKDF-BLAKE3 non-standard), at-rest row encryption for STORE-001, forward-secrecy honesty (DISC-0003), 2026 constrained-node crypto SOTA. Refs: RES-0009, ADR-0002/0006, DISC-0001..0003."
+    result: "HUMAN_GATE_RESOLVED"
+    files_changed:
+      - "engineering/memory/records/DEC-0009.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+    records_created:
+      - "DEC-0009"
+  - timestamp: "2026-08-14T19:30:00Z"
+    iteration: 53
+    node: "ML-001"
+    stage: "ACCEPT"
+    action: "ML-001 VERIFY+ACCEPT COMPLETE. ML_VERIFICATION.md v1.0 written (AC-1..7 all PASS claimed); verifier subagent dispatched and returned PASS_WITH_GAPS (all 7 ACs independently reproduced: 132 identical feature sequences, byte-identical anchors sim-7-d17-i18, agreement 0.907/Brier 0.245/threshold 0.95/n_train 89/n_test 43, GT 0.00 ms vs static 545.45 ms on periodic_ferry, parity 7961.00 ms on random_walk). 3 minimal doc-correction items applied: (1) AC-5 clarified vehicle_relay not in ML multi-seed suite + determinism-degeneracy of mean±std; (2) AC-6 workspace breakdown corrected to 205 core incl. 11 ML unit (=244 total); (3) Known Limitations point 5 added (deterministic anchors make paired mean±std degenerate — same-seed A/B reproducibility IS the statistic). ML-001 marked COMPLETE in PROJECT_GRAPH.yaml with acceptance_criteria + evidence + known_limitations (ML-RT-01/04/05/06/07). PROJECT_STATE.yaml reconciled: completed 17, designing 2. Workspace 244 green, clippy 0. Next node TBD (leaf node — graph stalls on gates unless BLK-0002 expansion)."
+    result: "ACCEPT_PASS"
+    files_changed:
+      - "docs/implementation/ML_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/RED-0002.md"
+    records_created:
+      - "ML_VERIFICATION.md"
+  - timestamp: "2026-08-14T19:10:00Z"
+    iteration: 52
+    node: "ML-001"
+    stage: "SECURITY_REVIEW"
+    action: "ML-001 SECURITY_REVIEW — redteam subagent PASS (RED-0002, registered in ALLOCATION.md next RED-0003). Shadow isolation holds: shadow_features is &self read-only (reads p_for/hops_by_msg/usage_bytes/clock only), record() side-effect-free on routing state, decide_forward computed before record, zero RNG consumption, AC-2 byte-identical anchors empirically green. Findings: 0 CRITICAL / 0 HIGH / 1 MEDIUM (ML-RT-01 unseeded Uuid::now_v7 determinism — pre-existing sim-wide, known_limitation) / 2 LOW / 4 INFO. Fixed in-pass: ML-RT-02 clamped DP slots 0-2 to [0,1] in shadow_features + debug_assert finite in FeatureVec::new; ML-RT-03 defensive sort_unstable() in evaluate_gt + GtPredictor::fit + regression test gt_tolerates_unsorted_contact_times. Deferred known_limitations: ML-RT-01/04/05/06/07. Workspace 244 green (205 core incl. 11 ML unit + 8 ML integration + 4 obs + 8 sim + 10 storage + 8 desktop + 1 M3), clippy 0 warnings. Next: VERIFY (ML_VERIFICATION.md AC 1-7) then ACCEPT."
+    result: "SECURITY_PASS"
+    files_changed:
+      - "crates/iris-core/src/sim/ml/features.rs"
+      - "crates/iris-core/src/sim/ml/experiment.rs"
+      - "crates/iris-core/src/sim/ml/predictor.rs"
+      - "crates/iris-core/src/sim/mod.rs"
+      - "engineering/memory/records/RED-0002.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created:
+      - "RED-0002"
+  - timestamp: "2026-08-14T18:10:00Z"
+    iteration: 52
+    node: "ML-001"
+    stage: "TEST"
+    action: "ML-001 IMPLEMENT+TEST COMPLETE — built crates/iris-core/src/sim/ml/ (mod.rs FeatureVec/ShadowDecision/ShadowRecorder observer, features.rs [f32;8] in-band-only, predictor.rs LinearPredictor logistic fit/score + GtPredictor median-period, experiment.rs run_shadow_experiment temporal train/test + evaluate_gt); scenario.rs + periodic_ferry (with deterministic early maintenance gap — GT median tolerates, static mean does not) + random_walk (aperiodic no-help bound); sim/mod.rs with_shadow builder + shadow_features at L2 decision point (score computed, NEVER affects forwarding) + shadow_samples on SimOutcome + contacts_public. Fixed: dedup-collapsed GT outlier test (4000+5000 collides with existing 9000 -> rebuilt periodic+train-gap data), ac6 test bug (asserted P0>=P4 with no P0 injected -> replaced with priority-rank feature check), rand 0.8 gen_range, doc-comment merge. tests/ml_experiments.rs AC 1-6 all PASS: feature determinism, shadow byte-identical to L2-only, LP agreement >=0.70 community_ferry seed 7, GT beats static periodic_ferry + parity-or-worse random_walk, 10 seeds x 2 regimes reproducible, workspace+clippy green. Workspace 243 green (204 core + 10 ML unit + 8 ML integration), clippy 0 warnings. Next: SECURITY_REVIEW."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/sim/ml/mod.rs"
+      - "crates/iris-core/src/sim/ml/features.rs"
+      - "crates/iris-core/src/sim/ml/predictor.rs"
+      - "crates/iris-core/src/sim/ml/experiment.rs"
+      - "crates/iris-core/src/sim/mod.rs"
+      - "crates/iris-core/src/sim/scenario.rs"
+      - "crates/iris-core/tests/ml_experiments.rs"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T17:30:00Z"
+    iteration: 51
+    node: "ML-001"
+    stage: "RESEARCH"
+    action: "ML-001 RESEARCH COMPLETE — RES-0014 recorded (engineering/memory/records/research/RES-0014.md) + registered in ALLOCATION.md (next RES-0015). SOTA for L3 delivery-probability & gateway prediction (researcher subagent dispatch cancelled; research executed in-loop via websearch, evidence-verified). Key findings: (1) RFC 6693 PRoPHET v2 remains the Level-1 standard — already implemented in ROUTE-002, ML-001 replaces only the DP computation, not the forwarding layer; (2) ML framing: relay selection as classification (Dudukovich & Papachristou 2018, IEEE 8541460; XGBoost best, PRoPHET > Epidemic); ML-MaxProp (arXiv:2508.20077) XGBoost over {contact freq, buffer occ, hop, age, TTL} beats MaxProp/SaW in ONE, notes DRL/transformers impractical on constrained nodes; (3) RL-PRoPHET (Wireless Net 31:2909-2923 2025) learns the DP itself; DTRB MARL (EAAI 2013); (4) gateway/egress: OppNet taxonomy scheduled-DTN vs random-OppNet, PodNet/mule offloading, ferry prediction gains only under periodic contacts; (5) learned routing: GNN UAV-DTN (ICCBN'24), decentralized graph-attention MARL lunar DTN (arXiv:2510.20436), DRL uncertain contact plans (INSA-Lyon 2025), RouteNet-TGNN (JCM 2026, central-controller only); (6) constraints: training offline/central, inference cheap on-node; SIM-001 can A/B L3 vs L2 same-seed; never in critical path (P3 #5/#6); (7) experimental design + leakage guard + periodic-vs-random spectrum. Graph: ML-001 RESEARCHING->DESIGNING; PROJECT_STATE researching 0/designing 3. Next: ML-001 DESIGN."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0014.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+    records_created:
+      - "RES-0014"
+  - timestamp: "2026-08-14T17:10:00Z"
+    iteration: 50
+    node: "ML-001"
+    stage: "RESEARCH"
+    action: "ML-001 NODE_TRANSITION. ARCH-001 ACCEPTED/COMPLETE (same iter). Graph-manager selection: ML-001 (P3 EXPERIMENT, deps ROUTE-002 + SIM-001 COMPLETE) is the ONLY remaining software-only, un-gated, dependency-eligible node. All P0/P1/P2 software candidates gated: CRYPTO-001/IDENT-001 (BLK-0001 human gate), LEGAL-001 (human gate), TEST-001/EMERG-001/SEC-001 (deps not COMPLETE); hardware BLE-002/WIFIAWARE-001/WIFIDIRECT-001/LORA-001/SAT-001/ANDROID-001/IOS-001/PILOT-001 (BLK-0005). Runner-up BLE-002 (P0) lost to BLK-0005. Graph-manager integrity findings recorded: missing edges (DISCO-001 PROTO/MSG, SIM-001 TRANSPORT, SEC-001 ROUTE, LEGAL-001 VISION), inconsistent edge direction convention, EMERG-001 omits CRYPTO-001 dep, CRYPTO/IDENT DESIGNING but effectively gate-blocked, BLK-0002 expansion candidates (BENCHMARK node for REQ-004, edge-daemon, control-plane). Next: ML-001 RESEARCH."
+    result: "NODE_TRANSITION"
+    files_changed:
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+    action: "WP-10 DESKTOP-001 VERIFY+ACCEPT — wrote docs/implementation/DESKTOP_VERIFICATION.md v1.0 AC 1-6 PASS (verifier PASS_WITH_GAPS, deps OK per graph-manager). IMPLEMENT+TEST landed this pass: crates/iris-desktop (build.rs + windows-app-manifest.xml, tauri.conf.json in.iris.mesh.desktop, capabilities core:default, src/{lib,main,engine_handle,commands,types}.rs, ui/ vanilla, tests/engine_roundtrip.rs 3 + tests/commands_mock.rs 3 + types unit 2). Fixed: workspace break (stub crate no src targets), comctl32 v6 manifest crash in test bins (Tauri #13419: tauri-build embeds manifest only in bins; new_without_app_manifest + cargo:rustc-link-arg /MANIFEST:EMBED + /MANIFESTINPUT:), async-runtime nesting (block_on inside tokio::test -> sync #[test] + block_on), State type-key mismatch (constructors return Arc<DesktopEngine>; commands State<'_, Arc<..>>). Workspace 225 green, clippy 0 warnings, iris-desktop.exe builds+runs. Graph: DESKTOP-001 COMPLETE with evidence + known_limitations (loopback-only/BLK-0005, no history read cmd + MemoryStorage restart loss, per-process random node id until IDENT-001, PgStorage not wired, tray/daemon later, Channel IPC + relay registration untested, CSP null, GAP-DESKTOP-001/2/3); PROJECT_STATE completed 14/discovered 12. Next: graph-manager next-node selection (ML-001 P3 software-only eligible; BLK-0001/BLK-0005 gates)."
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "crates/iris-desktop/**"
+      - "crates/iris-desktop/windows-app-manifest.xml"
+      - "docs/implementation/DESKTOP_VERIFICATION.md"
+      - "docs/implementation/DESKTOP_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "DESKTOP_VERIFICATION.md"
+  - timestamp: "2026-08-14T12:40:00Z"
+    iteration: 46
+    node: "OBS-001"
+    stage: "VERIFY"
+    action: "WP-9 OBS-001 observability VERIFY+ACCEPT — wrote docs/implementation/OBS_VERIFICATION.md v1.0: AC1 structured seam events (msg.* 9 + route.decision/pruned + scf.* 3 + gw.* 4 via tracing, typed key-value, timestamped); AC2 severity log stream + ShortId 8-byte/16-hex message-id correlation; AC3 MetricsRegistry injected Arc<RegistryInner> lock-free AtomicU64 (9 iris.*_total names, snapshot/reset, default-deny unknown-name ignore) — no global state; AC4 P1-P3 privacy (payload-free events, truncation by construction, P3 type-enforced default-deny); AC5 bounded overhead (ShortId [u8;8] no-alloc, algorithm_label &'static str, emit with locks dropped, no network exporter); AC6 tests cover 1-5 (5 unit + 4 integration obs_telemetry.rs incl. shared-registry + privacy-truncation). Red-team PASS carried (OBS-RT-01..10, MEDIUMs fixed in-pass; OBS-RT-07 taxonomy gaps + OBS-RT-10 pre-existing unwrap -> known_limitations). Graph: OBS-001 COMPLETE with evidence + known_limitations; PROJECT_STATE completed 13/discovered 13. Workspace 217 green, clippy 0 warnings. Next node: DESKTOP-001 (P1, deps TRANSPORT-001 + MSG-001 COMPLETE)."
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "docs/implementation/OBS_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T12:10:00Z"
+    iteration: 45
+    node: "OBS-001"
+    stage: "SECURITY_REVIEW"
+    action: "WP-9 OBS-001 SECURITY_REVIEW - red-team subagent verdict PASS (no CRITICAL/HIGH). CLEAN: P1 payload/sig/key never in telemetry, P2 all ids truncated, P3-metric default-deny enforced (increment takes &'static str, unknown ignored), P6 no global state, gateway withdraw no double-borrow. Fixed in-pass: OBS-RT-02 routing decide format! per-call -> algorithm_label() &'static str; OBS-RT-03 scf short() alloc before disabled macro -> macro-field lazy eval; OBS-RT-04/05 emits under queue/dedup locks -> scoped guard + drop then emit; OBS-RT-06 MessageEngine no shared-registry -> new_with_telemetry() + build(), new integration test; OBS-RT-01 + 03 -> ShortId newtype (fixed [u8;8], Display 16-hex only, no alloc) replacing String short(); OBS-RT-09 P5 -> reset() documented as 7-day rotation hook. OBS-RT-07 taxonomy gaps + OBS-RT-10 pre-existing unwrap -> known_limitations / out-of-scope. Workspace 217 green (194 core + 4 obs + 8 sim + 10 store + 1 M3), clippy 0 warnings. Next: VERIFY."
+    result: "SECURITY_PASS"
+    files_changed:
+      - "crates/iris-core/src/observability/mod.rs"
+      - "crates/iris-core/src/protocol/message_id.rs"
+      - "crates/iris-core/src/message.rs"
+      - "crates/iris-core/src/routing/mod.rs"
+      - "crates/iris-core/src/routing/scf.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/tests/obs_telemetry.rs"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T11:40:00Z"
+    iteration: 44
+    node: "OBS-001"
+    stage: "TEST"
+    action: "WP-9 OBS-001 observability TEST - 3 integration tests in tests/obs_telemetry.rs: shared_registry_accumulates_across_routing_and_scf (MetricsRegistry Arc-backed clone, with_telemetry into RoutingEngine+ScfEngine, one snapshot sees ROUTING_DECISIONS_TOTAL=1 + SCF_EVICTIONS_TOTAL=1), engine_telemetry_counts_expired_and_delivered (MessageEngine.telemetry() counts 1 expired + 1 delivered inbound), privacy_short_truncates_identifiers (MessageId/PeerId short() = 8-byte/16-hex prefix, never full). Refactored MetricsRegistry to Arc<RegistryInner> (Clone shares counters); added telemetry() accessors to MessageEngine + ScfEngine; added routing/scf with_telemetry builder. Fixed fixtures (now_unix vs expired hardcode, IncomingMessage fields, async NeighborTable::upsert + manager.register). Workspace 215 green (193 core + 3 obs + 8 sim + 10 store + 1 M3), clippy 0 warnings. Next: SECURITY_REVIEW."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/tests/obs_telemetry.rs"
+      - "crates/iris-core/src/observability/mod.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/src/routing/scf.rs"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T11:10:00Z"
+    iteration: 43
+    node: "OBS-001"
+    stage: "IMPLEMENT"
+    action: "WP-9 OBS-001 observability IMPLEMENT. Created src/observability/mod.rs (MetricsRegistry injected HashMap<&str,AtomicU64> lock-free, snapshot/reset, default-deny P3; 24-event taxonomy constants; 9 iris.*_total metric names; DeliveryWindow/PriorityTally). iris-core Cargo.toml tracing.workspace=true. MessageId::short() + PeerId::short() 8-byte privacy helpers (P2). Seam instrumentation: message_engine 9 events + 6 counters (created/queued/sent/delivered/acknowledged/expired/delivery_failed/dropped_duplicate/fragments_reassembled), routing decide() wrapped as decide_inner emits route.decision + decisions counter + prune -> route.pruned, scf buffer/reap/evict -> scf.buffered/reaped_expired/evicted + evictions counter, gateway health transitions + adopted/withdrawn/selected INFO. Fixed: MessagePriority unused-import (test-only), AtomicU64 not Clone (removed derive), envelope moved-before-borrow in scf + gateway (pre-captured values). Clippy 0 warnings, workspace 212 green (193 core + 8 sim + 10 store + 1 M3; 4 new observability tests). Next: TEST."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/observability/mod.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "crates/iris-core/Cargo.toml"
+      - "crates/iris-core/src/protocol/message_id.rs"
+      - "crates/iris-core/src/message.rs"
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/src/routing/mod.rs"
+      - "crates/iris-core/src/routing/scf.rs"
+      - "crates/iris-core/src/gateway/mod.rs"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T10:35:00Z"
+    iteration: 42
+    node: "OBS-001"
+    stage: "DESIGN"
+    action: "WP-9 OBS-001 observability DESIGN — wrote docs/implementation/OBS_DESIGN.md v1.0. Five decisions grounded in RES-0012: (1) tracing macros direct (iris-core tracing.workspace=true, no wrapper), (2) OTel mental model not SDK (no OTLP/Prometheus exporter in v1), (3) RFC 9171 status-report reason-code vocabulary, (4) privacy design-time (default-deny attr allow-list, truncated 8-byte ids, opt-in, 7-day retention), (5) MetricsRegistry injected AtomicU64 lock-free, read at flush, monotonic deltas. 24-event taxonomy + 20 metrics mapped to SimMetrics vocab. Module layout: src/observability/mod.rs + seam instrumentation (message_engine 9 events, routing 5, scf 5, gw 4, topo 1). AC 1-6 defined. Next: IMPLEMENT."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "docs/implementation/OBS_DESIGN.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T10:00:00Z"
+    iteration: 40
+    node: "ROUTE-002"
+    stage: "ACCEPT"
+    action: "WP-8 ROUTE-002 L2 opportunistic routing ACCEPT. VERIFY: wrote docs/implementation/ROUTE2_VERIFICATION.md v1.0 — AC 1-6 all PASS (DP numerics Eq.1/2/3, routing-engine integration between KnownPath and Flood with L0 pass-through, SIM delivery parity + lower overhead, bounded spray, cold-start L0 fallback, coverage). SIM evidence seed 7 community_ferry: L0 17/18 (94.4%) overhead 3.18 hops 1.29 vs L2 17/18 (94.4%) overhead 1.41 hops 1.00 — parity at -55.6% overhead, loop-free, same-seed deterministic. Graph: ROUTE-002 COMPLETE with evidence + known_limitations; PROJECT_STATE completed 12/discovered 14; PROJECT_STATE.yaml summary updated. NEXT_ACTION updated to OBS-001 (P1, deps MSG-001 + ROUTE-001 COMPLETE, software-only, no gate; DESKTOP-001 alternative but BLE test wall BLK-0005)."
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "docs/implementation/ROUTE2_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-14T09:30:00Z"
+    iteration: 39
+    node: "ROUTE-002"
+    stage: "TEST"
+    action: "WP-8 ROUTE-002 L2 opportunistic routing TEST — role-swap bug found + fixed. IMPLEMENT landed this pass: prophet.rs (RFC 6693 v2 Eq.1-3, directional DP, top-N snapshot, MAX_DP_ENTRIES cap), opportunistic.rs (OpportunisticRouter, SprayBudget binary SaW L=8 + per-priority caps, GTMX+ max_dp_seen), routing/mod.rs (ForwardingAlgorithm::Opportunistic, decide_opportunistic between KnownPath and Flood, L0 pass-through AC5), sim/mod.rs (exchange_on_contact + opportunistic_forward), scenario.rs community_ferry. BUG: split_at_mut for src>dst returned (dst,src) → GTMX+ decided from receiver's perspective → ferry withheld all handoffs → L2 16/18 vs L0 17/18 (AC3 violation). Fixed Greater branch to return (hi[0], lo[dst])=(src,dst); A/B verified buggy panics AC3 test, fixed restores parity. Also fixed 2 lib-test type errors, injected_at dead-code. Clippy 0 warnings, workspace 208 green. Next: VERIFY."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/routing/prophet.rs"
+      - "crates/iris-core/src/routing/opportunistic.rs"
+      - "crates/iris-core/src/routing/mod.rs"
+      - "crates/iris-core/src/sim/mod.rs"
+      - "crates/iris-core/src/sim/scenario.rs"
+      - "crates/iris-core/tests/sim_scenarios.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "docs/implementation/ROUTE2_DESIGN.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-13T18:30:00Z"
+    iteration: 38
+    node: "GW-001"
+    stage: "ACCEPT"
+    action: "WP-7 GW-001 gateway discovery & selection COMPLETE. Implemented crates/iris-core/src/gateway/mod.rs (GatewayType, GatewayCapability with per-type priority limits, GatewayCandidate, GatewaySelection None/All/WithBackup/Single + mesh-only fallback, compute_gateway_quality weighted 0.30/0.20/0.15/0.20/0.10/0.05, GatewayHealthState machine Healthy/Probation/Failed/HardFailed with 3-timeout threshold + HARD_FAIL_STRIKES=2 escalation, GatewayManager: self_internet_gateway from INTERNET-001, adopt_from_neighbor bounded at MAX_GATEWAY_CANDIDATES=64 with oldest-confirmed eviction + sanitize_capability NaN/inf clamp, diff-based reconcile over DISCO-001 NeighborTable adopting only gateway-tagged linked-up peers, withdraw -> TopologyEvent::GatewayChanged, total_cmp + PeerId deterministic select_at). Red-team subagent review (REDTEAM-01..05) hardened: failure-counter never reset on advertisement (rogue blackhole cannot loop), repeated probation failure escalates to HardFailed (record_success only recovery), float sanitization at adoption boundary, deterministic tie-break, bounded registry with diff withdrawal. Rebased record_ack_timeout to bool + adopt_from_neighbor to Option<TopologyEvent> (removed clippy result_unit_err). 19 gateway tests (13 core + 6 red-team regression: rogue-readmission escalation, strike-preservation, NaN sanitization, deterministic tie-break, registry cap, diff-withdraw). Workspace 190 green (174 core + 5 sim integration + 10 storage + 1 M3), clippy 0 warnings. GW_VERIFICATION.md v1.1 AC 1-8 PASS, GATEWAY_DESIGN.md v1.0. Graph: GW-001 COMPLETE with evidence + known_limitations, PROJECT_STATE completed 11/discovered 15. Next: select next eligible node (ROUTE-002 P1 unblocked)."
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/gateway/mod.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "docs/implementation/GATEWAY_DESIGN.md"
+      - "docs/implementation/GW_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+  - timestamp: "2026-08-13T17:35:00Z"
+    iteration: 37
+    node: "SIM-001"
+    stage: "VERIFY"
+    action: "WP-6 SIM-001 discrete-event simulation + SCF-001 ACCEPT. Added crates/iris-core/src/sim/: mod.rs (Simulation - seeded ChaCha8Rng + shared atomic virtual clock, contact/injection timeline, forward_to reuses real ROUTE-001 max_hops_for_priority hop budgets + ForwardedCache anti-loop and real ScfEngine buffer_message/mark_forwarded over MemoryStorage; SimOutcome with loop_free() no-loop evidence and result_anchor determinism; ScfEngine gained with_virtual_clock), scenario.rs (dense_mesh, partition_carry, vehicle_relay builders + inject_standard/inject_sos/loss/sim_peer), metrics.rs (SimMetrics: per-priority delivery ratio, p50/p95 latency, peak storage, evictions, max hops). Integration tests tests/sim_scenarios.rs (5 scenarios: dense mesh ratio >0.9, partition carry SOS 1.0 + multihop, vehicle relay, same-seed same-anchor determinism, loss monotonicity). Evidence: 13 SIM tests (mod 3, scenario 3, metrics 2, integration 5), workspace 171 green (155 core + 5 sim + 10 storage + 1 M3), clippy 0 warnings. SCF_VERIFICATION.md AC 1-9 PASS, SIM_VERIFICATION.md AC 1-6 PASS. Graph: SCF-001 + SIM-001 COMPLETE with evidence. Next: next eligible node (GW-001/EMERG-001/SEC-001/ROUTE-002) via graph validation."
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/sim/mod.rs"
+      - "crates/iris-core/src/sim/scenario.rs"
+      - "crates/iris-core/src/sim/metrics.rs"
+      - "crates/iris-core/src/routing/scf.rs"
+      - "crates/iris-core/src/message_engine/storage.rs"
+      - "crates/iris-core/tests/sim_scenarios.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "docs/implementation/SCF_VERIFICATION.md"
+      - "docs/implementation/SIM_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+  - timestamp: "2026-08-13T17:05:00Z"
+    iteration: 36
+    node: "SCF-001"
+    stage: "TEST"
+    action: "WP-5 SCF-001 store-carry-forward. Added crates/iris-core/src/routing/: scf.rs (ScfEngine buffer over MessageStorage seam keyed by StoreKey priority_rank ASC/expiry ASC; DeliveryStatus lifecycle Stored/Carrying/AwaitingContact/ForwardingInProgress/AckPending/Delivered/Dropped; buffer_message with TTL rejection, messages_forwardable_to, mark_forwarded, reap_expired, evict_until worst-candidate scan highest-priority-then-soonest-expiry, P0 exempt INV-ROUTE-003, ordered_buffered, delivery_status, status_for, priority_rank_of), scf_contact.rs (on_new_contact ranks forwardable candidates priority-then-delivery_probability, honors per-contact bandwidth_limit with deferred count; ForwardCandidate clamped probability), scf_eviction.rs (DeviceClass Phone/Relay/Edge/Desktop capacities 200MB/2GB/10GB/50GB, ScfEvictionPolicy P0-is_evictable guard, evict_to_capacity ceiling trim). Added M6 integration test (MSGG->STORE->ROUTE->SCF: send P4 to Bob, RoutingEngine decides Store on empty NeighborTable, ScfEngine buffers, DISCO contact event ranks candidate, mark_forwarded ack=true -> Delivered; P0 survives evict_to_fit pressure). Evidence: 13 SCF tests (scf 5, scf_contact 3, scf_eviction 4, M6 1), workspace 158 green (147 core + 10 storage + 1 M3), clippy 0 warnings. SCF-001 VERIFY pending SIM-001 sim scenario (partition->carry->contact->deliver + delivery ratio)."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/routing/scf.rs"
+      - "crates/iris-core/src/routing/scf_contact.rs"
+      - "crates/iris-core/src/routing/scf_eviction.rs"
+      - "crates/iris-core/src/routing/mod.rs"
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+  - timestamp: "2026-08-13T16:45:00Z"
+    iteration: 35
+    node: "ROUTE-001"
+    stage: "TEST"
+    action: "WP-4 ROUTE-001 L0 deterministic routing. Added crates/iris-core/src/routing/: mod.rs (RoutingEngine decide() running Direct->KnownPath->Flood->Store chain, ForwardingDecision, record_contact hook feeding routing table + contact log, prune 10-min expiry), direct.rs (Algorithm 1 O(1) neighbor lookup), known_path.rs (Algorithm 2 best_route + next-hop reachability check + invalidation + prune_expired), flood.rs (Algorithm 3 priority hop budgets P0 unlimited/P1-3=5/P4-7=3, no-backtrack, already-flooded + peer-dedup exclusion, 2 property tests: flood terminates within budget on 50 random meshes, no-backtrack/no-reflood over 50 cases), store.rs (Algorithm 4 TTL re-check RFC 9171 arrival-time semantics shared with MSG-001, store-or-drop), dedup_cache.rs (Bloom 0.1% + exact set + ring buffer post-forward window per BASELINE Anti-Loop). Added M4 integration test: DiscoveryManager populates neighbor table -> RoutingEngine direct delivery. Evidence: 24/24 routing tests, workspace 134 green, clippy 0 warnings. ROUTE_VERIFICATION.md AC 1-7 PASS. Graph ROUTE-001 COMPLETE. Next: WP-5 SCF-001 + WP-6 SIM-001 (parallel)."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/routing/mod.rs"
+      - "crates/iris-core/src/routing/direct.rs"
+      - "crates/iris-core/src/routing/known_path.rs"
+      - "crates/iris-core/src/routing/flood.rs"
+      - "crates/iris-core/src/routing/store.rs"
+      - "crates/iris-core/src/routing/dedup_cache.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "docs/implementation/ROUTE_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+    records_created: []
+  - timestamp: "2026-08-13T16:10:00Z"
+    iteration: 34
+    node: "DISCO-001"
+    stage: "TEST"
+    action: "WP-3 DISCO-001 discovery engine. Added crates/iris-core/src/discovery/: mod.rs (DiscoveryManager - registered-transport scan loop driving Transport::discover_peers, dedup by peer_id, TopologyEvent broadcast, DiscoveryMode Active/Passive, background start/stop, reactive report_peer, first-contact handshake dispatch send + ingest), neighbor_table.rs (NeighborTable up/down lifecycle, per-transport LinkRecord, TTL sweep, transports_to for ROUTE-001, capabilities + peer_bloom capture), handshake.rs (CAPABILITY payload type 11 canonical-CBOR bundle with 256 B budget enforcement, BloomExchange for DEDUPLICATION.md dedup-filter handshake, build/parse_handshake). Added PeerId Ord derive + BloomFilter m()/k()/bits()/from_parts for exchange. REBASE: removed BLE/WIFIAWARE graph deps (BLOCKED/DISCOVERED) -> PROTO-001/MSG-001 per ORCH-0001 L97. Evidence: 16/16 discovery tests (handshake 4, neighbor_table 6, manager 6), workspace 121 green, clippy 0 warnings. DISCO_VERIFICATION.md AC 1-5 all PASS. Graph DISCO-001 COMPLETE."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/discovery/mod.rs"
+      - "crates/iris-core/src/discovery/neighbor_table.rs"
+      - "crates/iris-core/src/discovery/handshake.rs"
+      - "crates/iris-core/src/lib.rs"
+      - "crates/iris-core/src/message.rs"
+      - "crates/iris-core/src/message_engine/dedup.rs"
+      - "docs/implementation/DISCO_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+    records_created: []
+  - timestamp: "2026-08-13T15:40:00Z"
+    iteration: 33
+    node: "STORE-001"
+    stage: "TEST"
+    action: "WP-2 STORE-001: operator pivoted storage to PostgreSQL (DEC-0002) — rewrote previous SQLite draft. Shipped crates/iris-storage (PgStorage::MessageStorage over tokio-postgres; idempotent DDL; INSERT ON CONFLICT DO NOTHING dedup; one-row-at-a-time priority eviction, P0 exempt; 60s GC; quota StorageFull for non-P0 over-quota, P0 always accepted; byte-exact envelope via canonical CBOR). Fixed: type-alias arity, From<tokio_postgres::Error> orphan (map_err), usage_bytes SUM int8 cast, batch-evict overshoot → LIMIT 1. Evidence: 10/10 store + 1/1 M3 engine-integration tests, workspace 105 tests green, clippy 0 warnings. VERIFY: STORE_VERIFICATION.md v1.1, STORAGE.md rewritten (Postgres, encryption deferred to BLK-0001), DEC-0002 record. Graph: STORE-001 evidence refreshed, DISCO-001 dep conflict resolved."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-storage/**"
+      - "Cargo.toml"
+      - "engineering/memory/records/DEC-0002.md"
+      - "docs/implementation/STORAGE.md"
+      - "docs/implementation/STORE_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+    records_created:
+      - "DEC-0002"
+  - timestamp: "2026-08-13T15:10:00Z"
+    iteration: 32
+    node: "MSG-001"
+    stage: "TEST"
+    action: "WP-1 message engine test pass. Engine implemented (mod/lifecycle/queue/expiry/ack/dedup/fragment/storage/crypto). Added + fixed integration tests: engine round-trip across SimulatedTransport, relay path via intermediate engine, transit-failure requeue+retry, dedup drops duplicate, outbound TTL rejection at insert, build_ack. Fixed: dedup probe overflow (wrapping arith), skew expiry semantics (arrival-time lifetime per RFC 9171 4.4.2), async engine builder (no runtime-in-runtime), clippy warnings (unnecessary casts, missing is_empty, Result<_,()>→bool). cargo test 94/94, clippy 0 warnings."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/message_engine/mod.rs"
+      - "crates/iris-core/src/message_engine/expiry.rs"
+      - "crates/iris-core/src/message_engine/dedup.rs"
+      - "crates/iris-core/src/message_engine/ack.rs"
+      - "crates/iris-core/src/message_engine/fragment.rs"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+  - timestamp: "2026-08-13T12:00:00Z"
+    iteration: 29
+    node: "PROTO-001"
+    stage: "TEST"
+    action: "WP-A codec byte-exact CDE implementation complete. Fixed 3 test failures: (1) doc hex 0x66B5C000 for 1723334400 was arithmetically wrong -> 0x66B7FF00; (2) signing-scope test needed max_hops+payload_ref populated fixture; (3) P0 payload budget corrected to 84B (not 95). RoutingHints derive(Default), lifetime elision. cargo test 61/61, clippy --all-targets clean."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/protocol/codec.rs"
+      - "crates/iris-core/src/protocol/envelope.rs"
+    records_created: []
+  - timestamp: "2026-08-13T12:00:00Z"
+    iteration: 28
+    node: "PROTO-001"
+    stage: "IMPLEMENT"
+    action: "WP-A envelope codec + wire types implemented (PROTO-001 arm): protocol/mod.rs, envelope.rs (Envelope fields 1-18, P0_MAX_ENVELOPE_BYTES=255), codec.rs (encode/decode/encode_for_signing/verify_signing_bytes), content_type.rs (1-16 + assign_priority), message_id.rs (16-byte UUIDv7 per RES-0008 C1)."
+    result: "STAGE_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/protocol/mod.rs"
+      - "crates/iris-core/src/protocol/envelope.rs"
+      - "crates/iris-core/src/protocol/codec.rs"
+      - "crates/iris-core/src/protocol/content_type.rs"
+      - "crates/iris-core/src/protocol/message_id.rs"
+    records_created: []
+  - timestamp: "2026-08-13T00:00:00Z"
+    iteration: 26
+    node: "TRANSPORT-001"
+    stage: "TEST"
+    action: "TESTER: strengthened transport test coverage — 14 new tests across internet/manager/ble/simulated/message (frame guards, pool reuse, backoff cap, multipath exclusion, Connected>Degraded ranking, BLE shutdown/scan round-trip, seeded determinism, priority round-trip). cargo test 41/41, clippy --all-targets clean."
+    result: "TEST_PASS"
+    files_changed:
+      - "crates/iris-core/src/transport/internet.rs"
+      - "crates/iris-core/src/transport/manager.rs"
+      - "crates/iris-core/src/transport/ble.rs"
+      - "crates/iris-core/src/transport/simulated.rs"
+      - "crates/iris-core/src/message.rs"
+    records_created:
+      - "TEST-0001"
+  - timestamp: "2026-08-13T00:00:00Z"
+    iteration: 25
+    node: "META"
+    stage: "PLAN"
+    action: "ORCH-0001 written — CORE_PROTOCOL_IMPLEMENTATION sequencing plan (WP-A codec → MSG-001/STORE-001/DISCO-001 parallel → ROUTE-001 → SCF-001+SIM-001 parallel); next actions: WP-A envelope codec, WP-1 message_engine, WP-2 iris-storage"
+    result: "RECORD_CREATED"
+    files_changed:
+      - "engineering/memory/records/ORCH-0001.md"
+    records_created:
+      - "ORCH-0001"
+  - timestamp: "2026-08-12T00:20:00Z"
+    iteration: 24
+    node: "INTERNET-001"
+    stage: "ACCEPT"
+    action: "Workspace scaffolded; INTERNET-001 transport implemented and tested (27/27)"
+    result: "NODE_COMPLETE"
+    files_changed:
+      - "Cargo.toml"
+      - "crates/iris-core/**"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "docs/implementation/INTERNET_TRANSPORT_VERIFICATION.md"
+    records_created:
+      - "INTERNET_TRANSPORT_VERIFICATION.md"
+
+  - timestamp: "2026-08-12T00:00:00Z"
+    iteration: 23
+    node: "META"
+    stage: "HUMAN_GATE"
+    action: "Phase transition AUTHORIZED by operator (Option A)"
+    result: "HUMAN_GATE_RESOLVED"
+    files_changed:
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+
+  - timestamp: "2026-08-12T00:00:00Z"
+    iteration: 22
+    node: "BLE-001"
+    stage: "DESIGN_COMPLETE"
+    action: "Design validated (RES-0007); marked BLOCKED on phase boundary + hardware"
+    result: "BLOCKED"
+    files_changed:
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/BLOCKERS.md"
+    records_created:
+      - "BLK-0005"
+
+  - timestamp: "2026-08-11T22:30:00Z"
+    iteration: 21
+    node: "BLE-001"
+    stage: "RESEARCH"
+    action: "Validate BLE design against abstraction + platform constraints"
+    result: "STAGE_COMPLETE"
+    files_changed: []
+    records_created:
+      - "RES-0007"
+
+  - timestamp: "2026-08-11T22:10:00Z"
+    iteration: 20
+    node: "BLE-001"
+    stage: "TRANSITION"
+    action: "Select BLE-001 (first physical transport, P0)"
+    result: "NODE_TRANSITION"
+    files_changed:
+      - "engineering/memory/execution-state.yaml"
+    records_created: []
+
+# === AUTHORITATIVE SOURCE ===
+# This file is authoritative for execution control decisions.
+# CURRENT_STATE.md is a human-readable projection for operators.
+# If they conflict, this file wins for execution purposes.
+

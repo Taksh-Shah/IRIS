@@ -41,9 +41,10 @@ pub struct EmergencyBroadcast {
     pub message_type: EmergencyMessageType,
     pub language: String,            // BCP 47 (e.g., "hi", "gu", "en")
     
-    // Content
-    pub headline: String,            // Short (≤100 chars) — displayed in notification
-    pub instructions: String,        // Full instructions (≤2000 chars)
+// Content
+    pub headline: String,            // Compact ≤96 chars — displayed in notification
+    pub instructions: Option<String>, // Compact ≤96 chars; full detail publishes as a
+                                      // signed-follow-up UPDATE (EMERG_DESIGN.md C1)
     pub additional_info: Option<String>, // Links, contacts (when Internet available)
     
     // Timing

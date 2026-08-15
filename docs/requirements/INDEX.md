@@ -1,8 +1,8 @@
 # Requirements Index
 
 **Status:** Living document  
-**Last updated:** 2026-08-11  
-**Owner:** Product / Engineering  
+**Last updated:** 2026-08-14 (reconciled against implemented system — see REQUIREMENTS_BASELINE.md)  
+**Owner:** Product / Engineering
 
 ---
 
@@ -15,7 +15,14 @@ This index catalogs all formal requirements documents for the IRIS system. Each 
 - `Review` — under stakeholder review
 - `Approved` — reviewed and accepted; implementation can begin
 - `Implemented` — fully implemented and tested
+- `Deferred` — gated by recorded blocker (BLK-0001 / BLK-0005 / human gate)
 - `Deprecated` — no longer applicable (feature removed or superseded)
+
+> **2026-08-14 reconciliation:** Fourteen implementation nodes (PROTO-001 ..
+> DESKTOP-001) are COMPLETE. Requirement statuses below reflect the
+> `REQUIREMENTS_BASELINE.md` traceability matrix (56 requirements: 8
+> Implemented, 17 Partial, 31 Deferred, 1 gap). Per-domain requirement files
+> remain INDEX-inline (no separate per-domain files on disk).
 
 ---
 
@@ -23,12 +30,14 @@ This index catalogs all formal requirements documents for the IRIS system. Each 
 
 | ID | Title | Status | Owner | Document | Last Updated |
 |----|-------|--------|-------|---------|-------------|
-| REQ-001 | Core Protocol Requirements | Approved | Architecture | `docs/requirements/REQ-001-CORE-PROTOCOL.md` | 2026-03-01 |
-| REQ-002 | Transport Requirements | Approved | Transport team | `docs/requirements/REQ-002-TRANSPORT.md` | 2026-03-15 |
-| REQ-003 | Security Requirements | Approved | Security | `docs/requirements/REQ-003-SECURITY.md` | 2026-04-01 |
-| REQ-004 | Performance Requirements | Approved | Engineering | `docs/requirements/REQ-004-PERFORMANCE.md` | 2026-04-15 |
-| REQ-005 | Platform Requirements | Review | Android/iOS teams | `docs/requirements/REQ-005-PLATFORM.md` | 2026-05-01 |
-| REQ-006 | Legal Compliance Requirements | Draft | Legal / Engineering | `docs/requirements/REQ-006-LEGAL-COMPLIANCE.md` | 2026-06-01 |
+| REQ-001 | Core Protocol Requirements | Implemented (core) / Partial | Architecture | `docs/requirements/INDEX.md` §REQ-001 | 2026-08-14 |
+| REQ-002 | Transport Requirements | Partial / Deferred (hardware) | Transport team | `docs/requirements/INDEX.md` §REQ-002 | 2026-08-14 |
+| REQ-003 | Security Requirements | Deferred (BLK-0001) / Partial | Security | `docs/requirements/INDEX.md` §REQ-003 | 2026-08-14 |
+| REQ-004 | Performance Requirements | Partial / Deferred; benchmark gap | Engineering | `docs/requirements/INDEX.md` §REQ-004 | 2026-08-14 |
+| REQ-005 | Platform Requirements | Deferred (mobile) / Partial (desktop) | Android/iOS teams | `docs/requirements/INDEX.md` §REQ-005 | 2026-08-14 |
+| REQ-006 | Legal Compliance Requirements | Deferred (LEGAL-001) / Partial | Legal / Engineering | `docs/requirements/INDEX.md` §REQ-006 | 2026-08-14 |
+
+> Traceability matrix: `docs/requirements/REQUIREMENTS_BASELINE.md`
 
 ---
 
@@ -177,3 +186,4 @@ Covers: DPDPA 2023 consent flow, data minimization implementation, retention lim
 | Date | Change |
 |------|--------|
 | 2026-08-11 | Initial index |
+| 2026-08-14 | Reconciled against implemented system (REQ-001 DESIGN): statuses updated per REQUIREMENTS_BASELINE.md traceability matrix; per-domain file references replaced with INDEX-inline + baseline link |

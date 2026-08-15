@@ -49,7 +49,9 @@ Specialized authority certificates also exist for:
 
 ## Certificate Format
 
-Authority certificates use an X.509-inspired format, serialized as CBOR for compact encoding.
+Authority certificates use a **SPKI-style key-anchored certificate** (RFC 2693 /
+RFC 9804 mindset), serialized as CBOR for compact encoding; no X.509/PKIX
+parsing and no `rustls-webpki` family (C6).
 
 ```rust
 pub struct AuthorityCertificate {

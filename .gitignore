@@ -1,0 +1,11 @@
+# Rust build artifacts
+/target
+crates/**/target
+
+# Editor
+.vscode/
+.idea/
+
+# Local secrets / env (never commit credentials)
+.env
+*.env.local

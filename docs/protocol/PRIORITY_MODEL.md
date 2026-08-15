@@ -16,14 +16,14 @@ All message types, all transports, all node types. Priority is assigned at origi
 
 | Level | Name        | Code | Use Cases                                     | Max TTL | Max Size  | LoRa Eligible |
 |-------|-------------|------|-----------------------------------------------|---------|-----------|---------------|
-| P0    | SOS         | 0    | Life-threatening emergency, SOS beacon        | 72h     | 256 bytes | Yes           |
-| P1    | Medical     | 1    | Medical situation, triage request             | 48h     | 512 bytes | Yes           |
-| P2    | Location    | 2    | GPS location share, evacuation route          | 24h     | 128 bytes | Yes           |
+| P0    | SOS         | 0    | Life-threatening emergency, SOS beacon        | 72h     | 255 bytes | Yes (native)  |
+| P1    | Medical     | 1    | Medical situation, triage request             | 24h     | 512 bytes | Yes (fragmented) |
+| P2    | Location    | 2    | GPS location share, evacuation route          | 12h     | 256 bytes | Yes (native)  |
 | P3    | Emergency Text | 3 | Emergency text message, status update        | 12h     | 1 KB      | No (fragmented) |
-| P4    | Normal      | 4    | Standard text message                         | 6h      | 4 KB      | No            |
-| P5    | Image       | 5    | Photo, document scan                          | 3h      | 512 KB    | No            |
-| P6    | Voice       | 6    | Voice message recording                       | 1h      | 2 MB      | No            |
-| P7    | Video       | 7    | Video clip                                    | 30min   | 10 MB     | No            |
+| P4    | Normal      | 4    | Standard text message                         | 8h      | 64 KB     | No            |
+| P5    | Image       | 5    | Photo, document scan                          | 4h      | 2 MB      | No            |
+| P6    | Voice       | 6    | Voice message recording                       | 2h      | 5 MB      | No            |
+| P7    | Video       | 7    | Video clip                                    | 1h      | 50 MB     | No            |
 
 ---
 

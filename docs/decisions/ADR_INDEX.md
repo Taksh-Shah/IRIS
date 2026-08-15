@@ -29,6 +29,7 @@ ADRs are immutable records — once approved, an ADR is not edited to change its
 | [ADR-0004](ADR-0004.md) | Use SQLite for message store | Approved | 2026-02-01 | SQLite (via rusqlite) chosen for DTN bundle store; WAL mode, ubiquitous on mobile, SQL for complex queries |
 | [ADR-0005](ADR-0005.md) | PRoPHET as primary opportunistic routing algorithm | Approved | 2026-02-10 | PRoPHET with Spray-and-Wait fallback chosen over Epidemic and MaxProp; better delivery/overhead tradeoff |
 | [ADR-0006](ADR-0006.md) | ChaCha20-Poly1305 for symmetric encryption | Approved | 2026-02-15 | ChaCha20-Poly1305 (RFC 8439) chosen over AES-GCM for software performance on ARM without AES-NI |
+| [ADR-0011](ADR-0011.md) | Flat envelope protocol structure for IRIS v1 | Approved | 2026-08-11 | Single CBOR map chosen over BPv7 block-based and hybrid; optimal P0 LoRa fit; append-only extension mechanism |
 
 ---
 

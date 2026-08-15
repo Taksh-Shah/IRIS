@@ -29,8 +29,8 @@ Every message envelope includes the protocol version:
 
 ```
 {
-  0: msg_id,
   1: protocol_version,   ; [major, minor] as CBOR array
+  2: message_id,         ; 16 bytes UUIDv7
   ...
 }
 ```

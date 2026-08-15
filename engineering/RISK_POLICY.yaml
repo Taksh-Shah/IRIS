@@ -2,6 +2,12 @@
 # IRIS Risk Policy
 # Defines risk levels, thresholds, and required responses
 # Version: 0.1.0
+# NOTE (DEC-0009, 2026-08-14): Operator granted standing authorization to
+# implement all nodes (gates + human gates unblocked). Risk-level responses
+# below still REQUIRE rigorous research/redteam/verification and CRITICAL
+# findings still HALT the node for operator notification — the standing
+# authorization lifts the pre-implementation approval gate, not the quality
+# process nor the CRITICAL-risk halt-and-report response.
 
 risk_levels:
   CRITICAL:
@@ -49,6 +55,7 @@ risk_categories:
     CRITICAL_threshold: "E2EE content potentially readable by third party"
     owner_agent: Privacy_Agent
     requires_human_approval: true
+    note: "Escalation-visibility trigger (DEC-0009 standing authorization); HIGH/CRITICAL findings reported to operator, implementation not pre-blocked"
 
   safety_risk:
     description: "Risks to emergency system integrity"
@@ -56,6 +63,7 @@ risk_categories:
     CRITICAL_threshold: "SOS delivery not guaranteed when physical path exists"
     owner_agent: Security_Agent
     requires_human_approval: true
+    note: "Escalation-visibility trigger (DEC-0009 standing authorization); HIGH/CRITICAL findings reported to operator, implementation not pre-blocked"
 
   legal_risk:
     description: "Risks to legal/regulatory compliance"
@@ -63,6 +71,7 @@ risk_categories:
     CRITICAL_threshold: "Product as designed clearly violates applicable law"
     owner_agent: Compliance_Research_Agent
     requires_human_approval: true
+    note: "Escalation-visibility trigger (DEC-0009 standing authorization); legal findings recorded for operator, implementation not pre-blocked"
 
   architectural_risk:
     description: "Risks to architectural integrity and scalability"

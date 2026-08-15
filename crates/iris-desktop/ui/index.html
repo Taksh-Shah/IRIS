@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IRIS Mesh — Resilient Messenger</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header id="statusbar">
+    <span id="node">node: …</span>
+    <span id="online">offline</span>
+    <span id="transports">no transports</span>
+  </header>
+
+  <main>
+    <section id="inbox" aria-live="polite">
+      <div id="empty">No messages yet. Send one to a peer node id below.</div>
+    </section>
+
+    <section id="composer">
+      <input id="recipient" type="text" spellcheck="false" placeholder="recipient node id (64 hex)" />
+      <select id="priority" title="priority">
+        <option value="0">P0 SOS</option>
+        <option value="1">P1 Emergency</option>
+        <option value="2">P2 Location</option>
+        <option value="3">P3 Urgent</option>
+        <option value="4" selected>P4 Normal</option>
+        <option value="5">P5 Image</option>
+        <option value="6">P6 Voice</option>
+        <option value="7">P7 Bulk</option>
+      </select>
+      <input id="text" type="text" placeholder="message…" maxlength="60000" />
+      <button id="send" type="button">Send</button>
+    </section>
+  </main>
+
+  <footer id="telemetry">telemetry: …</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

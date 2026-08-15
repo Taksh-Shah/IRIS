@@ -24,7 +24,7 @@ IRIS SOS activity: full-screen red UI, no lock screen dismissal required
     ↓
 Haptic: long-short-long pattern (500ms–250ms–500ms) × 3
 Visual: red screen fades in (200ms transition), large "SOS SENDING" text
-Audio: 1-second alert tone (880 Hz, 0.8 amplitude)
+Audio: 1-second alert tone (WEA two-tone 853 Hz + 960 Hz, FCC WEA signal; C3)
     ↓
 Bundle assembly: GPS fix attempt (5-second timeout) → send with best available location
     ↓
@@ -77,7 +77,9 @@ After SOS bundle is queued for transmission, the confirmation screen shows:
 ### 1.3 Resend and Update
 
 After initial SOS:
-- Auto-resend every 15 minutes if user does not interact (ensures fresh location in bundle)
+- Auto-resend: initial P0 send, then duplicate every 30 s while unacked (2×),
+  then unlimited until TTL expiry — aligned to ack.rs P0 policy (C5). No
+  15-minute cadence.
 - User can manually resend with updated location or note
 - "SOS already sent" banner shown on main screen with last send time
 
@@ -108,7 +110,7 @@ Async:  Relay count updates as confirmations arrive ("Relayed by 1 device", "2 d
 ### 2.3 Audio Alert
 
 - Alert sound: distinct tone sequence (not a standard ringtone)
-- Pattern: 880 Hz × 0.5s, 660 Hz × 0.25s, 880 Hz × 0.5s (descending-ascending: internationally recognizable alert pattern)
+- Pattern: standard WEA two-tone 853 Hz + 960 Hz (FCC WEA alert tone; C3). Deliberate alternative patterns must be documented and are not recommended.
 - Volume: tied to system volume; if device is silent/vibrate, use haptic only (do not override silent mode)
 - Duration: plays once at SOS send; not looping
 - Accessibility: described to screen reader users ("Alert: SOS has been sent")

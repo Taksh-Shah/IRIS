@@ -1,0 +1,30 @@
+[package]
+name = "iris-desktop"
+description = "IRIS resilient communication fabric — desktop shell (DESKTOP-001, Tauri v2)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "iris_desktop"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+rand.workspace = true
+futures-util.workspace = true
+iris-core = { path = "../iris-core" }
+iris-storage = { path = "../iris-storage" }
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+tokio.workspace = true
+serde_json = "1"
+futures-util.workspace = true
+tempfile = "3"

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    [
+      "./.opencode/plugins/compaction-resilience.js",
+      {
+        "project": "iris",
+        "criticalFiles": [
+          "engineering/memory/CURRENT_STATE.md",
+          "engineering/memory/CURRENT_MISSION.md",
+          "engineering/memory/ACTIVE_NODE.md",
+          "engineering/memory/NEXT_ACTION.md",
+          "engineering/memory/BLOCKERS.md",
+          "engineering/memory/CHECKPOINT.md"
+        ]
+      }
+    ]
+  ],
+  "model": "opencode/longcat-2.0-free",
+  "agents": {
+    "default": "supervisor",
+    "supervisor": {
+      "description": "IRIS execution supervisor — continuous autonomous graph execution with state machine",
+      "promptFile": "./.opencode/agents/supervisor.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob", "task", "todowrite", "webfetch", "websearch"],
+      "maxSteps": 100
+    },
+    "orchestrator": {
+      "description": "IRIS engineering orchestrator — manages graph, selects nodes, coordinates work",
+      "promptFile": "./.opencode/agents/orchestrator.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob", "task", "todowrite"],
+      "maxSteps": 50
+    },
+    "architect": {
+      "description": "Principal architect — designs system architecture and resolves cross-cutting concerns",
+      "promptFile": "./.opencode/agents/architect.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob", "task"]
+    },
+    "researcher": {
+      "description": "Research agent — conducts deep technical research with evidence hierarchy",
+      "promptFile": "./.opencode/agents/researcher.md",
+      "tools": ["bash", "read", "grep", "glob", "webfetch", "websearch"]
+    },
+    "protocol": {
+      "description": "Protocol engineer — designs wire protocol, CBOR schemas, test vectors",
+      "promptFile": "./.opencode/agents/protocol.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob"]
+    },
+    "security": {
+      "description": "Security agent — threat modeling, adversarial testing, security review",
+      "promptFile": "./.opencode/agents/security.md",
+      "tools": ["bash", "read", "grep", "glob"]
+    },
+    "tester": {
+      "description": "Testing agent — writes tests, manages test infrastructure, ensures coverage",
+      "promptFile": "./.opencode/agents/tester.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob"]
+    },
+    "redteam": {
+      "description": "Red team architect — stress-tests architecture to find failure modes",
+      "promptFile": "./.opencode/agents/redteam.md",
+      "tools": ["bash", "read", "grep", "glob"]
+    },
+    "verifier": {
+      "description": "Independent verification — checks completed work is actually correct",
+      "promptFile": "./.opencode/agents/verifier.md",
+      "tools": ["bash", "read", "grep", "glob"]
+    },
+    "graph-manager": {
+      "description": "Graph manager — maintains PROJECT_GRAPH and ensures integrity",
+      "promptFile": "./.opencode/agents/graph-manager.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob"]
+    },
+    "state-manager": {
+      "description": "State manager — maintains durable engineering state",
+      "promptFile": "./.opencode/agents/state-manager.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob"]
+    },
+    "documentation": {
+      "description": "Documentation agent — maintains docs, prevents drift",
+      "promptFile": "./.opencode/agents/documentation.md",
+      "tools": ["bash", "read", "write", "edit", "grep", "glob"]
+    }
+  },
+  "commands": {
+    "autonomous": {
+      "description": "Start/continue autonomous engineering supervisor — runs continuously until gate or completion",
+      "promptFile": "./.opencode/commands/autonomous.md"
+    },
+    "resume": {
+      "description": "Reconstruct state and AUTO-CONTINUE execution if work is eligible",
+      "promptFile": "./.opencode/commands/resume.md"
+    },
+    "checkpoint": {
+      "description": "Save current progress to durable state",
+      "promptFile": "./.opencode/commands/checkpoint.md"
+    },
+    "status": {
+      "description": "Show project health and state",
+      "promptFile": "./.opencode/commands/status.md"
+    },
+    "graph": {
+      "description": "Validate and report graph health",
+      "promptFile": "./.opencode/commands/graph.md"
+    },
+    "next": {
+      "description": "Show next action with context",
+      "promptFile": "./.opencode/commands/next.md"
+    },
+    "verify": {
+      "description": "Run verification on active node",
+      "promptFile": "./.opencode/commands/verify.md"
+    },
+    "health": {
+      "description": "Full engineering health check",
+      "promptFile": "./.opencode/commands/health.md"
+    },
+    "research": {
+      "description": "Conduct research on active node",
+      "promptFile": "./.opencode/commands/research.md"
+    },
+    "decision": {
+      "description": "Record an architectural decision",
+      "promptFile": "./.opencode/commands/decision.md"
+    },
+    "accept": {
+      "description": "Mark active node as complete",
+      "promptFile": "./.opencode/commands/accept.md"
+    },
+    "discover": {
+      "description": "Record a new discovery",
+      "promptFile": "./.opencode/commands/discover.md"
+    }
+  },
+  "skills": {
+    "context-builder": {
+      "description": "Determine minimum relevant context for active node",
+      "promptFile": "./.opencode/skills/context-builder.md"
+    },
+    "graph-validator": {
+      "description": "Validate PROJECT_GRAPH.yaml integrity",
+      "promptFile": "./.opencode/skills/graph-validator.md"
+    },
+    "checkpoint-recovery": {
+      "description": "Recover from context loss using durable artifacts",
+      "promptFile": "./.opencode/skills/checkpoint-recovery.md"
+    }
+  }
+}

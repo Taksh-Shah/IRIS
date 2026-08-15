@@ -3,64 +3,77 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-11 (Architecture Validation Pass)
+# Last updated: 2026-08-15 (hand-reconciled: SEC-001 DESIGN COMPLETE iter 74 — SEC_001_DESIGN.md v1.0 + AC-1..16; research_complete 1 / designing 1)
 
-# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-11):
-# COMPLETE: VISION-001 (1)
-# RESEARCH_COMPLETE: REQ-001, ARCH-001, LEGAL-001 (3)
-# DESIGNING: PROTO-001, CRYPTO-001, IDENT-001, TRANSPORT-001 (4)
-# DISCOVERED: STORE-001, BLE-001, BLE-002, WIFIAWARE-001, WIFIDIRECT-001, INTERNET-001,
-#             LORA-001, SAT-001, DISCO-001, MSG-001, ROUTE-001, ROUTE-002, SCF-001, GW-001,
-#             EMERG-001, SEC-001, SIM-001, ANDROID-001, IOS-001, DESKTOP-001, OBS-001,
-#             TEST-001, ML-001, PILOT-001 (24)
+# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-15):
+# COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
+#           MSG-001, INTERNET-001, DISCO-001, ROUTE-001, SCF-001, SIM-001,
+#           GW-001, ROUTE-002, OBS-001, DESKTOP-001, ML-001, CRYPTO-001, IDENT-001,
+#           EMERG-001 (20)
+# RESEARCH_COMPLETE: LEGAL-001 (1)
+# DESIGNING: SEC-001 (1)  [DESIGN COMPLETE iter 74 → IMPLEMENT next]
+# VERIFYING: (0)
+# IMPLEMENTING: (0)  [SEC-001 DESIGNING → IMPLEMENT next iter]
+# BLOCKED: (0)  [all gates unblocked DEC-0009]
+# DISCOVERED: BLE-001, BLE-002, WIFIAWARE-001, WIFIDIRECT-001, LORA-001, SAT-001,
+#             TEST-001,
+#             ANDROID-001, IOS-001, PILOT-001 (10)  [SEC-001 → designing iter 74]
 
 summary:
   total_nodes: 32
-  completed: 1               # VISION-001
-  research_complete: 3       # REQ-001, ARCH-001, LEGAL-001
-  designing: 4               # PROTO-001, CRYPTO-001, IDENT-001, TRANSPORT-001
-  discovered: 24             # All others — not yet started
-  blocked: 0
+  completed: 20              # + EMERG-001 (2026-08-15, ACCEPT iter 71, AC-1..14 PASS + verifier APPROVE)
+  researching: 0
+  research_complete: 1       # LEGAL-001 (SEC-001 → designing iter 74)
+  designing: 1               # SEC-001 (DESIGN COMPLETE iter 74 — SEC_001_DESIGN.md v1.0 + AC-1..16)
+  implementing: 0            # EMERG-001 ACCEPTED (iter 71) — SEC-001 → IMPLEMENT next
+  verifying: 0               # IDENT-001 ACCEPTED (iter 64)
+  discovered: 10             # incl. BLE-001 (BLK-0005 lifted DEC-0009); SEC-001 → designing (iter 74)
+  blocked: 0                 # All gates + human gates unblocked DEC-0009
   failed: 0
   deprecated: 0
 
 health:
   architecture_health: PROVISIONAL    # Architecture documents exist, need validation
-  security_health: NOT_STARTED        # Security hardening not begun
-  testing_health: NOT_STARTED         # Test infrastructure not built
-  performance_health: NOT_STARTED     # No benchmarks run yet
+  security_health: IMPLEMENTED       # CRYPTO-001 + IDENT-001 + EMERG-001 COMPLETE (identity ACCEPTED iter 64; emergency authority model + redteam RT-001..011 dispositioned + verifier APPROVE iter 71; 431 green)
+  testing_health: GOOD               # 431 tests green; TEST-001 infrastructure node still DISCOVERED
+  performance_health: NOT_STARTED    # No benchmarks run yet
   documentation_health: GOOD          # Documentation system created
   dependency_health: GOOD             # No circular dependencies
-  technical_debt: NONE_TRACKED        # No debt nodes yet
+  technical_debt: LOW                 # WP-2..WP-3 limitations recorded (DEC-0002, DISCO known_limitations)
   research_completeness: PARTIAL      # Research docs exist but experiments not run
   platform_completeness: NOT_STARTED  # Platform code not written
   legal_compliance_risk: MEDIUM       # Initial research done, open questions remain
 
 high_risk_nodes:
   - node_id: "CRYPTO-001"
-    risk: "Cryptographic architecture - requires expert review before implementation"
-    status: DESIGNING
-    requires_human_approval: true
+    risk: "Cryptographic architecture - expert review required (quality process retained post-DEC-0009)"
+    status: COMPLETE
+    requires_human_approval: false
+    note: "Gate RESOLVED 2026-08-14 (DEC-0009). RESEARCH(55)->DESIGN(56)->IMPLEMENT(57)->SECURITY_REVIEW(58)->VERIFY/ACCEPT(59): CRYPTO_VERIFICATION.md v1.0 AC-1..9 PASS; redteam RED-0001..0012 dispositioned (RED-0004 fragmentation/E2EE + 2 latent routing bugs FIXED, 290 green); RED-0001 CRITICAL operator-ratified DEC-0010 to IDENT-001"
 
   - node_id: "EMERG-001"
     risk: "Emergency authority model - safety-critical, requires review"
-    status: DISCOVERED
-    requires_human_approval: true
+    status: COMPLETE
+    requires_human_approval: false
+    note: "COMPLETE (iter 71): Gate RESOLVED 2026-08-14 (DEC-0009); deps MSG-001 + IDENT-001 + ROUTE-001 COMPLETE. RESEARCH(66, RES-0017) -> DESIGN(67, EMERG_DESIGN.md v1.0, AC-1..14, C1-C6 resolved, DEC-EMERG-0001..0008) -> IMPLEMENT COMPLETE (68, emergency/ module 11 files, engine set_emergency_provider seam + Noop default AC-11; 421 green) -> TEST COMPLETE (69, EMERG-001_TEST.md AC-1..12 + AC-14; engine receive-path gate wired, size budget reconciled, 424 green) -> SECURITY_REVIEW COMPLETE (70, EMERG-001_SECURITY_REVIEW.md PASS-with-recorded-deviations; RT-001 CRITICAL + RT-002 HIGH + 2 MEDIUM + 2 LOW FIXED +7 regression tests; 6 recorded; 431 green) -> VERIFY (71, EMERG_VERIFICATION.md v1.0 AC-1..14 PASS; independent verifier APPROVE_WITH_NOTES -> reconciled APPROVE) -> ACCEPTED. known_limitations: BLE 512B verified-chain ceiling, send-side app-owned, typed EmergencyEvent deferred, RT-003/004/005/008/010 recorded, 17 pre-existing desktop-transitive audit warnings."
 
   - node_id: "IDENT-001"
     risk: "Identity architecture - privacy and security implications"
-    status: DESIGNING
-    requires_human_approval: true
+    status: COMPLETE
+    requires_human_approval: false
+    note: "COMPLETE (iter 64): Gate RESOLVED 2026-08-14 (DEC-0009); dep CRYPTO-001 COMPLETE (iter 59). RESEARCH (60) + DESIGN (61) + IMPLEMENT (62) + TEST (62b) + SECURITY_REVIEW (63, PASS-with-recorded-deviations, IDENT-RT-001..016; 9 in-scope code findings FIXED +10 regression tests, identity 58→68; DEC-0010 control VERIFIED) + VERIFY (63c, IDENT_VERIFICATION.md v1.0 AC-1..11 all PASS; verifier independently reproduced 68 identity / 361 workspace / clippy 0 / DEC-0010 by code read — APPROVE). ACCEPTED. known_limitations: RT-002/003/004/005 gated (PROTO-001 v2, DISCO-001, DEC-0010 deviation, Windows keystore), RT-014 accepted single-instance, platform key stores deferred, 16B sender_id collapse deferred, TOFU/re-key informal proof gaps, at-rest seal OPT-IN."
 
   - node_id: "SAT-001"
     risk: "Satellite regulatory compliance must be verified"
     status: DISCOVERED
-    requires_human_approval: true
+    requires_human_approval: false
+    note: "Gate RESOLVED 2026-08-14 (DEC-0009); implementation proceeds, regulatory compliance recorded as research"
 
   - node_id: "LEGAL-001"
     risk: "Legal compliance open questions - requires lawyer review for key questions"
     status: RESEARCH_COMPLETE
-    requires_human_approval: true
+    requires_human_approval: false
+    note: "Gate RESOLVED 2026-08-14 (DEC-0009); open legal questions remain research matter for operator"
 
 open_legal_questions:
   - "Does IRIS qualify as Significant Social Media Intermediary under IT Rules 2021 at scale?"
@@ -94,30 +107,45 @@ research_gaps:
     experiment: "EXP-002 extended"
 
 critical_path:
-  - VISION-001 → REQ-001 → ARCH-001 → PROTO-001 → MSG-001 → ROUTE-001 → SCF-001 → EMERG-001 → ANDROID-001 → PILOT-001
-  description: "Longest dependency chain to first pilot deployment"
-  estimated_nodes_on_path: 9
+  path: "VISION-001 → REQ-001 → ARCH-001 → PROTO-001 → MSG-001 → DISCO-001 → ROUTE-001 → SCF-001 → IDENT-001 → EMERG-001 → ANDROID-001 → PILOT-001"
+  description: "Longest dependency chain to first pilot deployment. IDENT-001 COMPLETE (iter 64); EMERG-001 COMPLETE (iter 71) — critical-path junction passed; SEC-001 DESIGN COMPLETE (iter 74) — IMPLEMENT active next, then ANDROID-001/PILOT-001 platform nodes"
+  estimated_nodes_on_path: 12
 
 next_recommended_nodes:
-  - id: "PROTO-001"
-    reason: "Unblocks MSG-001, CRYPTO-001, STORE-001 — highest fan-out"
+  - id: "SEC-001"
+    reason: "Security Hardening (P0, SECURITY) — active node; deps CRYPTO-001 + MSG-001 + ROUTE-001 all COMPLETE; gate RESOLVED DEC-0009. DESIGN COMPLETE (iter 74, SEC_001_DESIGN.md v1.0, AC-1..16). Then transports (BLE-001/WIFIAWARE-001/WIFIDIRECT-001/LORA-001/SAT-001)."
     priority: P0
+    note: "ACTIVE — DESIGN COMPLETE (iter 74); next IMPLEMENT (security/ module)"
 
-  - id: "CRYPTO-001"
-    reason: "Security-critical, HIGH risk, needs early review"
-    priority: P0
-    note: "Requires human approval before implementation"
+  - id: "ML-001"
+    reason: "ML routing experiments (P3, EXPERIMENT) — COMPLETE 2026-08-14 (iter 53, shadow-only L3 ML, AC-1..7 PASS, redteam RED-0002 PASS, verifier PASS_WITH_GAPS->corrections applied, ML_VERIFICATION.md v1.0, workspace 244 green)"
+    priority: P3
+    note: "DONE"
 
-  - id: "BLE-001"
-    reason: "First physical transport, enables first demo"
-    priority: P0
-
-  - id: "SIM-001"
-    reason: "Enables routing algorithm validation before physical test"
+  - id: "OBS-001"
+    reason: "Observability system (P1, OPERATIONS) — COMPLETE 2026-08-14 (WP-9, observability module + seam instrumentation, red-team PASS, OBS_VERIFICATION.md AC 1-6 PASS)"
     priority: P1
+    note: "DONE"
 
-current_phase: DOCUMENTATION_AND_PLANNING
-next_phase: CORE_PROTOCOL_IMPLEMENTATION
+  - id: "ROUTE-002"
+    reason: "Opportunistic routing (P1) — COMPLETE 2026-08-14 (WP-8, prophet 7 + opportunistic 7 + 3 sim integration tests, role-swap bug fixed, ROUTE2_VERIFICATION.md AC 1-6 PASS)"
+    priority: P1
+    note: "DONE"
+
+  - id: "GW-001"
+    reason: "Gateway discovery & selection (P0) — COMPLETE 2026-08-13 (WP-7, 19 tests, red-team hardened)"
+    priority: P0
+    note: "DONE"
+
+  - id: "EMERG-001"
+    reason: "Emergency system — COMPLETE 2026-08-15 (iter 71, ACCEPTED, AC-1..14 PASS, verifier APPROVE; old 'active next' entry superseded by SEC-001 next_recommended)"
+    priority: P0
+    note: "DONE"
+
+current_phase: CORE_PROTOCOL_IMPLEMENTATION
+next_phase: MVP_DEMO
+phase_boundary_status: "TRANSITIONED"
+phase_boundary_note: "Phase transition authorized 2026-08-12 (Option A). Rust workspace scaffolded (crates/iris-core). INTERNET-001 implemented + 27/27 tests passing. BLE-001 scaffold in place, device tests pending hardware (BLK-0005). CRYPTO-001/IDENT-001 design still awaiting human review (BLK-0001). 2026-08-13: MSG-001 (94/94), STORE-001 PostgreSQL (11/11, DEC-0002 operator pivot), DISCO-001 (16/16), ROUTE-001 (24/24), SCF-001 (13+M6), SIM-001 (13), GW-001 (19) all COMPLETE+VERIFIED — workspace 190 tests green, clippy clean. GW-001 red-team hardened. 2026-08-14: ROUTE-002 COMPLETE (208 green). OBS-001 COMPLETE (217 green). ML-001 ML routing experiments COMPLETE (iter 53, AC-1..7 PASS, ML_VERIFICATION.md v1.0) — workspace 244 green. **2026-08-14 DEC-0009: OPERATOR AUTHORIZATION — ALL GATES + HUMAN GATES UNBLOCKED.** 2026-08-15: CRYPTO-001 IMPLEMENT(57, 284 green) -> SECURITY_REVIEW(58 FAIL-with-condition, RED-0004 fragmentation/E2EE + 2 latent routing bugs FIXED; RED-0002 mitigated; RED-0006/0009/0012 fixed — 290 green) -> VERIFY/ACCEPT(59, CRYPTO_VERIFICATION.md v1.0 AC-1..9 PASS; RED-0001 CRITICAL operator-ratified DEC-0010 to IDENT-001). CRYPTO-001 **COMPLETE**. IDENT-001 RESEARCH(60)->DESIGN(61)->IMPLEMENT(62)->TEST(62b)->SECURITY_REVIEW(63, PASS-with-recorded-deviations)->VERIFY(63c, verifier APPROVE)->ACCEPT(64). IDENT-001 **COMPLETE** — 19 COMPLETE nodes, workspace 361 green, clippy 0. Quality process (research/redteam/verify) retained for security nodes. 2026-08-15 (iter 71): EMERG-001 VERIFY + ACCEPT COMPLETE — EMERG_VERIFICATION.md v1.0 AC-1..14 PASS, independent verifier APPROVE_WITH_NOTES->reconciled APPROVE, workspace 431 green / clippy 0 / cargo audit 0 vulns. **20 COMPLETE nodes.**"
 
 milestones:
   - name: "MVP Demo"
