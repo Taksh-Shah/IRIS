@@ -9,12 +9,12 @@
 //! TTL_EXPIRED → DROPPED).
 
 use std::collections::BTreeMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::message::PeerId;
-use crate::message::{MessagePriority, LinkQuality};
+use crate::message::{LinkQuality, MessagePriority};
 use crate::observability::event;
 use crate::observability::metric;
 use crate::observability::MetricsRegistry;
@@ -168,7 +168,10 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     }
 
     pub(crate) fn usage(&self) -> u64 {
-        self.buffer.values().map(|m| Self::approx_bytes(&m.envelope)).sum()
+        self.buffer
+            .values()
+            .map(|m| Self::approx_bytes(&m.envelope))
+            .sum()
     }
 
     pub fn now_unix(&self) -> u64 {
@@ -201,11 +204,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         envelope: Envelope,
         received_from: Option<PeerId>,
     ) -> Result<DeliveryStatus, ScfError> {
-        if is_expired(
-            self.now_unix(),
-            envelope.timestamp,
-            envelope.ttl_seconds,
-        ) {
+        if is_expired(self.now_unix(), envelope.timestamp, envelope.ttl_seconds) {
             return Err(ScfError::Expired);
         }
         let key = StoreKey::from_envelope(&envelope);
@@ -228,11 +227,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
 
     /// Determine the SCF status for one buffered message given current
     /// connectivity to `contact` (None = no contacts).
-    pub fn status_for(
-        &self,
-        id: &MessageId,
-        contact: Option<&PeerId>,
-    ) -> Option<DeliveryStatus> {
+    pub fn status_for(&self, id: &MessageId, contact: Option<&PeerId>) -> Option<DeliveryStatus> {
         let msg = self
             .buffer
             .iter()
@@ -241,7 +236,9 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         match contact {
             // The recipient is in range: the message is about to be delivered.
             Some(peer) if Self::recipient_is(peer, &msg.envelope) => {
-                Some(DeliveryStatus::Delivered { delivered_to: *peer })
+                Some(DeliveryStatus::Delivered {
+                    delivered_to: *peer,
+                })
             }
             Some(_) => Some(msg.delivery_status.clone()),
             None => Some(msg.delivery_status.clone()),
@@ -313,8 +310,9 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         let mut dropped = Vec::new();
         for k in expired_keys {
             if let Some(mut msg) = self.buffer.remove(&k) {
-                msg.delivery_status =
-                    DeliveryStatus::Dropped { reason: DropReason::TtlExpired };
+                msg.delivery_status = DeliveryStatus::Dropped {
+                    reason: DropReason::TtlExpired,
+                };
                 tracing::debug!(
                     event = event::SCF_REAPED_EXPIRED,
                     message_id = %msg.envelope.message_id.short(),
@@ -448,18 +446,20 @@ mod tests {
 
     #[test]
     fn buffer_and_lifecycle_status() {
-        let mut scf = ScfEngine::new(
-            MemoryStorage::new(),
-            ScfConfig::default(),
-        );
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
         let e = env(MessagePriority::P4, b"hello", 3600);
         let id = e.message_id;
-        assert_eq!(scf.buffer_message(e.clone(), None).unwrap(), DeliveryStatus::Stored);
+        assert_eq!(
+            scf.buffer_message(e.clone(), None).unwrap(),
+            DeliveryStatus::Stored
+        );
         assert_eq!(scf.len(), 1);
         scf.mark_forwarded(&id, pid(9), true);
         assert_eq!(
             scf.delivery_status(&id),
-            Some(DeliveryStatus::Delivered { delivered_to: pid(9) })
+            Some(DeliveryStatus::Delivered {
+                delivered_to: pid(9)
+            })
         );
         assert!(scf.delivery_status(&id).unwrap().is_terminal());
     }
@@ -476,8 +476,10 @@ mod tests {
     #[test]
     fn forwardable_to_contact_only() {
         let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
-        scf.buffer_message(env(MessagePriority::P3, b"to-9", 3600), None).unwrap();
-        scf.buffer_message(env(MessagePriority::P0, b"to-9-p0", 3600), None).unwrap();
+        scf.buffer_message(env(MessagePriority::P3, b"to-9", 3600), None)
+            .unwrap();
+        scf.buffer_message(env(MessagePriority::P0, b"to-9-p0", 3600), None)
+            .unwrap();
         // A message addressed to a different peer must not be forwarded to 9.
         let mut other = env(MessagePriority::P4, b"to-other", 3600);
         other.recipient_id = pid(8).0.to_vec();
@@ -491,7 +493,8 @@ mod tests {
     #[test]
     fn reap_expired_drops_only_expired() {
         let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
-        scf.buffer_message(env(MessagePriority::P4, b"fresh", 3600), None).unwrap();
+        scf.buffer_message(env(MessagePriority::P4, b"fresh", 3600), None)
+            .unwrap();
         // Buffer an old message (must not be pre-rejected as expired), then
         // backdate it so the reap sweep considers it expired.
         let old = env(MessagePriority::P5, b"old", 60);
@@ -513,9 +516,21 @@ mod tests {
     #[test]
     fn store_key_ordering_priority_then_expiry() {
         use std::cmp::Ordering;
-        let a = StoreKey { priority_rank: 0, expiry_unix: 100, message_id: MessageId::new_v7() };
-        let b = StoreKey { priority_rank: 1, expiry_unix: 100, message_id: MessageId::new_v7() };
-        let c = StoreKey { priority_rank: 0, expiry_unix: 50, message_id: MessageId::new_v7() };
+        let a = StoreKey {
+            priority_rank: 0,
+            expiry_unix: 100,
+            message_id: MessageId::new_v7(),
+        };
+        let b = StoreKey {
+            priority_rank: 1,
+            expiry_unix: 100,
+            message_id: MessageId::new_v7(),
+        };
+        let c = StoreKey {
+            priority_rank: 0,
+            expiry_unix: 50,
+            message_id: MessageId::new_v7(),
+        };
         assert_eq!(a.cmp(&b), Ordering::Less);
         assert_eq!(c.cmp(&a), Ordering::Less);
     }

@@ -7,12 +7,24 @@
 //! Concrete transports in this crate:
 //! - [`internet::InternetTransport`] — INTERNET-001 (TCP-framing path, testable)
 //! - [`simulated::SimulatedTransport`] — deterministic in-memory channel for tests
-//! - [`ble::BleTransport`] — BLE-001 scaffold (platform adapter injected via FFI)
+//! - [`ble::BleTransport`] — BLE-001 (platform adapter injected via FFI)
+//! - [`ble_att`] — BLE-001 ATT segmentation/reassembly (AC-2/AC-6)
+//! - [`ble_advert`] — BLE-001 discovery beacon build/parse (AC-3/AC-6)
+//! - [`wifiaware::WifiAwareTransport`] — WIAW-001 (Wi-Fi Aware/NAN, adapter injected)
+//! - [`wifiaware_beacon`] — WIAW-001 discovery beacon build/parse
+//! - [`wifi_direct_serv`] — WIFIDIRECT-001 DNS-SD (Bonjour) TXT-record build/parse
+//! - [`wifi_direct::WifiDirectTransport`] — WIFIDIRECT-001 (Wi-Fi Direct P2P, adapter injected)
 
 pub mod ble;
+pub mod ble_advert;
+pub mod ble_att;
 pub mod internet;
 pub mod manager;
 pub mod simulated;
+pub mod wifi_direct;
+pub mod wifi_direct_serv;
+pub mod wifiaware;
+pub mod wifiaware_beacon;
 
 pub use manager::{RegistrationError, TransportManager};
 
@@ -101,7 +113,8 @@ pub struct AtomicState(pub AtomicU8);
 
 impl AtomicState {
     pub fn load(&self) -> TransportState {
-        TransportState::from_u8(self.0.load(Ordering::Acquire)).unwrap_or(TransportState::Unavailable)
+        TransportState::from_u8(self.0.load(Ordering::Acquire))
+            .unwrap_or(TransportState::Unavailable)
     }
 
     pub fn store(&self, state: TransportState) {
@@ -213,6 +226,18 @@ pub const WIFI_AWARE_COST: BatteryCostModel = BatteryCostModel {
     connected_idle_ma: 12.0,
     tx_ma_per_kbps: 0.005,
     rx_ma_per_kbps: 0.003,
+};
+
+/// Wi-Fi Direct current draw (WIFI_DIRECT.md §Battery Impact). High-battery
+/// data plane: continuous `discoverPeers()` drains ~80–150 mA additional,
+/// sustained transfer ~80–150 mA, GO keeps transmitting beacons. Design
+/// estimates only — physical-device battery BENCH is gated (AC-14/BLK-0005).
+pub const WIFI_DIRECT_COST: BatteryCostModel = BatteryCostModel {
+    scan_ma: 80.0,
+    advertise_ma: 50.0,
+    connected_idle_ma: 40.0,
+    tx_ma_per_kbps: 0.01,
+    rx_ma_per_kbps: 0.008,
 };
 
 /// LoRa current draw (TRANSPORT_ABSTRACTION.md).

@@ -144,7 +144,10 @@ mod tests {
     fn peer_id_hex_round_trip() {
         let hex = "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899";
         let peer = parse_peer_id(hex).expect("valid hex");
-        assert_eq!(peer.as_bytes()[..8], [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11]);
+        assert_eq!(
+            peer.as_bytes()[..8],
+            [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11]
+        );
     }
 
     #[test]

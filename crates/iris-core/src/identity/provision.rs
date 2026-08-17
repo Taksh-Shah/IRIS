@@ -209,7 +209,9 @@ impl IdentityManager {
 
     /// Build the runtime identity bundle the crypto seam consumes (CRYPTO-001
     /// `NodeIdentity`), cloning the seed material into the provider.
-    pub fn runtime_node_identity(&self) -> std::sync::Arc<crate::message_engine::crypto::NodeIdentity> {
+    pub fn runtime_node_identity(
+        &self,
+    ) -> std::sync::Arc<crate::message_engine::crypto::NodeIdentity> {
         std::sync::Arc::new(crate::message_engine::crypto::NodeIdentity {
             identity: self.identity.identity_keypair(),
             static_x25519: self.identity.static_x25519_keypair(),
@@ -315,13 +317,19 @@ mod tests {
         let layout = Layout::new::<Zeroizing<[u8; 32]>>();
         let ptr = unsafe { alloc::alloc(layout) } as *mut Zeroizing<[u8; 32]>;
         assert!(!ptr.is_null(), "alloc failed");
-        unsafe { ptr.write(Zeroizing::new([0x5Au8; 32])); }
+        unsafe {
+            ptr.write(Zeroizing::new([0x5Au8; 32]));
+        }
         let view = ptr as *const u8;
         // Run the Drop path (clears the seed) — no dealloc yet.
-        unsafe { std::ptr::drop_in_place(ptr); }
+        unsafe {
+            std::ptr::drop_in_place(ptr);
+        }
         let erased = unsafe { std::slice::from_raw_parts(view, 32) };
         let all_zero = erased.iter().all(|&b| b == 0);
-        unsafe { alloc::dealloc(ptr as *mut u8, layout); }
+        unsafe {
+            alloc::dealloc(ptr as *mut u8, layout);
+        }
         assert!(all_zero, "seed must be zeroed by the Drop path");
     }
 

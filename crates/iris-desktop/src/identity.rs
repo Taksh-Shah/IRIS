@@ -147,7 +147,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let identity = temp_identity(dir.path().to_path_buf());
         let provider = identity.crypto_provider();
-        assert!(provider.authenticates(), "production path must authenticate");
+        assert!(
+            provider.authenticates(),
+            "production path must authenticate"
+        );
 
         let mut env = iris_core::protocol::Envelope {
             version: iris_core::protocol::PROTOCOL_VERSION,
@@ -208,7 +211,8 @@ mod tests {
         let remote = iris_core::message_engine::crypto::NodeIdentity::generate();
         let x = X25519Keypair::generate();
         let ad = KeyAdvertisementV1::build(&remote.identity, x.public_bytes(), 0, 0).unwrap();
-        let outcome = id.adopt_key_advertisement(&ad, iris_core::message_engine::expiry::unix_now());
+        let outcome =
+            id.adopt_key_advertisement(&ad, iris_core::message_engine::expiry::unix_now());
         use iris_core::identity::AdoptionOutcome;
         assert!(matches!(outcome, AdoptionOutcome::BoundUnverified));
 

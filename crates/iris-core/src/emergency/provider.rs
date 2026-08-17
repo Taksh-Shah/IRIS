@@ -35,8 +35,12 @@ pub trait EmergencyProvider: Send + Sync {
     }
 
     /// Classify an incoming SOS payload (field 13) for a sender.
-    fn classify_sos(&self, payload: &[u8], now_unix: u64, original_timestamp: Option<u64>)
-        -> Result<SosOutcome, crate::emergency::SosError>;
+    fn classify_sos(
+        &self,
+        payload: &[u8],
+        now_unix: u64,
+        original_timestamp: Option<u64>,
+    ) -> Result<SosOutcome, crate::emergency::SosError>;
 
     /// Rate-limit decision for a sender's SOS (AC-5).
     fn sos_rate(&self, sender_id: &[u8], now_unix: u64) -> RateLimitDecision;
@@ -80,9 +84,7 @@ impl EmergencyProvider for NoopEmergencyProvider {
         _now_unix: u64,
         _original_timestamp: Option<u64>,
     ) -> Result<SosOutcome, crate::emergency::SosError> {
-        Ok(SosOutcome::AcceptedSos {
-            cancel_deadline: 0,
-        })
+        Ok(SosOutcome::AcceptedSos { cancel_deadline: 0 })
     }
 
     fn sos_rate(&self, _sender_id: &[u8], _now_unix: u64) -> RateLimitDecision {
@@ -131,7 +133,10 @@ impl EmergencyGateway {
 
     /// Snapshot of the audit ring (UI/diagnostics).
     pub fn audit_snapshot(&self) -> Vec<EmergencyAuditRecord> {
-        self.audit.lock().map(|a| a.snapshot().to_vec()).unwrap_or_default()
+        self.audit
+            .lock()
+            .map(|a| a.snapshot().to_vec())
+            .unwrap_or_default()
     }
 }
 
@@ -201,7 +206,11 @@ impl EmergencyProvider for EmergencyGateway {
                 self.audit_entry(AuditEvent::DrillProcessed, envelope, None);
             }
             crate::emergency::VerifyOutcome::Drop(reason) => {
-                self.audit_entry(AuditEvent::BroadcastAuthDropped, envelope, Some(reason.clone()));
+                self.audit_entry(
+                    AuditEvent::BroadcastAuthDropped,
+                    envelope,
+                    Some(reason.clone()),
+                );
             }
         }
         outcome
@@ -218,7 +227,12 @@ impl EmergencyGateway {
     fn audit_entry(&self, event: AuditEvent, envelope: &Envelope, note: Option<String>) {
         let subject = crate::emergency::authority::authority_short_id(&envelope.sender_id);
         let timestamp = crate::message_engine::expiry::unix_now();
-        self.audit(EmergencyAuditRecord { timestamp, event, subject, note });
+        self.audit(EmergencyAuditRecord {
+            timestamp,
+            event,
+            subject,
+            note,
+        });
     }
 }
 
@@ -343,13 +357,22 @@ mod tests {
         // different id is a distinct alert.
         let mut g = BroadcastReplayGuard::new();
         assert!(g.check_and_record([1u8; 16], 1_000), "first sight allowed");
-        assert!(!g.check_and_record([1u8; 16], 1_005), "replay within window suppressed");
+        assert!(
+            !g.check_and_record([1u8; 16], 1_005),
+            "replay within window suppressed"
+        );
         // Republish id differs → distinct.
-        assert!(g.check_and_record([2u8; 16], 1_010), "republish id is distinct");
+        assert!(
+            g.check_and_record([2u8; 16], 1_010),
+            "republish id is distinct"
+        );
         // A different broadcast_id is allowed.
         assert!(g.check_and_record([3u8; 16], 1_011), "fresh id allowed");
         // After retention elapses, a new sight of [1;16] is allowed again.
-        assert!(g.check_and_record([1u8; 16], 1_000 + 400), "allowed after retention");
+        assert!(
+            g.check_and_record([1u8; 16], 1_000 + 400),
+            "allowed after retention"
+        );
     }
 
     #[test]
@@ -394,6 +417,8 @@ mod tests {
         assert!(matches!(out, crate::emergency::VerifyOutcome::Drop(_)));
         let snap = gw.audit_snapshot();
         assert!(!snap.is_empty());
-        assert!(snap.iter().any(|r| r.event == AuditEvent::BroadcastAuthDropped));
+        assert!(snap
+            .iter()
+            .any(|r| r.event == AuditEvent::BroadcastAuthDropped));
     }
 }

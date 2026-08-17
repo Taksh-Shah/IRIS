@@ -43,7 +43,11 @@ pub trait MessageStorage: Send + Sync + 'static {
     async fn load(&self, id: &MessageId) -> Result<Option<Envelope>, StorageError>;
 
     /// Update the lifecycle status of a stored message.
-    async fn update_status(&self, id: &MessageId, status: MessageStatus) -> Result<(), StorageError>;
+    async fn update_status(
+        &self,
+        id: &MessageId,
+        status: MessageStatus,
+    ) -> Result<(), StorageError>;
 
     /// Delete (or tombstone) a message.
     async fn delete(&self, id: &MessageId) -> Result<(), StorageError>;
@@ -86,10 +90,20 @@ impl MessageStorage for MemoryStorage {
     }
 
     async fn load(&self, id: &MessageId) -> Result<Option<Envelope>, StorageError> {
-        Ok(self.inner.lock().unwrap().iter().find(|e| &e.message_id == id).cloned())
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|e| &e.message_id == id)
+            .cloned())
     }
 
-    async fn update_status(&self, _id: &MessageId, _status: MessageStatus) -> Result<(), StorageError> {
+    async fn update_status(
+        &self,
+        _id: &MessageId,
+        _status: MessageStatus,
+    ) -> Result<(), StorageError> {
         Ok(())
     }
 
@@ -107,10 +121,23 @@ impl MessageStorage for MemoryStorage {
     }
 
     async fn usage_bytes(&self) -> Result<u64, StorageError> {
-        Ok(self.inner.lock().unwrap().iter().map(|e| e.payload.len() as u64).sum())
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|e| e.payload.len() as u64)
+            .sum())
     }
 
     async fn get_queue(&self, limit: usize) -> Result<Vec<Envelope>, StorageError> {
-        Ok(self.inner.lock().unwrap().iter().take(limit).cloned().collect())
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .iter()
+            .take(limit)
+            .cloned()
+            .collect())
     }
 }

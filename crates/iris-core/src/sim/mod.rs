@@ -12,8 +12,8 @@
 //! utilization, eviction counts, and no-loop evidence.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -23,9 +23,7 @@ use crate::message_engine::storage::MemoryStorage;
 use crate::protocol::{ContentType, Envelope, MessageId};
 use crate::routing::dedup_cache::ForwardedCache;
 use crate::routing::flood::max_hops_for_priority;
-use crate::routing::opportunistic::{
-    OpportunisticDecision, OpportunisticRouter, SprayBudget,
-};
+use crate::routing::opportunistic::{OpportunisticDecision, OpportunisticRouter, SprayBudget};
 use crate::routing::prophet::ProphetConfig;
 use crate::routing::scf::{ScfConfig, ScfEngine};
 use crate::sim::ml::{FeatureVec, ShadowDecision, ShadowRecorder};
@@ -186,9 +184,8 @@ impl Simulation {
     pub fn with_opportunistic(&mut self, config: ProphetConfig) -> &mut Self {
         for n in &mut self.nodes {
             if n.opp.is_none() {
-                n.opp = Some(
-                    OpportunisticRouter::new(config).with_virtual_clock(self.clock.clone()),
-                );
+                n.opp =
+                    Some(OpportunisticRouter::new(config).with_virtual_clock(self.clock.clone()));
             }
         }
         self.opportunistic_enabled = true;
@@ -282,12 +279,7 @@ impl Simulation {
         let p_b_r = p_b_r.clamp(0.0, 1.0);
         let p_self_r = p_self_r.clamp(0.0, 1.0);
         let p_b_self = p_b_self.clamp(0.0, 1.0);
-        let hops = self
-            .nodes[src]
-            .hops_by_msg
-            .get(&id)
-            .copied()
-            .unwrap_or(0) as f32;
+        let hops = self.nodes[src].hops_by_msg.get(&id).copied().unwrap_or(0) as f32;
         let cap = self.nodes[dst].storage_max_bytes.max(1) as f32;
         let buf_occ = (self.nodes[dst].scf.usage_bytes() as f32 / cap).clamp(0.0, 1.0);
         let now_s = self.clock.load(Ordering::Relaxed);
@@ -355,7 +347,8 @@ impl Simulation {
             };
 
             // Exchange + decide with both nodes borrowed disjointly.
-            let decide_forward = self.opportunistic_forward(src, dst, id, msg, budget, recipient_peer);
+            let decide_forward =
+                self.opportunistic_forward(src, dst, id, msg, budget, recipient_peer);
 
             // Record the shadow decision (score never affects forwarding).
             if let (Some(rec), Some(fx)) = (self.shadow.as_mut(), features) {
@@ -614,7 +607,8 @@ impl Simulation {
                         }
                     }
                     for n in &self.nodes {
-                        max_hops_seen = max_hops_seen.max(*n.hops_by_msg.values().max().unwrap_or(&0));
+                        max_hops_seen =
+                            max_hops_seen.max(*n.hops_by_msg.values().max().unwrap_or(&0));
                     }
                 }
                 _ => {}
@@ -625,11 +619,7 @@ impl Simulation {
             evictions_total += node.evictions;
         }
 
-        let delivered_total = self
-            .nodes
-            .iter()
-            .map(|n| n.delivered.len())
-            .sum::<usize>();
+        let delivered_total = self.nodes.iter().map(|n| n.delivered.len()).sum::<usize>();
         let injected_total = injected.len();
 
         // ROUTE-002 acceptance metrics (ONE methodology parity, RES-0011 §b8):
@@ -799,8 +789,16 @@ mod tests {
     #[test]
     fn scaffold_constructs_and_runs() {
         let mut sim = Simulation::new(3, 7);
-        sim.add_contact(ContactEvent { at_ms: 1000, a: 0, b: 1 });
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 1, b: 2 });
+        sim.add_contact(ContactEvent {
+            at_ms: 1000,
+            a: 0,
+            b: 1,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 1,
+            b: 2,
+        });
         sim.inject(Injection::new(
             500,
             0,
@@ -819,8 +817,16 @@ mod tests {
     #[test]
     fn relay_marks_relay_node_carry_state() {
         let mut sim = Simulation::new(3, 1);
-        sim.add_contact(ContactEvent { at_ms: 1000, a: 0, b: 1 });
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 1, b: 2 });
+        sim.add_contact(ContactEvent {
+            at_ms: 1000,
+            a: 0,
+            b: 1,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 1,
+            b: 2,
+        });
         sim.inject(Injection::new(
             500,
             0,
@@ -833,19 +839,36 @@ mod tests {
         // The relay node (1) no longer holds the delivered copy; the message
         // is terminal at node 2.
         assert!(out.nodes[2].delivered.len() == 1);
-        let st = out.nodes[2].scf.delivery_status(
-            &out.nodes[2].delivered[0].0,
+        let st = out.nodes[2]
+            .scf
+            .delivery_status(&out.nodes[2].delivered[0].0);
+        assert_eq!(
+            st,
+            Some(DeliveryStatus::Delivered {
+                delivered_to: out.nodes[2].peer_id
+            })
         );
-        assert_eq!(st, Some(DeliveryStatus::Delivered { delivered_to: out.nodes[2].peer_id }));
     }
 
     #[test]
     fn same_seed_same_result_anchor() {
         let run = |seed: u64| {
             let mut sim = Simulation::new(4, seed);
-            sim.add_contact(ContactEvent { at_ms: 1000, a: 0, b: 1 });
-            sim.add_contact(ContactEvent { at_ms: 1500, a: 1, b: 2 });
-            sim.add_contact(ContactEvent { at_ms: 2000, a: 2, b: 3 });
+            sim.add_contact(ContactEvent {
+                at_ms: 1000,
+                a: 0,
+                b: 1,
+            });
+            sim.add_contact(ContactEvent {
+                at_ms: 1500,
+                a: 1,
+                b: 2,
+            });
+            sim.add_contact(ContactEvent {
+                at_ms: 2000,
+                a: 2,
+                b: 3,
+            });
             sim.set_loss(SimLoss { rate: 0.3 });
             for i in 0..10 {
                 sim.inject(Injection::new(
@@ -880,12 +903,35 @@ mod tests {
             ));
         }
         // Dense contacts so everything can be delivered.
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 0, b: 1 });
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 2, b: 3 });
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 1, b: 4 });
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 3, b: 0 });
-        sim.add_contact(ContactEvent { at_ms: 2000, a: 4, b: 2 });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 0,
+            b: 1,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 2,
+            b: 3,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 1,
+            b: 4,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 3,
+            b: 0,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 4,
+            b: 2,
+        });
         let out = sim.run();
-        assert_eq!(out.injected_total, 5, "all 5 same-ms injections must be created");
+        assert_eq!(
+            out.injected_total, 5,
+            "all 5 same-ms injections must be created"
+        );
     }
 }

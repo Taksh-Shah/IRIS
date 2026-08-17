@@ -62,7 +62,10 @@ pub async fn recipients_for_flood(
             continue;
         }
         // Any transport with a live link is enough to route a flood copy.
-        if matches!(nb.state, crate::discovery::neighbor_table::NeighborState::LinkedUp) {
+        if matches!(
+            nb.state,
+            crate::discovery::neighbor_table::NeighborState::LinkedUp
+        ) {
             recipients.push(nb.peer_id);
         }
     }
@@ -80,7 +83,7 @@ fn has_live_transport(_transport: &TransportId) -> bool {
 mod tests {
     use super::*;
     use crate::discovery::neighbor_table::NeighborTable;
-    use crate::message::{PeerInfo, LinkQuality};
+    use crate::message::{LinkQuality, PeerInfo};
     use std::time::Duration;
 
     fn pid(id: u8) -> PeerId {
@@ -101,7 +104,12 @@ mod tests {
     async fn table_with(ids: &[u8]) -> NeighborTable {
         let t = NeighborTable::new(Duration::from_secs(60));
         for id in ids {
-            t.upsert(&peer_info(*id), &TransportId::from("sim"), LinkQuality::Good).await;
+            t.upsert(
+                &peer_info(*id),
+                &TransportId::from("sim"),
+                LinkQuality::Good,
+            )
+            .await;
         }
         t
     }
@@ -151,8 +159,16 @@ mod tests {
                 for _ in 0..4 {
                     let other: u8 = rng.gen_range(1..=12);
                     if other != id {
-                        table.upsert(&peer_info(id), &TransportId::from("sim"), LinkQuality::Good).await;
-                        table.upsert(&peer_info(other), &TransportId::from("sim"), LinkQuality::Good).await;
+                        table
+                            .upsert(&peer_info(id), &TransportId::from("sim"), LinkQuality::Good)
+                            .await;
+                        table
+                            .upsert(
+                                &peer_info(other),
+                                &TransportId::from("sim"),
+                                LinkQuality::Good,
+                            )
+                            .await;
                     }
                 }
             }
@@ -186,9 +202,16 @@ mod tests {
                 frontier = next;
             }
             // Hop count only increased downward from cap 3 — we never ran past it.
-            assert!(hop <= max, "flood must respect hop budget (got {hop} > {max})");
+            assert!(
+                hop <= max,
+                "flood must respect hop budget (got {hop} > {max})"
+            );
             // Termination is guaranteed by the visited set; no node revisited.
-            assert_eq!(visited.len(), visited.len(), "visited set is a set by construction");
+            assert_eq!(
+                visited.len(),
+                visited.len(),
+                "visited set is a set by construction"
+            );
             // Every frontier round strictly increases hop count — monotonic.
             let _ = reached;
         }
@@ -203,7 +226,9 @@ mod tests {
         for _case in 0..50 {
             let table = NeighborTable::new(Duration::from_secs(60));
             for id in 1..=8u8 {
-                table.upsert(&peer_info(id), &TransportId::from("sim"), LinkQuality::Good).await;
+                table
+                    .upsert(&peer_info(id), &TransportId::from("sim"), LinkQuality::Good)
+                    .await;
             }
             let sender = pid(rng.gen_range(1..=8));
             let already: Vec<PeerId> = (1..=8u8)

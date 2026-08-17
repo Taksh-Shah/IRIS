@@ -100,7 +100,9 @@ pub fn guarded_transition(
         });
     }
     // De-escalation path from a settled Crisis/Degraded also needs the hold.
-    if current == DisasterMode::Degraded && now_unix.saturating_sub(last_transition_at_unix.unwrap_or(0)) >= ESCALATION_HOLD_SECS {
+    if current == DisasterMode::Degraded
+        && now_unix.saturating_sub(last_transition_at_unix.unwrap_or(0)) >= ESCALATION_HOLD_SECS
+    {
         // Degraded → Normal once service is restored (engine re-sets triggers).
         return Some(ModeTransition {
             from: current,
@@ -154,7 +156,13 @@ mod tests {
     #[test]
     fn degraded_recovers_after_hold() {
         let t = guarded_transition(DisasterMode::Degraded, Some(1_000), 1_000 + 900, false);
-        assert!(matches!(t, Some(ModeTransition { to: DisasterMode::Normal, .. })));
+        assert!(matches!(
+            t,
+            Some(ModeTransition {
+                to: DisasterMode::Normal,
+                ..
+            })
+        ));
         // Too early.
         let t = guarded_transition(DisasterMode::Degraded, Some(1_000), 1_000 + 899, false);
         assert!(t.is_none());

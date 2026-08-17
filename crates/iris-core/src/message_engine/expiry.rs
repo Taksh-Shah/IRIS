@@ -73,7 +73,11 @@ pub fn is_skew_suspect(created_at_unix: u64, now_unix: u64) -> bool {
 ///
 /// A skew-suspect message is never wall-clock expired (its lifetime is judged
 /// from arrival per RFC 9171 §4.4.2) — it yields `None` here.
-pub fn expiry_reason(created_at_unix: u64, ttl_seconds: u64, now_unix: u64) -> Option<ExpiryReason> {
+pub fn expiry_reason(
+    created_at_unix: u64,
+    ttl_seconds: u64,
+    now_unix: u64,
+) -> Option<ExpiryReason> {
     match compute_expiry(created_at_unix, ttl_seconds, now_unix) {
         Some(expiry) if expiry <= now_unix => Some(ExpiryReason::WallClock),
         _ => None,
@@ -149,15 +153,24 @@ mod tests {
     fn within_skew_budget_is_trusted() {
         // 250 s ahead is within the 300 s budget → trusted, not suspect.
         assert!(!is_skew_suspect(NOW + 250, NOW));
-        assert!(is_skew_suspect(NOW + 10_000, NOW), "beyond budget is suspect");
+        assert!(
+            is_skew_suspect(NOW + 10_000, NOW),
+            "beyond budget is suspect"
+        );
         // Trusted clock + short TTL: expires 10 s after its (future) creation.
-        assert!(is_expired(NOW + 250, 10, NOW + 261), "short TTL still expires");
+        assert!(
+            is_expired(NOW + 250, 10, NOW + 261),
+            "short TTL still expires"
+        );
         assert!(!is_expired(NOW + 250, 10, NOW + 100), "not yet expired");
     }
 
     #[test]
     fn reason_reports_wall_clock_and_none_for_suspect() {
-        assert_eq!(expiry_reason(NOW - 100, 50, NOW), Some(ExpiryReason::WallClock));
+        assert_eq!(
+            expiry_reason(NOW - 100, 50, NOW),
+            Some(ExpiryReason::WallClock)
+        );
         // Skew-suspect messages (created far beyond budget) are judged from
         // arrival → never wall-clock expired.
         assert_eq!(expiry_reason(NOW + 20_000, 1, NOW + 10_001), None);

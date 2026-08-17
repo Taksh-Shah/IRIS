@@ -69,7 +69,10 @@ async fn engine(
         Arc::new(IrisCryptoProvider::new(identity)),
         manager.clone(),
     );
-    manager.register(transport).await.expect("register transport");
+    manager
+        .register(transport)
+        .await
+        .expect("register transport");
     engine
 }
 
@@ -120,7 +123,10 @@ async fn m7_encrypted_signed_message_round_trips_e2e() {
         .expect("delivered event")
         .expect("event");
     assert_eq!(delivered.message_id, id);
-    assert_eq!(delivered.payload, body, "recipient must receive the plaintext, not ciphertext");
+    assert_eq!(
+        delivered.payload, body,
+        "recipient must receive the plaintext, not ciphertext"
+    );
     assert_eq!(alice.metrics().sent, 1);
 }
 
@@ -221,7 +227,10 @@ async fn m7_fragmented_encrypted_message_reassembles_and_verifies() {
 
     // Fragment payload is header + chunk of ciphertext, NOT the plaintext.
     let dec0 = iris_core::protocol::codec::decode(&f0.payload).expect("decode frag 0");
-    assert_eq!(dec0.payload_type, iris_core::protocol::ContentType::Fragment);
+    assert_eq!(
+        dec0.payload_type,
+        iris_core::protocol::ContentType::Fragment
+    );
     assert!(
         !dec0.payload.windows(body.len()).any(|w| w == &body[..]),
         "wire fragment must not carry plaintext"
@@ -238,7 +247,13 @@ async fn m7_fragmented_encrypted_message_reassembles_and_verifies() {
         .await
         .expect("delivered event")
         .expect("event");
-    assert_eq!(delivered.message_id, id, "original id restored after reassembly");
-    assert_eq!(delivered.payload, body, "plaintext recovered from fragments");
+    assert_eq!(
+        delivered.message_id, id,
+        "original id restored after reassembly"
+    );
+    assert_eq!(
+        delivered.payload, body,
+        "plaintext recovered from fragments"
+    );
     assert_eq!(alice.metrics().sent, 1, "one logical message sent");
 }

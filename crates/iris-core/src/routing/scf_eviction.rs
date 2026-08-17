@@ -115,10 +115,13 @@ mod tests {
 
     #[test]
     fn p7_evicted_before_p1() {
-        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig {
-            max_storage_bytes: 2048,
-            ..Default::default()
-        });
+        let mut scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_storage_bytes: 2048,
+                ..Default::default()
+            },
+        );
         let p1 = mk(MessagePriority::P1, 1500);
         let p7 = mk(MessagePriority::P7, 1500);
         scf.buffer_message(p1.clone(), None).unwrap();
@@ -132,14 +135,18 @@ mod tests {
 
     #[test]
     fn p0_never_evicted_under_pressure() {
-        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig {
-            max_storage_bytes: 5000,
-            ..Default::default()
-        });
+        let mut scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_storage_bytes: 5000,
+                ..Default::default()
+            },
+        );
         let p0 = mk(MessagePriority::P0, 4000);
         scf.buffer_message(p0.clone(), None).unwrap();
         for _ in 0..4 {
-            scf.buffer_message(mk(MessagePriority::P7, 1500), None).unwrap();
+            scf.buffer_message(mk(MessagePriority::P7, 1500), None)
+                .unwrap();
         }
         let evicted = scf.evict_to_fit(0);
         // P0 must survive no matter how much pressure.
@@ -149,10 +156,13 @@ mod tests {
 
     #[test]
     fn eviction_ordered_lowest_priority_then_soonest_expiry() {
-        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig {
-            max_storage_bytes: 2600,
-            ..Default::default()
-        });
+        let mut scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_storage_bytes: 2600,
+                ..Default::default()
+            },
+        );
         // A P4 expiring sooner must be evicted before a P4 expiring later.
         let mut soon = mk(MessagePriority::P4, 1300);
         soon.ttl_seconds = 60;
@@ -161,14 +171,17 @@ mod tests {
         scf.buffer_message(soon.clone(), None).unwrap();
         scf.buffer_message(later.clone(), None).unwrap();
         // A higher-priority P2 must stay regardless.
-        scf.buffer_message(mk(MessagePriority::P2, 300), None).unwrap();
+        scf.buffer_message(mk(MessagePriority::P2, 300), None)
+            .unwrap();
         // Usage ~3668 B > 2600 target; one eviction gets us under. The soonest
         // expiring P4 is the worst candidate.
         let evicted = scf.evict_to_fit(0);
         assert_eq!(evicted, vec![soon.message_id]);
         let remaining = scf.ordered_buffered();
         assert!(scf.delivery_status(&later.message_id).is_some());
-        assert!(remaining.iter().any(|m| m.envelope.priority == MessagePriority::P2));
+        assert!(remaining
+            .iter()
+            .any(|m| m.envelope.priority == MessagePriority::P2));
     }
 
     #[test]
@@ -176,7 +189,8 @@ mod tests {
         let mut scf = ScfEngine::new(MemoryStorage::new(), Default::default());
         // Three ~90 MB payloads overflow a 200 MB phone ceiling.
         for _ in 0..3u8 {
-            scf.buffer_message(mk(MessagePriority::P4, 90_000_000), None).unwrap();
+            scf.buffer_message(mk(MessagePriority::P4, 90_000_000), None)
+                .unwrap();
         }
         assert!(scf.usage() > DeviceClass::Phone.max_bytes());
         let evicted = scf.evict_to_capacity(DeviceClass::Phone);

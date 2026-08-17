@@ -1,7 +1,7 @@
 # DECISIONS.md — Active Decision Log
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-15T16:30:00Z
+**Last updated**: 2026-08-16T14:25:00Z
 
 ---
 
@@ -278,3 +278,221 @@ Evidence: [Link to research/record]
 **Alternatives**: SybilGuard/Limit - rejected (assumptions fail); CAPTCHA/badge servers - rejected (offline).
 **Consequence**: Identity remains key-bound and revocable; identity-cost via verified pairing is platform-node scope; IRIS documents its Sybil boundary honestly.
 **Evidence**: RES-0018 R6/R7/Q3; Douceur IPTPS 2002; Ostra NSDI 2008; Briar; CVE-2026-42566; CVE-2025-52464
+
+### DEC-BLE-0001: BLE v1 = GATT point-to-point + advertise-parse discovery
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: v1 BLE transport = GATT point-to-point for payload exchange + Extended/Periodic-advertising as a discovery beacon (advertise-parse; connect for bulk). Connectionless channel is for discovery only, never payload. Matches existing scaffold + INTERNET-001 reference pattern.
+**Context**: RES-0019 R1 + verdict PROCEED — connectionless discovery + GATT connection is the only universally-available Android model; RES-0007 reconfirmed; no 2026 SOTA forces a pivot.
+**Alternatives**: Mesh 1.1 / PAwR / BIS as v1 transport — rejected (see DEC-BLE-0002..0004).
+**Consequence**: BLE stays a short-range unicast/broadcast-discovery transport in the IRIS Transport trait shape; LoRa/satellite gateways maintain long-range.
+**Evidence**: RES-0019 R1; RES-0007; developer.android.com BLE advertising/scanning docs (L1); scaffold INTERNET-001 (L4)
+
+### DEC-BLE-0002: BLE Mesh 1.1 REJECTED for v1 (v2 candidate)
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: No BLE Mesh in v1. No native AOSP mesh API through 2026 (official docs absence); app-grade mesh requires the nRF Mesh/SIG library. Mesh is a distinct protocol stack with its own security model (Network/App keys, provisioning) — not the IRIS Transport trait shape.
+**Context**: RES-0019 R2 — Mesh 1.1 features (RPR, DFU, CBP, Directed Forwarding, Private Beacons) ready for embedded, not Android. May/June 2026 native-mesh-API claim contradicted by official docs + same author's field report (L5, Gap G3).
+**Alternatives**: nRF Mesh library now — rejected (provisioning fragility, background limitations, stack commitment for marginal v1 gain).
+**Consequence**: Recorded as v2 candidate with trigger (SIG-stack/fixed-cluster adoption); mesh flooding stays in IRIS application layer.
+**Evidence**: RES-0019 R2/Q1.4; developer.android.com absence of mesh package (L1); nRF Mesh (L4); Medium 2026 contradiction (L5, G3)
+
+### DEC-BLE-0003: PAwR REJECTED for v1 (v2 candidate)
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: No PAwR (BLE 5.4 Periodic Advertising with Responses) in v1. Star topology built for Electronic Shelf Labels; Android phones can sync/receive a PAwR train but there is NO API to transmit in response slots (Nordic: "not built to be used with smartphones… designed only for ESL"). No relay/multi-hop/throughput limits.
+**Context**: RES-0019 R3 — phone-as-PAwR-responder appears impossible (G1); multi-advertiser networks undefined by spec; Android-side = monitor only.
+**Alternatives**: use PAwR now — rejected (phone cannot respond).
+**Consequence**: v2 candidate for stationary IRIS gateways with embedded controller radios (LoRa/satellite gateway clusters).
+**Evidence**: RES-0019 R3/Q1.2; Bluetooth Core 5.4 (L1); Nordic DevZone + Infineon AN + Zephyr samples (L3-5); DevZone phone-role answer
+
+### DEC-BLE-0004: Connectionless isochronous (BIS) REJECTED for v1
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: No BIS broadcast in v1. One-way only (no uplink), requires LE Audio stack + Security Mode 3 key distribution, poor fit for IRIS bidirectional multi-hop exchange. Watchlist only.
+**Context**: RES-0019 R4 — BIS/CIS is LE-Audio/Auracast-centric, not a general bidirectional message bus.
+**Alternatives**: — 
+**Consequence**: Recorded on watchlist; revisit only if an IRIS broadcast-announce feature (v2) demands it.
+**Evidence**: RES-0019 R4; Bluetooth SIG isochronous FAQ (L1); novelbits/cloud2gnd (L3)
+
+### DEC-BLE-0005: MTU negotiate-late, <=512 B ATT payloads
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: Android 14+ negotiates ATT MTU 517 on the FIRST requestMtu per ACL and disregards subsequent requests on that ACL. Design payload segmentation <= min(mtu_effective-5, 512); treat MTU as negotiate-late (start at 23, resize on onMtuChanged); defensive re-connect on early requestMtu error (G5 wedge).
+**Context**: RES-0019 R1/G5 — Android 14 behavior changes (L1); community wedge report (L5); RES-0007/EMERG-001 512-B ceiling alignment.
+**Alternatives**: assume 512 up front — rejected (breaks 23-byte default peers; wedge risk).
+**Consequence**: AttSegmenter module in BLE transport; INTERNET-001 framing/backoff pattern transfers.
+**Evidence**: RES-0019 R1/G5; developer.android.com BluetoothGatt + Android 14 behavior changes (L1); SO 77602246/77748472 (L5)
+
+### DEC-BLE-0006: App-layer envelope = trust anchor; OS patch-floor documented
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: IRIS message security NEVER depends on BLE pairing/bonding or link-layer encryption. App-layer envelope (CRYPTO-001 sign+encrypt, verify-before-forward, SEC-001 gates) is the trust anchor. Defensive advertise-parse + no unauthenticated-trigger actions. Document required minimum Android security-patch level (BLE stack CVEs are unpatched-by-app).
+**Context**: RES-0019 R5 — CVE-2024-43770/2025-0074/2025-48539/2025-22406/2025-44557 in stack cannot be app-patched; NCC link-layer relay ≤8ms defeats latency-bounding + L2-encryption for proximity claims.
+**Alternatives**: rely on LESC/pairing — rejected (app-layer is stronger + uniform).
+**Consequence**: BLE proximity never a security primitive; relay residual = topology distortion only (SEC-001/ROUTE-002 bounded). Channel Sounding deferred (DEC-BLE-0008).
+**Evidence**: RES-0019 R5/Q4/Q5; NVD/Android bulletins (L1); NCC Group advisory (L2/3); MIT 6.5610 BLE report (L3)
+
+### DEC-BLE-0007: DLEP deferred as routing-metric interface (RFC 8175)
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: DLEP is NOT a v1 BLE transport. DLEP = control protocol between a router and an attached radio modem (radio-aware routing), not a phone transport. No router/modem split on Android phones; BLE metrics already app-visible. Deferred as a routing-metric interface for future gateway hardware. Spec = RFC 8175 (+ RFC 8703/8757); RFC 6841 is not the DLEP spec.
+**Context**: RES-0019 R8/Q2 — LAN radio-aware routing for LoRa/satellite gateways on Linux routers; BLE duty-cycled mesh has no DLEP home.
+**Alternatives**: DLEP now — rejected (no router/modem split; redundant with existing BLE metrics).
+**Consequence**: Future LoRa/satellite relay gateways may surface metrics into ROUTE-001/002 via a DLEP-shaped interface; recorded for GW/LORA/SAT nodes.
+**Evidence**: RES-0019 R8/Q2; RFC 8175/8703/8757 (L1); Cisco Radio Aware Routing whitepaper (L3)
+
+### DEC-BLE-0008: Channel Sounding deferred to hardware-gated node
+**Status**: APPROVED 2026-08-16 (BLE-001 DESIGN)
+**Node**: BLE-001
+**Summary**: Bluetooth 6.0 Channel Sounding (secure ranging 0.3-1 m, attack detection) is the standards-path mitigation for relay/proximity abuse — record as HARDWARE-gated future node; phones with CS silicon only ~2026-2027. Not v1.
+**Context**: RES-0019 R5/R9 — relay cannot be defeated at BLE link layer in software; CS = range-primitive for distance-authorization (future use cases).
+**Alternatives**: RTT/distance bounding — already rejected in RES-0018 (no-GPS requirement).
+**Consequence**: BLE-001 design does not depend on CS; if IRIS later needs proximity authority, CS becomes a gated node.
+**Evidence**: RES-0019 R5/R9; Bluetooth 6.0 CS test suite (L1); NewTec/u-blox (L3); NCC relay advisory (L2/3)
+
+---
+
+### DEC-WA-0001: v1 = publish/subscribe NAN discovery + NDP IPv6 socket data path (INTERNET-001 framing)
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: Wi-Fi Aware v1 = publish/subscribe NAN discovery (signed IRIS beacon carried as service_name + service_specific_info/match_filter; unsolicited+PASSIVE default, solicited+ACTIVE emergency) + NDP (NAN Data Path) IPv6 socket data path reusing INTERNET-001 TCP framing (1 MiB cap, pool + backoff). NDP = kernel-managed network interface → standard sockets, exactly the INTERNET-001 shape.
+**Context**: RES-0020 R1/R4 — NAN alive API 26→36 (not deprecated) + Android 17 new architecture; NDP is a network interface (no app-level data API needed beyond sockets).
+**Alternatives**: vendor CotS NAN SDK / proprietary TCP stack — rejected (INTERNET-001 framing transfers, one code path).
+**Consequence**: WifiAwareAdapter trait + WifiAwareTransport + SimulatedWifiAwareAdapter in crates/iris-core; Android Kotlin adapter under ANDROID-001.
+**Evidence**: RES-0020 R1/R4; developer.android.com Wi-Fi Aware/NDP docs (L1); INTERNET-001 verification (27/27)
+
+### DEC-WA-0002: NDP open at L2 in v1; app-layer envelope = trust anchor
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: v1 NDP uses OPEN data path — no setPskPassphrase / NCS cipher-suite / certificates. App-layer envelope crypto (CRYPTO-001 sign+encrypt, verify-before-forward, SEC-001 gates) is the sole trust anchor. NCS SK/PK/PASN (API 30+) + Aware Pairing (API 34+, WFA 4.0) = optional hardening for v2.
+**Context**: RES-0020 R2 — NDP security types are optional by spec; app-layer is stronger + uniform across transports (matches DEC-BLE-0006).
+**Alternatives**: mandate PSK/NCS from v1 — rejected (key-distribution burden, no uniform gain over app-layer envelope).
+**Consequence**: security postured entirely at app layer; optional v2 hardening triggers recorded.
+**Evidence**: RES-0020 R2/AP-3; Wi-Fi Alliance NAN/MCL spec 2.0/4.0 (L1); developer.android.com NDP security (L1)
+
+### DEC-WA-0003: 6 GHz / Wi-Fi 6E NAN not a v1 requirement (G-WA-3)
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: 6 GHz / Wi-Fi 6E NAN = opportunity-only. Design floor = 2.4 GHz (ch 6) + 5 GHz (ch 44/149) NAN, license-exempt ISM/U-NII in India. 6E is hardware + region-gated (India U-NII-5..7 band rules vary); enable later when both allow.
+**Context**: RES-0020 R3/G-WA-3 — 6E support tiered by chipset + region certification.
+**Alternatives**: require 6E for v1 — rejected (excludes most v1 hardware + regulatory risk).
+**Consequence**: no 6E dependency; runtime-checked, degradation-defined.
+**Evidence**: RES-0020 R3/G-WA-3; Realtek Wi-Fi 6E NAN tiering (L1); WFA 6 GHz certification notes (L1)
+
+### DEC-WA-0004: FGS connectedDevice (API 34+) required for production discovery; Suspend/Resume power lever
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: Production background discovery requires a foreground service of type connectedDevice (API 34+). The dated "API 10+ discovery survives without FGS" claim is corrected — Android 12+ background limits + Android 15/16 FGS runtime-quota tightening make FGS mandatory. Suspend/Resume (API 34+, HAL-gated) = background cadence power lever; fall back to attach/discovery teardown + re-attach where unsupported.
+**Context**: RES-0020 R5 — official FGS guidance + API-level changes through Android 16; Android 17 planning input.
+**Alternatives**: rely on no-FGS discovery — rejected (Android 12+/15/16 enforcement breaks it).
+**Consequence**: FGS declarations + user-visible notification in the Android deployment contract (AC-10).
+**Evidence**: RES-0020 R5; developer.android.com foreground-service types + Wi-Fi Aware background (L1)
+
+### DEC-WA-0005: runtime capability gate mandatory — FEATURE_WIFI_AWARE + isAvailable() + ACTION_WIFI_AWARE_STATE_CHANGED
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: Never assume Wi-Fi Aware from API level. Gate = hasSystemFeature(FEATURE_WIFI_AWARE) + WifiAwareManager.isAvailable + ACTION_WIFI_AWARE_STATE_CHANGED receiver; re-attach on true, teardown + degrade to BLE/Wi-Fi Direct on false. Single-radio coexistence (R7) surfaces as availability churn = degrade, not fail.
+**Context**: RES-0020 R1/R7 — OEM firmware-gated availability; single-radio WiFi/RF front-end sharing.
+**Alternatives**: assume availability on flagship APIs — rejected (OEM variance; state toggles at runtime).
+**Consequence**: WifiAwareAdapter exposes is_available + state-change callback; TransportManager handles degrade routing.
+**Evidence**: RES-0020 R1/R7; developer.android.com WifiAwareManager + Wi-Fi Aware availability (L1)
+
+### DEC-WA-0006: discovery defaults unsolicited publish + PASSIVE subscribe; solicited + ACTIVE emergency
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: Default discovery = unsolicited publish (beacon) + passive subscribe (listener) for battery. Emergency mode switches to solicited publish + ACTIVE subscribe for faster discovery (WIFI_AWARE.md convention retained; AC-2).
+**Context**: WIFI_AWARE.md §Publish/Subscribe; RES-0020 R1 — discovery types are app-chosen on Android.
+**Alternatives**: always solicited/ACTIVE — rejected (battery + radio overhead for routine discovery).
+**Consequence**: em-level switch logic in WifiAwareTransport; adapter exposes both publish/subscribe types.
+**Evidence**: WIFI_AWARE.md (existing design); developer.android.com PublishConfig/SubscribeConfig (L1)
+
+### DEC-WA-0007: peer identity by public-key fingerprint, never NAN MAC/PeerHandle; no unauthenticated triggers
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: NAN MAC/PeerHandle are ephemeral (platform MAC randomization ~30 min, factory MAC never on-wire; IdentityChangedListener events) and NOT trusted identities. IRIS binds peers by public-key fingerprint from the signed advertisement. Discovery + NDP setup produce candidate/connection objects only; every IRIS payload passes envelope verify + engine gate. No peer-triggered state change.
+**Context**: RES-0020 R8/G-WA-2 — NAN privacy randomization built-in; Android Wi-Fi stack CVEs OS-patch-gated; SEC-001/IDENT-001 no-unauthenticated-trigger doctrine.
+**Alternatives**: map PeerHandle→PeerId persistently — rejected (rotation breaks mapping; candidate-only is safe).
+**Consequence**: candidate registry keyed by fingerprint; IdentityChangedListener handled in adapter; AC-6/AC-7 adversarial + security ACs.
+**Evidence**: RES-0020 R8; developer.android.com IdentityChangedListener + NAN privacy (L1); SEC-001/IDENT-001
+
+### DEC-WA-0008: CONFLICT-1 — Apple WiFiAware (iOS 26+) recognized in docs; BLE-002 = v1 iOS path
+**Status**: APPROVED 2026-08-16 (WIFIAWARE-001 DESIGN)
+**Node**: WIFIAWARE-001
+**Summary**: Apple introduced WiFiAware framework (iOS 26+, iPhone 12+; 2.4/5/6 GHz, ~15 MB/s measured) — CONFLICT-1 corrected the 'iOS NO' rows in WIFI_AWARE.md + TRANSPORT_ABSTRACTION. IRIS v1 keeps WIFIAWARE-001 Android-only in code (caps supports_background_ios: false); BLE-002 = v1 iOS P2P path; Android↔Apple NDP interop recorded immature (vendors/ecosystem fragmentation) — cross-OS NDP validation deferred to platform nodes (BLK-0005). 
+**Context**: RES-0020 R9/CONFLICT-1 — iOS capability changed 2026; Apple patent/API specifics still un-previewed.
+**Alternatives**: add iOS WiFiAware to v1 WIFIAWARE — rejected (native Swift adapter = IOS-001 scope; interop unvalidated).
+**Consequence**: doc reconciliation done now (AC-12); iOS WiFiAware = roadmap item for IOS-001.
+**Evidence**: RES-0020 R9/AP-8; developer.apple.com WiFiAware documentation (L1); Wi-Fi Alliance (L1)
+
+### DEC-WD-0001: Wi-Fi Direct = data plane on BLE control plane; DNS-SD discovery + TCP-over-GO data path
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: v1 shape (RES-0021 Q1/Q4/Q5/Q7 verdict PROCEED): BLE advertises/discovers in background (BLE-001 = always-on control plane); Wi-Fi Direct activates for payloads > 10 KB — DNS-SD (Bonjour) service discovery on a BLE-triggered re-arm window, createGroup/connect persistent GO, data plane = TCP socket over the GO reusing INTERNET-001 framing (4-byte length prefix + message, 1 MiB cap, pool + backoff).
+**Context**: RES-0021 Q1/Q4 — WifiP2pManager fully supported + extended (API 36/37, no deprecation); DNS-SD preferred over device-name filtering; framework P2P find window 120 s.
+**Alternatives**: device-name-filter discovery — rejected (RES-0021 Q4 DNS-SD preferred); Wi-Fi Direct as always-on discovery layer — rejected (background unreliable, BLE owns discovery).
+**Consequence**: WifiDirectTransport + WifiDirectAdapter FFI trait + TCP framing reuse; AC-1/AC-2/AC-4; WIFI_DIRECT.md 4-phase workflow retained.
+**Evidence**: RES-0021 Q1/Q4/Q5/Q7; docs/transports/WIFI_DIRECT.md (L1-L5 primary sources)
+
+### DEC-WD-0002: group security = WPA2-Personal (PSK/AES-CCMP) floor; WPA3-SAE capability-gated later phase
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: v1 group security = WPA2-Personal (AES-CCMP). WPA3-SAE is now spec-supported on Wi-Fi Direct R2-capable devices (WifiP2pGroup SECURITY_TYPE_WPA3_SAE/WPA3_COMPATIBILITY API 36, PCC modes) — capability-gated later phase via isWiFiDirectR2Supported/isPccModeSupported. OWE = infra-only, not P2P.
+**Context**: RES-0021 Q2 — group default remains WPA2 on most deployments; SAE needs v3.5 PMF requirements.
+**Alternatives**: WPA3-SAE v1 default — rejected (device/vendor variance, API 36 floor); WPA2-only forever — rejected (SAE = roadmap hardening).
+**Consequence**: AC-6/AC-7 security posture + AC-14 patch floor; isWiFiDirectR2Supported probes added later phase; WIFI_DIRECT.md WPA3 note.
+**Evidence**: RES-0021 Q2; developer.android.com WifiP2pGroup security types API 36 (L1)
+
+### DEC-WD-0003: WPS-PIN prohibited; passphrase pushed over authenticated BLE control plane; PBC legacy fallback only
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: WPS deprecated client-mode (API 28); WPS-PIN is a documented attack target (CVE-2021-0326 adjacent unauthenticated P2P RCE requires only an active P2P search). IRIS never uses WPS-PIN; the initiating peer pushes the group passphrase over the authenticated BLE control plane (R2-OOB-inspired); PBC = legacy dev-doc fallback only. NFC OOB (P2P spec §3.1.2.7) not exposed by Android API.
+**Context**: RES-0021 Q6/Q8 — R2 pairing bootstrapping API 36 (WifiP2pPairingBootstrappingConfig incl. OUT_OF_BAND over BLE) is the modern path but BLE control plane already exists in IRIS.
+**Alternatives**: WPS-PIN auto-config — rejected (attack surface, deprecation); R2 OOB bootstrap in v1 — deferred (API 36 floor; BLE control plane covers the same need).
+**Consequence**: passphrase exchange via BLE control-plane message; AC-7; dev-doc sample (PBC) documented as legacy-only; AC-14 patch floor records CVE-2021-0326.
+**Evidence**: RES-0021 Q6/Q8; developer.android.com WPS deprecation (L1); NVD CVE-2021-0326 (L5)
+
+### DEC-WD-0004: discovery strategy — 30-s app re-arm cadence vs 120-s single find; DISCOVERY_CHANGED → BLE fallback
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: Framework P2P find window = 120 s (DISCOVER_TIMEOUT_S); WIFI_DIRECT.md's 30 s = app-level re-arm cadence (RES-0021 Q4/G-WD-7 correction). v1 uses a 30-s app-controlled window with explicit stop, or a single 120-s find with stop/restart; WIFI_P2P_DISCOVERY_CHANGED_ACTION stop event returns to BLE control-plane waiting. Best-effort on OEM builds → BLE remains the durable trigger.
+**Context**: RES-0021 Q4 — discovery best-effort; battery 80-150 mA scan budget from WIFI_DIRECT.md.
+**Alternatives**: continuous discovery — rejected (battery); BLE-only discovery — rejected (WD data plane needs the group anyway).
+**Consequence**: AC-5 discovery re-arm + availability refresh test; WIFI_DIRECT.md 30-s wording corrected.
+**Evidence**: RES-0021 Q4; developer.android.com discoverServices + DISCOVER_TIMEOUT_S (L1)
+
+### DEC-WD-0005: persistent GO + band policy — setGroupOperatingBand (API 29) 5 GHz preferred / AUTO fallback
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: createGroup() forms an autonomous persistent GO (until removeGroup) reinvokable via p2p_invite-equivalent; setGroupOperatingBand = **API 29** (corrects WIFI_DIRECT.md's "API 30+"), AUTO/2.4/5/6 GHz — v1 uses 5 GHz preferred with AUTO fallback; band-constrained GO creation FAILS → fall back to AUTO / 2.4 GHz / degrade to BLE. MAC randomization is platform-inherited and tied to persistent-group presence — identity never depends on P2P MAC.
+**Context**: RES-0021 Q5 — client IPv4 DHCP or IPv6-link-local (GROUP_CLIENT_IP_PROVISIONING_MODE_IPV6_LINK_LOCAL); group presence = state to re-establish, not assumed persistent (G-WD-8).
+**Alternatives**: ephemeral GO per transfer — rejected (persistent GO = WIFI_DIRECT.md optimization for frequent peers); hard-coded GO IP — rejected (adapter-supplied go_addr, G-WD-2).
+**Consequence**: AC-9 persistent-GO teardown/re-establish; AC-10 band API 29 doc correction; GO intent bias 14/7/3 retained.
+**Evidence**: RES-0021 Q5; developer.android.com createGroup/setGroupOperatingBand API 29 (L1)
+
+### DEC-WD-0006: client-capacity model — N-client admission + GO-side connection table; no hard-coded-8; GO intent 14/7/3
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: WFA mandates 1:1 P2P, one-to-many optional — "1 GO + 8 clients" = vendor/HAL ceiling, NOT a spec guarantee (RES-0021 Q3/G-WD-1). IRIS architects an N-client admission model: bounded GO-side connection table (per-client connection/endpoint slots), admitted client queue, no unbounded churn. STA+P2P concurrency is HAL-combination-dependent → capability-probed, never assumed. GO election intent bias (fixed infra 14 / battery 7 / low 3) retained.
+**Context**: RES-0021 Q3 — group client count is platform/HAL-dependent.
+**Alternatives**: hard-code 8-client table — rejected (vendor ceiling assumptions); unbounded connection table — rejected (capacity).
+**Consequence**: AC-9 bounded GO connection table; AC-3 coexistence gate.
+**Evidence**: RES-0021 Q3; Wi-Fi Alliance P2P Technical Specification v1.9 (L1)
+
+### DEC-WD-0007: dual-platform adapter — Android WifiP2pManager + Linux wpa_supplicant via one trait; IRIS IP/DHCP glue
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: One WifiDirectAdapter trait surfaces both Android (WifiP2pManager + DNS-SD + FGS/wakelock) and Linux (wpa_supplicant: p2p_group_add/p2p_connect/p2p_service_add bonjour/p2p_invite/p2p_get_passphrase, group iface p2p-wlan0-N). IP/DHCP is NOT automatic parity — IRIS Linux nodes own GO static address + dnsmasq/udhcpd glue; client IPv4 DHCP or IPv6-link-local. GO address is adapter-supplied (requestGroupInfo/requestConnectionInfo), never hard-coded (verify Android GO 192.168.49.1 in AOSP at IMPLEMENT, G-WD-2).
+**Context**: RES-0021 Q7 — wpa_supplicant full P2P surface; Android GO IP practice-stable but not contract.
+**Alternatives**: Android-only adapter — rejected (DESKTOP-001 Linux nodes need the transport); hard-coded 192.168.49.1 — rejected (G-WD-2).
+**Consequence**: AC-11 FFI conformance type-checked (SimulatedWifiDirectAdapter); ANDROID-001 + DESKTOP-001 Linux adapter scope; AC-4 E2E via sim.
+**Evidence**: RES-0021 Q7; w1.fi wpa_supplicant P2P docs (L1); AOSP WifiP2pServiceImpl (L2)
+
+### DEC-WD-0008: OS patch floor AC — Android SPL ≥ 2021-02, wpa_supplicant ≥ 2.12; single-radio coexistence = runtime constraint
+**Status**: APPROVED 2026-08-17 (WIFIDIRECT-001 DESIGN)
+**Node**: WIFIDIRECT-001
+**Summary**: Wi-Fi stack CVEs are OS-patch-gated, never app-patchable (RES-0021 Q8): AC-14 records a deployment floor — Android SPL ≥ 2021-02 (CVE-2021-0326 P2P RCE), Linux wpa_supplicant ≥ 2.12 (w1.fi 2026-1 unauth mgmt-frame memory corruption, 2026-3 SAE NULL-deref), kernel with 2024-26 Wi-Fi driver fixes (CVE-2024-26895/27053/47712/47724/56539/46755; CVE-2025-40321; CVE-2026-31780/46069). Single-radio STA+P2P coexistence surfaces as runtime-availability churn → degrade to BLE, never fail (RES-0021 Q1/Q3; WifiAvailableChannel API 34 OP_MODE probes).
+**Context**: RES-0021 Q1/Q3/Q8 + G-WD-1/G-WD-6 — OEM/HAL variance; Android 12+ coex channel-avoidance COEX_RESTRICTION_WIFI_DIRECT.
+**Alternatives**: rely on WPA2 alone — rejected (L2 is not the trust anchor); assume STA+P2P concurrency — rejected (HAL-dependent).
+**Consequence**: AC-3 coexistence gate + AC-14 recorded patch floor; WIFI_DIRECT.md known-issue notes carried.
+**Evidence**: RES-0021 Q1/Q3/Q8; developer.android.com WifiAvailableChannel + coex restrictions (L1); osv.dev/NVD (L5)

@@ -82,7 +82,10 @@ mod tests {
         // generated independently of our hand-written constants.
         for tp in EIGHT_TORSION {
             let u = tp.to_montgomery().to_bytes();
-            assert!(is_small_order(&u), "torsion point u={u:02x?} must be rejected");
+            assert!(
+                is_small_order(&u),
+                "torsion point u={u:02x?} must be rejected"
+            );
         }
     }
 

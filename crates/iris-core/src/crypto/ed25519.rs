@@ -10,15 +10,15 @@
 //! - Signing is over the caller-provided signable bytes (the engine supplies
 //!   `codec::encode_for_signing()` per ADR-0011).
 
-use crate::crypto::{CryptoError, keygen::IdentityKeypair};
+use crate::crypto::{keygen::IdentityKeypair, CryptoError};
 
 /// Ed25519 signature — 64 bytes (RFC 8032).
 pub type Signature = [u8; 64];
 
 /// Sign `message` with the Ed25519 identity key, producing a 64-byte signature.
 pub fn sign(keypair: &IdentityKeypair, message: &[u8]) -> Result<Signature, CryptoError> {
-    use ed25519_dalek::Signer;
     use ed25519_dalek::Signature as DalekSignature;
+    use ed25519_dalek::Signer;
     let sig: DalekSignature = keypair.signing.sign(message);
     Ok(sig.to_bytes())
 }
@@ -52,7 +52,8 @@ mod tests {
     use hex_literal::hex;
 
     // RFC 8032 §7.1 TEST 1.
-    const TEST_1_SK: [u8; 32] = hex!("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60");
+    const TEST_1_SK: [u8; 32] =
+        hex!("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60");
     const TEST_1_MSG: &[u8] = b"";
     const TEST_1_SIG: [u8; 64] = hex!(
         "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e06522490155\

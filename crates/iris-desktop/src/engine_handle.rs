@@ -10,10 +10,11 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use futures_util::StreamExt;
 use rand::RngCore;
 use tokio::sync::broadcast;
-use futures_util::StreamExt;
 
+use iris_core::message::MessagePriority;
 use iris_core::message_engine::crypto::DevCryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
 use iris_core::message_engine::{InboundOutcome, MessageEngine, MessageEngineConfig};
@@ -22,12 +23,11 @@ use iris_core::protocol::{ContentType, Envelope, MessageId, PROTOCOL_VERSION};
 use iris_core::transport::internet::{InternetCostParams, InternetTransport};
 use iris_core::transport::simulated::{SimConfig, SimulatedTransport};
 use iris_core::transport::{Transport, TransportId, TransportManager, TransportState};
-use iris_core::message::MessagePriority;
 
 use crate::identity::DesktopIdentity;
 use crate::types::{
-    EngineMetricsView, IncomingMessageView, MeshStatus, MetricView, MessageIdView,
-    TransportStatus, parse_peer_id,
+    parse_peer_id, EngineMetricsView, IncomingMessageView, MeshStatus, MessageIdView, MetricView,
+    TransportStatus,
 };
 
 /// Configuration for the desktop engine host.
@@ -83,7 +83,10 @@ impl DesktopEngine {
 
     /// Build the engine host over a caller-provided transport (loopback test
     /// wiring: two engines sharing one `SimulatedTransport` form a wire).
-    pub async fn with_transport(node_id: [u8; 32], transport: Arc<dyn Transport>) -> Result<Arc<Self>, String> {
+    pub async fn with_transport(
+        node_id: [u8; 32],
+        transport: Arc<dyn Transport>,
+    ) -> Result<Arc<Self>, String> {
         let config = DesktopEngineConfig {
             node_id,
             relay_addrs: Vec::new(),
@@ -97,7 +100,10 @@ impl DesktopEngine {
         Self::build(config, None).await
     }
 
-    async fn build(config: DesktopEngineConfig, extra: Option<Arc<dyn Transport>>) -> Result<Arc<Self>, String> {
+    async fn build(
+        config: DesktopEngineConfig,
+        extra: Option<Arc<dyn Transport>>,
+    ) -> Result<Arc<Self>, String> {
         let manager = Arc::new(TransportManager::new());
 
         let mut transports = Vec::with_capacity(1 + config.relay_addrs.len());
@@ -258,7 +264,10 @@ impl DesktopEngine {
         &self,
         msg: iris_core::message::IncomingMessage,
     ) -> Result<InboundOutcome, String> {
-        self.engine.process_incoming(msg).await.map_err(|e| e.to_string())
+        self.engine
+            .process_incoming(msg)
+            .await
+            .map_err(|e| e.to_string())
     }
 
     /// Live delivered-message stream (test seam; UI uses `subscribe_inbox`).
@@ -395,7 +404,12 @@ fn parse_relay_env() -> Vec<SocketAddr> {
     std::env::var("IRIS_RELAY_ADDR")
         .ok()
         .into_iter()
-        .flat_map(|v| v.split(',').map(str::trim).map(str::to_owned).collect::<Vec<_>>())
+        .flat_map(|v| {
+            v.split(',')
+                .map(str::trim)
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        })
         .filter_map(|s| s.parse().ok())
         .collect()
 }

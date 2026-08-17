@@ -177,11 +177,10 @@ impl Transport for SimulatedTransport {
                 sent_at: Instant::now(),
             });
         }
-        let latency = self.config.latency_base_ms
-            + {
-                let mut rng = self.rng.lock().await;
-                rand::Rng::gen_range(&mut *rng, 0..self.config.latency_spread_ms + 1)
-            };
+        let latency = self.config.latency_base_ms + {
+            let mut rng = self.rng.lock().await;
+            rand::Rng::gen_range(&mut *rng, 0..self.config.latency_spread_ms + 1)
+        };
         let delay = Duration::from_millis(latency);
         let incoming = self.incoming_tx.clone();
         let transport_id = self.id.as_str().to_string();
@@ -241,7 +240,10 @@ mod tests {
         t.send(&peer, &msg).await.unwrap();
         let mut incoming = t.incoming_messages();
         let got = tokio::time::timeout(Duration::from_millis(200), incoming.next()).await;
-        assert!(got.is_ok() && got.unwrap().is_some(), "must deliver at loss=0");
+        assert!(
+            got.is_ok() && got.unwrap().is_some(),
+            "must deliver at loss=0"
+        );
     }
 
     #[tokio::test]

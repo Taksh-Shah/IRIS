@@ -50,9 +50,21 @@ fn ferry_l2_only(seed: u64) -> SimOutcome {
 fn ac1_features_are_deterministic_same_seed() {
     let a = ferry_shadow(7);
     let b = ferry_shadow(7);
-    let fa: Vec<_> = a.shadow_samples.iter().map(|s| s.features.as_slice()).collect();
-    let fb: Vec<_> = b.shadow_samples.iter().map(|s| s.features.as_slice()).collect();
-    assert_eq!(fa.len(), fb.len(), "shadow sample count must match per seed");
+    let fa: Vec<_> = a
+        .shadow_samples
+        .iter()
+        .map(|s| s.features.as_slice())
+        .collect();
+    let fb: Vec<_> = b
+        .shadow_samples
+        .iter()
+        .map(|s| s.features.as_slice())
+        .collect();
+    assert_eq!(
+        fa.len(),
+        fb.len(),
+        "shadow sample count must match per seed"
+    );
     assert!(!fa.is_empty(), "shadow observer must capture decisions");
     for (i, (x, y)) in fa.iter().zip(fb.iter()).enumerate() {
         assert_eq!(x, y, "feature vector {i} differs across identical runs");
@@ -150,7 +162,10 @@ fn ac4_gt_beats_static_on_periodic_ferry() {
 fn ac4_gt_parity_on_random_walk() {
     let sim = random_walk(8, 40, 11);
     let gateway_times = gateway_contact_times(
-        &sim.contacts_public().iter().map(|c| (c.a, c.b, c.at_ms)).collect::<Vec<_>>(),
+        &sim.contacts_public()
+            .iter()
+            .map(|c| (c.a, c.b, c.at_ms))
+            .collect::<Vec<_>>(),
         0,
     );
     let last = gateway_times.last().copied().unwrap_or(1);
@@ -182,7 +197,11 @@ fn ac5_ten_seeds_reproducible_both_regimes() {
         let mut pf2 = periodic_ferry(4, 2000, 400, seed);
         inject_standard(&mut pf2, 2, 100, 7200);
         pf2.with_opportunistic(ProphetConfig::default());
-        assert_eq!(p2, pf2.run().result_anchor, "periodic_ferry seed {seed} not reproducible");
+        assert_eq!(
+            p2,
+            pf2.run().result_anchor,
+            "periodic_ferry seed {seed} not reproducible"
+        );
 
         // Random regime: random_walk.
         let mut rw = random_walk(8, 40, seed);
@@ -192,7 +211,11 @@ fn ac5_ten_seeds_reproducible_both_regimes() {
         let mut rw2 = random_walk(8, 40, seed);
         inject_standard(&mut rw2, 2, 50, 7200);
         rw2.with_opportunistic(ProphetConfig::default());
-        assert_eq!(r1, rw2.run().result_anchor, "random_walk seed {seed} not reproducible");
+        assert_eq!(
+            r1,
+            rw2.run().result_anchor,
+            "random_walk seed {seed} not reproducible"
+        );
         random_anchors.push(r1);
     }
     assert_eq!(periodic_anchors.len(), 10);
@@ -202,7 +225,11 @@ fn ac5_ten_seeds_reproducible_both_regimes() {
     uniq.extend(random_anchors.iter().cloned());
     uniq.sort();
     uniq.dedup();
-    assert_eq!(uniq.len(), 20, "10 seeds x 2 regimes must give 20 distinct anchors");
+    assert_eq!(
+        uniq.len(),
+        20,
+        "10 seeds x 2 regimes must give 20 distinct anchors"
+    );
 }
 
 // --- AC-6: workspace green + clippy 0 (enforced by CI; sanity smoke here) ----

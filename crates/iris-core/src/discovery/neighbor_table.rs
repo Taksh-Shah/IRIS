@@ -113,10 +113,7 @@ impl NeighborTable {
                 })
             }
             Some(nb) => {
-                let existing = nb
-                    .links
-                    .iter_mut()
-                    .find(|l| l.transport == *transport);
+                let existing = nb.links.iter_mut().find(|l| l.transport == *transport);
                 match existing {
                     Some(rec) => {
                         let changed = rec.quality != quality || nb.state != NeighborState::LinkedUp;
@@ -190,7 +187,11 @@ impl NeighborTable {
 
     /// The peer's dedup Bloom filter, if exchanged.
     pub async fn peer_bloom(&self, peer_id: &PeerId) -> Option<BloomFilter> {
-        self.inner.lock().await.get(peer_id).and_then(|n| n.peer_bloom.clone())
+        self.inner
+            .lock()
+            .await
+            .get(peer_id)
+            .and_then(|n| n.peer_bloom.clone())
     }
 
     /// The transports that currently provide a live link to `peer` (used by
@@ -295,7 +296,11 @@ mod tests {
         t.upsert(&peer(1), &TransportId::from("sim-a"), LinkQuality::Good)
             .await;
         let ev = t
-            .upsert(&peer(1), &TransportId::from("sim-b"), LinkQuality::Excellent)
+            .upsert(
+                &peer(1),
+                &TransportId::from("sim-b"),
+                LinkQuality::Excellent,
+            )
             .await;
         assert!(matches!(ev, Some(TopologyEvent::LinkQualityUpdated { .. })));
         assert_eq!(t.len().await, 1);
@@ -352,9 +357,11 @@ mod tests {
             bloom_k: 3,
             timestamp: 0,
         };
-        t.set_capabilities(&peer(1).peer_id, caps.clone())
-            .await;
+        t.set_capabilities(&peer(1).peer_id, caps.clone()).await;
         let nb = t.get(&peer(1).peer_id).await.unwrap();
-        assert_eq!(nb.capabilities.as_ref().unwrap().capabilities, caps.capabilities);
+        assert_eq!(
+            nb.capabilities.as_ref().unwrap().capabilities,
+            caps.capabilities
+        );
     }
 }

@@ -18,10 +18,7 @@
 //! ciphertext to its message identity (no cross-message ciphertext replay).
 
 use crate::crypto::{
-    self,
-    keygen::IdentityKeypair,
-    keygen::X25519Keypair,
-    CryptoError as PrimCryptoError,
+    self, keygen::IdentityKeypair, keygen::X25519Keypair, CryptoError as PrimCryptoError,
 };
 use crate::protocol::MessageId;
 
@@ -278,8 +275,11 @@ impl CryptoProvider for IrisCryptoProvider {
         ciphertext: &[u8],
         hdr: &crate::protocol::EncryptionHdr,
     ) -> Result<Vec<u8>, CryptoError> {
-        let shared = crypto::x25519::diffie_hellman(&self.identity.static_x25519.secret, &hdr.ephemeral_pubkey)
-            .map_err(|e| CryptoError::Codec(e.to_string()))?;
+        let shared = crypto::x25519::diffie_hellman(
+            &self.identity.static_x25519.secret,
+            &hdr.ephemeral_pubkey,
+        )
+        .map_err(|e| CryptoError::Codec(e.to_string()))?;
         let key = crypto::kdf::message_key(&shared, info)?;
         crypto::aead::decrypt(&key, &hdr.nonce, ciphertext, aad)
             .map_err(|_| CryptoError::DecryptionFailed)
@@ -339,7 +339,12 @@ mod tests {
         let info = message_kdf_info(env.message_id).to_vec();
         let aad = crate::protocol::codec::encode_for_aead(&env).unwrap();
         let (sealed, hdr) = provider
-            .encrypt(&info, &aad, &env.payload, &recipient.static_x25519.public_bytes())
+            .encrypt(
+                &info,
+                &aad,
+                &env.payload,
+                &recipient.static_x25519.public_bytes(),
+            )
             .await
             .unwrap();
         assert_eq!(sealed.len(), sealed_len);
@@ -378,7 +383,12 @@ mod tests {
         let info = message_kdf_info(env.message_id).to_vec();
         let aad = crate::protocol::codec::encode_for_aead(&env).unwrap();
         let (sealed, hdr) = provider
-            .encrypt(&info, &aad, &env.payload, &recipient.static_x25519.public_bytes())
+            .encrypt(
+                &info,
+                &aad,
+                &env.payload,
+                &recipient.static_x25519.public_bytes(),
+            )
             .await
             .unwrap();
         env.payload = sealed;
@@ -404,7 +414,12 @@ mod tests {
         let mut aad2 = aad_recv.clone();
         aad2[0] ^= 0xFF;
         let res2 = rp
-            .decrypt(&info, &aad2, &env.payload, env.encryption_hdr.as_ref().unwrap())
+            .decrypt(
+                &info,
+                &aad2,
+                &env.payload,
+                env.encryption_hdr.as_ref().unwrap(),
+            )
             .await;
         assert!(matches!(res2, Err(CryptoError::DecryptionFailed)));
     }

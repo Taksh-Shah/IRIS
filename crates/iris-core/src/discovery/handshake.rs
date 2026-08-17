@@ -235,7 +235,10 @@ impl std::fmt::Display for HandshakeError {
             HandshakeError::Decode => write!(f, "handshake: decode failed"),
             HandshakeError::NotCapability => write!(f, "handshake: not a capability envelope"),
             HandshakeError::BudgetExceeded(n) => {
-                write!(f, "handshake: capability payload {n} B exceeds 256 B budget")
+                write!(
+                    f,
+                    "handshake: capability payload {n} B exceeds 256 B budget"
+                )
             }
         }
     }
@@ -300,8 +303,14 @@ mod tests {
     fn envelope_carries_bundle_and_bloom() {
         let mut f = BloomFilter::new(100, 0.001);
         f.insert([7u8; 16]);
-        let (cap, bloom_env) =
-            build_handshake(pid(1), vec!["relay".into()], vec!["sim-a".into()], &f, &pid(2)).unwrap();
+        let (cap, bloom_env) = build_handshake(
+            pid(1),
+            vec!["relay".into()],
+            vec!["sim-a".into()],
+            &f,
+            &pid(2),
+        )
+        .unwrap();
         assert_eq!(cap.payload_type, ContentType::Capability);
         assert!(cap.payload.len() <= CAPABILITY_MAX_BYTES);
         let parsed_cap = parse_handshake(&cap).unwrap();

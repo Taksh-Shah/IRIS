@@ -8,7 +8,7 @@
 
 use x25519_dalek::{PublicKey as X25519PublicKey, StaticSecret as X25519StaticSecret};
 
-use crate::crypto::{CryptoError, keygen::X25519Keypair};
+use crate::crypto::{keygen::X25519Keypair, CryptoError};
 
 /// Compute `X25519(local_secret, peer_public)`.
 ///
@@ -29,7 +29,10 @@ pub fn diffie_hellman(
 }
 
 /// Compute the shared secret for a pair of keypairs (test/dev helper).
-pub fn diffie_hellman_keypairs(a: &X25519Keypair, b: &X25519Keypair) -> Result<[u8; 32], CryptoError> {
+pub fn diffie_hellman_keypairs(
+    a: &X25519Keypair,
+    b: &X25519Keypair,
+) -> Result<[u8; 32], CryptoError> {
     diffie_hellman(&a.secret, &b.public.to_bytes())
 }
 

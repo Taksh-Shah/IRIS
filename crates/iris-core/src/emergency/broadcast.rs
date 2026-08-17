@@ -29,9 +29,7 @@ pub enum VerifyOutcome {
         drill: bool,
     },
     /// Verified drill — relay but do NOT surface on the OS alert layer.
-    Suppressed {
-        verified: VerifiedAuthority,
-    },
+    Suppressed { verified: VerifiedAuthority },
     /// Verification/auth/scope/validity failure — drop + audit, no reply.
     Drop(String),
 }
@@ -64,7 +62,10 @@ pub fn verify_and_classify(
 
 /// Whether an envelope carries an emergency content type (SOS or EmergencyAlert).
 pub fn is_emergency_content(envelope: &Envelope) -> bool {
-    matches!(envelope.payload_type, ContentType::Sos | ContentType::EmergencyAlert)
+    matches!(
+        envelope.payload_type,
+        ContentType::Sos | ContentType::EmergencyAlert
+    )
 }
 
 /// Convenience: the emergency broadcast recipient constant used for
@@ -76,11 +77,11 @@ pub fn broadcast_recipient() -> [u8; 4] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::keygen::{IdentityKeypair, X25519Keypair};
     use crate::emergency::codec::encode_broadcast;
     use crate::emergency::model::{AuthorityMeta, Certainty, EmergencyBroadcast, Severity};
     use crate::identity::advertise::KeyAdvertisementV1;
     use crate::identity::chain::authorizing_cert;
-    use crate::crypto::keygen::{IdentityKeypair, X25519Keypair};
     use crate::protocol::message_id::MessageId;
 
     fn now() -> u64 {
@@ -141,7 +142,15 @@ mod tests {
         let cert = authorizing_cert(&root, &leaf_ad).to_bytes();
         let chain = vec![root_ad.to_bytes(), cert];
         let sender = leaf.verifying_bytes();
-        let b = valid_broadcast(&sender, if drill { Severity::Test } else { Severity::Critical }, drill);
+        let b = valid_broadcast(
+            &sender,
+            if drill {
+                Severity::Test
+            } else {
+                Severity::Critical
+            },
+            drill,
+        );
         let payload = encode_broadcast(&b).unwrap();
         let env = Envelope {
             version: 1,
@@ -212,8 +221,7 @@ mod tests {
         // internet/gateway envelope class (>>1 KB) and never silently truncate.
         let (chain, trust, sender) = build_four_chain();
         let mut b = valid_broadcast(&sender, Severity::Critical, false);
-        b.authority_peer_short =
-            Some(super::super::authority::authority_short_id(&sender));
+        b.authority_peer_short = Some(super::super::authority::authority_short_id(&sender));
         b.headline = "x".repeat(96);
         b.instructions = Some("y".repeat(96));
         let payload = encode_broadcast(&b).unwrap();

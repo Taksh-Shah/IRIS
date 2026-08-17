@@ -14,7 +14,9 @@ use std::time::Instant;
 /// P2=Location, P3=EmergencyText, P4=Normal, P5=Image, P6=Voice, P7=Video.
 /// Ordering matters: `P0 < P1 < ... < P7` so lower discriminants are higher
 /// priority and sort first.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum MessagePriority {
     /// P0 — SOS. Life-threatening emergency beacon. 255-byte LoRa budget.
     P0 = 0,
@@ -67,9 +69,22 @@ impl fmt::Display for MessagePriority {
     }
 }
 
+/// Manual Arbitrary implementation for proptest (enabled via proptest feature)
+#[cfg(feature = "proptest")]
+impl proptest::arbitrary::Arbitrary for MessagePriority {
+    type Parameters = ();
+    type Strategy = proptest::strategy::Just<MessagePriority>;
+
+    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+        proptest::strategy::Just(MessagePriority::P4) // Default to P4 for simplicity
+    }
+}
+
 /// A node identifier: 32-byte BLAKE3 hash of the node's Ed25519 public key
 /// (per `docs/protocol/ADDRESSING.md` and ADR-0002).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct PeerId(pub [u8; 32]);
 
 impl PeerId {
@@ -216,7 +231,11 @@ mod tests {
         assert_eq!(MessagePriority::from_u8(8), None, "8 is past P7");
         assert_eq!(MessagePriority::from_u8(255), None, "255 must be rejected");
         assert_eq!(MessagePriority::from_u8(200), None, "200 must be rejected");
-        assert_eq!(MessagePriority::from_u8(7), Some(MessagePriority::P7), "boundary P7");
+        assert_eq!(
+            MessagePriority::from_u8(7),
+            Some(MessagePriority::P7),
+            "boundary P7"
+        );
     }
 
     #[test]

@@ -16,8 +16,8 @@
 //! Research record: RES-0011 — RFC 6693 read in full (no errata).
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::message::PeerId;
@@ -98,9 +98,9 @@ impl TimePoint {
     fn now(&self) -> Duration {
         match self {
             TimePoint::Wall(now) => now.elapsed(),
-            TimePoint::Virtual(clock) => Duration::from_millis(
-                clock.load(Ordering::Relaxed).saturating_mul(1000),
-            ),
+            TimePoint::Virtual(clock) => {
+                Duration::from_millis(clock.load(Ordering::Relaxed).saturating_mul(1000))
+            }
         }
     }
 }
@@ -183,11 +183,7 @@ impl DeliveryPredictability {
     /// Record a direct contact with `other`: Eq. 1 (interval-scaled
     /// P_encounter) then Eq. 3 transitivity against the other's DP snapshot
     /// (MAX form). Returns the set of destinations whose DP changed.
-    pub fn meet(
-        &mut self,
-        other: &PeerId,
-        other_predictions: &[(PeerId, f64)],
-    ) -> Vec<PeerId> {
+    pub fn meet(&mut self, other: &PeerId, other_predictions: &[(PeerId, f64)]) -> Vec<PeerId> {
         let now = self.now.now();
         let cfg = self.config;
 
@@ -340,7 +336,11 @@ mod tests {
         clock.store(1_700_000_001, Ordering::Relaxed); // +1 s → 1 aging interval
         p.age();
         // K=1: 0.99·0.5 = 0.495.
-        assert!((p.p_for(&b) - 0.99 * 0.5).abs() < 1e-9, "got {}", p.p_for(&b));
+        assert!(
+            (p.p_for(&b) - 0.99 * 0.5).abs() < 1e-9,
+            "got {}",
+            p.p_for(&b)
+        );
         clock.store(1_700_000_003, Ordering::Relaxed); // +3 s → K=3
         p.age();
         assert!((p.p_for(&b) - 0.99 * 0.5f64.powi(3)).abs() < 1e-9);
@@ -386,8 +386,8 @@ mod tests {
     #[test]
     fn snapshot_top_n_sorted_deterministic() {
         let clock = Arc::new(AtomicU64::new(1_700_000_000));
-        let mut p = DeliveryPredictability::new(ProphetConfig::default())
-            .with_virtual_clock(clock.clone());
+        let mut p =
+            DeliveryPredictability::new(ProphetConfig::default()).with_virtual_clock(clock.clone());
         for i in 0..50u8 {
             p.meet(&pid(i), &[]);
         }
@@ -403,8 +403,8 @@ mod tests {
     #[test]
     fn capped_entries_evict_lowest() {
         let clock = Arc::new(AtomicU64::new(1_700_000_000));
-        let mut p = DeliveryPredictability::new(ProphetConfig::default())
-            .with_virtual_clock(clock.clone());
+        let mut p =
+            DeliveryPredictability::new(ProphetConfig::default()).with_virtual_clock(clock.clone());
         for i in 0..(MAX_DP_ENTRIES + 10) as u8 {
             p.meet(&pid(i), &[]);
         }

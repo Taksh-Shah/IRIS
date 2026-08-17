@@ -14,6 +14,7 @@
 use crate::crypto::ed25519 as ed;
 use crate::crypto::keygen::IdentityKeypair;
 use crate::identity::small_order;
+use serde_bytes::ByteArray;
 
 /// Format version for the advertisement wire form.
 pub const ADVERTISE_FORMAT_VERSION: u8 = 1;
@@ -21,7 +22,7 @@ pub const ADVERTISE_FORMAT_VERSION: u8 = 1;
 /// A signed key advertisement (SPKI-style / RFC 9804). Wire form is the CBOR
 /// subject block (via `signable_bytes`) concatenated with the 64-byte sig;
 /// see [`KeyAdvertisementV1::to_bytes`] / [`from_bytes`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct KeyAdvertisementV1 {
     pub format_version: u8,
     /// Ed25519 verifying key — subject / keyholder (PeerId).
@@ -33,7 +34,8 @@ pub struct KeyAdvertisementV1 {
     /// Unix expiry (0 = no expiry).
     pub valid_until: u64,
     /// `Ed25519(identity)` over the fields above.
-    pub sig: [u8; 64],
+    #[serde(with = "serde_bytes")]
+    pub sig: ByteArray<64>,
 }
 
 /// Errors during build/verify of a key advertisement.
@@ -73,10 +75,12 @@ impl KeyAdvertisementV1 {
             static_x25519_pubkey,
             key_gen_counter,
             valid_until,
-            sig: [0u8; 64],
+            sig: ByteArray::from([0u8; 64]),
         };
         let signable = ad.signable_bytes().map_err(AdvertiseError::Codec)?;
-        ad.sig = ed::sign(identity, &signable).map_err(|_| AdvertiseError::BadSignature)?;
+        ad.sig = ed::sign(identity, &signable)
+            .map_err(|_| AdvertiseError::BadSignature)?
+            .into();
         Ok(ad)
     }
 
@@ -100,7 +104,7 @@ impl KeyAdvertisementV1 {
     /// Serialize the full advertisement (subject block ‖ 64-byte sig).
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut buf = self.signable_bytes().expect("encode");
-        buf.extend_from_slice(&self.sig);
+        buf.extend_from_slice(self.sig.as_ref());
         buf
     }
 
@@ -118,8 +122,8 @@ impl KeyAdvertisementV1 {
                 bytes.len()
             )));
         }
-        let mut sig = [0u8; 64];
-        sig.copy_from_slice(&bytes[consumed..]);
+        let mut sig = ByteArray::from([0u8; 64]);
+        sig.as_mut().copy_from_slice(&bytes[consumed..]);
         Ok(Self {
             format_version: obj.0,
             identity_pubkey: obj.1,
@@ -142,7 +146,8 @@ impl KeyAdvertisementV1 {
         let vk = ed25519_dalek::VerifyingKey::from_bytes(&self.identity_pubkey)
             .map_err(|_| AdvertiseError::BadSignature)?;
         let signable = self.signable_bytes().map_err(AdvertiseError::Codec)?;
-        let ok = ed::verify_strict(&vk, &signable, &self.sig).map_err(|_| AdvertiseError::BadSignature)?;
+        let ok = ed::verify_strict(&vk, &signable, &self.sig)
+            .map_err(|_| AdvertiseError::BadSignature)?;
         if ok {
             Ok(true)
         } else {

@@ -38,8 +38,7 @@ mod tests {
     use hex_literal::hex;
 
     // RFC 5869 Appendix A.1 (SHA-256, 82-byte IKM, 42-byte OKM).
-    const IKM: [u8; 22] =
-        hex!("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+    const IKM: [u8; 22] = hex!("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
     const SALT: &[u8] = &hex!("000102030405060708090a0b0c");
     const INFO: &[u8] = &hex!("f0f1f2f3f4f5f6f7f8f9");
     const OKM_42: &[u8] = &hex!(
@@ -147,8 +146,8 @@ mod tests {
         // is shared by engine + provider, never derived differently).
         use crate::crypto::keygen::X25519Keypair;
         use crate::crypto::x25519::diffie_hellman_keypairs;
-        use crate::protocol::{MessageId, PROTOCOL_VERSION};
         use crate::message_engine::crypto::message_kdf_info;
+        use crate::protocol::{MessageId, PROTOCOL_VERSION};
 
         let sender = X25519Keypair::generate();
         let recipient = X25519Keypair::generate();
@@ -160,7 +159,10 @@ mod tests {
         let info = message_kdf_info(id);
         let k_sender = message_key(&shared_ab, &info).expect("sender key");
         let k_recipient = message_key(&shared_ba, &info).expect("recipient key");
-        assert_eq!(k_sender, k_recipient, "both parties derive the identical message key");
+        assert_eq!(
+            k_sender, k_recipient,
+            "both parties derive the identical message key"
+        );
         assert_ne!(k_sender, [0u8; 32]);
     }
 }

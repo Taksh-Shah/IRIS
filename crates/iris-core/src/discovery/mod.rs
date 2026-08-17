@@ -11,22 +11,22 @@
 //! against any `Transport` implementation (`SimulatedTransport`,
 //! `InternetTransport`) — see `DiscoveryManager::scan_once`.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::RwLock;
 use tokio::sync::broadcast;
+use tokio::sync::RwLock;
 
-use crate::message::{DiscoveryConfig as ScanConfig, LinkQuality, PeerId};
 use crate::message::MessagePriority::P2;
+use crate::message::{DiscoveryConfig as ScanConfig, LinkQuality, PeerId};
 use crate::transport::{TopologyEvent, Transport, TransportId};
 use crate::TransportError;
 
 pub mod handshake;
 pub mod neighbor_table;
 
-use handshake::{HandshakeMessage, parse_handshake};
+use handshake::{parse_handshake, HandshakeMessage};
 use neighbor_table::NeighborTable;
 
 /// Discovery run mode.
@@ -110,7 +110,10 @@ impl DiscoveryManager {
     }
 
     pub async fn deregister_transport(&self, id: &TransportId) {
-        self.transports.write().await.retain(|t| t.transport_id() != id);
+        self.transports
+            .write()
+            .await
+            .retain(|t| t.transport_id() != id);
     }
 
     pub fn mode(&self) -> DiscoveryMode {
@@ -353,7 +356,11 @@ mod tests {
             .expect("event");
         assert!(matches!(ev, TopologyEvent::PeerDiscovered { .. }));
         assert_eq!(
-            m.neighbors().transports_to(&peer.peer_id).await.unwrap().len(),
+            m.neighbors()
+                .transports_to(&peer.peer_id)
+                .await
+                .unwrap()
+                .len(),
             1
         );
     }
@@ -472,7 +479,10 @@ mod tests {
         assert_eq!(caps.bloom_k, bloom.k());
         assert!(caps.transports.contains(&"sim-alice".to_string()));
         // Bloom filter recorded on the neighbor.
-        let peer_bloom = bob_dm.neighbors().peer_bloom(&PeerId::from_bytes(ALICE)).await;
+        let peer_bloom = bob_dm
+            .neighbors()
+            .peer_bloom(&PeerId::from_bytes(ALICE))
+            .await;
         assert!(peer_bloom.is_some());
         assert!(peer_bloom.unwrap().contains([0x11; 16]));
     }

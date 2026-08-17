@@ -1,0 +1,26 @@
+[package]
+name = "iris-core-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+members = []
+resolver = "2"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+iris-core = { path = ".." }
+tokio = { version = "1", features = ["rt", "sync"] }
+
+[[bin]]
+name = "fuzz_security_engines"
+path = "fuzz_targets/fuzz_security_engines.rs"
+test = false
+doc = false
+
+[profile.release]
+debug = 1

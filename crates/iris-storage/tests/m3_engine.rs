@@ -62,7 +62,13 @@ async fn engine_roundtrip_over_postgres_store() {
     );
     let mut bob_delivered = bob.delivered_messages();
 
-    let env = env_for(BOB, MessagePriority::P4, unix_now(), 3600, b"hello pg engine");
+    let env = env_for(
+        BOB,
+        MessagePriority::P4,
+        unix_now(),
+        3600,
+        b"hello pg engine",
+    );
     let id = env.message_id;
     alice.send_message(env).await.expect("send");
 

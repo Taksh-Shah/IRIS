@@ -35,21 +35,21 @@ pub mod authority;
 pub mod broadcast;
 pub mod codec;
 pub mod drill;
-pub mod model;
 pub mod mode;
+pub mod model;
 pub mod provider;
 pub mod rate_limit;
 pub mod sos;
 
 pub use audit::{AuditEvent, AuditLog, EmergencyAuditRecord};
-pub use authority::{AuthorityError, VerifiedAuthority, verify_authoritative};
-pub use broadcast::{VerifyOutcome, is_emergency_content, verify_and_classify};
+pub use authority::{verify_authoritative, AuthorityError, VerifiedAuthority};
+pub use broadcast::{is_emergency_content, verify_and_classify, VerifyOutcome};
 pub use codec::{decode_broadcast, decode_sos, encode_broadcast, encode_sos};
+pub use mode::{guarded_transition, DisasterMode, ModeTransition, Triggers};
 pub use model::{
     AlertMessageType, AuthorityMeta, Certainty, EmergencyBroadcast, LocationSource, ModelError,
     Severity, SosKind, SosMessage, SosReason,
 };
-pub use mode::{DisasterMode, ModeTransition, Triggers, guarded_transition};
-pub use provider::{EmergencyProvider, EmergencyGateway, NoopEmergencyProvider};
+pub use provider::{EmergencyGateway, EmergencyProvider, NoopEmergencyProvider};
 pub use rate_limit::{RateLimitDecision, SosRateLimiter};
-pub use sos::{SosError, SosOutcome, classify_sos};
+pub use sos::{classify_sos, SosError, SosOutcome};

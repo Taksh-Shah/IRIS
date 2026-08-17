@@ -65,14 +65,13 @@ pub fn retry_policy(priority: MessagePriority) -> RetryPolicy {
             backoff_factor: 2,
             max_attempts: Some(3),
         },
-        MessagePriority::P4
-        | MessagePriority::P5
-        | MessagePriority::P6
-        | MessagePriority::P7 => RetryPolicy {
-            initial_timeout: Duration::from_secs(600),
-            backoff_factor: 2,
-            max_attempts: Some(2),
-        },
+        MessagePriority::P4 | MessagePriority::P5 | MessagePriority::P6 | MessagePriority::P7 => {
+            RetryPolicy {
+                initial_timeout: Duration::from_secs(600),
+                backoff_factor: 2,
+                max_attempts: Some(2),
+            }
+        }
     }
 }
 
@@ -141,8 +140,7 @@ impl AckTracker {
         self.pending
             .iter()
             .filter(|(_, p)| {
-                p.next_retry.map(|t| t <= now).unwrap_or(false)
-                    && p.max_attempts_remaining() > 0
+                p.next_retry.map(|t| t <= now).unwrap_or(false) && p.max_attempts_remaining() > 0
             })
             .map(|(id, _)| *id)
             .collect()
@@ -192,13 +190,25 @@ mod tests {
 
     #[test]
     fn retry_table_matches_msg_design() {
-        assert_eq!(retry_policy(MessagePriority::P0).initial_timeout, Duration::from_secs(30));
+        assert_eq!(
+            retry_policy(MessagePriority::P0).initial_timeout,
+            Duration::from_secs(30)
+        );
         assert_eq!(retry_policy(MessagePriority::P0).max_attempts, None);
-        assert_eq!(retry_policy(MessagePriority::P1).initial_timeout, Duration::from_secs(60));
+        assert_eq!(
+            retry_policy(MessagePriority::P1).initial_timeout,
+            Duration::from_secs(60)
+        );
         assert_eq!(retry_policy(MessagePriority::P1).max_attempts, Some(10));
-        assert_eq!(retry_policy(MessagePriority::P2).initial_timeout, Duration::from_secs(120));
+        assert_eq!(
+            retry_policy(MessagePriority::P2).initial_timeout,
+            Duration::from_secs(120)
+        );
         assert_eq!(retry_policy(MessagePriority::P2).max_attempts, Some(5));
-        assert_eq!(retry_policy(MessagePriority::P3).initial_timeout, Duration::from_secs(300));
+        assert_eq!(
+            retry_policy(MessagePriority::P3).initial_timeout,
+            Duration::from_secs(300)
+        );
         assert_eq!(retry_policy(MessagePriority::P3).max_attempts, Some(3));
         for p in [
             MessagePriority::P4,
@@ -238,14 +248,19 @@ mod tests {
         let now = Instant::now();
         t.register_sent(id(1), MessagePriority::P4, now); // 600 s window, max 2
         assert!(t.due_retries(now).is_empty(), "not due at t=0");
-        assert!(t.due_retries(now + Duration::from_secs(601)).contains(&id(1)));
+        assert!(t
+            .due_retries(now + Duration::from_secs(601))
+            .contains(&id(1)));
 
         // Simulate two retries → budget exhausted → no longer due.
         let t1 = now + Duration::from_secs(601);
         t.record_retry(id(1), t1);
         let t2 = t1 + Duration::from_secs(1201);
         t.record_retry(id(1), t2);
-        assert!(t.due_retries(t2 + Duration::from_secs(1)).is_empty(), "budget exhausted");
+        assert!(
+            t.due_retries(t2 + Duration::from_secs(1)).is_empty(),
+            "budget exhausted"
+        );
         assert_eq!(t.exhausted().len(), 1);
     }
 

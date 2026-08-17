@@ -6,6 +6,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+proptest = ["dep:proptest"]
+
 [dependencies]
 async-trait.workspace = true
 blake3.workspace = true
@@ -14,6 +17,7 @@ ciborium.workspace = true
 curve25519-dalek.workspace = true
 ed25519-dalek = { workspace = true, features = ["rand_core", "zeroize"] }
 futures-util.workspace = true
+hex.workspace = true
 hkdf.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
@@ -26,8 +30,8 @@ tracing.workspace = true
 uuid.workspace = true
 x25519-dalek = { workspace = true, features = ["static_secrets"] }
 zeroize.workspace = true
+proptest = { version = "1", optional = true }
 
 [dev-dependencies]
 hex-literal.workspace = true
-proptest.workspace = true
 tempfile.workspace = true

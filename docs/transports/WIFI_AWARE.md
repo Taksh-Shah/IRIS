@@ -58,9 +58,12 @@ Node A and B now communicate via TCP/UDP/QUIC on the NDP interface
 ### API Level Requirements
 
 - **Wi-Fi Aware basics:** Android 8.0 (API 26)
-- **Background discovery without scanning:** Android 10.0 (API 29)
+- **Background discovery without scanning:** Android 10.0 (API 29) — *historically;
+  FGS `connectedDevice` (API 34+) required for production background under
+  Android 12+/15/16 (RES-0020 R5, corrected 2026-08-16)*
 - **NDP over IPv6 link-local:** Android 10.0+
-- **Ranging integration:** Android 9.0 (API 28) with WifiRttManager
+- **Ranging integration:** Android 9.0 (API 28) with WifiRttManager (802.11mc FTM;
+  802.11az NTB API 35+)
 
 ### Feature Detection
 
@@ -252,10 +255,18 @@ Discovery range is typically greater than NDP data path range due to different p
 Wi-Fi Aware has the best background operation story of any P2P Wi-Fi technology on Android:
 
 - **Android 8–9:** Wi-Fi Aware requires foreground or foreground service for reliable operation.
-- **Android 10+:** Wi-Fi Aware can maintain discovery (publish/subscribe) even when the app is not in foreground, without a foreground service, as long as the session is active. This is a key advantage over Wi-Fi Direct.
+- **Android 10+ (historical):** Wi-Fi Aware could maintain discovery (publish/subscribe) even when the app is not in foreground, without a foreground service, as long as the session is active.
+- **Android 12+ / 15 / 16 (corrected 2026-08-16, RES-0020 R5):** production background
+  discovery is **FGS-gated**. The old "API 10+ discovery survives without FGS"
+  claim is **dated** — under Android 12+ background limits and the Android 15/16
+  FGS runtime-quota tightening, a **foreground service of type `connectedDevice`
+  (API 34+)** is required to keep publish/subscribe legal and reliable in
+  background. **Suspend/Resume** (API 34+, HAL-gated) is the recognized power
+  lever for background cadence. The WIFIAWARE-001 design (AC-10) pins FGS
+  `connectedDevice` as the production requirement.
 - **Doze mode:** NAN cluster synchronization survives Doze Mode light. In Doze full, the radio duty cycle reduces but the session is maintained. Discovery events wake the app via `AlarmManager.setExactAndAllowWhileIdle()` internally.
 
-IRIS leverages this by keeping a Wi-Fi Aware session active at all times on supported devices, using it for passive background discovery. When a match event fires, the app is woken to handle it.
+IRIS leverages this by keeping a Wi-Fi Aware session active at all times on supported devices, using it for passive background discovery. When a match event fires, the app is woken to handle it. On devices where FGS cannot run or Wi-Fi Aware is unavailable, IRIS degrades to BLE + Wi-Fi Direct.
 
 ```kotlin
 // Register for Wi-Fi Aware availability changes
@@ -293,14 +304,39 @@ Wi-Fi Aware is approximately 2–3× more power-efficient than infrastructure Wi
 
 ---
 
-## iOS: Wi-Fi Aware Not Available
+## iOS: Wi-Fi Aware Not Available (v1) — CORRECTED 2026-08-16 (CONFLICT-1, RES-0020 R9)
 
-**iOS has no support for Wi-Fi Aware / NAN.** Apple uses 802.11 NAN internally for certain proximity features (likely in AirDrop's Wi-Fi component) but exposes no public API for NAN discovery or data paths.
+**iOS has NO public Wi-Fi Aware / NAN API** for the entire Android-era window
+(2018–2025). Apple uses 802.11 NAN internally for certain proximity features
+(likely AirDrop's Wi-Fi component) but exposed no public API for NAN discovery
+or data paths.
 
-This is a significant capability gap. iOS devices participating in IRIS cannot use Wi-Fi Aware. Mitigation:
+**UPDATE (2026, CONFLICT-1): Apple introduced the `WiFiAware` framework with
+iOS 26 / iPhone 12 and later** — a public Wi-Fi Aware (NAN) API on iOS
+(2.4/5/6 GHz, measured ~15 MB/s aggregate). This changes the iOS capability row
+from "No" to "Yes (iOS 26+, iPhone 12+, un-previewed)". It does NOT change the
+v1 IRIS plan:
+
+- IRIS v1 keeps **Android-only Wi-Fi Aware** as the medium-range high-bandwidth
+  transport on Android.
+- **BLE-002 remains the v1 iOS P2P path** (BLE is universal, background-safe,
+  and cross-platform).
+- **Android ↔ Apple NDP interoperability is immature** (Android NAN vs iOS
+  WiFiAware vendor/ecosystem fragmentation; cross-vendor NDP needs real-device
+  validation, which is BLK-0005-gated). Recording this as a known limitation and
+  a roadmap item for the platform nodes (ANDROID-001/IOS-001), not a v1
+  transport feature.
+- IRIS identifies peers by public-key fingerprint, never NAN MAC/PeerHandle, so
+  cross-OS peer identity remains consistent regardless of transport.
+
+Mitigation (unchanged for v1):
 - iOS devices rely on BLE for discovery and point-to-point transfers.
-- When an iOS device is near an Android device with Wi-Fi Aware active, the Android device can see the iOS device via BLE and the iOS device can connect to the Android's NAN data path via infrastructure Wi-Fi (if the NDP interface is bridged) — but this is complex and not currently implemented.
-- **Primary mitigation:** iOS devices in IRIS mesh use BLE as their P2P transport layer. Wi-Fi Aware is an Android-only enhancement.
+- When an iOS device is near an Android device with Wi-Fi Aware active, the
+  Android device can see the iOS device via BLE and the iOS device can connect
+  to the Android's NAN data path via infrastructure Wi-Fi (if the NDP interface
+  is bridged) — but this is complex and not currently implemented.
+- **Primary mitigation:** iOS devices in IRIS mesh use BLE as their P2P
+  transport layer. Wi-Fi Aware is an Android-only enhancement in v1.
 
 ---
 

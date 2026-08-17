@@ -14,8 +14,8 @@
 //! through to the L0 engine unchanged (Direct→KnownPath→Flood→Store).
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use crate::message::{MessagePriority, PeerId};
 use crate::routing::prophet::{DeliveryPredictability, ProphetConfig};
@@ -40,7 +40,10 @@ pub enum OpportunisticReason {
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpportunisticDecision {
     /// Forward to this single neighbor (single-copy, best DP).
-    ForwardTo { next_hop: PeerId, reason: OpportunisticReason },
+    ForwardTo {
+        next_hop: PeerId,
+        reason: OpportunisticReason,
+    },
     /// No DP advantage; no spray budget left; fall through to L0.
     NoAdvantage,
 }
@@ -54,7 +57,9 @@ pub struct SprayBudget {
 
 impl SprayBudget {
     pub fn new(l: u32) -> Self {
-        SprayBudget { remaining: l.max(1) }
+        SprayBudget {
+            remaining: l.max(1),
+        }
     }
 
     /// L per priority band: P0 → epidemic (unlimited), P1–P2 → L,
@@ -131,11 +136,7 @@ impl OpportunisticRouter {
     }
 
     /// Record a contact with a neighbor, exchanging DP snapshots (Eq. 1 + 3).
-    pub fn on_contact(
-        &mut self,
-        other: &PeerId,
-        other_predictions: &[(PeerId, f64)],
-    ) {
+    pub fn on_contact(&mut self, other: &PeerId, other_predictions: &[(PeerId, f64)]) {
         let _ = self.pred.meet(other, other_predictions);
     }
 
@@ -186,13 +187,10 @@ impl OpportunisticRouter {
         let mut best: Option<(PeerId, f64)> = None;
         for (nb, p) in candidates {
             if self.gtmx_advantage(nb, *p, dest, priority, hop_budget)
-                && best
-                    .as_ref()
-                    .map(|(_, bp)| *p > *bp)
-                    .unwrap_or(true)
-                {
-                    best = Some((*nb, *p));
-                }
+                && best.as_ref().map(|(_, bp)| *p > *bp).unwrap_or(true)
+            {
+                best = Some((*nb, *p));
+            }
         }
         match best {
             Some((nb, p)) => {
@@ -316,10 +314,16 @@ mod tests {
         // Prime my own DP via a stronger transitive path to dest.
         r.on_contact(&pid(8), &[(dest, 0.9)]);
         // Candidate 0.05 is below the discard floor → no advantage.
-        assert_eq!(r.decide(&dest, &[(pid(2), 0.05)], MessagePriority::P4, 3), OpportunisticDecision::NoAdvantage);
+        assert_eq!(
+            r.decide(&dest, &[(pid(2), 0.05)], MessagePriority::P4, 3),
+            OpportunisticDecision::NoAdvantage
+        );
         // Candidate below/equal my own DP → no advantage.
         let mine = r.p_for(&dest);
-        assert_eq!(r.decide(&dest, &[(pid(2), mine)], MessagePriority::P4, 3), OpportunisticDecision::NoAdvantage);
+        assert_eq!(
+            r.decide(&dest, &[(pid(2), mine)], MessagePriority::P4, 3),
+            OpportunisticDecision::NoAdvantage
+        );
     }
 
     #[test]
@@ -329,7 +333,11 @@ mod tests {
         let contacts = [pid(2), pid(3), pid(4)];
         let mut handed = 0;
         for c in &contacts {
-            if let OpportunisticDecision::ForwardTo { reason: OpportunisticReason::Spray, .. } = r.spray(c, &mut budget) {
+            if let OpportunisticDecision::ForwardTo {
+                reason: OpportunisticReason::Spray,
+                ..
+            } = r.spray(c, &mut budget)
+            {
                 handed += 1;
             }
         }

@@ -25,9 +25,13 @@ pub mod store;
 pub mod trust_store;
 
 pub use advertise::{AdvertiseError, KeyAdvertisementV1};
-pub use chain::{ChainError, verify_chain, MAX_CHAIN_LEN};
-pub use provision::{IDENTITY_FORMAT_VERSION, IdentityError, IdentityManager, NodeIdentityV1};
-pub use rotate::{RotationEventV1, RotationOutcome, apply as apply_rotation, KIND_REVOCATION, KIND_ROTATION, ROTATION_FORMAT_VERSION};
-pub use small_order::{SMALL_ORDER_U, is_small_order};
+pub use chain::{verify_chain, ChainError, MAX_CHAIN_LEN};
+pub use peer_id::{human_uid, peer_id, peer_short, peer_short_from_sender, peer_short_hex};
+pub use provision::{IdentityError, IdentityManager, NodeIdentityV1, IDENTITY_FORMAT_VERSION};
+pub use rotate::{
+    apply as apply_rotation, RotationEventV1, RotationOutcome, KIND_REVOCATION, KIND_ROTATION,
+    ROTATION_FORMAT_VERSION,
+};
+pub use small_order::{is_small_order, SMALL_ORDER_U};
 pub use store::{FileKeyStore, KeyStore, KeyStoreError};
 pub use trust_store::{AdoptionOutcome, TrustEntry, TrustKeyDirectory, TrustLevel, TrustStore};

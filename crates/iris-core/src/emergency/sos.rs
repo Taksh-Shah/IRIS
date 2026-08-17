@@ -105,7 +105,12 @@ mod tests {
     fn fresh_sos_accepted() {
         let p = encode(&sos(1_000, SosKind::Sos)).unwrap();
         let out = classify_sos(&p, 1_000, None).unwrap();
-        assert_eq!(out, SosOutcome::AcceptedSos { cancel_deadline: 4_600 });
+        assert_eq!(
+            out,
+            SosOutcome::AcceptedSos {
+                cancel_deadline: 4_600
+            }
+        );
     }
 
     #[test]
@@ -135,7 +140,10 @@ mod tests {
         let mut c = sos(1_000, SosKind::Cancel);
         c.original_message_id = Some([7u8; 16]);
         let p = encode(&c).unwrap();
-        assert_eq!(classify_sos(&p, 1_100, None), Err(SosError::UnknownOriginal));
+        assert_eq!(
+            classify_sos(&p, 1_100, None),
+            Err(SosError::UnknownOriginal)
+        );
     }
 
     #[test]

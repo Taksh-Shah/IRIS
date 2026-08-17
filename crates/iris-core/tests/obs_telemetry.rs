@@ -14,8 +14,8 @@ use iris_core::observability::MetricsRegistry;
 use iris_core::protocol::{ContentType, Envelope, MessageId};
 use iris_core::routing::scf::{ScfConfig, ScfEngine};
 use iris_core::routing::{ForwardingDecision, RoutingEngine};
-use iris_core::transport::TransportId;
 use iris_core::transport::simulated::{SimConfig, SimulatedTransport};
+use iris_core::transport::TransportId;
 
 const ALICE: [u8; 32] = [0xAA; 32];
 const BOB: [u8; 32] = [0xBB; 32];
@@ -110,10 +110,13 @@ async fn shared_registry_accumulates_across_routing_and_scf() {
     let _ = table;
 
     // SCF: buffer then evict under pressure -> evictions counter.
-    let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig {
-        max_storage_bytes: 0,
-        ..Default::default()
-    })
+    let mut scf = ScfEngine::new(
+        MemoryStorage::new(),
+        ScfConfig {
+            max_storage_bytes: 0,
+            ..Default::default()
+        },
+    )
     .with_telemetry(reg.clone());
     // A P1 (rank 1) message; P0 is exempt, P1 evictable.
     let env = envelope_for(CAROL, MessagePriority::P1, b"evict me");
@@ -122,7 +125,11 @@ async fn shared_registry_accumulates_across_routing_and_scf() {
     assert!(!evicted.is_empty(), "P1 must be evicted under pressure");
 
     let snap = reg.snapshot();
-    assert_eq!(snap[metric::ROUTING_DECISIONS_TOTAL], 1, "one routing decision");
+    assert_eq!(
+        snap[metric::ROUTING_DECISIONS_TOTAL],
+        1,
+        "one routing decision"
+    );
     assert_eq!(snap[metric::SCF_EVICTIONS_TOTAL], 1, "one SCF eviction");
 }
 
@@ -136,25 +143,37 @@ async fn engine_telemetry_counts_expired_and_delivered() {
     // Force an expired inbound: TTL long since elapsed -> expired counter.
     let mut expired_env = envelope_for(BOB, MessagePriority::P4, b"too late");
     expired_env.timestamp = 1; // 1970; expires instantly
-    let _ = engine.process_incoming(iris_core::message::IncomingMessage {
-        peer_id: pid(9),
-        transport_id: "sim".to_string(),
-        payload: iris_core::protocol::codec::encode(&expired_env).unwrap(),
-        received_at: std::time::Instant::now(),
-    }).await;
+    let _ = engine
+        .process_incoming(iris_core::message::IncomingMessage {
+            peer_id: pid(9),
+            transport_id: "sim".to_string(),
+            payload: iris_core::protocol::codec::encode(&expired_env).unwrap(),
+            received_at: std::time::Instant::now(),
+        })
+        .await;
 
     // A live inbound addressed to Alice -> delivered counter.
     let live = envelope_for(ALICE, MessagePriority::P4, b"for alice");
-    let _ = engine.process_incoming(iris_core::message::IncomingMessage {
-        peer_id: pid(9),
-        transport_id: "sim".to_string(),
-        payload: iris_core::protocol::codec::encode(&live).unwrap(),
-        received_at: std::time::Instant::now(),
-    }).await;
+    let _ = engine
+        .process_incoming(iris_core::message::IncomingMessage {
+            peer_id: pid(9),
+            transport_id: "sim".to_string(),
+            payload: iris_core::protocol::codec::encode(&live).unwrap(),
+            received_at: std::time::Instant::now(),
+        })
+        .await;
 
     let snap = engine.telemetry().snapshot();
-    assert_eq!(snap[metric::MESSAGES_EXPIRED_TOTAL], 1, "expired inbound counted");
-    assert_eq!(snap[metric::MESSAGES_DELIVERED_TOTAL], 1, "delivered inbound counted");
+    assert_eq!(
+        snap[metric::MESSAGES_EXPIRED_TOTAL],
+        1,
+        "expired inbound counted"
+    );
+    assert_eq!(
+        snap[metric::MESSAGES_DELIVERED_TOTAL],
+        1,
+        "delivered inbound counted"
+    );
     let _ = reg;
 }
 
@@ -189,12 +208,14 @@ async fn engine_accepts_injected_shared_registry() {
     // Expired inbound through the shared engine registry.
     let mut expired_env = envelope_for(BOB, MessagePriority::P4, b"too late");
     expired_env.timestamp = 1;
-    let _ = engine.process_incoming(iris_core::message::IncomingMessage {
-        peer_id: pid(9),
-        transport_id: "sim".to_string(),
-        payload: iris_core::protocol::codec::encode(&expired_env).unwrap(),
-        received_at: std::time::Instant::now(),
-    }).await;
+    let _ = engine
+        .process_incoming(iris_core::message::IncomingMessage {
+            peer_id: pid(9),
+            transport_id: "sim".to_string(),
+            payload: iris_core::protocol::codec::encode(&expired_env).unwrap(),
+            received_at: std::time::Instant::now(),
+        })
+        .await;
 
     // A routing decision into the same registry.
     let mut routing = RoutingEngine::new().with_telemetry(reg.clone());
@@ -216,8 +237,16 @@ async fn engine_accepts_injected_shared_registry() {
         .await;
 
     let snap = reg.snapshot();
-    assert_eq!(snap[metric::MESSAGES_EXPIRED_TOTAL], 1, "engine counter in shared registry");
-    assert_eq!(snap[metric::ROUTING_DECISIONS_TOTAL], 1, "routing counter in shared registry");
+    assert_eq!(
+        snap[metric::MESSAGES_EXPIRED_TOTAL],
+        1,
+        "engine counter in shared registry"
+    );
+    assert_eq!(
+        snap[metric::ROUTING_DECISIONS_TOTAL],
+        1,
+        "routing counter in shared registry"
+    );
 }
 
 // --- AC4: privacy — short() truncates identifiers to 8 bytes (16 hex) ---
@@ -228,8 +257,15 @@ fn privacy_short_truncates_identifiers() {
     let short = id.short();
     let short_str = short.to_string();
     assert_eq!(short_str.len(), 16, "8-byte prefix in hex = 16 chars");
-    assert!(id.to_string().starts_with(&short_str), "short is a prefix of full id");
-    assert_ne!(short_str, id.to_string(), "short must not equal the full 32-char id");
+    assert!(
+        id.to_string().starts_with(&short_str),
+        "short is a prefix of full id"
+    );
+    assert_ne!(
+        short_str,
+        id.to_string(),
+        "short must not equal the full 32-char id"
+    );
 
     let peer = PeerId([0xCD; 32]);
     let short_p = peer.short().to_string();

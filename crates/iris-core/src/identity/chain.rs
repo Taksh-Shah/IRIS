@@ -94,7 +94,10 @@ pub fn verify_chain(
     // RED-0011 (small-order) is evaluated first so a low-order root key is
     // rejected on crypto grounds, not reported as a consistency mismatch.
     if small_order::is_small_order(&root.static_x25519_pubkey) {
-        return Err(ChainError::Verdict(0, "small-order static key (RED-0011)".into()));
+        return Err(ChainError::Verdict(
+            0,
+            "small-order static key (RED-0011)".into(),
+        ));
     }
     if let Some(entry) = trust
         .entries()
@@ -112,11 +115,17 @@ pub fn verify_chain(
         // meaningful for the certifying hop (prevents a version-forged element
         // from being accepted into a chain).
         if ad.format_version != crate::identity::advertise::ADVERTISE_FORMAT_VERSION {
-            return Err(ChainError::Verdict(i, format!("bad format version {}", ad.format_version)));
+            return Err(ChainError::Verdict(
+                i,
+                format!("bad format version {}", ad.format_version),
+            ));
         }
         // Rule 4: RED-0011 at every link (before any crypto touch of the key).
         if small_order::is_small_order(&ad.static_x25519_pubkey) {
-            return Err(ChainError::Verdict(i, "small-order static key (RED-0011)".into()));
+            return Err(ChainError::Verdict(
+                i,
+                "small-order static key (RED-0011)".into(),
+            ));
         }
         // Rule 7: no expired links.
         if ad.valid_until != 0 && ad.valid_until < now {
@@ -136,9 +145,8 @@ pub fn verify_chain(
         // first certifying hop (i == 1 against root).
         if i > 0 {
             let parent = &ads[i - 1];
-            let parent_vk =
-                ed25519_dalek::VerifyingKey::from_bytes(&parent.identity_pubkey)
-                    .map_err(|_| ChainError::BrokenLink(i))?;
+            let parent_vk = ed25519_dalek::VerifyingKey::from_bytes(&parent.identity_pubkey)
+                .map_err(|_| ChainError::BrokenLink(i))?;
             let signable = ad.signable_bytes().map_err(|e| ChainError::Verdict(i, e))?;
             let ok = crate::crypto::ed25519::verify_strict(&parent_vk, &signable, &ad.sig)
                 .map_err(|_| ChainError::BrokenLink(i))?;
@@ -181,14 +189,15 @@ pub fn authorizing_cert(
     parent: &crate::crypto::keygen::IdentityKeypair,
     child_ad: &KeyAdvertisementV1,
 ) -> KeyAdvertisementV1 {
-    let sig = crate::crypto::ed25519::sign(parent, &child_ad.signable_bytes().expect("encode")).expect("sign");
+    let sig = crate::crypto::ed25519::sign(parent, &child_ad.signable_bytes().expect("encode"))
+        .expect("sign");
     KeyAdvertisementV1 {
         format_version: child_ad.format_version,
         identity_pubkey: child_ad.identity_pubkey,
         static_x25519_pubkey: child_ad.static_x25519_pubkey,
         key_gen_counter: child_ad.key_gen_counter,
         valid_until: child_ad.valid_until,
-        sig,
+        sig: sig.into(),
     }
 }
 
@@ -301,7 +310,10 @@ mod tests {
     #[test]
     fn empty_chain_rejected() {
         let trust = TrustStore::new();
-        assert_eq!(verify_chain(&[], &trust, &[0u8; 32]), Err(ChainError::Empty));
+        assert_eq!(
+            verify_chain(&[], &trust, &[0u8; 32]),
+            Err(ChainError::Empty)
+        );
     }
 
     #[test]

@@ -16,7 +16,9 @@ pub const TEST_DB: &str = "iris_test";
 
 /// True if a Postgres password was supplied via the environment.
 pub fn pg_available() -> bool {
-    std::env::var("IRIS_PG_PASSWORD").map(|p| !p.is_empty()).unwrap_or(false)
+    std::env::var("IRIS_PG_PASSWORD")
+        .map(|p| !p.is_empty())
+        .unwrap_or(false)
 }
 
 fn cfg_db(dbname: &str) -> PgStorageConfig {
@@ -37,7 +39,9 @@ pub async fn ensure_db() {
     )
     .await
     .expect("connect to maintenance db");
-    tokio::spawn(async move { let _ = conn.await; });
+    tokio::spawn(async move {
+        let _ = conn.await;
+    });
     let create = format!("CREATE DATABASE {TEST_DB}");
     let _ = client.execute(&create, &[]).await; // ignore "already exists"
 }
@@ -45,7 +49,9 @@ pub async fn ensure_db() {
 /// A fresh store connected to the scratch DB (schema applied, rows cleared).
 pub async fn fresh_store() -> PgStorage {
     ensure_db().await;
-    let store = PgStorage::connect(cfg_db(TEST_DB)).await.expect("connect storage");
+    let store = PgStorage::connect(cfg_db(TEST_DB))
+        .await
+        .expect("connect storage");
     store
         .client()
         .execute("TRUNCATE TABLE messages", &[])
@@ -55,10 +61,19 @@ pub async fn fresh_store() -> PgStorage {
 }
 
 pub fn unix_now() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
-pub fn env_for(recipient: [u8; 32], priority: MessagePriority, ts: u64, ttl: u64, payload: &[u8]) -> Envelope {
+pub fn env_for(
+    recipient: [u8; 32],
+    priority: MessagePriority,
+    ts: u64,
+    ttl: u64,
+    payload: &[u8],
+) -> Envelope {
     Envelope {
         version: iris_core::protocol::PROTOCOL_VERSION,
         message_id: MessageId::new_v7(),

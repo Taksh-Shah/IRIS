@@ -239,7 +239,11 @@ mod tests {
     fn bloom_sizing_matches_design() {
         // 100 K @ 0.1% ≈ 1.44 M bits ≈ 180 KB, ~10 probes.
         let b = BloomFilter::new(BLOOM_CAPACITY, BLOOM_FPR);
-        assert!(b.size_bytes() >= 179_000 && b.size_bytes() <= 181_000, "got {}", b.size_bytes());
+        assert!(
+            b.size_bytes() >= 179_000 && b.size_bytes() <= 181_000,
+            "got {}",
+            b.size_bytes()
+        );
         assert!(b.probes() >= 9 && b.probes() <= 11, "got {}", b.probes());
     }
 

@@ -51,7 +51,13 @@ impl SimMetrics {
     pub fn from_outcome(out: &SimOutcome) -> Self {
         let mut per_priority: HashMap<MessagePriority, PrioritySlice> = HashMap::new();
         for (prio, (d, i)) in &out.per_priority {
-            per_priority.insert(*prio, PrioritySlice { delivered: *d, injected: *i });
+            per_priority.insert(
+                *prio,
+                PrioritySlice {
+                    delivered: *d,
+                    injected: *i,
+                },
+            );
         }
 
         let mut lat = out.latencies.clone();
@@ -102,7 +108,10 @@ impl SimMetrics {
 
     /// Delivery ratio for one priority class.
     pub fn delivered_ratio_for(&self, prio: MessagePriority) -> f64 {
-        self.per_priority.get(&prio).map(|s| s.ratio()).unwrap_or(0.0)
+        self.per_priority
+            .get(&prio)
+            .map(|s| s.ratio())
+            .unwrap_or(0.0)
     }
 
     /// Overhead ratio (relays / delivered) — ONE methodology parity.
@@ -135,8 +144,18 @@ mod tests {
 
     #[test]
     fn priority_slice_ratio() {
-        let s = PrioritySlice { delivered: 2, injected: 4 };
+        let s = PrioritySlice {
+            delivered: 2,
+            injected: 4,
+        };
         assert!((s.ratio() - 0.5).abs() < 1e-9);
-        assert_eq!(PrioritySlice { delivered: 0, injected: 0 }.ratio(), 0.0);
+        assert_eq!(
+            PrioritySlice {
+                delivered: 0,
+                injected: 0
+            }
+            .ratio(),
+            0.0
+        );
     }
 }

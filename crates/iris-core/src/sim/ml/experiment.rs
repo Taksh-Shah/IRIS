@@ -170,10 +170,7 @@ pub fn evaluate_gt(gateway_contact_times_ms: &[u64], split_at_ms: u64) -> GtEval
 
     let predictor = GtPredictor::fit(&train);
     // Static baseline: mean inter-contact interval (no robustness).
-    let intervals: Vec<f64> = train
-        .windows(2)
-        .map(|w| (w[1] - w[0]) as f64)
-        .collect();
+    let intervals: Vec<f64> = train.windows(2).map(|w| (w[1] - w[0]) as f64).collect();
     let static_period = intervals.iter().sum::<f64>() / intervals.len() as f64;
 
     let mut gt_err = 0.0f64;
@@ -209,8 +206,8 @@ mod tests {
         // Periodic schedule with ONE long outlier gap inside the TRAIN slice:
         // the mean is skewed, the robust median is not → GT wins. The outlier
         // must not collide with an existing timestamp or `dedup` collapses it.
-        let train: Vec<u64> = [0, 1000, 2000, 3000, 4000, 9000, 10000, 11000, 12000, 13000]
-            .to_vec(); // gap of 5000 between 4000 and 9000, then periodic
+        let train: Vec<u64> =
+            [0, 1000, 2000, 3000, 4000, 9000, 10000, 11000, 12000, 13000].to_vec(); // gap of 5000 between 4000 and 9000, then periodic
         let test: Vec<u64> = (0..5).map(|i| 14_000 + i * 1000).collect(); // 14000..=18000
         let mut times = train;
         times.extend(test.iter().copied());
@@ -225,8 +222,7 @@ mod tests {
     fn gt_parity_on_aperiodic_schedule() {
         // Random-ish intervals → GT must NOT strictly beat the static mean
         // baseline (the "no-help bound", ML-001 AC-4).
-        let times: Vec<u64> = [0, 830, 1750, 2600, 3490, 4700, 5600, 6650, 7590, 8800]
-            .to_vec();
+        let times: Vec<u64> = [0, 830, 1750, 2600, 3490, 4700, 5600, 6650, 7590, 8800].to_vec();
         let eval = evaluate_gt(&times, 5000);
         // Learned period ≈ static mean within a small tolerance (parity).
         let diff = (eval.gt_mean_err_ms - eval.static_mean_err_ms).abs();
@@ -241,8 +237,7 @@ mod tests {
     fn gt_tolerates_unsorted_contact_times() {
         // ML-RT-03 regression: out-of-order input must not underflow the
         // interval subtraction (u64) or panic.
-        let mut times: Vec<u64> = [0, 1000, 2000, 3000, 4000, 14_000, 15_000, 16_000]
-            .to_vec();
+        let mut times: Vec<u64> = [0, 1000, 2000, 3000, 4000, 14_000, 15_000, 16_000].to_vec();
         times.reverse(); // deliberately unsorted
         let eval = evaluate_gt(&times, 10_000);
         assert!(

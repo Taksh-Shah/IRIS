@@ -68,7 +68,9 @@ pub enum AuthorityError {
     SeverityExceedsCap(u8, u8),
     #[error("authority: drill flag inconsistent with message_type/severity")]
     DrillMismatch,
-    #[error("authority: broadcast not currently valid (now {now}, issued {issued}, expires {expires})")]
+    #[error(
+        "authority: broadcast not currently valid (now {now}, issued {issued}, expires {expires})"
+    )]
     NotCurrentlyValid { now: u64, issued: u64, expires: u64 },
     #[error("authority: leaf advertisement decode failed: {0}")]
     LeafDecode(String),
@@ -122,8 +124,8 @@ pub fn verify_authoritative(
     // chain — otherwise any mesh member could self-issue a "verified" CRITICAL
     // alert (the RT-001 collapse).
     let root_bytes = chain_blobs.first().expect("non-empty after NoChain");
-    let root_ad =
-        KeyAdvertisementV1::from_bytes(root_bytes).map_err(|e| AuthorityError::LeafDecode(e.to_string()))?;
+    let root_ad = KeyAdvertisementV1::from_bytes(root_bytes)
+        .map_err(|e| AuthorityError::LeafDecode(e.to_string()))?;
     if !trust.is_authority_root(&root_ad.identity_pubkey) {
         return Err(AuthorityError::UntrustedAuthorityRoot);
     }
@@ -260,8 +262,8 @@ mod tests {
         for counter in 1u64..depth as u64 {
             let child = IdentityKeypair::generate();
             let child_x = X25519Keypair::generate();
-            let child_ad = KeyAdvertisementV1::build(&child, child_x.public_bytes(), counter, 0)
-                .unwrap();
+            let child_ad =
+                KeyAdvertisementV1::build(&child, child_x.public_bytes(), counter, 0).unwrap();
             let cert = authorizing_cert(&parent, &child_ad).to_bytes();
             blobs.push(cert);
             sender = child.verifying_bytes();
@@ -342,7 +344,10 @@ mod tests {
         let root_x = X25519Keypair::generate();
         let root_ad = KeyAdvertisementV1::build(&root, root_x.public_bytes(), 0, 0).unwrap();
         // TOFU adoption succeeds → level Unverified, NOT AuthorityRoot.
-        assert_eq!(trust.adopt_advertisement(&root_ad, now()), crate::identity::AdoptionOutcome::BoundUnverified);
+        assert_eq!(
+            trust.adopt_advertisement(&root_ad, now()),
+            crate::identity::AdoptionOutcome::BoundUnverified
+        );
         assert!(!trust.is_authority_root(&root.verifying_bytes()));
 
         let chain = vec![root_ad.to_bytes()];

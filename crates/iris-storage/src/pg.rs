@@ -7,9 +7,9 @@
 
 use std::sync::Arc;
 
+use iris_core::message::MessagePriority;
 use iris_core::message_engine::lifecycle::MessageStatus;
 use iris_core::message_engine::storage::{MessageStorage, StorageError};
-use iris_core::message::MessagePriority;
 use iris_core::protocol::{codec, Envelope, MessageId};
 
 use crate::eviction::{delete_expired, evict_lowest_priority, usage_bytes};
@@ -128,11 +128,16 @@ impl PgStorage {
     /// Run one GC tick: reclaim expired rows, then evict by priority if usage
     /// exceeds the quota threshold (STORAGE.md). P0 never evicted while live.
     pub async fn gc_once(&self, now_unix: u64) -> Result<(), StorageError> {
-        let _expired = delete_expired(&self.client, now_unix).await.map_err(backend)?;
+        let _expired = delete_expired(&self.client, now_unix)
+            .await
+            .map_err(backend)?;
         if self.config.max_storage_bytes > 0 {
-            let target = (self.config.max_storage_bytes as f64 * self.config.eviction_threshold) as u64;
+            let target =
+                (self.config.max_storage_bytes as f64 * self.config.eviction_threshold) as u64;
             if usage_bytes(&self.client).await.map_err(backend)? > target {
-                let _ = evict_lowest_priority(&self.client, target).await.map_err(backend)?;
+                let _ = evict_lowest_priority(&self.client, target)
+                    .await
+                    .map_err(backend)?;
             }
         }
         Ok(())
@@ -153,7 +158,11 @@ impl MessageStorage for PgStorage {
     async fn persist(&self, envelope: &Envelope) -> Result<(), StorageError> {
         let cbor = codec::encode(envelope).map_err(|e| StorageError::Backend(e.to_string()))?;
         let expires_at = envelope.timestamp.saturating_add(envelope.ttl_seconds);
-        let aad = crate::seal::row_aad(&envelope.message_id.to_string(), envelope.priority as u8, expires_at);
+        let aad = crate::seal::row_aad(
+            &envelope.message_id.to_string(),
+            envelope.priority as u8,
+            expires_at,
+        );
         let stored = self
             .sealer
             .seal(&aad, &cbor)
@@ -223,7 +232,11 @@ impl MessageStorage for PgStorage {
         }
     }
 
-    async fn update_status(&self, id: &MessageId, status: MessageStatus) -> Result<(), StorageError> {
+    async fn update_status(
+        &self,
+        id: &MessageId,
+        status: MessageStatus,
+    ) -> Result<(), StorageError> {
         self.client
             .execute(
                 "UPDATE messages SET status = $2 WHERE message_id = $1",
@@ -236,7 +249,10 @@ impl MessageStorage for PgStorage {
 
     async fn delete(&self, id: &MessageId) -> Result<(), StorageError> {
         self.client
-            .execute("DELETE FROM messages WHERE message_id = $1", &[&id.to_string()])
+            .execute(
+                "DELETE FROM messages WHERE message_id = $1",
+                &[&id.to_string()],
+            )
             .await
             .map_err(|e| StorageError::Backend(format!("delete: {e}")))?;
         Ok(())

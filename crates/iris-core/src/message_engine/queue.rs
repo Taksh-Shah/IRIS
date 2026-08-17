@@ -194,6 +194,22 @@ impl PriorityQueue {
         Some(top)
     }
 
+    /// Remove the first message matching `id` (rollback on persist failure).
+    /// Returns true if a message was removed.
+    pub fn remove_by_id(&mut self, id: &crate::protocol::MessageId) -> bool {
+        let all: Vec<QueuedMessage> = self.heap.drain().collect();
+        let (mut keep, mut removed) = (Vec::new(), None);
+        for m in all {
+            if removed.is_none() && m.envelope.message_id == *id {
+                removed = Some(m);
+            } else {
+                keep.push(m);
+            }
+        }
+        self.heap.extend(keep);
+        removed.is_some()
+    }
+
     /// Expire messages whose TTL elapsed. Returns expired entries (their
     /// envelopes) so the caller can transition them to `Expired`.
     pub fn drain_expired<F>(&mut self, mut expired: F) -> Vec<Envelope>
@@ -267,7 +283,7 @@ mod tests {
     #[test]
     fn fairness_gate_admits_lower_priority_after_budget() {
         let mut q = PriorityQueue::new(3); // small budget for the test
-        // Continuous P0 stream + one P5 at the bottom.
+                                           // Continuous P0 stream + one P5 at the bottom.
         for seq in 1u8..=5 {
             let mut e = env(MessagePriority::P0, seq);
             e.message_id = MessageId::from_bytes([seq; 16]);

@@ -239,7 +239,10 @@ impl InternetTransport {
 
     /// Open a pooled connection to a peer's relay and return its write half.
     async fn get_connection(&self, peer: &PeerInfo) -> Result<OwnedWriteHalf, TransportError> {
-        let addr = self.resolve_relay(peer).await.ok_or(TransportError::PeerNotFound)?;
+        let addr = self
+            .resolve_relay(peer)
+            .await
+            .ok_or(TransportError::PeerNotFound)?;
 
         let mut pool = self.pool.lock().await;
         let now = Instant::now();
@@ -248,12 +251,12 @@ impl InternetTransport {
         }
 
         // Open new connection (timeout 3s per INTERNET.md negotiation budget).
-        let stream = match tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr)).await
-        {
-            Ok(Ok(s)) => s,
-            Ok(Err(e)) => return Err(TransportError::Io(e.to_string())),
-            Err(_) => return Err(TransportError::ConnectionFailed),
-        };
+        let stream =
+            match tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr)).await {
+                Ok(Ok(s)) => s,
+                Ok(Err(e)) => return Err(TransportError::Io(e.to_string())),
+                Err(_) => return Err(TransportError::ConnectionFailed),
+            };
         stream.set_nodelay(true).ok();
         let (read, write) = stream.into_split();
         // Reader task pushes frames to incoming broadcast; on link loss it
@@ -272,14 +275,20 @@ impl InternetTransport {
             loop {
                 // Per-read timeout: a malicious/stalled relay must not pin a
                 // 1 MiB allocation + task forever (RED-0001-02 slowloris).
-                let header_res = tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut header)).await;
+                let header_res =
+                    tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut header))
+                        .await;
                 match header_res {
                     Ok(Ok(_)) => {}
                     _ => break, // EOF / reset / timeout
                 }
-                let Some(len) = frame_payload_len(&header) else { break };
+                let Some(len) = frame_payload_len(&header) else {
+                    break;
+                };
                 let mut payload = vec![0u8; len];
-                let body_res = tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut payload)).await;
+                let body_res =
+                    tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut payload))
+                        .await;
                 if !matches!(body_res, Ok(Ok(_))) {
                     break;
                 }
@@ -400,7 +409,10 @@ impl Transport for InternetTransport {
         // On write failure the link is dead: leave Connected immediately and
         // drop the socket so the reader marks the transport Available, letting
         // the manager steer traffic away (RED-0001-02 zombie state).
-        let addr = self.resolve_relay(&peer_info).await.ok_or(TransportError::PeerNotFound)?;
+        let addr = self
+            .resolve_relay(&peer_info)
+            .await
+            .ok_or(TransportError::PeerNotFound)?;
         if let Err(e) = write_res {
             self.set_state(TransportState::Degraded);
             return Err(TransportError::Io(e.to_string()));
@@ -434,7 +446,8 @@ impl Transport for InternetTransport {
     }
 
     fn set_send_priority_hint(&self, priority: MessagePriority) {
-        self.priority_hint.store(priority.as_u8(), Ordering::Release);
+        self.priority_hint
+            .store(priority.as_u8(), Ordering::Release);
     }
 
     async fn shutdown(&self) -> Result<(), TransportError> {
@@ -484,7 +497,11 @@ mod tests {
             assert!(ms >= last, "must not decrease: {last} -> {ms}");
             last = ms;
         }
-        assert_eq!(backoff_ms(10, 0), 26_250, "capped base 30s - 25% jitter half with seed 0");
+        assert_eq!(
+            backoff_ms(10, 0),
+            26_250,
+            "capped base 30s - 25% jitter half with seed 0"
+        );
     }
 
     #[test]
@@ -492,7 +509,10 @@ mod tests {
         for attempt in 1..=6 {
             for seed in 0..100 {
                 let ms = backoff_ms(attempt, seed);
-                assert!((500..=37_500).contains(&ms), "attempt {attempt} seed {seed}: {ms}");
+                assert!(
+                    (500..=37_500).contains(&ms),
+                    "attempt {attempt} seed {seed}: {ms}"
+                );
             }
         }
     }
@@ -550,10 +570,13 @@ mod tests {
 
     #[tokio::test]
     async fn cost_snapshot_reflects_connection() {
-        let transport = InternetTransport::new(&[], InternetCostParams {
-            cost_per_kb_inr: 0.5,
-            estimated_battery_ma: 50.0,
-        });
+        let transport = InternetTransport::new(
+            &[],
+            InternetCostParams {
+                cost_per_kb_inr: 0.5,
+                estimated_battery_ma: 50.0,
+            },
+        );
         let cost = transport.cost_snapshot();
         assert_eq!(cost.monetary_cost_per_kb, 0.5);
         assert_eq!(cost.estimated_battery_ma, 50.0);
@@ -658,9 +681,21 @@ mod tests {
         // every later attempt must yield the identical jittered value per seed.
         for seed in 0..100u64 {
             let capped = backoff_ms(5, seed);
-            assert_eq!(backoff_ms(6, seed), capped, "seed {seed}: attempt 6 != capped");
-            assert_eq!(backoff_ms(10, seed), capped, "seed {seed}: attempt 10 != capped");
-            assert_eq!(backoff_ms(31, seed), capped, "seed {seed}: attempt 31 != capped");
+            assert_eq!(
+                backoff_ms(6, seed),
+                capped,
+                "seed {seed}: attempt 6 != capped"
+            );
+            assert_eq!(
+                backoff_ms(10, seed),
+                capped,
+                "seed {seed}: attempt 10 != capped"
+            );
+            assert_eq!(
+                backoff_ms(31, seed),
+                capped,
+                "seed {seed}: attempt 31 != capped"
+            );
             assert!(
                 (26_250..=37_500).contains(&capped),
                 "seed {seed}: capped {capped} out of jitter band"

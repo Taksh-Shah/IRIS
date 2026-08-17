@@ -171,7 +171,9 @@ impl GatewaySelection {
         match self {
             GatewaySelection::None { .. } => Vec::new(),
             GatewaySelection::All { gateways } => gateways.clone(),
-            GatewaySelection::WithBackup { primary, backup, .. } => vec![*primary, *backup],
+            GatewaySelection::WithBackup {
+                primary, backup, ..
+            } => vec![*primary, *backup],
             GatewaySelection::Single { gateway, .. } => vec![*gateway],
         }
     }
@@ -191,8 +193,7 @@ pub fn compute_gateway_quality(gw: &GatewayCapability, msg_priority: MessagePrio
     }
     let reliability = gw.reliability_score.clamp(0.0, 1.0);
     let bandwidth_factor = ((gw.bandwidth_bps as f32 / MAX_EXPECTED_BPS as f32).min(1.0)).sqrt();
-    let latency_factor =
-        1.0 - (gw.latency_ms as f32 / MAX_EXPECTED_LATENCY_MS as f32).min(1.0);
+    let latency_factor = 1.0 - (gw.latency_ms as f32 / MAX_EXPECTED_LATENCY_MS as f32).min(1.0);
     let cost_factor = 1.0 - gw.cost_factor.clamp(0.0, 1.0);
     let availability =
         (1.0 - gw.current_load.clamp(0.0, 1.0)) * (1.0 - gw.queue_depth as f32 / 100.0).max(0.0);
@@ -262,7 +263,11 @@ impl GatewayHealthMonitor {
     /// Record a delivery ACK timeout for `gateway`. Returns `true` when this
     /// timeout flips the gateway into `Failed`.
     pub fn record_ack_timeout(&mut self, gateway: PeerId) -> bool {
-        let state = self.states.get(&gateway).copied().unwrap_or(GatewayHealthState::Healthy);
+        let state = self
+            .states
+            .get(&gateway)
+            .copied()
+            .unwrap_or(GatewayHealthState::Healthy);
         match state {
             GatewayHealthState::HardFailed => false,
             GatewayHealthState::Healthy | GatewayHealthState::Probation => {
@@ -274,10 +279,7 @@ impl GatewayHealthMonitor {
                     match state {
                         GatewayHealthState::Probation => {
                             // Failed again while proving out: escalate.
-                            let strikes = self
-                                .re_admission_strikes
-                                .entry(gateway)
-                                .or_insert(0);
+                            let strikes = self.re_admission_strikes.entry(gateway).or_insert(0);
                             *strikes += 1;
                             if *strikes >= HARD_FAIL_STRIKES {
                                 self.states.insert(gateway, GatewayHealthState::HardFailed);
@@ -345,7 +347,9 @@ impl GatewayHealthMonitor {
             Some(GatewayHealthState::Failed) => {
                 self.states.insert(gateway, GatewayHealthState::Probation);
                 // Set the window ONCE; reconcile re-passes must not extend it.
-                self.probation_until.entry(gateway).or_insert_with(|| Instant::now() + RECOVERY_WINDOW);
+                self.probation_until
+                    .entry(gateway)
+                    .or_insert_with(|| Instant::now() + RECOVERY_WINDOW);
                 tracing::debug!(
                     event = event::GW_HEALTH_TRANSITION,
                     gateway = %gateway.short(),
@@ -627,10 +631,7 @@ impl GatewayManager {
             .collect();
         // Deterministic total order: score desc, then PeerId asc for ties —
         // HashMap iteration order must never leak into selection (REDTEAM-05).
-        scored.sort_by(|a, b| {
-            b.0.total_cmp(&a.0)
-                .then_with(|| a.1.cmp(&b.1))
-        });
+        scored.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
 
         if scored.is_empty() {
             return GatewaySelection::None {
@@ -974,15 +975,33 @@ mod tests {
                 vec![],
             );
         }
-        assert!(m.len() <= MAX_GATEWAY_CANDIDATES, "registry must be bounded");
+        assert!(
+            m.len() <= MAX_GATEWAY_CANDIDATES,
+            "registry must be bounded"
+        );
     }
 
     #[test]
     fn selection_matrix_single_backup_all() {
         let mut m = GatewayManager::new();
-        let _ = m.adopt_from_neighbor(pid(1), rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05), 0, vec![]);
-        let _ = m.adopt_from_neighbor(pid(2), rich_cap(GatewayType::Lora, 1_000_000, 1000, 0.9, 0.0), 0, vec![]);
-        let _ = m.adopt_from_neighbor(pid(3), rich_cap(GatewayType::Internet, 10_000_000, 100, 0.7, 0.1), 0, vec![]);
+        let _ = m.adopt_from_neighbor(
+            pid(1),
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05),
+            0,
+            vec![],
+        );
+        let _ = m.adopt_from_neighbor(
+            pid(2),
+            rich_cap(GatewayType::Lora, 1_000_000, 1000, 0.9, 0.0),
+            0,
+            vec![],
+        );
+        let _ = m.adopt_from_neighbor(
+            pid(3),
+            rich_cap(GatewayType::Internet, 10_000_000, 100, 0.7, 0.1),
+            0,
+            vec![],
+        );
 
         // P4 → single best (pid 1: fastest + most reliable).
         let s = m.select(MessagePriority::P4);
@@ -993,7 +1012,9 @@ mod tests {
 
         // P2 → primary + backup.
         match m.select(MessagePriority::P2) {
-            GatewaySelection::WithBackup { primary, backup, .. } => {
+            GatewaySelection::WithBackup {
+                primary, backup, ..
+            } => {
                 assert_eq!(primary, pid(1));
                 assert_eq!(backup, pid(2), "lora (free, serves P2) must be backup");
             }
@@ -1020,18 +1041,38 @@ mod tests {
     #[test]
     fn priority_incompatible_candidates_skipped() {
         let mut m = GatewayManager::new();
-        let _ = m.adopt_from_neighbor(pid(1), rich_cap(GatewayType::Lora, 1_000_000, 500, 0.9, 0.0), 0, vec![]);
+        let _ = m.adopt_from_neighbor(
+            pid(1),
+            rich_cap(GatewayType::Lora, 1_000_000, 500, 0.9, 0.0),
+            0,
+            vec![],
+        );
         // P7 not served by LoRa → None (no internet gateway).
-        assert!(matches!(m.select(MessagePriority::P7), GatewaySelection::None { .. }));
+        assert!(matches!(
+            m.select(MessagePriority::P7),
+            GatewaySelection::None { .. }
+        ));
     }
 
     #[test]
     fn failover_picks_backup_after_timeouts() {
         let mut m = GatewayManager::new();
-        let _ = m.adopt_from_neighbor(pid(1), rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05), 0, vec![]);
-        let _ = m.adopt_from_neighbor(pid(2), rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.05), 0, vec![]);
+        let _ = m.adopt_from_neighbor(
+            pid(1),
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05),
+            0,
+            vec![],
+        );
+        let _ = m.adopt_from_neighbor(
+            pid(2),
+            rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.05),
+            0,
+            vec![],
+        );
         // P4 initially picks pid(1).
-        assert!(matches!(m.select(MessagePriority::P4), GatewaySelection::Single { gateway, .. } if gateway == pid(1)));
+        assert!(
+            matches!(m.select(MessagePriority::P4), GatewaySelection::Single { gateway, .. } if gateway == pid(1))
+        );
         // Primary fails (3 consecutive timeouts).
         let _ = m.record_ack_timeout(pid(1));
         let _ = m.record_ack_timeout(pid(1));
@@ -1053,10 +1094,21 @@ mod tests {
     #[test]
     fn withdraw_returns_event_and_removes_candidate() {
         let mut m = GatewayManager::new();
-        let _ = m.adopt_from_neighbor(pid(4), rich_cap(GatewayType::Internet, 10_000_000, 50, 0.9, 0.0), 0, vec![]);
+        let _ = m.adopt_from_neighbor(
+            pid(4),
+            rich_cap(GatewayType::Internet, 10_000_000, 50, 0.9, 0.0),
+            0,
+            vec![],
+        );
         assert_eq!(m.len(), 1);
         let ev = m.withdraw(&pid(4)).expect("event");
-        assert!(matches!(ev, TopologyEvent::GatewayChanged { available: false, .. }));
+        assert!(matches!(
+            ev,
+            TopologyEvent::GatewayChanged {
+                available: false,
+                ..
+            }
+        ));
         assert_eq!(m.len(), 0);
     }
 
@@ -1068,7 +1120,9 @@ mod tests {
         m.set_self_capability(Some(gw_cap(GatewayType::Internet)));
         assert!(m.is_gateway());
         assert!(m.advertised_tags().contains(&"gateway".to_string()));
-        assert!(m.advertised_tags().contains(&"gateway:internet".to_string()));
+        assert!(m
+            .advertised_tags()
+            .contains(&"gateway:internet".to_string()));
         // Take interval down → not a gateway anymore.
         m.set_self_capability(None);
         assert!(!m.is_gateway());
@@ -1163,7 +1217,9 @@ mod tests {
 
         // Diff-based: when the gateway neighbor is no longer in the table
         // (or no longer tagged/linked), it is withdrawn (REDTEAM-02).
-        table.mark_down(&neighbor, &TransportId::from("sim-alice")).await;
+        table
+            .mark_down(&neighbor, &TransportId::from("sim-alice"))
+            .await;
         gw.reconcile(&table).await;
         assert_eq!(gw.len(), 0, "stale gateway must be withdrawn");
     }
@@ -1180,7 +1236,12 @@ mod tests {
         b1.capabilities = vec!["gateway".into(), "gateway:internet".into()];
         table
             .upsert(
-                &PeerInfo { peer_id: gw1, addresses: vec![], transport_addresses: vec![], last_seen: None },
+                &PeerInfo {
+                    peer_id: gw1,
+                    addresses: vec![],
+                    transport_addresses: vec![],
+                    last_seen: None,
+                },
                 &TransportId::from("sim-a"),
                 crate::message::LinkQuality::Good,
             )
@@ -1191,7 +1252,12 @@ mod tests {
         b2.capabilities = vec!["gateway".into(), "gateway:lora".into()];
         table
             .upsert(
-                &PeerInfo { peer_id: gw2, addresses: vec![], transport_addresses: vec![], last_seen: None },
+                &PeerInfo {
+                    peer_id: gw2,
+                    addresses: vec![],
+                    transport_addresses: vec![],
+                    last_seen: None,
+                },
                 &TransportId::from("sim-b"),
                 crate::message::LinkQuality::Good,
             )

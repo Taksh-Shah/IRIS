@@ -6,8 +6,8 @@
 //! and enqueue forwards respecting transport bandwidth.
 
 use crate::message::PeerId;
-use crate::routing::scf::{ScfEngine, ScfError, StoredMessage};
 use crate::message_engine::storage::MessageStorage;
+use crate::routing::scf::{ScfEngine, ScfError, StoredMessage};
 
 /// Contact hook result: the ordered candidate list the caller should forward.
 #[derive(Debug, Default, PartialEq)]
@@ -33,7 +33,11 @@ impl ForwardCandidate {
         ForwardCandidate {
             message_id,
             to,
-            delivery_probability: if p.is_finite() { p.clamp(0.0, 1.0) } else { 0.0 },
+            delivery_probability: if p.is_finite() {
+                p.clamp(0.0, 1.0)
+            } else {
+                0.0
+            },
         }
     }
 }
@@ -73,7 +77,10 @@ impl<S: MessageStorage> ScfEngine<S> {
 
         // Rank: priority ASC (P0 first), then delivery probability DESC.
         ranked.sort_by(|a, b| {
-            a.delivery_probability.partial_cmp(&b.delivery_probability).unwrap_or(std::cmp::Ordering::Equal).reverse()
+            a.delivery_probability
+                .partial_cmp(&b.delivery_probability)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .reverse()
         });
         // Re-sort by priority (stable) so P0 always leads.
         ranked.sort_by_key(|c| self.message_priority(c));
@@ -82,7 +89,10 @@ impl<S: MessageStorage> ScfEngine<S> {
             ranked.truncate(limit);
             ContactOutcome { ranked, deferred }
         } else {
-            ContactOutcome { ranked, deferred: 0 }
+            ContactOutcome {
+                ranked,
+                deferred: 0,
+            }
         }
     }
 
@@ -153,9 +163,12 @@ mod tests {
     #[test]
     fn contact_ranks_p0_first_then_probability() {
         let mut scf = ScfEngine::new(MemoryStorage::new(), Default::default());
-        scf.buffer_message(env(MessagePriority::P4, b"log", 9), None).unwrap();
-        scf.buffer_message(env(MessagePriority::P0, b"sos", 9), None).unwrap();
-        scf.buffer_message(env(MessagePriority::P2, b"loc", 9), None).unwrap();
+        scf.buffer_message(env(MessagePriority::P4, b"log", 9), None)
+            .unwrap();
+        scf.buffer_message(env(MessagePriority::P0, b"sos", 9), None)
+            .unwrap();
+        scf.buffer_message(env(MessagePriority::P2, b"loc", 9), None)
+            .unwrap();
         let outcome = scf.on_new_contact(&pid(9), None);
         assert_eq!(outcome.deferred, 0);
         assert_eq!(outcome.ranked.len(), 3);
@@ -168,7 +181,8 @@ mod tests {
     fn bandwidth_limit_defers_excess() {
         let mut scf = ScfEngine::new(MemoryStorage::new(), Default::default());
         for i in 0..5u8 {
-            scf.buffer_message(env(MessagePriority::P3, &[i, 0], 9), None).unwrap();
+            scf.buffer_message(env(MessagePriority::P3, &[i, 0], 9), None)
+                .unwrap();
         }
         let outcome = scf.on_new_contact(&pid(9), Some(2));
         assert_eq!(outcome.ranked.len(), 2);

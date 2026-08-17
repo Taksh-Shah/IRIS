@@ -3,39 +3,38 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-15 (hand-reconciled: SEC-001 DESIGN COMPLETE iter 74 — SEC_001_DESIGN.md v1.0 + AC-1..16; research_complete 1 / designing 1)
+# Last updated: 2026-08-17 (hand-reconciled: WIFIDIRECT-001 iter 109 — ACCEPTED COMPLETE, 24 COMPLETE nodes, WIFIDIRECT-001_VERIFICATION.md v1.0 AC-1..16 + verifier APPROVE/reconciled, transport::wifi_direct 23 PASS, workspace 608/0/1 clippy 0; PRIOR iter 108 VERIFY, PRIOR iter 107 SECURITY_REVIEW RT-001..013 (1 HIGH + 5 MED + 1 LOW FIXED +7 regression tests, 5 RECORDED); designing 0, implementing 0)
 
-# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-15):
+# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-17):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
 #           MSG-001, INTERNET-001, DISCO-001, ROUTE-001, SCF-001, SIM-001,
 #           GW-001, ROUTE-002, OBS-001, DESKTOP-001, ML-001, CRYPTO-001, IDENT-001,
-#           EMERG-001 (20)
+#           EMERG-001, SEC-001, BLE-001, WIFIAWARE-001, WIFIDIRECT-001 (24)
 # RESEARCH_COMPLETE: LEGAL-001 (1)
-# DESIGNING: SEC-001 (1)  [DESIGN COMPLETE iter 74 → IMPLEMENT next]
+# DESIGNING: (0)
+# IMPLEMENTING: (0)  [WIFIDIRECT-001 ACCEPTED iter 109]
 # VERIFYING: (0)
-# IMPLEMENTING: (0)  [SEC-001 DESIGNING → IMPLEMENT next iter]
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
-# DISCOVERED: BLE-001, BLE-002, WIFIAWARE-001, WIFIDIRECT-001, LORA-001, SAT-001,
-#             TEST-001,
-#             ANDROID-001, IOS-001, PILOT-001 (10)  [SEC-001 → designing iter 74]
+# DISCOVERED: BLE-002, LORA-001, SAT-001, TEST-001,
+#             ANDROID-001, IOS-001, PILOT-001 (7)  [next: ANDROID-001 — NODE_TRANSITION CORRECTED iter 109b]
 
 summary:
   total_nodes: 32
-  completed: 20              # + EMERG-001 (2026-08-15, ACCEPT iter 71, AC-1..14 PASS + verifier APPROVE)
+  completed: 24              # + WIFIDIRECT-001 (2026-08-17, ACCEPT iter 109, third TRANSPORT, AC-1..16 PASS (AC-14 GATED, AC-15 RESOLVED) + verifier APPROVE reconciled)
   researching: 0
-  research_complete: 1       # LEGAL-001 (SEC-001 → designing iter 74)
-  designing: 1               # SEC-001 (DESIGN COMPLETE iter 74 — SEC_001_DESIGN.md v1.0 + AC-1..16)
-  implementing: 0            # EMERG-001 ACCEPTED (iter 71) — SEC-001 → IMPLEMENT next
-  verifying: 0               # IDENT-001 ACCEPTED (iter 64)
-  discovered: 10             # incl. BLE-001 (BLK-0005 lifted DEC-0009); SEC-001 → designing (iter 74)
+  research_complete: 1       # LEGAL-001
+  designing: 0
+  implementing: 0              # WIFIDIRECT-001 ACCEPTED (iter 109) -> no node implementing
+  verifying: 0
+  discovered: 7              # BLE-002/LORA-001/SAT-001/TEST-001 + platforms (next: ANDROID-001 — P0-first, iter 109b corrected)
   blocked: 0                 # All gates + human gates unblocked DEC-0009
   failed: 0
   deprecated: 0
 
 health:
   architecture_health: PROVISIONAL    # Architecture documents exist, need validation
-  security_health: IMPLEMENTED       # CRYPTO-001 + IDENT-001 + EMERG-001 COMPLETE (identity ACCEPTED iter 64; emergency authority model + redteam RT-001..011 dispositioned + verifier APPROVE iter 71; 431 green)
-  testing_health: GOOD               # 431 tests green; TEST-001 infrastructure node still DISCOVERED
+  security_health: IMPLEMENTED       # CRYPTO-001 + IDENT-001 + EMERG-001 + SEC-001 COMPLETE (SEC-001 ACCEPTED iter 82: AC-1..16 PASS, verifier APPROVE_WITH_NOTES reconciled; 532 green, clippy 0)
+  testing_health: GOOD               # HONEST iter 109: 608 tests green / 0 failed / 1 ignored, clippy 0; WIFIDIRECT-001 ACCEPTED (iter 109, VERIFY iter 108 verifier APPROVE reconciled — AC-1..16 PASS (AC-14 GATED); WIFIDIRECT-001_SECURITY_REVIEW.md RT-001..013: 1 HIGH + 5 MED + 1 LOW FIXED +7 regressions, 5 RECORDED; transport::wifi_direct 23 PASS); WIFIAWARE-001 ACCEPTED (AC-15 SECURITY_REVIEW v2 resolved; verifier APPROVE_WITH_NOTES reconciled); SEC-001 iter 82 security 101 with proptest, tarpaulin 95.6%, 44M+ clean fuzz; TEST-001 infrastructure node still DISCOVERED
   performance_health: NOT_STARTED    # No benchmarks run yet
   documentation_health: GOOD          # Documentation system created
   dependency_health: GOOD             # No circular dependencies
@@ -108,14 +107,24 @@ research_gaps:
 
 critical_path:
   path: "VISION-001 → REQ-001 → ARCH-001 → PROTO-001 → MSG-001 → DISCO-001 → ROUTE-001 → SCF-001 → IDENT-001 → EMERG-001 → ANDROID-001 → PILOT-001"
-  description: "Longest dependency chain to first pilot deployment. IDENT-001 COMPLETE (iter 64); EMERG-001 COMPLETE (iter 71) — critical-path junction passed; SEC-001 DESIGN COMPLETE (iter 74) — IMPLEMENT active next, then ANDROID-001/PILOT-001 platform nodes"
+  description: "Longest dependency chain to first pilot deployment. IDENT-001 (64) + EMERG-001 (71) + SEC-001 (82, ACCEPTED — AC-1..16 PASS, verifier APPROVE_WITH_NOTES reconciled, 532 green/clippy 0) COMPLETE — critical-path junction passed; next platform nodes ANDROID-001/PILOT-001"
   estimated_nodes_on_path: 12
 
 next_recommended_nodes:
-  - id: "SEC-001"
-    reason: "Security Hardening (P0, SECURITY) — active node; deps CRYPTO-001 + MSG-001 + ROUTE-001 all COMPLETE; gate RESOLVED DEC-0009. DESIGN COMPLETE (iter 74, SEC_001_DESIGN.md v1.0, AC-1..16). Then transports (BLE-001/WIFIAWARE-001/WIFIDIRECT-001/LORA-001/SAT-001)."
+  - id: "BLE-001"
+    reason: "Bluetooth Low Energy transport (P0, TRANSPORT) — **COMPLETE (iter 90, ACCEPTED)**. First TRANSPORT node done. Deps INTERNET-001 + MSG-001 + ROUTE-001 + SEC-001 all COMPLETE. AC-1..16 PASS (AC-14 GATED/BLK-0005); verifier APPROVED iter 89; workspace 533/0/1, transport::ble 42, clippy 0."
     priority: P0
-    note: "ACTIVE — DESIGN COMPLETE (iter 74); next IMPLEMENT (security/ module)"
+    note: "DONE — BLE-001 ACCEPTED iter 90. UNDERSTAND(83) + RESEARCH(84) + DESIGN(85) + IMPLEMENT(86) + TEST(87) + SECURITY_REVIEW(88, BLE-RT-001..016 RESOLVED) + VERIFY(89, APPROVED) + ACCEPT(90). Next transport: WIFIAWARE-001."
+
+  - id: "WIFIAWARE-001"
+    reason: "Wi-Fi Aware (NAN) transport (P1, TRANSPORT) — **COMPLETE (iter 101, ACCEPTED)**. Second TRANSPORT node done. Deps TRANSPORT-001 COMPLETE. Android medium-range high-bandwidth neighbor transport."
+    priority: P1
+    note: "DONE — WIFIAWARE-001 ACCEPTED iter 101. UNDERSTAND(91) + RESEARCH(92, RES-0020 PROCEED) + DESIGN(93, AC-1..16 + DEC-WA-0001..0008 + CONFLICT-1) + IMPLEMENT(94, wifiaware.rs + wifiaware_beacon.rs) + TEST(95) + SECURITY_REVIEW(96+100, Pass 1 WAW-RT-001..005 FIXED + Pass 2 NEW-WA-RT-101..112: 1 HIGH + 6 MED FIXED + 5 LOW ANDROID-001) + VERIFY(101, verifier APPROVE_WITH_NOTES reconciled). Next transport: WIFIDIRECT-001."
+
+  - id: "WIFIDIRECT-001"
+    reason: "Wi-Fi Direct transport (P1, TRANSPORT) — **COMPLETE (iter 109, ACCEPTED)**. Third TRANSPORT node done. Deps TRANSPORT-001 COMPLETE. Large file transfer between nearby devices. v1 = Android WifiP2pManager DNS-SD discovery + createGroup/connect persistent GO + TCP-over-GO data plane reusing INTERNET-001 framing; wpa_supplicant dual path + IP glue; WPA2 floor, WPS-PIN prohibited, WPA3-SAE R2-gated; band API 29; N-client admission; OS patch floor."
+    priority: P1
+    note: "DONE — WIFIDIRECT-001 ACCEPTED iter 109. UNDERSTAND(102) + RESEARCH(103, RES-0021 PROCEED) + DESIGN(104, AC-1..16 + DEC-WD-0001..0008) + IMPLEMENT(105, wifi_direct.rs + wifi_direct_serv.rs + WIFI_DIRECT_COST) + TEST(106, WIFIDIRECT-001_TEST.md AC-1..13 PASS, 16 PASS, 601/0/1) + SECURITY_REVIEW(107, WIFIDIRECT-001_SECURITY_REVIEW.md RT-001..013 — 1 HIGH + 5 MED + 1 LOW FIXED +7 regressions, 5 RECORDED; transport::wifi_direct 23 PASS; workspace 608/0/1 clippy 0) + VERIFY(108, WIFIDIRECT-001_VERIFICATION.md v1.0 AC-1..16 evidence + independent verifier APPROVE, nits reconciled) + ACCEPT(109). CORRECTED iter 109b: next = ANDROID-001 (P0, P0-first) over LORA-001 (P2 hardware-gated, deferred)."
 
   - id: "ML-001"
     reason: "ML routing experiments (P3, EXPERIMENT) — COMPLETE 2026-08-14 (iter 53, shadow-only L3 ML, AC-1..7 PASS, redteam RED-0002 PASS, verifier PASS_WITH_GAPS->corrections applied, ML_VERIFICATION.md v1.0, workspace 244 green)"

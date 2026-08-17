@@ -11,7 +11,9 @@
 /// stored CBOR blob, used for quota accounting.
 pub(crate) const ROW_OVERHEAD_BYTES: u64 = 192;
 
-pub(crate) async fn usage_bytes(client: &tokio_postgres::Client) -> Result<u64, tokio_postgres::Error> {
+pub(crate) async fn usage_bytes(
+    client: &tokio_postgres::Client,
+) -> Result<u64, tokio_postgres::Error> {
     let row = client
         .query_one(
             "SELECT SUM(octet_length(envelope_cbor) + $1::bigint)::bigint FROM messages",

@@ -132,11 +132,16 @@ mod tests {
         let mut table = RoutingTable::new(Duration::from_secs(600));
         table.upsert(pid(9), pid(4), "sim".into(), 2, LinkQuality::Good);
         let neighbors = NeighborTable::new(Duration::from_secs(60));
-        neighbors.upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good).await;
+        neighbors
+            .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
+            .await;
         let decision = try_known_path(pid(9), &mut table, &neighbors).await;
         assert!(matches!(
             decision,
-            Some(ForwardingDecision::Forward { algorithm: ForwardingAlgorithm::KnownPath, .. })
+            Some(ForwardingDecision::Forward {
+                algorithm: ForwardingAlgorithm::KnownPath,
+                ..
+            })
         ));
     }
 
@@ -148,14 +153,19 @@ mod tests {
         // pid(4) not present in the neighbor table.
         let decision = try_known_path(pid(9), &mut table, &neighbors).await;
         assert!(decision.is_none());
-        assert!(table.best_route(&pid(9)).is_none(), "entry must be invalidated");
+        assert!(
+            table.best_route(&pid(9)).is_none(),
+            "entry must be invalidated"
+        );
     }
 
     #[tokio::test]
     async fn unknown_destination_misses() {
         let mut table = RoutingTable::new(Duration::from_secs(600));
         let neighbors = NeighborTable::new(Duration::from_secs(60));
-        assert!(try_known_path(pid(2), &mut table, &neighbors).await.is_none());
+        assert!(try_known_path(pid(2), &mut table, &neighbors)
+            .await
+            .is_none());
     }
 
     #[tokio::test]

@@ -191,8 +191,7 @@ pub fn apply(
     // fast local clock does not reject healthy rotation events (RFC 9171 §4.4.2).
     const SKEW_BUDGET: u64 = crate::message_engine::expiry::DEFAULT_SKEW_BUDGET_SECS;
     if event.valid_until != 0
-        && event.valid_until.saturating_add(SKEW_BUDGET)
-            < crate::message_engine::expiry::unix_now()
+        && event.valid_until.saturating_add(SKEW_BUDGET) < crate::message_engine::expiry::unix_now()
     {
         return Err(RotationError::Expired);
     }
@@ -292,8 +291,14 @@ mod tests {
         let new_x = X25519Keypair::generate();
 
         let ev = build_rotation(&id, KIND_ROTATION, new_x.public_bytes(), 1, 0);
-        assert_eq!(apply(&trust, &ev, &id.verifying_bytes()), Ok(RotationOutcome::RotationAdopted));
-        assert_eq!(trust.resolve_x25519(&id.verifying_bytes()), Some(new_x.public_bytes()));
+        assert_eq!(
+            apply(&trust, &ev, &id.verifying_bytes()),
+            Ok(RotationOutcome::RotationAdopted)
+        );
+        assert_eq!(
+            trust.resolve_x25519(&id.verifying_bytes()),
+            Some(new_x.public_bytes())
+        );
     }
 
     #[test]
@@ -304,8 +309,14 @@ mod tests {
         let new_x = X25519Keypair::generate();
 
         let stale = build_rotation(&id, KIND_ROTATION, new_x.public_bytes(), 0, 0); // == stored
-        assert_eq!(apply(&trust, &stale, &id.verifying_bytes()), Err(RotationError::StaleCounter));
-        assert_eq!(trust.resolve_x25519(&id.verifying_bytes()), Some(old_x.public_bytes()));
+        assert_eq!(
+            apply(&trust, &stale, &id.verifying_bytes()),
+            Err(RotationError::StaleCounter)
+        );
+        assert_eq!(
+            trust.resolve_x25519(&id.verifying_bytes()),
+            Some(old_x.public_bytes())
+        );
     }
 
     #[test]
@@ -316,12 +327,21 @@ mod tests {
         // First rotation to key A at counter 1.
         let a = X25519Keypair::generate();
         let ev_a = build_rotation(&id, KIND_ROTATION, a.public_bytes(), 1, 0);
-        assert_eq!(apply(&trust, &ev_a, &id.verifying_bytes()), Ok(RotationOutcome::RotationAdopted));
+        assert_eq!(
+            apply(&trust, &ev_a, &id.verifying_bytes()),
+            Ok(RotationOutcome::RotationAdopted)
+        );
         // Conflicting rotation to key B at the same counter → dropped.
         let b = X25519Keypair::generate();
         let ev_b = build_rotation(&id, KIND_ROTATION, b.public_bytes(), 1, 0);
-        assert_eq!(apply(&trust, &ev_b, &id.verifying_bytes()), Err(RotationError::StaleCounter));
-        assert_eq!(trust.resolve_x25519(&id.verifying_bytes()), Some(a.public_bytes()));
+        assert_eq!(
+            apply(&trust, &ev_b, &id.verifying_bytes()),
+            Err(RotationError::StaleCounter)
+        );
+        assert_eq!(
+            trust.resolve_x25519(&id.verifying_bytes()),
+            Some(a.public_bytes())
+        );
     }
 
     #[test]
@@ -331,15 +351,27 @@ mod tests {
         let trust = trusted(&id, &old_x);
 
         let ev = build_rotation(&id, KIND_REVOCATION, [0u8; 32], 1, 0);
-        assert_eq!(apply(&trust, &ev, &id.verifying_bytes()), Ok(RotationOutcome::Revoked));
+        assert_eq!(
+            apply(&trust, &ev, &id.verifying_bytes()),
+            Ok(RotationOutcome::Revoked)
+        );
         assert_eq!(
             trust.level(&id.verifying_bytes()),
             crate::identity::trust_store::TrustLevel::Revoked
         );
         // After revocation: no key resolves, no further rotation accepted.
         assert_eq!(trust.resolve_x25519(&id.verifying_bytes()), None);
-        let ev2 = build_rotation(&id, KIND_ROTATION, X25519Keypair::generate().public_bytes(), 2, 0);
-        assert_eq!(apply(&trust, &ev2, &id.verifying_bytes()), Err(RotationError::Revoked));
+        let ev2 = build_rotation(
+            &id,
+            KIND_ROTATION,
+            X25519Keypair::generate().public_bytes(),
+            2,
+            0,
+        );
+        assert_eq!(
+            apply(&trust, &ev2, &id.verifying_bytes()),
+            Err(RotationError::Revoked)
+        );
     }
 
     #[test]
@@ -350,9 +382,21 @@ mod tests {
         let evil = IdentityKeypair::generate();
 
         // Signed by evil, not the trusted identity.
-        let ev = build_rotation(&evil, KIND_ROTATION, X25519Keypair::generate().public_bytes(), 1, 0);
-        assert_eq!(apply(&trust, &ev, &id.verifying_bytes()), Err(RotationError::BadSignature));
-        assert_eq!(trust.resolve_x25519(&id.verifying_bytes()), Some(old_x.public_bytes()));
+        let ev = build_rotation(
+            &evil,
+            KIND_ROTATION,
+            X25519Keypair::generate().public_bytes(),
+            1,
+            0,
+        );
+        assert_eq!(
+            apply(&trust, &ev, &id.verifying_bytes()),
+            Err(RotationError::BadSignature)
+        );
+        assert_eq!(
+            trust.resolve_x25519(&id.verifying_bytes()),
+            Some(old_x.public_bytes())
+        );
     }
 
     #[test]
@@ -363,7 +407,10 @@ mod tests {
 
         let small = small_order::SMALL_ORDER_U[0];
         let ev = build_rotation(&id, KIND_ROTATION, small, 1, 0);
-        assert_eq!(apply(&trust, &ev, &id.verifying_bytes()), Err(RotationError::SmallOrderKey));
+        assert_eq!(
+            apply(&trust, &ev, &id.verifying_bytes()),
+            Err(RotationError::SmallOrderKey)
+        );
     }
 
     #[test]
@@ -372,8 +419,17 @@ mod tests {
         // silently accept a rotation (earliest-seen-wins needs a baseline).
         let trust = TrustStore::new();
         let id = IdentityKeypair::generate();
-        let ev = build_rotation(&id, KIND_ROTATION, X25519Keypair::generate().public_bytes(), 1, 0);
-        assert_eq!(apply(&trust, &ev, &id.verifying_bytes()), Err(RotationError::UnknownPeer));
+        let ev = build_rotation(
+            &id,
+            KIND_ROTATION,
+            X25519Keypair::generate().public_bytes(),
+            1,
+            0,
+        );
+        assert_eq!(
+            apply(&trust, &ev, &id.verifying_bytes()),
+            Err(RotationError::UnknownPeer)
+        );
     }
 
     #[test]
@@ -400,7 +456,13 @@ mod tests {
     #[test]
     fn serialization_round_trip() {
         let id = IdentityKeypair::generate();
-        let ev = build_rotation(&id, KIND_ROTATION, X25519Keypair::generate().public_bytes(), 7, 0);
+        let ev = build_rotation(
+            &id,
+            KIND_ROTATION,
+            X25519Keypair::generate().public_bytes(),
+            7,
+            0,
+        );
         let parsed = RotationEventV1::from_bytes(&ev.to_bytes()).unwrap();
         assert_eq!(parsed, ev);
     }

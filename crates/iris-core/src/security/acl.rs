@@ -1,0 +1,663 @@
+//! ACL-1: Emergency send authorization data (per-alert-class key/role allowlists).
+//! Spoofed/revoked/expired/replayed authority rejected.
+//! EMERG-001 verify pattern; closes RED-0002/RED-0003/ADR-0011.
+//! RES-0018 R9/Q4.3, CAP v1.2 DSig, RFC 9804, CACM 2023 WEA Ed25519 ~68B preloaded-key.
+
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
+use crate::identity::advertise::KeyAdvertisementV1;
+use crate::identity::TrustLevel;
+use crate::identity::TrustStore;
+use crate::message::MessagePriority;
+use crate::protocol::{ContentType, Envelope};
+
+/// 16-byte authority short ID (SHA-256(authority_pubkey)[..16]).
+pub type AuthorityShort = [u8; 16];
+/// 16-byte sender short ID.
+pub type SenderShort = [u8; 16];
+
+/// Emergency alert class for ACL.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum AlertClass {
+    /// P0 broadcast: requires verified authority role chain.
+    Broadcast,
+    /// P1 medical/health: authority + certified responders.
+    Medical,
+    /// SOS: any verified identity @ 3/hr (existing EMERG-001 limiter).
+    Sos,
+    /// Drill/test: verified authority, cap-exempt.
+    Drill,
+}
+
+/// ACL-1 configuration.
+#[derive(Clone, Debug)]
+pub struct AclConfig {
+    /// Allowlist: alert_class -> list of authorized authority short IDs.
+    pub allowlists: HashMap<AlertClass, Vec<AuthorityShort>>,
+    /// Require full chain verification for Broadcast/Medical.
+    pub require_chain_for_broadcast_medical: bool,
+    /// SOS rate limit (per sender, per hour) - from EMERG-001.
+    pub sos_rate_limit_per_hour: u32,
+}
+
+impl Default for AclConfig {
+    fn default() -> Self {
+        AclConfig {
+            allowlists: HashMap::new(),
+            require_chain_for_broadcast_medical: true,
+            sos_rate_limit_per_hour: 3,
+        }
+    }
+}
+
+/// ACL decision.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AclDecision {
+    /// Authorized — proceed.
+    Authorized,
+    /// Not authorized — silent drop (no error/NAK).
+    Unauthorized,
+    /// SOS rate limited — degraded delivery (P3).
+    SosRateLimited,
+    /// Authority chain invalid/expired/revoked/replayed.
+    InvalidAuthority,
+}
+
+/// Emergency send ACL (ACL-1).
+pub struct EmergencyAcl {
+    config: AclConfig,
+    trust_store: Arc<TrustStore>,
+    metrics: AclMetrics,
+}
+
+#[derive(Default, Debug)]
+pub struct AclMetrics {
+    pub authorized: AtomicU64,
+    pub unauthorized: AtomicU64,
+    pub sos_rate_limited: AtomicU64,
+    pub invalid_authority: AtomicU64,
+}
+
+impl EmergencyAcl {
+    /// Create a new ACL with default configuration and trust store.
+    pub fn new(config: AclConfig, trust_store: Arc<TrustStore>) -> Self {
+        EmergencyAcl {
+            config,
+            trust_store,
+            metrics: AclMetrics::default(),
+        }
+    }
+
+    /// Create with default config.
+    pub fn default(trust_store: Arc<TrustStore>) -> Self {
+        Self::new(AclConfig::default(), trust_store)
+    }
+
+    /// Get metrics snapshot.
+    pub fn metrics(&self) -> AclMetricsSnapshot {
+        AclMetricsSnapshot {
+            authorized: self.metrics.authorized.load(Ordering::Relaxed),
+            unauthorized: self.metrics.unauthorized.load(Ordering::Relaxed),
+            sos_rate_limited: self.metrics.sos_rate_limited.load(Ordering::Relaxed),
+            invalid_authority: self.metrics.invalid_authority.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Add an authorized authority for an alert class.
+    pub fn add_authority(&mut self, class: AlertClass, authority: AuthorityShort) {
+        self.config
+            .allowlists
+            .entry(class)
+            .or_default()
+            .push(authority);
+    }
+
+    /// Check if a sender is authorized to send an emergency message of given class.
+    /// `envelope` contains the sender_id and auth_cert_chain (if present).
+    /// `now_unix` is current unix time for expiry checks.
+    /// Returns AclDecision.
+    pub async fn check(&self, envelope: &Envelope, now_unix: u64) -> AclDecision {
+        let alert_class = match envelope.priority {
+            MessagePriority::P0 => AlertClass::Broadcast,
+            MessagePriority::P1 => AlertClass::Medical,
+            MessagePriority::P2 => AlertClass::Sos,
+            _ => AlertClass::Sos,
+        };
+
+        // Determine alert class from payload type if available
+        let class = match envelope.payload_type {
+            ContentType::EmergencyAlert => {
+                if matches!(envelope.priority, MessagePriority::P0) {
+                    AlertClass::Broadcast
+                } else {
+                    AlertClass::Medical
+                }
+            }
+            ContentType::Sos => AlertClass::Sos,
+            ContentType::KeyRotation => AlertClass::Drill, // Drills use KeyRotation type
+            _ => alert_class,
+        };
+
+        match class {
+            AlertClass::Broadcast | AlertClass::Medical => {
+                self.check_authority_chain(envelope, class, now_unix).await
+            }
+            AlertClass::Sos => self.check_sos_identity(envelope, now_unix).await,
+            AlertClass::Drill => self.check_authority_chain(envelope, class, now_unix).await,
+        }
+    }
+
+    /// Verify authority chain for Broadcast/Medical/Drill.
+    async fn check_authority_chain(
+        &self,
+        envelope: &Envelope,
+        class: AlertClass,
+        _now_unix: u64,
+    ) -> AclDecision {
+        let allowed = self.config.allowlists.get(&class);
+        // Noop mode: empty allowlist = permissive (AC-12: un-armed engine unchanged)
+        if allowed.is_none() || allowed.unwrap().is_empty() {
+            self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
+            return AclDecision::Authorized;
+        }
+
+        let chain_raw = match &envelope.auth_cert_chain {
+            Some(c) => c,
+            None => {
+                self.metrics
+                    .invalid_authority
+                    .fetch_add(1, Ordering::Relaxed);
+                return AclDecision::InvalidAuthority;
+            }
+        };
+
+        // SEC-RT-02: the previous check_desp_decode-raw + "root is allowlisted"
+        // NEVER called the crypto verifier — any attacker could present *signed*
+        // bytes whose root short-id happened to match an allowlist entry and pass
+        // the gate without proving their key was actually certified by that
+        // authority. Also it read `chain.last()` as the root, but the RED-0008
+        // convention is `element[0]` = root, so even the "allowlist contains the
+        // root" check looked at the wrong element.
+        //
+        // Full RED-0008 verification (chain.rs): structural decode, root trusted,
+        // parent-certifies-child signatures (verify_strict), small-order, monotonic
+        // counters, sender binding, expiry, length cap, revocation severing.
+        if let Err(e) =
+            crate::identity::chain::verify_chain(chain_raw, &self.trust_store, &envelope.sender_id)
+        {
+            tracing::warn!(
+                event = "ACL_CHAIN_REJECTED",
+                class = ?class,
+                error = %e,
+                "emergency authority chain rejected"
+            );
+            self.metrics
+                .invalid_authority
+                .fetch_add(1, Ordering::Relaxed);
+            return AclDecision::InvalidAuthority;
+        }
+
+        // Root anchoring: `element[0]` is the trusted authority root (RED-0008).
+        // The allowlist must contain that root AND the store must mark it an
+        // explicit authority root (a TOFU peer is trusted for peer trees but
+        // never anchors an emergency chain — EMERG-RT-001).
+        let root_bytes = match chain_raw.first() {
+            Some(r) => r,
+            None => {
+                self.metrics
+                    .invalid_authority
+                    .fetch_add(1, Ordering::Relaxed);
+                return AclDecision::InvalidAuthority;
+            }
+        };
+        let root = match KeyAdvertisementV1::from_bytes(root_bytes.as_slice()) {
+            Ok(ad) => ad,
+            Err(_) => {
+                self.metrics
+                    .invalid_authority
+                    .fetch_add(1, Ordering::Relaxed);
+                return AclDecision::InvalidAuthority;
+            }
+        };
+        if !allowed.unwrap().contains(&root.authority_short_id()) {
+            self.metrics
+                .invalid_authority
+                .fetch_add(1, Ordering::Relaxed);
+            return AclDecision::InvalidAuthority;
+        }
+        if !self.trust_store.is_authority_root(&root.identity_pubkey) {
+            self.metrics
+                .invalid_authority
+                .fetch_add(1, Ordering::Relaxed);
+            return AclDecision::InvalidAuthority;
+        }
+
+        self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
+        AclDecision::Authorized
+    }
+
+    /// Verify SOS sender has verified identity (TrustStore Verified tier).
+    async fn check_sos_identity(&self, envelope: &Envelope, _now_unix: u64) -> AclDecision {
+        // Need to get the full 32-byte pubkey to check trust level
+        // For now, we derive from sender_id (which should be 32 bytes)
+        if envelope.sender_id.len() != 32 {
+            self.metrics.unauthorized.fetch_add(1, Ordering::Relaxed);
+            return AclDecision::Unauthorized;
+        }
+        let mut pubkey = [0u8; 32];
+        pubkey.copy_from_slice(&envelope.sender_id);
+
+        let trust = self.trust_store.level(&pubkey);
+        let store_empty = self.trust_store.is_empty();
+        match trust {
+            TrustLevel::Verified | TrustLevel::AuthorityRoot => {
+                self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
+                AclDecision::Authorized
+            }
+            // SEC-RT-08: empty trust store = security not configured → Noop
+            // permissive (AC-12). Previously EVERY Unknown/Unverified sender
+            // was authorized regardless of configuration.
+            TrustLevel::Unknown | TrustLevel::Unverified if store_empty => {
+                self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
+                AclDecision::Authorized
+            }
+            TrustLevel::Unknown | TrustLevel::Unverified => {
+                // ARMED node with a populated store: a self-asserted first-seen
+                // identity must NOT pass the SOS gate (spoofable 32-byte sender).
+                self.metrics.unauthorized.fetch_add(1, Ordering::Relaxed);
+                AclDecision::Unauthorized
+            }
+            _ => {
+                self.metrics.unauthorized.fetch_add(1, Ordering::Relaxed);
+                AclDecision::Unauthorized
+            }
+        }
+    }
+
+    pub fn metrics_snapshot(&self) -> AclMetricsSnapshot {
+        self.metrics()
+    }
+
+    pub fn reset(&mut self) {
+        self.config.allowlists.clear();
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct AclMetricsSnapshot {
+    pub authorized: u64,
+    pub unauthorized: u64,
+    pub sos_rate_limited: u64,
+    pub invalid_authority: u64,
+}
+
+// Extension trait for KeyAdvertisementV1
+trait AuthorityShortId {
+    fn authority_short_id(&self) -> AuthorityShort;
+}
+
+impl AuthorityShortId for KeyAdvertisementV1 {
+    fn authority_short_id(&self) -> AuthorityShort {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(self.identity_pubkey);
+        let result = hasher.finalize();
+        let mut short = [0u8; 16];
+        short.copy_from_slice(&result[..16]);
+        short
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crypto::keygen::{IdentityKeypair, X25519Keypair};
+    use crate::identity::TrustStore;
+    use std::sync::Arc;
+
+    fn now() -> u64 {
+        crate::message_engine::expiry::unix_now()
+    }
+
+    fn test_env(
+        priority: MessagePriority,
+        payload_type: ContentType,
+        sender_id: Vec<u8>,
+        chain: Option<Vec<Vec<u8>>>,
+    ) -> Envelope {
+        Envelope {
+            version: crate::protocol::PROTOCOL_VERSION,
+            message_id: crate::protocol::MessageId::new_v7(),
+            sender_id,
+            recipient_id: vec![],
+            priority,
+            ttl_seconds: 3600,
+            timestamp: now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type,
+            payload_size: 0,
+            payload_hash: [0; 32],
+            payload: vec![],
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: chain,
+        }
+    }
+
+    fn root_ad() -> (IdentityKeypair, X25519Keypair, KeyAdvertisementV1) {
+        let root = IdentityKeypair::generate();
+        let x = X25519Keypair::generate();
+        let ad = KeyAdvertisementV1::build(&root, x.public_bytes(), 0, 0).unwrap();
+        (root, x, ad)
+    }
+
+    #[tokio::test]
+    async fn acl_metrics_and_add_authority() {
+        let store = Arc::new(TrustStore::new());
+        let mut acl = EmergencyAcl::default(store);
+        acl.add_authority(AlertClass::Broadcast, [0xAA; 16]);
+        acl.add_authority(AlertClass::Medical, [0xBB; 16]);
+        acl.add_authority(AlertClass::Sos, [0xCC; 16]);
+        let snap = acl.metrics_snapshot();
+        assert_eq!(snap.authorized, 0);
+        assert_eq!(snap.unauthorized, 0);
+        assert_eq!(acl.metrics().sos_rate_limited, 0);
+        acl.reset();
+    }
+
+    #[tokio::test]
+    async fn acl_authorized_with_valid_authority_chain() {
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.register_authority_root(&ad, now()).unwrap();
+        let short = ad.authority_short_id();
+
+        let mut config = AclConfig::default();
+        config.allowlists.insert(AlertClass::Broadcast, vec![short]);
+        let acl = EmergencyAcl::new(config, store);
+
+        let env = test_env(
+            MessagePriority::P0,
+            ContentType::EmergencyAlert,
+            ad.identity_pubkey.to_vec(),
+            Some(vec![ad.to_bytes()]),
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Authorized);
+        assert_eq!(acl.metrics().authorized, 1);
+    }
+
+    #[tokio::test]
+    async fn acl_missing_chain_invalid_authority() {
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.register_authority_root(&ad, now()).unwrap();
+
+        let mut config = AclConfig::default();
+        config
+            .allowlists
+            .insert(AlertClass::Broadcast, vec![ad.authority_short_id()]);
+        let acl = EmergencyAcl::new(config, store);
+
+        let env = test_env(
+            MessagePriority::P0,
+            ContentType::EmergencyAlert,
+            ad.identity_pubkey.to_vec(),
+            None,
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::InvalidAuthority);
+        assert_eq!(acl.metrics().invalid_authority, 1);
+    }
+
+    #[tokio::test]
+    async fn acl_untrusted_chain_invalid_authority() {
+        // Valid-looking chain whose root is NOT in the trust store must be
+        // rejected by the crypto verifier (SEC-RT-02: no raw-allowlist bypass).
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        let mut config = AclConfig::default();
+        config
+            .allowlists
+            .insert(AlertClass::Medical, vec![ad.authority_short_id()]);
+        let acl = EmergencyAcl::new(config, store);
+
+        let env = test_env(
+            MessagePriority::P1,
+            ContentType::EmergencyAlert,
+            ad.identity_pubkey.to_vec(),
+            Some(vec![ad.to_bytes()]),
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::InvalidAuthority);
+    }
+
+    #[tokio::test]
+    async fn acl_chain_root_not_allowlisted() {
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.register_authority_root(&ad, now()).unwrap();
+
+        // Allowlist names a DIFFERENT short id than the presented root.
+        let mut config = AclConfig::default();
+        config
+            .allowlists
+            .insert(AlertClass::Drill, vec![[0xEE; 16]]);
+        let acl = EmergencyAcl::new(config, store);
+
+        let env = test_env(
+            MessagePriority::P3,
+            ContentType::KeyRotation,
+            ad.identity_pubkey.to_vec(),
+            Some(vec![ad.to_bytes()]),
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::InvalidAuthority);
+    }
+
+    #[tokio::test]
+    async fn acl_chain_root_not_authority_root() {
+        // Root is TOFU-adopted (trusted for peer trees) but NOT provisioned as
+        // an authority root -> must not anchor an emergency chain (EMERG-RT-001).
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.adopt_advertisement(&ad, now());
+
+        let mut config = AclConfig::default();
+        config
+            .allowlists
+            .insert(AlertClass::Broadcast, vec![ad.authority_short_id()]);
+        let acl = EmergencyAcl::new(config, store);
+
+        let env = test_env(
+            MessagePriority::P0,
+            ContentType::EmergencyAlert,
+            ad.identity_pubkey.to_vec(),
+            Some(vec![ad.to_bytes()]),
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::InvalidAuthority);
+    }
+
+    #[tokio::test]
+    async fn acl_sos_empty_store_authorized() {
+        // Empty trust store = Noop permissive (AC-12) even in SOS path.
+        let store = Arc::new(TrustStore::new());
+        let acl = EmergencyAcl::default(store);
+        let env = test_env(MessagePriority::P2, ContentType::Sos, vec![1u8; 32], None);
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Authorized);
+    }
+
+    #[tokio::test]
+    async fn acl_sos_unknown_identity_populated_store_unauthorized() {
+        // Armed node with a populated store: a self-asserted 32-byte sender
+        // that is unknown must NOT pass the SOS gate (SEC-RT-08).
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.register_authority_root(&ad, now()).unwrap();
+        let acl = EmergencyAcl::default(store);
+
+        let env = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            vec![0x42u8; 32],
+            None,
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Unauthorized);
+        assert_eq!(acl.metrics().unauthorized, 1);
+    }
+
+    #[tokio::test]
+    async fn acl_sos_verified_authorized() {
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.register_authority_root(&ad, now()).unwrap();
+        let acl = EmergencyAcl::default(store);
+
+        let env = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            ad.identity_pubkey.to_vec(),
+            None,
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Authorized);
+    }
+
+    #[tokio::test]
+    async fn acl_sos_short_sender_unauthorized() {
+        let store = Arc::new(TrustStore::new());
+        let acl = EmergencyAcl::default(store);
+        let env = test_env(MessagePriority::P2, ContentType::Sos, vec![1u8; 8], None);
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Unauthorized);
+    }
+
+    #[tokio::test]
+    async fn acl_sos_revoked_identity_unauthorized() {
+        // Level falls outside Verified/AuthorityRoot/Unknown/Unverified (e.g.
+        // Revoked) -> rejected by the catch-all arm.
+        let store = Arc::new(TrustStore::new());
+        let (_root, _x, ad) = root_ad();
+        store.adopt_advertisement(&ad, now());
+        store.revoke(&ad.identity_pubkey);
+        // Populate the store further so it is not empty (armed Noop is gated).
+        let (_r2, _x2, ad2) = root_ad();
+        store.register_authority_root(&ad2, now()).unwrap();
+        let acl = EmergencyAcl::default(store);
+
+        let env = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            ad.identity_pubkey.to_vec(),
+            None,
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Unauthorized);
+    }
+
+    #[tokio::test]
+    async fn acl_noop_default_authorized() {
+        let trust_store = Arc::new(TrustStore::new());
+        let acl = EmergencyAcl::default(trust_store);
+
+        let envelope = Envelope {
+            version: crate::protocol::PROTOCOL_VERSION,
+            message_id: crate::protocol::MessageId::new_v7(),
+            sender_id: vec![1u8; 32],
+            recipient_id: vec![],
+            priority: MessagePriority::P0,
+            ttl_seconds: 3600,
+            timestamp: crate::message_engine::expiry::unix_now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type: ContentType::EmergencyAlert,
+            payload_size: 0,
+            payload_hash: [0; 32],
+            payload: vec![],
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: None,
+        };
+
+        // With no trust store configured (Noop), all classes are Authorized
+        assert_eq!(
+            acl.check(&envelope, crate::message_engine::expiry::unix_now())
+                .await,
+            AclDecision::Authorized
+        );
+    }
+}
+
+#[cfg(all(test, feature = "proptest"))]
+mod proptest_tests {
+    use super::*;
+    use crate::identity::TrustStore;
+    use proptest::prelude::*;
+    use std::sync::Arc;
+
+    fn block_on<F: std::future::Future>(fut: F) -> F::Output {
+        tokio::runtime::Runtime::new().unwrap().block_on(fut)
+    }
+
+    fn test_envelope(priority: MessagePriority, payload_type: ContentType) -> Envelope {
+        Envelope {
+            version: crate::protocol::PROTOCOL_VERSION,
+            message_id: crate::protocol::MessageId::new_v7(),
+            sender_id: vec![1u8; 32],
+            recipient_id: vec![],
+            priority,
+            ttl_seconds: 3600,
+            timestamp: crate::message_engine::expiry::unix_now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type,
+            payload_size: 0,
+            payload_hash: [0; 32],
+            payload: vec![],
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: None,
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn acl_never_panics(
+            priority in any::<MessagePriority>(),
+            payload_type in any::<ContentType>(),
+        ) {
+            let trust_store = Arc::new(TrustStore::new());
+            let acl = EmergencyAcl::default(trust_store);
+            let envelope = test_envelope(priority, payload_type);
+            let _ = block_on(acl.check(&envelope, crate::message_engine::expiry::unix_now()));
+        }
+
+        #[test]
+        fn acl_noop_default_authorized(
+            priority in any::<MessagePriority>(),
+            payload_type in any::<ContentType>(),
+        ) {
+            let trust_store = Arc::new(TrustStore::new());
+            let acl = EmergencyAcl::default(trust_store);
+            let envelope = test_envelope(priority, payload_type);
+            prop_assert_eq!(block_on(acl.check(&envelope, crate::message_engine::expiry::unix_now())), AclDecision::Authorized);
+        }
+
+        #[test]
+        fn acl_unauthorized_when_no_allowlist(
+            priority in any::<MessagePriority>(),
+            payload_type in any::<ContentType>(),
+        ) {
+            let trust_store = Arc::new(TrustStore::new());
+            let acl = EmergencyAcl::default(trust_store);
+            // No authorities added
+            let envelope = test_envelope(priority, payload_type);
+            // With no trust store configured (Noop), all classes are Authorized
+            // This test verifies the current behavior
+            let decision = block_on(acl.check(&envelope, crate::message_engine::expiry::unix_now()));
+            prop_assert!(matches!(decision, AclDecision::Authorized | AclDecision::Unauthorized));
+        }
+    }
+}

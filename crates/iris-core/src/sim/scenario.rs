@@ -18,7 +18,11 @@ pub fn dense_mesh(nodes: usize, seed: u64) -> Simulation {
     for a in 0..nodes {
         for b in (a + 1)..nodes {
             sim.add_contact(ContactEvent { at_ms: t, a, b });
-            sim.add_contact(ContactEvent { at_ms: t + 500, a, b });
+            sim.add_contact(ContactEvent {
+                at_ms: t + 500,
+                a,
+                b,
+            });
         }
     }
     sim
@@ -36,7 +40,11 @@ pub fn partition_carry(island_a: usize, mid: usize, island_b: usize, seed: u64) 
     let b_base = island_a + mid;
     // Island A nodes contact the carrier at t=1000 (outbound leg).
     for i in 0..island_a {
-        sim.add_contact(ContactEvent { at_ms: 1000, a: i, b: island_a });
+        sim.add_contact(ContactEvent {
+            at_ms: 1000,
+            a: i,
+            b: island_a,
+        });
     }
     // Carrier meets island B at t=4000 (outbound delivery); island B fully
     // meshed at t=2000.
@@ -47,13 +55,21 @@ pub fn partition_carry(island_a: usize, mid: usize, island_b: usize, seed: u64) 
             b: b_base + i,
         });
         for j in (i + 1)..island_b {
-            sim.add_contact(ContactEvent { at_ms: 2000, a: b_base + i, b: b_base + j });
+            sim.add_contact(ContactEvent {
+                at_ms: 2000,
+                a: b_base + i,
+                b: b_base + j,
+            });
         }
     }
     // Return leg: carrier meets island A again at t=6000 so B→A messages
     // ride back (two-way carry).
     for i in 0..island_a {
-        sim.add_contact(ContactEvent { at_ms: 6000, a: i, b: island_a });
+        sim.add_contact(ContactEvent {
+            at_ms: 6000,
+            a: i,
+            b: island_a,
+        });
     }
     sim
 }
@@ -73,7 +89,11 @@ pub fn vehicle_relay(stations: usize, seed: u64) -> Simulation {
         });
         // Station-to-station same-line links (backbone within station cluster).
         if s + 1 < stations {
-            sim.add_contact(ContactEvent { at_ms: step * (s as u64 + 1) + 300, a: s, b: s + 1 });
+            sim.add_contact(ContactEvent {
+                at_ms: step * (s as u64 + 1) + 300,
+                a: s,
+                b: s + 1,
+            });
         }
     }
     sim
@@ -101,7 +121,11 @@ pub fn community_ferry(
     for i in 0..community_a {
         for j in (i + 1)..community_a {
             for t in [100u64, 1000, 5000, 9000, 13_000] {
-                sim.add_contact(ContactEvent { at_ms: t, a: i, b: j });
+                sim.add_contact(ContactEvent {
+                    at_ms: t,
+                    a: i,
+                    b: j,
+                });
             }
         }
     }
@@ -122,7 +146,11 @@ pub fn community_ferry(
     for _ in 0..(period_ms.min(10_000) / 2500).max(4) * 2 {
         let from_a = (t / period_ms).is_multiple_of(2);
         let member = if from_a { 0 } else { b_base };
-        sim.add_contact(ContactEvent { at_ms: t, a: ferry_idx, b: member });
+        sim.add_contact(ContactEvent {
+            at_ms: t,
+            a: ferry_idx,
+            b: member,
+        });
         t += period_ms;
     }
     sim
@@ -150,10 +178,18 @@ pub fn periodic_ferry(stations: usize, period_ms: u64, step_ms: u64, seed: u64) 
         // the train slice contains the outlier while the test slice (late
         // timeline) is cleanly periodic — GT's robust median stays at the true
         // period, the static mean does not (ML-001 AC-4).
-        let gap = if c >= maintenance_at { 3 * period_ms } else { 0 };
+        let gap = if c >= maintenance_at {
+            3 * period_ms
+        } else {
+            0
+        };
         for s in 0..stations {
             let at = c * period_ms + s as u64 * step_ms + gap;
-            sim.add_contact(ContactEvent { at_ms: at, a: s, b: ferry });
+            sim.add_contact(ContactEvent {
+                at_ms: at,
+                a: s,
+                b: ferry,
+            });
             // Terminal-to-terminal backbone within the line (contact
             // frequency so in-line messages relay even before the ferry).
             if s + 1 < stations {
@@ -211,7 +247,14 @@ pub fn inject_standard(sim: &mut Simulation, per_node: usize, start_ms: u64, ttl
 
 /// Inject an SOS (P0) message: emergency class, effectively unlimited hops.
 pub fn inject_sos(sim: &mut Simulation, from: usize, to: usize, at_ms: u64) {
-    sim.inject(Injection::new(at_ms, from, sim_peer(to), MessagePriority::P0, b"SOS", 7200));
+    sim.inject(Injection::new(
+        at_ms,
+        from,
+        sim_peer(to),
+        MessagePriority::P0,
+        b"SOS",
+        7200,
+    ));
 }
 
 /// Loss helper: convert a percentage to a [`SimLoss`].
@@ -231,7 +274,11 @@ mod tests {
         inject_standard(&mut sim, 3, 200, 3600);
         let out = sim.run();
         assert!(out.delivered_total > 0);
-        assert!(out.delivery_ratio > 0.95, "mesh must be near-lossless: {}", out.delivery_ratio);
+        assert!(
+            out.delivery_ratio > 0.95,
+            "mesh must be near-lossless: {}",
+            out.delivery_ratio
+        );
         assert!(out.loop_free());
     }
 

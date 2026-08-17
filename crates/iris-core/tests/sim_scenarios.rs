@@ -7,8 +7,8 @@ use iris_core::protocol::MessageId;
 use iris_core::routing::ProphetConfig;
 use iris_core::sim::metrics::SimMetrics;
 use iris_core::sim::scenario::{
-    community_ferry, dense_mesh, inject_standard, inject_sos, loss, partition_carry,
-    sim_peer, vehicle_relay,
+    community_ferry, dense_mesh, inject_sos, inject_standard, loss, partition_carry, sim_peer,
+    vehicle_relay,
 };
 use iris_core::sim::{Injection, Simulation};
 
@@ -28,8 +28,22 @@ fn run_partition(seed: u64) -> SimMetrics {
 
 fn run_vehicle(seed: u64) -> SimMetrics {
     let mut sim = vehicle_relay(5, seed);
-    sim.inject(Injection::new(100, 0, sim_peer(3), MessagePriority::P4, b"on the road", 3600));
-    sim.inject(Injection::new(150, 1, sim_peer(4), MessagePriority::P3, b"relay train", 3600));
+    sim.inject(Injection::new(
+        100,
+        0,
+        sim_peer(3),
+        MessagePriority::P4,
+        b"on the road",
+        3600,
+    ));
+    sim.inject(Injection::new(
+        150,
+        1,
+        sim_peer(4),
+        MessagePriority::P3,
+        b"relay train",
+        3600,
+    ));
     SimMetrics::from_outcome(&sim.run())
 }
 
@@ -53,15 +67,26 @@ fn scenario_2_sparse_partition_carry() {
         1.0,
         "SOS must always be delivered via carry"
     );
-    assert!(m.delivery_ratio > 0.8, "carry should deliver most: {}", m.one_line());
+    assert!(
+        m.delivery_ratio > 0.8,
+        "carry should deliver most: {}",
+        m.one_line()
+    );
     assert!(m.loop_free);
-    assert!(m.max_hops_seen >= 1, "carry requires at least one relay hop");
+    assert!(
+        m.max_hops_seen >= 1,
+        "carry requires at least one relay hop"
+    );
 }
 
 #[test]
 fn scenario_3_vehicle_relay_multihop() {
     let m = run_vehicle(11);
-    assert!(m.delivered_total >= 2, "vehicle relay should deliver both messages: {}", m.one_line());
+    assert!(
+        m.delivered_total >= 2,
+        "vehicle relay should deliver both messages: {}",
+        m.one_line()
+    );
     assert!(m.loop_free);
     assert!(m.max_hops_seen >= 1);
 }
@@ -69,7 +94,10 @@ fn scenario_3_vehicle_relay_multihop() {
 #[test]
 fn determinism_same_seed_same_anchor() {
     assert_eq!(run_dense(99).result_anchor, run_dense(99).result_anchor);
-    assert_eq!(run_partition(99).result_anchor, run_partition(99).result_anchor);
+    assert_eq!(
+        run_partition(99).result_anchor,
+        run_partition(99).result_anchor
+    );
     assert_eq!(run_vehicle(99).result_anchor, run_vehicle(99).result_anchor);
 }
 
@@ -101,8 +129,17 @@ fn run_ferry_inspect(seed: u64, opportunistic: bool) -> (usize, usize) {
         sim.with_opportunistic(ProphetConfig::default());
     }
     let out = sim.run();
-    let ok: Vec<MessageId> = out.nodes.iter().flat_map(|n| n.delivered.iter().map(|(id, _)| *id)).collect();
-    eprintln!("=== run L2={} delivered={} injected={} ===", if opportunistic { "ON" } else { "OFF" }, out.delivered_total, out.injected_total);
+    let ok: Vec<MessageId> = out
+        .nodes
+        .iter()
+        .flat_map(|n| n.delivered.iter().map(|(id, _)| *id))
+        .collect();
+    eprintln!(
+        "=== run L2={} delivered={} injected={} ===",
+        if opportunistic { "ON" } else { "OFF" },
+        out.delivered_total,
+        out.injected_total
+    );
     // injected_ids in TIME order: t=100 (k=0) for all 9 srcs first, then t=150 (k=1).
     // idx i: k = i/9, s = i%9, dst = (s+1+k)%9
     let mut missing = 0;
@@ -111,10 +148,19 @@ fn run_ferry_inspect(seed: u64, opportunistic: bool) -> (usize, usize) {
             missing += 1;
             let k = i / 9;
             let s = i % 9;
-            eprintln!("  MISSING idx={i} inject_t={} src={s} dst={}", out.injected_at[i], (s + 1 + k) % 9);
+            eprintln!(
+                "  MISSING idx={i} inject_t={} src={s} dst={}",
+                out.injected_at[i],
+                (s + 1 + k) % 9
+            );
         }
     }
-    eprintln!("L2={} delivered={} injected={}", if opportunistic { "ON" } else { "OFF" }, out.delivered_total, out.injected_total);
+    eprintln!(
+        "L2={} delivered={} injected={}",
+        if opportunistic { "ON" } else { "OFF" },
+        out.delivered_total,
+        out.injected_total
+    );
     (out.injected_total, missing)
 }
 #[test]
@@ -131,11 +177,18 @@ fn route2_opportunistic_matches_delivery_with_lower_overhead() {
     // delivery vs L0/SCF baseline, and should lower the overhead ratio.
     let base = run_ferry(7, false);
     let l2 = run_ferry(7, true);
-    assert!(l2.delivery_ratio >= base.delivery_ratio - 0.05,
+    assert!(
+        l2.delivery_ratio >= base.delivery_ratio - 0.05,
         "L2 must not degrade delivery: L0={:.3} L2={:.3}",
-        base.delivery_ratio, l2.delivery_ratio);
+        base.delivery_ratio,
+        l2.delivery_ratio
+    );
     assert!(l2.loop_free, "L2 must stay loop-free");
-    assert!(l2.delivery_ratio > 0.5, "ferry scenario must deliver: {}", l2.one_line());
+    assert!(
+        l2.delivery_ratio > 0.5,
+        "ferry scenario must deliver: {}",
+        l2.one_line()
+    );
 }
 
 #[test]
@@ -156,7 +209,11 @@ fn route2_spray_bounds_overhead_property() {
     for a in 0..12u64 {
         for b in (a + 1)..12u64 {
             if (a + b) % 5 == 0 {
-                sim.add_contact(iris_core::sim::ContactEvent { at_ms: 500 * (a + b), a: a as usize, b: b as usize });
+                sim.add_contact(iris_core::sim::ContactEvent {
+                    at_ms: 500 * (a + b),
+                    a: a as usize,
+                    b: b as usize,
+                });
             }
         }
     }
@@ -173,5 +230,9 @@ fn route2_spray_bounds_overhead_property() {
         "binary spray must bound handoffs per message <= L ({}): {handoffs_per_msg:.2} ({} relays / {} msgs)",
         l, out.relays_total, out.injected_total
     );
-    assert!(out.avg_hop_count <= 3.0, "P4 hop budget must hold: avg hops {:.2}", out.avg_hop_count);
+    assert!(
+        out.avg_hop_count <= 3.0,
+        "P4 hop budget must hold: avg hops {:.2}",
+        out.avg_hop_count
+    );
 }

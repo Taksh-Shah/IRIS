@@ -11,7 +11,7 @@ use tokio::sync::{broadcast, RwLock};
 
 use crate::message::{MessagePriority, PeerId};
 use crate::transport::{
-    Transport, TransportCapabilities, TransportCost, TransportId, TransportState, TopologyEvent,
+    TopologyEvent, Transport, TransportCapabilities, TransportCost, TransportId, TransportState,
 };
 use crate::TransportError;
 
@@ -133,10 +133,7 @@ impl TransportManager {
     /// 2. max_message_size >= message_size
     /// 3. score by state, latency, cost, bandwidth, congestion
     /// 4. P0/P1 multipath → all viable; otherwise single best
-    pub async fn select_transports(
-        &self,
-        req: &TransportSelectionRequest,
-    ) -> Vec<RankedTransport> {
+    pub async fn select_transports(&self, req: &TransportSelectionRequest) -> Vec<RankedTransport> {
         let registry = self.registry.read().await;
 
         let mut candidates: Vec<RankedTransport> = registry
@@ -219,7 +216,8 @@ pub fn cost_from_model(
     monetary_cost_per_kb: f64,
 ) -> TransportCost {
     TransportCost {
-        estimated_battery_ma: model.connected_idle_ma + model.tx_ma_per_kbps * tx_kbps
+        estimated_battery_ma: model.connected_idle_ma
+            + model.tx_ma_per_kbps * tx_kbps
             + model.rx_ma_per_kbps * rx_kbps,
         monetary_cost_per_kb,
         bandwidth_available_bps,
@@ -236,7 +234,12 @@ pub struct StubTransport {
 }
 
 impl StubTransport {
-    pub fn new(id: &str, caps: TransportCapabilities, state: TransportState, cost: TransportCost) -> Self {
+    pub fn new(
+        id: &str,
+        caps: TransportCapabilities,
+        state: TransportState,
+        cost: TransportCost,
+    ) -> Self {
         StubTransport {
             id: TransportId::from(id),
             caps,
@@ -260,39 +263,62 @@ impl Transport for StubTransport {
     fn state(&self) -> TransportState {
         self.state
     }
-    fn state_stream(&self) -> std::pin::Pin<Box<dyn futures_util::stream::Stream<Item = crate::transport::TransportStateEvent> + Send>> {
+    fn state_stream(
+        &self,
+    ) -> std::pin::Pin<
+        Box<dyn futures_util::stream::Stream<Item = crate::transport::TransportStateEvent> + Send>,
+    > {
         Box::pin(futures_util::stream::empty())
     }
     async fn discover_peers(
         &self,
         _config: crate::message::DiscoveryConfig,
-    ) -> Result<std::pin::Pin<Box<dyn futures_util::stream::Stream<Item = crate::message::PeerInfo> + Send>>, TransportError> {
+    ) -> Result<
+        std::pin::Pin<
+            Box<dyn futures_util::stream::Stream<Item = crate::message::PeerInfo> + Send>,
+        >,
+        TransportError,
+    > {
         Ok(Box::pin(futures_util::stream::empty()))
     }
     async fn stop_discovery(&self) -> Result<(), TransportError> {
         Ok(())
     }
-    async fn start_advertising(&self, _info: crate::message::NodeAdvertisement) -> Result<(), TransportError> {
+    async fn start_advertising(
+        &self,
+        _info: crate::message::NodeAdvertisement,
+    ) -> Result<(), TransportError> {
         Ok(())
     }
     async fn stop_advertising(&self) -> Result<(), TransportError> {
         Ok(())
     }
-    async fn connect(&self, _peer: &crate::message::PeerInfo) -> Result<crate::message::TransportLink, TransportError> {
+    async fn connect(
+        &self,
+        _peer: &crate::message::PeerInfo,
+    ) -> Result<crate::message::TransportLink, TransportError> {
         Ok(crate::message::TransportLink {
             peer_id: _peer.peer_id,
             transport_id: self.id.0.clone(),
             established_at: std::time::Instant::now(),
         })
     }
-    async fn send(&self, _peer: &PeerId, message: &crate::message::SerializedMessage) -> Result<crate::message::SendReceipt, TransportError> {
+    async fn send(
+        &self,
+        _peer: &PeerId,
+        message: &crate::message::SerializedMessage,
+    ) -> Result<crate::message::SendReceipt, TransportError> {
         Ok(crate::message::SendReceipt {
             peer_id: *_peer,
             bytes_sent: message.payload.len(),
             sent_at: std::time::Instant::now(),
         })
     }
-    fn incoming_messages(&self) -> std::pin::Pin<Box<dyn futures_util::stream::Stream<Item = crate::message::IncomingMessage> + Send>> {
+    fn incoming_messages(
+        &self,
+    ) -> std::pin::Pin<
+        Box<dyn futures_util::stream::Stream<Item = crate::message::IncomingMessage> + Send>,
+    > {
         Box::pin(futures_util::stream::empty())
     }
     fn cost_snapshot(&self) -> TransportCost {
@@ -365,7 +391,9 @@ mod tests {
         ));
         mgr.register(t).await.unwrap();
 
-        let selected = mgr.select_transports(&req(MessagePriority::P5, 1_000, false)).await;
+        let selected = mgr
+            .select_transports(&req(MessagePriority::P5, 1_000, false))
+            .await;
         assert_eq!(selected.len(), 1);
         assert_eq!(selected[0].transport_id.as_str(), "internet-0");
         assert!(selected[0].score > 0.0);
@@ -374,7 +402,9 @@ mod tests {
     #[tokio::test]
     async fn unregistered_transport_is_not_selected() {
         let mgr = TransportManager::new();
-        let selected = mgr.select_transports(&req(MessagePriority::P5, 1_000, false)).await;
+        let selected = mgr
+            .select_transports(&req(MessagePriority::P5, 1_000, false))
+            .await;
         assert!(selected.is_empty());
     }
 
@@ -388,7 +418,9 @@ mod tests {
             cost(3.0, 0.0, 0, 0.0),
         ));
         mgr.register(t).await.unwrap();
-        let selected = mgr.select_transports(&req(MessagePriority::P0, 1_000, true)).await;
+        let selected = mgr
+            .select_transports(&req(MessagePriority::P0, 1_000, true))
+            .await;
         assert!(selected.is_empty());
     }
 
@@ -396,11 +428,21 @@ mod tests {
     async fn size_filter_eliminates_small_transport() {
         let mgr = TransportManager::new();
         let small = caps(250, 500, 1_000_000);
-        let t = Arc::new(StubTransport::new("lora", small, TransportState::Connected, cost(1.0, 0.0, 1_000_000, 0.0)));
+        let t = Arc::new(StubTransport::new(
+            "lora",
+            small,
+            TransportState::Connected,
+            cost(1.0, 0.0, 1_000_000, 0.0),
+        ));
         mgr.register(t).await.unwrap();
 
-        let selected = mgr.select_transports(&req(MessagePriority::P3, 5_000, false)).await;
-        assert!(selected.is_empty(), "LoRa must not carry >250-byte messages");
+        let selected = mgr
+            .select_transports(&req(MessagePriority::P3, 5_000, false))
+            .await;
+        assert!(
+            selected.is_empty(),
+            "LoRa must not carry >250-byte messages"
+        );
     }
 
     #[tokio::test]
@@ -423,8 +465,14 @@ mod tests {
         .await
         .unwrap();
 
-        let selected = mgr.select_transports(&req(MessagePriority::P0, 100, true)).await;
-        assert_eq!(selected.len(), 2, "P0 multipath must use all viable transports");
+        let selected = mgr
+            .select_transports(&req(MessagePriority::P0, 100, true))
+            .await;
+        assert_eq!(
+            selected.len(),
+            2,
+            "P0 multipath must use all viable transports"
+        );
     }
 
     #[tokio::test]
@@ -447,17 +495,31 @@ mod tests {
         .await
         .unwrap();
 
-        let selected = mgr.select_transports(&req(MessagePriority::P5, 20_000, false)).await;
+        let selected = mgr
+            .select_transports(&req(MessagePriority::P5, 20_000, false))
+            .await;
         assert_eq!(selected.len(), 1, "P5 uses single best transport");
-        assert_eq!(selected[0].transport_id.as_str(), "internet-0", "higher bandwidth wins for >10KB");
+        assert_eq!(
+            selected[0].transport_id.as_str(),
+            "internet-0",
+            "higher bandwidth wins for >10KB"
+        );
     }
 
     #[tokio::test]
     async fn duplicate_registration_rejected() {
         let mgr = TransportManager::new();
-        let t = Arc::new(StubTransport::new("internet-0", free_caps(), TransportState::Connected, cost(3.0, 0.0, 0, 0.0)));
+        let t = Arc::new(StubTransport::new(
+            "internet-0",
+            free_caps(),
+            TransportState::Connected,
+            cost(3.0, 0.0, 0, 0.0),
+        ));
         mgr.register(t.clone()).await.unwrap();
-        assert_eq!(mgr.register(t).await.unwrap_err(), RegistrationError::DuplicateId);
+        assert_eq!(
+            mgr.register(t).await.unwrap_err(),
+            RegistrationError::DuplicateId
+        );
     }
 
     // RED-0004: a fragmentable (P4–P7 bulk) message larger than every
@@ -489,9 +551,16 @@ mod tests {
             "oversize non-fragmentable is unroutable"
         );
 
-        let frag = TransportSelectionRequest { fragmentable: true, ..plain };
+        let frag = TransportSelectionRequest {
+            fragmentable: true,
+            ..plain
+        };
         let selected = mgr.select_transports(&frag).await;
-        assert_eq!(selected.len(), 1, "fragmentable oversize selects the BLE transport");
+        assert_eq!(
+            selected.len(),
+            1,
+            "fragmentable oversize selects the BLE transport"
+        );
         assert_eq!(selected[0].transport_id.as_str(), "ble-0");
     }
 
@@ -499,11 +568,19 @@ mod tests {
     async fn deregister_removes_transport() {
         let mgr = TransportManager::new();
         let id = TransportId::from("internet-0");
-        let t = Arc::new(StubTransport::new("internet-0", free_caps(), TransportState::Connected, cost(3.0, 0.0, 0, 0.0)));
+        let t = Arc::new(StubTransport::new(
+            "internet-0",
+            free_caps(),
+            TransportState::Connected,
+            cost(3.0, 0.0, 0, 0.0),
+        ));
         mgr.register(t).await.unwrap();
         mgr.deregister(&id).await.unwrap();
         assert!(mgr.get(&id).await.is_none());
-        assert_eq!(mgr.deregister(&id).await.unwrap_err(), RegistrationError::NotFound);
+        assert_eq!(
+            mgr.deregister(&id).await.unwrap_err(),
+            RegistrationError::NotFound
+        );
     }
 
     #[test]
@@ -630,5 +707,3 @@ mod tests {
         }
     }
 }
-
-

@@ -41,7 +41,8 @@ impl KeyDirectory for MemoryKeyDirectory {
 /// Convenience: resolve a recipient, returning [`CryptoError::KeyUnavailable`]
 /// when the key is missing.
 pub fn require_key(dir: &dyn KeyDirectory, node_id: &[u8; 32]) -> Result<[u8; 32], CryptoError> {
-    dir.x25519_pubkey(node_id).ok_or(CryptoError::KeyUnavailable)
+    dir.x25519_pubkey(node_id)
+        .ok_or(CryptoError::KeyUnavailable)
 }
 
 #[cfg(test)]

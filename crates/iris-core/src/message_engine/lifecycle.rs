@@ -72,7 +72,10 @@ impl MessageStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LifecycleError {
     /// `from → to` is not in the allowed transition table.
-    InvalidTransition { from: MessageStatus, to: MessageStatus },
+    InvalidTransition {
+        from: MessageStatus,
+        to: MessageStatus,
+    },
 }
 
 impl fmt::Display for LifecycleError {
@@ -133,11 +136,15 @@ mod tests {
     #[test]
     fn failure_and_expiry_reachable_from_transit() {
         assert_eq!(
-            MessageStatus::InTransit.transition(MessageStatus::Expired).unwrap(),
+            MessageStatus::InTransit
+                .transition(MessageStatus::Expired)
+                .unwrap(),
             MessageStatus::Expired
         );
         assert_eq!(
-            MessageStatus::InTransit.transition(MessageStatus::DeliveryFailed).unwrap(),
+            MessageStatus::InTransit
+                .transition(MessageStatus::DeliveryFailed)
+                .unwrap(),
             MessageStatus::DeliveryFailed
         );
     }

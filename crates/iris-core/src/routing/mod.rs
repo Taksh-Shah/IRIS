@@ -36,13 +36,15 @@ pub mod store;
 
 pub use dedup_cache::ForwardedCache;
 pub use direct::try_direct;
-pub use flood::{FloodPolicy, max_hops_for_priority, recipients_for_flood};
-pub use known_path::{RouteEntry, RoutingTable, try_known_path};
-pub use opportunistic::{OpportunisticDecision, OpportunisticReason, OpportunisticRouter, SprayBudget};
+pub use flood::{max_hops_for_priority, recipients_for_flood, FloodPolicy};
+pub use known_path::{try_known_path, RouteEntry, RoutingTable};
+pub use opportunistic::{
+    OpportunisticDecision, OpportunisticReason, OpportunisticRouter, SprayBudget,
+};
 pub use prophet::{DeliveryPredictability, ProphetConfig};
 pub use scf::ScfEngine;
 pub use scf_eviction::{DeviceClass, ScfEvictionPolicy};
-pub use store::{ShouldStore, store_or_drop};
+pub use store::{store_or_drop, ShouldStore};
 
 /// Which algorithm produced a forwarding decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,8 +135,9 @@ impl RoutingEngine {
     /// Enable the ROUTE-002 opportunistic layer with the given PRoPHET
     /// configuration.
     pub fn with_opportunistic(mut self, config: crate::routing::prophet::ProphetConfig) -> Self {
-        self.opportunistic =
-            Some(crate::routing::opportunistic::OpportunisticRouter::new(config));
+        self.opportunistic = Some(crate::routing::opportunistic::OpportunisticRouter::new(
+            config,
+        ));
         self
     }
 
@@ -165,13 +168,8 @@ impl RoutingEngine {
     /// (when the L2 layer is enabled) exchanges DP snapshots with the peer.
     pub async fn record_contact(&mut self, peer: PeerId, transport: &str) {
         self.contact_log.insert(peer, Instant::now());
-        self.routing_table.upsert(
-            peer,
-            peer,
-            transport.to_string(),
-            1,
-            LinkQuality::Good,
-        );
+        self.routing_table
+            .upsert(peer, peer, transport.to_string(), 1, LinkQuality::Good);
         if let Some(opp) = self.opportunistic_mut() {
             // Direct-contact DP update (Eq. 1). The peer's full DP snapshot is
             // applied at exchange time (SIM/transport wiring) — passing an
@@ -231,9 +229,7 @@ impl RoutingEngine {
         neighbor_table: &NeighborTable,
     ) -> ForwardingDecision {
         // Algorithm 1: Direct delivery.
-        if let Some(decision) =
-            try_direct(recipient, neighbor_table).await
-        {
+        if let Some(decision) = try_direct(recipient, neighbor_table).await {
             return decision;
         }
         // Algorithm 2: Known path (validate next-hop reachability).
@@ -291,9 +287,9 @@ impl RoutingEngine {
             return None;
         }
         match opp.decide(&recipient, candidates, priority, budget) {
-            crate::routing::opportunistic::OpportunisticDecision::ForwardTo { next_hop, .. } => {
-                Some(next_hop)
-            }
+            crate::routing::opportunistic::OpportunisticDecision::ForwardTo {
+                next_hop, ..
+            } => Some(next_hop),
             crate::routing::opportunistic::OpportunisticDecision::NoAdvantage => None,
         }
     }
@@ -348,14 +344,7 @@ mod tests {
             )
             .await;
         let decision = engine
-            .decide(
-                pid(1),
-                pid(7),
-                0,
-                MessagePriority::P4,
-                vec![],
-                &table,
-            )
+            .decide(pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -369,20 +358,12 @@ mod tests {
     #[tokio::test]
     async fn known_path_before_flood() {
         let mut engine = RoutingEngine::new();
-        engine.routing_table.upsert(
-            pid(9),
-            pid(4),
-            "sim".into(),
-            2,
-            LinkQuality::Good,
-        );
+        engine
+            .routing_table
+            .upsert(pid(9), pid(4), "sim".into(), 2, LinkQuality::Good);
         let table = NeighborTable::new(Duration::from_secs(60));
         table
-            .upsert(
-                &peer_info(4),
-                &TransportId::from("sim"),
-                LinkQuality::Good,
-            )
+            .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
             .decide(pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
@@ -401,7 +382,9 @@ mod tests {
         let mut engine = RoutingEngine::new();
         let table = NeighborTable::new(Duration::from_secs(60));
         for n in [2u8, 3, 4] {
-            table.upsert(&peer_info(n), &TransportId::from("sim"), LinkQuality::Good).await;
+            table
+                .upsert(&peer_info(n), &TransportId::from("sim"), LinkQuality::Good)
+                .await;
         }
         let decision = engine
             .decide(pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
@@ -418,7 +401,9 @@ mod tests {
     async fn hop_budget_exhausted_stores() {
         let mut engine = RoutingEngine::new();
         let table = NeighborTable::new(Duration::from_secs(60));
-        table.upsert(&peer_info(2), &TransportId::from("sim"), LinkQuality::Good).await;
+        table
+            .upsert(&peer_info(2), &TransportId::from("sim"), LinkQuality::Good)
+            .await;
         let decision = engine
             .decide(pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
             .await;
@@ -469,7 +454,14 @@ mod tests {
         // ROUTE resolves the peer as a direct next hop.
         let mut engine = RoutingEngine::new();
         let decision = engine
-            .decide(pid(1), pid(42), 0, MessagePriority::P4, vec![], dm.neighbors().as_ref())
+            .decide(
+                pid(1),
+                pid(42),
+                0,
+                MessagePriority::P4,
+                vec![],
+                dm.neighbors().as_ref(),
+            )
             .await;
         assert_eq!(
             decision,
@@ -493,7 +485,11 @@ mod tests {
         use crate::routing::scf_contact::ForwardCandidate;
         use std::sync::Arc;
 
-        fn envelope_for(recipient: [u8; 32], priority: crate::message::MessagePriority, payload: &[u8]) -> crate::protocol::Envelope {
+        fn envelope_for(
+            recipient: [u8; 32],
+            priority: crate::message::MessagePriority,
+            payload: &[u8],
+        ) -> crate::protocol::Envelope {
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_secs())
@@ -572,12 +568,13 @@ mod tests {
         scf.mark_forwarded(&fwd[0].message_id, contact, true);
         assert_eq!(
             scf.delivery_status(&env.message_id),
-            Some(crate::routing::scf::DeliveryStatus::Delivered { delivered_to: contact })
+            Some(crate::routing::scf::DeliveryStatus::Delivered {
+                delivered_to: contact
+            })
         );
 
         // P0 never evicted under pressure (INV-ROUTE-003 via eviction policy).
-        let p0 =
-            envelope_for(bob, crate::message::MessagePriority::P0, b"priority");
+        let p0 = envelope_for(bob, crate::message::MessagePriority::P0, b"priority");
         scf.buffer_message(p0.clone(), None).unwrap();
         scf.evict_to_fit(10_000_000);
         assert!(scf.delivery_status(&p0.message_id).is_some());

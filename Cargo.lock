@@ -1869,6 +1869,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "futures-util",
+ "hex",
  "hex-literal",
  "hkdf",
  "proptest",

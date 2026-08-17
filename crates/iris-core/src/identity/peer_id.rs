@@ -69,6 +69,17 @@ pub fn peer_short_hex(pubkey: &[u8; 32]) -> String {
     out
 }
 
+/// Derive 16-byte peer short ID from a sender_id (Vec<u8> or &[u8]).
+/// The sender_id is expected to be a 32-byte Ed25519 public key.
+/// Returns SHA-256(sender_id)[..16].
+pub fn peer_short_from_sender(sender_id: &[u8]) -> [u8; 16] {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(sender_id);
+    let mut out = [0u8; 16];
+    out.copy_from_slice(&digest[..16]);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,7 +133,9 @@ mod tests {
         let kp = IdentityKeypair::generate();
         let uid = human_uid(&kp.verifying_bytes());
         assert_eq!(uid.len(), 16);
-        assert!(uid.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
+        assert!(uid
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
         // Deterministic across calls.
         assert_eq!(uid, human_uid(&kp.verifying_bytes()));
     }

@@ -15,7 +15,11 @@ async fn store_with_max(bytes: u64) -> PgStorage {
     let mut cfg = cfg_db(TEST_DB);
     cfg.max_storage_bytes = bytes;
     let store = PgStorage::connect(cfg).await.expect("connect storage");
-    store.client().execute("TRUNCATE TABLE messages", &[]).await.expect("truncate");
+    store
+        .client()
+        .execute("TRUNCATE TABLE messages", &[])
+        .await
+        .expect("truncate");
     store
 }
 
@@ -33,9 +37,19 @@ async fn persist_load_roundtrip() {
     }
     let _g = LOCK.lock().await;
     let store = fresh_store().await;
-    let env = env_for(PEER_BOB, MessagePriority::P4, unix_now() - 100, 3600, b"hello pg");
+    let env = env_for(
+        PEER_BOB,
+        MessagePriority::P4,
+        unix_now() - 100,
+        3600,
+        b"hello pg",
+    );
     store.persist(&env).await.expect("persist");
-    let loaded = store.load(&env.message_id).await.expect("load").expect("row exists");
+    let loaded = store
+        .load(&env.message_id)
+        .await
+        .expect("load")
+        .expect("row exists");
     assert_eq!(loaded, env, "byte-exact round-trip via canonical CBOR");
 }
 
@@ -47,11 +61,21 @@ async fn insert_or_ignore_dedups_at_storage_layer() {
     }
     let _g = LOCK.lock().await;
     let store = fresh_store().await;
-    let env = env_for(PEER_BOB, MessagePriority::P3, unix_now() - 100, 3600, b"dup");
+    let env = env_for(
+        PEER_BOB,
+        MessagePriority::P3,
+        unix_now() - 100,
+        3600,
+        b"dup",
+    );
     store.persist(&env).await.expect("persist");
     store.persist(&env).await.expect("persist again"); // INSERT ... ON CONFLICT DO NOTHING
-    let count: i64 = store.client().query_one("SELECT count(*) FROM messages", &[])
-        .await.expect("count").get(0);
+    let count: i64 = store
+        .client()
+        .query_one("SELECT count(*) FROM messages", &[])
+        .await
+        .expect("count")
+        .get(0);
     assert_eq!(count, 1);
 }
 
@@ -63,15 +87,30 @@ async fn update_status_round_trips() {
     }
     let _g = LOCK.lock().await;
     let store = fresh_store().await;
-    let env = env_for(PEER_BOB, MessagePriority::P4, unix_now() - 50, 3600, b"status");
+    let env = env_for(
+        PEER_BOB,
+        MessagePriority::P4,
+        unix_now() - 50,
+        3600,
+        b"status",
+    );
     store.persist(&env).await.expect("persist");
     store
-        .update_status(&env.message_id, iris_core::message_engine::lifecycle::MessageStatus::InTransit)
+        .update_status(
+            &env.message_id,
+            iris_core::message_engine::lifecycle::MessageStatus::InTransit,
+        )
         .await
         .expect("update");
-    let status: String = store.client()
-        .query_one("SELECT status FROM messages WHERE message_id = $1", &[&env.message_id.to_string()])
-        .await.expect("query").get(0);
+    let status: String = store
+        .client()
+        .query_one(
+            "SELECT status FROM messages WHERE message_id = $1",
+            &[&env.message_id.to_string()],
+        )
+        .await
+        .expect("query")
+        .get(0);
     assert_eq!(status, "IN_TRANSIT");
 }
 
@@ -103,12 +142,23 @@ async fn evict_expired_reclaims_only_dead_rows() {
     let expired_p0 = env_for(PEER_BOB, MessagePriority::P0, now - 10_000, 10, b"old p0");
     let live = env_for(PEER_BOB, MessagePriority::P7, now - 30, 3600, b"fresh");
     store.persist(&expired).await.expect("persist expired");
-    store.persist(&expired_p0).await.expect("persist expired p0");
+    store
+        .persist(&expired_p0)
+        .await
+        .expect("persist expired p0");
     store.persist(&live).await.expect("persist live");
     let n = store.evict_expired(now).await.expect("evict");
     assert_eq!(n, 2, "expired + expired P0 reclaimed, live untouched");
-    assert!(store.load(&expired.message_id).await.expect("load").is_none());
-    assert!(store.load(&expired_p0.message_id).await.expect("load").is_none());
+    assert!(store
+        .load(&expired.message_id)
+        .await
+        .expect("load")
+        .is_none());
+    assert!(store
+        .load(&expired_p0.message_id)
+        .await
+        .expect("load")
+        .is_none());
     assert!(store.load(&live.message_id).await.expect("load").is_some());
 }
 
@@ -127,7 +177,10 @@ async fn evict_by_priority_never_touches_p0() {
     store.persist(&p7).await.expect("persist p7");
     let evicted = store.evict_by_priority(0).await.expect("evict"); // target 0 → hard pressure
     assert_eq!(evicted, 1, "only the P7 is evicted");
-    assert!(store.load(&p0.message_id).await.expect("load").is_some(), "INV-ROUTE-003: P0 never evicted");
+    assert!(
+        store.load(&p0.message_id).await.expect("load").is_some(),
+        "INV-ROUTE-003: P0 never evicted"
+    );
     assert!(store.load(&p7.message_id).await.expect("load").is_none());
 }
 
@@ -149,8 +202,14 @@ async fn evict_by_priority_removes_lowest_priority_first() {
     // Target between one and two rows of usage → only the lowest priority (P4) is evicted.
     let target = (p4.payload.len() as u64 + 2000) as u64;
     let _ = store.evict_by_priority(target).await.expect("evict");
-    assert!(store.load(&p4.message_id).await.expect("load").is_none(), "P4 evicted first");
-    assert!(store.load(&p2.message_id).await.expect("load").is_some(), "P2 survives under target");
+    assert!(
+        store.load(&p4.message_id).await.expect("load").is_none(),
+        "P4 evicted first"
+    );
+    assert!(
+        store.load(&p2.message_id).await.expect("load").is_some(),
+        "P2 survives under target"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -183,11 +242,19 @@ async fn get_queue_orders_p0_first_and_filters_terminal() {
     store.persist(&p4).await.expect("persist p4");
     store.persist(&p0).await.expect("persist p0");
     // Mark the P4 delivered → excluded from the queue.
-    store.update_status(&p4.message_id, iris_core::message_engine::lifecycle::MessageStatus::Delivered)
-        .await.expect("update");
+    store
+        .update_status(
+            &p4.message_id,
+            iris_core::message_engine::lifecycle::MessageStatus::Delivered,
+        )
+        .await
+        .expect("update");
     let q = store.get_queue(10).await.expect("queue");
     assert_eq!(q.len(), 1);
-    assert_eq!(q[0].message_id, p0.message_id, "P0 first and delivered excluded");
+    assert_eq!(
+        q[0].message_id, p0.message_id,
+        "P0 first and delivered excluded"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -200,11 +267,24 @@ async fn quota_rejects_non_p0_but_accepts_p0() {
     // Tiny quota that one message exceeds.
     let store = store_with_max(128).await;
     let now = unix_now();
-    let normal = env_for(PEER_BOB, MessagePriority::P4, now - 30, 3600, &vec![0x42; 512]);
+    let normal = env_for(
+        PEER_BOB,
+        MessagePriority::P4,
+        now - 30,
+        3600,
+        &vec![0x42; 512],
+    );
     let res = store.persist(&normal).await;
-    assert_eq!(res, Err(StorageError::StorageFull), "non-P0 over quota refused");
+    assert_eq!(
+        res,
+        Err(StorageError::StorageFull),
+        "non-P0 over quota refused"
+    );
     let sos = env_for(PEER_BOB, MessagePriority::P0, now - 30, 3600, b"sos-small");
-    assert!(store.persist(&sos).await.is_ok(), "P0 always accepted (INV-EMERG-001 spirit)");
+    assert!(
+        store.persist(&sos).await.is_ok(),
+        "P0 always accepted (INV-EMERG-001 spirit)"
+    );
 }
 
 // --- At-rest sealing (CRYPTO-001 gate, AC-7) --------------------------------
@@ -225,23 +305,43 @@ async fn sealed_rows_are_not_plaintext_and_round_trip() {
         .await
         .expect("connect storage")
         .with_sealer(std::sync::Arc::new(sealer));
-    store.client().execute("TRUNCATE TABLE messages", &[]).await.expect("truncate");
+    store
+        .client()
+        .execute("TRUNCATE TABLE messages", &[])
+        .await
+        .expect("truncate");
 
-    let env = env_for(PEER_BOB, MessagePriority::P4, unix_now() - 100, 3600, b"at-rest secret");
+    let env = env_for(
+        PEER_BOB,
+        MessagePriority::P4,
+        unix_now() - 100,
+        3600,
+        b"at-rest secret",
+    );
     store.persist(&env).await.expect("persist sealed");
 
     // 1. The stored blob must not be decodable as CBOR (ciphertext at rest).
     let stored: Vec<u8> = store
         .client()
-        .query_one("SELECT envelope_cbor FROM messages WHERE message_id = $1", &[&env.message_id.to_string()])
+        .query_one(
+            "SELECT envelope_cbor FROM messages WHERE message_id = $1",
+            &[&env.message_id.to_string()],
+        )
         .await
         .expect("row")
         .get(0);
-    assert!(codec::decode(&stored).is_err(), "envelope_cbor must be sealed, not plaintext CBOR");
+    assert!(
+        codec::decode(&stored).is_err(),
+        "envelope_cbor must be sealed, not plaintext CBOR"
+    );
     assert_ne!(stored, codec::encode(&env).expect("encode"));
 
     // 2. load() unseals to the byte-exact original.
-    let loaded = store.load(&env.message_id).await.expect("load").expect("row exists");
+    let loaded = store
+        .load(&env.message_id)
+        .await
+        .expect("load")
+        .expect("row exists");
     assert_eq!(loaded, env, "byte-exact round-trip through the sealer");
 
     // 3. get_queue() returns the unsealed envelope for the sender queue.
@@ -266,8 +366,18 @@ async fn sealed_rows_require_the_right_key() {
         .await
         .expect("connect storage")
         .with_sealer(std::sync::Arc::new(sealer));
-    store.client().execute("TRUNCATE TABLE messages", &[]).await.expect("truncate");
-    let env = env_for(PEER_BOB, MessagePriority::P4, unix_now() - 100, 3600, b"at-rest secret");
+    store
+        .client()
+        .execute("TRUNCATE TABLE messages", &[])
+        .await
+        .expect("truncate");
+    let env = env_for(
+        PEER_BOB,
+        MessagePriority::P4,
+        unix_now() - 100,
+        3600,
+        b"at-rest secret",
+    );
     store.persist(&env).await.expect("persist sealed");
 
     // Reopen with a different master key → read must fail, not return garbage.
@@ -278,7 +388,11 @@ async fn sealed_rows_require_the_right_key() {
             StorageKeySealer::from_master_key(b"wrong-master-key-0x00").expect("sealer"),
         ));
     let res = wrong.load(&env.message_id).await;
-    assert_eq!(res, Err(StorageError::DecryptionFailed), "wrong storage key must fail loudly");
+    assert_eq!(
+        res,
+        Err(StorageError::DecryptionFailed),
+        "wrong storage key must fail loudly"
+    );
 }
 
 /// CRYPTO-001: after connect, no plaintext sender/recipient identity columns
@@ -303,8 +417,14 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
         .iter()
         .map(|r| r.get::<_, String>(0))
         .collect();
-    assert!(!cols.iter().any(|c| c == "sender_id"), "sender_id must not exist (plaintext metadata)");
-    assert!(!cols.iter().any(|c| c == "recipient_id"), "recipient_id must not exist (plaintext metadata)");
+    assert!(
+        !cols.iter().any(|c| c == "sender_id"),
+        "sender_id must not exist (plaintext metadata)"
+    );
+    assert!(
+        !cols.iter().any(|c| c == "recipient_id"),
+        "recipient_id must not exist (plaintext metadata)"
+    );
 
     let idxs: i64 = store
         .client()

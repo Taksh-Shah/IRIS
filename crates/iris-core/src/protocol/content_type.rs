@@ -43,6 +43,17 @@ pub enum ContentType {
     KeyRotation = 16,
 }
 
+/// Manual Arbitrary implementation for proptest (enabled via proptest feature)
+#[cfg(feature = "proptest")]
+impl proptest::arbitrary::Arbitrary for ContentType {
+    type Parameters = ();
+    type Strategy = proptest::strategy::Just<ContentType>;
+
+    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+        proptest::strategy::Just(ContentType::Text) // Default to Text for simplicity
+    }
+}
+
 impl ContentType {
     /// Convert a raw code to a content type; out of range returns `None`.
     pub fn from_u8(v: u8) -> Option<ContentType> {

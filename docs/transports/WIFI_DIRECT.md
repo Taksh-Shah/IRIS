@@ -16,9 +16,13 @@ Wi-Fi Direct (also called Wi-Fi P2P, standardized by Wi-Fi Alliance) allows devi
 | Latency (after setup)  | 1–5 ms                      | 2–10 ms                   |
 | Frequency bands        | 2.4 GHz and 5 GHz           | Device-dependent          |
 | Concurrent connections | 1 GO + up to 8 clients      | Usually 1 GO + 3–5 clients|
+
+> **Correction (RES-0021, iter 104):** "1 GO + 8 clients" is a **vendor/HAL ceiling**, not a Wi-Fi Alliance guarantee (the P2P spec mandates 1:1; one-to-many is optional). IRIS uses an **N-client admission model** (bounded GO-side connection table, admitted client queue) and never hard-codes 8.
 | Battery impact         | High (Wi-Fi radio active)   | 50–200 mA additional      |
 
-Wi-Fi Direct uses standard 802.11 protocols but operates in infrastructure mode with a software-defined access point role (Group Owner). Encryption is WPA2-PSK, negotiated during group formation.
+Wi-Fi Direct uses standard 802.11 protocols but operates in infrastructure mode with a software-defined access point role (Group Owner). Encryption is WPA2-Personal (WPA2-PSK/AES-CCMP), negotiated during group formation.
+
+> **Correction (RES-0021, iter 104):** Group security floor = **WPA2-Personal**. **WPA3-SAE is now supported on Wi-Fi Direct R2-capable devices** (`WifiP2pGroup` security types `SECURITY_TYPE_WPA3_SAE`/`WPA3_COMPATIBILITY`, Android API 36) — IRIS capability-gates SAE to a later phase (`isWiFiDirectR2Supported`/`isPccModeSupported`). **WPS-PIN is prohibited** (WPS deprecated client-mode API 28; CVE-2021-0326 P2P RCE via WPS-PIN); the group passphrase is pushed over the **authenticated BLE control plane**; PBC is a legacy dev-doc fallback only.
 
 ---
 
@@ -283,9 +287,15 @@ If both devices have the same intent value, GO election is pseudo-random. In pra
 
 `discoverPeers()` when running continuously drains ~80–150 mA additional to baseline. IRIS does not run continuous Wi-Fi Direct discovery. Instead:
 1. BLE detects a peer with queued data.
-2. IRIS activates Wi-Fi Direct discovery for 30 seconds.
+2. IRIS activates Wi-Fi Direct discovery for a 30-second app-controlled window.
 3. If group forms, transfer proceeds.
 4. If no group forms in 30 seconds, deactivate Wi-Fi Direct, retry via BLE next contact.
+
+> **Correction (RES-0021, iter 104):** The framework P2P find window is **120 s** (`DISCOVER_TIMEOUT_S`); the documented 30 s is the **app-level re-arm cadence** (IRIS stops/restarts find within/after that window). `WIFI_P2P_DISCOVERY_CHANGED_ACTION` (find stop event) returns IRIS to BLE control-plane waiting. Discovery remains best-effort on OEM builds — BLE is the durable trigger.
+
+### OS Patch Floor (RES-0021, iter 104)
+
+Wi-Fi stack CVEs are **OS-patch-gated** (never app-patchable). Deployment floor recorded (AC-14): **Android security patch level ≥ 2021-02** (CVE-2021-0326 P2P unauthenticated RCE), **Linux wpa_supplicant ≥ 2.12** (w1.fi 2026-1 mgmt-frame / 2026-3 SAE), kernel with 2024–26 Wi-Fi driver fixes (CVE-2024-26895/27053/47712/47724/56539/46755; CVE-2025-40321; CVE-2026-31780/46069). Single-radio STA+P2P coexistence is a runtime-availability constraint (`COEX_RESTRICTION_WIFI_DIRECT`/`WifiAvailableChannel` API 34) — IRIS degrades to BLE, never assumes concurrency.
 
 ### Platform Support Matrix
 
@@ -303,7 +313,7 @@ If both devices have the same intent value, GO election is pseudo-random. In pra
 On most Android devices, Wi-Fi Direct and infrastructure Wi-Fi **cannot operate simultaneously on the same band.** Specifically:
 - If the device is connected to a 2.4 GHz AP, Wi-Fi Direct may be forced to 2.4 GHz, causing interference.
 - On 5 GHz-capable devices with dual-band support, Wi-Fi Direct can use 5 GHz while infrastructure stays on 2.4 GHz.
-- Check: Android 10+ exposes `WifiP2pConfig.setGroupOperatingBand()` to hint at band preference.
+- Check: Android API 29+ exposes `WifiP2pConfig.setGroupOperatingBand()` to hint at band preference (AUTO / 2.4 / 5 / 6 GHz). IRIS prefers 5 GHz with AUTO fallback; band-constrained group creation fails → fall back to AUTO / 2.4 GHz / degrade to BLE.
 
 **Recommendation:** IRIS checks the current AP connection band before initiating Wi-Fi Direct and selects the opposite band where possible.
 

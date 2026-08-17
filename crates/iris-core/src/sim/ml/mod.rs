@@ -48,7 +48,9 @@ pub struct ShadowRecorder {
 
 impl ShadowRecorder {
     pub fn new() -> Self {
-        ShadowRecorder { samples: Vec::new() }
+        ShadowRecorder {
+            samples: Vec::new(),
+        }
     }
 
     pub fn record(&mut self, d: ShadowDecision) {

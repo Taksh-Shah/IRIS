@@ -12,7 +12,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::time::{Duration, Instant};
 
-use crate::message_engine::dedup::{BLOOM_FPR, BloomFilter};
+use crate::message_engine::dedup::{BloomFilter, BLOOM_FPR};
 use crate::protocol::MessageId;
 
 /// Exact-set retention window.

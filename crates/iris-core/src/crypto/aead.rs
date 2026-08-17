@@ -40,7 +40,10 @@ pub fn encrypt(
     let out = cipher
         .encrypt(
             Nonce::from_slice(nonce),
-            Payload { msg: plaintext, aad },
+            Payload {
+                msg: plaintext,
+                aad,
+            },
         )
         .map_err(|_| CryptoError::Encrypt)?;
     Ok(out) // ciphertext ‖ tag
@@ -55,10 +58,7 @@ pub fn decrypt(
 ) -> Result<Vec<u8>, CryptoError> {
     let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
     let out = cipher
-        .decrypt(
-            Nonce::from_slice(nonce),
-            Payload { msg: sealed, aad },
-        )
+        .decrypt(Nonce::from_slice(nonce), Payload { msg: sealed, aad })
         .map_err(|_| CryptoError::Decrypt)?;
     Ok(out)
 }
@@ -69,8 +69,7 @@ mod tests {
     use hex_literal::hex;
 
     // RFC 8439 §2.8.2 AEAD test vector.
-    const KEY: [u8; 32] =
-        hex!("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f");
+    const KEY: [u8; 32] = hex!("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f");
     const NONCE: [u8; 12] = hex!("070000004041424344454647");
     const PLAINTEXT: &[u8] = b"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
     const AAD: &[u8] = &hex!("50515253c0c1c2c3c4c5c6c7");

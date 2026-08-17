@@ -65,7 +65,9 @@ pub struct StorageKeySealer {
 impl StorageKeySealer {
     /// Derive the at-rest key with `kdf::storage_key` (HKDF, domain-separated).
     pub fn from_master_key(master_key: &[u8]) -> Result<Self, CryptoError> {
-        Ok(Self { key: kdf::storage_key(master_key)? })
+        Ok(Self {
+            key: kdf::storage_key(master_key)?,
+        })
     }
 }
 
@@ -89,8 +91,7 @@ impl RowSealer for StorageKeySealer {
         let nonce: &[u8; NONCE_LEN] = nonce
             .try_into()
             .map_err(|_| StorageError::DecryptionFailed)?;
-        aead::decrypt(&self.key, nonce, sealed, aad)
-            .map_err(|_e| StorageError::DecryptionFailed)
+        aead::decrypt(&self.key, nonce, sealed, aad).map_err(|_e| StorageError::DecryptionFailed)
     }
 }
 
@@ -181,16 +182,37 @@ mod tests {
         let blob = sealer.seal(&aad, &cbor).expect("seal");
 
         // Row swapped for a different message id.
-        let other_id = row_aad(&MessageId::new_v7().to_string(), env.priority as u8, env.timestamp + 60);
-        assert!(sealer.unseal(&other_id, &blob).is_err(), "aad binds message_id");
+        let other_id = row_aad(
+            &MessageId::new_v7().to_string(),
+            env.priority as u8,
+            env.timestamp + 60,
+        );
+        assert!(
+            sealer.unseal(&other_id, &blob).is_err(),
+            "aad binds message_id"
+        );
 
         // Lifecycle scalar rewritten out-of-band (priority in DB column).
-        let tampered = row_aad(&env.message_id.to_string(), MessagePriority::P0 as u8, env.timestamp + 60);
-        assert!(sealer.unseal(&tampered, &blob).is_err(), "aad binds priority");
+        let tampered = row_aad(
+            &env.message_id.to_string(),
+            MessagePriority::P0 as u8,
+            env.timestamp + 60,
+        );
+        assert!(
+            sealer.unseal(&tampered, &blob).is_err(),
+            "aad binds priority"
+        );
 
         // Expiry rewritten out-of-band.
-        let expiry_tampered = row_aad(&env.message_id.to_string(), env.priority as u8, env.timestamp + 9999);
-        assert!(sealer.unseal(&expiry_tampered, &blob).is_err(), "aad binds expires_at");
+        let expiry_tampered = row_aad(
+            &env.message_id.to_string(),
+            env.priority as u8,
+            env.timestamp + 9999,
+        );
+        assert!(
+            sealer.unseal(&expiry_tampered, &blob).is_err(),
+            "aad binds expires_at"
+        );
 
         // Wrong key.
         let wrong = StorageKeySealer::from_master_key(&[0u8; 32]).expect("sealer");
@@ -210,7 +232,10 @@ mod tests {
         let mut blob = sealer.seal(&aad, &cbor).expect("seal");
         let last = blob.len() - 1;
         blob[last] ^= 0x01;
-        assert!(sealer.unseal(&aad, &blob).is_err(), "poly1305 catches bit flips");
+        assert!(
+            sealer.unseal(&aad, &blob).is_err(),
+            "poly1305 catches bit flips"
+        );
     }
 
     #[test]

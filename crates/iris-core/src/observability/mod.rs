@@ -18,8 +18,8 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 /// Privacy-truncated identifier (P2 / OBS_DESIGN.md).
 ///
@@ -110,6 +110,15 @@ pub mod event {
 
     // Topology bus — 1 event
     pub const TOPO_EVENT: &str = "topo.event";
+
+    // SEC-001 — 7 events
+    pub const MSG_RATE_LIMITED: &str = "security.rate_limited";
+    pub const MSG_QUOTA_EXCEEDED: &str = "security.quota_exceeded";
+    pub const MSG_REPLAY_TOO_OLD: &str = "security.replay_too_old";
+    pub const MSG_REPLAY_TOO_FUTURE: &str = "security.replay_too_future";
+    pub const MSG_REPLAY_DETECTED: &str = "security.replay_detected";
+    pub const MSG_LIKELY_SPAM: &str = "security.likely_spam";
+    pub const MSG_EMERGENCY_ACL_DENIED: &str = "security.emergency_acl_denied";
 }
 
 /// Metric names — `iris.<domain>.<name>` grammar with unit suffix (RES-0012 §C).
@@ -117,11 +126,9 @@ pub mod metric {
     pub const MESSAGES_SENT_TOTAL: &str = "iris.messages.sent_total";
     pub const MESSAGES_DELIVERED_TOTAL: &str = "iris.messages.delivered_total";
     pub const MESSAGES_RELAYED_TOTAL: &str = "iris.messages.relayed_total";
-    pub const MESSAGES_DROPPED_DUPLICATES_TOTAL: &str =
-        "iris.messages.dropped_duplicates_total";
+    pub const MESSAGES_DROPPED_DUPLICATES_TOTAL: &str = "iris.messages.dropped_duplicates_total";
     pub const MESSAGES_EXPIRED_TOTAL: &str = "iris.messages.expired_total";
-    pub const MESSAGES_DELIVERY_FAILED_TOTAL: &str =
-        "iris.messages.delivery_failed_total";
+    pub const MESSAGES_DELIVERY_FAILED_TOTAL: &str = "iris.messages.delivery_failed_total";
     /// EMERG-001: unverifiable EmergencyAlert dropped (anti-probing, AC-10).
     pub const MESSAGES_EMERGENCY_AUTH_DROPPED_TOTAL: &str =
         "iris.messages.emergency_auth_dropped_total";
@@ -131,8 +138,22 @@ pub mod metric {
     /// Unicast sent WITHOUT encryption because the recipient X25519 key was
     /// absent from the key directory (RED-0002 fail-open — see threat model).
     /// P0 SOS broadcast is intentionally unencrypted and NOT counted here.
-    pub const MESSAGES_SENT_UNENCRYPTED_TOTAL: &str =
-        "iris.messages.sent_unencrypted_total";
+    pub const MESSAGES_SENT_UNENCRYPTED_TOTAL: &str = "iris.messages.sent_unencrypted_total";
+    /// SEC-001: message silently dropped by rate limiter (per sender/class).
+    pub const MESSAGES_RATE_LIMITED_TOTAL: &str = "iris.messages.rate_limited_total";
+    /// SEC-001: message rejected by storage quota (per sender).
+    pub const MESSAGES_QUOTA_EXCEEDED_TOTAL: &str = "iris.messages.quota_exceeded_total";
+    /// SEC-001: replay protection — timestamp too old.
+    pub const MESSAGES_REPLAY_TOO_OLD_TOTAL: &str = "iris.messages.replay_too_old_total";
+    /// SEC-001: replay protection — timestamp too far in future.
+    pub const MESSAGES_REPLAY_TOO_FUTURE_TOTAL: &str = "iris.messages.replay_too_future_total";
+    /// SEC-001: replay protection — high-water mark replay detected.
+    pub const MESSAGES_REPLAY_DETECTED_TOTAL: &str = "iris.messages.replay_detected_total";
+    /// SEC-001: receiver-side likely_spam annotation.
+    pub const MESSAGES_LIKELY_SPAM_TOTAL: &str = "iris.messages.likely_spam_total";
+    /// SEC-001: emergency message denied by ACL-1.
+    pub const MESSAGES_EMERGENCY_ACL_DENIED_TOTAL: &str =
+        "iris.messages.emergency_acl_denied_total";
     pub const ROUTING_DECISIONS_TOTAL: &str = "iris.routing.decisions_total";
     pub const ROUTING_FLOODS_TOTAL: &str = "iris.routing.floods_total";
     pub const SCF_EVICTIONS_TOTAL: &str = "iris.scf.evictions_total";
@@ -166,7 +187,7 @@ impl Default for MetricsRegistry {
 impl MetricsRegistry {
     /// A fresh registry with all counters pre-registered (zeroed).
     pub fn new() -> Self {
-        let mut counters = HashMap::with_capacity(16);
+        let mut counters = HashMap::with_capacity(24);
         for name in [
             metric::MESSAGES_SENT_TOTAL,
             metric::MESSAGES_DELIVERED_TOTAL,
@@ -175,6 +196,15 @@ impl MetricsRegistry {
             metric::MESSAGES_EXPIRED_TOTAL,
             metric::MESSAGES_DELIVERY_FAILED_TOTAL,
             metric::MESSAGES_SENT_UNENCRYPTED_TOTAL,
+            metric::MESSAGES_EMERGENCY_AUTH_DROPPED_TOTAL,
+            metric::MESSAGES_EMERGENCY_SOS_RATE_LIMITED_TOTAL,
+            metric::MESSAGES_RATE_LIMITED_TOTAL,
+            metric::MESSAGES_QUOTA_EXCEEDED_TOTAL,
+            metric::MESSAGES_REPLAY_TOO_OLD_TOTAL,
+            metric::MESSAGES_REPLAY_TOO_FUTURE_TOTAL,
+            metric::MESSAGES_REPLAY_DETECTED_TOTAL,
+            metric::MESSAGES_LIKELY_SPAM_TOTAL,
+            metric::MESSAGES_EMERGENCY_ACL_DENIED_TOTAL,
             metric::ROUTING_DECISIONS_TOTAL,
             metric::ROUTING_FLOODS_TOTAL,
             metric::SCF_EVICTIONS_TOTAL,
@@ -265,7 +295,8 @@ mod tests {
         assert_eq!(snap[metric::ROUTING_DECISIONS_TOTAL], 3);
         // Unknown names are silently ignored — default-deny (P3).
         reg.increment("iris.unknown.name");
-        assert_eq!(reg.snapshot().len(), 10);
+        // 19 metrics registered (includes SEC-001 metrics)
+        assert_eq!(reg.snapshot().len(), 19);
     }
 
     #[test]
@@ -279,7 +310,11 @@ mod tests {
 
     #[test]
     fn delivery_window_ratio() {
-        let w = DeliveryWindow { window_ms: 3_600_000, sent: 4, delivered: 3 };
+        let w = DeliveryWindow {
+            window_ms: 3_600_000,
+            sent: 4,
+            delivered: 3,
+        };
         assert!((w.ratio() - 0.75).abs() < 1e-9);
         let empty = DeliveryWindow::default();
         assert_eq!(empty.ratio(), 0.0);

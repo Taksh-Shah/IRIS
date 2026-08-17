@@ -295,10 +295,7 @@ fn field_name(k: u8) -> &'static str {
 /// Look up a field by its wire key in a decoded `Value::Map`.
 fn get(entries: &[(Value, Value)], k: u8) -> Option<&Value> {
     let want = Value::Integer(Integer::from(u64::from(k)));
-    entries
-        .iter()
-        .find(|(key, _)| *key == want)
-        .map(|(_, v)| v)
+    entries.iter().find(|(key, _)| *key == want).map(|(_, v)| v)
 }
 
 fn expect_map(value: &Value) -> Result<&[(Value, Value)], EnvelopeError> {
@@ -378,13 +375,17 @@ fn decode_routing_hints(m: &[(Value, Value)]) -> Result<RoutingHints, EnvelopeEr
     if let Some(v) = get(m, 1) {
         match v {
             Value::Text(s) => rh.last_known_region = Some(s.clone()),
-            _ => return Err(EnvelopeError::InvalidField("routing_hints.last_known_region")),
+            _ => {
+                return Err(EnvelopeError::InvalidField(
+                    "routing_hints.last_known_region",
+                ))
+            }
         }
     }
     if let Some(gw) = get_opt_bytes(m, 2)? {
-        let arr: [u8; 32] = gw
-            .try_into()
-            .map_err(|_| EnvelopeError::InvalidField("routing_hints.gateway_seen_via (32 bytes)"))?;
+        let arr: [u8; 32] = gw.try_into().map_err(|_| {
+            EnvelopeError::InvalidField("routing_hints.gateway_seen_via (32 bytes)")
+        })?;
         rh.gateway_seen_via = Some(arr);
     }
     if let Some(v) = get(m, 3) {
@@ -396,7 +397,11 @@ fn decode_routing_hints(m: &[(Value, Value)]) -> Result<RoutingHints, EnvelopeEr
     if let Some(v) = get(m, 4) {
         match v {
             Value::Bool(b) => rh.requires_gateway = Some(*b),
-            _ => return Err(EnvelopeError::InvalidField("routing_hints.requires_gateway")),
+            _ => {
+                return Err(EnvelopeError::InvalidField(
+                    "routing_hints.requires_gateway",
+                ))
+            }
         }
     }
     if let Some(v) = get(m, 5) {
@@ -412,7 +417,11 @@ fn decode_routing_hints(m: &[(Value, Value)]) -> Result<RoutingHints, EnvelopeEr
                 }
                 rh.preferred_relays = Some(relays);
             }
-            _ => return Err(EnvelopeError::InvalidField("routing_hints.preferred_relays")),
+            _ => {
+                return Err(EnvelopeError::InvalidField(
+                    "routing_hints.preferred_relays",
+                ))
+            }
         }
     }
     Ok(rh)
@@ -448,8 +457,7 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
 
     let priority_code = get_u64(map, 5)?;
     let priority = MessagePriority::from_u8(
-        u8::try_from(priority_code)
-            .map_err(|_| EnvelopeError::InvalidPriority(priority_code))?,
+        u8::try_from(priority_code).map_err(|_| EnvelopeError::InvalidPriority(priority_code))?,
     )
     .ok_or(EnvelopeError::InvalidPriority(priority_code))?;
 
@@ -458,7 +466,9 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
     let hop_count = u8::try_from(get_u64(map, 8)?)
         .map_err(|_| EnvelopeError::InvalidField("hop_count (0-255)"))?;
     let max_hops = match get_opt_u64(map, 9)? {
-        Some(v) => Some(u8::try_from(v).map_err(|_| EnvelopeError::InvalidField("max_hops (0-255)"))?),
+        Some(v) => {
+            Some(u8::try_from(v).map_err(|_| EnvelopeError::InvalidField("max_hops (0-255)"))?)
+        }
         None => None,
     };
 
@@ -474,7 +484,10 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
         .map_err(|_| EnvelopeError::InvalidField("payload_hash (32 bytes)"))?;
     let payload = get_bytes(map, 13)?;
     if payload_size != payload.len() as u64 {
-        return Err(EnvelopeError::PayloadSizeMismatch(payload_size, payload.len()));
+        return Err(EnvelopeError::PayloadSizeMismatch(
+            payload_size,
+            payload.len(),
+        ));
     }
 
     let payload_ref = match get_opt_bytes(map, 14)? {
@@ -554,9 +567,9 @@ mod tests {
     const MID: [u8; 16] = hex_literal::hex!("018f1a2b3c4d5e6f708192a3b4c5d6e7");
     const SID: [u8; 16] = hex_literal::hex!("a3bc7e2f112233445566778899aabbcc");
     const HASH: [u8; 32] = [
-        0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
-        0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
-        0xdd, 0xee, 0xff, 0x01,
+        0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff, 0x01,
     ];
 
     fn p0_sos_payload() -> Vec<u8> {
@@ -770,10 +783,7 @@ mod tests {
         // and produce the same envelope (ADR-0011 extension tolerance).
         let mut value: Value = ciborium::de::from_reader(&valid[..]).unwrap();
         if let Value::Map(m) = &mut value {
-            m.push((
-                Value::Integer(Integer::from(19)),
-                Value::Bool(true),
-            ));
+            m.push((Value::Integer(Integer::from(19)), Value::Bool(true)));
         }
         let mut out = Vec::new();
         ciborium::ser::into_writer(&value, &mut out).unwrap();
@@ -852,7 +862,10 @@ mod tests {
         let mut env2 = p0_sos_envelope();
         env2.payload = vec![0x09; 16];
         let aad_ignores_payload = encode_for_aead(&env2).unwrap();
-        assert_eq!(aad_ignores_payload, aad_plain, "payload bytes excluded from AAD");
+        assert_eq!(
+            aad_ignores_payload, aad_plain,
+            "payload bytes excluded from AAD"
+        );
     }
 
     #[test]

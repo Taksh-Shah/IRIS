@@ -16,9 +16,9 @@ The Transport Abstraction Layer is the foundational infrastructure of the IRIS R
 | **One-Way Latency**       | 5–50 ms        | 50–500 ms setup  | 1–10 ms          | 1–10 ms          | <1 ms            | 30–200 ms        | 0.5–5 s          | 250–700 ms       | <1 ms            |
 | **Battery Impact**        | Low            | High             | Medium           | Medium           | Negligible       | High             | Very Low         | Very High        | Low (charges)    |
 | **Infrastructure Needed** | None           | None             | None             | AP required      | Switch/cable     | Cell tower       | None (P2P)       | Satellite + dish | Cable only       |
-| **Android Background**    | Partial        | No (wakelock)    | Yes (API 29+)    | Yes              | Yes              | Yes              | Via BLE bridge   | Via USB bridge   | No               |
-| **iOS Available**         | Yes            | No (private API) | No               | Yes              | No               | Yes              | No               | Via accessory    | Limited          |
-| **iOS Background**        | Partial        | N/A              | N/A              | Yes              | N/A              | Yes              | N/A              | Limited          | N/A              |
+| **Android Background**    | Partial        | No (wakelock)    | Yes (FGS)        | Yes              | Yes              | Yes              | Via BLE bridge   | Via USB bridge   | No               |
+| **iOS Available**         | Yes            | No (private API) | Yes (iOS 26+, iPhone 12+) | Yes      | No               | Yes              | No               | Via accessory    | Limited          |
+| **iOS Background**        | Partial        | N/A              | Yes (iOS 26+)    | Yes              | N/A              | Yes              | N/A              | Limited          | N/A              |
 | **Special Hardware**      | None           | None             | None             | None             | NIC + cable      | SIM              | LoRa module      | Terminal/dish    | Cable            |
 | **Cost Per Message**      | ₹0             | ₹0               | ₹0               | ₹0               | ₹0               | ₹0–₹0.01         | ₹0               | ₹0.05–₹5        | ₹0               |
 | **Regulatory**            | ISM (free)     | ISM (free)       | ISM (free)       | ISM/licensed     | None             | Licensed         | WPC 865–867 MHz  | DoT license      | None             |

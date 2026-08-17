@@ -85,10 +85,7 @@ impl GtPredictor {
         }
         let mut times: Vec<u64> = contact_times_ms.to_vec();
         times.sort_unstable();
-        let mut intervals: Vec<f64> = times
-            .windows(2)
-            .map(|w| (w[1] - w[0]) as f64)
-            .collect();
+        let mut intervals: Vec<f64> = times.windows(2).map(|w| (w[1] - w[0]) as f64).collect();
         // Median interval — robust to one-off gaps (vehicle + stations).
         intervals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         let mid = intervals.len() / 2;
@@ -126,8 +123,14 @@ mod tests {
             (fx(0.0), false),
         ];
         let p = LinearPredictor::fit(&samples);
-        assert!(p.score(&fx(1.0)) > 0.5, "high-feature samples should score >0.5");
-        assert!(p.score(&fx(0.0)) < 0.5, "low-feature samples should score <0.5");
+        assert!(
+            p.score(&fx(1.0)) > 0.5,
+            "high-feature samples should score >0.5"
+        );
+        assert!(
+            p.score(&fx(0.0)) < 0.5,
+            "low-feature samples should score <0.5"
+        );
     }
 
     #[test]
@@ -149,7 +152,10 @@ mod tests {
         let mut times: Vec<u64> = (0..10).map(|i| 1000 * i).collect();
         times.push(50_000); // one long gap
         let g = GtPredictor::fit(&times);
-        assert!((g.period_ms - 1000.0).abs() < 1.0, "median must ignore outlier: {g:?}");
+        assert!(
+            (g.period_ms - 1000.0).abs() < 1.0,
+            "median must ignore outlier: {g:?}"
+        );
     }
 
     #[test]

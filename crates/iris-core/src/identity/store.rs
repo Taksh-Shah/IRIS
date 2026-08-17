@@ -114,7 +114,9 @@ impl FileKeyStore {
     }
 
     fn keys_dir(&self) -> &Path {
-        self.identity_path.parent().expect("keys dir from identity path")
+        self.identity_path
+            .parent()
+            .expect("keys dir from identity path")
     }
 
     /// Take an exclusive advisory lock for `path` (create_new → atomic).
@@ -128,7 +130,11 @@ impl FileKeyStore {
         let lock_path = path.with_extension("lock");
         fs::create_dir_all(self.keys_dir())?;
         for attempt in 0..2 {
-            match fs::OpenOptions::new().write(true).create_new(true).open(&lock_path) {
+            match fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&lock_path)
+            {
                 Ok(f) => return Ok(f),
                 Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
                     if attempt == 0 && lock_is_stale(&lock_path) {
@@ -212,7 +218,11 @@ fn write_secret_file(path: &Path, data: &[u8]) -> io::Result<()> {
 #[cfg(not(unix))]
 fn write_secret_file(path: &Path, data: &[u8]) -> io::Result<()> {
     use std::io::Write;
-    let mut f = fs::OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
+    let mut f = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)?;
     f.write_all(data)?;
     f.sync_all()
 }
@@ -326,7 +336,10 @@ mod tests {
         let path = s.identity_path.clone();
         std::fs::create_dir_all(s.keys_dir()).unwrap();
         std::fs::write(&path, [0x02, 0, 0, 0]).unwrap();
-        assert!(matches!(s.load_identity(), Err(KeyStoreError::BadVersion(0x02))));
+        assert!(matches!(
+            s.load_identity(),
+            Err(KeyStoreError::BadVersion(0x02))
+        ));
     }
 
     #[test]
@@ -365,10 +378,14 @@ mod tests {
         // Capture the Vec's buffer pointer BEFORE the drop path runs.
         let z = unsafe { &*ptr };
         let buffer = (&***z)[..].as_ptr(); // Zeroizing derefs to Vec derefs to [u8]
-        unsafe { std::ptr::drop_in_place(ptr); } // runs clear() over the buffer
+        unsafe {
+            std::ptr::drop_in_place(ptr);
+        } // runs clear() over the buffer
         let cleared = unsafe { std::slice::from_raw_parts(buffer, 64) };
         let all_zero = cleared.iter().all(|&b| b == 0);
-        unsafe { alloc::dealloc(ptr as *mut u8, layout); }
+        unsafe {
+            alloc::dealloc(ptr as *mut u8, layout);
+        }
         assert!(all_zero, "buffer must be zeroed after drop path");
     }
 
@@ -382,8 +399,12 @@ mod tests {
         let lock_path = s.identity_path.with_extension("lock");
         std::fs::write(&lock_path, b"stale").unwrap();
 
-        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(LOCK_STALE_SECS + 60);
-        let f = std::fs::OpenOptions::new().write(true).open(&lock_path).unwrap();
+        let old =
+            std::time::SystemTime::now() - std::time::Duration::from_secs(LOCK_STALE_SECS + 60);
+        let f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&lock_path)
+            .unwrap();
         f.set_times(
             std::fs::FileTimes::new()
                 .set_accessed(old)

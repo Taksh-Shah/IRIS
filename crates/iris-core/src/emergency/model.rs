@@ -488,14 +488,20 @@ mod tests {
         // Overflowing headline.
         let mut bad = base.clone();
         bad.headline = "x".repeat(97);
-        assert!(matches!(bad.validate(), Err(ModelError::FieldTooLong("headline"))));
+        assert!(matches!(
+            bad.validate(),
+            Err(ModelError::FieldTooLong("headline"))
+        ));
         // Authority profile constraints.
         let mut bad = base.clone();
         bad.authority.max_severity = 7;
         assert!(matches!(bad.validate(), Err(ModelError::BadMaxSeverity(7))));
         let mut bad = base.clone();
         bad.authority.geo_scope = Some("X".repeat(33));
-        assert!(matches!(bad.validate(), Err(ModelError::FieldTooLong("geo_scope"))));
+        assert!(matches!(
+            bad.validate(),
+            Err(ModelError::FieldTooLong("geo_scope"))
+        ));
     }
 
     #[test]
@@ -514,10 +520,16 @@ mod tests {
         assert!(ok.validate().is_ok());
         let mut bad = ok.clone();
         bad.original_message_id = None;
-        assert!(matches!(bad.validate(), Err(ModelError::CancelMissingOriginal)));
+        assert!(matches!(
+            bad.validate(),
+            Err(ModelError::CancelMissingOriginal)
+        ));
         // Non-cancel with original present.
         let mut bad = ok;
         bad.kind = SosKind::Sos;
-        assert!(matches!(bad.validate(), Err(ModelError::OriginalOnNonCancel)));
+        assert!(matches!(
+            bad.validate(),
+            Err(ModelError::OriginalOnNonCancel)
+        ));
     }
 }

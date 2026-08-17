@@ -23,7 +23,7 @@ pub async fn try_direct(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::{PeerInfo, LinkQuality};
+    use crate::message::{LinkQuality, PeerInfo};
     use crate::transport::TransportId;
     use std::time::Duration;
 
@@ -42,11 +42,16 @@ mod tests {
             transport_addresses: vec![],
             last_seen: None,
         };
-        table.upsert(&peer, &TransportId::from("sim"), LinkQuality::Good).await;
+        table
+            .upsert(&peer, &TransportId::from("sim"), LinkQuality::Good)
+            .await;
         let decision = try_direct(pid(5), &table).await;
         assert!(matches!(
             decision,
-            Some(ForwardingDecision::Forward { algorithm: ForwardingAlgorithm::Direct, .. })
+            Some(ForwardingDecision::Forward {
+                algorithm: ForwardingAlgorithm::Direct,
+                ..
+            })
         ));
     }
 

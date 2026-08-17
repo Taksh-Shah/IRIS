@@ -41,12 +41,6 @@ use tokio::task::AbortHandle;
 
 use crate::crypto::key_directory::KeyDirectory;
 use crate::message::{IncomingMessage, MessagePriority, PeerId, SerializedMessage};
-use crate::observability::event;
-use crate::observability::metric;
-use crate::observability::MetricsRegistry;
-use crate::protocol::{codec, ContentType, Envelope, EnvelopeError, MessageId, EMERGENCY_BROADCAST};
-use crate::transport::manager::TransportSelectionRequest;
-use crate::transport::TransportManager;
 use crate::message_engine::ack::AckTracker;
 use crate::message_engine::crypto::{message_kdf_info, CryptoProvider};
 use crate::message_engine::dedup::DedupEngine;
@@ -57,6 +51,15 @@ use crate::message_engine::fragment::{
 use crate::message_engine::lifecycle::{LifecycleError, MessageStatus};
 use crate::message_engine::queue::{PriorityQueue, QueuedMessage};
 use crate::message_engine::storage::{MessageStorage, StorageError};
+use crate::observability::event;
+use crate::observability::metric;
+use crate::observability::MetricsRegistry;
+use crate::protocol::{
+    codec, ContentType, Envelope, EnvelopeError, MessageId, EMERGENCY_BROADCAST,
+};
+use crate::security::{NoopSecurityPolicy, SecurityPolicy, SenderShort};
+use crate::transport::manager::TransportSelectionRequest;
+use crate::transport::TransportManager;
 
 /// Padded broadcast pseudo-peer: `[0;28] ++ EMERGENCY_BROADCAST(4)`.
 pub fn broadcast_peer() -> PeerId {
@@ -195,9 +198,7 @@ impl EngineMetrics {
             expired: self.expired.load(Ordering::Relaxed),
             delivery_failed: self.delivery_failed.load(Ordering::Relaxed),
             dropped_emergency_auth: self.dropped_emergency_auth.load(Ordering::Relaxed),
-            emergency_sos_rate_limited: self
-                .emergency_sos_rate_limited
-                .load(Ordering::Relaxed),
+            emergency_sos_rate_limited: self.emergency_sos_rate_limited.load(Ordering::Relaxed),
         }
     }
 }
@@ -228,6 +229,8 @@ pub struct MessageEngine {
     /// EMERG-001 emergency provider (AC-11). Defaults to a no-op so engine
     /// behavior is unchanged until armed by the caller.
     emergency: std::sync::RwLock<Arc<dyn crate::emergency::EmergencyProvider>>,
+    /// SEC-001 security policy (Noop default = un-armed engine identical to current behavior).
+    security: std::sync::RwLock<Arc<dyn SecurityPolicy>>,
     manager: Arc<TransportManager>,
     delivered_tx: broadcast::Sender<Envelope>,
     metrics: EngineMetrics,
@@ -281,6 +284,7 @@ impl MessageEngine {
             emergency: std::sync::RwLock::new(Arc::new(
                 crate::emergency::NoopEmergencyProvider::new(),
             )),
+            security: std::sync::RwLock::new(Arc::new(NoopSecurityPolicy)),
             manager,
             delivered_tx,
             metrics: EngineMetrics::default(),
@@ -324,6 +328,13 @@ impl MessageEngine {
         *self.emergency.write().unwrap() = provider;
     }
 
+    /// Install a SEC-001 security policy (AC-12). Before this call the engine
+    /// runs under [`NoopSecurityPolicy`]: all security checks are permissive
+    /// and behavior is identical to the un-armed engine.
+    pub fn set_security_policy(&self, policy: Arc<dyn SecurityPolicy>) {
+        *self.security.write().unwrap() = policy;
+    }
+
     /// CRYPTO-001 send-path sealing: encrypt the payload for the recipient
     /// (when addressed and the recipient X25519 key is known) then sign.
     ///
@@ -333,11 +344,19 @@ impl MessageEngine {
     /// until IDENT-001 distributes keys (v1 limitation).
     async fn seal_outbound(&self, envelope: &mut Envelope) -> Result<(), MsgEngineError> {
         if envelope.recipient_id.is_empty() || envelope.recipient_id == EMERGENCY_BROADCAST {
-            return self.crypto.sign(envelope).await.map_err(MsgEngineError::Crypto);
+            return self
+                .crypto
+                .sign(envelope)
+                .await
+                .map_err(MsgEngineError::Crypto);
         }
         if envelope.recipient_id.len() != 32 {
             // No resolvable recipient — sign only (relay/control thin recipients).
-            return self.crypto.sign(envelope).await.map_err(MsgEngineError::Crypto);
+            return self
+                .crypto
+                .sign(envelope)
+                .await
+                .map_err(MsgEngineError::Crypto);
         }
         let mut node_id = [0u8; 32];
         node_id.copy_from_slice(&envelope.recipient_id);
@@ -367,14 +386,18 @@ impl MessageEngine {
             // metric so the downgrade is always observable and reportable.
             // (P0 SOS broadcast is intentionally plaintext and returns above;
             // this path is addressed mail only.) IDENT-001 supplies keys.
-            self.telemetry.increment(metric::MESSAGES_SENT_UNENCRYPTED_TOTAL);
+            self.telemetry
+                .increment(metric::MESSAGES_SENT_UNENCRYPTED_TOTAL);
             tracing::warn!(
                 event = event::MSG_SENT_UNENCRYPTED,
                 message_id = %envelope.message_id.short(),
                 "addressed message sent WITHOUT encryption: recipient key absent from key directory",
             );
         }
-        self.crypto.sign(envelope).await.map_err(MsgEngineError::Crypto)
+        self.crypto
+            .sign(envelope)
+            .await
+            .map_err(MsgEngineError::Crypto)
     }
 
     /// Enqueue an outbound envelope. Errors on TTL-expired / full queue.
@@ -384,23 +407,79 @@ impl MessageEngine {
             return Err(MsgEngineError::TtlExpired);
         }
 
+        // SEC-001: outbound rate limiting (per sender, per class)
+        let sender_short = self.sender_short_id();
+        let class = crate::security::MessageClass::from(envelope.priority);
+        let policy = self.security.read().unwrap().clone();
+        let rl_decision = policy.rate_limit(sender_short, class).await;
+        if matches!(rl_decision, crate::security::RateLimitDecision::SilentDrop) {
+            self.metrics.delivery_failed.fetch_add(1, Ordering::Relaxed);
+            self.telemetry
+                .increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+            tracing::debug!(
+                event = event::MSG_RATE_LIMITED,
+                message_id = %envelope.message_id.short(),
+                priority = envelope.priority.as_u8(),
+                "outbound message rate limited (silent drop)"
+            );
+            return Ok(()); // Silent drop — no error/NAK
+        }
+
         // CRYPTO-001: seal (encrypt-when-addressed + sign) before persistence
         // so the stored/sent envelope is the sealed form.
         self.seal_outbound(&mut envelope).await?;
 
+        // SEC-001: storage quota. `add_message` is the authoritative gate —
+        // check-and-mutate happen under ONE account write-lock (no TOCTOU
+        // between the old check_quota read and the persisted add_message write),
+        // and its Rejected decision is honored, not discarded (SEC-RT-04).
+        // On a later persist failure the reservation is refunded via
+        // remove_message so accounting cannot leak.
+        let policy = self.security.read().unwrap().clone();
+        let quota_decision = policy
+            .add_message(
+                sender_short,
+                envelope.payload.len() as u64,
+                envelope.priority,
+            )
+            .await;
+        if matches!(quota_decision, crate::security::QuotaDecision::Rejected) {
+            self.metrics.delivery_failed.fetch_add(1, Ordering::Relaxed);
+            self.telemetry
+                .increment(metric::MESSAGES_QUOTA_EXCEEDED_TOTAL);
+            tracing::warn!(
+                event = event::MSG_QUOTA_EXCEEDED,
+                message_id = %envelope.message_id.short(),
+                priority = envelope.priority.as_u8(),
+                "outbound message rejected: sender quota exceeded"
+            );
+            return Err(MsgEngineError::QueueFull); // Quota full
+        }
+
         {
             let mut q = self.queue.lock().await;
             if q.len() >= self.config.max_queue_depth {
+                policy
+                    .remove_message(sender_short, envelope.payload.len() as u64)
+                    .await;
                 return Err(MsgEngineError::QueueFull);
             }
             // Register our own id so echo/loopback is deduped (R5).
             let _ = self.dedup.lock().await.seen(envelope.message_id);
             q.push(QueuedMessage::new(envelope.clone()));
         }
-        self.storage.persist(&envelope).await?;
+        if let Err(e) = self.storage.persist(&envelope).await {
+            // Refund the quota reservation (SEC-RT-04) — nothing was stored.
+            policy
+                .remove_message(sender_short, envelope.payload.len() as u64)
+                .await;
+            self.queue.lock().await.remove_by_id(&envelope.message_id);
+            return Err(MsgEngineError::Storage(e));
+        }
         self.storage
             .update_status(&envelope.message_id, MessageStatus::PendingSend)
             .await?;
+
         tracing::info!(
             event = event::MSG_CREATED,
             message_id = %envelope.message_id.short(),
@@ -412,8 +491,24 @@ impl MessageEngine {
         Ok(())
     }
 
+    /// Derive 16-byte sender short ID from this node's identity.
+    fn sender_short_id(&self) -> SenderShort {
+        // For now, derive from node_id (SHA-256 of node_id, truncated to 16 bytes)
+        // In production, this would come from IDENT-001 identity manager
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(self.config.node_id);
+        let result = hasher.finalize();
+        let mut short = [0u8; 16];
+        short.copy_from_slice(&result[..16]);
+        short
+    }
+
     /// Process one inbound transport message. Returns the disposition.
-    pub async fn process_incoming(&self, msg: IncomingMessage) -> Result<InboundOutcome, MsgEngineError> {
+    pub async fn process_incoming(
+        &self,
+        msg: IncomingMessage,
+    ) -> Result<InboundOutcome, MsgEngineError> {
         let envelope: Envelope = codec::decode(&msg.payload)?;
 
         if envelope.version != crate::protocol::PROTOCOL_VERSION {
@@ -421,10 +516,14 @@ impl MessageEngine {
         }
         // R1: reject unsigned control-plane if provider authenticates and sig missing.
         if self.crypto.authenticates() && envelope.signature.is_none() {
-            return Err(MsgEngineError::Crypto(crate::message_engine::crypto::CryptoError::BadSignature));
+            return Err(MsgEngineError::Crypto(
+                crate::message_engine::crypto::CryptoError::BadSignature,
+            ));
         }
         if !self.crypto.verify(&envelope).await? {
-            return Err(MsgEngineError::Crypto(crate::message_engine::crypto::CryptoError::BadSignature));
+            return Err(MsgEngineError::Crypto(
+                crate::message_engine::crypto::CryptoError::BadSignature,
+            ));
         }
 
         let now = unix_now();
@@ -446,14 +545,142 @@ impl MessageEngine {
         // emit below runs with the guard dropped (OBS-RT-05).
         let is_duplicate = { self.dedup.lock().await.seen(envelope.message_id) };
         if is_duplicate {
-            self.metrics.dropped_duplicates.fetch_add(1, Ordering::Relaxed);
-            self.telemetry.increment(metric::MESSAGES_DROPPED_DUPLICATES_TOTAL);
+            self.metrics
+                .dropped_duplicates
+                .fetch_add(1, Ordering::Relaxed);
+            self.telemetry
+                .increment(metric::MESSAGES_DROPPED_DUPLICATES_TOTAL);
             tracing::debug!(
                 event = event::MSG_DROPPED_DUPLICATE,
                 message_id = %envelope.message_id.short(),
                 "duplicate message dropped (first win)"
             );
             return Ok(InboundOutcome::Duplicate);
+        }
+
+        // SEC-001: replay protection (freshness window + per-sender high-water)
+        // Derive sender short ID from envelope sender_id
+        let sender_short = crate::identity::peer_short_from_sender(&envelope.sender_id);
+        let policy = self.security.read().unwrap().clone();
+        let replay_decision = policy
+            .check_replay(
+                sender_short,
+                envelope.timestamp,
+                envelope.hop_count as u64, // Using hop_count as sequence for v1 (TODO: proper seq)
+            )
+            .await;
+        match replay_decision {
+            crate::security::ReplayDecision::TooOld => {
+                self.metrics
+                    .dropped_duplicates
+                    .fetch_add(1, Ordering::Relaxed);
+                self.telemetry
+                    .increment(metric::MESSAGES_REPLAY_TOO_OLD_TOTAL);
+                tracing::warn!(
+                    event = event::MSG_REPLAY_TOO_OLD,
+                    message_id = %envelope.message_id.short(),
+                    timestamp = envelope.timestamp,
+                    "inbound message rejected: timestamp too old (replay protection)"
+                );
+                return Ok(InboundOutcome::Duplicate); // Treat as duplicate for dedup
+            }
+            crate::security::ReplayDecision::TooFuture => {
+                self.metrics
+                    .dropped_duplicates
+                    .fetch_add(1, Ordering::Relaxed);
+                self.telemetry
+                    .increment(metric::MESSAGES_REPLAY_TOO_FUTURE_TOTAL);
+                tracing::warn!(
+                    event = event::MSG_REPLAY_TOO_FUTURE,
+                    message_id = %envelope.message_id.short(),
+                    timestamp = envelope.timestamp,
+                    "inbound message rejected: timestamp too far in future (replay protection)"
+                );
+                return Ok(InboundOutcome::Duplicate);
+            }
+            crate::security::ReplayDecision::Replay => {
+                self.metrics
+                    .dropped_duplicates
+                    .fetch_add(1, Ordering::Relaxed);
+                self.telemetry
+                    .increment(metric::MESSAGES_REPLAY_DETECTED_TOTAL);
+                tracing::warn!(
+                    event = event::MSG_REPLAY_DETECTED,
+                    message_id = %envelope.message_id.short(),
+                    sender = %hex::encode(sender_short),
+                    "inbound message rejected: replay detected (high-water)"
+                );
+                return Ok(InboundOutcome::Duplicate);
+            }
+            crate::security::ReplayDecision::Accepted => {
+                // Proceed
+            }
+        }
+
+        // SEC-001: receiver-side spam scoring (annotation only, NEVER relay hard-drop)
+        let policy = self.security.read().unwrap().clone();
+        let spam_decision = policy.score_spam(sender_short, &envelope).await;
+        if matches!(spam_decision, crate::security::SpamDecision::LikelySpam) {
+            self.telemetry.increment(metric::MESSAGES_LIKELY_SPAM_TOTAL);
+            tracing::info!(
+                event = event::MSG_LIKELY_SPAM,
+                message_id = %envelope.message_id.short(),
+                sender = %hex::encode(sender_short),
+                "inbound message annotated as likely spam (receiver-side only)"
+            );
+            // Note: we do NOT drop here — only annotate for UI (AC-10)
+        }
+
+        // SEC-001: emergency ACL check (for emergency content)
+        // This complements EMERG-001 emergency_gate by checking authorization data
+        if matches!(
+            envelope.payload_type,
+            ContentType::EmergencyAlert | ContentType::Sos | ContentType::KeyRotation
+        ) {
+            let now_unix = unix_now();
+            let policy = self.security.read().unwrap().clone();
+            let acl_decision = policy.check_emergency_acl(&envelope, now_unix).await;
+            match acl_decision {
+                crate::security::AclDecision::Unauthorized => {
+                    self.metrics
+                        .dropped_emergency_auth
+                        .fetch_add(1, Ordering::Relaxed);
+                    self.telemetry
+                        .increment(metric::MESSAGES_EMERGENCY_ACL_DENIED_TOTAL);
+                    tracing::warn!(
+                        event = event::MSG_EMERGENCY_ACL_DENIED,
+                        message_id = %envelope.message_id.short(),
+                        sender = %hex::encode(sender_short),
+                        "emergency message denied by ACL-1 (unauthorized sender)"
+                    );
+                    return Ok(InboundOutcome::EmergencyDropped);
+                }
+                crate::security::AclDecision::InvalidAuthority => {
+                    self.metrics
+                        .dropped_emergency_auth
+                        .fetch_add(1, Ordering::Relaxed);
+                    self.telemetry
+                        .increment(metric::MESSAGES_EMERGENCY_ACL_DENIED_TOTAL);
+                    tracing::warn!(
+                        event = event::MSG_EMERGENCY_ACL_DENIED,
+                        message_id = %envelope.message_id.short(),
+                        sender = %hex::encode(sender_short),
+                        "emergency message denied by ACL-1 (invalid authority chain)"
+                    );
+                    return Ok(InboundOutcome::EmergencyDropped);
+                }
+                crate::security::AclDecision::SosRateLimited => {
+                    // EMERG-001 handles the actual rate limiting; ACL just notes it
+                    tracing::debug!(
+                        event = event::MSG_EMERGENCY_SOS_RATE_LIMITED,
+                        message_id = %envelope.message_id.short(),
+                        "SOS rate limited via ACL-1"
+                    );
+                }
+                crate::security::AclDecision::Authorized => {
+                    // Proceed
+                }
+            }
         }
 
         // Fragment reassembly path (R8).
@@ -509,10 +736,7 @@ impl MessageEngine {
         let emergency_effect = {
             // RT-009: poison-safe acquire — a panicked emergency callback must
             // not wedge the receive path (read-lock poison recovered via into_inner).
-            let provider = self
-                .emergency
-                .read()
-                .unwrap_or_else(|e| e.into_inner());
+            let provider = self.emergency.read().unwrap_or_else(|e| e.into_inner());
             if !provider.armed() {
                 None
             } else {
@@ -576,9 +800,9 @@ impl MessageEngine {
             if e.encryption_hdr.is_some() {
                 let info = message_kdf_info(e.message_id);
                 let aad = codec::encode_for_aead(&e)?;
-                let hdr = e.encryption_hdr.as_ref().ok_or(
-                    MsgEngineError::Crypto(crate::message_engine::crypto::CryptoError::KeyUnavailable),
-                )?;
+                let hdr = e.encryption_hdr.as_ref().ok_or(MsgEngineError::Crypto(
+                    crate::message_engine::crypto::CryptoError::KeyUnavailable,
+                ))?;
                 let plaintext = self.crypto.decrypt(&info, &aad, &e.payload, hdr).await?;
                 e.payload = plaintext;
                 e.payload_size = e.payload.len() as u64;
@@ -633,6 +857,17 @@ impl MessageEngine {
                 .storage
                 .update_status(&id, MessageStatus::Acknowledged)
                 .await;
+            // SEC-RT-05: deliverable terminal — release the quota reservation
+            // for a locally-originated outbound message (charged at send).
+            if let Ok(Some(env)) = self.storage.load(&id).await {
+                let policy = self.security.read().unwrap().clone();
+                let sender_short = crate::identity::peer_short_from_sender(&env.sender_id);
+                if sender_short == self.sender_short_id() {
+                    policy
+                        .remove_message(sender_short, env.payload.len() as u64)
+                        .await;
+                }
+            }
             tracing::info!(
                 event = event::MSG_ACKNOWLEDGED,
                 message_id = %id.short(),
@@ -677,9 +912,13 @@ impl MessageEngine {
     /// Reject (fail) a pending message after attempts exhausted.
     pub async fn fail_message(&self, id: MessageId) {
         let _ = self.acks.lock().await.acknowledge(id);
-        let _ = self.storage.update_status(&id, MessageStatus::DeliveryFailed).await;
+        let _ = self
+            .storage
+            .update_status(&id, MessageStatus::DeliveryFailed)
+            .await;
         self.metrics.delivery_failed.fetch_add(1, Ordering::Relaxed);
-        self.telemetry.increment(metric::MESSAGES_DELIVERY_FAILED_TOTAL);
+        self.telemetry
+            .increment(metric::MESSAGES_DELIVERY_FAILED_TOTAL);
         tracing::warn!(
             event = event::MSG_DELIVERY_FAILED,
             message_id = %id.short(),
@@ -696,7 +935,11 @@ impl MessageEngine {
 
     /// Encode an envelope for transport (fragmenting P4–P7 if the largest
     /// candidate transport cannot carry it). Returns payloads to send.
-    async fn serialize_for_transport(&self, envelope: &Envelope, max_mtu: usize) -> Result<Vec<Envelope>, MsgEngineError> {
+    async fn serialize_for_transport(
+        &self,
+        envelope: &Envelope,
+        max_mtu: usize,
+    ) -> Result<Vec<Envelope>, MsgEngineError> {
         let bytes = codec::encode(envelope)?;
         if bytes.len() <= max_mtu || !is_fragmentable(envelope) {
             return Ok(vec![envelope.clone()]);
@@ -705,7 +948,9 @@ impl MessageEngine {
         let usable = max_mtu.saturating_sub(fragment::FRAGMENT_HEADER_LEN);
         let parts = split_payload(&envelope.payload, usable.max(64));
         if parts.len() > fragment::MAX_FRAGMENTS as usize {
-            return Err(MsgEngineError::BadEnvelope("payload needs >2 fragments (R8)"));
+            return Err(MsgEngineError::BadEnvelope(
+                "payload needs >2 fragments (R8)",
+            ));
         }
         let total = parts.len() as u16;
         let mut frags = Vec::with_capacity(parts.len());
@@ -732,7 +977,10 @@ impl MessageEngine {
             // CRYPTO-001: each wire fragment is a distinct carrier of the sealed
             // plaintext-chunk — re-sign it so the receiver's per-fragment
             // verification succeeds (fragment payload ≠ sealed envelope payload).
-            self.crypto.sign(&mut f).await.map_err(MsgEngineError::Crypto)?;
+            self.crypto
+                .sign(&mut f)
+                .await
+                .map_err(MsgEngineError::Crypto)?;
             frags.push(f);
         }
         Ok(frags)
@@ -759,7 +1007,10 @@ impl MessageEngine {
 
         // TTL at dequeue (acceptance #3).
         if is_expired(item.envelope.timestamp, item.envelope.ttl_seconds, now) {
-            let _ = self.storage.update_status(&id, MessageStatus::Expired).await;
+            let _ = self
+                .storage
+                .update_status(&id, MessageStatus::Expired)
+                .await;
             self.metrics.expired.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_EXPIRED_TOTAL);
             tracing::warn!(
@@ -769,6 +1020,15 @@ impl MessageEngine {
                 age_ms = now.saturating_sub(item.envelope.timestamp) * 1000,
                 "message expired at dequeue"
             );
+            // SEC-RT-05: release the quota reservation. Only locally-originated
+            // messages were charged (sender == us); relayed messages were never
+            // charged, so their terminal events must NOT touch our account.
+            if item.local {
+                let policy = self.security.read().unwrap().clone();
+                policy
+                    .remove_message(self.sender_short_id(), item.envelope.payload.len() as u64)
+                    .await;
+            }
             return;
         }
 
@@ -818,14 +1078,18 @@ impl MessageEngine {
 
         let mut sent_any = false;
         for r in &ranked {
-            let Some(t) = self.manager.get(&r.transport_id).await else { continue };
+            let Some(t) = self.manager.get(&r.transport_id).await else {
+                continue;
+            };
             t.set_send_priority_hint(priority);
             for frag in &to_send {
                 let payload = match codec::encode(frag) {
                     Ok(p) => p,
                     Err(_) => continue,
                 };
-                let Some(target) = dest.or(Some(broadcast_peer())) else { continue };
+                let Some(target) = dest.or(Some(broadcast_peer())) else {
+                    continue;
+                };
                 let sm = SerializedMessage {
                     message_id: frag.message_id,
                     priority,
@@ -838,8 +1102,14 @@ impl MessageEngine {
         }
 
         if sent_any {
-            let _ = self.storage.update_status(&id, MessageStatus::InTransit).await;
-            self.acks.lock().await.register_sent(id, priority, std::time::Instant::now());
+            let _ = self
+                .storage
+                .update_status(&id, MessageStatus::InTransit)
+                .await;
+            self.acks
+                .lock()
+                .await
+                .register_sent(id, priority, std::time::Instant::now());
             self.metrics.sent.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_SENT_TOTAL);
             tracing::info!(
@@ -861,13 +1131,24 @@ impl MessageEngine {
             None => true,
         };
         if !budget_ok {
+            // SEC-RT-05: attempts exhausted → terminal. Refund the quota
+            // reservation charged at send_message time (local origin only).
             self.fail_message(item.envelope.message_id).await;
+            if item.local {
+                let policy = self.security.read().unwrap().clone();
+                policy
+                    .remove_message(self.sender_short_id(), item.envelope.payload.len() as u64)
+                    .await;
+            }
             return;
         }
         let mut it = item;
         it.attempts = attempt;
         it.next_retry = Some(std::time::Instant::now() + policy.timeout_for_attempt(attempt));
-        let _ = self.storage.update_status(&it.envelope.message_id, MessageStatus::PendingSend).await;
+        let _ = self
+            .storage
+            .update_status(&it.envelope.message_id, MessageStatus::PendingSend)
+            .await;
         self.queue.lock().await.push(it);
     }
 
@@ -876,7 +1157,11 @@ impl MessageEngine {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(1)).await;
-                let due = this.acks.lock().await.due_retries(std::time::Instant::now());
+                let due = this
+                    .acks
+                    .lock()
+                    .await
+                    .due_retries(std::time::Instant::now());
                 for id in due {
                     // Re-queue a retry for the stored envelope.
                     let env = this.storage.load(&id).await.ok().flatten();
@@ -886,6 +1171,17 @@ impl MessageEngine {
                 let failed: Vec<_> = this.acks.lock().await.exhausted();
                 for (id, _attempts) in failed {
                     this.fail_message(id).await;
+                    // SEC-RT-05: ack-exhausted terminal. Refund quota if the
+                    // message was locally originated (loaded from storage).
+                    if let Ok(Some(env)) = this.storage.load(&id).await {
+                        let policy = this.security.read().unwrap().clone();
+                        let sender_short = crate::identity::peer_short_from_sender(&env.sender_id);
+                        if sender_short == this.sender_short_id() {
+                            policy
+                                .remove_message(sender_short, env.payload.len() as u64)
+                                .await;
+                        }
+                    }
                 }
             }
         })
@@ -905,7 +1201,10 @@ impl MessageEngine {
                     .await
                     .drain_expired(|e| is_expired(e.timestamp, e.ttl_seconds, now));
                 for e in expired {
-                    let _ = this.storage.update_status(&e.message_id, MessageStatus::Expired).await;
+                    let _ = this
+                        .storage
+                        .update_status(&e.message_id, MessageStatus::Expired)
+                        .await;
                     this.metrics.expired.fetch_add(1, Ordering::Relaxed);
                     this.telemetry.increment(metric::MESSAGES_EXPIRED_TOTAL);
                     tracing::warn!(
@@ -919,7 +1218,10 @@ impl MessageEngine {
                 let _ = this.storage.evict_expired(now).await;
                 if let Ok(usage) = this.storage.usage_bytes().await {
                     if usage > this.config.storage_quota_bytes {
-                        let _ = this.storage.evict_by_priority(usage - this.config.storage_quota_bytes).await;
+                        let _ = this
+                            .storage
+                            .evict_by_priority(usage - this.config.storage_quota_bytes)
+                            .await;
                     }
                 }
             }
@@ -975,7 +1277,10 @@ enum EmergencyGateOutcome {
 ///   SOS at P3 once the allowance is exhausted) — AC-5; receive-side records
 ///   the bookkeeping per this design's §10 receive hook.
 /// - Non-emergency content is untouched (fell-through `Proceed`).
-fn emergency_gate(provider: &dyn crate::emergency::EmergencyProvider, envelope: &Envelope) -> EmergencyGateOutcome {
+fn emergency_gate(
+    provider: &dyn crate::emergency::EmergencyProvider,
+    envelope: &Envelope,
+) -> EmergencyGateOutcome {
     use crate::emergency::VerifyOutcome;
     let now_unix = crate::message_engine::expiry::unix_now();
     match envelope.payload_type {
@@ -1095,7 +1400,10 @@ mod tests {
 
     /// Drain one inbound message from a SimulatedTransport stream and feed it
     /// to the given engine's `process_incoming`.
-    async fn pump_one(transport: &Arc<SimulatedTransport>, engine: &Arc<MessageEngine>) -> Result<InboundOutcome, MsgEngineError> {
+    async fn pump_one(
+        transport: &Arc<SimulatedTransport>,
+        engine: &Arc<MessageEngine>,
+    ) -> Result<InboundOutcome, MsgEngineError> {
         let mut stream = transport.incoming_messages();
         let msg = tokio::time::timeout(Duration::from_millis(500), stream.next())
             .await
@@ -1170,8 +1478,14 @@ mod tests {
             payload: bytes,
             received_at: std::time::Instant::now(),
         };
-        assert_eq!(bob.process_incoming(first).await.unwrap(), InboundOutcome::Delivered);
-        assert_eq!(bob.process_incoming(second).await.unwrap(), InboundOutcome::Duplicate);
+        assert_eq!(
+            bob.process_incoming(first).await.unwrap(),
+            InboundOutcome::Delivered
+        );
+        assert_eq!(
+            bob.process_incoming(second).await.unwrap(),
+            InboundOutcome::Duplicate
+        );
         assert_eq!(bob.metrics().dropped_duplicates, 1);
     }
 
@@ -1181,7 +1495,10 @@ mod tests {
         let mut env = envelope_for(BOB, MessagePriority::P0, b"too old");
         env.timestamp = unix_now().saturating_sub(7200);
         env.ttl_seconds = 60;
-        assert_eq!(alice.send_message(env).await, Err(MsgEngineError::TtlExpired));
+        assert_eq!(
+            alice.send_message(env).await,
+            Err(MsgEngineError::TtlExpired)
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -1346,12 +1663,15 @@ mod tests {
         env.payload_size = env.payload.len() as u64;
         env.payload_hash = Envelope::compute_payload_hash(&env.payload);
 
-        let outcome = engine.process_incoming(IncomingMessage {
-            payload: codec::encode(&env).unwrap(),
-            peer_id: PeerId(BOB),
-            received_at: std::time::Instant::now(),
-            transport_id: "sim".into(),
-        }).await.unwrap();
+        let outcome = engine
+            .process_incoming(IncomingMessage {
+                payload: codec::encode(&env).unwrap(),
+                peer_id: PeerId(BOB),
+                received_at: std::time::Instant::now(),
+                transport_id: "sim".into(),
+            })
+            .await
+            .unwrap();
         assert_eq!(outcome, InboundOutcome::EmergencyDropped);
         // No local delivery (nothing surfaced to the app layer).
         assert!(
@@ -1387,12 +1707,15 @@ mod tests {
         env.payload_hash = Envelope::compute_payload_hash(&env.payload);
 
         // Broadcast recipient → delivered locally (identical to pre-EMERG-001).
-        let outcome = engine.process_incoming(IncomingMessage {
-            payload: codec::encode(&env).unwrap(),
-            peer_id: PeerId(BOB),
-            received_at: std::time::Instant::now(),
-            transport_id: "sim".into(),
-        }).await.unwrap();
+        let outcome = engine
+            .process_incoming(IncomingMessage {
+                payload: codec::encode(&env).unwrap(),
+                peer_id: PeerId(BOB),
+                received_at: std::time::Instant::now(),
+                transport_id: "sim".into(),
+            })
+            .await
+            .unwrap();
         assert_eq!(outcome, InboundOutcome::Delivered);
         assert_eq!(engine.metrics().dropped_emergency_auth, 0);
     }
@@ -1439,26 +1762,32 @@ mod tests {
             env.payload_type = ContentType::Sos;
             env.payload_size = sos_payload.len() as u64;
             env.payload_hash = Envelope::compute_payload_hash(&sos_payload);
-            let outcome = engine.process_incoming(IncomingMessage {
-                payload: codec::encode(&env).unwrap(),
-                peer_id: PeerId(BOB),
-                received_at: std::time::Instant::now(),
-                transport_id: "sim".into(),
-            }).await.unwrap();
+            let outcome = engine
+                .process_incoming(IncomingMessage {
+                    payload: codec::encode(&env).unwrap(),
+                    peer_id: PeerId(BOB),
+                    received_at: std::time::Instant::now(),
+                    transport_id: "sim".into(),
+                })
+                .await
+                .unwrap();
             assert!(matches!(
                 outcome,
                 InboundOutcome::Delivered | InboundOutcome::Relayed
             ));
             delivered_count += 1;
-            if let Ok(received) = tokio::time::timeout(
-                Duration::from_millis(200),
-                delivered.recv(),
-            ).await {
+            if let Ok(received) =
+                tokio::time::timeout(Duration::from_millis(200), delivered.recv()).await
+            {
                 priorities.push(received.unwrap().priority);
             }
         }
         assert_eq!(delivered_count, 4, "all four SOS must be delivered");
-        assert_eq!(priorities.len(), delivered_count, "each delivered SOS surfaced");
+        assert_eq!(
+            priorities.len(),
+            delivered_count,
+            "each delivered SOS surfaced"
+        );
         assert_eq!(priorities[0], MessagePriority::P0);
         assert_eq!(priorities[1], MessagePriority::P0);
         assert_eq!(priorities[2], MessagePriority::P0);

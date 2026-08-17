@@ -47,11 +47,13 @@ pub fn is_fragmentable(envelope: &Envelope) -> bool {
             | ContentType::GroupKey
             | ContentType::KeyRotation
             | ContentType::EmergencyAlert
-    ) && matches!(envelope.priority, crate::message::MessagePriority::P4
-        | crate::message::MessagePriority::P5
-        | crate::message::MessagePriority::P6
-        | crate::message::MessagePriority::P7)
-        && !envelope.is_p0_abbreviated()
+    ) && matches!(
+        envelope.priority,
+        crate::message::MessagePriority::P4
+            | crate::message::MessagePriority::P5
+            | crate::message::MessagePriority::P6
+            | crate::message::MessagePriority::P7
+    ) && !envelope.is_p0_abbreviated()
 }
 
 /// Split a frame payload into chunks of at most `mtu-effective` bytes.
@@ -324,14 +326,27 @@ mod tests {
         assert_eq!(parts.len(), 2);
         let mut a = FragmentAssembler::new(Duration::from_secs(30));
         assert!(a.feed(mk_fragment(0, 2, id, &parts[0])).is_none());
-        let done = a.feed(mk_fragment(1, 2, id, &parts[1])).expect("reassembled");
+        let done = a
+            .feed(mk_fragment(1, 2, id, &parts[1]))
+            .expect("reassembled");
 
         assert_eq!(done.message_id, id, "message_id restored");
-        assert_eq!(done.payload_type, ContentType::Image, "payload_type restored");
+        assert_eq!(
+            done.payload_type,
+            ContentType::Image,
+            "payload_type restored"
+        );
         assert_eq!(done.payload_ref, None, "payload_ref cleared (field 14)");
-        assert_eq!(done.signature, Some([7; 64]), "original whole-ADU signature restored");
+        assert_eq!(
+            done.signature,
+            Some([7; 64]),
+            "original whole-ADU signature restored"
+        );
         assert_eq!(done.payload_size, done.payload.len() as u64);
-        assert_eq!(done.payload_hash, Envelope::compute_payload_hash(&done.payload));
+        assert_eq!(
+            done.payload_hash,
+            Envelope::compute_payload_hash(&done.payload)
+        );
     }
 
     #[test]

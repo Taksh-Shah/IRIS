@@ -25,7 +25,9 @@ use crate::identity::small_order;
 /// Errors from [`TrustStore::verify_peer`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum VerifyError {
-    #[error("trust: peer unknown — a first advertisement is required before out-of-band verification")]
+    #[error(
+        "trust: peer unknown — a first advertisement is required before out-of-band verification"
+    )]
     UnknownPeer,
     #[error("trust: peer is revoked and cannot be verified")]
     Revoked,
@@ -103,7 +105,11 @@ impl TrustStore {
     pub fn level(&self, identity_pubkey: &[u8; 32]) -> TrustLevel {
         self.inner
             .lock()
-            .map(|m| m.get(identity_pubkey).map(|e| e.level).unwrap_or(TrustLevel::Unknown))
+            .map(|m| {
+                m.get(identity_pubkey)
+                    .map(|e| e.level)
+                    .unwrap_or(TrustLevel::Unknown)
+            })
             .unwrap_or(TrustLevel::Unknown)
     }
 
@@ -132,7 +138,9 @@ impl TrustStore {
         // RFC 9171 §4.4.2 skew handling).
         const SKEW_BUDGET: u64 = crate::message_engine::expiry::DEFAULT_SKEW_BUDGET_SECS;
         if ad.valid_until != 0 && ad.valid_until.saturating_add(SKEW_BUDGET) < now {
-            return AdoptionOutcome::Rejected(AdvertiseError::Codec("expired advertisement".into()));
+            return AdoptionOutcome::Rejected(AdvertiseError::Codec(
+                "expired advertisement".into(),
+            ));
         }
         let mut m = self.inner.lock().expect("trust store lock");
         let id = ad.identity_pubkey;
@@ -294,6 +302,16 @@ impl TrustStore {
             .unwrap_or_default()
     }
 
+    /// Whether the store has NO entries at all.
+    /// Used to distinguish "security not configured / un-armed" (empty store →
+    /// Noop permissive, AC-12) from "configured" (populated store → strict
+    /// enforcement). SEC-RT-08: an armed node whose store is populated must
+    /// gate SOS on an actual Verified/AuthorityRoot identity; an empty store
+    /// is the only Noop case.
+    pub fn is_empty(&self) -> bool {
+        self.inner.lock().map(|m| m.is_empty()).unwrap_or(true)
+    }
+
     /// Whether `identity_pubkey` is trusted enough to accept signed traffic
     /// from. An authority root (EMERG-001) is a trusted root; TOFU-adopted or
     /// out-of-band-verified peers are trusted for normal RED-0008 chains
@@ -369,7 +387,9 @@ impl TrustKeyDirectory {
 
 impl crate::crypto::key_directory::KeyDirectory for TrustKeyDirectory {
     fn x25519_pubkey(&self, node_id: &[u8; 32]) -> Option<[u8; 32]> {
-        self.store.resolve_x25519(node_id).filter(|k| !small_order::is_small_order(k))
+        self.store
+            .resolve_x25519(node_id)
+            .filter(|k| !small_order::is_small_order(k))
     }
 }
 
@@ -383,7 +403,12 @@ mod tests {
         crate::message_engine::expiry::unix_now()
     }
 
-    fn ad_for(id: &IdentityKeypair, x: &X25519Keypair, counter: u64, until: u64) -> KeyAdvertisementV1 {
+    fn ad_for(
+        id: &IdentityKeypair,
+        x: &X25519Keypair,
+        counter: u64,
+        until: u64,
+    ) -> KeyAdvertisementV1 {
         KeyAdvertisementV1::build(id, x.public_bytes(), counter, until).unwrap()
     }
 
@@ -393,9 +418,15 @@ mod tests {
         let store = TrustStore::new();
         assert_eq!(store.level(&id.verifying_bytes()), TrustLevel::Unknown);
         let ad = ad_for(&id, &x, 0, 0);
-        assert_eq!(store.adopt_advertisement(&ad, now()), AdoptionOutcome::BoundUnverified);
+        assert_eq!(
+            store.adopt_advertisement(&ad, now()),
+            AdoptionOutcome::BoundUnverified
+        );
         assert_eq!(store.level(&id.verifying_bytes()), TrustLevel::Unverified);
-        assert_eq!(store.adopt_advertisement(&ad, now()), AdoptionOutcome::Duplicate);
+        assert_eq!(
+            store.adopt_advertisement(&ad, now()),
+            AdoptionOutcome::Duplicate
+        );
         assert_eq!(store.level(&id.verifying_bytes()), TrustLevel::Unverified);
     }
 
@@ -603,7 +634,12 @@ mod tests {
         let (id, x) = (IdentityKeypair::generate(), X25519Keypair::generate());
         let store = TrustStore::new();
         // Expired beyond the DEFAULT_SKEW_BUDGET_SECS tolerance → rejected.
-        let ad = ad_for(&id, &x, 0, now() - crate::message_engine::expiry::DEFAULT_SKEW_BUDGET_SECS - 10);
+        let ad = ad_for(
+            &id,
+            &x,
+            0,
+            now() - crate::message_engine::expiry::DEFAULT_SKEW_BUDGET_SECS - 10,
+        );
         assert!(matches!(
             store.adopt_advertisement(&ad, now()),
             AdoptionOutcome::Rejected(_)

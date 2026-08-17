@@ -14,8 +14,8 @@ use ciborium::value::{Integer, Value};
 use thiserror::Error;
 
 use super::model::{
-    AlertMessageType, AuthorityMeta, Certainty, EmergencyBroadcast, LocationSource,
-    ModelError, Severity, SosKind, SosMessage, SosReason,
+    AlertMessageType, AuthorityMeta, Certainty, EmergencyBroadcast, LocationSource, ModelError,
+    Severity, SosKind, SosMessage, SosReason,
 };
 
 /// Codec errors. A relay treats every decode error as "DROP + audit": a
@@ -175,7 +175,11 @@ pub fn encode_sos(s: &SosMessage) -> Result<Vec<u8>, EmergencyCodecError> {
     insert_i64(&mut m, S_LATITUDE, i64::from(s.latitude));
     insert_i64(&mut m, S_LONGITUDE, i64::from(s.longitude));
     insert_u64(&mut m, S_ACCURACY_M, u64::from(s.accuracy_m));
-    insert_u64(&mut m, S_LOCATION_SOURCE, u64::from(s.location_source.as_u8()));
+    insert_u64(
+        &mut m,
+        S_LOCATION_SOURCE,
+        u64::from(s.location_source.as_u8()),
+    );
     insert_u64(&mut m, S_TIMESTAMP, u64::from(s.timestamp));
     insert_u64(&mut m, S_KIND, u64::from(s.kind.as_u8()));
     insert_bytes(&mut m, S_ORIGINAL_MESSAGE_ID, s.original_message_id);
@@ -191,10 +195,7 @@ pub fn encode_sos(s: &SosMessage) -> Result<Vec<u8>, EmergencyCodecError> {
 
 fn get(entries: &[(Value, Value)], k: u8) -> Option<&Value> {
     let want = Value::Integer(Integer::from(u64::from(k)));
-    entries
-        .iter()
-        .find(|(key, _)| *key == want)
-        .map(|(_, v)| v)
+    entries.iter().find(|(key, _)| *key == want).map(|(_, v)| v)
 }
 
 /// Reject maps containing duplicate integer keys (RT-011). Canonical CBOR
@@ -296,9 +297,8 @@ fn decode_authority_meta(m: &[(Value, Value)]) -> Result<AuthorityMeta, Emergenc
         None => None,
     };
     let max_severity = match get(m, A_MAX_SEVERITY) {
-        Some(v) => u8::try_from(as_u64(v)?).map_err(|_| {
-            EmergencyCodecError::InvalidField("authority.max_severity (0-255)")
-        })?,
+        Some(v) => u8::try_from(as_u64(v)?)
+            .map_err(|_| EmergencyCodecError::InvalidField("authority.max_severity (0-255)"))?,
         None => 0,
     };
     Ok(AuthorityMeta {
@@ -312,8 +312,8 @@ fn decode_authority_meta(m: &[(Value, Value)]) -> Result<AuthorityMeta, Emergenc
 /// Decode an `EmergencyBroadcast`. Unknown top-level keys are ignored
 /// (append-only extension, ADR-0011).
 pub fn decode_broadcast(bytes: &[u8]) -> Result<EmergencyBroadcast, EmergencyCodecError> {
-    let value: Value = ciborium::de::from_reader(bytes)
-        .map_err(|e| EmergencyCodecError::Decode(e.to_string()))?;
+    let value: Value =
+        ciborium::de::from_reader(bytes).map_err(|e| EmergencyCodecError::Decode(e.to_string()))?;
     let map = expect_map(&value)?;
     no_duplicate_keys(map, "EmergencyBroadcast")?;
 
@@ -351,10 +351,14 @@ pub fn decode_broadcast(bytes: &[u8]) -> Result<EmergencyBroadcast, EmergencyCod
         },
         issued_at: get_u(B_ISSUED_AT)?,
         expires_at: get_u(B_EXPIRES_AT)?,
-        severity: Severity::from_u8(severity)
-            .ok_or(EmergencyCodecError::InvalidEnumCode(u64::from(severity), "severity"))?,
-        certainty: Certainty::from_u8(certainty)
-            .ok_or(EmergencyCodecError::InvalidEnumCode(u64::from(certainty), "certainty"))?,
+        severity: Severity::from_u8(severity).ok_or(EmergencyCodecError::InvalidEnumCode(
+            u64::from(severity),
+            "severity",
+        ))?,
+        certainty: Certainty::from_u8(certainty).ok_or(EmergencyCodecError::InvalidEnumCode(
+            u64::from(certainty),
+            "certainty",
+        ))?,
         message_type: AlertMessageType::from_u8(message_type).ok_or(
             EmergencyCodecError::InvalidEnumCode(u64::from(message_type), "message_type"),
         )?,
@@ -390,8 +394,8 @@ pub fn decode_broadcast(bytes: &[u8]) -> Result<EmergencyBroadcast, EmergencyCod
 
 /// Decode an `SosMessage`. Unknown top-level keys are ignored.
 pub fn decode_sos(bytes: &[u8]) -> Result<SosMessage, EmergencyCodecError> {
-    let value: Value = ciborium::de::from_reader(bytes)
-        .map_err(|e| EmergencyCodecError::Decode(e.to_string()))?;
+    let value: Value =
+        ciborium::de::from_reader(bytes).map_err(|e| EmergencyCodecError::Decode(e.to_string()))?;
     let map = expect_map(&value)?;
     no_duplicate_keys(map, "SosMessage")?;
 
@@ -403,7 +407,9 @@ pub fn decode_sos(bytes: &[u8]) -> Result<SosMessage, EmergencyCodecError> {
     let location_source = enum_code(get_u(S_LOCATION_SOURCE)?, "location_source", |c| {
         LocationSource::from_u8(c).map(|x| x.as_u8())
     })?;
-    let kind = enum_code(get_u(S_KIND)?, "kind", |c| SosKind::from_u8(c).map(|x| x.as_u8()))?;
+    let kind = enum_code(get_u(S_KIND)?, "kind", |c| {
+        SosKind::from_u8(c).map(|x| x.as_u8())
+    })?;
 
     let s = SosMessage {
         format_version: u8::try_from(get_u(S_FORMAT_VERSION)?)
@@ -423,11 +429,9 @@ pub fn decode_sos(bytes: &[u8]) -> Result<SosMessage, EmergencyCodecError> {
                 .map_err(|_| EmergencyCodecError::InvalidField("accuracy_m (u16)"))?,
             None => 0,
         },
-        location_source: LocationSource::from_u8(location_source)
-            .ok_or(EmergencyCodecError::InvalidEnumCode(
-                u64::from(location_source),
-                "location_source",
-            ))?,
+        location_source: LocationSource::from_u8(location_source).ok_or(
+            EmergencyCodecError::InvalidEnumCode(u64::from(location_source), "location_source"),
+        )?,
         timestamp: match get(map, S_TIMESTAMP) {
             Some(v) => u32::try_from(as_u64(v)?)
                 .map_err(|_| EmergencyCodecError::InvalidField("timestamp (u32)"))?,
@@ -445,9 +449,12 @@ pub fn decode_sos(bytes: &[u8]) -> Result<SosMessage, EmergencyCodecError> {
             Some(v) => {
                 let code = u8::try_from(as_u64(v)?)
                     .map_err(|_| EmergencyCodecError::InvalidField("reason (0-255)"))?;
-                Some(SosReason::from_u8(code).ok_or(
-                    EmergencyCodecError::InvalidEnumCode(u64::from(code), "reason"),
-                )?)
+                Some(
+                    SosReason::from_u8(code).ok_or(EmergencyCodecError::InvalidEnumCode(
+                        u64::from(code),
+                        "reason",
+                    ))?,
+                )
             }
             None => None,
         },
