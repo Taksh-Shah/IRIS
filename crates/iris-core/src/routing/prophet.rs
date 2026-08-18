@@ -159,7 +159,7 @@ impl DeliveryPredictability {
             let k = self
                 .last_meet
                 .get(dst)
-                .map(|t| ceiling_intervals(now.saturating_sub(*t), cfg.aging_interval))
+                .map(|t| floor_intervals(now.saturating_sub(*t), cfg.aging_interval))
                 .unwrap_or(0u64);
             let aged = if k > 0 {
                 p * cfg.gamma.powi(k as i32)
@@ -273,8 +273,10 @@ impl DeliveryPredictability {
     }
 }
 
-/// Whole intervals that fit in `elapsed` (fsat). Never 0 for elapsed ≥ interval.
-fn ceiling_intervals(elapsed: Duration, interval: Duration) -> u64 {
+/// Whole intervals that fit in `elapsed` — floor division (fsat). Never 0 for
+/// elapsed ≥ interval. NOTE: floor, not ceiling — the name reflects "how many
+/// full intervals have passed" (PRoPHET aging γ^k uses exactly this).
+pub(crate) fn floor_intervals(elapsed: Duration, interval: Duration) -> u64 {
     if interval.is_zero() {
         return 0;
     }

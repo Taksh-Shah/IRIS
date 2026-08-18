@@ -16,6 +16,44 @@ UI (Compose) → ViewModel → UseCase → Repository → DataSource
 - **Repository**: Abstracts data source selection. Handles caching logic.
 - **DataSource**: Actual data retrieval — either Rust core (via FFI) or Room (local metadata).
 
+## UniFFI Binding Layer
+
+> **Conformance note (ANDROID-001, iter 116):** the older sketches in this doc
+> (`IrisCore`, `IrisCore.initialize()`, `AndroidBleTransportAdapter.registerTransport(...)`)
+> are pre-AC-2/AC-4 reference code. The implemented binding surface is what this
+> section and `ANDROID.md §UniFFI Integration` describe: generated `IrisEngine`
+> + foreign-trait adapters, with no hand-written JNI beyond `System.loadLibrary`.
+
+**Bound to `crates/iris-android` ("iriscode" library) via UniFFI 0.31.2** —
+foreign-trait callback interfaces, not the soft-deprecated UDL callback
+interfaces:
+
+1. **Generated Kotlin is committed** (kept independent of the Rust/NDK
+   toolchain on CI): `kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt` —
+   `IrisEngine` (`#[derive(uniffi::Object)]`, owns a tokio `Runtime`), the three
+   foreign-trait adapter interfaces (`FfiBleAdapter` sync 10-op,
+   `FfiWifiAwareAdapter` + `FfiWifiDirectAdapter` async → generated Kotlin
+   `suspend fun`), `IrisFfiException` + data classes.
+2. **Package facade (AC-11 conformance seam):**
+   `kotlin/src/main/kotlin/iriscode/api.kt` re-exports `uniffi.iriscode` under
+   package `iriscode` so every adapter/shell file imports the single stable
+   namespace `import iriscode.*` — no direct `uniffi.*` imports leak into app
+   code.
+3. **Foreign-trait injection:** Kotlin adapter classes under
+   `iriscore/adapter/` implement the three interfaces; `IrisEngine(ble, aware,
+   direct, nodeId)` is constructed once in `IrisCoreModule`. Async adapter calls
+   cross the FFI by UniFFI's foreign-future / oneshot callback mechanism and are
+   polled through an **explicit tokio runtime handle** (`runtime.block_on`) —
+   the proven workaround for UniFFI issue #2576
+   (`#[uniffi::export(async_runtime="tokio")]` is ineffective on exported-trait
+   impls).
+4. **Engine surface used by the shell:** `start_all` / `stop_all` / `send_text`
+   / `subscribe_inbox` (`FfiInboxListener` + `FfiIncomingMessage`),
+   `drainBleScanResults` / `drainIncomingNdp` (engine polls adapter drains under
+   its runtime); `parse_peer_id_hex` / `build_text_envelope` helpers. UI never
+   talks to the engine directly — `MeshRepository` wraps
+   `FfiInboxListener` → `StateFlow` and owns the bounded `RelayOutbox`.
+
 ## Dependency Injection: Hilt
 
 All dependencies are provided via Hilt modules. No manual dependency construction in production code.

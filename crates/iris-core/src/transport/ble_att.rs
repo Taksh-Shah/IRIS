@@ -45,6 +45,22 @@ pub const REASSEMBLY_TTL: Duration = Duration::from_secs(30);
 /// quota discipline).
 pub const MAX_PARTIALS: usize = 64;
 
+/// Translate a platform-reported ATT payload into the equivalent MTU the
+/// segmenter stores.
+///
+/// iOS `maximumWriteValueLength` reports the negotiated ATT payload (MTU − 3,
+/// capped 512); the segmenter's own budget convention is `mtu − 5`, so storing
+/// `payload + 5` makes `max_att_payload()` recover the FULL reported budget
+/// (DEC-BLE-002-0004). A `0` report means "not yet negotiated" → negotiated
+/// ceiling. Degraded payloads ≥ 20 (iOS 16.x regression) map to their own
+/// budget — accepted, never an error (RES-0024 RQ-3/DI-5).
+pub fn payload_to_mtu(payload: u16) -> u16 {
+    if payload == 0 {
+        return MTU_NEGOTIATED;
+    }
+    (payload as u32 + 5).clamp(MTU_DEFAULT as u32, MTU_NEGOTIATED as u32) as u16
+}
+
 /// Error from parsing a frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FrameError {
@@ -100,6 +116,18 @@ impl AttSegmenter {
     pub fn on_mtu_changed(&self, mtu: u16) {
         let clamped = mtu.clamp(MTU_DEFAULT, MTU_NEGOTIATED);
         self.mtu.store(clamped, Ordering::Relaxed);
+    }
+
+    /// Adopt the negotiated ATT *payload* reported by a platform that reports
+    /// payload rather than MTU (iOS `maximumWriteValueLength` = negotiated ATT
+    /// payload, MTU − 3, capped 512; no request API — DEC-BLE-002-0004).
+    ///
+    /// Degraded payloads (e.g. 20 B on iOS 16.0/16.0.1, fixed 16.1) are
+    /// accepted as **degraded-but-functional** — never an error, never a retry
+    /// loop (RES-0024 RQ-3/DI-5). A `0` report (adapter that has not
+    /// negotiated yet) maps to the negotiated ceiling.
+    pub fn on_payload_reported(&self, payload: u16) {
+        self.mtu.store(payload_to_mtu(payload), Ordering::Relaxed);
     }
 
     /// Max ATT payload bytes per frame given the current MTU.
@@ -325,6 +353,66 @@ mod tests {
         assert_eq!(s.mtu(), MTU_DEFAULT);
         s.on_mtu_changed(u16::MAX);
         assert_eq!(s.mtu(), MTU_NEGOTIATED);
+    }
+
+    #[test]
+    fn ios_maximum_write_value_length_sets_full_payload_budget() {
+        // AC-2 / DEC-BLE-002-0004: iOS reports the negotiated ATT payload
+        // (maximumWriteValueLength), not the MTU — the segmenter must honor the
+        // FULL reported budget (512 B), not 512 − 5.
+        let s = AttSegmenter::new();
+        s.on_payload_reported(512);
+        assert_eq!(s.mtu(), MTU_NEGOTIATED);
+        assert_eq!(s.max_att_payload(), MAX_ATT_PAYLOAD);
+        let payload: Vec<u8> = (0..600u32).map(|i| (i % 251) as u8).collect();
+        let (_id, frames) = s.segment(&payload).unwrap();
+        assert!(frames.len() >= 2, "600 B must chunk at 512-B payload");
+        assert!(
+            frames.iter().all(|f| f.len() <= MAX_ATT_PAYLOAD),
+            "frames must respect the reported 512-B payload budget"
+        );
+    }
+
+    #[test]
+    fn ios_degraded_20b_payload_accepted_as_functional() {
+        // AC-2 / RES-0024 RQ-3/DI-5: iOS 16.0/16.0.1 reported a 20-B negotiated
+        // payload (fixed 16.1) — accept degraded-but-functional, never error,
+        // never a retry loop.
+        let s = AttSegmenter::new();
+        s.on_payload_reported(20);
+        assert_eq!(s.max_att_payload(), 20, "20-B payload keeps its own budget");
+        let payload = vec![3u8; 40];
+        let (_id, frames) = s.segment(&payload).unwrap();
+        assert!(frames.len() >= 2, "40 B at a 20-B payload must chunk");
+        assert!(
+            frames.iter().all(|f| f.len() <= 20),
+            "degraded frames must respect the 20-B budget"
+        );
+        // The degraded link still delivers end-to-end.
+        let mut r = Reassembler::new();
+        let mut complete = None;
+        for f in &frames {
+            if let Some(m) = r.push(f, Instant::now()).unwrap() {
+                complete = Some(m);
+            }
+        }
+        assert_eq!(complete, Some(payload));
+    }
+
+    #[test]
+    fn ios_default_and_unreported_payloads_map_safely() {
+        // AC-2: 23-B payload (un-negotiated default) and 0 (not yet reported)
+        // must both resolve to usable, bounded budgets.
+        let s = AttSegmenter::new();
+        s.on_payload_reported(23);
+        assert_eq!(s.max_att_payload(), 23);
+        s.on_payload_reported(0);
+        assert_eq!(
+            s.mtu(),
+            MTU_NEGOTIATED,
+            "0 report maps to negotiated ceiling"
+        );
+        assert_eq!(s.max_att_payload(), MAX_ATT_PAYLOAD);
     }
 
     #[test]

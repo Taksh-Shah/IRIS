@@ -50,6 +50,21 @@ impl Uuid {
     }
 }
 
+/// IRIS GATT service UUID — **STABLE, never per-session** (DEC-BLE-002-0001):
+/// a background/foreground scanner needs the UUID in its service-UUID filter
+/// (iOS requires it for background scanning), and overflow-area hash matching
+/// requires a stable scanned-for UUID.
+pub const IRIS_SERVICE_UUID: Uuid = Uuid([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+/// IRIS GATT identification characteristic (connect-to-identify,
+/// DEC-BLE-002-0002): carries the 22-byte discovery beacon on iOS, where
+/// `startAdvertising(_:)` can transmit only local name + service UUIDs —
+/// never service data. Read after connect; Android peers may serve it
+/// identically but can skip the read via ad-carried service data. One parser,
+/// two carriers (DEC-BLE-002-0008).
+pub const IRIS_IDENTIFY_CHARACTERISTIC: Uuid =
+    Uuid([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
 /// Bluetooth device address (48-bit MAC).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BleAddress(pub [u8; 6]);
@@ -119,6 +134,26 @@ pub struct ScanResult {
 }
 
 /// Platform-neutral BLE adapter trait (mirrors the spec; real adapters via FFI).
+///
+/// `IosBleAdapter` (Swift/CoreBluetooth, IOS-001 scope) semantics
+/// (RES-0024 / BLE_002_DESIGN.md §5, DEC-BLE-002-0001..0008):
+/// - `start_advertising`: transmits ONLY local name + service UUIDs — the
+///   `service_data` field is NEVER transmitted on iOS (CoreBluetooth has no
+///   API for it); the discovery beacon is served instead from
+///   `IRIS_IDENTIFY_CHARACTERISTIC` (connect-to-identify).
+/// - `set_mtu`: no request API — no-op request returning
+///   `peripheral.maximumWriteValueLength(for: .withResponse)` (negotiated ATT
+///   payload, cap 512; may be 23 default or a degraded 20 B on iOS 16.0/16.0.1).
+///   The Rust core translates payload → MTU via `ble_att::payload_to_mtu`.
+/// - `scan_results`: `centralManager(_:didDiscover:advertisementData:rssi:)`
+///   drain — advertisementData carries NO IRIS service data on iOS, so payloads
+///   are empty; RSSI + identity only. The transport's connect-to-identify
+///   branch probes empty-payload results (see `BleTransport::discover_peers`).
+/// - `gatt_read`: `peripheral.readValue(for: characteristic)` — used for the
+///   identification-characteristic read during connect-to-identify.
+/// - Restoration: `willRestoreState` MUST re-call `start_scan`/`start_advertising`
+///   (restoration does NOT auto-resume); restore ids stable across launches;
+///   never initialize BLE state outside a valid launch path (DEC-BLE-002-0005).
 pub trait BleAdapter: Send + Sync + 'static {
     fn start_scan(&self, filter: ScanFilter) -> Result<ScanHandle, BleError>;
     fn stop_scan(&self, handle: ScanHandle);
@@ -132,6 +167,10 @@ pub trait BleAdapter: Send + Sync + 'static {
         char_uuid: Uuid,
         data: Vec<u8>,
     ) -> Result<(), BleError>;
+    /// Read a GATT characteristic value (CoreBluetooth `readValue(for:)`).
+    /// Used by connect-to-identify to fetch the discovery beacon from
+    /// `IRIS_IDENTIFY_CHARACTERISTIC` (DEC-BLE-002-0002).
+    fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError>;
     fn set_mtu(&self, handle: GattHandle, mtu: u16) -> Result<u16, BleError>;
     fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>>;
     /// Scan results delivered since last drain (real impl: callbacks).
@@ -147,11 +186,44 @@ pub struct SimulatedBleAdapter {
     connect_calls: std::sync::Mutex<usize>,
     next_handle: std::sync::atomic::AtomicU64,
     handles: std::sync::Mutex<Vec<GattHandle>>,
+    /// iOS-leg simulation (BLE-002): `start_advertising` transmits NO service
+    /// data (CoreBluetooth supports only local name + service UUIDs —
+    /// RES-0024/DI-1); the beacon is served via `IRIS_IDENTIFY_CHARACTERISTIC`
+    /// reads (connect-to-identify, DEC-BLE-002-0002).
+    ios_mode: std::sync::atomic::AtomicBool,
+    /// Value served by `IRIS_IDENTIFY_CHARACTERISTIC` reads (the node's own
+    /// 22-byte beacon; inject via `inject_identify_read`).
+    identify_data: std::sync::Mutex<Vec<u8>>,
+    /// Advertisement data as received from the transport.
+    last_ad_raw: std::sync::Mutex<Option<AdvertisementData>>,
+    /// Advertisement data as actually transmitted on the wire (iOS: service
+    /// data dropped at the FFI boundary, exactly like CoreBluetooth).
+    last_ad_wire: std::sync::Mutex<Option<AdvertisementData>>,
 }
 
 impl SimulatedBleAdapter {
     pub fn new() -> Self {
         Self::default()
+    }
+    /// Enter iOS-leg mode: advertising transmits no service data; the beacon is
+    /// served from `IRIS_IDENTIFY_CHARACTERISTIC` (BLE-002, DEC-BLE-002-0002).
+    pub fn simulate_ios(&self) -> &Self {
+        self.ios_mode
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        self
+    }
+    /// Inject the node's identification-characteristic value (its 22-byte
+    /// discovery beacon) that `gatt_read` serves for `IRIS_IDENTIFY_CHARACTERISTIC`.
+    pub fn inject_identify_read(&self, data: Vec<u8>) {
+        *self.identify_data.lock().unwrap() = data;
+    }
+    /// Advertisement data as passed to `start_advertising` by the transport.
+    pub fn last_ad_received(&self) -> Option<AdvertisementData> {
+        self.last_ad_raw.lock().unwrap().clone()
+    }
+    /// Advertisement data as actually transmitted on the wire.
+    pub fn last_ad_wire(&self) -> Option<AdvertisementData> {
+        self.last_ad_wire.lock().unwrap().clone()
     }
     /// Inject an inbound GATT write (simulates a peer writing to our server).
     pub fn inject_write(&self, handle: GattHandle, char_uuid: Uuid, data: Vec<u8>) {
@@ -188,7 +260,30 @@ impl BleAdapter for SimulatedBleAdapter {
         Ok(ScanHandle(1))
     }
     fn stop_scan(&self, _handle: ScanHandle) {}
-    fn start_advertising(&self, _data: AdvertisementData) -> Result<AdvHandle, BleError> {
+    fn start_advertising(&self, data: AdvertisementData) -> Result<AdvHandle, BleError> {
+        *self.last_ad_raw.lock().unwrap() = Some(data.clone());
+        // A real adapter that advertises an IRIS discovery beacon serves the
+        // SAME beacon via the GATT identification characteristic on the
+        // connect-to-identify path (DEC-BLE-002-0002). Mirror that in the sim:
+        // the beacon the peer reads is the beacon this node advertises
+        // (BLE-RT-C005) — no separate injection needed for the honest path.
+        if !data.service_data.is_empty() {
+            *self.identify_data.lock().unwrap() = data.service_data.clone();
+        }
+        let wire = if self.ios_mode.load(std::sync::atomic::Ordering::Relaxed) {
+            // iOS `startAdvertising(_:)` transmits ONLY local name + service
+            // UUIDs — never service data (RES-0024 DI-1). The beacon rides the
+            // GATT identification characteristic instead (connect-to-identify,
+            // DEC-BLE-002-0002); a real IosBleAdapter drops it at the FFI
+            // boundary the same way.
+            AdvertisementData {
+                service_data: Vec::new(),
+                ..data
+            }
+        } else {
+            data
+        };
+        *self.last_ad_wire.lock().unwrap() = Some(wire);
         Ok(AdvHandle(1))
     }
     fn stop_advertising(&self, _handle: AdvHandle) {}
@@ -220,6 +315,15 @@ impl BleAdapter for SimulatedBleAdapter {
             handle,
         ));
         Ok(())
+    }
+    fn gatt_read(&self, _handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
+        // Only the IRIS identification characteristic exists on the simulated
+        // server; reads of anything else fail like an absent characteristic.
+        if char_uuid == IRIS_IDENTIFY_CHARACTERISTIC {
+            Ok(self.identify_data.lock().unwrap().clone())
+        } else {
+            Err(BleError::DeviceNotFound)
+        }
     }
     fn set_mtu(&self, _handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
         Ok(mtu)
@@ -257,6 +361,10 @@ pub struct BleTransport {
     scan_times: std::sync::Mutex<std::collections::VecDeque<std::time::Instant>>,
     scan_backoff_s: std::sync::Mutex<u64>,
     refused_until: std::sync::RwLock<Option<std::time::Instant>>,
+    /// iOS-leg flag (BLE-002): `set_mtu` reports the negotiated ATT *payload*
+    /// (iOS `maximumWriteValueLength`), not the MTU — translated via
+    /// `ble_att::payload_to_mtu` (DEC-BLE-002-0004).
+    ios_leg: bool,
 }
 
 /// Scan-restart ceiling: max scan starts in the window.
@@ -305,7 +413,21 @@ impl BleTransport {
             scan_times: std::sync::Mutex::new(std::collections::VecDeque::new()),
             scan_backoff_s: std::sync::Mutex::new(0),
             refused_until: std::sync::RwLock::new(None),
+            ios_leg: false,
         }
+    }
+
+    /// Construct the iOS-leg transport (BLE-002): same platform-neutral core as
+    /// the Android leg, with an `IosBleAdapter` (Swift/CoreBluetooth, IOS-001
+    /// scope) injected via the same `BleAdapter` FFI seam. Distinct id/display;
+    /// iOS constraints stay baked in (`supports_background_ios: false` —
+    /// RES-0024: foreground-always symmetric discovery).
+    pub fn new_ios(adapter: Option<std::sync::Arc<dyn BleAdapter>>) -> Self {
+        let mut t = Self::new(adapter);
+        t.id = TransportId::from("ble-ios");
+        t.display = "BLE (iOS)".to_string();
+        t.ios_leg = true;
+        t
     }
 
     fn set_state(&self, state: TransportState) {
@@ -418,22 +540,69 @@ impl Transport for BleTransport {
                 "ble: scan throttled (start/stop burst within 30s)".to_string(),
             ));
         }
-        let handle = adapter
-            .start_scan(ScanFilter::default())
-            .map_err(to_transport_err)?;
+        let filter = if self.ios_leg {
+            // iOS background contract requires a service-UUID-filtered scan
+            // (RES-0024 DI-1 / BLE_002_DESIGN.md); connect-to-identify probes
+            // must never run against unfiltered ambient advertising.
+            ScanFilter {
+                service_uuids: vec![IRIS_SERVICE_UUID],
+                ..ScanFilter::default()
+            }
+        } else {
+            ScanFilter::default()
+        };
+        let handle = adapter.start_scan(filter).map_err(to_transport_err)?;
         *self.scan_handle.lock().unwrap() = Some(handle);
         // Drain scan results produced by the adapter (real impl: Android
-        // BluetoothLeScanner callbacks; simulated: inject_scan_result). The
-        // OS can batch-deliver hundreds of reports; cap at the caller's
-        // max_peers so an advert flood can't blow past the requested budget
-        // (BLE-RT-013).
-        let results: Vec<ScanResult> = adapter.scan_results().drain(..).collect();
+        // BluetoothLeScanner callbacks; simulated: inject_scan_result). Advert
+        // floods are bounded BEFORE materializing the Vec (BLE-RT-C007) — the
+        // cap applies to allocation, not just the candidate output.
+        let results: Vec<ScanResult> = adapter
+            .scan_results()
+            .drain(..)
+            .take(config.max_peers)
+            .collect();
         let max_peers = config.max_peers;
+        // iOS-leg probe budget: connect-to-identify probes are the most
+        // expensive BLE op; cap consecutive probes per discovery pass at the
+        // iOS practical connection ceiling (~8, RES-0024 RQ-3) so ambient /
+        // hostile empty-ad traffic cannot churn the GATT pool (BLE-RT-C001/003).
+        let probe_budget: usize = if self.ios_leg { 8 } else { 0 };
+        // An advertisement may carry NO IRIS beacon payload. That is the iOS
+        // reality: `startAdvertising(_:)` transmits only local name + service
+        // UUIDs — never service data (RES-0024 DI-1) — so the beacon is served
+        // from `IRIS_IDENTIFY_CHARACTERISTIC` instead (connect-to-identify,
+        // DEC-BLE-002-0002): probe-connect, read the characteristic, parse,
+        // and close the probe. The result is candidate-level only, never a
+        // trust boundary (DEC-BLE-002-0006); malformed/absent identify reads
+        // drop the peer without panic (AC-6).
+        let mut probe_count: usize = 0;
         let peers: Vec<PeerInfo> = results
             .into_iter()
             .take(max_peers)
             .filter_map(|r| {
-                let beacon = DiscoveryBeacon::parse(&r.payload).ok()?;
+                // Connect-to-identify (iOS leg ONLY, BLE-RT-C001): on Android
+                // the ad-carried beacon is the discovery payload — an empty
+                // payload means "not an IRIS peer", never a probe target.
+                // Gating on ios_leg prevents blind GATT connects against
+                // ambient non-IRIS advertising on the production Android leg.
+                let probe_guard = &mut probe_count;
+                let beacon = if r.payload.is_empty() && self.ios_leg {
+                    // Probe budget (BLE-RT-C001/003): at most probe_budget
+                    // connect/read/disconnect cycles per discovery pass.
+                    if *probe_guard == probe_budget {
+                        return None;
+                    }
+                    *probe_guard += 1;
+                    let handle = adapter.connect_gatt(r.address).ok()?;
+                    let payload = adapter.gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC).ok();
+                    adapter.disconnect_gatt(handle);
+                    DiscoveryBeacon::parse(&payload?).ok()
+                } else if r.payload.is_empty() {
+                    None
+                } else {
+                    DiscoveryBeacon::parse(&r.payload).ok()
+                }?;
                 let mut addresses = Vec::with_capacity(1);
                 addresses.push((
                     "ble".to_string(),
@@ -494,7 +663,7 @@ impl Transport for BleTransport {
         let handle = adapter
             .start_advertising(AdvertisementData {
                 local_name: info.hostname,
-                service_uuid: Some(Uuid::from_u128(0x1)), // IRIS discovery UUID
+                service_uuid: Some(IRIS_SERVICE_UUID),
                 service_data: beacon,
             })
             .map_err(to_transport_err)?;
@@ -551,7 +720,16 @@ impl Transport for BleTransport {
         let negotiated = adapter
             .set_mtu(handle, crate::transport::ble_att::MTU_NEGOTIATED)
             .unwrap_or(crate::transport::ble_att::MTU_DEFAULT);
-        conns.insert(peer.peer_id, (handle, negotiated));
+        // iOS reports the negotiated ATT *payload* (`maximumWriteValueLength`,
+        // no request API) rather than the MTU — translate so per-connection
+        // frame sizing honors the FULL report (DEC-BLE-002-0004). Degraded
+        // 20-B payloads (iOS 16.0/16.0.1) are accepted as-is, never an error.
+        let stored_mtu = if self.ios_leg {
+            crate::transport::ble_att::payload_to_mtu(negotiated)
+        } else {
+            negotiated
+        };
+        conns.insert(peer.peer_id, (handle, stored_mtu));
         self.set_state(TransportState::Connected);
         let established_at = Instant::now();
         // Poll inbound GATT writes for THIS peer into a per-peer reassembler,
@@ -593,7 +771,7 @@ impl Transport for BleTransport {
                 drop(writes);
                 for w in mine {
                     // Reject frames addressed to another characteristic.
-                    if w.char_uuid != Uuid::from_u128(0x1) {
+                    if w.char_uuid != IRIS_SERVICE_UUID {
                         continue;
                     }
                     match recon.push(&w.data, std::time::Instant::now()) {
@@ -647,7 +825,7 @@ impl Transport for BleTransport {
             .segmenter
             .segment_for_mtu(&message.payload, mtu)
             .map_err(|e| TransportError::Protocol(format!("ble: segmentation failed: {e}")))?;
-        let char_uuid = Uuid::from_u128(0x1); // IRIS control characteristic
+        let char_uuid = IRIS_SERVICE_UUID; // IRIS control characteristic
         for frame in &frames {
             if let Err(e) = adapter.gatt_write(handle, char_uuid, frame.clone()) {
                 // Write failure = link is dead: tear the peer down (BLE-RT-005)
@@ -1001,6 +1179,9 @@ mod tests {
         ) -> Result<(), BleError> {
             self.inner.gatt_write(handle, char_uuid, data)
         }
+        fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
+            self.inner.gatt_read(handle, char_uuid)
+        }
         fn set_mtu(&self, handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(handle, mtu)
         }
@@ -1082,6 +1263,291 @@ mod tests {
         assert!(caps.supports_background_android);
         assert!(!caps.requires_special_hardware);
         assert_eq!(caps.cost_class, TransportCostClass::Free);
+    }
+
+    // --- BLE-002 iOS-leg tests (iter ~135, AC-1/2/3/4/6/10/12) ---
+
+    /// Test adapter mimicking `IosBleAdapter::set_mtu` = `maximumWriteValueLength`
+    /// — iOS has NO MTU request API; it reports the negotiated ATT *payload*
+    /// (cap 512, may be 23 default or a degraded 20 B; DEC-BLE-002-0004).
+    #[derive(Default)]
+    struct IosPayloadAdapter {
+        inner: SimulatedBleAdapter,
+        reported: u16,
+    }
+
+    impl BleAdapter for IosPayloadAdapter {
+        fn start_scan(&self, f: ScanFilter) -> Result<ScanHandle, BleError> {
+            self.inner.start_scan(f)
+        }
+        fn stop_scan(&self, h: ScanHandle) {
+            self.inner.stop_scan(h)
+        }
+        fn start_advertising(&self, d: AdvertisementData) -> Result<AdvHandle, BleError> {
+            self.inner.start_advertising(d)
+        }
+        fn stop_advertising(&self, h: AdvHandle) {
+            self.inner.stop_advertising(h)
+        }
+        fn connect_gatt(&self, a: BleAddress) -> Result<GattHandle, BleError> {
+            self.inner.connect_gatt(a)
+        }
+        fn disconnect_gatt(&self, h: GattHandle) {
+            self.inner.disconnect_gatt(h)
+        }
+        fn gatt_write(&self, h: GattHandle, c: Uuid, d: Vec<u8>) -> Result<(), BleError> {
+            self.inner.gatt_write(h, c, d)
+        }
+        fn gatt_read(&self, h: GattHandle, c: Uuid) -> Result<Vec<u8>, BleError> {
+            self.inner.gatt_read(h, c)
+        }
+        fn set_mtu(&self, _h: GattHandle, _m: u16) -> Result<u16, BleError> {
+            Ok(self.reported)
+        }
+        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
+            self.inner.incoming_gatt_writes()
+        }
+        fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
+            self.inner.scan_results()
+        }
+    }
+
+    #[test]
+    fn ios_leg_constructs_with_distinct_id_and_background_cap_held() {
+        // AC-1/AC-10 (RES-0024 RQ-2/DI-3): the iOS leg is a distinct
+        // BleTransport id/display; `supports_background_ios` stays false —
+        // foreground-always symmetric discovery, no PendingIntent analog.
+        let t = BleTransport::new_ios(Some(std::sync::Arc::new(SimulatedBleAdapter::new())));
+        assert_eq!(t.transport_id().as_str(), "ble-ios");
+        assert_eq!(t.display_name(), "BLE (iOS)");
+        assert!(
+            !t.capabilities().supports_background_ios,
+            "iOS background BLE support stays false on the iOS leg (RES-0024)"
+        );
+    }
+
+    #[tokio::test]
+    async fn ios_connect_to_identify_yields_candidate_from_identify_characteristic() {
+        // AC-3 (DEC-BLE-002-0002): iOS ads carry NO discovery beacon (no
+        // service data — RES-0024 DI-1); discovery = connect →
+        // read IRIS_IDENTIFY_CHARACTERISTIC → parse → candidate peer.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.simulate_ios();
+        let t = BleTransport::new_ios(Some(adapter.clone()));
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
+        let beacon = DiscoveryBeacon::build(caps, [7u8; 16], 1234);
+        adapter.inject_identify_read(beacon.clone());
+        // An iOS advertisement with an EMPTY payload (UUID + local name only).
+        adapter.inject_scan_result(BleAddress([0x11; 6]), Vec::new(), -60);
+        let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let peer = tokio::time::timeout(Duration::from_secs(1), stream.next())
+            .await
+            .expect("candidate must arrive")
+            .expect("some peer");
+        let expected = DiscoveryBeacon::parse(&beacon).unwrap().candidate_peer_id();
+        assert_eq!(peer.peer_id, expected);
+        assert_eq!(peer.transport_addresses[0].0, "ble");
+        assert_eq!(
+            peer.transport_addresses[0].1, "11:11:11:11:11:11",
+            "the probe-connect MAC must carry into the candidate for later connect()"
+        );
+    }
+
+    #[tokio::test]
+    async fn ios_empty_ad_without_identify_yields_no_candidate() {
+        // AC-6: an iOS ad with no servable identification data must be dropped
+        // (no candidate) without panic — defensive parse on both carriers.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.simulate_ios();
+        let t = BleTransport::new_ios(Some(adapter.clone()));
+        adapter.inject_scan_result(BleAddress([0x22; 6]), Vec::new(), -60);
+        let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let got = tokio::time::timeout(Duration::from_secs(1), stream.next()).await;
+        assert!(
+            got.unwrap().is_none(),
+            "empty identify read => no candidate (no panic, AC-6)"
+        );
+    }
+
+    #[tokio::test]
+    async fn android_and_ios_carriers_share_one_beacon_parser() {
+        // AC-3/AC-12 (DEC-BLE-002-0008): the SAME 22-byte beacon produces the
+        // same candidate whether carried in ad service data (Android) or served
+        // from the identification characteristic (iOS) — one parser, two
+        // carriers.
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::ADVERTISE_BROADCAST);
+        let beacon = DiscoveryBeacon::build(caps, [9u8; 16], 99);
+        // Android leg: ad-carried payload.
+        let android = std::sync::Arc::new(SimulatedBleAdapter::new());
+        android.inject_scan_result(BleAddress([0x01; 6]), beacon.clone(), -50);
+        let ta = BleTransport::new(Some(android.clone()));
+        let mut sa = ta.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let pa = tokio::time::timeout(Duration::from_secs(1), sa.next())
+            .await
+            .unwrap()
+            .unwrap();
+        // iOS leg: characteristic-carried payload, empty ad.
+        let ios = std::sync::Arc::new(SimulatedBleAdapter::new());
+        ios.simulate_ios();
+        ios.inject_identify_read(beacon.clone());
+        ios.inject_scan_result(BleAddress([0x02; 6]), Vec::new(), -55);
+        let ti = BleTransport::new_ios(Some(ios.clone()));
+        let mut si = ti.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let pi = tokio::time::timeout(Duration::from_secs(1), si.next())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(pa.peer_id, pi.peer_id, "one parser, two carriers");
+    }
+
+    #[tokio::test]
+    async fn ios_advertising_drops_service_data_on_the_wire() {
+        // AC-3 (RES-0024 DI-1): `startAdvertising(_:)` transmits ONLY local
+        // name + service UUIDs — NEVER service data. The transport passes the
+        // beacon as service_data; the iOS adapter drops it at the FFI boundary
+        // and serves the beacon via IRIS_IDENTIFY_CHARACTERISTIC instead.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.simulate_ios();
+        let t = BleTransport::new_ios(Some(adapter.clone()));
+        let adv = NodeAdvertisement {
+            peer_id: PeerId([7u8; 32]),
+            public_ip_addr: None,
+            hostname: Some("iris-node".to_string()),
+            tags: Vec::new(),
+        };
+        t.start_advertising(adv).await.unwrap();
+        let received = adapter
+            .last_ad_received()
+            .expect("transport passed ad data");
+        assert!(
+            !received.service_data.is_empty(),
+            "transport still passes the beacon as service_data (shared carrier)"
+        );
+        assert_eq!(received.service_uuid, Some(IRIS_SERVICE_UUID));
+        let wire = adapter.last_ad_wire().expect("wire form recorded");
+        assert!(
+            wire.service_data.is_empty(),
+            "iOS wire form carries NO service data (RES-0024 DI-1)"
+        );
+        assert_eq!(wire.service_uuid, Some(IRIS_SERVICE_UUID));
+        assert_eq!(wire.local_name.as_deref(), Some("iris-node"));
+    }
+
+    #[tokio::test]
+    async fn ios_mtu_payload_sizes_frames_to_full_reported_budget() {
+        // AC-2 (DEC-BLE-002-0004): the iOS leg honors maximumWriteValueLength
+        // (ATT payload, cap 512) — connect() translates payload → MTU so frames
+        // reach the FULL reported 512-B budget (512, not 512−5).
+        let adapter = std::sync::Arc::new(IosPayloadAdapter {
+            reported: 512,
+            ..Default::default()
+        });
+        let t = BleTransport::new_ios(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([2u8; 32]), "AA:BB:CC:DD:EE:FF");
+        t.connect(&peer).await.unwrap();
+        let payload: Vec<u8> = (0..1_500u32).map(|i| (i % 251) as u8).collect();
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([3u8; 16]),
+            priority: MessagePriority::P2,
+            payload: payload.clone(),
+        };
+        t.send(&peer.peer_id, &msg).await.unwrap();
+        let frames: Vec<Vec<u8>> = adapter
+            .inner
+            .last_writes()
+            .iter()
+            .map(|(w, _)| w.data.clone())
+            .collect();
+        assert!(frames.len() >= 2, "1.5 KB must chunk");
+        assert!(
+            frames.iter().all(|f| f.len() <= 512),
+            "frames must honor the FULL 512-B reported payload budget"
+        );
+        assert_eq!(
+            frames[0].len(),
+            512,
+            "first full frame must reach the 512-B budget (header 6 + data 506), not 507"
+        );
+    }
+
+    #[tokio::test]
+    async fn ios_degraded_20b_payload_still_delivers_end_to_end() {
+        // AC-2 (RES-0024 RQ-3/DI-5): iOS 16.0/16.0.1 reported a 20-B negotiated
+        // payload (fixed 16.1) — the iOS leg treats it as degraded-but-
+        // functional: frames chunk small and delivery still completes, never
+        // an error and never a retry loop.
+        let adapter = std::sync::Arc::new(IosPayloadAdapter {
+            reported: 20,
+            ..Default::default()
+        });
+        let t = BleTransport::new_ios(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([4u8; 32]), "AA:BB:CC:DD:EE:FF");
+        t.connect(&peer).await.unwrap();
+        let payload = vec![7u8; 100];
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([5u8; 16]),
+            priority: MessagePriority::P2,
+            payload: payload.clone(),
+        };
+        t.send(&peer.peer_id, &msg).await.unwrap();
+        let frames: Vec<Vec<u8>> = adapter
+            .inner
+            .last_writes()
+            .iter()
+            .map(|(w, _)| w.data.clone())
+            .collect();
+        assert!(
+            frames.len() >= 4,
+            "100 B at a 20-B payload (14-B data/frame) must chunk many frames"
+        );
+        assert!(
+            frames.iter().all(|f| f.len() <= 20),
+            "degraded frames must respect the 20-B payload budget"
+        );
+        // The degraded link still delivers end-to-end through the poller.
+        for f in frames {
+            adapter
+                .inner
+                .inject_write(GattHandle(1), IRIS_SERVICE_UUID, f);
+        }
+        let mut incoming = t.incoming_messages();
+        let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
+        let back = got.expect("degraded link must still deliver").unwrap();
+        assert_eq!(back.payload, payload);
+        assert_eq!(back.peer_id, PeerId([4u8; 32]));
+    }
+
+    #[tokio::test]
+    async fn ios_leg_registers_and_is_selectable_via_transport_manager() {
+        // AC-1: the iOS leg registers + selects via TransportManager like any
+        // transport (platform legs are distinct transports in the manager).
+        use crate::message::MessagePriority as Mp;
+        use crate::transport::manager::{TransportManager, TransportSelectionRequest};
+
+        let mgr = TransportManager::new();
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.simulate_ios();
+        let t = std::sync::Arc::new(BleTransport::new_ios(Some(adapter.clone())));
+        mgr.register(t.clone()).await.unwrap();
+        let req = TransportSelectionRequest {
+            target_peer: None,
+            message_size: 300, // <= u16::MAX segmented cap
+            priority: Mp::P2,
+            max_latency_ms: None,
+            prefer_low_cost: false,
+            multipath: false,
+            fragmentable: false,
+        };
+        let selected = mgr.select_transports(&req).await;
+        assert_eq!(
+            selected.len(),
+            1,
+            "iOS BLE transport must be eligible (AC-1)"
+        );
+        assert_eq!(selected[0].transport_id.as_str(), "ble-ios");
+        assert!(selected[0].score > 0.0);
     }
 
     #[tokio::test]
@@ -1428,6 +1894,9 @@ mod tests {
         fn gatt_write(&self, h: GattHandle, c: Uuid, d: Vec<u8>) -> Result<(), BleError> {
             self.inner.gatt_write(h, c, d)
         }
+        fn gatt_read(&self, h: GattHandle, c: Uuid) -> Result<Vec<u8>, BleError> {
+            self.inner.gatt_read(h, c)
+        }
         fn set_mtu(&self, handle: GattHandle, _mtu: u16) -> Result<u16, BleError> {
             // Legacy device keeps MTU 23; modern peer negotiates 517.
             Ok(if handle == GattHandle(1) {
@@ -1471,6 +1940,9 @@ mod tests {
         fn gatt_write(&self, _h: GattHandle, _c: Uuid, _d: Vec<u8>) -> Result<(), BleError> {
             Err(BleError::GattFailure("link dead".to_string()))
         }
+        fn gatt_read(&self, h: GattHandle, c: Uuid) -> Result<Vec<u8>, BleError> {
+            self.inner.gatt_read(h, c)
+        }
         fn set_mtu(&self, h: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(h, mtu)
         }
@@ -1509,6 +1981,9 @@ mod tests {
         fn gatt_write(&self, h: GattHandle, c: Uuid, d: Vec<u8>) -> Result<(), BleError> {
             self.inner.gatt_write(h, c, d)
         }
+        fn gatt_read(&self, h: GattHandle, c: Uuid) -> Result<Vec<u8>, BleError> {
+            self.inner.gatt_read(h, c)
+        }
         fn set_mtu(&self, h: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(h, mtu)
         }
@@ -1518,5 +1993,110 @@ mod tests {
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
         }
+    }
+
+    /// BLE-RT-C001 regression: the Android leg NEVER probe-connects empty-payload
+    /// (non-IRIS) advertising — connect-to-identify is iOS-leg only.
+    #[tokio::test]
+    async fn c001_android_leg_never_probe_connects_empty_ads() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        // Non-IRIS ambient advertising: empty payloads (no IRIS beacon).
+        for i in 0..6u8 {
+            adapter.inject_scan_result(BleAddress([i, 0xAA, 0, 0, 0, 0]), Vec::new(), -45);
+        }
+        let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let mut count = 0;
+        while stream.next().await.is_some() {
+            count += 1;
+        }
+        assert_eq!(
+            count, 0,
+            "Android leg must not yield candidates from empty ads"
+        );
+        assert_eq!(
+            adapter.connect_count(),
+            0,
+            "Android leg must never probe-connect for discovery (BLE-RT-C001)"
+        );
+    }
+
+    /// BLE-RT-C001/003 regression: the iOS-leg probe budget caps connect/read/
+    /// disconnect cycles per discovery pass at the ~8-peer practical ceiling.
+    #[tokio::test]
+    async fn c001_ios_leg_probe_budget_caps_probe_connects() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.simulate_ios();
+        let t = BleTransport::new_ios(Some(adapter.clone()));
+        // Seed identify values for peers 0..=9; inject 20 empty ads so the
+        // probe path would otherwise connect far beyond the ceiling.
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
+        for i in 0..10u8 {
+            let beacon = DiscoveryBeacon::build(caps, [i; 16], 1);
+            adapter.inject_identify_read(beacon.clone());
+            adapter.inject_scan_result(BleAddress([i, 0xBB, 0, 0, 0, 0]), Vec::new(), -50);
+        }
+        for i in 10..20u8 {
+            adapter.inject_scan_result(BleAddress([i, 0xBB, 0, 0, 0, 0]), Vec::new(), -50);
+        }
+        let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let mut count = 0;
+        while stream.next().await.is_some() {
+            count += 1;
+        }
+        assert!(
+            count <= 8,
+            "iOS-leg probe budget must bound candidates (BLE-RT-C001/003), got {count}"
+        );
+        assert!(
+            adapter.connect_count() <= 8,
+            "iOS-leg probe budget must bound GATT connects, got {}",
+            adapter.connect_count()
+        );
+    }
+
+    /// BLE-RT-C005 regression: the sim's GATT server serves the beacon this
+    /// node ADVERTISED (advertise → read handoff), so a connect-to-identify
+    /// probe against a simulated peer resolves the peer's real advertised
+    /// beacon without a test-only injection setter.
+    #[tokio::test]
+    async fn c005_sim_serves_advertised_beacon_on_identify_read() {
+        let peer = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
+        let beacon = DiscoveryBeacon::build(caps, [0xC5; 16], 77);
+        peer.start_advertising(AdvertisementData {
+            local_name: Some("iris-peer".to_string()),
+            service_uuid: Some(IRIS_SERVICE_UUID),
+            service_data: beacon.clone(),
+        })
+        .unwrap();
+        // iOS leg probes the peer's identify characteristic directly.
+        let handle = peer.connect_gatt(BleAddress([0xC5; 6])).unwrap();
+        let served = peer
+            .gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC)
+            .expect("identify read must be served");
+        peer.disconnect_gatt(handle);
+        assert_eq!(
+            served, beacon,
+            "sim GATT server must serve exactly the advertised beacon (BLE-RT-C005)"
+        );
+        // iOS-mode advertising (empty service data) does NOT clobber the
+        // served identify value — the beacon still rides the characteristic.
+        let peer_ios = std::sync::Arc::new(SimulatedBleAdapter::new());
+        peer_ios.simulate_ios();
+        peer_ios
+            .start_advertising(AdvertisementData {
+                local_name: Some("iris-peer".to_string()),
+                service_uuid: Some(IRIS_SERVICE_UUID),
+                service_data: beacon.clone(),
+            })
+            .unwrap();
+        let h2 = peer_ios.connect_gatt(BleAddress([0xC6; 6])).unwrap();
+        let served2 = peer_ios
+            .gatt_read(h2, IRIS_IDENTIFY_CHARACTERISTIC)
+            .expect("ios-mode identify read must be served");
+        assert_eq!(served2, beacon, "ios-mode serve path must hold");
     }
 }

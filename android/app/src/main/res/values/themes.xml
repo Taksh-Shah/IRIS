@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose renders its own Material3 theme; the XML base theme only sets
+         a launcher-safe window policy (no ActionBar). -->
+    <style name="Theme.Iris" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

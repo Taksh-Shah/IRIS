@@ -60,6 +60,17 @@ impl Default for QuotaConfig {
     }
 }
 
+/// Pure eviction-amount arithmetic (Kani proof target — TEST-001 AC-3).
+///
+/// Number of bytes to evict from one sender account: the excess over quota,
+/// floor 1 so a below-quota account still yields one byte when the global
+/// quota forces eviction, never more than the account actually holds.
+/// No wraparound: an attacker-controlled `used == u64::MAX` saturates.
+pub(crate) fn evict_amount(used: u64, quota: u64) -> u64 {
+    let excess = used.saturating_sub(quota);
+    excess.max(1).min(used)
+}
+
 /// Per-sender storage accounting.
 #[derive(Clone, Debug, Default)]
 struct SenderAccount {
@@ -242,10 +253,7 @@ impl QuotaManager {
                 }
             }
             // Evict up to the excess over quota, or all if total quota exceeded
-            let excess = account
-                .used_bytes
-                .saturating_sub(self.config.default_sender_quota_bytes);
-            let to_evict = excess.max(1).min(account.used_bytes);
+            let to_evict = evict_amount(account.used_bytes, self.config.default_sender_quota_bytes);
             candidates.push((*sender, to_evict));
             // SEC-RT-12: saturating add — freed must never overflow u64.
             freed = freed.saturating_add(to_evict);

@@ -9,3 +9,20 @@ crates/**/target
 # Local secrets / env (never commit credentials)
 .env
 *.env.local
+
+# Android / Gradle build outputs (keep committed generated UniFFI bindings in kotlin/.../iriscode/)
+android/.gradle/
+android/**/build/
+kotlin/build/
+**/build/
+
+# Android local config / signing (never commit)
+local.properties
+*.keystore
+*.jks
+*.p12
+captures/
+
+# OS noise
+.DS_Store
+Thumbs.db

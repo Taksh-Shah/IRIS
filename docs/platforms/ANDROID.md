@@ -2,12 +2,21 @@
 
 ## Platform Targets
 
-- **Minimum SDK**: 26 (Android 8.0 Oreo)
-- **Target SDK**: 34 (Android 14)
+**Pinned at scaffold (ANDROID-001, iter 116; RES-0022):**
+- **Minimum SDK**: 26 (Android 8.0 Oreo ≈ 95%+ device coverage)
+- **Target SDK**: 34 (Android 14) — **do not bump to 37+ without the
+  `ACCESS_LOCAL_NETWORK` runtime-permission work (see §ACCESS_LOCAL_NETWORK
+  SDK-37 cliff below)**
 - **Build Tools**: 34.0.0
-- **AGP**: 8.2+
-- **Kotlin**: 1.9+
-- **Compose BOM**: 2024.01.00
+- **AGP**: 8.7.3
+- **Kotlin**: 2.2.10
+- **Gradle wrapper**: 8.9
+- **Compose BOM**: 2024.12.01 (strong-skipping compiler default ON)
+- **KSP**: 2.2.10-2.0.2; **Hilt**: 2.55
+- **Rust NDK**: cargo-ndk 4.1.2 + NDK r26 floor / SDK r28.x current — pin exact
+  NDK via `ANDROID_NDK_HOME` at scaffold (G-AND-5); ABI set {arm64-v8a
+  (mandatory), armeabi-v7a, x86_64 (emulator)}; i686 dropped
+- **UniFFI**: 0.31.2 (generator) / uniffi_bindgen 0.31.2 — see §UniFFI Integration
 
 ## Architecture
 
@@ -21,7 +30,7 @@ DI:                Hilt (Dagger-based)
 Async:             Kotlin Coroutines + Flow
 Local DB:          Room (metadata only, payload in Rust/SQLCipher)
 Network (optional):Ktor client (for relay server when Internet available)
-Rust FFI:          UniFFI-generated IrisCore.kt + libiriscode.so
+Rust FFI:          UniFFI-generated iriscode.kt + libiriscode.so (package facade `iriscode`)
 BLE:               Android BLE APIs (BluetoothManager, BluetoothGatt)
 Wi-Fi Aware:       WifiAwareManager
 Wi-Fi Direct:      WifiP2pManager
@@ -52,6 +61,19 @@ app/
 Data flows downward (ViewModel → UseCase → Repository → DataSource → Rust/Room).
 Events flow upward via Kotlin Flow or StateFlow.
 
+**Implemented package layout (ANDROID-001, iter 116)** — `android/app/src/main/kotlin/iriscore/`:
+```
+├── di/          # Hilt modules (AdapterModule, IrisCoreModule, DispatcherModule)
+├── adapter/     # AndroidBleTransportAdapter, AndroidWifiAwareTransportAdapter,
+│                #   AndroidWifiDirectTransportAdapter + AdapterLifecycle.kt primitives
+├── data/        # MeshRepository (FfiInboxListener → StateFlow), RelayOutbox
+├── service/     # IrisBleService (FGS connectedDevice), BleScanSession, BleScanReceiver
+├── worker/      # WorkScheduler, IrisBackgroundSyncWorker (@HiltWorker), MeshSyncPolicy
+├── identity/    # KeystoreEd25519, X25519StaticAd
+├── util/        # BatteryOptimizationGuidance (OEM matrix), PeerIdCodec
+└── ui/          # MainActivity, MeshViewModel, HomeScreen, MeshUiState, IrisTheme
+```
+
 ## BLE Implementation
 
 ### Android BLE APIs
@@ -74,6 +96,10 @@ val bleAdvertiser: BluetoothLeAdvertiser = bluetoothAdapter.bluetoothLeAdvertise
 <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
+<!-- Android 13+ Wi-Fi Aware/Direct nearby-devices group (neverForLocation) -->
+<uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+    android:usesPermissionFlags="neverForLocation" />
+
 <!-- Android 10/11: location required for BLE scan -->
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
@@ -84,6 +110,10 @@ val bleAdvertiser: BluetoothLeAdvertiser = bluetoothAdapter.bluetoothLeAdvertise
 <!-- Battery optimization exclusion -->
 <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 ```
+
+**targetSdk 34 (v1):** with targetSdk ≤ 36, `INTERNET` implicitly grants the
+local-network permission (temporary bridge) — see §ACCESS_LOCAL_NETWORK SDK-37
+cliff.
 
 **Runtime permission request (Android 12+):**
 ```kotlin
@@ -122,6 +152,14 @@ val scanSettings = ScanSettings.Builder()
 
 bleScanner.startScan(listOf(scanFilter), scanSettings, scanCallback)
 ```
+
+**Implemented scan session (AC-7, iter 116):** `BleScanSession` runs a
+**`PendingIntent`-based** scan (`PendingIntent.getBroadcast` + `BleScanReceiver`
+manifest receiver, `SCAN_MODE_OPPORTUNISTIC`, `IRIS_SERVICE_UUID` filter) and
+surfaces results via a `BleScanEvents` flow. `ScanRestartPolicy` enforces a
+**5 s floor after every restart, backing off to 30 s during empty discovery
+windows** so background scans stay inside Android's 5-starts/30-s throttle
+envelope while discovery remains latency-bounded.
 
 ### BLE Advertising
 
@@ -234,13 +272,41 @@ India's primary Android market includes OEMs with aggressive battery management 
 | Vivo | i-Manager / Background Power | Guide user to enable background activity |
 | Oppo | Security Manager | Guide user to disable energy saver for IRIS |
 | Samsung | Battery > Background usage limits | Guide user to set to Unrestricted |
+| Honor | Battery > background app management | Guide user to keep IRIS unrestricted |
+| Huawei | App launch > background activity | Guide user to allow auto/manual launch |
+| Google/Pixel | Doze + App Standby buckets | `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`; FGS grant |
+
+Implemented as `BatteryOptimizationGuidance` (AC-7, iter 116): OEM matrix above
+drives install-time/run-time setup guidance and the
+`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` request (with `MeshSyncPolicy`
+deferring background sync while battery is critical).
 
 IRIS must detect these OEMs and display OEM-specific setup guidance after install. Use AutoStart library or detect OEM and show manual steps.
 
-## JNI and UniFFI Integration
+## UniFFI Integration
 
-UniFFI generates `IrisCore.kt` from `iris.udl`. The compiled Rust library is included in the APK:
+IRIS binds the Rust `iris-core` engine to Kotlin with **UniFFI 0.31.2**
+(`uniffi_bindgen 0.31.2`). Foreign-trait callback interfaces are preferred over
+the soft-deprecated UDL "callback interfaces": the three transport adapter
+traits (`BleAdapter` 10-op sync; `WifiAwareAdapter` 12-op async;
+`WifiDirectAdapter` 20-op async) are exported from `crates/iris-android` via
+`#[uniffi::export(foreign)]` + `#[async_trait]` — UniFFI translates async trait
+methods to Kotlin `suspend` functions carried back through the foreign-future /
+oneshot mechanism. Async adapter calls are driven not by
+`#[uniffi::export(async_runtime="tokio")]` (ineffective on exported-trait impls,
+UniFFI issue #2576) but by an **explicit tokio runtime handle** owned by
+`IrisEngine`, polled via `runtime.block_on` (proven by the G-AND-3 spike).
 
+**Generated Kotlin is committed** to the repo (not regenerated at build time) so
+Kotlin compiles stay independent of the Rust/NDK toolchain on CI:
+```
+kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt   # generated IrisEngine + 3 foreign-trait interfaces + IrisFfiException
+kotlin/src/main/kotlin/iriscode/api.kt                        # NEW (AC-11): package iriscode facade re-exporting uniffi.iriscode
+```
+The app `sourceSets` mount `kotlin/src/main/kotlin` as a source root; adapter and
+shell code imports the single stable namespace `import iriscode.*`.
+
+The compiled native library is included in the APK:
 ```
 android/app/src/main/jniLibs/
 ├── arm64-v8a/
@@ -251,38 +317,41 @@ android/app/src/main/jniLibs/
     └── libiriscode.so
 ```
 
-Build with `cargo-ndk`:
+Build with cargo-ndk 4.1.2 (NDK pinned via `ANDROID_NDK_HOME`, r26 floor / SDK
+r28.x current):
 ```bash
-cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o android/app/src/main/jniLibs build --release
+cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o android/app/src/main/jniLibs build --release --manifest-path crates/iris-android/Cargo.toml
 ```
-
-Generated Kotlin is committed to the repo (not regenerated at build time) to keep Kotlin compile independent of Rust toolchain on CI.
+Gradle integration: `org.mozilla.rust-android-gradle.rust-android` 0.9.6 (Gradle
+8.x / AGP 8.7.3 pinned at scaffold) or Mullvad fork `net.mullvad.rust-android`
+0.10.1 if Gradle 9+ is adopted.
+**Env-gated (recorded limitation, not blocker):** the `cargo-ndk` build (AC-1)
+and `gradlew assembleDebug` (AC-6) run on a toolchain-equipped host/CI — the
+dev host has no Android SDK/NDK/gradle/kotlinc.
 
 ## Security
 
-### Android Keystore
+### Android Keystore — Ed25519 identity (AC-8, iter 116)
 
-Key generation with hardware backing (Android 9+ StrongBox, Android 6+ TEE):
+**Supersedes the dated note below** (which claimed Ed25519 was not in Keystore
+and proposed ECDSA P-256 conversion — REJECTED per RES-0022 Q4 / IDENT-001
+RED-0005): Android Keystore natively supports **Ed25519/X25519 hardware-backed
+since Android 13** (`KeyGenParameterSpec` Curve25519 via KeyMint v2 HAL, TEE).
+StrongBox's algorithm subset **excludes Ed25519** (RSA/AES/ECDSA P-256/ECDH
+P-256/HMAC-SHA256/3DES only) and StrongBox-Ed25519 attestation has a known CTS
+failure — so the IRIS identity deliberately uses **TEE Ed25519**.
 
-```kotlin
-val keyPairGenerator = KeyPairGenerator.getInstance(
-    KeyProperties.KEY_ALGORITHM_EC,
-    "AndroidKeyStore"
-)
-keyPairGenerator.initialize(
-    KeyGenParameterSpec.Builder(
-        IRIS_KEY_ALIAS,
-        KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
-    )
-    .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-    .setDigests(KeyProperties.DIGEST_SHA256)
-    .setIsStrongBoxBacked(true)  // StrongBox if available
-    .build()
-)
-val keyPair = keyPairGenerator.generateKeyPair()
-```
-
-Note: Ed25519 is not directly supported in Android Keystore (uses ECDSA P-256 for hardware-backed signing). IRIS identity key is hardware-backed ECDSA; session keys for encryption are software Ed25519/X25519 in Rust core.
+`KeystoreEd25519` (implemented, `android/app/.../iriscore/identity/`):
+- **AutoBackend**: `AndroidKeyStore` TEE Ed25519 (`KeyProperties.KEY_ALGORITHM_ED25519`,
+  API 33 floor, `setIsStrongBoxBacked(false)`) — runtime fallback to a JCA
+  `SoftwareBackend` on older/insecure devices; API < 26 entirely software.
+- 32-byte raw public key = the 64-hex-char IRIS PeerId; identity sign/verify
+  keyed to `IDENT-001` RED-0005 and surfaceable through UniFFI.
+- `X25519StaticAd`: the static advertisement is **Ed25519-signed-X25519**
+  (RED-0005 binding: identity key signs the X25519 static key used in
+  pre-handshake advertisements) — no P-256 anywhere in the identity path.
+- Session keys stay in-engine (Rust Ed25519/X25519 in `iris-core`; CRYPTO-001);
+  only the long-lived identity/static keys are Keystore-anchored.
 
 ### Message Storage
 
@@ -295,6 +364,23 @@ Room.databaseBuilder(context, IrisDatabase::class.java, "iris.db")
 ```
 
 Passphrase derived from a key stored in Android Keystore.
+
+### ACCESS_LOCAL_NETWORK — SDK-37 cliff (RES-0022 Q5)
+
+Android 17 adds `ACCESS_LOCAL_NETWORK`, a **runtime** permission (NEARBY_DEVICES
+group, no re-prompt if a sibling is granted) mandatory for apps **targeting API
+37+**. It gates **outgoing TCP, incoming TCP, UDP unicast/multicast/broadcast —
+i.e. the entire IRIS data plane** (TCP-over-GO, NDP IPv6 sockets, NAN UDP) plus
+mDNS/DNS-SD.
+
+- **v1 stays targetSdk 34**: at targetSdk ≤ 36, `INTERNET` implicitly grants
+  local-network access (temporary bridge) → **no LNP needed for v1**.
+- **Before any bump to 37+**: declare + runtime-request `ACCESS_LOCAL_NETWORK`;
+  `android.net.nsd` system-mediated `DiscoveryRequest` picker + `NsdManager` IPs
+  are exempt from the permission; raw in-process sockets are NOT.
+- **Android 17 BLE carry-forward**: `BluetoothSocket.read()` (RFCOMM) returns
+  **-1 on close/drop** for targetSdk 37 — Kotlin read loops must check -1
+  explicitly.
 
 ## Testing
 

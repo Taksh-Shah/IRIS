@@ -1,13 +1,13 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-16T09:00:00Z
+**Last updated**: 2026-08-18T19:10:00Z
 
 ## Next Available IDs
 
 | Type | Prefix | Next ID | Last Allocated |
 |------|--------|---------|---------------|
 | Decision | DEC- | DEC-0011 | DEC-0010 |
-| Research | RES- | RES-0022 | RES-0021 |
+| Research | RES- | RES-0025 | RES-0024 |
 | Redteam | RED- | RED-0003 | RED-0002 |
 | Experiment | EXP- | EXP-0001 | — |
 | Failure | FAIL- | FAIL-0006 | FAIL-0005 |
@@ -45,6 +45,34 @@
 
 - RES-0020: WIFIAWARE-001 Android Wi-Fi Aware (NAN) transport 2024-2026 SOTA — 8 websearch evidence passes, primary sources, no AI citations; verdict PROCEED. R1 ADOPT: v1 = publish/subscribe discovery + NDP IPv6 socket data path; NAN added API 26, alive (not deprecated) through API 36/Android 16 + forward to Android 17 (new architecture doc); runtime FEATURE_WIFI_AWARE + isAvailable() + ACTION_WIFI_AWARE_STATE_CHANGED (OEM firmware-gated). R2 ADOPT constraint: app-layer envelope = trust anchor; NDP open at L2 (SecurityConfig/PSK/Aware Pairing API 34+ = optional hardening, never identity boundary) — NCS cipher suites SK/PK/PASN API 30/33/34, WFA spec 4.0. R3 ADOPT: 6 GHz/Wi-Fi 6E hardware+region-gated (Gap G-WA-3), design on 2.4/5 GHz floor, runtime cap check (parallel 6E ~1.8 Gbps close-range evidence). R4 ADOPT: reuse INTERNET-001 1 MiB TCP framing on the NDP network interface (kernel MTU, Gap G-WA-1); retain matrix 20-100 Mbps practical / ~300 Mbps peak. R5 ADOPT: production discovery requires active process via FGS (connectedDevice API 34+) — "survives without FGS" (old doc) is dated under Android 12+/15/16 background limits; Suspend/Resume API 34+ (HAL-gated) as power lever. R6 ADOPT: ranging WifiRttManager.startRanging + addWifiAwarePeer(PeerHandle|Mac) + geofenced discovery (API 31+ setMin/setMaxDistanceMm + setRangingEnabled) = optional discovery metadata; 802.11mc FTM / 802.11az NTB (API 35+); NEARBY_WIFI_DEVICES neverForLocation OR ACCESS_FINE_LOCATION. R7 ADOPT: coexistence (single-radio) = runtime-availability constraint (Aware may be unavailable w/ Wi-Fi Direct/SoftAP/tethering; NAN channel selection firmware-driven; coex channel-avoidance Android 12+) → degrade to BLE/Wi-Fi Direct (BLE-001 pattern). R8 ADOPT: NAN MAC layer privacy-hardened (NMI/NDP randomized, ~30 min interval, factory MAC never; IdentityChangedListener) — no NAN app-layer CVE wave (Gap G-WA-2; kernel iwlwifi CVE-2024-49857 secured-NDP-ranging cipher = OS-patch-gated); envelope boundary + no unauth triggers (SEC-001/IDENT-001). R9 ADOPT (CONFLICT-1): Apple now ships WiFiAware framework (iOS 26+, iPhone 12+) — correct WIFI_AWARE.md + TRANSPORT_ABSTRACTION "iOS NO" at DESIGN; BLE-002 stays v1 iOS path; Android↔Apple NDP interop immature (L5). Gaps G-WA-1/2/3 recorded.
 - RES-0021: WIFIDIRECT-001 Android Wi-Fi Direct (P2P) transport 2024-2026 SOTA — 8 websearch evidence passes, primary sources (developer.android.com/source.android.com/Wi-Fi Alliance/w1.fi/AOSP wpa_supplicant/osv.dev/NVD), no AI citations; verdict PROCEED. Q1 ADOPT: classic WifiP2pManager (discoverPeers/discoverServices/createGroup/connect/removeGroup) fully supported + actively extended through API 36/Android 16 (USD-based discovery, R2, DIR API 36; CONNECTION_REQUEST_DEFER API 37) — no deprecation; DPP = infra-only NOT P2P; coex channel-avoidance (COEX_RESTRICTION_WIFI_DIRECT, WifiAvailableChannel API 34). Q2 ADOPT w/ condition: group default WPA2-Personal (PSK/AES-CCMP); WPA3-SAE now spec-supported on R2-capable devices (WifiP2pGroup SECURITY_TYPE_WPA3_SAE/COMPATIBILITY API 36, PCC modes; WPA3 v3.5 PMF-required-in-Only-mode) → floor WPA2, SAE capability-gated later phase; OWE infra-only. Q3 ADOPT w/ caveat: WFA mandates 1:1, one-to-many optional — "1 GO + 8 clients" = vendor/HAL ceiling NOT spec guarantee (G-WD-1); STA+P2P concurrency optional/HAL-dependent → N-client admission + GO-side connection table. Q4 ADOPT: DNS-SD (Bonjour) discovery preferred; framework P2P find window = 120 s (DISCOVER_TIMEOUT_S) — doc "30-s" = app re-arm cadence (G-WD-7); discovery best-effort on OEM builds → BLE control plane durable trigger. Q5 ADOPT: createGroup() autonomous GO persists until removeGroup; persistent groups reinvokable (p2p_invite); setGroupOperatingBand = API 29 (correct doc "API 30+"), AUTO/2/5/6 GHz, band-constrained GO creation fails; client IP IPv4 DHCP or new IPv6-link-local; MAC randomization tied to persistent-group presence; GO default intent 6. Q6 DEFER: WPS deprecated client-mode API 28 + WPS-PIN attack target (CVE-2021-0326); NFC OOB in spec §3.1.2.7 not in Android API; modern path = R2 pairing bootstrapping API 36 (WifiP2pPairingBootstrappingConfig incl. OUT_OF_BAND over BLE) → IRIS skip WPS, push passphrase over authenticated BLE control plane, PBC legacy fallback only. Q7 ADOPT: wpa_supplicant full P2P surface (p2p_group_add [persistent] [freq], p2p_connect, p2p_service_add bonjour, p2p_invite, p2p_get_passphrase, group iface p2p-wlan0-N); IP/DHCP NOT automatic parity — IRIS Linux nodes own GO static + dnsmasq/udhcpd glue; Android GO IP 192.168.49.1 practice-stable but verify AOSP (G-WD-2). Q8 ADOPT w/ GATE (OS patch floor): no new unauthenticated P2P RCE 2024-2026 but class real — w1.fi 2026-1 (mgmt frames mem corruption pre-v2.12), 2026-3 (SAE NULL-deref), kernel Wi-Fi driver stream (CVE-2024-26895/27053/47712/47724/56539/46755, 2025-40321, 2026-31780/46069), CVE-2021-0326 RCE fixed SPL 2021-02 → AC: Android SPL ≥ 2021-02, wpa_supplicant ≥ 2.12, kernel w/ 2024-26 fixes; WPS-PIN prohibited. Gaps G-WD-1..8. DESIGN decisions D-1..D-7 (band policy / group security+passphrase origin / discovery re-arm / Linux IP glue / client capacity / patch floor / concurrency posture).
+
+- RES-0022: ANDROID-001 Android Platform Integration SOTA — 8 websearch evidence passes (2026 bias, L1-L5, no AI citations); verdict PROCEED. Q1 ADOPT: UniFFI foreign traits (#[uniffi::export(foreign)] proc-macro; callback interfaces soft-deprecated) + async trait methods over FFI = Kotlin-adapter injection bridge (BleAdapter sync 10-op / WifiAwareAdapter 12-op + WifiDirectAdapter 20-op async → Kotlin suspend); trap issue #2576 async_runtime attr ineffective on exported-trait impls → explicit tokio Handle; constraints return-Result + by-value (#2263). Q2 ADOPT: UniFFI 0.31.x + cargo-ndk 4.1.2 (MSRV 1.86, NDK r26 floor pinned, ABI {arm64-v8a, armeabi-v7a, x86_64}) + rust-android-gradle 0.9.6 (Gradle 8.x) | Mullvad 0.10.1 (Gradle 9+); generated Kotlin committed. Q3 ADOPT: Kotlin 2.2.x + Compose + Hilt; FGS connectedDevice (API 34+) + PendingIntent BLE scanning + WorkManager + OEM battery-kill matrix; floors targetSdk 34/minSdk 26. Q4 ADOPT: Android 13+ Keystore Ed25519/X25519 hardware-backed (KeyMint v2 TEE); StrongBox excludes Ed25519 (CTS 399856239) → identity TEE Ed25519 (RED-0005), session keys in-engine. Q5 ADOPT + carry-forward: BLE/Wi-Fi Aware (API 37)/Wi-Fi Direct (API 36/37) all supported; CRITICAL Android 17 ACCESS_LOCAL_NETWORK (targetSdk 37+) gates the ENTIRE IRIS data plane → v1 stays 34, SDK-37 cliff documented; BluetoothSocket.read() -1. Gaps G-AND-1..6. Verdict PROCEED → DESIGN (AC-1..n).
+
+- RES-0023: TEST-001 Test Infrastructure SOTA — allocated iter 123 (DISCOVER
+  COMPLETE); research 2026 best-in-class Rust/Android test infra over Gaps
+  G-1..G-8 (nextest parallel runner, cargo-audit/dery supply-chain gates,
+  kani/loom formal+concurrency, cargo-mutants mutation, PROTOCOL_CONFORMANCE
+  interop fixtures, CI workflow, golden-vector corpus, bench harness) → verdict
+  → DESIGN AC-1..n (iter ~125).
+
+- RES-0024: BLE-002 iOS CoreBluetooth SOTA — allocated iter 133 (RESEARCH
+  COMPLETE); 14 websearch + 4 primary-source fetches (Apple docs/security/
+  forums incl. Apple engineers, Nordic Academy, NVD, Stack Overflow, Punch
+  Through 2026); verdict **CONDITIONAL — PROCEED**. RQ-1 CoreBluetooth bg
+  scan/advertise: no relaxation through iOS 26 (iOS 18.0 ad regression fixed
+  18.1; iOS 26 HID/LE-Custom-Device UIBackgroundModes = AccessorySetupKit
+  accessory-only, Live Activity = screen-on scan stops at screen sleep);
+  RQ-2 no PendingIntent analog, overflow-area iOS-iOS-only, user force-quit
+  kills relaunch; RQ-3 ~8-connection practical, maximumWriteValueLength =
+  negotiated payload (cap 512, no request API), iOS 16.x 20-B MTU regression
+  guard; RQ-4 verified CVEs CVE-2023-42941/2024-23241/2024-44124/2024-44191
+  = OS-patchable only; prompt CVEs CVE-2023-28412 (Snap One), CVE-2024-44270
+  (macOS), CVE-2021-31714 (unverifiable) = misattributed, excluded;
+  RQ-5 codified ad asymmetry → connect-to-identify + stable IRIS service UUID,
+  `supports_background_ios=false` held (ble.rs:287/test :1075); 7 DESIGN
+  inputs (stable UUID, 28-B budget, foreground-always + Live Activity framing,
+  512-B segmenter + 23-B fallback, state-restoration hardening, CVE posture,
+  iOS patch floor). DESIGN iter ~134.
 
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)

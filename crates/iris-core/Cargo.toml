@@ -35,3 +35,38 @@ proptest = { version = "1", optional = true }
 [dev-dependencies]
 hex-literal.workspace = true
 tempfile.workspace = true
+criterion.workspace = true
+loom.workspace = true
+tokio-test.workspace = true
+
+# AC-4 loom leaf models: an empty crate unless built with --cfg loom.
+# Invocation (verify-loom.sh): cargo rustc -p iris-core --test loom_models -- --cfg loom
+# then run the built binary. NOTE: do NOT use global RUSTFLAGS="--cfg loom" —
+# tokio's `net` module is #![cfg(not(loom))] and a global cfg breaks the lib.
+[[test]]
+name = "loom_models"
+path = "loom/loom_models.rs"
+
+# AC-10 criterion benches (DEC-TEST-0011): harness = false, CPU-path only.
+[[bench]]
+name = "codec"
+harness = false
+
+[[bench]]
+name = "envelope"
+harness = false
+
+[[bench]]
+name = "crypto"
+harness = false
+
+[[bench]]
+name = "routing"
+harness = false
+
+[[bench]]
+name = "fragment"
+harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(loom)'] }

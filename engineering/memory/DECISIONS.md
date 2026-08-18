@@ -1,11 +1,119 @@
 # DECISIONS.md — Active Decision Log
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-16T14:25:00Z
+**Last updated**: 2026-08-18T06:10:00Z
 
 ---
 
 ## Active Decisions
+
+### DEC-TEST-0001: cargo-nextest primary runner (doctests stay on cargo test --doc)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: cargo-nextest = primary workspace runner (`.config/nextest.toml`: ci profile, JUnit XML, retries, leaky-test detection 100 ms / LEAK-FAIL). **Doctests are NOT run by nextest** (stable-Rust limitation issue #16) → separate `cargo test --doc` step (tokio CI precedent). No MSRV constraint on the tested project.
+**Context**: RES-0023 G-1 (nexte.st L1, tokio CI L4).
+**Alternatives**: remain on libtest (rejected — no parallel sharding, JUnit, retries, leaky detection).
+**Consequence**: AC-1, AC-9.
+**Evidence**: https://nexte.st/ (L1), tokio ci.yml (L4), accessed 2026-08-18
+
+### DEC-TEST-0002: cargo-deny + cargo-audit as recurring supply-chain gates
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: cargo-deny 0.20.x = PR policy gate (`deny.toml`: advisories deny + unmaintained=workspace, bans multiple-versions=deny + wildcards=deny, licenses allowlist MIT/Apache-2.0/ISC/Zlib, sources unknown-registry/unknown-git deny) + cargo-audit = fast live-DB scan on PR/schedule (`--deny warnings`, committed `.cargo/audit.toml` suppressions with mandatory expires+reason, SARIF upload). Complementary cadences (BLK-0003).
+**Context**: RES-0023 G-2 (cargo-deny book L1, RustSec L1, crates.io L1).
+**Alternatives**: one-off `cargo audit` (EMERG-001 precedent) — rejected as non-recurring.
+**Consequence**: AC-2, AC-9.
+**Evidence**: embarkstudios.github.io/cargo-deny (L1), rustsec.org (L1), accessed 2026-08-18
+
+### DEC-TEST-0003: Kani proofs scoped to pure functions (Linux CI only)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: Kani (bit-precise model checker) proves memory-safety/panic/overflow/assert properties for pure functions — codec decode bounds, fragment assembly arithmetic, quota/rate-limiter arithmetic, PRoPHET score, envelope size invariants. Kani **does NOT model concurrency** (official limitation) and installs Linux/Mac only → Linux CI job, no concurrency claims.
+**Context**: RES-0023 G-3 (kani book L1, ASE 2026 L2).
+**Alternatives**: full-model formal verification (rejected — Kani concurrency ceiling).
+**Consequence**: AC-3, AC-9, gate matrix.
+**Evidence**: model-checking.github.io/kani (L1), arXiv 2607.01504 (L2), accessed 2026-08-18
+
+### DEC-TEST-0004: loom leaf structures + tokio-test async behavior
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: loom (`#[cfg(loom)]` replacement types) = leaf concurrent structures only (dedup cache, replay high-water marks, quota counters), soundness limits documented (SeqCst-as-AcqRel, no load-buffering); tokio-test = async behavior suites (message_engine queue/ack/lifecycle, transport::manager registration/start-stop under paused time). **No tool models full transport::manager** → correctness rests on tokio/property/adversarial/fuzz layers.
+**Context**: RES-0023 G-3 (loom docs L1, tokio-test L1).
+**Alternatives**: transport::manager-wide loom modeling (rejected — intrusive, unsound for SeqCst/load-buffering).
+**Consequence**: AC-4.
+**Evidence**: docs.rs/loom (L1), docs.rs/tokio-test (L1), accessed 2026-08-18
+
+### DEC-TEST-0005: tarpaulin workspace coverage gate (≥ 80%, security ≥ 95%)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: tarpaulin `--out lcov --fail-under 80` as PR/merge gate on **ubuntu x86_64 only** (ptrace engine); security path stays ≥ 95% (SEC-001 AC-14 baseline). JVM path in separate job.
+**Context**: RES-0023 G-4 (tarpaulin README L4).
+**Alternatives**: coverage gate on all OSes (rejected — ptrace Linux x86_64 only; llvm engine elsewhere is post-1.0 caveat).
+**Consequence**: AC-5, AC-9, gate matrix.
+**Evidence**: github.com/xd009642/tarpaulin (L4), accessed 2026-08-18
+
+### DEC-TEST-0006: cargo-mutants nightly trend, NOT hard PR gate v1
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: Mutation sweep = nightly/sharded **trend signal** (survival-rate metric frozen: `killed / (total − unviable − timeout)`, exemptions scoped with rationale); **not** a hard PR gate (hour-scale cost, flakiness sensitivity — G-TI-2). PR-time = changed-file incremental. Requires deterministic suite → nextest retries off in the mutants profile.
+**Context**: RES-0023 G-4 (mutants.rs L1/L4, tensogram L4, ThoughtWorks L4/L5).
+**Alternatives**: hard mutation-score gate (rejected — economically destructive on 50k-LOC core).
+**Consequence**: AC-6, AC-9.
+**Evidence**: mutants.rs (L1/L4), tensogram docs (L4), accessed 2026-08-18
+
+### DEC-TEST-0007: PROTOCOL_CONFORMANCE interop fixtures (BLK-0004)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: `tests/protocol_conformance.rs` + `tests/fixtures/`: RFC 9171/RFC 8949-derived CBOR vectors (shared primitive encodings), Meshtastic-style bounded-recovery resync adversarial fixtures (corrupt length byte swallows ≤ 512 B until resync), capture-style PDU fixtures (Wireshark BP pattern); property-based sim harness over existing Sim* coordinators (ns-3 BPv7 pattern).
+**Context**: RES-0023 G-5 (RFC 9171 L1, Meshtastic L4, Wireshark L4, Unibo-BP L2, ns-3 L4).
+**Alternatives**: no interop fixtures (rejected — BLK-0004 open).
+**Consequence**: AC-7.
+**Evidence**: rfc-editor.org/rfc/rfc9171 (L1), wiki.wireshark.org/BP (L4), accessed 2026-08-18
+
+### DEC-TEST-0008: Golden-vector corpus (byte-exact both-way)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: `tests/golden_vectors/` committed + byte-exact both-way encode/decode harness; IRIS envelope + framing + CBOR/UUIDv7/timestamp vectors. Catches **DISC-0009-class** errors (PROTOCOL_TEST_VECTORS.md timestamp hex arithmetic) permanently. Corpus provenance: IRIS envelope is flat non-RFC-9171 → vectors generated in-repo from DESIGN spec + round-trip/fuzz cross-check (G-TI-4); maturity DESIGNED→UNIT_VALIDATED.
+**Context**: RES-0023 G-7 (RFC 9171 L1, Wireshark L4, in-repo DISC-0009 L4).
+**Alternatives**: hand-entered vectors only (rejected — provenance gap; DISC-0009 recurrence).
+**Consequence**: AC-8.
+**Evidence**: rfc9171 (L1), wiki.wireshark.org/BP (L4), accessed 2026-08-18
+
+### DEC-TEST-0009: GitHub Actions CI workflow (official + tokio reference)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: `.github/workflows/ci.yml`: checkout@v4 → dtolnay/rust-toolchain@stable (+ MSRV cell via matrix `include:`) → Swatinem/rust-cache@v2 per-cell `key:` → taiki-e/install-action@v2 `tool: cargo-nextest` → `cargo nextest run --profile ci` + separate `cargo test --doc`; matrix {ubuntu, macos, windows}-latest × {stable, MSRV}, `fail-fast: false`; lint (fmt+clippy) once on ubuntu; deny/audit jobs; tarpaulin job (ubuntu); mutants nightly job; Windows/macOS = behavioral only (G-TI-1).
+**Context**: RES-0023 G-6 (GitHub docs L1, action repos L4, tokio CI L4).
+**Alternatives**: single-OS CI (rejected — matrix proves cross-platform as ANDROID-001 legs demand).
+**Consequence**: AC-9.
+**Evidence**: docs.github.com rust CI (L1), tokio ci.yml (L4), accessed 2026-08-18
+
+### DEC-TEST-0010: JVM job on JDK ≤ 21 (Temurin), ubuntu runner
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: `actions/setup-java` Temurin ≤ 21 (Gradle 8.9 compatibility constraint, G-TI-5) runs `android/app` JUnit5 suites on ubuntu; cargo-ndk/uniffi-bindgen legs stay env-gated (BLK-0005/ANDROID-001 notes).
+**Context**: RES-0023 G-6/G-TI-5; TEST-001_DISCOVER §2 (env-gated JVM).
+**Alternatives**: JVM on dev host (rejected — no gradle/kotlinc, JDK 25 vs Gradle 8.9 ≤21).
+**Consequence**: AC-9, AC-10 (non-blocking).
+**Evidence**: Gradle 8.9 compatibility matrix (verify at IMPLEMENT), DISCOVER §2 (L4)
+
+### DEC-TEST-0011: criterion 0.8.x bench harness now, regression/battery gate deferred
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: `benches/` criterion 0.8.x harness NOW (harness=false, criterion_group!/criterion_main!, `std::hint::black_box`) for CPU paths (codec, envelope, crypto, routing score, fragment, store); runs on CI without regression gate; **battery/physical-transport perf DEFERRED to BLK-0005** hardware. `#[bench]` is nightly-only hard error ≥ 1.88 → criterion only stable option. cargo-criterion still experimental → plain `cargo bench`.
+**Context**: RES-0023 G-8 (cargo bench L1, criterion docs L1).
+**Alternatives**: `#[bench]` nightly (rejected — stable 1.97 toolchain), divan (criterion chosen — ecosystem standard).
+**Consequence**: AC-10.
+**Evidence**: doc.rust-lang.org/cargo/commands/cargo-bench.html (L1), docs.rs/criterion (L1), accessed 2026-08-18
+
+### DEC-TEST-0012: Baseline preservation (613/0/1, clippy 0, rustfmt clean)
+**Status**: APPROVED 2026-08-18 (TEST-001 DESIGN)
+**Node**: TEST-001
+**Summary**: All infra additions (config/fixtures/harness/workflows) must preserve the existing workspace quality bar: **613/0/1**, clippy `--workspace --all-features --tests` 0, rustfmt clean, proptest feature suites, fuzz 44M+ clean. Mutants requires deterministic (non-flaky) suite (nextest retries off in mutants profile).
+**Context**: Existing evidence iter 122-124; ACCEPTANCE_POLICY universal criteria.
+**Alternatives**: lower the bar (rejected).
+**Consequence**: AC-11.
+**Evidence**: TEST-001_DISCOVER.md (iter 123, L4-own)
 
 ### DEC-0001: CBOR over Protocol Buffers
 **Status**: Approved (ADR-0001)
@@ -496,3 +604,164 @@ Evidence: [Link to research/record]
 **Alternatives**: rely on WPA2 alone — rejected (L2 is not the trust anchor); assume STA+P2P concurrency — rejected (HAL-dependent).
 **Consequence**: AC-3 coexistence gate + AC-14 recorded patch floor; WIFI_DIRECT.md known-issue notes carried.
 **Evidence**: RES-0021 Q1/Q3/Q8; developer.android.com WifiAvailableChannel + coex restrictions (L1); osv.dev/NVD (L5)
+
+---
+
+## ANDROID-001 DECISIONS (iter 112 DESIGN, RES-0022)
+
+### DEC-AND-0001: UniFFI foreign traits + async trait methods over FFI = Kotlin-adapter injection bridge
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: Kotlin-implemented platform adapters inject into Rust via UniFFI **foreign traits** — `#[uniffi::export(foreign)]` proc-macro (callback interfaces soft-deprecated, retained for UDL legacy). BleAdapter → sync foreign-trait methods returning `Result`; WifiAwareAdapter (12-op) + WifiDirectAdapter (20-op) → **async trait methods translated to foreign `suspend` fns** via UniFFI's foreign-future/oneshot callback mechanism (Rust piggybacks the Kotlin coroutine runtime). Constraint: methods must return `Result` with a compatible error type and pass params by value (references unsupported, issue #2263) — existing adapter traits already comply.
+**Context**: RES-0022 Q1, G-AND-3.
+**Alternatives**: hand-written JNI (rejected — no bindings for the 3 async traits, high risk); callback interfaces (soft-deprecated); UniFFI 0.32 (docs.rs, unverified — G-AND-1 pin 0.31.x).
+**Consequence**: AC-2/AC-3 (G-AND-3 spike at IMPLEMENT); single FFI error enum; generated Kotlin committed.
+**Evidence**: mozilla.github.io/uniffi foreign_traits + async-overview (L1); issue #2263 (L3)
+
+### DEC-AND-0002: Explicit tokio runtime handle injection (issue #2576 workaround)
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: `#[uniffi::export(async_runtime="tokio")]` is **ineffective** on structs implementing exported traits' async methods (trait-method bridging does not route through async-compat). Every async poller thread receives an explicit `tokio::runtime::Handle` at construction; adapter polling awaits run through it. The G-AND-3 spike proves this path against the existing `#[async_trait]` adapter definitions before IMPLEMENT proceeds.
+**Context**: RES-0022 Q1 (issue #2576).
+**Alternatives**: rely on the attribute (broken); spawn per-call runtimes (rejected — overhead + panics).
+**Consequence**: D-2 in ANDROID_DESIGN.md; constructor signature carries the Handle.
+**Evidence**: github.com/mozilla/uniffi-rs/issues/2576 (L3/L5)
+
+### DEC-AND-0003: Toolchain pinned — UniFFI 0.31.x + cargo-ndk 4.1.2 + rust-android-gradle (0.9.6 | Mullvad 0.10.1)
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: UniFFI **0.31.x** (bindgen + proc-macro; 0.32 on docs.rs — re-check at upgrade, G-AND-1). cargo-ndk **4.1.2** (MSRV Rust 1.86) producing `libiriscode.so` for **{arm64-v8a (Play 64-bit mandatory), armeabi-v7a, x86_64 (emulator)}** (i686 dropped — G-AND-6). rust-android-gradle **0.9.6** for Gradle 8.x **or Mullvad fork 0.10.1** for Gradle 9+ — the exact Gradle↔plugin pair is pinned at scaffold (G-AND-4). NDK pinned via `ANDROID_NDK_HOME` (r26 floor; SDK r28.2 current — G-AND-5). Generated Kotlin **committed** (uniffi-starter convention).
+**Context**: RES-0022 Q2.
+**Alternatives**: manual JNI (rejected); rustjni / MatrixDev plugins (younger, not preferred).
+**Consequence**: AC-1/AC-2; CI Gradle build evidence.
+**Evidence**: crates.io cargo-ndk 4.1.2 (L3); plugins.gradle.org 0.9.6/0.10.1 (L1); uniffi-starter (L4)
+
+### DEC-AND-0004: Kotlin 2.2.x + Compose + Hilt MVVM app shell
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: Kotlin **2.2.x** (2.1+ strong-skipping compiler default) + Compose BOM **≥ 2024.01.00** (ANDROID.md floor) + **Hilt** (official compile-time DI; Koin = KMP alternative) + MVVM/Clean Architecture per KOTLIN_LAYER.md + `collectAsStateWithLifecycle()`. Floors: targetSdk **34** / minSdk **26** (API 26 ≈ 95%+ device coverage). FGS **connectedDevice** (API 34+) + PendingIntent BLE scanning + WorkManager 15-min cadence + OEM battery-kill UX matrix.
+**Context**: RES-0022 Q3; ANDROID.md; KOTLIN_LAYER.md.
+**Alternatives**: Koin (KMP route, not needed v1); raw FGS types (wrong category).
+**Consequence**: AC-6/AC-7.
+**Evidence**: kotlinlang.org whatsnew22 (L1); developer.android.com Compose stability (L1)
+
+### DEC-AND-0005: Identity = Keystore TEE Ed25519 (no ECDSA P-256 conversion)
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: ED25519 hardware-backed in Android Keystore **since Android 13** (KeyMint v2 HAL adds Curve25519 signing+agreement; keystore2 in Rust). Identity = **Keystore TEE Ed25519** (API 33 floor for hardware-backed; runtime software-key fallback on older/no-TEE devices per G-AND-2) + X25519 static advertisement — aligned IDENT-001 RED-0005 (Ed25519 signs X25519). Session/onion keys stay in Rust engine (ephemeral, no HW anchor). StrongBox subset **excludes Ed25519** (RSA/AES/P-256/HMAC-SHA256/3DES) → StrongBox reserved only for optional AES DEK / P-256 rescue path (not v1). ECDSA P-256 conversion **rejected** (hw-sign precedent orders ED25519 first).
+**Context**: RES-0022 Q4; IDENT-001 RES-0016-D2/RED-0005; ANDROID.md §Security (dated claim corrected).
+**Alternatives**: ECDSA P-256 conversion (rejected); StrongBox Ed25519 (rejected — CTS 399856239).
+**Consequence**: AC-8; ANDROID.md §Security amendment at DOCUMENT.
+**Evidence**: source.android.com keystore + issuetracker 356158095 (L1); issuetracker 399856239 (L1/L5); github.com/reitowo/hw-sign (L4)
+
+### DEC-AND-0006: Android 17 ACCESS_LOCAL_NETWORK (LNP) cliff — v1 stays targetSdk 34
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: Android 17 introduces **`ACCESS_LOCAL_NETWORK`** (runtime, NEARBY_DEVICES group, no re-prompt if sibling granted) mandatory for targetSdk 37+; gates **outgoing/incoming TCP, UDP unicast/multicast/broadcast → the entire IRIS data plane** (TCP-over-GO, NDP IPv6 sockets, NAN UDP) + mDNS/DNS-SD. v1 **targetSdk 34** (implicit INTERNET grant, temporary bridge). SDK-37 cliff documented; any bump must declare + runtime-request LNP; `NsdManager`-mediated IPs exempt. Android 17 `BluetoothSocket.read()` **-1** on close (targetSdk 37) — Kotlin read loops check -1.
+**Context**: RES-0022 Q5.
+**Alternatives**: bump to 37 now (rejected — LNP plumbing + no transport benefit for v1).
+**Consequence**: AC-9; ANDROID.md §permissions amendment.
+**Evidence**: developer.android.com behavior-changes-17 + local-network-permission (L1); flutter/flutter#184859 (L4)
+
+### DEC-AND-0007: Adapter lifecycle absorbs NEW-WA-RT-108..112 + WIFIDIRECT RT-010 in AdapterLifecycle.kt
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: Per-call FFI timeouts (RT-110, seconds-scale worst case), idempotent start/subscribe (RT-111 + RT-010 — no new DiscoverySession per subscribe, ensure_started not latched), ring-buffer outbox (RT-112 — bounded, per-destination eviction per wifi_direct pattern), verified-peer reuse key (RT-108 — candidate→VERIFIED at envelope resolution), closed-NDP prune + **multi-subscriber availability stream** (RT-109 — SharedFlow).
+**Context**: WIFIAWARE-001/WIFIDIRECT-001 SECURITY_REVIEW carry-forwards.
+**Alternatives**: adapter calls without timeouts (rejected — RT-110); one-shot availability (rejected — RT-109).
+**Consequence**: AC-5; lifecycle unit tests.
+**Evidence**: WIFIAWARE-001_VERIFICATION.md known_limitations (L4)
+
+### DEC-AND-0008: crates/iris-android mirrors DesktopEngine (IrisEngine) with committed generated Kotlin
+**Status**: APPROVED 2026-08-17 (ANDROID-001 DESIGN)
+**Node**: ANDROID-001
+**Summary**: `crates/iris-android` = UniFFI binding crate; `IrisEngine` mirrors `DesktopEngine` (engine_handle.rs): TransportManager + registers BLE/Wi-Fi Aware/Wi-Fi Direct transports (injected adapters) + MessageEngine over MemoryStorage (Android metadata-only Room per KOTLIN_LAYER.md; Postgres stays desktop/server) + auto inbox forwarder → process_incoming + `subscribe_inbox` broadcast Channel exposed to Kotlin. Protocol/routing/telemetry/storage all in iris-core; Kotlin is a thin adapter. ADR-0003 crates/iris-android plan honored (JNI label updated to UniFFI).
+**Context**: DESKTOP-001 reference pattern; iter-110 evidence.
+**Alternatives**: hand JNI wrapper around engine (rejected — DesktopEngine pattern proven).
+**Consequence**: AC-4; Kotlin unit round-trip test.
+**Evidence**: crates/iris-desktop/engine_handle.rs (L4)
+
+---
+
+## BLE-002 DECISIONS (iter 134 DESIGN, RES-0024)
+
+### DEC-BLE-002-0001: Stable IRIS service UUID for iOS advertising — never per-session
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: iOS advertises ONE stable IRIS service UUID (never per-session): a background/foreground scanner needs the UUID in its `scanForPeripherals(withServices:)` filter (background requires a service-UUID filter); overflow-area hash matching requires a stable scanned-for UUID. The GATT service UUID is the iOS discovery anchor; the Android discovery beacon payload (service data) stays Android-only.
+**Context**: RES-0024 RQ-5/DI-1 — iOS `startAdvertising(_:)` supports only local name + service UUIDs; no service data ever.
+**Alternatives**: per-session/dynamic UUIDs — rejected (scanner filter cannot follow; overflow-area hash matching impossible); advertise service data — impossible on iOS (API-level).
+**Consequence**: AC-3 connect-to-identify flow; `AdvertisementData.service_uuid` always `Some(IRIS_SERVICE_UUID)` on iOS adapter; AC-10 doc contract.
+**Evidence**: RES-0024 RQ-5/DI-1; Apple CoreBluetooth `startAdvertising` docs (L1)
+
+### DEC-BLE-002-0002: iOS discovery = connect-to-identify (GATT identification characteristic)
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: iOS discovery flow: foreground scan (IRIS service-UUID filter) → `connect_gatt` → read the identification characteristic → parse `DiscoveryBeacon`/capabilities → candidate peers (then normal envelope security). Shared `DiscoveryBeacon` build/parse core (`ble_advert.rs`) serves BOTH carriers: Android reads ad-carried service data; iOS reads the same bytes from the identification characteristic after connect. One parser, two carriers.
+**Context**: RES-0024 RQ-5/DI-1 — codified ad asymmetry: no service data on iOS; Android can skip connect via ad data, iOS cannot.
+**Alternatives**: try to pack beacon into iOS ads — impossible (API); scanner-side heuristics (name/RSSI) — rejected (unauthenticated, unreliable).
+**Consequence**: AC-3; SimulatedBleAdapter gains `inject_identify_read`; AC-6 adversarial parse covers both carriers.
+**Evidence**: RES-0024 RQ-5/DI-1; Apple `CBAdvertisementData` docs (L1)
+
+### DEC-BLE-002-0003: `supports_background_ios` stays false; foreground-always + iOS 26 Live Activity screen-on framing
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: No Android-`PendingIntent` analog exists on iOS — no background-scan API, system relaunches for connection events only, user force-quit disables relaunch. `supports_background_ios: false` stays pinned (ble.rs:287/test :1075). iOS 26 Live Activity can keep a scan alive while the screen is on / Lock Screen visible (stops at screen sleep) — adopted as foreground-adjacent UX framing, NOT an OS background relaxation. Symmetric discovery requires foreground (or screen-on iOS).
+**Context**: RES-0024 RQ-1/RQ-2/DI-3 — no relaxation through iOS 26; iOS 26 accessory background modes not applicable (DEC-BLE-002-0007).
+**Alternatives**: claim background support — rejected (no API, would be fake); rely on iOS 26 accessory modes — rejected (AccessorySetupKit accessory-only).
+**Consequence**: AC-10 background-contract documentation; iOS = limited relay node when backgrounded (RES-0019 R7).
+**Evidence**: RES-0024 RQ-1/RQ-2/DI-3; Apple CoreBluetooth background execution docs (L1); Apple Developer Forums Live Activity reports (L5)
+
+### DEC-BLE-002-0004: MTU = `maximumWriteValueLength` — negotiate-late 23→≤512 with 20-B degraded guard
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: iOS has NO MTU-request API — ATT MTU exchanges negotiated by the stack (up to 517); the app queries negotiated payload via `peripheral.maximumWriteValueLength(for:)` which is ATT payload (MTU−3) capped at 512. `BleAdapter::set_mtu` on iOS = no-op request returning the negotiated value. Segmenter: start 23-B default, resize on returned value, cap min(negotiated−3, 512). iOS 16.0/16.0.1 regression (185→77→20-B, fixed 16.1) → treat 20-B payload as degraded-but-functional, never loop.
+**Context**: RES-0024 RQ-3/DI-5; RES-0007/EMERG-001 512-B ceiling; BLE-001 AC-2 negotiate-late precedent (Android `onMtuChanged`).
+**Alternatives**: requestMTU-style path — impossible on iOS (no API); hard-code 512 — rejected (23-B peers would break).
+**Consequence**: AC-2; `ble_att.rs` accepts externally-reported negotiated payload; AC-10 doc records 20-B guard.
+**Evidence**: RES-0024 RQ-3/DI-5; Apple `maximumWriteValueLength` docs (L1); Stack Overflow iOS 16 MTU regression (L5)
+
+### DEC-BLE-002-0005: State-restoration hardening — re-start in willRestoreState, system-kill vs user-force-quit, relaunch-loop debounce
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: State restoration does NOT auto-resume scanning/advertising — the app MUST re-call `startScan`/`startAdvertising` in `willRestoreState`; restoration identifiers stable across launches ("IrisCentralManager"/"IrisPeripheralManager"); both `bluetooth-central` AND `bluetooth-peripheral` UIBackgroundModes required for manager restoration. Relaunch classification: system-kill relaunch allowed; user force-quit = never relaunched. Guard relaunch-crash loops (restoration-ID mismatch / restart-while-scanning) with debounce/timeout; never initialize BLE state outside a valid launch path.
+**Context**: RES-0024 RQ-4/DI-6 — restoration works for scanned/connected peripherals or scanner with identifiers; iOS 26 accessory categories restore pairing state without app code (not IRIS).
+**Alternatives**: assume auto-resume — rejected (docs confirm re-start is app responsibility); no launch-path guard — rejected (crash loops).
+**Consequence**: AC-8 lifecycle + AC-10 doc contract; iOS adapter restoration seam under IOS-001.
+**Evidence**: RES-0024 DI-6; Apple `willRestoreState` + restoration docs (L1)
+
+### DEC-BLE-002-0006: CVE posture — verified iOS set = OS-patchable only; misattributed IDs excluded; iOS patch floor documented
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: Verified iOS Bluetooth-stack CVEs (CVE-2023-42941, CVE-2024-23241, CVE-2024-44124, CVE-2024-44191) are OS-patchable only — no in-app mitigation exists; app-layer AEAD envelope (CRYPTO-001) + verify-before-forward + no-unauthenticated-trigger = the only in-app controls (defense-in-depth). Misattributed IDs EXCLUDED from the threat model: CVE-2023-28412 (Snap One OvrC, not iOS), CVE-2024-44270 (macOS sandbox escape, not iOS Bluetooth), CVE-2021-31714 (not in NVD). Deployment doc records a minimum iOS security-patch floor.
+**Context**: RES-0024 RQ-4/DI-7 — prompt-CVE contradiction resolution; BLE-001 DEC-BLE-0006 precedent (Android app-layer = trust anchor).
+**Alternatives**: list misattributed CVEs as IRIS-addressable — rejected (false threat model); rely on BLE link-layer — rejected (DEC-BLE-0006).
+**Consequence**: AC-7 security + AC-10 patch-floor documentation; AC-15 SECURITY_REVIEW threat model uses verified set only.
+**Evidence**: RES-0024 RQ-4/DI-7; Apple security releases CVE pages (L1); NVD (L1)
+
+### DEC-BLE-002-0007: iOS 26 accessory background modes REJECTED — AccessorySetupKit accessory-only, not IRIS
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: iOS 26's new `bluetooth-peripheral` background-mode categories ("Common Bluetooth HIDs" / "Bluetooth LE Custom Devices") are tied to AccessorySetupKit accessory pairing — IRIS is a peer-to-peer mesh app, not an accessory-pairing app, and does not qualify. These are NOT a general background relaxation. Roadmap: re-evaluate only if IRIS ships a paired-accessory form factor.
+**Context**: RES-0024 RQ-1/RQ-2 — the only "new" iOS 26 BLE background surface; Live Activity = screen-on scan only (DEC-BLE-002-0003).
+**Alternatives**: claim accessory category in Info.plist — rejected (App Store review failure risk, wrong semantics).
+**Consequence**: AC-10 doc records iOS 26 accessory modes as not-for-IRIS; no code path depends on them.
+**Evidence**: RES-0024 RQ-1/RQ-2; Apple iOS 26 Info.plist key docs (L1)
+
+### DEC-BLE-002-0008: Cross-platform interop — Android ad-carried vs iOS connect-to-read share one DiscoveryBeacon parse core
+**Status**: APPROVED 2026-08-18 (BLE-002 DESIGN)
+**Node**: BLE-002
+**Summary**: Cross-platform discovery vectors: Android advertises the beacon in service data (scanner skips connect); iOS advertises UUID only and serves the same beacon bytes from the identification characteristic (scanner connects). The shared `DiscoveryBeacon` build/parse core (`ble_advert.rs`) is the single source of truth for both carriers. Overlapping reliance on the iOS overflow area is NOT designed (iOS-internal, reverse-engineered format, G4). Backgrounded-iOS-hidden-from-Android asymmetry is accepted (RES-0019 R7); foreground Android/Linux/Windows gateways carry relay-heavy work.
+**Context**: RES-0024 RQ-5/G4 — codified ad asymmetry; WIFI_AWARE-001 DEC-WA-0008 CONFLICT-1 (BLE-002 = v1 iOS path).
+**Alternatives**: duplicate parse logic per platform — rejected (drift risk); design on overflow-area interop — rejected (G4, iOS-internal).
+**Consequence**: AC-3/AC-6 both-carrier coverage; AC-12 doc reconciliation (BLE.md + TRANSPORT_ABSTRACTION).
+**Evidence**: RES-0024 RQ-5/G4; BLE-001 `ble_advert.rs` (L4); RES-0019 R7 (L1/L5)
+
+### DEC-BLE-002-0015: `BleAdapter::gatt_read` REQUIRED — connect-to-identify needs a GATT read op
+**Status**: APPROVED 2026-08-18 (BLE-002 IMPLEMENT, iter ~135)
+**Node**: BLE-002
+**Summary**: The BLE-001 `BleAdapter` trait had no read operation; the iOS connect-to-identify discovery path (DEC-BLE-002-0002) could not be expressed. RESOLVED: add `fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError>` to the trait (device-scoped read = `peripheral.readValue(for:)` on iOS; `BluetoothGatt.readCharacteristic` on Android) and wire it into the existing `discover_peers` connect-to-read branch — payload from `IRIS_IDENTIFY_CHARACTERISTIC` parse via the shared `DiscoveryBeacon` core. `SimulatedBleAdapter` SERVES the characteristic: `gatt_read` of `IRIS_IDENTIFY_CHARACTERISTIC` returns its `identify_data`, any other characteristic returns `Err(DeviceNotFound)` (no `supports_identify_read` flag — SECURITY_REVIEW iter ~137 correction). Android `BleBridge` (iris-android) returns `DeviceNotFound` until the Android FFI exposes a read op (ANDROID-001 follow-up); Android discovery skips connect via ad-carried data, so the Android↔iOS identify-read vector is a recorded known_limitation carried into IOS-001.
+**Context**: BLE-002 IMPLEMENT — AC-3 required both-carrier round-trip via `SimulatedBleAdapter`; design BLE_002_DESIGN.md §4 named `inject_identify_read`; implementation review showed serving reads on the sim is simpler (no mutable injection state, matches real GATT server semantics).
+**Alternatives**: `inject_identify_read(&self, uuid, bytes)` setter — rejected (mutable interior state for test-only injection; the sim already has a beacon; serving is the honest GATT-server shape); no-op read on `SimulatedBleAdapter` — rejected (breaks AC-3 round-trip); add read only inside the discovery branch (no trait change) — rejected (violates BleAdapter = FFI seam; the real iOS/Android adapters must implement the read at the platform tier).
+**Consequence**: BleAdapter trait grows 1 op; all 7 impls updated in-pass (SimulatedBleAdapter, RecordingBleAdapter, IosPayloadAdapter, TwoMtuAdapter, FailingWriteAdapter, FailingConnectAdapter, BleBridge); +5 iOS-leg tests (AC-1/2/3/4/6/10/12); discovery code path unchanged in shape, now calls `adapter.gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC)`.
+**Evidence**: BLE-001 `ble.rs` (L4) trait surface; DEC-BLE-002-0002/0004; BLE-002 IMPLEMENT pass (workspace green, clippy 0, fmt 0)

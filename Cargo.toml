@@ -4,7 +4,12 @@
 
 [workspace]
 resolver = "2"
-members = ["crates/iris-core", "crates/iris-storage", "crates/iris-desktop"]
+members = [
+    "crates/iris-core",
+    "crates/iris-storage",
+    "crates/iris-desktop",
+    "crates/iris-android",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -37,6 +42,9 @@ uuid = { version = "1", features = ["v7"] }
 x25519-dalek = "2.0.1"
 zeroize = "1"
 tempfile = "3"
+criterion = "0.8.2"
+loom = "0.7.2"
+tokio-test = "0.4.5"
 
 [profile.release]
 lto = true

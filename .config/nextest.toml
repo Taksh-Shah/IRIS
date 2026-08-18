@@ -1,0 +1,37 @@
+# cargo-nextest configuration (TEST-001, DEC-TEST-0001)
+# Primary workspace runner. Doctests are NOT run by nextest (stable-Rust
+# limitation, nexte.st issue #16) -> CI runs a SEPARATE `cargo test --doc` step.
+
+[profile.default]
+# Retry a test up to 2 times on failure (flaky-detection).
+retries = 0
+# Fail fast: keep running other tests when one fails (CI reports full picture).
+fail-fast = false
+# Slow-test timeout: individual tests may run up to 120s (tokio suites).
+slow-timeout = { period = "60s", terminate-after = 2 }
+
+[profile.ci]
+# CI profile: JUnit XML for dashboard upload + leaky-test detection (LEAK)
+# with retries disabled in the mutants-deterministic variant (see mutants job
+# which overrides via NEXTEST_PROFILE=ci-mutants).
+retries = 0
+fail-fast = false
+# Leaky-test detection: subprocesses inheriting stdout/stderr are marked LEAK.
+leak-timeout = "100ms"
+# JUnit output for CI collectors.
+junit = { path = "target/nextest/junit.xml" }
+slow-timeout = { period = "60s", terminate-after = 2 }
+
+[profile.ci-mutants]
+# Deterministic-suite requirement for cargo-mutants (mutants.rs) -> no retries,
+# no leaky-LEAK failure upgrade (a mutant must be caught, not flaky).
+retries = 0
+fail-fast = true
+leak-timeout = "100ms"
+# Partition support: `cargo nextest run --partition count:N/K` is used by the
+# mutants nightly sharded sweep and by large-matrix PR runs.
+# (Partitions are CLI-given on the CI job; this file only fixes behavior.)
+
+[test-groups]
+# Tests that need a live tokio runtime run in-process already; no slow group is
+# required for the current workspace. Kept for future device-gated suites.

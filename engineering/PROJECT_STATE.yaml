@@ -3,30 +3,31 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-17 (hand-reconciled: WIFIDIRECT-001 iter 109 — ACCEPTED COMPLETE, 24 COMPLETE nodes, WIFIDIRECT-001_VERIFICATION.md v1.0 AC-1..16 + verifier APPROVE/reconciled, transport::wifi_direct 23 PASS, workspace 608/0/1 clippy 0; PRIOR iter 108 VERIFY, PRIOR iter 107 SECURITY_REVIEW RT-001..013 (1 HIGH + 5 MED + 1 LOW FIXED +7 regression tests, 5 RECORDED); designing 0, implementing 0)
+# Last updated: 2026-08-18 (hand-reconciled: BLE-002 IMPLEMENT iter ~135 — gatt_read + connect-to-read wired, sim SERVES identify char, 7 impls updated, +5 iOS-leg tests, transport::ble 53/0, clippy 0, fmt clean, DEC-BLE-002-0015 ratified; status DESIGNING->IMPLEMENTING, TEST next (iter ~136, AC-1..13); 26 COMPLETE nodes; TEST-001 iter ~131 ACCEPTED COMPLETE: workspace 633/0/1 clippy 0 audit exit 0)
 
-# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-17):
+# Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
 #           MSG-001, INTERNET-001, DISCO-001, ROUTE-001, SCF-001, SIM-001,
 #           GW-001, ROUTE-002, OBS-001, DESKTOP-001, ML-001, CRYPTO-001, IDENT-001,
-#           EMERG-001, SEC-001, BLE-001, WIFIAWARE-001, WIFIDIRECT-001 (24)
+#           EMERG-001, SEC-001, BLE-001, WIFIAWARE-001, WIFIDIRECT-001, ANDROID-001,
+#           TEST-001, BLE-002 (27)
 # RESEARCH_COMPLETE: LEGAL-001 (1)
 # DESIGNING: (0)
-# IMPLEMENTING: (0)  [WIFIDIRECT-001 ACCEPTED iter 109]
+# IMPLEMENTING: (0)
 # VERIFYING: (0)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
-# DISCOVERED: BLE-002, LORA-001, SAT-001, TEST-001,
-#             ANDROID-001, IOS-001, PILOT-001 (7)  [next: ANDROID-001 — NODE_TRANSITION CORRECTED iter 109b]
+# DISCOVERED: LORA-001, SAT-001,
+#             IOS-001, PILOT-001 (4)  [next: IOS-001 DISCOVER (BLE-002 now COMPLETE)]
 
 summary:
   total_nodes: 32
-  completed: 24              # + WIFIDIRECT-001 (2026-08-17, ACCEPT iter 109, third TRANSPORT, AC-1..16 PASS (AC-14 GATED, AC-15 RESOLVED) + verifier APPROVE reconciled)
+  completed: 27              # + BLE-002 (2026-08-18, ACCEPT iter ~140, P0 TRANSPORT iOS, AC-1..16 PASS with AC-14 GATED/BLK-0005 + verifier APPROVE; deps TRANSPORT-001)
   researching: 0
-  research_complete: 1       # LEGAL-001
+  research_complete: 1       # LEGAL-001 (TEST-001 advanced to DESIGNING iter 125)
   designing: 0
-  implementing: 0              # WIFIDIRECT-001 ACCEPTED (iter 109) -> no node implementing
+  implementing: 1            # BLE-002 (P0 TRANSPORT iOS) — IMPLEMENT COMPLETE iter ~135, TEST next
   verifying: 0
-  discovered: 7              # BLE-002/LORA-001/SAT-001/TEST-001 + platforms (next: ANDROID-001 — P0-first, iter 109b corrected)
+  discovered: 4              # LORA-001/SAT-001 + IOS-001/PILOT-001 (next: IOS-001 DISCOVER after BLE-002)
   blocked: 0                 # All gates + human gates unblocked DEC-0009
   failed: 0
   deprecated: 0
@@ -34,7 +35,7 @@ summary:
 health:
   architecture_health: PROVISIONAL    # Architecture documents exist, need validation
   security_health: IMPLEMENTED       # CRYPTO-001 + IDENT-001 + EMERG-001 + SEC-001 COMPLETE (SEC-001 ACCEPTED iter 82: AC-1..16 PASS, verifier APPROVE_WITH_NOTES reconciled; 532 green, clippy 0)
-  testing_health: GOOD               # HONEST iter 109: 608 tests green / 0 failed / 1 ignored, clippy 0; WIFIDIRECT-001 ACCEPTED (iter 109, VERIFY iter 108 verifier APPROVE reconciled — AC-1..16 PASS (AC-14 GATED); WIFIDIRECT-001_SECURITY_REVIEW.md RT-001..013: 1 HIGH + 5 MED + 1 LOW FIXED +7 regressions, 5 RECORDED; transport::wifi_direct 23 PASS); WIFIAWARE-001 ACCEPTED (AC-15 SECURITY_REVIEW v2 resolved; verifier APPROVE_WITH_NOTES reconciled); SEC-001 iter 82 security 101 with proptest, tarpaulin 95.6%, 44M+ clean fuzz; TEST-001 infrastructure node still DISCOVERED
+  testing_health: GOOD               # iter ~138: 647 tests green / 0 failed / 1 ignored, clippy 0, fmt clean; transport::ble 56/0; TEST-001 ACCEPTED; audit exit 0; loom 5/5 + tokio 4/4 + protocol 10 + golden 6 host-verified; nextest/kani/tarpaulin/mutants/jvm CI-leg env-gated. NEXT: BLE-002 ACCEPT -> IOS-001 DISCOVER
   performance_health: NOT_STARTED    # No benchmarks run yet
   documentation_health: GOOD          # Documentation system created
   dependency_health: GOOD             # No circular dependencies
@@ -106,11 +107,16 @@ research_gaps:
     experiment: "EXP-002 extended"
 
 critical_path:
-  path: "VISION-001 → REQ-001 → ARCH-001 → PROTO-001 → MSG-001 → DISCO-001 → ROUTE-001 → SCF-001 → IDENT-001 → EMERG-001 → ANDROID-001 → PILOT-001"
-  description: "Longest dependency chain to first pilot deployment. IDENT-001 (64) + EMERG-001 (71) + SEC-001 (82, ACCEPTED — AC-1..16 PASS, verifier APPROVE_WITH_NOTES reconciled, 532 green/clippy 0) COMPLETE — critical-path junction passed; next platform nodes ANDROID-001/PILOT-001"
-  estimated_nodes_on_path: 12
+  path: "VISION-001 → REQ-001 → ARCH-001 → PROTO-001 → MSG-001 → DISCO-001 → ROUTE-001 → SCF-001 → IDENT-001 → EMERG-001 → ANDROID-001 → TEST-001 → PILOT-001"
+  description: "Longest dependency chain to first pilot deployment. ANDROID-001 (122, ACCEPTED — AC-1..15 PASS, verifier APPROVE_WITH_NOTES reconciled, 613 green/clippy 0) COMPLETE; TEST-001 (123 DISCOVER + 124 RESEARCH RES-0023 PROCEED + 125 DESIGN AC-1..12) in-loop — IMPLEMENT next; next platform nodes after TEST-001: IOS-001/PILOT-001"
+  estimated_nodes_on_path: 13
 
 next_recommended_nodes:
+  - id: "TEST-001"
+    reason: "Test Infrastructure (P0, TEST) — **ACTIVE**: DISCOVER COMPLETE (iter 123, TEST-001_DISCOVER.md: 613/0/1 + proptest + fuzz 44M+ + tarpaulin 95.6% + 39 JVM) + RESEARCH COMPLETE (iter 124, RES-0023 verdict PROCEED across G-1..G-8: nextest; audit/deny; Kani/loom/tokio-test; tarpaulin+mutants; interop fixtures; CI; golden vectors; criterion scaffold) + DESIGN COMPLETE (iter 125, TEST_001_DESIGN.md v1.0: AC-1..12 + DEC-TEST-0001..0012 ratified) + Gaps G-TI-1..6. Deps ROUTE-001 + MSG-001 + CRYPTO-001 all COMPLETE. NEXT: IMPLEMENT (iter ~126) -> TEST -> VERIFY -> ACCEPT."
+    priority: P0
+    note: "ACTIVE — DESIGN COMPLETE, IMPLEMENT next (iter ~126). After ACCEPT: NODE_TRANSITION to IOS-001 (P0) per P0-first; LORA-001/SAT-001 (P2 hardware) after platform nodes."
+
   - id: "BLE-001"
     reason: "Bluetooth Low Energy transport (P0, TRANSPORT) — **COMPLETE (iter 90, ACCEPTED)**. First TRANSPORT node done. Deps INTERNET-001 + MSG-001 + ROUTE-001 + SEC-001 all COMPLETE. AC-1..16 PASS (AC-14 GATED/BLK-0005); verifier APPROVED iter 89; workspace 533/0/1, transport::ble 42, clippy 0."
     priority: P0

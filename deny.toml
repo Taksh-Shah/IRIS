@@ -1,0 +1,382 @@
+# cargo-deny policy for the IRIS workspace (TEST-001, DEC-TEST-0002).
+# Committed gate: advisories/bans/licenses/sources all FAIL on violation.
+# Multi-version skips are curated for benign transitive splits; any NEW
+# duplicate version in a skipped crate fails the gate (deny still applies to
+# the family, only the listed version pair is waived).
+
+version = 2
+
+[advisories]
+# Local advisory DB (mirror of https://github.com/RustSec/advisory-db).
+db-path = "~/.cargo/advisory-db"
+# A security vulnerability is a hard FAIL.
+vulnerability = "deny"
+# Unmaintained crates and yanked versions FAIL (supply-chain hygiene).
+unmaintained = "deny"
+yanked = "deny"
+# Notice-level advisories are informational; do not fail the gate.
+notice = "warn"
+# No silent suppressions: every entry needs id + reason + expiry.
+ignore = []
+ignore-with-reason = []
+
+[bans]
+# Duplicate versions FAIL unless explicitly skipped below.
+multiple-versions = "deny"
+# Wildcard dependencies are rejected outright.
+wildcards = "deny"
+highlight = "all"
+deny = [
+  # Disallowed crates (spectral/CVE history or maintenance) -- none today.
+]
+skip-tree = []
+# Explicitly permitted multi-version splits (all currently in Cargo.lock are
+# enumerated so that new splits are caught while old ones are tracked):
+#   - crypto ecosystem splits at 0.x/0.x markers (RustCrypto release trains)
+#   - windows-* metadata/impl crates split per windows-sys generation
+#   - build-tooling splits (syn, thiserror, toml_edit families)
+#   - rand family: 0.8 (security engines) vs 0.9/0.10 (transitive tooling)
+[[bans.skip]]
+name = "base64"
+version = "0.21.7"
+[[bans.skip]]
+name = "base64"
+version = "0.22.1"
+[[bans.skip]]
+name = "bitflags"
+version = "1.3.2"
+[[bans.skip]]
+name = "bitflags"
+version = "2.13.1"
+[[bans.skip]]
+name = "block-buffer"
+version = "0.10.4"
+[[bans.skip]]
+name = "block-buffer"
+version = "0.12.1"
+[[bans.skip]]
+name = "chacha20"
+version = "0.9.1"
+[[bans.skip]]
+name = "chacha20"
+version = "0.10.1"
+[[bans.skip]]
+name = "const-oid"
+version = "0.9.6"
+[[bans.skip]]
+name = "const-oid"
+version = "0.10.2"
+[[bans.skip]]
+name = "cpufeatures"
+version = "0.2.17"
+[[bans.skip]]
+name = "cpufeatures"
+version = "0.3.0"
+[[bans.skip]]
+name = "crypto-common"
+version = "0.1.7"
+[[bans.skip]]
+name = "crypto-common"
+version = "0.2.2"
+[[bans.skip]]
+name = "digest"
+version = "0.10.7"
+[[bans.skip]]
+name = "digest"
+version = "0.11.3"
+[[bans.skip]]
+name = "getrandom"
+version = "0.2.17"
+[[bans.skip]]
+name = "getrandom"
+version = "0.3.4"
+[[bans.skip]]
+name = "getrandom"
+version = "0.4.3"
+[[bans.skip]]
+name = "hashbrown"
+version = "0.12.3"
+[[bans.skip]]
+name = "hashbrown"
+version = "0.17.1"
+[[bans.skip]]
+name = "heck"
+version = "0.4.1"
+[[bans.skip]]
+name = "heck"
+version = "0.5.0"
+[[bans.skip]]
+name = "hmac"
+version = "0.12.1"
+[[bans.skip]]
+name = "hmac"
+version = "0.13.0"
+[[bans.skip]]
+name = "indexmap"
+version = "1.9.3"
+[[bans.skip]]
+name = "indexmap"
+version = "2.14.0"
+[[bans.skip]]
+name = "jni-sys"
+version = "0.3.1"
+[[bans.skip]]
+name = "jni-sys"
+version = "0.4.1"
+[[bans.skip]]
+name = "png"
+version = "0.17.16"
+[[bans.skip]]
+name = "png"
+version = "0.18.1"
+[[bans.skip]]
+name = "proc-macro-crate"
+version = "1.3.1"
+[[bans.skip]]
+name = "proc-macro-crate"
+version = "2.0.2"
+[[bans.skip]]
+name = "proc-macro-crate"
+version = "3.5.0"
+[[bans.skip]]
+name = "r-efi"
+version = "5.3.0"
+[[bans.skip]]
+name = "r-efi"
+version = "6.0.0"
+[[bans.skip]]
+name = "rand"
+version = "0.8.7"
+[[bans.skip]]
+name = "rand"
+version = "0.9.5"
+[[bans.skip]]
+name = "rand"
+version = "0.10.2"
+[[bans.skip]]
+name = "rand_chacha"
+version = "0.3.1"
+[[bans.skip]]
+name = "rand_chacha"
+version = "0.9.0"
+[[bans.skip]]
+name = "rand_core"
+version = "0.6.4"
+[[bans.skip]]
+name = "rand_core"
+version = "0.9.5"
+[[bans.skip]]
+name = "rand_core"
+version = "0.10.1"
+[[bans.skip]]
+name = "schemars"
+version = "0.8.22"
+[[bans.skip]]
+name = "schemars"
+version = "0.9.0"
+[[bans.skip]]
+name = "schemars"
+version = "1.2.2"
+[[bans.skip]]
+name = "serde_spanned"
+version = "0.6.9"
+[[bans.skip]]
+name = "serde_spanned"
+version = "1.1.1"
+[[bans.skip]]
+name = "sha2"
+version = "0.10.9"
+[[bans.skip]]
+name = "sha2"
+version = "0.11.0"
+[[bans.skip]]
+name = "syn"
+version = "1.0.109"
+[[bans.skip]]
+name = "syn"
+version = "2.0.119"
+[[bans.skip]]
+name = "syn"
+version = "3.0.3"
+[[bans.skip]]
+name = "thiserror"
+version = "1.0.69"
+[[bans.skip]]
+name = "thiserror"
+version = "2.0.20"
+[[bans.skip]]
+name = "thiserror-impl"
+version = "1.0.69"
+[[bans.skip]]
+name = "thiserror-impl"
+version = "2.0.20"
+[[bans.skip]]
+name = "toml"
+version = "0.8.2"
+[[bans.skip]]
+name = "toml"
+version = "0.9.12+spec-1.1.0"
+[[bans.skip]]
+name = "toml"
+version = "1.1.4+spec-1.1.0"
+[[bans.skip]]
+name = "toml_datetime"
+version = "0.6.3"
+[[bans.skip]]
+name = "toml_datetime"
+version = "0.7.5+spec-1.1.0"
+[[bans.skip]]
+name = "toml_datetime"
+version = "1.1.1+spec-1.1.0"
+[[bans.skip]]
+name = "toml_edit"
+version = "0.19.15"
+[[bans.skip]]
+name = "toml_edit"
+version = "0.20.2"
+[[bans.skip]]
+name = "toml_edit"
+version = "0.25.13+spec-1.1.0"
+[[bans.skip]]
+name = "wasi"
+version = "0.11.1+wasi-snapshot-preview1"
+[[bans.skip]]
+name = "wasi"
+version = "0.14.7+wasi-0.2.4"
+[[bans.skip]]
+name = "windows-core"
+version = "0.61.2"
+[[bans.skip]]
+name = "windows-core"
+version = "0.62.2"
+[[bans.skip]]
+name = "windows-link"
+version = "0.1.3"
+[[bans.skip]]
+name = "windows-link"
+version = "0.2.1"
+[[bans.skip]]
+name = "windows-result"
+version = "0.3.4"
+[[bans.skip]]
+name = "windows-result"
+version = "0.4.1"
+[[bans.skip]]
+name = "windows-strings"
+version = "0.4.2"
+[[bans.skip]]
+name = "windows-strings"
+version = "0.5.1"
+[[bans.skip]]
+name = "windows-sys"
+version = "0.45.0"
+[[bans.skip]]
+name = "windows-sys"
+version = "0.59.0"
+[[bans.skip]]
+name = "windows-sys"
+version = "0.61.2"
+[[bans.skip]]
+name = "windows-targets"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows-targets"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_aarch64_gnullvm"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_aarch64_gnullvm"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_aarch64_msvc"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_aarch64_msvc"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_i686_gnu"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_i686_gnu"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_i686_msvc"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_i686_msvc"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_x86_64_gnu"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_x86_64_gnu"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_x86_64_gnullvm"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_x86_64_gnullvm"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_x86_64_msvc"
+version = "0.42.2"
+[[bans.skip]]
+name = "windows_x86_64_msvc"
+version = "0.52.6"
+[[bans.skip]]
+name = "windows_x86_64_msvc"
+version = "0.61.2"
+[[bans.skip]]
+name = "winnow"
+version = "0.5.40"
+[[bans.skip]]
+name = "winnow"
+version = "0.7.15"
+[[bans.skip]]
+name = "winnow"
+version = "1.0.4"
+
+[licenses]
+# MIT/Apache-2.0 are the workspace license (Cargo.toml). The rest are the
+# transitive permissive licenses currently present (determined from Cargo.lock
+# crate metadata during AC-7 fixture generation).
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "ISC",
+  "Zlib",
+  "BSD-3-Clause",
+  "Unicode-3.0",
+  "0BSD",
+  "BSD-2-Clause",
+  "MPL-2.0",
+  "WTFPL",
+  "CC0-1.0",
+]
+confidence-threshold = 0.9
+# Copyleft licenses fail the gate (EMERG-001 constraint: auditable).
+copyleft = "deny"
+allow-osi-fsf-free = "unlicensed"
+default = "deny"
+
+[target."cfg(windows)"]
+licenses.allow = [
+  "MIT",
+  "Apache-2.0",
+  "ISC",
+  "Zlib",
+  "BSD-3-Clause",
+  "Unicode-3.0",
+  "0BSD",
+  "BSD-2-Clause",
+  "MPL-2.0",
+  "WTFPL",
+  "CC0-1.0",
+]
+
+[sources]
+# All dependencies must resolve from crates.io; private/git sources fail.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = []

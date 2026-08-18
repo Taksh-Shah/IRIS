@@ -99,6 +99,17 @@ pub enum RateLimitDecision {
     Exempt,
 }
 
+/// Pure srTCM refill arithmetic (Kani proof target — TEST-001 AC-3).
+///
+/// Returns the bucket token count after an elapsed `intervals` refill periods
+/// at `rate_per_sec` tokens per period, capped at `burst`. Uses saturating
+/// arithmetic: malformed (attacker-controlled) inputs must never overflow.
+pub(crate) fn refill_tokens(tokens: u64, intervals: u64, rate_per_sec: u64, burst: u64) -> u64 {
+    tokens
+        .saturating_add(intervals.saturating_mul(rate_per_sec))
+        .min(burst)
+}
+
 /// srTCM-style token bucket rate limiter per (sender, class).
 pub struct RateLimiter {
     buckets: RwLock<HashMap<BucketKey, Bucket>>,
@@ -228,8 +239,7 @@ impl RateLimiter {
             let period_secs = refill_interval.as_secs().max(1);
             let intervals = elapsed.as_secs() / period_secs;
             if intervals > 0 {
-                let add = intervals.saturating_mul(rate_per_sec);
-                bucket.tokens = (bucket.tokens.saturating_add(add)).min(burst);
+                bucket.tokens = refill_tokens(bucket.tokens, intervals, rate_per_sec, burst);
                 bucket.last_refill = now;
             }
         }
@@ -255,8 +265,7 @@ impl RateLimiter {
             let period_secs = self.config.refill_interval.as_secs().max(1);
             let intervals = elapsed.as_secs() / period_secs;
             if intervals > 0 {
-                let add = intervals.saturating_mul(rate_per_sec);
-                bucket.tokens = (bucket.tokens.saturating_add(add)).min(burst);
+                bucket.tokens = refill_tokens(bucket.tokens, intervals, rate_per_sec, burst);
                 bucket.last_refill = now;
             }
         }

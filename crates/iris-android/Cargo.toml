@@ -1,0 +1,27 @@
+[package]
+name = "iris-android"
+description = "IRIS resilient communication fabric — Android integration layer (ANDROID-001, UniFFI binding)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "iriscode"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+async-trait.workspace = true
+futures-util.workspace = true
+iris-core = { path = "../iris-core" }
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uniffi = "=0.31.2"
+
+[build-dependencies]
+uniffi_bindgen = "=0.31.2"
+
+[dev-dependencies]
+tempfile.workspace = true

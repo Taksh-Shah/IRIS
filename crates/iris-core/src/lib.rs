@@ -28,6 +28,9 @@ pub mod security;
 pub mod sim;
 pub mod transport;
 
+#[cfg(kani)]
+mod kani_proofs;
+
 pub use discovery::{DiscoveryManager, DiscoveryMode};
 pub use error::TransportError;
 pub use gateway::{

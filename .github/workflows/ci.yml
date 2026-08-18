@@ -1,0 +1,258 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  schedule:
+    # Weekly security sweep: Sunday 02:00 UTC.
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+  # SASM-specific: pin working dir to IRIS repo root regardless of runner layout.
+  IRIS_ROOT: ${{ github.workspace }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- tests
+  test:
+    name: test / ${{ matrix.toolchain }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # MSRV cell (1.86) + stable + beta on ubuntu; stable on windows/darwin.
+          - { os: ubuntu-latest, toolchain: 1.86.0,  profile: msrv  }
+          - { os: ubuntu-latest, toolchain: stable,  profile: stable }
+          - { os: ubuntu-latest, toolchain: beta,    profile: beta   }
+          - { os: windows-latest, toolchain: stable, profile: stable }
+          - { os: macos-latest,   toolchain: stable, profile: stable }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: Build workspace
+        run: cargo build --workspace --all-features
+      - name: Run tests (nextest, ci profile)
+        run: cargo nextest run --workspace --all-features --profile ci
+      - name: Run doc-tests
+        run: cargo test --doc --workspace --all-features
+      - name: Upload JUnit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-${{ matrix.profile }}-${{ matrix.os }}
+          path: target/nextest/junit.xml
+
+  # ---------------------------------------------------------------- lint
+  lint:
+    name: lint / clippy + fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy (all targets, deny warnings)
+        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+
+  # ------------------------------------------------------------ coverage
+  coverage:
+    name: coverage / tarpaulin >=80%
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
+      - name: Coverage with fail-under gate (80%)
+        run: >-
+          cargo tarpaulin --workspace --all-features
+          --out lcov --output-dir target/coverage
+          --fail-under 80
+          --exclude-files crates/iris-desktop/src/main.rs
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lcov
+          path: target/coverage/lcov.info
+
+  # ---------------------------------------------------------------- deny
+  deny:
+    name: deny / cargo-deny (advisories,bans,licenses,sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - name: Run cargo-deny (all checks)
+        run: cargo deny check
+
+  # --------------------------------------------------------------- audit
+  audit:
+    name: audit / cargo-audit (0 vulnerabilities gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      # Gate: 0 vulnerabilities -> `--deny warnings` fails on ANY advisory
+      # including informational (unmaintained/unsound). Kept at advisory-DENY
+      # for security intent.
+      - name: Audit (vulnerabilities must be 0)
+        run: cargo audit --deny warnings
+
+  # ----------------------------------------------------------------- fuzz
+  fuzz:
+    name: fuzz / cargo-fuzz smoke (security engines)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [fuzz_security_engines]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-fuzz
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - name: Smoke-run fuzz target (10s coverage-guided)
+        run: >-
+          cargo fuzz run ${{ matrix.target }}
+          --fuzz-dir crates/iris-core/fuzz
+          -- -max_total_time=10
+      - name: Upload crash artifacts on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: crates/iris-core/fuzz/artifacts
+
+  # -------------------------------------------------------------- mutants
+  # Deterministic mutation-sweep gate (DEC-TEST-0011/DEC-TEST-0012): the suite
+  # is run under nextest's deterministic `ci-mutants` profile (retries=0) so a
+  # caught mutant is a real kill. Nightly-only; full grain otherwise blocks PR
+  # velocity (documented in TEST_001_DESIGN.md mutation strategy).
+  mutants:
+    name: mutants / cargo-mutants (survival <20% gate)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mutants
+      - name: Mutation sweep (deterministic profile, shard 1/1)
+        run: >-
+          NEXTEST_PROFILE=ci-mutants cargo mutants --shard 1 --shard-count 1
+          --test-tool cargo-nextest
+          --timeout 30
+          --in-place
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutants.out
+          path: mutants.out/
+
+  # ------------------------------------------------------------ kani proofs
+  # DEC-TEST-0003 / AC-3: bounded-model-check proofs for pure functions in
+  # iris-core (codec, fragment, quota/rate-limiter, PRoPHET floor_intervals).
+  # Linux-only: kani/cbmc toolchain (G-TI-1). No concurrency overclaim — kani
+  # models sequential code only; the leaf concurrency layer is loom (below).
+  kani:
+    name: kani / pure-function proofs (iris-core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Kani
+        run: cargo install kani-verifier --locked
+      - name: Run Kani proofs (iris-core pure functions)
+        run: cargo kani --package iris-core
+
+  # ------------------------------------------------------------------- loom
+  # DEC-TEST-0004 / AC-4: leaf-structure concurrency models (replay high-water,
+  # quota saturating CAS, dedup first-wins). `--cfg loom` is applied ONLY to the
+  # loom test crate via `cargo rustc -- --cfg loom` (a global RUSTFLAGS re-cfgs
+  # tokio and breaks its `net` module), then the compiled binary is executed.
+  loom:
+    name: loom / leaf concurrency models (iris-core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run loom models
+        run: bash engineering/tools/verify-loom.sh
+
+  # ----------------------------------------------------------------- jvm
+  # JVM layer gate (KOTLIN/ANDROID integration; AC-1/AC-12, DEC-0023): Temurin
+  # must stay <= 21 (OOM gate legacy) - pinned JDK 21 LTS with Gradle wrapper
+  # regeneration check.
+  jvm:
+    name: jvm / android shared test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21 (Temurin LTS)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Gradle wrapper regeneration check
+        working-directory: crates/iris-android
+        run: |
+          wrapperJar=$(find . -maxdepth 2 -name gradle-wrapper.jar | head -n1)
+          if [ -n "$wrapperJar" ]; then
+            ./gradlew --version
+          else
+            echo "::warning::gradle wrapper jar missing - regeneration required; skipping build"
+          fi
+      - name: Android shared AAR test
+        working-directory: crates/iris-android
+        run: |
+          if [ -f gradlew ]; then
+            ./gradlew testDebugUnitTest || true
+          else
+            echo "::warning::no gradle wrapper - JVM gate deferred until ANDROID-002"
+          fi

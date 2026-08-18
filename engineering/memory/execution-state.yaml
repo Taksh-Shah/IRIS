@@ -4,8 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-17T05:00:00Z"
-
+updated_at: "2026-08-18T20:30:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,36 +22,28 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "ANDROID-001"
-active_stage: "RESEARCH"
+active_node: "BLE-002"
+active_stage: "VERIFY"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "action: ANDROID-001 UNDERSTAND COMPLETE (iter 110) + STAGE_TRANSITION to RESEARCH (iter 111, RES-0022). Read node + docs/platforms/ANDROID.md (304 lines) + docs/implementation/KOTLIN_LAYER.md (397 lines); reference embedding pattern DESKTOP-001 DesktopEngine (crates/iris-desktop/engine_handle.rs) mirrored in Kotlin; FFI-contract requirements inventoried (NEW-WA-RT-108..112 verified-peer reuse key / closed-NDP prune + multi-subscriber stream / per-call timeouts / start+subscribe idempotence / ring-buffer outbox + WIFIDIRECT RT-010 start/start_dns_sd idempotence); C2 AC-gap confirmed -> DESIGN (iter 113) defines AC-1..n; graph ANDROID-001 evidence(7)/known_limitations(6)/stage_note set, status held DISCOVERED; workspace untouched baseline 608/0/1 clippy 0 held."
-next_node_if_complete: "After ANDROID-001: TEST-001 (P0 test infra) -> IOS-001/PILOT-001; transports LORA-001/SAT-001 (P2) after platform nodes per P0-first."
-
-# === NODE TRACKING ===
-node_attempt: 1
-stage_attempt: 1
-stage_started_at: "2026-08-17T05:00:00Z"
-node_started_at: "2026-08-17T04:30:00Z"
-node_completed_at: "2026-08-17T04:00:00Z"
+active_action: "BLE-002 ACCEPTED (iter ~140): PROJECT_GRAPH COMPLETE (evidence 7) + PROJECT_STATE completed 26->27 implementing 1->0 + CHANGELOG 0.3.57 + BLE-002_VERIFICATION.md authored (AC-1..16 table; independent verifier pass 1 FAIL doc-only -> resolved VR-01..VR-06; pass 2 APPROVE; transport::ble 56/0, workspace 647/0/1, clippy 0, fmt clean). 27 COMPLETE nodes. NODE_TRANSITION -> IOS-001 (P0 platform, dep BLE-002 COMPLETE). NEXT: IOS-001 DISCOVER (iter ~141, DISCOVER doc + C2 AC definition next stage)."
+next_action: "IOS-001 (P0 platform node, deps BLE-002 COMPLETE): DISCOVER (iter ~141) — IOS-001_DISCOVER.md: catalog iOS-side surface (Swift/FFI IosBleAdapter 10-op contract from BLE_002_DESIGN.md, CoreBluetooth central/peripheral, security/scanner permissions, UIBackgroundModes, state restoration, Live Activity); C2 gap (no ACs) -> DESIGN resolves; confirm eligibility (deps COMPLETE); write known_limitations baseline; baseline 647/0/1 clippy 0 held."
 
 # === STATE TRANSITIONS ===
-last_transition: "STAGE_TRANSITION"
+last_transition: "NODE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-17T05:00:00Z"
+last_transition_at: "2026-08-18T22:00:00Z"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "ANDROID-001 RESEARCH (iter 111, RES-0022): 2026 Android platform SOTA for the FFI-contract + app-shell questions — (1) UniFFI callback-interface support for async Rust traits (BleAdapter sync 10-op / WifiAwareAdapter & WifiDirectAdapter async traits over FFI) — pin the mechanism for injecting Kotlin adapters into iris-core; (2) UniFFI vs manual JNI for the iris-core engine surface + cargo-ndk build (libiriscode.so, NDK r26+, targets arm64-v8a/armeabi-v7a/x86_64, committed-generated-Kotlin convention), verify 2026 current versions (uniffi crate, rust-android-gradle); (3) Kotlin 2.x/Compose 2026 best-practice app shell (Kotlin 1.9+/Compose BOM per ANDROID.md) + FGS connectedDevice (API 34+) + WorkManager cadence + OEM battery-kill matrix handling; (4) Android Keystore hardware-backed ECDSA signing path vs Rust Ed25519 session keys (IDENT-001 RED-0005 binding); (5) BLE/Wi-Fi Aware/Wi-Fi Direct 2026 Android API status re-verify (target/compile SDK 34 vs current SDK 36/37, behavior changes). Record RES-0022. Workspace untouched (baseline 608/0/1 held)."
+next_action: "IOS-001 DISCOVER (iter ~141): IOS-001_DISCOVER.md — catalog iOS platform surface (Swift/FFI adapter contract, CoreBluetooth device layer, permissions, background, restoration), C2 gap -> DESIGN, eligibility check, baseline 647/0/1 held."
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "ANDROID-001 UNDERSTAND COMPLETE (iter 110) — first platform node. P0-first selection (iter 109b corrected) confirmed. FFI contract inventoried; C2 AC-gap confirmed; baseline 608/0/1 clippy 0 held. Next: RESEARCH (RES-0022)."
-last_progress_at: "2026-08-17T04:00:00Z"
-
+last_progress_event: "BLE-002 ACCEPTED (iter ~140): PROJECT_GRAPH COMPLETE + 27 COMPLETE nodes; verifier APPROVE (iter ~139); NODE_TRANSITION IOS-001. Baseline 647/0/1 clippy 0 fmt clean."
+last_progress_at: "2026-08-18T22:00:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -76,6 +67,459 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-18T22:00:00Z"
+    iteration: 140
+    node: "BLE-002"
+    stage: "ACCEPT"
+    action: "BLE-002 ACCEPTED (iter ~140). BLE-002_VERIFICATION.md authored (AC-1..16 evidence table, pattern BLE_001_VERIFICATION.md). PROJECT_GRAPH BLE-002: IMPLEMENTING->COMPLETE, evidence(7), stage_note full pipeline, known_limitations + BLE-RT C003/C004 follow-up carry; PROJECT_STATE completed 26->27 implementing 1->0; CHANGELOG 0.3.57. YAML triple valid. 27 COMPLETE nodes. NODE_TRANSITION -> IOS-001 (P0 platform, dep BLE-002 now COMPLETE; needs DISCOVER iter ~141 -> DESIGN AC-1..n -> IOS-001 adapter Swift/CoreBluetooth). NEXT: IOS-001 DISCOVER (iter ~141)."
+    result: "ACCEPTED"
+    files_changed:
+      - "engineering/memory/records/BLE-002_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "BLE-002_VERIFICATION.md"
+  - timestamp: "2026-08-18T21:50:00Z"
+    iteration: 139
+    node: "BLE-002"
+    stage: "VERIFY"
+    action: "BLE-002 VERIFIER APPROVE (iter ~139). Independent verifier pass 2 (ses_fea9f7c6bffe25wDLpWuHK6GoH): confirmed VR-01..VR-06 closure (single residual BLE-002_SECURITY_REVIEW.md:56 646/0/1 fixed -> 647/0/1; zero matches for 646/0/1/646 passed/BE-RT), reproduced transport::ble 56/0 live -> APPROVE. All evidence-integrity findings closed; runtime evidence unchanged (doc-only corrections). NEXT: ACCEPT (iter ~140)."
+    result: "VERIFIER_APPROVE"
+    files_changed:
+      - "engineering/memory/records/BLE-002_SECURITY_REVIEW.md"
+    records_created: []
+  - timestamp: "2026-08-18T21:30:00Z"
+    iteration: 137
+    node: "BLE-002"
+    stage: "SECURITY_REVIEW"
+    action: "BLE-002 SECURITY_REVIEW COMPLETE (iter ~137, AC-15): redteam FAIL -> RESOLVED. BLE-RT-C001 HIGH (Android leg probe-connecting unfiltered ambient ads) FIXED: gate on self.ios_leg + IRIS_SERVICE_UUID scan filter + 8-probe/scan budget + 2 regressions (c001_android_leg_never_probe_connects_empty_ads, c001_ios_leg_probe_budget_caps_probe_connects). BLE-RT-C002 HIGH (evidence-integrity: records cited nonexistent tests) CORRECTED: AC-2/3/4 rewritten to actual test names; two-carrier asymmetry proven by real c001 regression; supports_identify_read claim removed. C003 MEDIUM probe timeouts -> probe budget + IOS-001 contract. C004 MEDIUM probe cache -> IOS-001/ANDROID-001 follow-up. C005 MEDIUM sim-serve honesty FIXED (start_advertising -> identify_data + c005 regression). C006 LOW recorded. C007 LOW one-line FIXED. C008 INFO recorded. BLE-002_SECURITY_REVIEW.md authored. Live verify: transport::ble 56/0, workspace 647/0/1, clippy 0, fmt clean. NEXT: VERIFY (iter ~138)."
+    result: "SECURITY_REVIEW_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/transport/ble.rs"
+      - "engineering/memory/records/BLE-002_SECURITY_REVIEW.md"
+      - "engineering/memory/records/BLE-002_TEST.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "BLE-002_SECURITY_REVIEW.md"
+  - timestamp: "2026-08-18T21:10:00Z"
+    iteration: 136
+    node: "BLE-002"
+    stage: "TEST"
+    action: "BLE-002 TEST COMPLETE (iter ~136). BLE-002_TEST.md AC-1..13 evidence map written (pattern BLE-001_TEST.md). INDEPENDENT live re-run THIS pass: transport::ble 53/0 (1.51s); workspace --all-features 644/0/1 (baseline 633->644 — 11 new tests; tallied via regex sum across all suites); clippy --workspace --all-targets 0 warnings; fmt --all --check clean. AC-1..13 PASS; AC-7 code-review assertion (connect-to-read produces candidates only; envelope-verify seam held — redteam at SECURITY_REVIEW); AC-14 GATED/BLK-0005 (iOS Simulator no CoreBluetooth); AC-15/AC-16 PENDING. PROJECT_GRAPH BLE-002 evidence(5) + stage_note TEST; status IMPLEMENTING held. NEXT: SECURITY_REVIEW (iter ~137, AC-15) -> VERIFY -> ACCEPT -> IOS-001."
+    result: "TEST COMPLETE"
+    files_changed:
+      - "engineering/memory/records/BLE-002_TEST.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "BLE-002_TEST.md"
+  - timestamp: "2026-08-18T20:30:00Z"
+    iteration: 135
+    node: "BLE-002"
+    stage: "IMPLEMENT"
+    action: "BLE-002 IMPLEMENT COMPLETE (workspace pass). DEC-BLE-002-0015 ratified: BleAdapter::gatt_read added (connect-to-identify GATT read op). SimulatedBleAdapter SERVES IRIS_IDENTIFY_CHARACTERISTIC (GATT-server semantics, returns identify_data on read of identify char, Err(DeviceNotFound) otherwise; no supports_identify_read flag — SECURITY_REVIEW iter ~137 correction). Discovery connect-to-read branch wired: empty-payload iOS ad -> connect -> gatt_read(identify) -> DiscoveryBeacon::parse -> candidate (two-carrier DEC-BLE-002-0008). 7 BleAdapter impls updated (SimulatedBleAdapter + 5 test adapters in ble.rs + BleBridge in iris-android -> DeviceNotFound, Android<->iOS identify-read = ANDROID-001 follow-up known_limitation). ble_att payload_to_mtu verified (DEC-BLE-002-0004). cargo fmt --all fixed 2 ble.rs diffs. +5 iOS-leg tests (AC-1/2/3/4/6/10/12). Verification: transport::ble 53/0 (was 42), workspace 531+ green, clippy 0, fmt clean. PROJECT_GRAPH BLE-002: DESIGNING->IMPLEMENTING, evidence(4), stage_note, known_limitations(7), validation_status refreshed. NEXT: TEST (iter ~136, AC-1..13 evidence map)."
+    result: "IMPLEMENT_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/transport/ble.rs"
+      - "crates/iris-android/src/bridge.rs"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/memory/records/BLE-002_IMPLEMENT.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/CHANGELOG.md"
+    records_created:
+      - "engineering/memory/records/BLE-002_IMPLEMENT.md"
+  - timestamp: "2026-08-18T19:45:00Z"
+    iteration: 134
+    node: "BLE-002"
+    stage: "DESIGN"
+    action: "BLE-002 DESIGN COMPLETE (docs-only pass, no workspace changes). BLE_002_DESIGN.md v1.0 written (pattern BLE_TRANSPORT_DESIGN.md) per RES-0024 verdict CONDITIONAL-PROCEED + 7 DESIGN inputs. Scope: BLE-001 Rust core reuse (BleAdapter trait = FFI seam; IosBleAdapter Swift/CoreBluetooth = IOS-001 scope). iOS wire/platform contract: stable IRIS service UUID (never per-session), 28-B/10-B ad budget (UUID + local name only), connect-to-identify via GATT identification characteristic (shared DiscoveryBeacon parser, two carriers), foreground-always + iOS 26 Live Activity screen-on framing, MTU = maximumWriteValueLength negotiate-late 23-><=512 + 20-B iOS 16.x guard, ~8-peer bound, state-restoration hardening (re-start in willRestoreState; system-kill vs user-force-quit; debounce vs relaunch-crash loops; no BLE init outside valid launch), CVE set corrections (verified set OS-patchable only; misattributed CVE-2023-28412/2024-44270/2021-31714 excluded) + iOS patch floor. Security: app-layer AEAD = trust anchor. Module layout: pure-Rust core adjustments (connect-to-read beacon branch, SimulatedBleAdapter inject_identify_read, ble_att negotiated-payload source). iOS FFI adapter contract table (10-op -> CoreBluetooth) for IOS-001. AC-1..16 defined (C2 gap RESOLVED, pattern BLE-001); DEC-BLE-002-0001..0008 ratified into DECISIONS.md; risks/gaps G1-G5 positioned. PROJECT_GRAPH BLE-002: status DISCOVERED->DESIGNING, acceptance_criteria added, evidence(3) + stage_note + meta validation_status refreshed. Baseline 633/0/1 clippy 0 rustfmt clean held. NEXT: IMPLEMENT (iter ~135, BLE-002 Rust-core iOS adjustments)."
+    result: "DESIGN_COMPLETE"
+    files_changed:
+      - "docs/implementation/BLE_002_DESIGN.md"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "docs/implementation/BLE_002_DESIGN.md"
+  - timestamp: "2026-08-18T19:25:00Z"
+    iteration: 133
+    node: "BLE-002"
+    stage: "RESEARCH"
+    action: "BLE-002 RESEARCH COMPLETE (read-only pass, no workspace changes). RES-0024 written (engineering/memory/records/research/RES-0024.md, pattern RES-0019) + ALLOCATION registered (next RES-0025). 14 websearch + 4 primary-source fetches (Apple docs/security/forums incl. engineer posts, Nordic Academy, NVD, Stack Overflow, Punch Through 2026); evidence-leveled L1-L5, no AI citations. Verdict CONDITIONAL-PROCEED: RQ-1 no CoreBluetooth background relaxation through iOS 26 (iOS 18.0 bg-ad regression fixed 18.1; iOS 26 HID/LE-Custom-Device UIBackgroundModes = AccessorySetupKit accessory-only; Live Activity = screen-on scan stops at screen sleep); RQ-2 no PendingIntent analog (relaunch for connections not scans; user force-quit kills relaunch; overflow-area iOS-iOS-only); RQ-3 ~8-connection practical ceiling, maximumWriteValueLength = negotiated ATT payload cap 512 (no request API; iOS 16.x 20-B MTU guard); RQ-4 verified iOS BLE CVEs CVE-2023-42941/2024-23241/2024-44124/2024-44191 = OS-patchable only, prompt CVEs CVE-2023-28412 (Snap One) / CVE-2024-44270 (macOS) / CVE-2021-31714 (unverifiable) = misattributed/excluded; RQ-5 codified ad asymmetry -> connect-to-identify + stable IRIS service UUID + foreground-always + supports_background_ios=false held (ble.rs:287/test 1075). 7 DESIGN inputs + outdated-claims table. PROJECT_GRAPH BLE-002 evidence(2) + known_limitations(6 refreshed) + stage_note RESEARCH COMPLETE + meta validation_status; status HELD DISCOVERED (C2 -> DESIGN AC-1..n pattern BLE-001). Baseline 633/0/1 clippy 0 rustfmt clean held. NEXT: DESIGN (iter ~134, BLE_002_DESIGN.md AC-1..n + DEC-BLE-002-xxxx)."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0024.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/research/RES-0024.md"
+  - timestamp: "2026-08-18T19:05:00Z"
+    iteration: 132
+    node: "BLE-002"
+    stage: "DISCOVER"
+    action: "BLE-002 UNDERSTAND (read-only pass, no workspace changes). BLE-002_DISCOVER.md written: C2 gap CONFIRMED (no ACs) - DESIGN resolves. Eligible (dep TRANSPORT-001 COMPLETE). Reference surface: BLE-001 pipeline (BleAdapter trait = FFI seam naming IosBleAdapter; ble_att/ble_advert platform-neutral; ble.rs:287 supports_background_ios:false + test :1075 pins it), docs/platforms/IOS.md (CoreBluetooth central/peripheral + background modes + state restoration + MCF excluded from BLE), docs/transports/BLE.md iOS CoreBluetooth §254-360 (no service-data in ads -> connect-to-identify; background advertising stops/overflow; allowDuplicates->false in background + batched 10-30s results; ~1-2% duty cycle), RES-0019 R7 deferral. Known limitations written to graph (5). ios/ crate dir does not exist yet. Baseline 633/0/1 clippy 0 rustfmt clean held."
+    result: "UNDERSTAND COMPLETE"
+    files_changed:
+      - "engineering/memory/records/BLE-002_DISCOVER.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "BLE-002_DISCOVER.md"
+  - timestamp: "2026-08-18T18:40:00Z"
+    iteration: 131
+    node: "TEST-001"
+    stage: "VERIFY+ACCEPT"
+    action: "TEST-001 VERIFY + ACCEPT (iter ~130/131). VERIFY: TEST-001_VERIFICATION.md AC-1..12 evidence table (pattern ANDROID-001_VERIFICATION.md) + independent verifier (ses_feb169990ffe3YUsbABvSZRFZU) FAIL -> reconciled APPROVE. Verifier reproduced independently: workspace 633/0/1, clippy 0, fmt 0, cargo audit --deny warnings exit 0 (574 deps / 0 vulns), loom 5/5 (3.28s), tokio_behavior 4/4, protocol_conformance 10/10, golden_vectors 6/6, bench Success, ci.yml YAML parse-valid. 4 findings reconciled: (1) FIXED deny.toml invalid TOML (skip=[] + [[bans.skip]] duplicate key 'skip' -> CI cargo deny check would fail at config load) - removed stale skip=[]/skip-tree=[] lines, now PARSE OK; (2) recorded audit.toml reason+expiry as documented review contract (cargo-audit 0.22.2 ignore = ID strings only; machine-checked re-review date 2026-12-31); (3) FIXED crates/iris-core/Cargo.toml loom comment (global --cfg loom anti-pattern -> per-crate cargo rustc -p iris-core --test loom_models -- --cfg loom); (4) FIXED stale 'still 613/0/1' texts in PROJECT_GRAPH AC-11 + TEST_001_DESIGN.md AC-11/DEC-TEST-0012 -> pre-existing 613 preserved; workspace 633/0/1. ACCEPT: PROJECT_GRAPH TEST-001 status COMPLETE (evidence 7, stage_note full pipeline DISCOVER 123 -> RESEARCH 124 -> DESIGN 125 -> IMPLEMENT ~128 -> TEST ~129 -> VERIFY ~130 -> ACCEPT ~131, known_limitations carry G-TI-1..6 + BLK-0005 + env-gates); PROJECT_STATE completed 25->26, implementing 1->0; CHANGELOG 0.3.55; meta validation_status + last_validated refreshed. 26 COMPLETE nodes. NODE_TRANSITION -> BLE-002 (P0 TRANSPORT iOS, dep TRANSPORT-001 COMPLETE; IOS-001 needs BLE-002 first) UNDERSTAND (iter ~132) then IOS-001."
+    result: "ACCEPTED"
+    files_changed:
+      - "engineering/memory/records/TEST-001_VERIFICATION.md"
+      - "engineering/memory/records/TEST-001_TEST.md"
+      - "deny.toml"
+      - ".cargo/audit.toml"
+      - "crates/iris-core/Cargo.toml"
+      - "docs/implementation/TEST_001_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "TEST-001_VERIFICATION.md"
+  - timestamp: "2026-08-18T18:10:00Z"
+    iteration: 129
+    node: "TEST-001"
+    stage: "TEST"
+    action: "TEST-001 TEST COMPLETE (iter ~129) - TEST-001_TEST.md written mapping AC-1..12 to evidence (header/schema/pattern TEST-001_DISCOVER.md). HOST-VERIFIED rows with live re-verify THIS pass, post cargo fmt --all: AC-2 cargo audit --deny warnings EXIT 0 (0 vulns / 574 deps; 17 desktop-transitive gtk/atk/gdk/glib/unic/proc-macro-error warnings suppressed w/ reason+expiry 2026-12-31 per DEC-TEST-0002 - gate was RED on arrival then fixed); AC-4 loom 5/5 in 3.24s (cargo rustc --cfg loom per-crate only - NEVER global RUSTFLAGS, tokio net is cfg(not(loom))) + tokio_behavior 4/4 in 0.00s (paused time); AC-7 protocol_conformance 10/10 in 0.02s (RFC 8949 CDE vectors, bounded-recovery resync, capture PDU, sim property) + tests/fixtures/README.md provenance (AC-7 literal layout); AC-8 golden_vectors 6/6 in 0.02s incl DISC-0009-class 0x66B7FF00-vs-0x66B5C000 regression + corpus V001/V002/V003 (V001 237 B <= P0 LoRa budget); AC-10 benches/ 5 criterion harnesses compile + run Success (fragment re-confirmed this pass warm-up/collect/analyze; regression/battery gates DEFER BLK-0005); AC-11 cargo test --workspace --all-features = 633 passed / 0 failed / 1 ignored (lib 553 + 10 protocol + 6 golden + 4 tokio + rest) + clippy --all-features --all-targets -D warnings = 0 + rustfmt clean (cargo fmt --all APPLIED in-pass for benches/codec.rs + benches/crypto.rs; post-fmt re-verify tokio/protocol/golden 4/10/6 green + bench Success + clippy 0). CI-LEG env-gated rows: AC-1 nextest (nextest absent host), AC-3 kani (7 pure-fn harnesses; Kani absent Windows host per DEC-TEST-0003), AC-5 tarpaulin --fail-under 80 (ptrace Linux only G-TI-1), AC-6 mutants nightly (G-TI-2), AC-9 ci.yml full matrix parse-valid, AC-12 jvm JDK<=21 - each job wired + enumerated. NEXT: VERIFY (iter ~130, TEST-001_VERIFICATION.md + independent verifier) -> ACCEPT (iter ~131) -> PROJECT_GRAPH COMPLETE (26) -> NODE_TRANSITION IOS-001. Baseline 633/0/1 clippy 0 rustfmt clean."
+    result: "TEST_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/TEST-001_TEST.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+      - "crates/iris-core/benches/codec.rs"
+      - "crates/iris-core/benches/crypto.rs"
+    records_created:
+      - "engineering/memory/records/TEST-001_TEST.md"
+  - timestamp: "2026-08-18T17:40:00Z"
+    iteration: 128
+    node: "TEST-001"
+    stage: "IMPLEMENT"
+    action: "TEST-001 IMPLEMENT COMPLETE (iter ~128) - ALL AC-1..12 ARTIFACTS AUTHORED + HOST LEGS VERIFIED. Morning session (AC-1/2/5/6/7/8/12): .config/nextest.toml (ci + JUnit + retries + leaky + ci-mutants deterministic profile); deny.toml (advisories/bans/licenses/sources) + .cargo/audit.toml + host cargo audit exit 0 (17 documented desktop-transitive unmaintained/unsound warnings suppressed with reason + expiry 2026-12-31 per DEC-TEST-0002 - CI --deny warnings gate now passes); CI tarpaulin job --fail-under 80 (ubuntu) + mutants nightly job; tests/protocol_conformance.rs 10 PASS (RFC 8949 CDE vectors, bounded-recovery resync, capture PDU, sim property) + tests/fixtures/ README; tests/golden_vectors.rs 6 PASS incl DISC-0009-class 0x66B7FF00-vs-0x66B5C000 regression + V001/V002/V003 corpus; .github/workflows/ci.yml full matrix (test nextest+doctest / lint / coverage / deny / audit / fuzz / mutants / jvm); jvm JDK 21. This session (AC-3/4/9/10/11): crates/iris-core/src/kani_proofs.rs 7 pure-fn #[cfg(kani)] harnesses + kani CI job (Linux CI-leg; Kani absent on Windows host per DEC-TEST-0003); loom/loom_models.rs 5 leaf models PASS 5/5 in 3.24s (cargo rustc --cfg loom ONLY on loom crate; global RUSTFLAGS breaks tokio net) + tests/tokio_behavior.rs 4 paused-time suites PASS in 0.00s + engineering/tools/verify-loom.sh; benches/ 5 criterion harnesses (codec/envelope/crypto/routing/fragment) compile + run Success; kani + loom CI jobs added; prophet:ceiling_intervals RENAMED floor_intervals (impl is floor, name hazard); workspace baseline 613 -> 633/0/1 (613 + 4 tokio + 10 protocol + 6 golden = 633), clippy 0 all targets, rustfmt clean. NEXT: TEST stage (iter ~129, TEST-001_TEST.md AC-1..12 evidence) -> VERIFY (AC-12 independent verifier) -> ACCEPT -> NODE_TRANSITION IOS-001."
+    result: "IMPLEMENT_COMPLETE"
+    files_changed:
+      - ".config/nextest.toml"
+      - "deny.toml"
+      - ".cargo/audit.toml"
+      - ".github/workflows/ci.yml"
+      - "crates/iris-core/src/kani_proofs.rs"
+      - "crates/iris-core/loom/loom_models.rs"
+      - "crates/iris-core/tests/tokio_behavior.rs"
+      - "crates/iris-core/tests/protocol_conformance.rs"
+      - "crates/iris-core/tests/golden_vectors.rs"
+      - "crates/iris-core/tests/golden_vectors/"
+      - "crates/iris-core/tests/fixtures/README.md"
+      - "crates/iris-core/benches/"
+      - "crates/iris-core/src/routing/prophet.rs"
+      - "engineering/tools/verify-loom.sh"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "tests/fixtures/README.md (provenance)"
+  - timestamp: "2026-08-18T05:30:00Z"
+    iteration: 124
+    node: "TEST-001"
+    stage: "RESEARCH"
+    action: "TEST-001 RESEARCH COMPLETE (iter 124) - RES-0023 recorded (engineering/memory/records/research/RES-0023.md, pattern RES-0019/20/21/22) + ALLOCATION registered (next RES-0024). 7 websearch evidence passes over 2026 best-in-class Rust/Android test infra, primary sources, evidence-leveled L1-L5, no AI citations. Verdict PROCEED across all G-1..G-8: G-1 nextest ADOPT (primary runner, up to 3x, process-per-test, JUnit/partitioning; doctests NOT run by nextest -> separate cargo test --doc step, tokio precedent; no MSRV constraint on tested project); G-2 cargo-audit + cargo-deny ADOPT recurring gate (deny 0.20.2 = PR policy advisories/bans/licenses/sources; audit = fast live-DB scan + SARIF + committed audit.toml suppressions; RustSec advisory-db active Q1 2026); G-3 Kani/loom/tokio-test ADOPT-WITH-CONDITION (Kani bit-precise proofs pure-fn Linux-only, does NOT model concurrency; loom leaf structures cfg(loom) with SeqCst/load-buffering limits; tokio-test async behavior; no tool models full transport::manager); G-4 tarpaulin ADOPT as PR gate --fail-under ~80% workspace (security path stays >=95%; ptrace Linux x86_64 only) + cargo-mutants ADOPT-WITH-CONDITION nightly/sharded trend NOT hard PR gate (hour-scale sweeps, deterministic-suite requirement); G-5 PROTOCOL_CONFORMANCE fixtures ADOPT (RFC 9171 CDDL App B vectors + Meshtastic-style resync adversarial + Wireshark-capture PDU fixtures + ION/muD3TN interop pattern); G-6 GitHub Actions CI ADOPT (official + tokio reference: matrix OS x channel, rust-cache per-cell, taiki-e install-action nextest, separate doctest, JVM job JDK<=21 for Gradle 8.9); G-7 golden-vector corpus ADOPT (byte-exact both-way, catches DISC-0009 class); G-8 criterion 0.8.x harness ADOPT scaffold now (stable-only; #[bench] nightly error >=1.88) / regression gate + battery/transport perf DEFER BLK-0005. Gaps G-TI-1..6 (Windows coverage/formal matrix, mutation gate economics, loom soundness, golden-corpus provenance, JVM CI host, metric semantics) carried as known_limitations. NEXT: DESIGN (iter ~125) AC-1..n + DEC-TEST-0001..n."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0023.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/execution-state.yaml"
+    records_created:
+      - "engineering/memory/records/research/RES-0023.md"
+  - timestamp: "2026-08-18T02:10:00Z"
+    iteration: 122
+    node: "ANDROID-001"
+    stage: "ACCEPT"
+    action: "ANDROID-001 ACCEPTED (iter 122) - NODE_TRANSITION to TEST-001. Verifier APPROVE_WITH_NOTES (ses_fedd3858dffe3C0MMoxbmxjdt9); all 6 mandatory notes reconciled: (1) AC-3 stale engine_start_and_poll_via_explicit_handle -> current coverage (round_trip_delivers_over_shared_mesh engine.rs:510, engine_owns_a_live_runtime engine.rs:626, projection_trait_drives_sync_ops ble_adapter.rs:105); (2) AC-8 KeystoreEd25519Test 9->8, JVM total 40->39; (3) AC-10 rustfmt made clean (cargo fmt --all on crates/iris-android, --check exit 0, tests re-run 613/0/1); (4) committed->working-tree status + known_limitation; (5) wrapper properties-only + JDK<=21 note; (6) AC-5/7/8 JVM rows source-presence/env-gated. AC-1/AC-6 env-gated + AC-13 GATED/BLK-0005 recorded. PROJECT_GRAPH ANDROID-001 status COMPLETE (evidence 18). Baseline 613/0/1 clippy 0 rustfmt clean. NEXT: TEST-001 DISCOVER."
+    result: "ACCEPTED"
+    files_changed:
+      - "engineering/memory/records/ANDROID-001_VERIFICATION.md"
+      - "engineering/memory/records/ANDROID-001_TEST.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "ANDROID-001_VERIFICATION.md (v1.1)"
+  - timestamp: "2026-08-18T01:40:00Z"
+    iteration: 121
+    node: "ANDROID-001"
+    stage: "VERIFY"
+    action: "ANDROID-001 VERIFY (iter 121): wrote ANDROID-001_VERIFICATION.md v1.1 AC-1..15 evidence table + live re-verify (workspace 613/0/1, iris-android 5/5, clippy 0, rustfmt clean after cargo fmt --all applied in-pass) + independent verifier dispatch (ses_fedd3858dffe3C0MMoxbmxjdt9) APPROVE_WITH_NOTES with 6 mandatory corrections -> all reconciled in v1.1. Kotlin test count corrected 40->39 (KeystoreEd25519Test 8 not 9); stale spike test name reconciled; working-tree/git-track + wrapper limitations recorded. NEXT: ACCEPT (iter 122)."
+    result: "VERIFY_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/ANDROID-001_VERIFICATION.md"
+      - "engineering/memory/records/ANDROID-001_TEST.md"
+      - "crates/iris-android/src/bridge.rs"
+      - "crates/iris-android/src/engine.rs"
+      - "crates/iris-android/src/ffi/wifi_direct_adapter.rs"
+      - "crates/iris-android/src/lib.rs"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "ANDROID-001_VERIFICATION.md (v1.1)"
+  - timestamp: "2026-08-17T20:50:00Z"
+    iteration: 120
+    node: "ANDROID-001"
+    stage: "SECURITY_REVIEW"
+    action: "ANDROID-001 SECURITY_REVIEW RE-REVIEW COMPLETE (iter 120) - redteam pass 2 (subagent ses_fefa4ee9effevJmpNQs6KHdbqv) FAIL->RESOLVED. All 13 AND-RT fix logics confirmed REAL code (11 VERIFIED-FIXED, RT-110/RT-112 core present). Blockers FIXED in-pass: R1 WA openNdp:145 Long->ULong compile fix (ndpHandle.toULong()); R2 BLE gattWrite API-33 3-arg writeCharacteristic on minSdk-26 -> TIRAMISU SDK gate + legacy 2-arg writeType fallback surfacing false as GattFailure (BLE:300-315). Same-class residuals fixed: R3 MeshViewModel.syncRelayNow blocking engine.sendText on Main.immediate -> withContext(Dispatchers.IO) (MeshViewModel:72-73); R5 BleScanSession.stop() leaked active window -> stopScanWindow(scanner) (BleScanSession:122-129). Recorded residuals: R4 non-IrisFfiException withTimeout -> UNIFFI_CALL_UNEXPECTED_ERROR (FfiCallTimeout liveness-not-cancellation); R6 BLE adData.serviceData nullable benign; RT-112 syncCall runBlocking doc-only (trivial bodies). Positive controls HELD. SECURITY_REVIEW CLEARED -> STAGE_TRANSITION to VERIFY (iter ~121, AC-1..15 + independent verifier) -> ACCEPT. Baseline 613/0/1 clippy 0."
+    result: "SECURITY_REVIEW_RESOLVED"
+    files_changed:
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidWifiAwareTransportAdapter.kt"
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidBleTransportAdapter.kt"
+      - "android/app/src/main/kotlin/iriscore/ui/MeshViewModel.kt"
+      - "android/app/src/main/kotlin/iriscore/service/BleScanSession.kt"
+      - "engineering/memory/records/ANDROID-001_SECURITY_REVIEW.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-17T20:20:00Z"
+    iteration: 119
+    node: "ANDROID-001"
+    stage: "SECURITY_REVIEW"
+    action: "ANDROID-001 SECURITY_REVIEW (iter 119): redteam adversarial review (subagent ses_feffd18edffezB7W4YvOE7NKij) of crates/iris-android FFI + AdapterLifecycle.kt + identity + FGS/scan/worker -> FAIL, 13 findings AND-RT-101..113 (2 CRITICAL / 6 HIGH / 5 MEDIUM) all dispositioned FIXED in engineering/memory/records/ANDROID-001_SECURITY_REVIEW.md. Fix implementation (general subagent) + INDEPENDENT SPOT-CHECK of every claim vs source: RT-101 Mutex+Dispatchers.Default MeshViewModel:41,53,76; RT-102 keystore-wrap persistence KeystoreEd25519:216,295; RT-103 IrisFfiException.Transport+awaitCurrentGroupInfo WD:157-176; RT-104 suspend attach+SessionGate<WifiAwareSession> WA:84,226,240; RT-105 single-Mutex suspend invalidate AdapterLifecycle:119,170; RT-106 start/stopScan pairs BleScanSession:93,105; RT-107 lazy x25519 X25519StaticAd:45; RT-108 rememberVerified wired WD:309/WA:291; RT-109 LRU eviction+drainDestination AdapterLifecycle:215,230; RT-110 onAvailable-gated NDP+prune WA:196,336,352; RT-111 GattFailure+onServicesDiscovered+negotiated MTU BLE:125,130,291-312; RT-112 FfiCallTimeout sweep; RT-113 ULong SHA-256 deviceHash BLE:187. Residuals recorded (RT-108 candidate-level, RT-111 next-write surfacing, RT-112 syncCall runBlocking). Kotlin-only fixes; Rust untouched. NEXT: redteam re-review (iter ~120) then VERIFY (iter ~121) -> ACCEPT."
+    result: "SECURITY_REVIEW_FIXES_IMPLEMENTED"
+    files_changed:
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidWifiDirectTransportAdapter.kt"
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidWifiAwareTransportAdapter.kt"
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidBleTransportAdapter.kt"
+      - "engineering/memory/records/ANDROID-001_SECURITY_REVIEW.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "ANDROID-001_SECURITY_REVIEW.md"
+  - timestamp: "2026-08-17T19:40:00Z"
+    iteration: 118
+    node: "ANDROID-001"
+    stage: "TEST"
+    action: "ANDROID-001 TEST COMPLETE (iter 118) - wrote engineering/memory/records/ANDROID-001_TEST.md mapping AC-1..15 to evidence. PASS: AC-2 bindings committed, AC-3 spike 3/3, AC-4 engine 5/5 incl round_trip, AC-5 adapter lifecycle 14 tests, AC-7 FGS/PendingIntent/WorkManager + ScanRestartPolicyTest 4 + MeshSyncPolicyTest 7, AC-8 KeystoreEd25519Test 9 + X25519StaticAd, AC-9 manifest 34/26 + LNP cliff, AC-10 workspace green, AC-11 1:1 op mapping + iriscode facade, AC-12 doc reconciliation. GATED/env: AC-1 cargo-ndk build, AC-6 gradlew assembleDebug (no Android SDK/NDK/gradle/kotlinc on host - probed, java JDK 25 only). GATED/BLK-0005: AC-13. NEXT: AC-14 SECURITY_REVIEW, AC-15 VERIFY. Live re-verify: cargo test --workspace --all-features 613 passed / 0 failed / 1 ignored (608 baseline + 5 iris-android); iris-android 5/5; clippy --all-features --tests 0 warnings; rustfmt clean. 40 JVM tests authored (14 AC-5 + 26 AC-7/8), run on toolchain host/CI."
+    result: "TEST_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/ANDROID-001_TEST.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "ANDROID-001_TEST.md"
+  - timestamp: "2026-08-17T19:10:00Z"
+    iteration: 117
+    node: "ANDROID-001"
+    stage: "IMPLEMENT"
+    action: "action: ANDROID-001 IMPLEMENT PROGRESS (iter 117) - AC-12 DOC RECONCILIATION COMPLETE. ANDROID.md amended (pinned toolchain Kotlin 2.2.10 + AGP 8.7.3 + Compose BOM 2024.12.01 strong-skipping + Gradle wrapper 8.9 + KSP 2.2.10-2.0.2 + Hilt 2.55; UniFFI 0.31.2; cargo-ndk 4.1.2 + NDK r26 floor/r28 pin + ABI {arm64-v8a, armeabi-v7a, x86_64}; minSdk 26/targetSdk 34 cliff note; implemented package layout; BLE PendingIntent scan + ScanRestartPolicy 5/30s; OEM matrix +Honor/Huawei/Google; UniFFI Integration section (foreign traits, committed generated kotlin, iriscode package facade); Keystore rewritten Ed25519 TEE API 33 (REJECTS ECDSA P-256) + StrongBox exclusion + X25519StaticAd RED-0005; ACCESS_LOCAL_NETWORK SDK-37 cliff; NEARBY_WIFI_DEVICES). KOTLIN_LAYER.md UniFFI Binding Layer section + conformance note superseding stale IrisCore sketches. Docs-only pass - workspace untouched (baseline 608/0/1, clippy 0). Next: TEST iter 118."
+    result: "IMPLEMENT_PROGRESS"
+    files_changed:
+      - "docs/platforms/ANDROID.md"
+      - "docs/implementation/KOTLIN_LAYER.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-17T18:45:00Z"
+    iteration: 116
+    node: "ANDROID-001"
+    stage: "IMPLEMENT"
+    action: "action: ANDROID-001 IMPLEMENT PROGRESS (iter 116) - AC-6/AC-7/AC-8 SHELL+PLUMBING+IDENTITY DELIVERED. [AC-6] android/ Gradle scaffold (settings.gradle.kts, root build.gradle.kts: Kotlin 2.2.10 + AGP 8.7.3 + Kotlin compose plugin + KSP 2.2.10-2.0.2 + Hilt 2.55; app/build.gradle.kts compileSdk 34/targetSdk 34/minSdk 26 D-8, Compose BOM 2024.12.01 strong-skipping, app sourceSets -> kotlin/src/main/kotlin committed bindings + jna 5.14.0, unitTests.useJUnitPlatform) + app shell (IrisApplication @HiltAndroidApp + WorkManager Configuration.Provider/HiltWorkerFactory; di/ AdapterModule -> 3 foreign-trait adapters, IrisCoreModule -> KeystoreEd25519 + @NodeId ByteArray + IrisEngine(ble,aware,direct,nodeId), DispatcherModule; ui/ MainActivity @AndroidEntryPoint + MeshViewModel @HiltViewModel (boot: FGS start + WorkScheduler.schedule + startMesh + subscribeInbox, guarded) + HomeScreen collectAsStateWithLifecycle + Material3 + @Immutable MeshUiState/InboxUiMessage + IrisTheme; data/ MeshRepository engine<->UI bridge FfiInboxListener->StateFlow + RelayOutbox bounded). NEW kotlin/src/main/kotlin/iriscode/api.kt - package iriscode facade re-exporting uniffi.iriscode: RESOLVES the AC-5 package-conformance gap (15 adapter imports iriscode.* + shell imports now compile - AC-11 basis). [AC-7] IrisBleService connectedDevice FGS (API 34+ startForeground 3-arg type, <34 fallback, START_STICKY, channel) + BleScanSession PendingIntent BLE scanning (SCAN_MODE_OPPORTUNISTIC, IRIS_SERVICE_UUID filter, backoff ScanRestartPolicy 5/30s floor) + BleScanReceiver manifest receiver + BleScanEvents flow; WorkScheduler PeriodicWorkRequest 15-min + 5-min flex + CONNECTED constraint + unique; IrisBackgroundSyncWorker @HiltWorker drains RelayOutbox; MeshSyncPolicy battery-aware (critical-battery deferral); BatteryOptimizationGuidance OEM matrix (Samsung/Xiaomi/Oppo/realme/Vivo/Honor/Huawei/Google) + ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS. [AC-8] KeystoreEd25519 (AndroidKeyStore TEE Ed25519 API 33 floor, no StrongBox G-AND-2 + SoftwareBackend JCA fallback + AutoBackend runtime pick; 32-byte raw pub = 64-hex PeerId) + X25519StaticAd RED-0005 Ed25519-signed-X25519 (tamper-evident binding verify). Manifest: FGS connectedDevice + BLUETOOTH_SCAN/ADVERTISE/CONNECT + NEARBY_WIFI_DEVICES neverForLocation + ACCESS_FINE_LOCATION + optional features + targetSdk 34 (ACCESS_LOCAL_NETWORK SDK-37 cliff avoided, AC-9). JVM unit tests NEW: MeshSyncPolicyTest 7 + KeystoreEd25519Test 9 + ScanRestartPolicyTest 4 + BatteryOptimizationGuidanceTest/PeerIdCodecTest 6 = 26; total 40 host-JVM incl 14 AC-5. Rust + cargo untouched (AC-10 baseline 608/0/1 clippy 0 held). Env-gated known_limitation not blocker: gradlew assembleDebug (AC-6) + cargo-ndk build (AC-1) on toolchain host/CI."
+    result: "IMPLEMENT_PROGRESS"
+    files_changed:
+      - "android/ (NEW Gradle scaffold + app shell: settings.gradle.kts, build.gradle.kts x2, gradle.properties, gradle-wrapper.properties, proguard-rules.pro)"
+      - "android/app/src/main/AndroidManifest.xml (NEW: FGS connectedDevice + BLE/Wi-Fi perms + features + targetSdk 34)"
+      - "android/app/src/main/kotlin/iriscore/IrisApplication.kt (NEW @HiltAndroidApp)"
+      - "android/app/src/main/kotlin/iriscore/di/ (NEW Qualifiers/AdapterModule/IrisCoreModule/DispatcherModule)"
+      - "android/app/src/main/kotlin/iriscore/data/ (NEW MeshRepository/RelayOutbox)"
+      - "android/app/src/main/kotlin/iriscore/service/ (NEW IrisBleService/BleScanSession/BleScanReceiver/ScanRestartPolicy)"
+      - "android/app/src/main/kotlin/iriscore/worker/ (NEW WorkScheduler/IrisBackgroundSyncWorker/MeshSyncPolicy)"
+      - "android/app/src/main/kotlin/iriscore/identity/ (NEW KeystoreEd25519/X25519StaticAd)"
+      - "android/app/src/main/kotlin/iriscore/util/ (NEW BatteryOptimizationGuidance/PeerIdCodec)"
+      - "android/app/src/main/kotlin/iriscore/ui/ (NEW MainActivity/MeshViewModel/HomeScreen/MeshUiState/Theme)"
+      - "android/app/src/main/res/ (NEW strings/themes/colors/drawables)"
+      - "android/app/src/test/kotlin/ (NEW 4 JVM test suites: MeshSyncPolicyTest/KeystoreEd25519Test/ScanRestartPolicyTest/BatteryOptimizationGuidanceTest)"
+      - "kotlin/src/main/kotlin/iriscode/api.kt (NEW package iriscode facade re-exporting uniffi.iriscode - AC-11 fix)"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "android/ app shell + Gradle scaffold (AC-6)"
+      - "android service/ + worker/ (AC-7)"
+      - "android identity/ KeystoreEd25519 + X25519StaticAd (AC-8)"
+      - "kotlin/src/main/kotlin/iriscode/api.kt (AC-11 facade)"
+
+  - timestamp: "2026-08-17T16:10:00Z"
+    iteration: 115
+    node: "ANDROID-001"
+    stage: "IMPLEMENT"
+    action: "ANDROID-001 IMPLEMENT PROGRESS - AC-5 FFI-CONTRACT ABSORPTION COMPLETE. Kotlin adapter layer (android/app/src/main/kotlin/iriscore/adapter/): AdapterLifecycle.kt implements the carry-forward requirements - FfiCallTimeout (NEW-WA-RT-110 per-call suspend/sync/blockOn timeouts, DEFAULT 30s), SessionGate (NEW-WA-RT-111/WIFIDIRECT-RT-010 idempotent start/subscribe: same-session reuse, coalesced concurrent starters via Mutex, NEVER latched into failure, non-suspend invalidate() for channel-lost callbacks), RingBufferOutbox (NEW-WA-RT-112 bounded oldest-drop with per-destination eviction - one saturated peer cannot starve another), RadioStateTracker (NEW-WA-RT-109 multi-subscriber replaying StateFlow availability stream; pull-only isAvailable for Rust bridge proj-WA-1), NdpRegistry (closed-NDP prune at drain boundary), VerifiedPeerCache (NEW-WA-RT-108 candidate -> VERIFIED 64-hex PeerId reuse key). AndroidWifiDirectTransportAdapter (NEW, full 20-op async FfiWifiDirectAdapter): WifiP2pManager DNS-SD (Bonjour _iris._tcp) service request + discoverServices, addLocalService + setDnsSdResponseListeners, createGroup persistent GO + connect join/invite + removeGroup, setGroupOperatingBand API-29 mapping (AUTO no-op/GHZ24/GHZ5/GHZ6), WIFI_P2P_STATE/CONNECTION_CHANGED broadcast receivers, SessionGate<Channel> latch + invalidate on onChannelDisconnected, ring-buffer p2pSend (TCP-over-GO socket path = AC-6), goAddr adapter-supplied never hard-coded (G-WD-2). AndroidWifiAwareTransportAdapter (12-op) + AndroidBleTransportAdapter (10-op) consistent with shared lifecycle primitives. NEW AdapterLifecycleTest.kt (JUnit5 + kotlinx.coroutines) 14 tests one-per-requirement: rt110 suspendCall TimeoutCancellationException + syncCall onTimeout fallback, rt111 ensureStarted idempotent (create runs once)/never-latched/concurrent-coalescing/markStarted-never-downgrades/reset, rt010 invalidate clears latch + re-init, rt112 oldest-drop-per-destination + cross-destination preservation + drain-once + totalSize, rt109 closed-NDP prune + closeAll + multi-subscriber replay StateFlow, rt108 remember/resolve/reuse/evict. 1:1 op mapping verified vs generated bindings (FfiWifiDirectAdapter 16 interface fns = 16 overrides; ULong conversions confirmed from generated data classes FfiGroupInfo.groupId/go/clients). cargo check --workspace green (additive Kotlin-only; Rust untouched). Kotlin compile/run leg env-gated (no Android SDK/kotlinc/gradle on host)."
+    result: "IMPLEMENT_PROGRESS"
+    files_changed:
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidWifiDirectTransportAdapter.kt (NEW full 20-op)"
+      - "android/app/src/main/kotlin/iriscore/adapter/AdapterLifecycle.kt (NEW-WA-RT-108..112 + RT-010 primitives)"
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidBleTransportAdapter.kt (10-op)"
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidWifiAwareTransportAdapter.kt (12-op async)"
+      - "android/app/src/test/kotlin/iriscore/adapter/AdapterLifecycleTest.kt (NEW 14 tests one-per-requirement)"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidWifiDirectTransportAdapter.kt"
+      - "android/app/src/test/kotlin/iriscore/adapter/AdapterLifecycleTest.kt"
+  - timestamp: "2026-08-17T14:28:00Z"
+    iteration: 114
+    node: "ANDROID-001"
+    stage: "IMPLEMENT"
+    action: "ANDROID-001 IMPLEMENT PROGRESS — AC-4 ENGINE REWIRING COMPLETE. IrisEngine (crates/iris-android/src/engine.rs REWRITTEN) mirrors DesktopEngine: owns tokio Runtime + Handle + Arc<TransportManager> + Arc<MessageEngine>. NEW src/bridge.rs: BleBridge (buffered MutexGuard drains proj-BLE-1, hex UUID/MAC conversions, AdvertisementData -> {payload: service_data, non_connectable: true}), WifiAwareBridge, WifiDirectBridge (17-method mirror) + group_info_from_ffi/band_to_ffi/ffi_err_to_ble. FfiWifiDirectAdapter EXPANDED 5-op -> full 20-op async surface (FfiOperatingBand enum + FfiGroupConfig/FfiGroupInfo/FfiDirectPeerDiscovery/FfiIncomingWifiDirectData records); spike discover_services/connect_group_owner/send + FfiServiceInfo removed. WA projections CORRECTED: FfiPeerDiscovery.service_instance -> service_specific_info: Vec<u8>, FfiIncomingNdpData.peer_handle -> sender: Option<Vec<u8>> (SimAware::matches updated; dead ndp_sent() getter removed). Engine surface: constructor(ble,aware,direct,node_id) builds bridges + registers 3 transports on TransportManager inside runtime.block_on + MessageEngine::new_with_telemetry(MemoryStorage + DevCryptoProvider) + spawns per-transport inbox forwarders; send_text + subscribe_inbox (FfiInboxListener foreign trait + FfiIncomingMessage record) + start_all (drives start_advertising on ble-android/wifi-aware-0/wifi-direct-0) + stop_all + parse_peer_id_hex + build_text_envelope helpers; spike drain_ble_scan_results/drain_incoming_ndp/send_ndp removed. futures-util promoted deps; NodeAdvertisement import path fixed; Arc<dyn Transport> cast for forwarder loop. TESTS 5/5 PASS (0.57s): engine_registers_three_transports_over_bridges, start_all_brings_transports_up_over_bridges, round_trip_delivers_over_shared_mesh (2 engines over SimAwareWire wrapping SimulatedWifiAwareAdapter sharing SimMeshCoordinator; B advertise -> A discover/connect keyed by B real node id -> A send_text b\"hello\" -> B delivered + FfiInboxListener receipt), engine_owns_a_live_runtime; clippy 0; cargo build -p iris-core clean. uniffi-bindgen 0.31.2 REGENERATED + committed Kotlin bindings (kotlin/.../iriscode.kt 6154 lines: FfiIncomingMessage x10, subscribeInbox x2, create_group x4; stale discover_services/FfiServiceInfo 0; strays removed). Projection details: WA connect needs transport_addresses key 'wifi-aware' (u64 string); link keyed by app-supplied PeerInfo.peer_id; NodeAdvertisement at iris_core::message; WA idle poll cadence 500ms (tests ~5s timeout); DevCryptoProvider authenticates()==false verify()==Ok(true) (inert crypto, round-trip works). Next: Kotlin adapters + AdapterLifecycle.kt (AC-5, NEW-WA-RT-108..112 + RT-010)."
+    result: "IMPLEMENT_PROGRESS"
+    files_changed:
+      - "crates/iris-android/src/engine.rs (rewrite)"
+      - "crates/iris-android/src/bridge.rs (new)"
+      - "crates/iris-android/src/ffi/wifi_direct_adapter.rs"
+      - "crates/iris-android/src/ffi/wifi_aware_adapter.rs"
+      - "crates/iris-android/src/lib.rs"
+      - "crates/iris-android/src/ffi/mod.rs"
+      - "crates/iris-android/Cargo.toml (futures-util deps)"
+      - "kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt (regenerated, committed)"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created: []
+  - timestamp: "2026-08-17T07:10:00Z"
+    iteration: 113
+    node: "ANDROID-001"
+    stage: "IMPLEMENT"
+    action: "ANDROID-001 IMPLEMENT PROGRESS — G-AND-3 SPIKE COMPLETE + AC-2 bindings generated. NEW crates/iris-android (workspace member): Cargo.toml (lib iriscode cdylib/staticlib/rlib, uniffi=0.31.2 + uniffi_bindgen=0.31.2 build-dep pinned, iris-core/async-trait/tokio/serde/thiserror), src/lib.rs (uniffi::setup_scaffolding!), src/engine.rs (IrisEngine #[derive(uniffi::Object)]: owns tokio Runtime + 3 Arc<dyn> foreign adapters + node_id; constructor new(ble,aware,direct,node_id) validates 32-byte node_id; start_all/stop_all/drain_ble_scan_results/drain_incoming_ndp/send_ndp all drive adapters via runtime.block_on — explicit tokio Handle workaround for issue #2576), src/ffi/mod.rs + error.rs (IrisFfiError thiserror + uniffi::Error) + ble_adapter.rs (FfiBleAdapter 10-op sync foreign trait + FfiScanFilter/FfiAdvertisementData/FfiScanResult/FfiGattWriteEvent + SimBle) + wifi_aware_adapter.rs (FfiWifiAwareAdapter 11-op async #[async_trait] + FfiPublishConfig/FfiPeerDiscovery/FfiIncomingNdpData + SimAware atomic-state sim) + wifi_direct_adapter.rs (FfiWifiDirectAdapter 5-op async + FfiServiceInfo + SimDirect). SPIKE TESTS 3/3 PASS: engine_start_and_poll_via_explicit_handle (asserts subscribe/publish awaited, ndp_send count==1, unsubscribe awaited — proves async foreign-trait calls genuinely crossed the engine runtime handle), projection_trait_drives_sync_ops, engine_owns_a_live_runtime (real tokio sleep). cargo test -p iris-android --all-features = 3 passed / 0 failed; clippy 0. AC-2: cargo install uniffi --features cli (0.31.2) -> uniffi-bindgen generate --library target/debug/iriscode.dll -> kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt (202,639 B, committed): IrisEngine constructor(ble,aware,direct,nodeId) + nodeId/startAll/stopAll/sendNdp/drainBleScanResults/drainIncomingNdp, 3 foreign-trait interfaces (FfiBleAdapter sync; FfiWifiAwareAdapter + FfiWifiDirectAdapter async -> generated Kotlin suspend fun e.g. suspend fun subscribe/publish/ndpSend), IrisFfiException sealed, data classes FfiPublishConfig/FfiScanResult/FfiIncomingNdpData. Kotlin compile+run leg ENV-GATED (no Android SDK/NDK/gradle/kotlinc on host; kotlinc 2.2.0 zip download incomplete on flaky network after 180s) -> recorded known_limitation, not blocker. PROJECT_GRAPH ANDROID-001: status DESIGNING->IMPLEMENTING, evidence +2 (G-AND-3 spike, AC-2 bindings), known_limitations +1 (Kotlin compile/run env-gated on host). Next: continue IMPLEMENT — wire IrisEngine to real iris-core (AC-4)."
+    result: "IMPLEMENT_PROGRESS"
+    files_changed:
+      - "crates/iris-android/ (new crate scaffold)"
+      - "kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt (generated, committed)"
+      - "Cargo.toml (workspace member)"
+      - "Cargo.lock"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "crates/iris-android/src/engine.rs"
+      - "crates/iris-android/src/ffi/ble_adapter.rs"
+      - "crates/iris-android/src/ffi/wifi_aware_adapter.rs"
+      - "crates/iris-android/src/ffi/wifi_direct_adapter.rs"
+      - "kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt"
+  - timestamp: "2026-08-17T06:00:00Z"
+    iteration: 112
+    node: "ANDROID-001"
+    stage: "DESIGN"
+    action: "ANDROID-001 DESIGN COMPLETE + STAGE_TRANSITION to IMPLEMENT (iter 113). Wrote docs/implementation/ANDROID_DESIGN.md v1.0 (pattern BLE/WIFI_TRANSPORT_DESIGN + DESKTOP_DESIGN): Scope (net-new crates/iris-android + kotlin/ + android/), decisions D-1..D-8 (UniFFI foreign traits + async trait methods over FFI = injection bridge; explicit tokio Handle #2576 workaround; UniFFI 0.31.x + cargo-ndk 4.1.2 + rust-android-gradle 0.9.6/Mullvad 0.10.1; NDK pin G-AND-5 + ABI {arm64-v8a, armeabi-v7a, x86_64} G-AND-6; Kotlin 2.2.x + Compose + Hilt; Keystore TEE Ed25519 RED-0005-aligned; targetSdk 34/minSdk 26 + ACCESS_LOCAL_NETWORK SDK-37 cliff; adapter lifecycle NEW-WA-RT-108..112 + RT-010; module layout; FFI/adapter layer; platform plumbing FGS connectedDevice + PendingIntent + WorkManager + OEM matrix). AC-1..15 defined (C2 gap RESOLVED, pattern BLE-001) incl AC-3 = G-AND-3 UniFFI spike, AC-10 workspace >= 608/0/1, AC-13 GATED/BLK-0005, AC-14 SECURITY_REVIEW next, AC-15 VERIFY next. DEC-AND-0001..0008 ratified into DECISIONS.md. PROJECT_GRAPH: status DISCOVERED->DESIGNING, acceptance_criteria added, evidence + known_limitations(7) + stage_note updated; meta validation_status iter 112. Baseline 608/0/1 clippy 0 held (docs-only pass). Next: IMPLEMENT (iter 113): G-AND-3 spike (AC-3) then scaffold crates/iris-android + android/ Gradle module + Kotlin adapters/lifecycle/identity."
+    result: "DESIGN_COMPLETE"
+    files_changed:
+      - "docs/implementation/ANDROID_DESIGN.md"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "docs/implementation/ANDROID_DESIGN.md"
+  - timestamp: "2026-08-17T05:30:00Z"
+    iteration: 111
+    node: "ANDROID-001"
+    stage: "RESEARCH"
+    action: "ANDROID-001 RESEARCH COMPLETE + STAGE_TRANSITION to DESIGN (iter 112). RES-0022 recorded (engineering/memory/records/research/RES-0022.md, pattern RES-0019/20/21) + ALLOCATION registered (next RES-0023). 8 websearch evidence passes over 2026 Android/SOTA, primary sources (mozilla.github.io uniffi L1, crates.io/docs.rs, plugins.gradle.org, developer.android.com/source.android.com, issuetracker.google.com, Wi-Fi Alliance), evidence-leveled L1-L5, no AI citations. Verdict PROCEED. Q1 ADOPT: UniFFI foreign traits (#[uniffi::export(foreign)] proc-macro; callback interfaces soft-deprecated) + async trait methods over FFI = Kotlin-adapter injection bridge (foreign-future/oneshot, Kotlin suspend); BleAdapter sync 10-op / WifiAwareAdapter 12-op + WifiDirectAdapter 20-op async via #[async_trait] compat; trap issue #2576: async_runtime=tokio attr INEFFECTIVE on exported-trait impls -> explicit tokio Handle injection into pollers (G-AND-3 spike at IMPLEMENT); constraints return-Result + by-value params (refs unsupported #2263). Q2 ADOPT: UniFFI 0.31.x (bindgen+proc-macro; 0.32 docs.rs) + cargo-ndk 4.1.2 (MSRV 1.86, NDK r26 floor / r28.2 current, ABI {arm64-v8a, armeabi-v7a, x86_64}, i686 dropped) + rust-android-gradle 0.9.6 (Gradle 8.x) | Mullvad 0.10.1 (Gradle 9+) + generated-Kotlin committed (uniffi-starter). Q3 ADOPT: Kotlin 2.2.x + Compose (strong-skipping default) + Hilt; FGS connectedDevice (API 34+) + PendingIntent scans + SCAN_MODE_LOW_POWER/OPPORTUNISTIC + WorkManager cadence + OEM battery-kill matrix; floors targetSdk 34/minSdk 26 (API 26 = 95%+ coverage). Q4 ADOPT: Android 13+ Keystore Ed25519/X25519 hardware-backed (KeyMint v2 TEE, keystore2 Rust); StrongBox EXCLUDES Ed25519 (RSA/AES/P-256/HMAC-SHA256/3DES only; CTS issue 399856239) -> identity = Keystore TEE Ed25519 (API 33 floor; runtime software-fallback) aligned IDENT-001 RED-0005/RES-0016-D2, session keys stay in-engine — ECDSA P-256 conversion rejected. Q5 ADOPT + carry-forwards: BLE (BluetoothLeScanner/Gatt unchanged; Android 17 read() -1 targetSdk 37), Wi-Fi Aware (alive API 37, docs updated 2026-08-14, NAN-USD, datapath 1:1), Wi-Fi Direct (extended API 36/37); CRITICAL Android 17 ACCESS_LOCAL_NETWORK runtime permission (NEARBY_DEVICES group) gates outgoing/incoming TCP + UDP unicast/multicast/broadcast + mDNS/DNS-SD = the ENTIRE IRIS data plane at targetSdk 37+ -> v1 targetSdk 34 per ANDROID.md (implicit INTERNET grant), document SDK-37 cliff + NsdManager-mediated-IP exception; BluetoothSocket.read() -1 handling. Gaps G-AND-1..6. Verdict PROCEED -> DESIGN (iter 112): AC-1..n + ANDROID_DESIGN.md."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0022.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/CHANGELOG.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/research/RES-0022.md"
   - timestamp: "2026-08-17T05:00:00Z"
     iteration: 110
     node: "ANDROID-001"
