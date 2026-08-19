@@ -280,11 +280,17 @@ extension IrisBleManager: CBPeripheralManagerDelegate {
         }
     }
 
+    // willRestoreState on BOTH the central manager (CBCentralManagerRestoredState)
+    // and peripheral manager — CoreBluetooth does NOT auto-resume scan/advertise.
+    // SessionRecovery re-arms startAdvertising/startScan with a debounce
+    // (relaunch-crash-loop guard, DEC-BLE-002-0005), re-adds services if needed,
+    // gated on isProtectedDataAvailable (see session/SessionRecovery.swift,
+    // AC-11).
     func peripheralManagerDidRestoreState(_ peripheral: CBPeripheralManager) {
-        // State restoration: re-add services if needed
         if peripheralManager.services?.isEmpty ?? true {
             setupGattServer()
         }
+        SessionRecovery.shared.reArmAfterRestore()
     }
 }
 ```

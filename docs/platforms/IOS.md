@@ -2,10 +2,13 @@
 
 ## Platform Targets
 
-- **Minimum iOS**: 14.0
+- **Minimum iOS**: 14.0 (Xcode 16 supports iOS 12+; Apple recommends 15+)
 - **Target iOS**: 17.0
-- **Xcode**: 15.0+
-- **Swift**: 5.9+
+- **Xcode**: 16+ (iOS 18 SDK — build floor per Apple App Store mandate
+  2025-04-24, ITMS-90725; Xcode 16 requires macOS Sonoma 14.5+; deployment
+  target may stay lower)
+- **Swift**: 6.x compiler with **Swift 5 language mode** (UniFFI 0.31 compat —
+  mozilla/uniffi-rs#2929; see DEC-IOS-0002)
 - **SwiftUI**: iOS 14+
 
 ## Architecture
@@ -208,7 +211,11 @@ func handleMaintenanceTask(task: BGProcessingTask) {
 }
 ```
 
-BGProcessingTask provides up to ~30 seconds typically, up to a few minutes if conditions are right. Not guaranteed to run on schedule.
+BGAppRefresh/BGProcessing are **heuristic — no guaranteed cadence, budget
+undocumented** (typically ~30 s up to a few minutes when conditions allow).
+Schedules do **not survive user force-quit** — **re-submit every launch**
+(DEC-IOS-0005). Maintenance is best-effort only; **never schedule critical
+messaging or emergency delivery on BGTask** (AC-14 / G-IOS-4).
 
 ### Push Notification Wake-Up
 
@@ -237,11 +244,16 @@ This is a fallback path only — IRIS functions fully offline.
 
 ## Swift-Rust FFI via UniFFI
 
-The same `iris.udl` file used for Android generates Swift bindings:
+UniFFI 0.31.x uses **metadata-based generation from the compiled library** (the repo is **proc-macro — there is no UDL file**). Swift bindings are generated from compiled-library metadata:
 
 ```bash
-uniffi-bindgen generate src/iris.udl --language swift --out-dir ios/IRIS/RustFFI/
+uniffi-bindgen generate --library target/aarch64-apple-ios/release/libIrisCore.a \
+    --language swift --out-dir ios/IRIS/RustFFI/
 ```
+
+(`--lib-file` was removed in 0.31.0; the single-UDL `generate src/iris.udl`
+command is superseded for proc-macro crates.) Generated Swift is **committed**
+under `ios/IRIS/RustFFI/` and freshness-guarded in CI (`git diff --exit-code`).
 
 The XCFramework is built:
 ```bash
@@ -270,31 +282,31 @@ let messageId = try core.sendMessage(
 
 ## Security
 
-### Secure Enclave Key Storage
+### Identity Key Storage (Keychain, app-layer CryptoKit Ed25519)
+
+IRIS identity is **Ed25519** (DEC-0002/CRYPTO-001). Secure Enclave supports
+**ECDSA P-256 only** — it cannot host Ed25519 keys. The compatible path is a
+**CryptoKit Ed25519 app-layer key persisted in the Keychain** as a generic
+password item:
 
 ```swift
-let attributes: [String: Any] = [
-    kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
-    kSecAttrKeySizeInBits as String: 256,
-    kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
-    kSecPrivateKeyAttrs as String: [
-        kSecAttrIsPermanent as String: true,
-        kSecAttrApplicationTag as String: "app.iris.identity".data(using: .utf8)!,
-        kSecAccessControl as String: SecAccessControlCreateWithFlags(
-            nil,
-            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            .privateKeyUsage,
-            nil
-        )!
-    ]
+let query: [String: Any] = [
+    kSecClass as String: kSecClassGenericPassword,
+    kSecAttrService as String: "com.iris.identity.v1",
+    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+    kSecValueData as String: seed,       // 32-byte Ed25519 seed (cryptographically random)
+    kSecAttrLabel as String: "IRIS identity (Ed25519) — key is app-layer, not SE"
 ]
-var error: Unmanaged<CFError>?
-guard let privateKey = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
-    throw error!.takeRetainedValue()
-}
 ```
 
-Note: Secure Enclave supports ECDSA P-256 only, not Ed25519. Same pattern as Android Keystore — hardware-backed identity key uses ECDSA, session encryption keys managed by Rust core.
+Note: **no biometric access-control flag** — `SecAccessControl` with
+`.biometryCurrentSet` (or any interactive prompt) returns
+`errSecInteractionNotAllowed` while backgrounded, breaking restoration-launch
+identity loads. This is an **app-layer key anchored in Keychain**, a weaker
+anchor than the Android TEE Keystore path (documented known_limitation); the
+Secure-Enclave ECDSA P-256 "rescue" path is **deferred** (RES-0025 RQ-2 —
+mirrors the StrongBox deferral). Session/encryption keys are managed by the
+Rust core.
 
 ### Core Data Encryption
 

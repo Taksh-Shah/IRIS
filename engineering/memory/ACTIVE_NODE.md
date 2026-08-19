@@ -7,8 +7,8 @@
 
 - **Type**: PLATFORM (Xcode/Swift shell, CoreBluetooth device layer, FFI)
 - **Priority**: P0
-- **Status**: **IMPLEMENTING** — IMPLEMENT+tranches COMPLETE (iter ~144..146),
-  **TEST COMPLETE (iter ~147); DOCUMENT next (iter ~148, AC-17)**
+- **Status**: **IMPLEMENTING** — IMPLEMENT + TEST + DOCUMENT COMPLETE
+  (iter ~144..148); **SECURITY_REVIEW next (iter ~149, AC-20)**
 - **Deps**: BLE-002 / MSG-001 / EMERG-001 — **all COMPLETE** (eligible)
 - **C2 gap**: **RESOLVED** at DESIGN (iter ~143) — AC-1..AC-21 defined
 
@@ -60,12 +60,17 @@
 - **AC-18**: PASS — live re-verify: workspace **658/0/1**, clippy 0, fmt clean.
 - **AC-19**: GATED/BLK-0005. Commit `110ef5b`.
 
+## DOCUMENT COMPLETE (iter ~148, AC-17)
+
+All 6 EXTERNAL-FACTS corrections applied (docs-only, baseline 658/0/1 held):
+IOS.md Xcode 16+ / `generate --library` / Keychain Ed25519 rewrite / BGTask
+sharpening; SWIFT_LAYER.md willRestoreState re-arm; DISCOVER 16.2→16.1.
+
 ## Next (short)
 
-DOCUMENT (iter ~148, AC-17 — apply 6 EXTERNAL-FACTS corrections to
-`docs/platforms/IOS.md` + `docs/implementation/SWIFT_LAYER.md` per IOS_DESIGN.md
-§13) → SECURITY_REVIEW (AC-20) → VERIFY (AC-21) → ACCEPT → PILOT-001.
-Baseline **658/0/1**.
+SECURITY_REVIEW (iter ~149, AC-20 — redteam on `IosBleAdapter`, seam, Keychain
+identity, SessionRecovery/BGTask/LiveActivity) → VERIFY (AC-21) → ACCEPT →
+PILOT-001. Baseline **658/0/1**.
 
 ## Carry-forward contracts into IOS-001 (from BLE-002)
 

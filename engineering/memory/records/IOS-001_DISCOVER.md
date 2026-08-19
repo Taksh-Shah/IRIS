@@ -67,7 +67,7 @@
 **Platform / background surface**
 - Background: BGTaskScheduler (app refresh) + state restoration; MCF is the
   Apple-to-Apple supplement (not BLE substitute); Live Activity (ActivityKit,
-  iOS 16.2+) for screen-on foreground framing; Network.framework for Internet
+  iOS 16.1+) for screen-on foreground framing; Network.framework for Internet
   relay path parity (INTERNET-001).
 - Permissions: `NSBluetoothAlwaysUsageDescription`, `NSLocalNetworkUsageDescription`
   (MCF/Network), background modes plist entries.
