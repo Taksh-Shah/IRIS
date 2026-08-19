@@ -1,7 +1,7 @@
 # DECISIONS.md — Active Decision Log
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-18T06:10:00Z
+**Last updated**: 2026-08-18T12:30:00Z
 
 ---
 
@@ -765,3 +765,88 @@ Evidence: [Link to research/record]
 **Alternatives**: `inject_identify_read(&self, uuid, bytes)` setter — rejected (mutable interior state for test-only injection; the sim already has a beacon; serving is the honest GATT-server shape); no-op read on `SimulatedBleAdapter` — rejected (breaks AC-3 round-trip); add read only inside the discovery branch (no trait change) — rejected (violates BleAdapter = FFI seam; the real iOS/Android adapters must implement the read at the platform tier).
 **Consequence**: BleAdapter trait grows 1 op; all 7 impls updated in-pass (SimulatedBleAdapter, RecordingBleAdapter, IosPayloadAdapter, TwoMtuAdapter, FailingWriteAdapter, FailingConnectAdapter, BleBridge); +5 iOS-leg tests (AC-1/2/3/4/6/10/12); discovery code path unchanged in shape, now calls `adapter.gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC)`.
 **Evidence**: BLE-001 `ble.rs` (L4) trait surface; DEC-BLE-002-0002/0004; BLE-002 IMPLEMENT pass (workspace green, clippy 0, fmt 0)
+
+---
+
+## IOS-001 DECISIONS (iter 143 DESIGN, RES-0025)
+
+### DEC-IOS-0001: Identity = Keychain CryptoKit Ed25519 (app-layer), AfterFirstUnlockThisDeviceOnly, no biometric; SE ECDSA P-256 rescue deferred
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: `identity.v1` on iOS = CryptoKit `Curve25519.Signing.PrivateKey` (Ed25519, RFC 8032 — byte-compatible raw representations with Rust `ed25519-dalek`; sender_id = first 16 B of SHA-256(pubkey) unchanged, RES-0016 D2/DEC-P0006). Persisted `rawRepresentation` as `kSecClassGenericPassword` (CryptoKit Curve25519 keys have no direct keychain corollary — documented generic-password packaging), tag `com.iris.identity.v1`, `kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (documented background-services class; `ThisDeviceOnly` = device-bound, UID-protected, excluded from backups/iCloud). **No biometric `kSecAccessControl` flags** — user-presence-gated items fail in background with `errSecInteractionNotAllowed` (-25308). Load gated on `isProtectedDataAvailable`. Secure Enclave is **ECDSA P-256-only** (L1, confirmed through iOS 17/18/26) → NOT the identity path; SE ECDSA P-256 "rescue" key DEFERRED (v2 only if a hardware-anchored signing requirement appears — mirrors DEC-AND-0005 StrongBox deferral). Static X25519 advertisement key (`KeychainX25519`, X25519StaticAd-ios analogue) same persistence posture.
+**Context**: RES-0025 RQ-2 findings 1-6 (SecureEnclave docs L1, eskimo forums 749596/759777 L4); IDENT_DESIGN.md §keychain open design Q; DEC-0002/CRYPTO-001 Ed25519 envelope core.
+**Alternatives**: Secure Enclave P-256 identity (rejected — second curve breaks the single-curve Ed25519 line + conversion layer; DEC-AND-0005 precedent); biometric-gated item (rejected — fails in background).
+**Consequence**: AC-12; IDENT_DESIGN.md §keychain amendment at DOCUMENT; known_limitation "app-layer weaker anchor vs Android TEE".
+**Evidence**: RES-0025 RQ-2; Apple CryptoKit `SecureEnclave`/`Storing CryptoKit Keys in the Keychain` + Keychain data protection (L1); Apple Developer Forums 749596/759777 (L4)
+
+### DEC-IOS-0002: Swift language mode pinned to 5 (`SWIFT_VERSION=5`) — Swift 6 `.v6` deferred until mozilla/uniffi-rs#2929 resolves
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: The UniFFI-generated **async** foreign-trait Swift bindings hard-error under language mode `.v6` (`#SendingClosureRisksDataRace` — Task closure captures non-`Sendable` `RustBuffer`; issue #2929 filed 2026-06-18 against 0.31.2). Pin `SWIFT_VERSION=5` at scaffold; documented fallback if a downstream force requires `.v6`: commit the #2929 post-codegen patch (`extension RustBuffer: @unchecked Sendable {}` + `@Sendable` on `makeCall`/`handleSuccess`/`handleError` helpers). Generated Swift protocols are `Sendable` (#2450) → `IosBleAdapter` = `final class … : BleAdapter, @unchecked Sendable` (owns mutable CB state). Re-verify both pins on UniFFI 0.32.0 upgrade (G-IOS-1/G-IOS-2). The sync callback-interface path is already Swift-6-clean (0.31.2, #2886).
+**Context**: RES-0025 RQ-1 finding 5 (#2929, #2448); finding 6 (#2450, Sendable).
+**Alternatives**: Swift 6 `.v6` now (rejected — generated async bindings do not compile); unconditional post-codegen patch (rejected — Swift 5 mode avoids the patch entirely).
+**Consequence**: AC-3; Xcode build settings carry `SWIFT_VERSION=5`.
+**Evidence**: RES-0025 RQ-1; github.com/mozilla/uniffi-rs issues #2929/#2448, PR #2886 (L3/L4)
+
+### DEC-IOS-0003: UniFFI 0.31.x `generate --library` binding flow + explicit tokio `Handle` (issue #2576 workaround)
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: Two corrections/ratifications: (1) **Bindings generation** uses the 0.31.x metadata flow — `uniffi-bindgen generate --library <lib.a|lib.dylib> --language swift --out-dir …` (the `--lib-file` flag was removed in 0.31.0; single-UDL generation is deprecated for proc-macro crates; the repo's FFI surface is **proc-macro, no UDL** — IOS.md's `generate src/iris.udl` command is STALE, corrected at §13). (2) **Async runtime**: `#[uniffi::export(async_runtime="tokio")]` is INEFFECTIVE on exported-trait impls (issue #2576, fixed only in 0.32.0 via #2899) → every engine-side async poller receives an explicit `tokio::runtime::Handle` at construction (DEC-AND-0002 carry). Re-check on a 0.32.x migration (G-IOS-2).
+**Context**: RES-0025 RQ-1 findings 3/4; RQ-3 finding 5; ANDROID-001 G-AND-3 spike precedent.
+**Alternatives**: UDL single-file generation (rejected — deprecated, no UDL); rely on `async_runtime` attribute (rejected — #2576).
+**Consequence**: AC-1/AC-2/AC-3; `crates/iris-ios` Cargo.toml pins uniffi `=0.31.2`; generated Swift committed.
+**Evidence**: RES-0025 RQ-1/RQ-3; uniffi CHANGELOG v0.31.0/0.31.2/0.32.0 + issue #2576 (L1/L4)
+
+### DEC-IOS-0004: CI env-gate = macOS runner (`macos-15` + Xcode 16.4 / iOS 18 SDK); Linux iOS cross-build rejected; XCFramework assembled on CI
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: iOS build/CI is **macOS-runner env-gated** (Windows dev host has no Xcode; pattern G-TI-1 behavioral legs). `.github/workflows/ios.yml` leg: `runs-on: macos-15` (arm64) + `maxim-lobanov/setup-xcode@v1` `xcode-version: '16.4'` (pin due to runner gotcha #12758; monthly image drift — G-IOS-6); `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`; staticlibs → `uniffi-bindgen generate --library` → `xcodebuild -create-xcframework` (ios-arm64 + ios-arm64_x86_64-simulator) → Swift build + macOS-host unit tests (IOS-CoreBluetooth-Mock) + Simulator UI leg. **Floors**: Xcode 16+ / iOS 18 SDK (App Store mandate since 2025-04-24, ITMS-90725) — IOS.md "Xcode 15.0+" STALE. Linux iOS cross-build (CROSS/osxcross) exists only via licensed-SDK packaging workarounds — operationally fragile, rejected. Physical iPhone remains BLK-0005 gated.
+**Context**: RES-0025 RQ-3 findings 1-6 (Xcode release notes, runner-images readme, rustc apple-ios platform support, cross-toolchains).
+**Alternatives**: Linux cross-build (rejected — licensed-SDK fragility); rely on runner default Xcode (rejected — gotcha #12758).
+**Consequence**: AC-15/AC-16/AC-19; env-gate known_limitation recorded in graph.
+**Evidence**: RES-0025 RQ-3; actions/runner-images macos-15 readme + issue #12758 (L1/L4); Apple upcoming-requirements ?id=02212025a (L1)
+
+### DEC-IOS-0005: SessionRecovery = thin Swift coordinator over `willRestoreState` + BGTaskScheduler
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: A thin `SessionRecovery` Swift coordinator IS warranted (not a custom daemon — iOS forbids): (a) launch-reason classification at `didFinishLaunchingWithOptions` — BLE-restoration launch vs BGTask launch vs user launch; gate BLE init on `isProtectedDataAvailable`; (b) forward `willRestoreState` to CB managers and re-arm `startScan`/`startAdvertising` with debounce (system does NOT auto-resume; DEC-BLE-002-0005); (c) re-submit BGAppRefresh + BGProcessing at **EVERY launch** (scheduled requests do not survive termination/force-quit); (d) expiration handlers + `setTaskCompleted` on both task types; (e) user force-quit ⇒ no background relaunch of any kind — no-op path, never hang-on-launch. Underlying mechanisms remain QA1962/TN3115 `willRestoreState` + BGTaskScheduler; BGTask is heuristic (no guaranteed cadence) → best-effort maintenance only, never critical-message scheduling (G-IOS-4).
+**Context**: RES-0025 RQ-4 findings 1-5 (QA1962, TN3115, forums 685525/809661); RES-0024 DI-6.
+**Alternatives**: BGTaskScheduler-only (rejected — cannot re-arm BLE restoration); custom daemon (rejected — iOS forbids).
+**Consequence**: AC-10/AC-11/AC-14; `SessionRecovery.swift` + `BGTaskWiring.swift` modules.
+**Evidence**: RES-0025 RQ-4; Apple QA1962 + TN3115 (L1); Apple Developer Forums 685525/809661 (L4)
+
+### DEC-IOS-0006: ActivityKit/Live Activity floor = iOS 16.1; screen-on framing only; never a delivery guarantee
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: Live Activities + ActivityKit shipped in **iOS 16.1** (Apple news 2022-09-14/10-24) — the "16.2+" claim corrected. Still supported through iOS 26/27 (WWDC26 session 223) with unchanged hard limits: max 8 h active + 4 h stale = 12 h on Lock Screen; sandboxed (no network/location); per-app + device-wide concurrency caps (`ActivityAuthorizationError`); foreground-only start (scheduled/LiveActivityIntent/push exceptions). **No general lock-screen BLE continuation exists** — the only background-ish path is the iOS 26 Live-Activity screen-on scan continuation, which **stops at screen sleep** (RES-0024 carry, L5/G-IOS-3). IRIS adoption: `LiveActivityController` = foreground/screen-on framing (neighbor count, relay state, emergency banner — status only, no payload); `NSSupportsLiveActivities`(+`FrequentUpdates`) plist + widget-extension target; never a delivery guarantee; `supports_background_ios=false` unchanged.
+**Context**: RES-0025 RQ-5 findings 1-5; RES-0024 DI-4/RQ-2; DEC-BLE-002-0003.
+**Alternatives**: treat Live Activity as background BLE capability (rejected — stops at sleep, sandboxed); skip entirely (rejected — screen-on scan continuation + emergency framing value on Lock Screen).
+**Consequence**: AC-13; widget-extension target; BLE-002 AC-10 wording carried.
+**Evidence**: RES-0025 RQ-5; Apple news ?id=ttuz9vwq/?id=hi37aek8/?id=z1erkhzr + ActivityKit docs + WWDC26 sessions 223/226 (L1)
+
+### DEC-IOS-0007: FFI adapter = 11-op `BleAdapter` + `gatt_read` connect-to-identify mapping with BLE-RT-C003 timeout + BLE-RT-C004 probe-admission cache
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: `IosBleAdapter` (Swift/CoreBluetooth) implements the full `BleAdapter` trait — 10 BLE-001 ops + **`gatt_read`** (DEC-BLE-002-0015): connect → `discoverServices([IRIS])` → `discoverCharacteristics` → `peripheral.readValue(for: IRIS_IDENTIFY_CHARACTERISTIC)` → `peripheral(_:didUpdateValueFor:)` → bytes → Rust `DiscoveryBeacon::parse` → candidate peer. Contract holds: scan filter MUST contain the stable IRIS service UUID; advertising = service-UUID + local-name ≤10 B only (**service_data NEVER transmitted**); `set_mtu` = no-op returning `maximumWriteValueLength(for: .withResponse)` (≤512, 20-B degraded guard); `willRestoreState` re-arms scan/advertise with debounce. Carry-forwards enforced on this path: **BLE-RT-C003** hard call-timeout (default 10 s) + cancellation → typed FFI error, no hang; **BLE-RT-C004** probe-admission cache keyed by `CBPeripheral.identifier` (8-probe/scan budget semantics, BLE-002 C001/C003 carry).
+**Context**: RES-0025 design input 2; BLE_002_DESIGN.md §5; DEC-BLE-002-0001/0002/0004/0005/0015; BLE-RT-C003/C004 from BLE-002 SECURITY_REVIEW.
+**Alternatives**: separate read-path class outside BleAdapter (rejected — violates BleAdapter = FFI seam); no probe cache (rejected — C004 carry); no read timeout (rejected — C003 carry).
+**Consequence**: AC-4/AC-5/AC-6/AC-7/AC-9; carry-forward contracts retired at TEST with evidence.
+**Evidence**: RES-0025 §7 design input 2; BLE_002_DESIGN.md §5; DEC-BLE-002-0015 evidence; BLE-002_SECURITY_REVIEW.md C001/C003/C004 (L4)
+
+### DEC-IOS-0008: Toolchain pin — Xcode 16.4 / iOS 18 SDK / deployment floors (App Store mandate 2025-04-24)
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: Build/CI toolchain pinned: **Xcode 16.4** (on `macos-15` runner via setup-xcode) + **iOS 18 SDK** — the App Store submission floor (ITMS-90725, mandate effective 2025-04-24: all apps built with Xcode 16+ / iOS 18 SDK). Xcode 16 requires macOS Sonoma 14.5+; deployment target may remain lower (Xcode 16 supports iOS 12+, Apple recommends 15+). Swift compiler = Swift 6.x running in **Swift 5 language mode** (DEC-IOS-0002). Exact runner-image + Xcode versions pinned at scaffold time (images change monthly — G-IOS-6). Supersedes IOS.md "Xcode 15.0+ / Swift 5.9+ / Min iOS 14 / Target iOS 17" floor (stale claim corrected §13).
+**Context**: RES-0025 RQ-3 findings 1/2; RQ-1 finding 5.
+**Alternatives**: Xcode 15 floor (rejected — App Store mandate); Xcode 26 (rejected — needs macOS 26 Tahoe runner, no benefit for v1).
+**Consequence**: AC-15; iOS.md toolchain section amendment at DOCUMENT (AC-17).
+**Evidence**: RES-0025 RQ-3; Apple Xcode release notes/system requirements + upcoming-requirements ?id=02212025a (L1)
+
+### DEC-IOS-0009: Security posture — app-layer AEAD trust anchor; Keychain data protection class; Secure-Enclave exclusion documented; iOS patch floor carried
+**Status**: APPROVED 2026-08-18 (IOS-001 DESIGN)
+**Node**: IOS-001
+**Summary**: (1) **App-layer AEAD envelope crypto is the trust anchor** (CRYPTO-001 sign+encrypt, verify-before-forward, SEC-001 gates; never depend on BLE pairing/bonding — BLE-002 §3 hold). (2) **Keychain data protection**: identity + static X25519 items = generic-password class with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (background-services class; device-bound, excluded from backups). (3) **Secure Enclave EXCLUSION**: identity is an app-layer CryptoKit Ed25519 key (no SE signature ops) — documented weaker anchor vs Android TEE Keystore (DEC-IOS-0001); SE ECDSA P-256 rescue deferred. (4) **Swift concurrency**: Swift 5 language mode (DEC-IOS-0002), `IosBleAdapter` `@unchecked Sendable`, mutable CB state confined to a serial queue/actor — no cross-FFI data races. (5) **CVE posture**: verified iOS Bluetooth CVEs (CVE-2023-42941/2024-23241/2024-44124/2024-44191) = OS-patchable only; misattributed IDs excluded; minimum iOS security-patch floor documented in deployment (DEC-BLE-002-0006 carry). (6) Connect-to-identify yields candidates only; all payloads envelope-verified. (7) Offline-first + emergency-priority invariants preserved: no P0/P1 path depends on cloud/ML/LLM/internet.
+**Context**: RES-0025 RQ-2/RQ-4; BLE-002 §3; DEC-BLE-002-0006; CRYPTO-001/SEC-001 posture.
+**Alternatives**: SE-backed identity (rejected — P-256-only, breaks Ed25519 line); rely on BLE link-layer security (rejected — DEC-BLE-0006).
+**Consequence**: AC-12/AC-17/AC-20; threat model input to SECURITY_REVIEW stage.
+**Evidence**: RES-0025 RQ-2 findings 1-6 + RQ-4; DEC-BLE-002-0006 evidence; Apple Platform Security Guide (L1)

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- IOS-001 AC-10: UIBackgroundModes bluetooth-central + bluetooth-peripheral
+	     (D-7 / DEC-BLE-002-0005 lifecycle contract), plus fetch + processing for
+	     BGTaskScheduler maintenance work (AC-14, G-IOS-4 best-effort only). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+
+	<!-- AC-14: BGTaskScheduler. When the app resumes w/ fetch
+	     capacity, maintenance (routing, expiry, metric flush) is best-effort
+	     only and never carries critical messaging (G-IOS-4). -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.iris.bgtask.refresh</string>
+		<string>com.iris.bgtask.processing</string>
+	</array>
+
+	<!-- AC-13 (ActivityKit, DEC-IOS-0006): Live Activity framing only — status
+	     ContentState, never payload; screen-on scan continuation stops at sleep. -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
+
+	<!-- CoreBluetooth/network usage strings (AC-10 + §1 module layout). -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>IRIS uses Bluetooth to relay encrypted messages peer-to-peer even when cellular and internet are down.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>IRIS advertises a Bluetooth service so nearby IRIS nodes can discover and relay messages.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>IRIS may use the local network for direct peer relays.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>IRIS discloses the rough location you choose to include in emergency broadcasts.</string>
+
+	<!-- DOCUMENTED restoration identifiers (DEC-BLE-002-0005 / AC-10). These are
+	     advisory copies of the constants IosBleAdapter passes at manager
+	     construction; CoreBluetooth reads them from the API, not this plist. -->
+	<key>IRISRestorationCentralIdentifier</key>
+	<string>IrisCentralManager</string>
+	<key>IRISRestorationPeripheralIdentifier</key>
+	<string>IrisPeripheralManager</string>
+
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>IRIS</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>

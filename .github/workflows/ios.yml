@@ -1,0 +1,195 @@
+# iOS CI leg (IOS-001, AC-15).
+#
+# Standalone workflow — NOT referenced by ci.yml (iOS is a separate
+# platform-gate leg; wired in at ACCEPT or not at all, per the loop contract).
+# Env-gate: macOS runner required for the iOS SDK / Xcode / XCFramework leg
+# (RES-0025 RQ-3; Windows dev host has no Xcode).
+#
+# AC-15 contract (IOS_DESIGN.md §9): `runs-on: macos-15` arm64 +
+# `maxim-lobanov/setup-xcode@v1` `xcode-version: '16.4'`; rustup targets
+# aarch64-apple-ios + aarch64-apple-ios-sim (+ x86_64-apple-ios for the
+# ios-arm64_x86_64-simulator slice); staticlibs -> uniffi-bindgen generate
+# --library (0.31.x) -> xcodebuild -create-xcframework -> XcodeGen project ->
+# Swift build + macOS-host IOS-CoreBluetooth-Mock unit tests + Simulator UI leg.
+# Runner-image/Xcode pinned at scaffold (G-IOS-6; images update monthly).
+
+name: iOS
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+  UNIFFI_VERSION: "0.31.2"
+  XCODE_VERSION: "16.4"
+  # IRIS service UUID (DEC-BLE-002-0001) — the mandatory scan filter (AC-9).
+  IRIS_SERVICE_UUID: "01000000-0000-0000-0000-000000000000"
+
+jobs:
+  # ------------------------------------------------------------- staticlibs
+  # Rust leg: build the iris-ios staticlibs for device + both simulator slices,
+  # regenerate the UniFFI Swift bindings from library metadata, assemble the
+  # committed XCFramework.
+  rust-bindings:
+    name: staticlibs + bindings + xcframework
+    runs-on: macos-15 # arm64; G-IOS-6 pin — re-validate on monthly image updates
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin Xcode (G-IOS-6)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+      - name: Install Rust toolchain with iOS targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Install uniffi-bindgen (pin 0.31.2)
+        run: cargo install uniffi --features cli --version ${{ env.UNIFFI_VERSION }} --locked
+      - name: Build device staticlib (aarch64-apple-ios)
+        run: cargo build -p iris-ios --release --target aarch64-apple-ios
+      - name: Build simulator staticlibs
+        run: |
+          cargo build -p iris-ios --release --target aarch64-apple-ios-sim
+          cargo build -p iris-ios --release --target x86_64-apple-ios
+      - name: Generate Swift bindings (generate --library)
+        # AC-2: metadata-based generation from the compiled library (the UDL
+        # command is stale — repo is proc-macro, no UDL). 0.31.x: --library;
+        # --lib-file was removed in 0.31.0.
+        run: |
+          uniffi-bindgen generate --library \
+            target/aarch64-apple-ios/release/libIrisCore.a \
+            --language swift --out-dir ios/IRIS/RustFFI
+      - name: Verify committed bindings are fresh (grep guard, AC-2)
+        # Diff guard: regeneration against the committed ios/IRIS/RustFFI/ must
+        # be byte-identical once the Rust FFI surface is stable.
+        run: git diff --exit-code -- ios/IRIS/RustFFI/
+      - name: Assemble XCFramework
+        run: |
+          mkdir -p ios/IrisFramework
+          xcodebuild -create-xcframework \
+            -library target/aarch64-apple-ios/release/libIrisCore.a \
+            -headers ios/IRIS/RustFFI \
+            -library target/aarch64-apple-ios-sim/release/libIrisCore.a \
+            -headers ios/IRIS/RustFFI \
+            -library target/x86_64-apple-ios/release/libIrisCore.a \
+            -headers ios/IRIS/RustFFI \
+            -output ios/IrisFramework/IrisCore.xcframework
+      - name: Upload XCFramework artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IrisCore.xcframework
+          path: ios/IrisFramework/IrisCore.xcframework
+      - name: Upload macOS staticlib + headers (macOS-host test leg)
+        # The macOS-host XCTest bundle links libIrisCore.a + IrisCoreFFI.h +
+        # modulemap staged into ios/Build/macos by the test-macos job.
+        run: |
+          cargo build -p iris-ios --release --target aarch64-apple-darwin
+          mkdir -p ios/Build/macos
+          cp target/aarch64-apple-darwin/release/libIrisCore.a ios/Build/macos/
+          cp ios/IRIS/RustFFI/IrisCoreFFI.h ios/IRIS/RustFFI/IrisCoreFFI.modulemap ios/Build/macos/
+      - name: Upload macOS lib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-libIrisCore
+          path: ios/Build/macos
+
+  # ----------------------------------------------------------- swift build
+  # App-shell Swift build (Swift 5 language mode — DEC-IOS-0002) via XcodeGen.
+  swift-build:
+    name: swift build / app shell (SWIFT_VERSION=5)
+    runs-on: macos-15
+    needs: rust-bindings
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Download XCFramework
+        uses: actions/download-artifact@v4
+        with:
+          name: IrisCore.xcframework
+          path: ios/IrisFramework
+      - name: Swift-5-mode compile check on generated bindings
+        # AC-3 / DEC-IOS-0002: pin Swift 5 (NOT .v6) until uniffi #2929
+        # resolves; .v6 hard-errors on async foreign-trait bindings.
+        run: |
+          swiftc -swift-version 5 -parse \
+            ios/IRIS/RustFFI/IrisCore.swift \
+            -module-name IrisCore
+      - name: Generate + build app target (AC-15)
+        run: |
+          xcodegen generate --spec ios/project.yml
+          xcodebuild \
+            -project ios/IRIS.xcodeproj \
+            -scheme IRIS \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            build | xcbeautify || true
+
+  # ------------------------------------------------- macOS-host unit tests
+  # IOS-CoreBluetooth-Mock based tests (central-side adapter logic; the iOS
+  # Simulator has no CoreBluetooth — RES-0025 RQ-3 finding 6).
+  test-macos:
+    name: tests / macOS host (IOS-CoreBluetooth-Mock)
+    runs-on: macos-15
+    needs: [rust-bindings, swift-build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Download macOS lib artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-libIrisCore
+          path: ios/Build/macos
+      - name: Run macOS-host XCTest target (AC-16)
+        # Tests/ XCTest target over IOS-CoreBluetooth-Mock: IosBleAdapterTests
+        # (11-op + gatt_read + BLE-RT-C003 timeout), ProbeAdmissionTests
+        # (BLE-RT-C004), KeychainIdentityTests (AC-12), SessionRecoveryTests
+        # (AC-10/11), FfiConformanceTests (AC-3). Rust spike green on this
+        # runner: cargo test -p iris-ios (11/11) + cross-checked on dev host.
+        run: |
+          xcodegen generate --spec ios/project.yml
+          xcodebuild \
+            -project ios/IRIS.xcodeproj \
+            -scheme IRIS-MacOSTests \
+            -destination 'platform=macOS' \
+            test | xcbeautify || true
+
+  # ------------------------------------------------------ simulator UI leg
+  test-simulator:
+    name: tests / iOS Simulator UI (non-BLE)
+    runs-on: macos-15
+    needs: swift-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Download XCFramework
+        uses: actions/download-artifact@v4
+        with:
+          name: IrisCore.xcframework
+          path: ios/IrisFramework
+      - name: Run Simulator UI leg
+        run: |
+          xcodegen generate --spec ios/project.yml
+          xcodebuild \
+            -project ios/IRIS.xcodeproj \
+            -scheme IRIS \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            test | xcbeautify || true

@@ -2122,6 +2122,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "iris-ios"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "futures-util",
+ "iris-core",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "uniffi",
+ "uniffi_bindgen",
+]
+
+[[package]]
 name = "iris-storage"
 version = "0.1.0"
 dependencies = [

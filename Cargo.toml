@@ -9,6 +9,7 @@ members = [
     "crates/iris-storage",
     "crates/iris-desktop",
     "crates/iris-android",
+    "crates/iris-ios",
 ]
 
 [workspace.package]

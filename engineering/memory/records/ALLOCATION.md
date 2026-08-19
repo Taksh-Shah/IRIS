@@ -1,13 +1,13 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-18T19:10:00Z
+**Last updated**: 2026-08-18T21:30:00Z (RES-0025 registered)
 
 ## Next Available IDs
 
 | Type | Prefix | Next ID | Last Allocated |
 |------|--------|---------|---------------|
 | Decision | DEC- | DEC-0011 | DEC-0010 |
-| Research | RES- | RES-0025 | RES-0024 |
+| Research | RES- | RES-0026 | RES-0025 |
 | Redteam | RED- | RED-0003 | RED-0002 |
 | Experiment | EXP- | EXP-0001 | — |
 | Failure | FAIL- | FAIL-0006 | FAIL-0005 |
@@ -73,6 +73,36 @@
   inputs (stable UUID, 28-B budget, foreground-always + Live Activity framing,
   512-B segmenter + 23-B fallback, state-restoration hardening, CVE posture,
   iOS patch floor). DESIGN iter ~134.
+
+- RES-0025: IOS-001 iOS Platform Integration SOTA — allocated iter ~142
+  (RESEARCH COMPLETE 2026-08-18); 9 websearch + primary-source fetches
+  (uniffi-rs docs/changelog/issues, Apple CryptoKit/Keychain/Platform
+  Security/BGTask/ActivityKit docs + WWDC26, rustc book + cross-rs/osxcross,
+  actions/runner-images + setup-xcode); verdict **PROCEED**. RQ-1 ADOPT-WITH-
+  CONDITION: Swift foreign traits (#[uniffi::export(foreign)]/rust,foreign)
+  + async trait methods over FFI = Kotlin proof transfers (L1); traps: #2576
+  async_runtime-on-trait-exports open on 0.31.x (fixed only in 0.32.0 #2899);
+  #2929 async foreign-trait Swift bindings fail under Swift 6 strict
+  concurrency `.v6` (open; workaround = Swift-5 mode or post-codegen
+  Sendable patch); generated protocols require Sendable impls.
+  RQ-2 ADOPT-WITH-CONDITION: SE = ECDSA P-256 only (confirmed through
+  current iOS, L1); identity = CryptoKit Ed25519 app-layer key persisted as
+  Keychain generic password, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+  NO biometric flags (background-relay); SE ECDSA rescue DEFERRED.
+  RQ-3 ADOPT-WITH-CONDITION: macOS-runner-gated (macos-15 + Xcode 16.4,
+  iOS 18 SDK floor per App Store 2025-04-24; iOS 17 SDK absent from current
+  images); Linux iOS cross-build via cross-toolchains/osxcross = licensed-SDK
+  friction, rejected; UniFFI 0.31 flow = generate --library (IOS.md UDL cmd
+  STALE); macOS-host unit tests w/ IOS-CoreBluetooth-Mock, physical iPhone
+  still BLK-0005. RQ-4 ADOPT-WITH-CONDITION: thin Swift SessionRecovery
+  coordinator warranted (launch-reason classification, re-arm in
+  willRestoreState, re-submit BGTasks every launch, force-quit no-op).
+  RQ-5 ADOPT-WITH-CONDITION: Live Activities floor = iOS 16.1 (not 16.2,
+  corrected); current through iOS 26/27, 8h+4h=12h limit, sandboxed;
+  screen-on scan continuation stops at sleep (RES-0024 carry);
+  LiveCommunicationKit = voice/video not BLE. 7 DESIGN inputs +
+  EXTERNAL-FACTS (IOS.md Xcode floor, UniFFI flow, SE section, BGTask
+  wording; SWIFT_LAYER re-arm; iOS 16.2→16.1). DESIGN iter ~143.
 
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)

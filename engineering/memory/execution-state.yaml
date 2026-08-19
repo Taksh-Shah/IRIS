@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-18T20:30:00Z"
+updated_at: "2026-08-19T09:30:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -22,11 +22,11 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "BLE-002"
-active_stage: "VERIFY"
+active_node: "IOS-001"
+active_stage: "TEST"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "BLE-002 ACCEPTED (iter ~140): PROJECT_GRAPH COMPLETE (evidence 7) + PROJECT_STATE completed 26->27 implementing 1->0 + CHANGELOG 0.3.57 + BLE-002_VERIFICATION.md authored (AC-1..16 table; independent verifier pass 1 FAIL doc-only -> resolved VR-01..VR-06; pass 2 APPROVE; transport::ble 56/0, workspace 647/0/1, clippy 0, fmt clean). 27 COMPLETE nodes. NODE_TRANSITION -> IOS-001 (P0 platform, dep BLE-002 COMPLETE). NEXT: IOS-001 DISCOVER (iter ~141, DISCOVER doc + C2 AC definition next stage)."
-next_action: "IOS-001 (P0 platform node, deps BLE-002 COMPLETE): DISCOVER (iter ~141) — IOS-001_DISCOVER.md: catalog iOS-side surface (Swift/FFI IosBleAdapter 10-op contract from BLE_002_DESIGN.md, CoreBluetooth central/peripheral, security/scanner permissions, UIBackgroundModes, state restoration, Live Activity); C2 gap (no ACs) -> DESIGN resolves; confirm eligibility (deps COMPLETE); write known_limitations baseline; baseline 647/0/1 clippy 0 held."
+active_action: "IOS-001 IMPLEMENT tranche 2 COMPLETE (iter ~145/146): Swift app + adapter layer authored in full (AC-4..AC-15), committed auth on host, compile = CI-leg. Tranche 2 summary: CoreBluetoothSeam mock seam (BleCentralSeam/BlePeripheralSeam + delegates + IOSBleCentralState + IOSBleCharacteristicSpec) + RealBleCentralSeam (lazy CBCentralManager + willRestoreState) + RealBlePeripheralSeam (identify read + control write, read-offset handling); IosBleAdapter 11-op @unchecked Sendable NSLock-confined; CBUUID-based GATT + peer identity = CBPeripheral.identifier; NodeId = Ed25519 pubkey bytes (IDENT D1, mirrors Android provideNodeId); IrisBleConstants (IRIS_SERVICE_UUID 01000000-..., identify 02000000-..., control 01000000-..., restoration IDs IrisCentralManager/IrisPeripheralManager, local name IRIS, 12-hex peer token); KeychainEd25519/KeychainX25519 (com.iris.identity.v1 + com.iris.staticad.v1, protected-data gate, no biometric); SessionRecovery (launch-reason classify, debounce re-arm, resubmit every launch, force-quit no-op); BGTaskWiring (expiration + setTaskCompleted); LiveActivityController iOS 16.1 gated + IrisLiveActivityWidget; AppDelegate/IRISApp wiring; Notifications; ios.yml full AC-15 (rust-bindings/swift-build/test-macos/test-simulator jobs + xcframework, yaml parse-valid); build-xcframework.sh; Tests (MockCoreBluetooth, IosBleAdapterTests AC-4..9, ProbeAdmissionTests AC-7, KeychainIdentityTests AC-12 RFC 8032 KAT, SessionRecoveryTests AC-10/11, FfiConformanceTests AC-3). AC-5 gatt_read = connect -> readValue(IRIS_IDENTIFY_CHARACTERISTIC) -> didUpdateValueFor -> DiscoveryBeacon parse; AC-6 BLE-RT-C003 10s timeout + cancel; AC-7 C004 probe budget 8/scan + 60s reject window + budget-exhaustion throw; AC-8 MTU <=512 + 20-B iOS 16.x guard; AC-9 UUID filter mandatory + no service_data broadcast. Workspace baseline 658/0/1 (iris-core 567 + iris-ios 11), clippy 0, fmt clean held. Swift compile/run leg ENV-GATED (no Xcode/swiftc on Windows host) -> macOS CI runner; physical-device rows BLK-0005. NEXT: TEST (iter ~146/147, AC-16..18 evidence map + AC-18 workspace baseline). Tranche-1 remainder: AC-1 DONE (crates/iris-ios scaffold: AC-1 DONE (crates/iris-ios scaffold: Cargo.toml cdylib+staticlib, lib.rs allow(non_snake_case) + setup_scaffolding, ffi/ ble_adapter.rs 11-op FfiBleAdapter incl gatt_read + SimBle tests, body.rs IrisBody foreign trait async describe + FfiIrisEnvelope, error.rs incl Timeout for BLE-RT-C003, bridge.rs BleBridge implementing core BleAdapter all 11 ops with gatt_read forwarded, engine.rs IrisEngine #[uniffi::Object] with explicit tokio Handle (#2576) + BleTransport::new_ios ble-ios + MessageEngine + inbox forwarder + set_body_renderer); AC-2 DONE (uniffi-bindgen 0.31.2 installed; generate --library target/debug/IrisCore.dll --language swift committed under ios/IRIS/RustFFI/ = IrisCore.swift 96.7KB + IrisCoreFFI.h + modulemap); AC-3 PARTIAL (Rust leg 11/11 tests; Swift leg ENV-GATED no swiftc/Xcode on host -> G-IOS_SPIKE.md §6 + ios.yml swiftc -swift-version 5 -parse checkpoint; Swift-5 pin vs #2929 rationale + @unchecked Sendable table + tokio Handle wiring recorded); AC-15 pre-seeded (.github/workflows/ios.yml macos-15 + setup-xcode 16.4, 3 rustup targets, staticlib -> generate --library -> xcframework -> swift-build/test/simulator jobs w/ TODO markers; standalone not referenced by ci.yml). Verification: cargo check -p iris-ios --lib 0 warnings; cargo test -p iris-ios 11/11; clippy --workspace --all-targets --all-features -D warnings PASS; fmt --all --check PASS; cargo check --workspace PASS; cargo test --workspace --all-features green (iris-core 567 + iris-ios 11 = workspace 658/0/1). Residual risks: CamelCase lib name allow(non_snake_case) needed; IrisBody::describe async #2929-sensitive (Swift-5 pin load-bearing); xcframework per-slice headers TODO in ios.yml; generated-Swift whitespace diff guard after first CI run; uniffi_bindgen build-dep unused harmless; Swift/device/CoreBluetooth rows BLK-0005 env-gated. NEXT: IMPLEMENT tranche 2 (iter ~145, AC-4..AC-15: Swift IosBleAdapter 11-op + gatt_read + C003/C004 + MTU + scan/advertise + restoration + SessionRecovery + KeychainEd25519 + LiveActivity + BGTask)."
+next_action: "IOS-001 TEST (iter ~146/147, AC-16..AC-18): author IOS-001_TEST.md mapping AC-16 (macOS-host unit tests w/ IOS-CoreBluetooth-Mock: IosBleAdapterTests AC-4..9, ProbeAdmissionTests AC-7, KeychainIdentityTests AC-12, SessionRecoveryTests AC-10/11, FfiConformanceTests AC-3) + AC-18 (workspace >=647/0/1 = 658/0/1, clippy 0, fmt clean held). Swift compile/run = CI-leg (macos-15 + Xcode 16.4) — env-gated on Windows host; physical-device rows AC-19 GATED/BLK-0005. -> DOCUMENT (AC-17: 6 EXTERNAL-FACTS corrections) -> SECURITY_REVIEW -> VERIFY -> ACCEPT -> PILOT-001."
 
 # === STATE TRANSITIONS ===
 last_transition: "NODE_TRANSITION"
@@ -36,14 +36,15 @@ last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "IOS-001 DISCOVER (iter ~141): IOS-001_DISCOVER.md — catalog iOS platform surface (Swift/FFI adapter contract, CoreBluetooth device layer, permissions, background, restoration), C2 gap -> DESIGN, eligibility check, baseline 647/0/1 held."
+next_action: "IOS-001 TEST (iter ~146/147): AC-16..AC-18 evidence map (macOS-host unit tests env-gated CI-leg; workspace 658/0/1, clippy 0, fmt clean held) -> DOCUMENT (AC-17 EXTERNAL-FACTS) -> SECURITY_REVIEW -> VERIFY -> ACCEPT -> PILOT-001."
+# IOS-001 pipeline comment follows:
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "BLE-002 ACCEPTED (iter ~140): PROJECT_GRAPH COMPLETE + 27 COMPLETE nodes; verifier APPROVE (iter ~139); NODE_TRANSITION IOS-001. Baseline 647/0/1 clippy 0 fmt clean."
-last_progress_at: "2026-08-18T22:00:00Z"
+last_progress_event: "IOS-001 IMPLEMENT tranche 2 (AC-4..AC-15) COMPLETE (iter ~145/146): Swift app + adapter layer authored in full — IosBleAdapter 11-op CoreBluetooth (gatt_read = connect-to-identify, BLE-RT-C003 timeout + cancel, C004 probe budget 8/scan + 60s reject window, MTU <=512 + 20-B guard, UUID filter no service_data), CoreBluetoothSeam + real CB managers w/ willRestoreState, KeychainEd25519/X25519 (no biometric, RFC 8032 KAT), SessionRecovery (launch-reason classify + BGTask re-submit + force-quit no-op), BGTaskWiring, LiveActivityController iOS 16.1 gated, AppDelegate/IRISApp, ios.yml full AC-15 + xcframework script, 6 Swift test files. Workspace 658/0/1 held, clippy 0, fmt clean. Swift compile env-gated -> macOS CI leg."
+last_progress_at: "2026-08-19T09:30:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -67,6 +68,127 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T09:30:00Z"
+    iteration: 146
+    node: "IOS-001"
+    stage: "IMPLEMENT"
+    action: "IOS-001 IMPLEMENT tranche 2 COMPLETE (iter ~145/146, AC-4..AC-15). Seam: CoreBluetoothSeam.swift (BleCentralSeam/BlePeripheralSeam + delegates + IOSBleCentralState + IOSBleCharacteristicSpec) + CBManagerCentral.swift/RealBleCentralSeam (lazy CBCentralManager + willRestoreState) + CBManagerPeripheral.swift/RealBlePeripheralSeam (identify read + control write, read-offset handled, bogus guard removed). Constants: IrisBleConstants.swift (service 01000000-..., identify 02000000-..., control, restoration IDs, local name IRIS, 12-hex peer token, CBUUID/hex helpers). Adapter: IosBleAdapter.swift 11-op FfiBleAdapter @unchecked Sendable NSLock-confined (startScan/stopScan/startAdvertising/stopAdvertising/connectGatt w/ connect-to-identify stage machine/disconnectGatt/gattWrite/gattRead(identify)+BLE-RT-C003 10s timeout+cancel/gattRead 02000000-..., setMtu <=512+20-B guard via maximumWriteValueLength/incomingGattWrites w/ token-based handle attribution/scanResults). Identity: KeychainEd25519.swift (KeychainAccessible seam + SecurityKeychain + KeychainEd25519 com.iris.identity.v1 + KeychainX25519 com.iris.staticad.v1 + protected-data gate + no biometric). Session/ops: SessionRecovery.swift (launch-reason classify, debounced re-arm, resubmit every launch, force-quit no-op) + BGTaskWiring.swift (AC-14) + LiveActivityController.swift (AC-13 iOS 16.1+) + Notifications.swift + AppDelegate.swift (gated #available 16.1) + IRISApp.swift + IrisWidgetExtension/ (IrisLiveActivityWidget + Info.plist). CI: .github/workflows/ios.yml full AC-15 (rust-bindings/build-xcframework/swift-build/test-macos/test-simulator; macOS lib staged ios/Build/macos; yaml parse-valid) + ios/Scripts/build-xcframework.sh. Tests (AC-16 authored): MockCoreBluetooth.swift + IosBleAdapterTests.swift (AC-4..9) + ProbeAdmissionTests.swift (AC-7) + KeychainIdentityTests.swift (AC-12 RFC 8032 KAT) + SessionRecoveryTests.swift (AC-10/11) + FfiConformanceTests.swift (AC-3). Verification: workspace 658/0/1 (iris-core 567 + iris-ios 11), clippy 0, fmt clean — held. Swift compile/run ENV-GATED (no Xcode/swiftc on Windows host) -> macOS CI leg (test-macos/test-simulator jobs). Physical-device rows AC-19 GATED/BLK-0005."
+    result: "IMPLEMENT_TRANCHE2_COMPLETE"
+    files_changed:
+      - "ios/IRIS/Services/CoreBluetoothSeam.swift"
+      - "ios/IRIS/Services/CBManagerCentral.swift"
+      - "ios/IRIS/Services/CBManagerPeripheral.swift"
+      - "ios/IRIS/Services/IrisBleConstants.swift"
+      - "ios/IRIS/Services/IosBleAdapter.swift"
+      - "ios/IRIS/identity/KeychainEd25519.swift"
+      - "ios/IRIS/session/SessionRecovery.swift"
+      - "ios/IRIS/Services/BGTaskWiring.swift"
+      - "ios/IRIS/Services/LiveActivityController.swift"
+      - "ios/IRIS/Services/Notifications.swift"
+      - "ios/IRIS/App/AppDelegate.swift"
+      - "ios/IRIS/App/IRISApp.swift"
+      - "ios/IrisWidgetExtension/IrisLiveActivityWidget.swift"
+      - "ios/IrisWidgetExtension/Info.plist"
+      - ".github/workflows/ios.yml"
+      - "ios/Scripts/build-xcframework.sh"
+      - "ios/Tests/MockCoreBluetooth.swift"
+      - "ios/Tests/IosBleAdapterTests.swift"
+      - "ios/Tests/ProbeAdmissionTests.swift"
+      - "ios/Tests/KeychainIdentityTests.swift"
+      - "ios/Tests/SessionRecoveryTests.swift"
+      - "ios/Tests/FfiConformanceTests.swift"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+    records_created:
+      - "ios/IRIS/ (Swift app + adapter + identity + session + tests)"
+      - ".github/workflows/ios.yml"
+  - timestamp: "2026-08-18T22:55:00Z"
+    iteration: 144
+    node: "IOS-001"
+    stage: "IMPLEMENT"
+    action: "IOS-001 IMPLEMENT tranche 1 COMPLETE (AC-1..AC-3 + AC-15 pre-seed). AC-1 DONE: crates/iris-ios scaffold (Cargo.toml cdylib+staticlib+rlib, lib.rs allow(non_snake_case) + setup_scaffolding + doc header, ffi/ble_adapter.rs 11-op FfiBleAdapter incl gatt_read + SimBle tests + ffi/body.rs IrisBody async describe + FfiIrisEnvelope + ffi/error.rs incl Timeout for BLE-RT-C003, bridge.rs BleBridge implementing core BleAdapter ALL 11 ops with gatt_read forwarded, engine.rs IrisEngine #[uniffi::Object] explicit tokio Handle (#2576) + BleTransport::new_ios(ble-ios) + MessageEngine + inbox forwarder + set_body_renderer). AC-2 DONE: uniffi-bindgen 0.31.2 installed, generate --library target/debug/IrisCore.dll --language swift -> committed ios/IRIS/RustFFI/ (IrisCore.swift 96.7KB + IrisCoreFFI.h + modulemap). AC-3 PARTIAL: Rust leg 11/11 tests PASS; Swift leg ENV-GATED (no swiftc/Xcode on Windows host) -> G-IOS_SPIKE.md recorded Swift-5 pin rationale vs uniffi-rs#2929 + @unchecked Sendable usage table + tokio Handle wiring + host ground-truth; ios.yml swiftc -swift-version 5 -parse checkpoint. AC-15 pre-seeded: .github/workflows/ios.yml standalone (macos-15 + actions/setup-xcode 16.4, rustup targets aarch64-apple-ios + aarch64-apple-ios-sim + aarch64-apple-darwin, staticlib build -> generate --library -> xcframework -> swift-build/test/simulator jobs w/ TODO markers; not referenced by ci.yml yet). Verify: cargo check -p iris-ios --lib 0 warnings; cargo test -p iris-ios 11/11; clippy --workspace --all-targets --all-features -D warnings PASS; cargo fmt --all -- --check PASS; cargo check --workspace PASS; cargo test --workspace --all-features green (iris-core 567 + iris-ios 11 = 658/0/1). Residual: CamelCase lib name allow(non_snake_case) for CI -D warnings; IrisBody::describe async #2929-sensitive (Swift-5 pin load-bearing); xcframework per-slice headers TODO in ios.yml; generated-Swift whitespace diff guard after first CI run; uniffi_bindgen build-dep unused harmless; Swift/device/CoreBluetooth rows BLK-0005 env-gated. Root Cargo.toml workspace member + Cargo.lock. NEXT: IMPLEMENT tranche 2 (iter ~145, AC-4..AC-15 Swift shell)."
+    result: "IMPLEMENT_TRANCHE1_COMPLETE"
+    files_changed:
+      - "crates/iris-ios/Cargo.toml"
+      - "crates/iris-ios/src/lib.rs"
+      - "crates/iris-ios/src/ffi/mod.rs"
+      - "crates/iris-ios/src/ffi/ble_adapter.rs"
+      - "crates/iris-ios/src/ffi/body.rs"
+      - "crates/iris-ios/src/ffi/error.rs"
+      - "crates/iris-ios/src/bridge.rs"
+      - "crates/iris-ios/src/engine.rs"
+      - "ios/IRIS/RustFFI/IrisCore.swift"
+      - "ios/IRIS/RustFFI/IrisCoreFFI.h"
+      - "ios/IRIS/RustFFI/IrisCoreFFI.modulemap"
+      - "ios/G-IOS_SPIKE.md"
+      - ".github/workflows/ios.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "crates/iris-ios/ (scaffold)"
+      - "ios/IRIS/RustFFI/ (generated Swift)"
+      - "ios/G-IOS_SPIKE.md"
+      - ".github/workflows/ios.yml"
+  - timestamp: "2026-08-18T22:35:00Z"
+    iteration: 143
+    node: "IOS-001"
+    stage: "DESIGN"
+    action: "IOS-001 DESIGN COMPLETE (docs-only pass, baseline 647/0/1 held). Architect authored IOS_DESIGN.md v1.0 (221 lines, pattern BLE_002_DESIGN.md): C2 gap RESOLVED via AC-1..AC-21 (each testable on macOS host w/ IOS-CoreBluetooth-Mock, Swift inspection, or CI); RES-0025 absorbed (7 DESIGN inputs D-1..D-8: UniFFI 0.31 foreign-trait seam + @unchecked Sendable, Swift-5 language-mode pin, explicit tokio Handle, generate --library flow, Keychain CryptoKit Ed25519 no-biometric identity, macOS-runner CI env-gate, SessionRecovery, ActivityKit 16.1 floor); net-new crates/iris-ios + ios/ scaffold; 11-op FFI adapter contract incl gatt_read row (connect -> readValue(IRIS_IDENTIFY_CHARACTERISTIC) -> didUpdateValueFor -> DiscoveryBeacon parse) carrying DEC-BLE-002-0015 + BLE-RT-C003 timeout + BLE-RT-C004 probe cache; security posture (app-layer AEAD trust anchor, Keychain protection class, SE exclusion, Swift concurrency, patch floor); §13 records 6 EXTERNAL-FACTS corrections file:line old->new (doc edits deferred to DOCUMENT stage per AC-17); risks G1..G10. DEC-IOS-0001..0009 ratified into DECISIONS.md. NEXT: IMPLEMENT (iter ~144, crates/iris-ios + ios/ scaffold)."
+    result: "DESIGN_COMPLETE"
+    files_changed:
+      - "docs/implementation/IOS_DESIGN.md"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "docs/implementation/IOS_DESIGN.md"
+  - timestamp: "2026-08-18T22:20:00Z"
+    iteration: 142
+    node: "IOS-001"
+    stage: "RESEARCH"
+    action: "IOS-001 RESEARCH COMPLETE (read-only pass, baseline 647/0/1 held). Researcher agent wrote RES-0025.md (pattern RES-0024) + ALLOCATION registered (next RES-0026). Verdict PROCEED, all RQ-1..RQ-5 ADOPT-WITH-CONDITION: RQ-1 UniFFI Swift foreign traits first-class (Kotlin RES-0022 proof transfers; async-runtime-on-trait-exports trap mozilla/uniffi-rs#2576 open on 0.31.x -> explicit tokio handle; #2929 Swift6 strict-concurrency codegen compile issue -> pin Swift 5 language mode; generated Swift protocols need Sendable impls); RQ-2 Secure Enclave = ECDSA P-256 ONLY (L1) -> identity = CryptoKit Ed25519 app-layer key persisted Keychain generic-password kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly, NO biometric flag (errSecInteractionNotAllowed in background); SE ECDSA rescue deferred; RQ-3 macOS-runner env-gate: macos-15 + Xcode 16.4 = iOS 18 SDK floor (App Store mandate 2025-04-24), Linux iOS cross rejected (needs licensed SDK), UniFFI 0.31 flow = generate --library (IOS.md UDL cmd STALE), macOS-host unit tests w/ IOS-CoreBluetooth-Mock, physical iPhone BLK-0005; RQ-4 thin Swift SessionRecovery warranted (launch-reason classification, willRestoreState re-arm, BGTasks re-submit every launch, force-quit no-op) over QA1962/TN3115 L1; RQ-5 ActivityKit floor iOS 16.1 (not 16.2), current through iOS 26/27, 8h+4h=12h max sandboxed, screen-on scan stops at sleep (RES-0024 carry). 7 DESIGN inputs + 6 EXTERNAL-FACTS corrections (IOS.md Xcode floor + UniFFI flow + Secure Enclave section + BGTask wording; SWIFT_LAYER re-arm; 16.2->16.1) staged for IOS_DESIGN.md. NEXT: DESIGN (iter ~143, IOS_DESIGN.md AC-1..n + DEC-IOS-xxxx resolves C2, pattern BLE-002)."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/research/RES-0025.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/research/RES-0025.md"
+  - timestamp: "2026-08-18T22:10:00Z"
+    iteration: 141
+    node: "IOS-001"
+    stage: "DISCOVER"
+    action: "IOS-001 DISCOVER COMPLETE (read-only pass, baseline 647/0/1 held). IOS-001_DISCOVER.md written (pattern BLE-002_DISCOVER.md): C2 gap CONFIRMED (no ACs) - DESIGN resolves; eligible (deps BLE-002/MSG-001/EMERG-001 COMPLETE); ios/ dir does not exist (net-new). Reference surface: BLE_002_DESIGN.md §5 iOS FFI adapter contract (10-op -> CoreBluetooth + gatt_read carry DEC-BLE-002-0015 -> readValue row + BLE-RT-C003 timeout), docs/platforms/IOS.md, SWIFT_LAYER.md, RUST_CORE.md, RES-0024, ANDROID-001 platform pattern, IDENT_DESIGN keychain (Ed25519 vs Secure Enclave open). Known-limitations baseline + carry-forwards (BLE-RT-C003/C004, Android<->iOS identify-read) + RQ-1..RQ-5 written to PROJECT_GRAPH. NEXT: RESEARCH (iter ~142, RES-0025)."
+    result: "DISCOVER_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/IOS-001_DISCOVER.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "IOS-001_DISCOVER.md"
   - timestamp: "2026-08-18T22:00:00Z"
     iteration: 140
     node: "BLE-002"
