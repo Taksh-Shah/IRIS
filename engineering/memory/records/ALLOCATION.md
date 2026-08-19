@@ -1,13 +1,13 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-18T21:30:00Z (RES-0025 registered)
+**Last updated**: 2026-08-19T13:00:00Z (RES-0026 registered)
 
 ## Next Available IDs
 
 | Type | Prefix | Next ID | Last Allocated |
 |------|--------|---------|---------------|
 | Decision | DEC- | DEC-0011 | DEC-0010 |
-| Research | RES- | RES-0026 | RES-0025 |
+| Research | RES- | RES-0027 | RES-0026 |
 | Redteam | RED- | RED-0003 | RED-0002 |
 | Experiment | EXP- | EXP-0001 | — |
 | Failure | FAIL- | FAIL-0006 | FAIL-0005 |
@@ -103,6 +103,34 @@
   LiveCommunicationKit = voice/video not BLE. 7 DESIGN inputs +
   EXTERNAL-FACTS (IOS.md Xcode floor, UniFFI flow, SE section, BGTask
   wording; SWIFT_LAYER re-arm; iOS 16.2→16.1). DESIGN iter ~143.
+
+- RES-0026: PILOT-001 Field Pilot Deployment SOTA — allocated iter ~152
+  (RESEARCH COMPLETE 2026-08-19); 12 websearch + 4 primary-source passes
+  (Meshtastic official docs/blog + firmware source, arXiv 2603.10153 DTN
+  trial, Briar/SecureJoin, NDMA DMEx Guidelines Oct 2024 + Mock-Exercises
+  page + PIB Suraksha Chakra 2025, WPC G.S.R. 853(E) 2021 gazette + TEC ER,
+  IT Rules SSMI 50-lakh, Play internal/closed testing + TestFlight, FEMA
+  HSEEP; L1-L5 evidence-leveled, no AI citations); verdict **PROCEED**.
+  RQ-1 ADOPT-WITH-CONDITION (managed-flood 100+ node precedent + Helene
+  gateway-uplink field precedent; conditions = relay-cadence scaling rule,
+  gateway-scoped uplink/downlink, fixed NCT-of-N/partition/mule test battery,
+  LoRa excluded GAP-004); RQ-2 ADOPT-WITH-CONDITION (Briar/SecureJoin QR
+  mutual-scan bootstrap + IDENT-001 verified tier + EMERG-001 out-of-band
+  authority provisioning; batch ceremony, no-recovery model, decommission);
+  RQ-3 ADOPT-WITH-CONDITION (OBS-001 ↔ NDMA DMEx 4-phase mapping; thresholds
+  + Wilson-CI sample plan as DESIGN ACs; EXP-002/003/005 before/after legs);
+  RQ-4 ADOPT codification (WPC G.S.R. 853(E) 2021 = 865-868 MHz SRD 25 mW
+  e.r.p./≤1% duty supersedes 865-867 LEGAL-001 carry; SSMI 50-lakh
+  non-applicable at pilot scale; NDRF MoU authorization + STQC GA; open
+  counsel Qs recorded, no legal opinion); RQ-5 ADOPT-WITH-CONDITION (Play
+  **internal** track ≤100 testers primary — DISCOVER 'closed track' REFINED;
+  closed-track 12-testers×14-days for later production; TestFlight external
+  + 90-day refresh; Play App Signing upload-key custody); RQ-6 ADOPT
+  (EMERG-001 drill mode = NDMA Mock Exercise standard; DRILL-chain + TEST-only
+  SOS + observers/debrief + safety annex). 9 DESIGN inputs D-1..D-9 (topology,
+  relay-cadence rule, test battery, ProvisioningFlow, trust model, KPI plan,
+  exercise schedule, distribution runbook, REG-NOTES) + external-facts
+  reconciliation + gaps G-P1..G-P9. DESIGN iter ~154.
 
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)

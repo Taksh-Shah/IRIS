@@ -7,8 +7,34 @@
 
 ## Summary
 
-**✅ PILOT-001 DISCOVER COMPLETE (iter ~152) — first OPERATIONS node active;
-RESEARCH next (iter ~153, RES-0026):** `PILOT-001_DISCOVER.md` authored (pattern
+**✅ PILOT-001 RESEARCH COMPLETE (iter ~153, RES-0026 verdict PROCEED) — DESIGN
+next (iter ~154, `PILOT_001_DESIGN.md` AC-1..n):** `RES-0026.md` authored
+(pattern RES-0025, 157 lines; 12 websearch + 4 primary-source passes, L1-L5,
+**no AI citations**). All RQ-1..RQ-6 resolved: **RQ-1 ADOPT-WITH-CONDITION**
+(managed-flood >100-node precedent + Meshtastic `congestionScalingCoefficient`
+cadence rule + Helene 2024 gateway-uplink field precedent + Nepal DTN trial
+metrics → leaves 50-100 + 1-3 DESKTOP-001 gateways + gateway-scoped
+Internet-relay; LoRa excluded GAP-004); **RQ-2 ADOPT-WITH-CONDITION**
+(Briar/SecureJoin QR mutual-scan bootstrap + IDENT-001 verified tier +
+EMERG-001 out-of-band authority provisioning; batch ceremony, no-recovery,
+decommission wipe/revoke/rotate); **RQ-3 ADOPT-WITH-CONDITION** (OBS-001 ↔
+**NDMA DMEx Guidelines Oct 2024** 4-phase incl. evaluation/debrief; Wilson-CI
+sample plan → DESIGN ACs; EXP-002/003/005 legs); **RQ-4 ADOPT codification**
+(**WPC G.S.R. 853(E) 2021 = 865-868 MHz SRD 25 mW e.r.p./≤1% duty supersedes
+865-867**; SSMI 50-lakh non-applicable; NDRF MoU + STQC GA; open counsel Qs;
+**no legal opinion**); **RQ-5 ADOPT-WITH-CONDITION** (Play **internal** track
+≤100 testers primary — DISCOVER 'closed track' REFINED; closed-track 12×14
+later; TestFlight external + **90-day refresh**; Play App Signing custody);
+**RQ-6 ADOPT** (EMERG-001 drill mode = **NDMA Mock Exercise** standard;
+DRILL-chain + TEST-only SOS + observers/debrief + safety annex). **9 DESIGN
+inputs D-1..D-9** + external-facts reconciliation + gaps G-P1..G-P9.
+PROJECT_GRAPH PILOT-001 status **RESEARCH_COMPLETE**, evidence(2), stage_note;
+PROJECT_STATE research_complete 1→2, discovered 3→2. **NEXT: DESIGN (iter
+~154) → IMPLEMENT → TEST → SECURITY_REVIEW → VERIFY → ACCEPT.**
+Baseline **658/0/1** held (read-only).
+
+**✅ PILOT-001 DISCOVER COMPLETE (iter ~152) — first OPERATIONS node active:
+** `PILOT-001_DISCOVER.md` authored (pattern
 IOS-001_DISCOVER.md) — C2 gap CONFIRMED (no ACs → DESIGN resolves). Eligible:
 ANDROID-001 ✅ / IOS-001 ✅ / EMERG-001 ✅ / SEC-001 ✅ COMPLETE + LEGAL-001
 RESEARCH_COMPLETE. Scope cataloged: **100+ device NGO/campus pilot** (NDRF 12th
@@ -541,19 +567,23 @@ Background SEC-001 fuzz continues aggregating clean (49.5M+ execs) — no blocke
 
 ## Active Node
 
-**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, RESEARCH next, iter ~153).**
-First OPERATIONS node, deployment-critical-path terminus. DISCOVER COMPLETE
-(iter ~152, evidence 1): `PILOT-001_DISCOVER.md` authored — C2 gap CONFIRMED
-(no ACs → DESIGN resolves); eligible (ANDROID-001 ✅ / IOS-001 ✅ / EMERG-001 ✅ /
-SEC-001 ✅ COMPLETE; LEGAL-001 RESEARCH_COMPLETE); scope = **100+ device
-NGO/campus pilot** (NDRF 12th Bn Gandhinagar **50-device/3-month MoU** + B2B
-5-device POC), Android+iOS leaf + gateway + Internet-relay, BLE/WA/WD
-transports, EMERG-001 authority+drill, OBS-001 KPIs, Play closed track +
-TestFlight; RQ-1..RQ-6 staged. **RESEARCH (iter ~153, RES-0026)** → **DESIGN
-(iter ~154, `PILOT_001_DESIGN.md` AC-1..n + DEC-PILOT-xxxx)** → IMPLEMENT →
-TEST → SECURITY_REVIEW → VERIFY → ACCEPT. Baseline **658/0/1 clippy 0 fmt clean
-(23 suites; iris-core 567 + iris-ios 11)** held. Quality process: DISCOVER →
-RESEARCH → DESIGN → IMPLEMENT → TEST → VERIFY → ACCEPT.
+**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, RESEARCH COMPLETE, DESIGN
+next, iter ~154).** First OPERATIONS node, deployment-critical-path terminus.
+RESEARCH COMPLETE (iter ~153, evidence 2): **RES-0026 verdict PROCEED** —
+RQ-1 ADOPT-WITH-CONDITION (topology: 50-100 leaves + 1-3 gateways +
+gateway-scoped Internet-relay; managed-flood + congestionScalingCoefficient
+cadence + Helene gateway-uplink precedent), RQ-2 ADOPT-WITH-CONDITION (QR
+mutual-scan bootstrap + EMERG-001 out-of-band authority + decommission),
+RQ-3 ADOPT-WITH-CONDITION (OBS-001 ↔ NDMA DMEx 4-phase; Wilson-CI plan →
+DESIGN ACs), RQ-4 ADOPT codification (**WPC 853(E) 2021 865-868 supersedes
+865-867**; SSMI non-applicable; NDRF MoU + STQC GA), RQ-5 ADOPT-WITH-CONDITION
+(Play **internal** track + TestFlight 90-day), RQ-6 ADOPT (EMERG drill = NDMA
+ME). **DESIGN inputs D-1..D-9**; external-facts reconciled; gaps G-P1..G-P9.
+C2 gap open (no ACs). **DESIGN (iter ~154, `PILOT_001_DESIGN.md` AC-1..n +
+DEC-PILOT-xxxx)** → IMPLEMENT → TEST → SECURITY_REVIEW → VERIFY → ACCEPT.
+Baseline **658/0/1 clippy 0 fmt clean (23 suites; iris-core 567 + iris-ios 11)**
+held. Quality process: DISCOVER → RESEARCH → DESIGN → IMPLEMENT → TEST →
+VERIFY → ACCEPT.
 
 **IOS-001 ACCEPTED (iter ~151) — carries forward (28 COMPLETE nodes):**
 - **ACCEPT (iter ~151)**: commit `d13845c` + `cd995ef` — SECURITY_REVIEW (iter
