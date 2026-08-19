@@ -6,10 +6,10 @@
 meta:
   version: "0.2.0"
   created: "2025-01-01"
-  last_validated: "2026-08-18"
+  last_validated: "2026-08-19"
   total_nodes: 32
   description: "Directed dependency graph of all IRIS engineering capabilities"
-  validation_status: "BLE-002 IMPLEMENT COMPLETE (iter ~135): gatt_read op added to BleAdapter trait + all 7 impls (SimulatedBleAdapter SERVES IRIS_IDENTIFY_CHARACTERISTIC; BleBridge DeviceNotFound carry-forward) + discovery connect-to-read branch wired + 5 new iOS-leg tests; transport::ble 53/0, workspace 531+ green, clippy 0, fmt clean; DEC-BLE-002-0015 ratified; status DESIGNING -> IMPLEMENTING; NEXT: BLE-002 TEST (iter ~136). 26 COMPLETE nodes."
+  validation_status: "IOS-001 ACCEPTED (iter ~151, commit d13845c + cd995ef): status COMPLETE, evidence 9, stage_note ACCEPTED full pipeline 141->151; PROJECT_STATE completed 27->28 implementing 1->0; CHANGELOG 0.3.58; NODE_TRANSITION -> PILOT-001 DISCOVER (iter ~152, PILOT-001_DISCOVER.md, evidence 1, C2 gap CONFIRMED, RQ-1..6 -> RESEARCH RES-0026). 28 COMPLETE nodes. Workspace 658/0/1 clippy 0 fmt clean."
   note: "PROJECT_STATE.yaml must be generated from this graph, not maintained separately"
   known_gaps:
     - "Graph has 32 nodes; 50+ additional nodes needed for full system coverage (see expert review)"
@@ -927,6 +927,17 @@ nodes:
     status: DISCOVERED
     description: "First real-world deployment: NGO pilot, campus safety pilot"
     dependencies: ["ANDROID-001", "IOS-001", "EMERG-001", "SEC-001", "LEGAL-001"]
+    evidence:
+      - "engineering/memory/records/PILOT-001_DISCOVER.md: DISCOVER pass (iter ~152) — C2 gap CONFIRMED (no ACs; DESIGN defines AC-1..n, pattern BLE-002/ANDROID-001/IOS-001). Eligible: deps ANDROID-001 (iter 122) + IOS-001 (iter ~151) + EMERG-001 (71) + SEC-001 (82) COMPLETE, LEGAL-001 RESEARCH_COMPLETE. Reference surface read: platform nodes (android/ + ios/ + build legs), transports (BLE-001/002, WIFIAWARE-001, WIFIDIRECT-001, INTERNET-001), EMERG-001 authority/drill, SEC-001 ACL/quota, OBS-001 + docs/operations/ runbook + telemetry, TEST-001 harnesses, docs/legal/ (NDRF/NDMA structuring, WPC 865-867 de-licensed, STQC GA Month 30, IT Rules 2021), docs/business/ (NDRF 12th Bn Gandhinagar 50-device/3-month pilot MoU; B2B 5-device POC tier), RESEARCH_GAPS (Ahmedabad pilot city; GAP-004 LoRa REQUIRES_HARDWARE -> excluded from v1 pilot scope). DRAFT KPI surface + RQ-1..RQ-6 (topology/gateway, field identity bootstrap, KPI methodology, legal structure, distribution+ops runbook, emergency exercise) written for RESEARCH (iter ~153, RES-0026). DEC-0010 security control recorded as pilot gate (no DevCryptoProvider/no-identity deployments). Baseline 658/0/1 held (read-only)."
+    stage_note: "DISCOVER COMPLETE (iter ~152, evidence 1): first OPERATIONS node; C2 gap CONFIRMED -> DESIGN resolves AC-1..n (pattern BLE-002). Deps ALL COMPLETE/RESEARCH_COMPLETE -> eligible. Scope cataloged: 100+ device NGO/campus pilot (NDRF 50-device MoU + B2B POC tier), Android+iOS leaf + gateway + Internet-relay, BLE/WA/WD transports, EMERG-001 authority+drill, OBS-001 KPIs, Play closed track + TestFlight distribution, ops runbook. RQ-1..RQ-6 open for RESEARCH (RES-0026). known_limitations: BLK-0005 device gating, LEGAL-001 carry, env-gated build legs, no Level-5 field data, LoRa excluded (GAP-004), DEC-0010 pilot gate. NEXT: RESEARCH (iter ~153, RES-0026) -> DESIGN (PILOT_001_DESIGN.md AC-1..n) -> IMPLEMENT -> TEST -> SECURITY_REVIEW -> VERIFY -> ACCEPT."
+    known_limitations:
+      - "BLK-0005 device gating: physical-device integration tests (BLE/wireless on real hardware) RESOURCE-gated — the pilot itself is the device-gated leg; iOS/Android platform legs remain CI/toolchain-host env-gated"
+      - "LEGAL-001 carry: IT Rules 2021 SSMI exposure, relay licensing, LoRa type approval, satellite licensing remain open legal questions (RESEARCH_COMPLETE; lawyer + operator review required at pilot setup)"
+      - "LoRa excluded from v1 pilot scope (GAP-004 REQUIRES_HARDWARE, P2 LORA-001 DISCOVERED); satellite out of scope (SAT-001 DISCOVERED)"
+      - "No Level-5 field-trial data yet — pilot produces the first field evidence (EXP-002/003/005 planned experiments; Ahmedabad pilot city per RESEARCH_GAPS)"
+      - "DEC-0010 pilot gate (CRYPTO-001): no production deployment with DevCryptoProvider / no identity / no sealer — pilot devices MUST run provisioned identities + AEAD (satisfied by ANDROID-001 + IOS-001)"
+      - "STQC certification planned at GA (Month 30); government pilot may proceed under NDRF/NDMA pilot MoU per COMPLIANCE_RISK_REGISTER"
+      - "Distribution + ops runbook (Play closed track / TestFlight, signing, OEM battery-kill matrix, telemetry opt-in, incident escalation) are PILOT-001 deliverables — no app-store presence yet"
 
 edges:
   - from: "VISION-001"

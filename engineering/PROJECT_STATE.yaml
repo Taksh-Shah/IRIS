@@ -112,10 +112,14 @@ critical_path:
   estimated_nodes_on_path: 13
 
 next_recommended_nodes:
+  - id: "PILOT-001"
+    reason: "Field Pilot Deployment (P2 OPERATIONS) — **ACTIVE**: NODE_TRANSITION after IOS-001 ACCEPT (iter ~151, 28 COMPLETE nodes). First real-world deployment (NGO + campus pilot, 100+ devices; NDRF 50-device MoU + B2B POC tier). Deps ANDROID-001/IOS-001/EMERG-001/SEC-001 COMPLETE + LEGAL-001 RESEARCH_COMPLETE — eligible. DISCOVER COMPLETE (iter ~152, PILOT-001_DISCOVER.md, C2 gap CONFIRMED, RQ-1..6). NEXT: RESEARCH (iter ~153, RES-0026) -> DESIGN (PILOT_001_DESIGN.md AC-1..n) -> IMPLEMENT -> TEST -> SECURITY_REVIEW -> VERIFY -> ACCEPT."
+    priority: P2
+    note: "ACTIVE — DISCOVER COMPLETE, RESEARCH next (iter ~153). After ACCEPT: NODE_TRANSITION to LORA-001/SAT-001 (P2 hardware) then mission milestones (MVP/Alpha/Beta/Pilot)."
   - id: "TEST-001"
-    reason: "Test Infrastructure (P0, TEST) — **ACTIVE**: DISCOVER COMPLETE (iter 123, TEST-001_DISCOVER.md: 613/0/1 + proptest + fuzz 44M+ + tarpaulin 95.6% + 39 JVM) + RESEARCH COMPLETE (iter 124, RES-0023 verdict PROCEED across G-1..G-8: nextest; audit/deny; Kani/loom/tokio-test; tarpaulin+mutants; interop fixtures; CI; golden vectors; criterion scaffold) + DESIGN COMPLETE (iter 125, TEST_001_DESIGN.md v1.0: AC-1..12 + DEC-TEST-0001..0012 ratified) + Gaps G-TI-1..6. Deps ROUTE-001 + MSG-001 + CRYPTO-001 all COMPLETE. NEXT: IMPLEMENT (iter ~126) -> TEST -> VERIFY -> ACCEPT."
+    reason: "Test Infrastructure (P0, TEST) — **COMPLETE (iter ~131, ACCEPTED)**: nextest + audit/deny + kani/loom/tokio-test + tarpaulin + mutants + protocol conformance fixtures + golden vectors + CI matrix + criterion benches. Deps ROUTE-001 + MSG-001 + CRYPTO-001 all COMPLETE. Workspace 633/0/1 clippy 0."
     priority: P0
-    note: "ACTIVE — DESIGN COMPLETE, IMPLEMENT next (iter ~126). After ACCEPT: NODE_TRANSITION to IOS-001 (P0) per P0-first; LORA-001/SAT-001 (P2 hardware) after platform nodes."
+    note: "DONE — TEST-001 ACCEPTED iter ~131. Harnesses reused by all subsequent nodes (BLE-002, ANDROID-001, IOS-001, PILOT-001)."
 
   - id: "BLE-001"
     reason: "Bluetooth Low Energy transport (P0, TRANSPORT) — **COMPLETE (iter 90, ACCEPTED)**. First TRANSPORT node done. Deps INTERNET-001 + MSG-001 + ROUTE-001 + SEC-001 all COMPLETE. AC-1..16 PASS (AC-14 GATED/BLK-0005); verifier APPROVED iter 89; workspace 533/0/1, transport::ble 42, clippy 0."

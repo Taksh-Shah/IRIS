@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-19T12:00:00Z"
+updated_at: "2026-08-19T12:30:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,28 +23,28 @@ mission_description: "Advance IRIS from documented state to production-grade res
 
 # === CURRENT POSITION ===
 active_node: "PILOT-001"
-active_stage: "DISCOVER"
+active_stage: "RESEARCH"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "IOS-001 ACCEPTED (iter ~151): COMMITTED d13845c — SECURITY_REVIEW (iter ~149) Swift fixes + IOS-001_SECURITY_REVIEW.md + IOS-001_VERIFICATION.md + state files (16 files, +700/-478); PROJECT_GRAPH IOS-001 status IMPLEMENTING -> COMPLETE (stage_note ACCEPTED, evidence 9 held); PROJECT_STATE completed 27 -> 28, implementing 1 -> 0; CHANGELOG 0.3.58; ACTIVE_NODE/CURRENT_STATE/NEXT_ACTION refreshed. 28 COMPLETE nodes. NODE_TRANSITION -> PILOT-001 (P2 OPERATIONS, first-deployment critical path, deps ANDROID-001/IOS-001/EMERG-001/SEC-001/LEGAL-001 all COMPLETE or RESEARCH_COMPLETE). NEXT: PILOT-001 DISCOVER (iter ~152)."
-next_action: "PILOT-001 DISCOVER (iter ~152): IOS-001 ACCEPT persistence COMPLETE (commit d13845c). Begin PILOT-001 (Field Pilot Deployment, P2 OPERATIONS): DISCOVER stage — catalog pilot scope (NGO pilot + campus safety pilot, 100+ devices), deployment topology, ops-runbook prerequisites, BLK-0005 device gates, C2 gap check (no acceptance criteria), write PILOT-001_DISCOVER.md (pattern IOS-001_DISCOVER.md), update PROJECT_GRAPH PILOT-001 evidence(1) + known_limitations baseline. Then RESEARCH -> DESIGN -> IMPLEMENT -> TEST -> SECURITY_REVIEW -> VERIFY -> ACCEPT."
+active_action: "PILOT-001 DISCOVER COMPLETE (iter ~152, evidence 1): PILOT-001_DISCOVER.md authored (pattern IOS-001_DISCOVER.md) — C2 gap CONFIRMED (no ACs -> DESIGN resolves); eligible (deps ANDROID-001/IOS-001/EMERG-001/SEC-001 COMPLETE + LEGAL-001 RESEARCH_COMPLETE); scope cataloged (100+ device NGO/campus pilot; NDRF 12th Bn Gandhinagar 50-device/3-month MoU + B2B 5-device POC tier; Android+iOS leaf + gateway + Internet-relay; BLE/WA/WD transports; EMERG-001 authority+drill; OBS-001 KPIs; Play closed track + TestFlight distribution); ops-runbook prerequisites + DRAFT KPI surface; RQ-1..RQ-6 (topology/gateway, field identity bootstrap, KPI methodology, legal structure, distribution+runbook, emergency exercise) staged for RESEARCH; known_limitations written to PROJECT_GRAPH (BLK-0005 device gating, LEGAL-001 carry, env-gated build legs, no Level-5 field data, LoRa excluded GAP-004, DEC-0010 pilot gate, STQC GA timing). PROJECT_GRAPH PILOT-001 evidence(1) + stage_note DISCOVER COMPLETE + known_limitations(7) + meta validation_status/last_validated refreshed. PROJECT_STATE next_recommended PILOT-001 ACTIVE. Baseline 658/0/1 held (read-only). NEXT: PILOT-001 RESEARCH (iter ~153, RES-0026)."
+next_action: "PILOT-001 RESEARCH (iter ~153, RES-0026): resolve RQ-1..RQ-6 — (RQ-1) pilot topology + gateway architecture; (RQ-2) field identity/trust bootstrap at scale (QR pairing, EMERG-001 authority provisioning, decommissioning); (RQ-3) pilot KPI + measurement methodology (OBS-001 metrics, battery, statistical plan 50-100 devices, EXP-002/003/005 alignment); (RQ-4) legal/regulatory structure (NDRF/NDMA authorization, IT Rules SSMI, WPC bands, STQC timing — LEGAL-001 carry); (RQ-5) distribution + ops runbook (Play closed track/TestFlight, signing, updates, OEM battery-kill, telemetry consent, incident runbook); (RQ-6) emergency exercise integration (EMERG-001 drill mode + authority root + SOS rate limits live). Best-in-class sources (business continuity/disaster-ops/field-trials 2024-2026, NDRF/NDMA guidance, App store closed-track ops), evidence-leveled L1-L5, no AI citations. Register ALLOCATION (next RES-0027). THEN DESIGN (iter ~154: PILOT_001_DESIGN.md AC-1..n + DEC-PILOT-xxxx)."
 
 # === STATE TRANSITIONS ===
-last_transition: "NODE_TRANSITION"
+last_transition: "STAGE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-19T12:00:00Z"
+last_transition_at: "2026-08-19T12:30:00Z"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "PILOT-001 DISCOVER (iter ~152)."
+next_action: "PILOT-001 RESEARCH (iter ~153, RES-0026)."
 # IOS-001 pipeline comment follows:
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "IOS-001 ACCEPTED (iter ~151): commit d13845c (SECURITY_REVIEW fixes + IOS-001_SECURITY_REVIEW.md + IOS-001_VERIFICATION.md + state; 16 files +700/-478); PROJECT_GRAPH IOS-001 -> COMPLETE evidence(9); PROJECT_STATE completed 27->28 implementing 1->0; CHANGELOG 0.3.58. 28 COMPLETE nodes. Baseline 658/0/1, clippy 0, fmt clean. NODE_TRANSITION -> PILOT-001 (DISCOVER iter ~152)."
-last_progress_at: "2026-08-19T12:00:00Z"
+last_progress_event: "PILOT-001 DISCOVER COMPLETE (iter ~152, evidence 1): PILOT-001_DISCOVER.md authored — C2 gap CONFIRMED (DESIGN resolves), eligible (platform+security+emergency deps COMPLETE), scope cataloged (NDRF 50-device MoU + B2B POC, Android+iOS leaf + gateway, BLE/WA/WD transports, EMERG-001 authority+drill, OBS-001 KPIs, Play/TestFlight distribution), RQ-1..RQ-6 staged for RESEARCH (RES-0026); PROJECT_GRAPH PILOT-001 evidence(1) + stage_note + known_limitations(7) + meta refreshed. Baseline 658/0/1 held."
+last_progress_at: "2026-08-19T12:30:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -68,6 +68,23 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T12:30:00Z"
+    iteration: 152
+    node: "PILOT-001"
+    stage: "DISCOVER"
+    action: "PILOT-001 DISCOVER COMPLETE (iter ~152, read-only pass, evidence 1). PILOT-001_DISCOVER.md authored (pattern IOS-001_DISCOVER.md): node definition (P2 OPERATIONS, deps ANDROID-001/IOS-001/EMERG-001/SEC-001 COMPLETE + LEGAL-001 RESEARCH_COMPLETE -> eligible); C2 gap CONFIRMED (no acceptance_criteria -> DESIGN resolves, pattern BLE-002/ANDROID-001/IOS-001); inherited-surface table (platform nodes, transports, EMERG/SEC, OBS-001 + docs/operations runbook + telemetry, TEST-001 harnesses, docs/legal NDRF/NDMA structuring + WPC 865-867 + STQC GA Month 30 + IT Rules 2021, docs/business NDRF 12th Bn Gandhinagar 50-device/3-month MoU + B2B 5-device POC, RESEARCH_GAPS Ahmedabad pilot city + GAP-004 LoRa REQUIRES_HARDWARE excluded); scope surface (topology candidate, ops-runbook prerequisites, DRAFT KPI set); RQ-1..RQ-6 staged (topology/gateway, field identity bootstrap, KPI methodology, legal structure, distribution+runbook, emergency exercise); known_limitations baseline (BLK-0005 device gating, LEGAL-001 carry, env-gated build legs, no Level-5 field data, LoRa excluded, DEC-0010 pilot gate, STQC timing). PROJECT_GRAPH PILOT-001 evidence(1) + stage_note DISCOVER COMPLETE + known_limitations(7) + meta validation_status/last_validated refreshed; PROJECT_STATE next_recommended PILOT-001 ACTIVE. Baseline 658/0/1 (23 suites) clippy 0 fmt clean held. NEXT: PILOT-001 RESEARCH (iter ~153, RES-0026 RQ-1..RQ-6)."
+    result: "DISCOVER_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/PILOT-001_DISCOVER.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/PILOT-001_DISCOVER.md"
   - timestamp: "2026-08-19T12:00:00Z"
     iteration: 151
     node: "IOS-001"

@@ -1,21 +1,25 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T12:00:00Z
+**Last updated**: 2026-08-19T12:30:00Z
 
 ---
 
 ## Summary
 
-**✅ IOS-001 ACCEPTED (iter ~151) — 28 COMPLETE nodes; NODE_TRANSITION →
-PILOT-001 (DISCOVER, iter ~152):** commit `d13845c` (SECURITY_REVIEW fixes +
-`IOS-001_SECURITY_REVIEW.md` + `IOS-001_VERIFICATION.md` + state files; 16
-files +700/-478). PROJECT_GRAPH IOS-001 IMPLEMENTING → **COMPLETE**,
-evidence(9); PROJECT_STATE completed 27→**28**, implementing 1→0; CHANGELOG
-**0.3.58**. Baseline **658/0/1** (23 suites; iris-core 567 + iris-ios 11),
-iris-ios 11/11, clippy **0**, fmt clean. Services/ canonical layout kept
-(duplicate tranche-2 files removed). **NEXT: PILOT-001 DISCOVER (iter ~152) →
-RESEARCH (RES-0026) → DESIGN → PILOT.**
+**✅ PILOT-001 DISCOVER COMPLETE (iter ~152) — first OPERATIONS node active;
+RESEARCH next (iter ~153, RES-0026):** `PILOT-001_DISCOVER.md` authored (pattern
+IOS-001_DISCOVER.md) — C2 gap CONFIRMED (no ACs → DESIGN resolves). Eligible:
+ANDROID-001 ✅ / IOS-001 ✅ / EMERG-001 ✅ / SEC-001 ✅ COMPLETE + LEGAL-001
+RESEARCH_COMPLETE. Scope cataloged: **100+ device NGO/campus pilot** (NDRF 12th
+Bn Gandhinagar **50-device/3-month MoU** + B2B 5-device POC tier), Android+iOS
+leaf + gateway + Internet-relay, BLE/WA/WD transports, EMERG-001 authority+drill,
+OBS-001 KPIs, Play closed track + TestFlight distribution. RQ-1..RQ-6 staged
+(topology/gateway, field identity bootstrap, KPI methodology, legal structure,
+distribution/runbook, emergency exercise). PROJECT_GRAPH evidence(1) +
+stage_note + known_limitations(7); PROJECT_STATE next_recommended PILOT-001
+ACTIVE. **NEXT: RESEARCH (iter ~153, RES-0026) → DESIGN (AC-1..n) → PILOT.**
+Baseline **658/0/1** held (read-only).
 
 All core-engine + routing + observability work packages (WP-A codec → WP-9
 OBS-001), the desktop platform shell (WP-10 DESKTOP-001), the ML routing
@@ -537,26 +541,24 @@ Background SEC-001 fuzz continues aggregating clean (49.5M+ execs) — no blocke
 
 ## Active Node
 
-**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, DISCOVER next, iter ~152).**
-Selected after IOS-001 ACCEPT (iter ~151, commit `d13845c`) — first real-world
-deployment on the critical path (Beta/Pilot milestone: NGO + campus safety,
-100+ devices). Deps: ANDROID-001 ✅ / IOS-001 ✅ / EMERG-001 ✅ / SEC-001 ✅
-COMPLETE; LEGAL-001 RESEARCH_COMPLETE (open legal questions carry: IT Rules
-2021 SSMI, relay licensing, LoRa type approval, satellite licensing).
-**DISCOVER (iter ~152, read-only)**: catalog pilot scope + deployment topology
-(Android + iOS leaf nodes), ops-runbook prerequisites (app signing, Keychain/
-Keystore provisioning, EMERG-001 drill suppression, OBS-001 rollout), **C2 gap
-check** (expect no ACs — DESIGN defines AC-1..n), BLK-0005 device gates →
-write `PILOT-001_DISCOVER.md` → **PROJECT_GRAPH evidence(1) + stage_note**. →
-**RESEARCH (iter ~153, RES-0026) → DESIGN → … → ACCEPT.**
-Baseline **658/0/1 clippy 0 fmt clean (23 suites; iris-core 567 + iris-ios 11)**
-held. Quality process: DISCOVER → RESEARCH → DESIGN → IMPLEMENT → TEST →
-VERIFY → ACCEPT.
+**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, RESEARCH next, iter ~153).**
+First OPERATIONS node, deployment-critical-path terminus. DISCOVER COMPLETE
+(iter ~152, evidence 1): `PILOT-001_DISCOVER.md` authored — C2 gap CONFIRMED
+(no ACs → DESIGN resolves); eligible (ANDROID-001 ✅ / IOS-001 ✅ / EMERG-001 ✅ /
+SEC-001 ✅ COMPLETE; LEGAL-001 RESEARCH_COMPLETE); scope = **100+ device
+NGO/campus pilot** (NDRF 12th Bn Gandhinagar **50-device/3-month MoU** + B2B
+5-device POC), Android+iOS leaf + gateway + Internet-relay, BLE/WA/WD
+transports, EMERG-001 authority+drill, OBS-001 KPIs, Play closed track +
+TestFlight; RQ-1..RQ-6 staged. **RESEARCH (iter ~153, RES-0026)** → **DESIGN
+(iter ~154, `PILOT_001_DESIGN.md` AC-1..n + DEC-PILOT-xxxx)** → IMPLEMENT →
+TEST → SECURITY_REVIEW → VERIFY → ACCEPT. Baseline **658/0/1 clippy 0 fmt clean
+(23 suites; iris-core 567 + iris-ios 11)** held. Quality process: DISCOVER →
+RESEARCH → DESIGN → IMPLEMENT → TEST → VERIFY → ACCEPT.
 
 **IOS-001 ACCEPTED (iter ~151) — carries forward (28 COMPLETE nodes):**
-- **ACCEPT (iter ~151)**: commit `d13845c` — SECURITY_REVIEW (iter ~149) Swift
-  fixes + `IOS-001_SECURITY_REVIEW.md` + `IOS-001_VERIFICATION.md` + state;
-  PROJECT_GRAPH IOS-001 → COMPLETE evidence(9); PROJECT_STATE 27→28;
+- **ACCEPT (iter ~151)**: commit `d13845c` + `cd995ef` — SECURITY_REVIEW (iter
+  ~149) Swift fixes + `IOS-001_SECURITY_REVIEW.md` + `IOS-001_VERIFICATION.md`
+  + state; PROJECT_GRAPH IOS-001 → COMPLETE evidence(9); PROJECT_STATE 27→28;
   CHANGELOG 0.3.58; NODE_TRANSITION → PILOT-001.
 - **VERIFY (iter ~150, AC-21)**: `IOS-001_VERIFICATION.md` AC-1..AC-21 evidence
   table + independent verifier **APPROVE** — live reproduction **658/0/1** (23
