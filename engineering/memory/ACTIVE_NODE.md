@@ -7,8 +7,8 @@
 
 - **Type**: PLATFORM (Xcode/Swift shell, CoreBluetooth device layer, FFI)
 - **Priority**: P0
-- **Status**: **IMPLEMENTING** — tranches 1+2 COMPLETE (iter ~144..146,
-  AC-1..AC-15); **TEST next (iter ~146/147, AC-16..AC-18)**
+- **Status**: **IMPLEMENTING** — IMPLEMENT+tranches COMPLETE (iter ~144..146),
+  **TEST COMPLETE (iter ~147); DOCUMENT next (iter ~148, AC-17)**
 - **Deps**: BLE-002 / MSG-001 / EMERG-001 — **all COMPLETE** (eligible)
 - **C2 gap**: **RESOLVED** at DESIGN (iter ~143) — AC-1..AC-21 defined
 
@@ -50,11 +50,22 @@
   SessionRecoveryTests, FfiConformanceTests).
 - **Baseline: workspace 658/0/1**, clippy 0, fmt clean — held.
 
+## TEST COMPLETE (iter ~147, AC-16..AC-18)
+
+- **AC-16**: `IOS-001_TEST.md` — 33 Swift XCTest cases across 6 files
+  (MockCoreBluetooth + IosBleAdapterTests 13 AC-4..9 + ProbeAdmissionTests 3
+  AC-7 + KeychainIdentityTests 5 AC-12 KAT + SessionRecoveryTests 9 AC-10/11 +
+  FfiConformanceTests 3 AC-3); execution env-gated → `test-macos` CI job
+  (IRIS-MacOSTests scheme).
+- **AC-18**: PASS — live re-verify: workspace **658/0/1**, clippy 0, fmt clean.
+- **AC-19**: GATED/BLK-0005. Commit `110ef5b`.
+
 ## Next (short)
 
-TEST (iter ~146/147, `IOS-001_TEST.md` AC-16..AC-18 evidence map; workspace
-658/0/1) → DOCUMENT (AC-17 EXTERNAL-FACTS) → SECURITY_REVIEW → VERIFY →
-ACCEPT → PILOT-001.
+DOCUMENT (iter ~148, AC-17 — apply 6 EXTERNAL-FACTS corrections to
+`docs/platforms/IOS.md` + `docs/implementation/SWIFT_LAYER.md` per IOS_DESIGN.md
+§13) → SECURITY_REVIEW (AC-20) → VERIFY (AC-21) → ACCEPT → PILOT-001.
+Baseline **658/0/1**.
 
 ## Carry-forward contracts into IOS-001 (from BLE-002)
 

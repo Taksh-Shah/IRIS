@@ -232,24 +232,27 @@ required). Control-plane carry-forward contracts for IOS-001: BLE-RT-C003
 (read-timeout → Swift read path), BLE-RT-C004 (probe cache → IOS-001/ANDROID-001),
 Android↔iOS identify-read (ANDROID-001 follow-up). **NEXT: IOS-001 DISCOVER
 (iter ~141) → DESIGN → … → PILOT-001.**
-**✅ IOS-001 IMPLEMENT COMPLETE (iter ~144..146) — AC-1..AC-15; TEST next:**
-Tranche 1 (iter ~144): `crates/iris-ios` scaffold (11-op `FfiBleAdapter` incl
-`gatt_read` + SimBle tests; `BleBridge` all 11 ops; `IrisEngine` explicit tokio
-Handle); `uniffi generate --library` → committed `ios/IRIS/RustFFI/`
-IrisCore.swift (96.7KB); `G-IOS_SPIKE.md`; `ios.yml` pre-seed. **Baseline
-658/0/1**, clippy 0, fmt clean. **Tranche 2 (iter ~145/146): all Swift sources
-authored** — `IosBleAdapter.swift` (11-op `@unchecked Sendable` NSLock-confined;
-gatt_read = connect → `readValue(IRIS_IDENTIFY_CHARACTERISTIC)` → DiscoveryBeacon
-parse AC-5; BLE-RT-C003 10s timeout+cancel AC-6; C004 probe budget 8/scan + 60s
-reject window AC-7; MTU ≤512 + 20-B guard AC-8; UUID filter + no service_data
-AC-9), `CoreBluetoothSeam` + real CB managers (willRestoreState re-arm AC-10),
+**✅ IOS-001 IMPLEMENT + TEST COMPLETE (iter ~144..147) — AC-1..AC-18;
+DOCUMENT next:** Tranche 1 (iter ~144): `crates/iris-ios` scaffold (11-op
+`FfiBleAdapter` incl `gatt_read` + SimBle tests; `BleBridge` all 11 ops;
+`IrisEngine` explicit tokio Handle); `uniffi generate --library` → committed
+`ios/IRIS/RustFFI/` IrisCore.swift (96.7KB); `G-IOS_SPIKE.md`; `ios.yml`
+pre-seed. **Tranche 2 (iter ~145/146): all Swift sources authored** —
+`IosBleAdapter.swift` (11-op `@unchecked Sendable` NSLock-confined; gatt_read =
+connect → `readValue(IRIS_IDENTIFY_CHARACTERISTIC)` → DiscoveryBeacon parse
+AC-5; BLE-RT-C003 10s timeout+cancel AC-6; C004 probe budget 8/scan + 60s reject
+window AC-7; MTU ≤512 + 20-B guard AC-8; UUID filter + no service_data AC-9),
+`CoreBluetoothSeam` + real CB managers (willRestoreState re-arm AC-10),
 `KeychainEd25519` (com.iris.identity.v1 + staticad, no biometric, RFC 8032 KAT
 AC-12), `SessionRecovery` (launch-reason classify + BGTask re-submit +
 force-quit no-op AC-11), `BGTaskWiring` (AC-14), `LiveActivityController`
-iOS 16.1 gated + widget (AC-13), `ios.yml` full AC-15 + build-xcframework.sh,
-6 Swift test files (AC-16 authored). **NEXT: TEST (iter ~146/147, AC-16..18
-evidence map) → DOCUMENT (AC-17) → SECURITY_REVIEW → VERIFY → ACCEPT →
-PILOT-001.** Swift compile/run = macOS CI leg (env-gated); device rows BLK-0005.
+iOS 16.1 gated + widget (AC-13), `ios.yml` full AC-15 + build-xcframework.sh.
+**TEST (iter ~147)**: `IOS-001_TEST.md` — AC-16 (33 XCTest cases env-gated →
+macOS CI), AC-18 **PASS** (live 658/0/1, clippy 0, fmt clean), AC-19
+GATED/BLK-0005. Commit `110ef5b`. **NEXT: DOCUMENT (iter ~148, AC-17 — 6
+EXTERNAL-FACTS corrections to IOS.md + SWIFT_LAYER.md) → SECURITY_REVIEW
+(AC-20) → VERIFY (AC-21) → ACCEPT → PILOT-001.** Swift compile/run = macOS CI
+leg (env-gated); device rows BLK-0005.
 **🚀 OPERATOR AUTHORIZATION (DEC-0009, iter 54): ALL GATES + HUMAN GATES
 UNBLOCKED.** **✅ IDENT-001 COMPLETE (iter 63c/64):** Identity System ACCEPTED
 — IDENT_VERIFICATION.md v1.0 AC-1..11 all PASS, verifier APPROVE, redteam
