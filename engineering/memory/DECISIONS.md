@@ -1,7 +1,7 @@
 # DECISIONS.md — Active Decision Log
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-18T12:30:00Z
+**Last updated**: 2026-08-19T13:15:00Z
 
 ---
 
@@ -850,3 +850,84 @@ Evidence: [Link to research/record]
 **Alternatives**: SE-backed identity (rejected — P-256-only, breaks Ed25519 line); rely on BLE link-layer security (rejected — DEC-BLE-0006).
 **Consequence**: AC-12/AC-17/AC-20; threat model input to SECURITY_REVIEW stage.
 **Evidence**: RES-0025 RQ-2 findings 1-6 + RQ-4; DEC-BLE-002-0006 evidence; Apple Platform Security Guide (L1)
+
+### DEC-PILOT-0001: Pilot topology — 50-100 leaves + 1-3 DESKTOP-001 gateways + Android-gateway fallback; gateway-scoped Internet-relay; mesh-primary
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: Leaves 50-100 (Android relay-primary; iOS limited-relay — single known limitation), 1-3 DESKTOP-001 (Tauri) gateways + Android-gateway field fallback role, private IRIS relay endpoint; Internet relay = **gateway-scoped** uplink/downlink only (never per-leaf); mesh-primary offline-first operation; LoRa excluded (GAP-004). Precedent: Meshtastic managed-flood >100-node claim + Helene 2024 gateway-uplink field networks + Nepal DTN-trial evaluation vocabulary (RES-0026 RQ-1).
+**Context**: RES-0026 RQ-1 findings 1-6; DISCOVER §3 topology candidate.
+**Alternatives**: per-leaf Internet relay (rejected — airtime blowup); LoRa-first topology (rejected — GAP-004 hardware required).
+**Consequence**: PILOT_001_DESIGN.md AC-2/AC-7..10; PILOT_RUNBOOK topology section.
+**Evidence**: RES-0026 RQ-1 (meshtastic.org docs/blog + firmware Default.{h,cpp} L1/L4; qrper.com Helene L3; arXiv 2603.10153 L2)
+
+### DEC-PILOT-0002: Relay-cadence scaling rule mirrors Meshtastic congestionScalingCoefficient (≤40 flat, >40 linear)
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: Broadcast/telemetry cadence scales with online-node count N: 0.6× (≤10), 0.7× (11-20), 0.8× (21-30), 1.0× (31-40), then `1.0 + (N-40)×f` with default f=0.075/node (0.01-0.1 configurable), at the INTERNET-001/ROUTE-001 seam. Applied to telemetry/neighbor-discovery broadcast + non-critical gossip only; **never** to P0/P1 emergency traffic (EMERG-001 priority bypass) nor directed point-to-point. Verified at Meshtastic firmware source (`congestionScalingCoefficient`). Airtime minimization = DESIGN AC-6.
+**Context**: RES-0026 RQ-1 finding 3 (meshtastic/firmware src/mesh/Default.{h,cpp} + #8632, L1/L4).
+**Alternatives**: flat cadence at any N (rejected — 100-node broadcast blowup); N² backoff (rejected — over-conservative, delays discovery in sparse modes).
+**Consequence**: AC-6; runbook config seam; OBS-001 cadence note.
+**Evidence**: RES-0026 RQ-1 f.3; meshtastic/firmware source (L1/L4)
+
+### DEC-PILOT-0003: Field identity bootstrap = in-person mutual-QR ceremony (Briar/SecureJoin), batch 10-20, no-recovery is a deliberate v1 property
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: ProvisioningFlow uses the in-person **mutual-QR** scan ceremony (Briar BQP + DeltaChat SecureJoin precedent) with operator session: leaf displays its QR, operator scans (leaf pubkey); operator displays session QR, leaf scans (operator pubkey + nonce); short auth-string verified in person → TOFU flag + operator-side verified-tier escalation (IDENT-001 TrustLevel). Batch sessions of 10-20 devices; EMERG-001 authority-root + DRILL-chain bundle provisioned **out-of-band** (batch, not mesh first-contact). No-recovery identity model documented (no escrow in v1); decommission = wipe platform key + TrustStore revoke + rotate (IDENT-001 rotate.rs). Never mesh-mediated first trust.
+**Context**: RES-0026 RQ-2 findings 1-5 (Briar L1/L4, SecureJoin L1); RES-0016 D-2/DEC-P0006; RES-0022/RES-0025 platform stores.
+**Alternatives**: mesh-first-contact trust (rejected — no in-person confirmation, spoofing surface); escrow-enabled recovery (rejected — v1 deliberate model).
+**Consequence**: AC-2/AC-12; PILOT_RUNBOOK provisioning + decommission sections.
+**Evidence**: RES-0026 RQ-2; briarproject.org + codeberg tqt/briar (L1/L4); securejoin.delta.chat (L1)
+
+### DEC-PILOT-0004: EMERG-001 authority-root + DRILL certificate chain provisioned out-of-band; drill SOS/broadcast runs TEST-only under DRILL certs
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: Authority root + DRILL certificate chain are part of the operator batch-provisioning bundle (never mesh first-contact). In the M2 field Mock Exercise, SOS/broadcast traffic flows **TEST-only** under DRILL certificates with yellow-banner UX — SEC-001 quotas + EMERG-001 drill suppression guarantee real-SOS capacity is never consumed by the drill. Observers + self-assessment + debrief capture per NDMA DMEx structure; exercise safety annex = communications-only, no live-hazard simulation, public-notice window.
+**Context**: RES-0026 RQ-6 findings 1-5; EMERG-001 drill mode; SEC-001 quotas; NDMA DMEx Oct-2024 (L1).
+**Alternatives**: real-SOS exercise without DRILL (rejected — capacity + confusion risk); contentless drill (rejected — no OBS-001 capture).
+**Consequence**: AC-4/AC-13; PILOT_EXERCISE.md.
+**Evidence**: RES-0026 RQ-6; ndma.gov.in DMEx Guidelines + Mock-Exercises page (L1); EMERG-001/SEC-001 (L1 project)
+
+### DEC-PILOT-0005: KPI reporting uses Wilson-CI sample plan (95%) for count/ratio KPIs; thresholds target/floor are AC rows
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: For 50-100 devices, count/ratio KPIs (delivery ratio, latency pass-rate, SOS drill success) are reported with the **Wilson score interval** at 95% confidence (small-N, non-normal); per-class/transport reporting, never pooled. Thresholds table (target/floor) pinned in PILOT_KPI_PLAN.md: P2P delivery 0.95/0.90, multi-hop 0.90/0.85, latency p50/p95/p99 2/10/30 s (floor 5/30/60), hops p50/p95 2/5 (floor 3/8), battery ≤3/≤1 %/h fg/bg (floor 5/2), SOS drill P0 1.0/0.95. Battery methodology = controlled per-device fg/bg drain at fixed cadence. OBS-001 metric mapping + 7-day retention + opt-in carry.
+**Context**: RES-0026 RQ-3 findings 4-6 (DTN vocabulary L2, OBS-001, Wilson rationale); OBS_DESIGN.md.
+**Alternatives**: pooled means + normal CI (rejected — small-N non-normal); no thresholds (rejected — C2 gap persists).
+**Consequence**: AC-3/AC-11; PILOT_KPI_PLAN.md.
+**Evidence**: RES-0026 RQ-3; arXiv 2603.10153 (L2); OBS_DESIGN.md (L1 project)
+
+### DEC-PILOT-0006: Distribution = Google Play internal track (≤100 testers) for Android cohort; closed 12×14 starts the production clock at pilot close; iOS TestFlight external + 90-day refresh
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: For the v1 pilot cohort use **Google Play internal testing** (≤100 testers/app, no review, near-instant, usable pre-store-setup) — supersedes the DISCOVER 'closed track' candidate. Closed track (≥12 testers × 14 days) is the production-access prerequisite; start that clock intentionally when the pilot closes (production path, not pilot). iOS cohort via **TestFlight external** (≤10,000 testers; first external build Beta App Review; builds expire 90 days → calendar-owned rolling refresh).
+**Context**: RES-0026 RQ-5 findings 1-3 (answer/9845334 + /14151465; Apple TestFlight — L1).
+**Alternatives**: closed track for pilot (rejected — 14-day clock + review friction for a bounded cohort); Preview track (rejected — not for real users).
+**Consequence**: AC-5/AC-15; PILOT_DISTRIBUTION.md.
+**Evidence**: RES-0026 RQ-5; support.google.com answers 9845334/14151465 (L1); developer.apple.com TestFlight (L1)
+
+### DEC-PILOT-0007: Signing custody — Play App Signing upload key RSA ≥2048, 2-person rule + PEPK backup; Google-managed signing key
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: Play App Signing: upload key RSA ≥2048 in a .jks held under **2-person custody** (issue/use requires two named operators); Google manages the app-signing key; **PEPK** export/transfer flow documented + backup copies held under the same custody rule. iOS: Apple-managed signing; distribution cert + provisioning secrets in the same custody model. Update path: internal-track pushes via Play console; TestFlight refresh cadence owned by a calendar task.
+**Context**: RES-0026 RQ-5 finding 4 (answer/9842756 Play App Signing, L1).
+**Alternatives**: self-managed app-signing key (rejected — key-rotation manual burden); single-operator custody (rejected — SPOF on signing key).
+**Consequence**: AC-5/AC-15; signing custody runbook section.
+**Evidence**: RES-0026 RQ-5 f.4; support.google.com answer 9842756 (L1)
+
+### DEC-PILOT-0008: Exercise = NDMA DMEx structure (M1 TTEx → M2 field ME → M3 evaluation/AAR to NDRF); communications-only safety annex
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: Pilot schedule = **Month 1 Tabletop Exercise** (NDMA discussion-based, scenario injects, Orientation-cum-Coordination Conference) → **Month 2 field Mock Exercise** (50 devices, real deployments, observers w/ NDMA observation format, self-assessment forms, TEST-only SOS under DRILL certs, yellow-banner UX) → **Month 3 evaluation** (debrief, good-practices/gaps report, **AAR/IP to NDRF** per HSEEP-portable template). ≥1 drill/year cadence per NDMP 2019. EXP-002/003 (Ahmedabad mobility) + EXP-005 (iOS bg) run as before/after legs. Safety annex: communications-only drill, no live-hazard simulation, no movement beyond normal operations, observer oversight, public-notice window.
+**Context**: RES-0026 RQ-3 findings 1-3/7 + RQ-6 findings 1-3 (NDMA DMEx Oct-2024, Mock-Exercises page, PIB Suraksha Chakra 2025, HSEEP — L1).
+**Alternatives**: no structured exercise (rejected — no evaluation loop for OBS-001); single-event drill (rejected — NDMA 4-phase + evaluation required).
+**Consequence**: AC-4/AC-13; PILOT_EXERCISE.md.
+**Evidence**: RES-0026 RQ-3/RQ-6; ndma.gov.in DMEx Guidelines + Mock-Exercises (L1); PIB NoteId=155004 (L1); fema.gov HSEEP (L1)
+
+### DEC-PILOT-0009: REG-NOTES codification — WPC G.S.R. 853(E) 2021 (865-868) supersedes 865-867 carry; SSMI non-applicable at pilot scale; NDRF MoU is the authorization; no research legal opinion
+**Status**: APPROVED 2026-08-19 (PILOT-001 DESIGN)
+**Node**: PILOT-001
+**Summary**: REG_NOTES.md codifies at IMPLEMENT: (1) **WPC G.S.R. 853(E) 2021** = governing SRD band 865-868 MHz (Table-I Non-Specific SRD: 25 mW e.r.p., duty ≤1%, FHSS ≥58 hop channels ≤50 kHz, EN 300 220); supersedes the 2005 RFID 865-867 carry in LEGAL-001 docs; IRIS field config 866.0 MHz ≤25 mW confirmed compliant; **LoRa-leg-only** (v1 = BLE/Wi-Fi unlicensed). (2) **IT Rules 2021 SSMI** (50-lakh registered users) non-applicability memo at pilot scale (gazette S.O. 942(E) re-confirmed by counsel — G-P6). (3) **NDRF 12th Bn MoU** = pilot authorization; STQC at GA Month 30. (4) Open counsel questions tracked (relay-as-telegraph §4 ITA 1885, intermediary classification, DPDPA consent, LoRa ETA) — **research issues no legal opinion**; lawyer + operator review gate per LEGAL-001.
+**Context**: RES-0026 RQ-4 findings 1-6 (thc.nic.in + egazette gazette L1; TEC ER L1; ET SSMI L3); LEGAL-001 carry.
+**Alternatives**: proceed without REG-NOTES (rejected — undocumented legal surface); research legal opinion (rejected — outside research scope, LEGAL-001 gate).
+**Consequence**: AC-14/AC-16; REG_NOTES.md; docs/legal corrections at DOCUMENT.
+**Evidence**: RES-0026 RQ-4; thc.nic.in G.S.R. 853(E) copy + egazette 231828.pdf (L1); TEC ER Annexures Dec-2024 (L1)

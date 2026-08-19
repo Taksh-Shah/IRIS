@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-19T13:00:00Z"
+updated_at: "2026-08-19T13:15:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,28 +23,28 @@ mission_description: "Advance IRIS from documented state to production-grade res
 
 # === CURRENT POSITION ===
 active_node: "PILOT-001"
-active_stage: "DESIGN"
+active_stage: "IMPLEMENT"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "PILOT-001 RESEARCH COMPLETE (iter ~153, evidence 2): RES-0026.md authored (pattern RES-0025; 12 websearch + 4 primary-source passes, L1-L5, no AI citations) — verdict PROCEED. RQ-1 ADOPT-WITH-CONDITION (managed-flood >100-node + congestionScalingCoefficient cadence precedent; Helene gateway-uplink; Nepal DTN metrics) -> leaves 50-100 + 1-3 gateways + gateway-scoped relay; RQ-2 ADOPT-WITH-CONDITION (Briar/SecureJoin QR bootstrap + IDENT-001 verified tier + EMERG-001 out-of-band authority); RQ-3 ADOPT-WITH-CONDITION (OBS-001 ↔ NDMA DMEx 4-phase; Wilson-CI sample plan -> DESIGN ACs; EXP-002/003/005 legs); RQ-4 ADOPT (WPC G.S.R. 853(E) 2021 865-868 SRD 25 mW/≤1% supersedes 865-867; SSMI 50-lakh non-applicable; NDRF MoU + STQC GA; no legal opinion); RQ-5 ADOPT-WITH-CONDITION (Play internal track ≤100 testers primary — DISCOVER 'closed track' REFINED; TestFlight external + 90-day refresh); RQ-6 ADOPT (EMERG-001 drill = NDMA ME; DRILL-chain + TEST-only SOS + safety annex). DESIGN inputs D-1..D-9; external-facts reconciled; gaps G-P1..G-P9. ALLOCATION next RES-0027 registered. PROJECT_GRAPH PILOT-001 status RESEARCH_COMPLETE + evidence(2) + stage_note RESEARCH COMPLETE + meta validation_status refreshed; PROJECT_STATE research_complete 1->2 discovered 3->2 next_recommended refreshed. NEXT: PILOT-001 DESIGN (iter ~154, PILOT_001_DESIGN.md)."
-next_action: "PILOT-001 DESIGN (iter ~154, PILOT_001_DESIGN.md): architect authors design per RES-0026 verdict PROCEED + DESIGN inputs D-1..D-9 (pattern BLE_002_DESIGN.md/ANDROID_DESIGN.md/IOS_DESIGN.md). Resolve C2 gap: define AC-1..n (testable; pilot = real deployment — device rows BLK-0005-gated recorded honestly) + DEC-PILOT-xxxx ratified into DECISIONS.md. Sections: topology (50-100 leaves/Android-primary + iOS limited-relay + 1-3 DESKTOP-001 gateways + Android-gateway fallback + private relay endpoint), relay-cadence scaling rule (INTERNET-001/ROUTE-001 seam), fixed test battery (NCT-of-N, partition/healing, multi-hop SCF mule), ProvisioningFlow (QR ceremony 10-20/ batch, EMERG-001 authority + DRILL-chain out-of-band bundle, decommission wipe/revoke/rotate, no-recovery documented), KPI plan (delivery ratio per class/transport, p50/p95/p99, hops, coverage, battery controlled methodology, drill metrics — thresholds target/floor + Wilson-CI sample plan), NDMA DMEx exercise schedule (Month 1 TTEx, Month 2 field ME, Month 3 evaluation), distribution + ops runbook (Play internal track ≤100, TestFlight external + 90-day refresh, Play App Signing custody 2-person + PEPK, OEM battery-kill checklist, telemetry consent/retention, incident ownership), REG-NOTES (WPC 853(E)/2021 codification, SSMI memo, NDRF MoU, open counsel Qs). Risks/gaps G-P1..G-P9 -> known_limitations. THEN IMPLEMENT (iter ~155)."
+active_action: "PILOT-001 DESIGN COMPLETE (iter ~154, evidence 3): PILOT_001_DESIGN.md v1.0 authored (pattern BLE_002_DESIGN.md/ANDROID_DESIGN.md/IOS_DESIGN.md) — C2 gap RESOLVED via AC-1..AC-18. D-1 topology (50-100 leaves Android relay-primary / iOS limited-relay + 1-3 DESKTOP-001 gateways + Android-gateway fallback + gateway-scoped Internet-relay, mesh-primary, LoRa excluded GAP-004); D-2 relay-cadence scaling rule (congestionScalingCoefficient mirror: 0.6x<=10..1.0x 31-40, >40 linear 1.0+(N-40)*f default 0.075 configurable 0.01-0.1; P0/P1 + directed exempt; AC-6); D-3 fixed test battery B-1..B-4 (NCT-of-N all-N delivery + latency CDF N=20/50/100; partition/healing uplink-down; multi-hop SCF mule-chain; iOS limited-relay; sim pre-validation + field legs; BLK-0005 folded into pilot); D-4 ProvisioningFlow (mutual-QR batch 10-20, verified escalation, EMERG-001 authority-root + DRILL-chain out-of-band bundle, decommission wipe+revoke+rotate, no-recovery documented); D-5 trust model (TOFU + verified tier RES-0016 D-2; platform-store key isolation); D-6 KPI plan (OBS-001 mapping, thresholds target/floor, Wilson-CI 95% plan per class/transport, controlled fg/bg battery methodology, 7-day retention); D-7 NDMA DMEx schedule (M1 TTEx -> M2 field ME 50-dev observers+self-assessment -> M3 evaluation/AAR to NDRF; EXP-002/003/005 legs; safety annex communications-only); D-8 distribution runbook (Play internal track <=100 testers + closed 12x14 production clock at pilot close; TestFlight external + 90-day refresh; Play App Signing custody 2-person + PEPK; OEM battery-kill matrix; telemetry consent; incident ownership); D-9 REG-NOTES (WPC 853(E) 2021 865-868 supersedes 865-867; SSMI non-applicable memo; NDRF MoU + STQC GA Month 30; open counsel Qs — no legal opinion). DEC-PILOT-0001..0009 ratified in engineering/memory/DECISIONS.md. Risks G-P1..G-P9 mapped G1..G12. External-facts corrections staged for DOCUMENT (AC-16). PROJECT_GRAPH PILOT-001 status DESIGNING + acceptance_criteria(18) + evidence(3) + stage_note DESIGN COMPLETE + meta validation_status refreshed; PROJECT_STATE research_complete 2->1 designing 0->1 next_recommended refreshed; ALLOCATION + execution-log updated. NEXT: PILOT-001 IMPLEMENT (iter ~155, docs-only ops deliverables)."
+next_action: "PILOT-001 IMPLEMENT (iter ~155, docs-only ops deliverables per PILOT_001_DESIGN.md AC-1..AC-16): author docs/operations/PILOT_RUNBOOK.md (topology, gateway roles/fallback, ProvisioningFlow mutual-QR ceremony batch 10-20 + verified escalation + EMERG authority-root/DRILL-chain out-of-band bundle + decommission wipe/revoke/rotate, day-0/day-N ops, incident ownership, diagnostics QR; AC-2), PILOT_KPI_PLAN.md (OBS-001 mapping, thresholds target/floor, Wilson-CI formula + sampling, controlled fg/bg battery methodology, collection cadence + 7-day retention; AC-3/AC-11), PILOT_EXERCISE.md (NDMA DMEx M1 TTEx -> M2 field ME -> M3 evaluation/AAR to NDRF; observers + self-assessment; DRILL certs + TEST-only SOS + yellow banner; safety annex; AC-4/AC-13), PILOT_DISTRIBUTION.md (Play internal <=100 + closed 12x14 production clock; TestFlight external + 90-day refresh; Play App Signing 2-person + PEPK; OEM battery-kill matrix; telemetry consent; update path; AC-5/AC-15), REG_NOTES.md (WPC 853(E) 2021 865-868, SSMI non-applicability memo, NDRF MoU + STQC GA, open counsel Qs; AC-14); relay-cadence config seam edit at INTERNET-001/ROUTE-001 seam (AC-6); EXTERNAL-FACTS doc edits (AC-16: GO_TO_MARKET/B2G closed->internal; COMPLIANCE_RISK_REGISTER/SPECTRUM 865-867->853(E) 865-868; FIELD_OPS 866.0 <=25 mW CONFIRMED). Workspace baseline 658/0/1 clippy 0 fmt clean held. THEN TEST (iter ~156, sim pre-validation B-1..B-4)."
 
 # === STATE TRANSITIONS ===
 last_transition: "STAGE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-19T13:00:00Z"
+last_transition_at: "2026-08-19T13:15:00Z"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "PILOT-001 DESIGN (iter ~154, PILOT_001_DESIGN.md AC-1..n + DEC-PILOT-xxxx)."
+next_action: "PILOT-001 IMPLEMENT (iter ~155, docs-only ops deliverables AC-1..AC-16: PILOT_RUNBOOK.md, PILOT_KPI_PLAN.md, PILOT_EXERCISE.md, PILOT_DISTRIBUTION.md, REG_NOTES.md + relay-cadence config seam + EXTERNAL-FACTS doc edits)."
 # IOS-001 pipeline comment follows:
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "PILOT-001 RESEARCH COMPLETE (iter ~153, evidence 2): RES-0026 verdict PROCEED — RQ-1..RQ-6 resolved (managed-flood+gateway-relay topology; QR bootstrap; NDMA DMEx KPI mapping; WPC 853(E)/2021 codification; Play internal track; EMERG drill = NDMA ME). DESIGN inputs D-1..D-9. PROJECT_GRAPH status RESEARCH_COMPLETE evidence(2); PROJECT_STATE research_complete 1->2 discovered 3->2; ALLOCATION next RES-0027."
-last_progress_at: "2026-08-19T13:00:00Z"
+last_progress_event: "PILOT-001 DESIGN COMPLETE (iter ~154, evidence 3): PILOT_001_DESIGN.md v1.0 — C2 gap RESOLVED via AC-1..AC-18; D-1..D-9 pinned (topology 50-100+1-3 gateways+gateway-scoped relay; relay-cadence rule; test battery B-1..B-4; ProvisioningFlow; trust model; KPI+Wilson-CI; NDMA DMEx M1/M2/M3; Play internal+TestFlight distribution; REG-NOTES); DEC-PILOT-0001..0009 ratified. PROJECT_GRAPH status DESIGNING + AC(18) + evidence(3); PROJECT_STATE research_complete 2->1 designing 0->1; ALLOCATION + execution-log updated."
+last_progress_at: "2026-08-19T13:15:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -68,6 +68,22 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T13:15:00Z"
+    iteration: 154
+    node: "PILOT-001"
+    stage: "DESIGN"
+    action: "PILOT-001 DESIGN COMPLETE (iter ~154, docs-only pass, evidence 3). PILOT_001_DESIGN.md v1.0 authored (pattern BLE_002_DESIGN.md/ANDROID_DESIGN.md/IOS_DESIGN.md) — C2 gap RESOLVED via AC-1..AC-18. D-1 topology (50-100 leaves Android relay-primary / iOS limited-relay + 1-3 DESKTOP-001 gateways + Android-gateway field fallback + gateway-scoped Internet-relay to private IRIS relay endpoint, mesh-primary, LoRa excluded GAP-004); D-2 relay-cadence scaling rule (congestionScalingCoefficient mirror: 0.6x<=10, 0.7x 11-20, 0.8x 21-30, 1.0x 31-40, >40 linear 1.0+(N-40)*f default 0.075 configurable 0.01-0.1; broadcast/telemetry only, P0/P1 + directed exempt; airtime-minimization AC-6); D-3 fixed test battery B-1..B-4 (NCT-of-N all-N delivery + latency CDF N=20/50/100; partition/healing uplink-down; multi-hop SCF mule-chain contact-window; iOS limited-relay; SIM-001 pre-validation + field legs; BLK-0005 folded into the pilot); D-4 ProvisioningFlow (first-run identity platform stores -> operator mutual-QR ceremony batch 10-20 -> gateway-verified escalation -> EMERG-001 authority-root + DRILL-chain out-of-band bundle -> decommission wipe+revoke+rotate; no-recovery documented); D-5 trust model (TOFU + verified tier RES-0016 D-2/DEC-P0006; Briar/SecureJoin QR precedent; platform-store key isolation); D-6 KPI plan (OBS-001 mapping: delivery ratio per class/transport, lat p50/p95/p99, hops, battery controlled fg/bg at fixed cadence, coverage, drill success; thresholds target/floor; Wilson-CI 95% per class/transport never pooled; 7-day retention opt-in); D-7 NDMA DMEx schedule (M1 TTEx injects -> M2 field ME 50-dev observers+self-assessment, TEST-only SOS under DRILL certs, yellow banner -> M3 evaluation/debrief/AAR to NDRF HSEEP-portable; EXP-002/003/005 before/after legs; safety annex communications-only + public-notice window); D-8 distribution + ops runbook (Play internal track <=100 testers no-review primary; closed 12x14 production clock at pilot close; TestFlight external <=10k + 90-day refresh calendar-owned; Play App Signing upload-key custody 2-person + PEPK; OEM battery-kill matrix; telemetry opt-in; incident severity ownership; diagnostics QR export); D-9 REG-NOTES (WPC G.S.R. 853(E) 2021 = 865-868 SRD Table-I 25 mW e.r.p./<=1% duty supersedes 865-867; SSMI 50-lakh non-applicable memo; NDRF MoU authorization + STQC GA Month 30; open counsel Qs relay-as-telegraph/intermediary/DPDPA/LoRa-ETA; no research legal opinion). DEC-PILOT-0001..0009 ratified in engineering/memory/DECISIONS.md. Risks G-P1..G-P9 mapped G1..G12. External-facts corrections staged for DOCUMENT (AC-16). PROJECT_GRAPH PILOT-001 status RESEARCH_COMPLETE->DESIGNING + acceptance_criteria(18) + evidence(3) + stage_note DESIGN COMPLETE + meta validation_status/last_validated refreshed; PROJECT_STATE research_complete 2->1 designing 0->1 next_recommended refreshed; ALLOCATION + execution-log updated. Baseline 658/0/1 clippy 0 fmt clean held (docs-only). NEXT: PILOT-001 IMPLEMENT (iter ~155, docs-only ops deliverables AC-1..AC-16)."
+    result: "DESIGN_COMPLETE"
+    files_changed:
+      - "docs/implementation/PILOT_001_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/DECISIONS.md"
+      - "engineering/memory/records/ALLOCATION.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "docs/implementation/PILOT_001_DESIGN.md"
   - timestamp: "2026-08-19T13:00:00Z"
     iteration: 153
     node: "PILOT-001"

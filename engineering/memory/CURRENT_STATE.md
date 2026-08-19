@@ -7,6 +7,34 @@
 
 ## Summary
 
+**✅ PILOT-001 DESIGN COMPLETE (iter ~154, `PILOT_001_DESIGN.md` v1.0) — C2 gap
+RESOLVED (AC-1..AC-18); IMPLEMENT next (iter ~155, docs-only):** Design
+authored per RES-0026 verdict PROCEED + D-1..D-9 (pattern
+BLE_002_DESIGN.md/ANDROID_DESIGN.md/IOS_DESIGN.md). Pinned: **D-1 topology**
+(50-100 leaves, Android relay-primary / iOS limited-relay + 1-3 DESKTOP-001
+gateways + Android-gateway fallback + gateway-scoped Internet-relay,
+mesh-primary, LoRa excluded GAP-004); **D-2 relay-cadence scaling rule**
+(congestionScalingCoefficient mirror — ≤40 flat 0.6×..1.0×, >40 linear
+`1.0+(N-40)×f` default 0.075; P0/P1 + directed exempt); **D-3 test battery
+B-1..B-4** (NCT-of-N all-N + latency CDF, partition/healing, multi-hop SCF
+mule-chain, iOS limited-relay; SIM-001 pre-validation + pilot field legs);
+**D-4 ProvisioningFlow** (mutual-QR batch 10-20, verified escalation, EMERG-001
+authority-root + DRILL-chain out-of-band bundle, decommission wipe+revoke+
+rotate, no-recovery); **D-5 trust model** (TOFU + verified tier, platform-store
+key isolation); **D-6 KPI plan** (OBS-001 mapping, thresholds target/floor,
+**Wilson-CI 95%**, controlled fg/bg battery, 7-day retention); **D-7 NDMA DMEx
+schedule** (M1 TTEx → M2 field ME observers+self-assessment, TEST-only SOS → M3
+evaluation/AAR to NDRF; safety annex); **D-8 distribution runbook** (Play
+**internal** ≤100 + closed 12×14 production clock, TestFlight external + 90-day
+refresh, signing 2-person + PEPK, OEM battery-kill); **D-9 REG-NOTES** (WPC
+853(E) 2021 865-868 supersedes 865-867, SSMI non-applicable, NDRF MoU + STQC GA,
+open counsel Qs — no legal opinion). **DEC-PILOT-0001..0009 ratified**;
+G-P1..G-P9 → G1..G12. PROJECT_GRAPH PILOT-001 **DESIGNING** + AC(18) +
+evidence(3); PROJECT_STATE research_complete 2→1 designing 0→1.
+**NEXT: IMPLEMENT (iter ~155, docs/operations/PILOT_RUNBOOK.md + PILOT_KPI_PLAN.md +
+PILOT_EXERCISE.md + PILOT_DISTRIBUTION.md + REG_NOTES.md + relay-cadence seam) →
+TEST → SECURITY_REVIEW → VERIFY → ACCEPT.** Baseline **658/0/1** held (docs-only).
+
 **✅ PILOT-001 RESEARCH COMPLETE (iter ~153, RES-0026 verdict PROCEED) — DESIGN
 next (iter ~154, `PILOT_001_DESIGN.md` AC-1..n):** `RES-0026.md` authored
 (pattern RES-0025, 157 lines; 12 websearch + 4 primary-source passes, L1-L5,
@@ -567,23 +595,26 @@ Background SEC-001 fuzz continues aggregating clean (49.5M+ execs) — no blocke
 
 ## Active Node
 
-**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, RESEARCH COMPLETE, DESIGN
-next, iter ~154).** First OPERATIONS node, deployment-critical-path terminus.
-RESEARCH COMPLETE (iter ~153, evidence 2): **RES-0026 verdict PROCEED** —
-RQ-1 ADOPT-WITH-CONDITION (topology: 50-100 leaves + 1-3 gateways +
-gateway-scoped Internet-relay; managed-flood + congestionScalingCoefficient
-cadence + Helene gateway-uplink precedent), RQ-2 ADOPT-WITH-CONDITION (QR
-mutual-scan bootstrap + EMERG-001 out-of-band authority + decommission),
-RQ-3 ADOPT-WITH-CONDITION (OBS-001 ↔ NDMA DMEx 4-phase; Wilson-CI plan →
-DESIGN ACs), RQ-4 ADOPT codification (**WPC 853(E) 2021 865-868 supersedes
-865-867**; SSMI non-applicable; NDRF MoU + STQC GA), RQ-5 ADOPT-WITH-CONDITION
-(Play **internal** track + TestFlight 90-day), RQ-6 ADOPT (EMERG drill = NDMA
-ME). **DESIGN inputs D-1..D-9**; external-facts reconciled; gaps G-P1..G-P9.
-C2 gap open (no ACs). **DESIGN (iter ~154, `PILOT_001_DESIGN.md` AC-1..n +
-DEC-PILOT-xxxx)** → IMPLEMENT → TEST → SECURITY_REVIEW → VERIFY → ACCEPT.
-Baseline **658/0/1 clippy 0 fmt clean (23 suites; iris-core 567 + iris-ios 11)**
-held. Quality process: DISCOVER → RESEARCH → DESIGN → IMPLEMENT → TEST →
-VERIFY → ACCEPT.
+**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, DESIGNING, IMPLEMENT next,
+iter ~155).** First OPERATIONS node, deployment-critical-path terminus.
+DESIGN COMPLETE (iter ~154, evidence 3): **`PILOT_001_DESIGN.md` v1.0 — C2 gap
+RESOLVED via AC-1..AC-18**. D-1 topology (50-100 leaves + 1-3 gateways +
+gateway-scoped Internet-relay, mesh-primary), D-2 relay-cadence scaling rule
+(≤40 flat 0.6×..1.0×, >40 linear default f=0.075; P0/P1 + directed exempt),
+D-3 test battery B-1..B-4 (NCT-of-N / partition-healing / SCF mule-chain /
+iOS limited-relay; SIM pre-validation + field legs), D-4 ProvisioningFlow
+(mutual-QR batch 10-20 + EMERG authority/DRILL out-of-band + decommission
+wipe+revoke+rotate; no-recovery), D-5 trust model (TOFU + verified tier), D-6
+KPI plan (thresholds target/floor + **Wilson-CI 95%**), D-7 NDMA DMEx
+M1/M2/M3, D-8 distribution (Play **internal** + TestFlight 90-day + signing
+2-person + PEPK), D-9 REG-NOTES (**WPC 853(E) 2021 865-868** supersedes
+865-867; SSMI non-applicable; NDRF MoU + STQC GA). **DEC-PILOT-0001..0009
+ratified**; G-P1..G-P9 → G1..G12. **IMPLEMENT (iter ~155, docs-only:
+PILOT_RUNBOOK.md + PILOT_KPI_PLAN.md + PILOT_EXERCISE.md +
+PILOT_DISTRIBUTION.md + REG_NOTES.md + relay-cadence seam edit + EXTERNAL-FACTS
+doc edits)** → TEST → SECURITY_REVIEW → VERIFY → ACCEPT. Baseline
+**658/0/1 clippy 0 fmt clean** held. Quality process: DISCOVER → RESEARCH →
+DESIGN → IMPLEMENT → TEST → VERIFY → ACCEPT.
 
 **IOS-001 ACCEPTED (iter ~151) — carries forward (28 COMPLETE nodes):**
 - **ACCEPT (iter ~151)**: commit `d13845c` + `cd995ef` — SECURITY_REVIEW (iter

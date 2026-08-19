@@ -1,6 +1,6 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-19T13:00:00Z (RES-0026 registered)
+**Last updated**: 2026-08-19T13:15:00Z (PILOT-001 DESIGN COMPLETE iter ~154; DEC-PILOT-0001..0009 ratified in DECISIONS.md)
 
 ## Next Available IDs
 

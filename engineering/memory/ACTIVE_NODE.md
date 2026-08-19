@@ -1,80 +1,95 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T13:00:00Z
+**Last updated**: 2026-08-19T13:15:00Z
 
 ## Active Node: PILOT-001 — Field Pilot Deployment
 
 - **Type**: OPERATIONS (first real-world deployment)
 - **Priority**: P2
-- **Status**: **RESEARCH_COMPLETE** — DISCOVER (iter ~152) → RESEARCH (iter
-  ~153, RES-0026, PROCEED) → **DESIGN next (iter ~154)** → IMPLEMENT → TEST →
+- **Status**: **DESIGNING** — DISCOVER (iter ~152) → RESEARCH (iter ~153,
+  RES-0026, PROCEED) → DESIGN (iter ~154, `PILOT_001_DESIGN.md`, C2 gap
+  RESOLVED) → **IMPLEMENT next (iter ~155, docs-only)** → TEST →
   SECURITY_REVIEW → VERIFY → ACCEPT
 - **Deps**: ANDROID-001 / IOS-001 / EMERG-001 / SEC-001 — **COMPLETE**;
   LEGAL-001 — RESEARCH_COMPLETE (open legal questions carry)
 - **Description**: "First real-world deployment: NGO pilot, campus safety
   pilot" — 100+ devices (milestone Beta/Pilot); NDRF 50-device MoU + B2B
   5-device POC tier
-- **Eligible**: all platform + security + emergency deps COMPLETE
-- **C2 gap**: **CONFIRMED** at DISCOVER (no ACs) — DESIGN defines AC-1..n
+- **C2 gap**: **RESOLVED** at DESIGN — AC-1..AC-18 defined (testable; device
+  rows BLK-0005/env-gated recorded honestly)
 
-## RESEARCH COMPLETE (iter ~153, evidence 2) — RES-0026 verdict PROCEED
+## DESIGN COMPLETE (iter ~154, evidence 3) — PILOT_001_DESIGN.md v1.0
 
-`engineering/memory/records/research/RES-0026.md` authored (pattern RES-0025,
-157 lines; 12 websearch + 4 primary-source passes, L1-L5, no AI citations):
-- **RQ-1 ADOPT-WITH-CONDITION**: managed-flood >100-node precedent (Meshtastic
-  congestionScalingCoefficient cadence rule at firmware source) + Helene 2024
-  gateway-uplink field precedent + Nepal DTN trial metrics → leaves 50-100
-  (Android relay-primary, iOS limited-relay) + 1-3 DESKTOP-001 gateways +
-  Android-gateway fallback + gateway-scoped Internet-relay; LoRa excluded.
-- **RQ-2 ADOPT-WITH-CONDITION**: Briar/SecureJoin QR mutual-scan bootstrap +
-  IDENT-001 verified tier + EMERG-001 out-of-band authority provisioning; batch
-  ceremony 10-20, no-recovery documented, decommission wipe/revoke/rotate.
-- **RQ-3 ADOPT-WITH-CONDITION**: OBS-001 ↔ NDMA DMEx Guidelines (Oct 2024)
-  4-phase mapping incl. evaluation/debrief; thresholds + Wilson-CI sample plan
-  → DESIGN ACs; EXP-002/003/005 before/after legs.
-- **RQ-4 ADOPT** (codification only): WPC G.S.R. 853(E) 2021 = 865-868 MHz SRD
-  Table-I (25 mW e.r.p., ≤1% duty) **supersedes 865-867** LEGAL-001 carry;
-  SSMI 50-lakh non-applicable; NDRF MoU authorization + STQC GA Month 30; open
-  counsel Qs recorded; **no legal opinion**.
-- **RQ-5 ADOPT-WITH-CONDITION**: Play **internal** track ≤100 testers primary
-  (DISCOVER 'closed track' REFINED); closed-track 12×14 for later production;
-  TestFlight external ≤10k + **90-day refresh**; Play App Signing custody.
-- **RQ-6 ADOPT**: EMERG-001 drill mode = NDMA Mock Exercise standard;
-  DRILL-chain + TEST-only SOS + observers/debrief + safety annex.
-- **9 DESIGN inputs D-1..D-9** + external-facts reconciliation + gaps G-P1..G-P9.
-- ALLOCATION next RES-0027; PROJECT_GRAPH status RESEARCH_COMPLETE,
-  evidence(2); PROJECT_STATE research_complete 1→2, discovered 3→2.
+`docs/implementation/PILOT_001_DESIGN.md` authored (pattern
+BLE_002_DESIGN.md/ANDROID_DESIGN.md/IOS_DESIGN.md) absorbing RES-0026 D-1..D-9:
+- **D-1 Topology**: leaves 50-100 (Android relay-primary; iOS limited-relay) +
+  1-3 DESKTOP-001 (Tauri) gateways + Android-gateway field fallback;
+  gateway-scoped uplink/downlink to private IRIS relay endpoint; mesh-primary
+  offline; LoRa excluded (GAP-004).
+- **D-2 Relay-cadence rule**: broadcast/telemetry cadence scales with online
+  node count (0.6×≤10 … 1.0×31-40, >40 linear `1.0+(N-40)×f`, default f=0.075
+  configurable 0.01-0.1) at INTERNET-001/ROUTE-001 seam; P0/P1 + directed exempt.
+- **D-3 Test battery B-1..B-4**: NCT-of-N (all-N delivery + latency CDF
+  N=20/50/100), partition/healing (uplink down), multi-hop SCF mule-chain,
+  iOS limited-relay; SIM-001 pre-validation + pilot field legs; BLK-0005 folded
+  into the pilot.
+- **D-4 ProvisioningFlow**: first-run identity (Keystore/Keychain) → operator
+  mutual-QR ceremony (batch 10-20) → gateway-verified escalation → EMERG-001
+  authority-root + DRILL-chain out-of-band bundle → decommission (wipe +
+  revoke + rotate); no-recovery documented.
+- **D-6 KPI plan**: OBS-001 mapping + thresholds target/floor + **Wilson-CI
+  95%** plan (per class/transport, never pooled) + controlled fg/bg battery.
+- **D-7 Exercise**: NDMA DMEx M1 TTEx → M2 field ME (observers + self-
+  assessment, TEST-only SOS under DRILL certs) → M3 evaluation/AAR to NDRF.
+- **D-8 Distribution**: Play **internal** track (≤100 testers) + closed 12×14
+  production clock at pilot close; TestFlight external + 90-day refresh;
+  signing 2-person + PEPK; OEM battery-kill; telemetry consent.
+- **D-9 REG-NOTES**: WPC G.S.R. 853(E) 2021 (865-868) supersedes 865-867;
+  SSMI non-applicable; NDRF MoU + STQC GA; open counsel Qs; **no legal opinion**.
+- **DEC-PILOT-0001..0009** ratified in `engineering/memory/DECISIONS.md`.
+- Risks G-P1..G-P9 → design positions G1..G12; external-facts doc edits staged
+  (AC-16).
 
 ## Pipeline position
 
-- **PILOT-001 RESEARCH COMPLETE (iter ~153, RES-0026 PROCEED)** — 28 COMPLETE
-  nodes. NEXT: **DESIGN (iter ~154, `docs/implementation/PILOT_001_DESIGN.md`)**.
+- **PILOT-001 DESIGN COMPLETE (iter ~154)** — 28 COMPLETE nodes. NEXT:
+  **IMPLEMENT (iter ~155, docs-only ops deliverables)**.
 - Baseline **658/0/1** (23 suites; iris-core 567 + iris-ios 11), clippy 0,
-  fmt clean — held (read-only pass).
+  fmt clean — held (docs-only pass).
 
-## DESIGN scope (iter ~154, PILOT_001_DESIGN.md)
+## IMPLEMENT scope (iter ~155)
 
-- Architect authors design per RES-0026 verdict + D-1..D-9 (pattern
-  BLE_002_DESIGN.md / ANDROID_DESIGN.md / IOS_DESIGN.md), **docs-only pass**.
-- Resolve C2 gap: **AC-1..n** (testable; real-deployment device rows
-  BLK-0005-gated recorded honestly) + **DEC-PILOT-xxxx** ratified into
-  DECISIONS.md.
-- Sections: topology; relay-cadence scaling rule (INTERNET-001/ROUTE-001 seam);
-  fixed test battery (NCT-of-N, partition/healing, multi-hop SCF mule);
-  ProvisioningFlow; KPI plan (Wilson-CI sample plan); NDMA DMEx exercise
-  schedule (Month 1 TTEx → Month 2 field ME → Month 3 evaluation);
-  distribution + ops runbook (Play internal, TestFlight 90-day, signing
-  custody); REG-NOTES codification. Gaps G-P1..G-P9 → known_limitations.
+1. `docs/operations/PILOT_RUNBOOK.md` (AC-2): topology, gateway roles/fallback,
+   ProvisioningFlow ceremony (batch 10-20, mutual-QR, verified escalation,
+   authority-root/DRILL bundle), decommission (wipe+revoke+rotate), day-0/day-N
+   ops, incident ownership, diagnostics QR.
+2. `docs/operations/PILOT_KPI_PLAN.md` (AC-3/AC-11): OBS-001 mapping,
+   thresholds target/floor, Wilson-CI formula + sampling, battery methodology,
+   collection cadence + 7-day retention.
+3. `docs/operations/PILOT_EXERCISE.md` (AC-4/AC-13): NDMA DMEx M1/M2/M3,
+   observers + self-assessment, DRILL certs + TEST-only SOS + yellow banner,
+   safety annex.
+4. `docs/operations/PILOT_DISTRIBUTION.md` (AC-5/AC-15): Play internal + closed
+   12×14, TestFlight 90-day refresh, signing custody, OEM battery-kill,
+   telemetry consent, update path.
+5. `docs/operations/REG_NOTES.md` (AC-14): WPC 853(E)/2021, SSMI memo, NDRF MoU
+   + STQC GA, open counsel Qs.
+6. Relay-cadence config seam edit at INTERNET-001/ROUTE-001 seam (AC-6).
+7. EXTERNAL-FACTS doc edits (AC-16): GO_TO_MARKET/B2G closed→internal;
+   COMPLIANCE_RISK_REGISTER/SPECTRUM 865-867→853(E) 865-868; FIELD_OPS 866.0
+   ≤25 mW CONFIRMED.
+→ THEN TEST (iter ~156: SIM-001 pre-validation of B-1..B-4) → SECURITY_REVIEW →
+VERIFY → ACCEPT.
 
-## Carry-forward context (from IOS-001 / ANDROID-001 / TEST-001 / platforms)
+## Carry-forward context
 
-- Swift compile/run env-gated → ios.yml macOS CI leg; Android toolchain host;
-  physical-device rows BLK-0005 (the pilot is the device-gated leg).
-- iOS = limited relay when backgrounded; Android primary relay; EMERG-001
-  authority model + SOS rate limits; SEC-001 ACL/quota posture; DEC-0010
-  identity/AEAD gate mandatory for all pilot devices.
 - TEST-001 infra: nextest + audit/deny + kani/loom + tarpaulin + golden
-  vectors + protocol conformance (CI-leg matrix on runners).
-- External-facts for DESIGN/DOCUMENT: Play closed → **internal** track; WPC
-  **865-867 → G.S.R. 853(E) 2021 865-868**; FIELD_OPS 866.0 MHz ≤25 mW confirmed.
+  vectors + protocol conformance (CI-leg matrix on runners); SIM-001 harness +
+  failure-injection corpus for B-1..B-4 pre-validation.
+- DEC-0010 pilot gate: pilot devices MUST run provisioned identities + AEAD
+  (ANDROID-001 KI TEE / IOS-001 Keychain — satisfied).
+- Physical-device rows (live ME, on-air BLE/battery) BLK-0005-gated — the pilot
+  itself is the device-gated leg.
+- External facts for DOCUMENT/DISTRIBUTION: Play **internal** track; WPC
+  **853(E) 2021 865-868**; FIELD_OPS 866.0 MHz ≤25 mW CONFIRMED.
