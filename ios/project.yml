@@ -1,154 +1,75 @@
-# IRIS iOS XcodeGen project (IOS-001 tranche 2: AC-4..AC-15/AC-16).
-#
-# AC-15: generated via `xcodegen generate --spec ios/project.yml` on the
-# macOS CI runner (Windows dev host has no Xcode — env-gated, G-TI-1).
-# DEC-IOS-0002: SWIFT_VERSION=5 everywhere (NOT `.v6` — UniFFI #2929 async
-# foreign-trait bindings hard-error under strict concurrency; G-IOS-1).
-#
-# Targets
-#   IRIS                iOS SwiftUI app shell (AC-10/AC-11/AC-12/AC-13/AC-14)
-#   IrisWidgetExtension Live Activity widget extension (ActivityKit, 16.1+, AC-13)
-#   IRISTests           iOS unit tests (Simulator UI leg; AC-16)
-#   IRIS-MacOSTests     macOS-host XCTest bundle (IOS-CoreBluetooth-Mock seam;
-#                       links the macOS libIrisCore.a built by ios.yml; AC-16)
-#
-# The app embeds `IrisFramework/IrisCore.xcframework` (built by ios.yml
-# rust-bindings) and compiles the COMMITTED UniFFI bindings
-# `IRIS/RustFFI/IrisCore.swift`; the IrisCoreFFI Clang module is resolved via
-# SWIFT_INCLUDE_PATHS against the xcframework headers (canImport gate).
+# XcodeGen project for the IRIS iOS shell (AC-1/AC-15).
+# Regenerate with: xcodegen generate (macOS CI/runner only).
+# App product: in.iris.mesh; Swift 5 language mode (DEC-IOS-0002).
+
 name: IRIS
 options:
-  bundleIdPrefix: com.iris
-  createIntermediateGroups: true
-  groupSortPosition: top
+  bundleIdPrefix: in.iris.mesh
   deploymentTarget:
-    iOS: "15.0"
-  xcodeVersion: "16.4"
-
+    iOS: "18.0"
 settings:
   base:
-    SWIFT_VERSION: "5.0"              # DEC-IOS-0002 (Swift 5 language mode)
-    ENABLE_USER_SCRIPT_SANDBOXING: NO
-    CLANG_ENABLE_MODULES: YES
-    SWIFT_STRICT_CONCURRENCY: minimal # legacy mode; kept permissive under the
-                                      # Swift-5 pin (mozilla/uniffi-rs#2929)
-
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+  configs:
+    Debug:
+      CODE_SIGNING_ALLOWED: "NO"
+    Release:
+      CODE_SIGNING_ALLOWED: "NO"
 targets:
   IRIS:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
     sources:
       - path: IRIS
-        excludes:
-          - "Resources/Info.plist"
-          - "RustFFI/IrisCoreFFI.h"
-          - "RustFFI/IrisCoreFFI.modulemap"
-          - "Build/**"
+    info:
+      path: IRIS/Info.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.iris.app
-        INFOPLIST_FILE: IRIS/Resources/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        SUPPORTS_MACCATALYST: NO
-        TARGETED_DEVICE_FAMILY: "1"
-        SWIFT_INCLUDE_PATHS: "$(PROJECT_DIR)/IrisFramework/IrisCore.xcframework/ios-arm64/Headers"
-        FRAMEWORK_SEARCH_PATHS: "$(inherited) $(PROJECT_DIR)/IrisFramework"
-        CODE_SIGN_STYLE: Automatic
-        CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: 0.1.0
-    dependencies:
-      - framework: IrisFramework/IrisCore.xcframework
-        embed: false
-      - target: IrisWidgetExtension
-        embed: true
-
-  IrisWidgetExtension:
-    type: app-extension
-    platform: iOS
-    deploymentTarget: "16.1"          # ActivityKit Live Activity floor (AC-13, DEC-IOS-0006)
-    sources:
-      - path: IrisWidgetExtension
-        excludes:
-          - "Info.plist"
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.iris.app.widget
-        INFOPLIST_FILE: IrisWidgetExtension/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
+        PRODUCT_BUNDLE_IDENTIFIER: in.iris.mesh
         SWIFT_VERSION: "5.0"
-        CODE_SIGN_STYLE: Automatic
-        SKIP_INSTALL: YES
-
+        ENABLE_TESTABILITY: YES
   IRISTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "15.0"
     sources:
       - path: Tests
     dependencies:
       - target: IRIS
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.iris.app.tests
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/IRIS.app/IRIS"
-        BUNDLE_LOADER: "$(TEST_HOST)"
-        SWIFT_VERSION: "5.0"
-        ENABLE_TESTABILITY: YES
-
-  IRIS-MacOSTests:
+  IRISTestsMacOS:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "12.0"
-    # macOS-host XCTest bundle (AC-16, RES-0025 RQ-3 finding 6 — Simulator has
-    # no CoreBluetooth). Compiles the shared logic SOURCES directly into the
-    # bundle (no app target on macOS) + the COMMITTED generated bindings, and
-    # links the macOS `libIrisCore.a` + header/modulemap that ios.yml's
-    # test-macos job stages into ios/Build/macos/ (CI-leg).
     sources:
       - path: Tests
-      - path: IRIS/Services
-        excludes:
-          - "BGTaskWiring.swift"        # BackgroundTasks is iOS-only
-          - "LiveActivityController.swift" # ActivityKit is iOS-only (LiveActivityGate stays pure)
-          - "Notifications.swift"       # UserNotifications kept to the app target
-      - path: IRIS/identity
-      - path: IRIS/session
-      - path: "IRIS/RustFFI/IrisCore.swift"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.iris.app.tests.macos
-        SWIFT_VERSION: "5.0"
-        ENABLE_TESTABILITY: YES
-        CODE_SIGNING_ALLOWED: NO
-        MACOSX_DEPLOYMENT_TARGET: "12.0"
-        SWIFT_INCLUDE_PATHS: "$(PROJECT_DIR)/Build/macos"
-        HEADER_SEARCH_PATHS: "$(PROJECT_DIR)/Build/macos"
-        OTHER_LDFLAGS: ["$(PROJECT_DIR)/Build/macos/libIrisCore.a"]
-        OTHER_SWIFT_FLAGS:
-          - "-Xcc"
-          - "-fmodule-map-file=$(PROJECT_DIR)/Build/macos/IrisCoreFFI.modulemap"
+        PRODUCT_BUNDLE_IDENTIFIER: in.iris.mesh.tests-host
+        OTHER_LDFLAGS: $(inherited) ios/Build/macos/libIrisCore.a
     dependencies:
-      - framework: Build/macos/libIrisCore.a
-
+      - target: IRIS
+  IrisLiveActivityWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: in.iris.mesh.liveactivity
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
 schemes:
   IRIS:
     build:
       targets:
         IRIS: all
-        IrisWidgetExtension: all
-    run:
-      config: Debug
+        IRISTests: [test]
     test:
-      config: Debug
-      gatherCoverageData: false
       targets:
         - IRISTests
   IRIS-MacOSTests:
     build:
       targets:
-        IRIS-MacOSTests: all
+        IRISTestsMacOS: [test]
     test:
-      config: Debug
       targets:
-        - IRIS-MacOSTests
+        - IRISTestsMacOS

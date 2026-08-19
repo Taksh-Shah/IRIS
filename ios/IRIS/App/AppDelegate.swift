@@ -24,6 +24,16 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        // ---- Adapter + engine (AC-4..AC-9). The adapter is constructed FIRST
+        // so the pre-warm retry in applicationDidBecomeActive can reuse it
+        // (the identity guard below may return early before first unlock —
+        // IOS-SECURITY_REVIEW IOS-RT-101).
+        let adapter = IosBleAdapter(
+            central: RealBleCentralSeam(),
+            peripheral: RealBlePeripheralSeam()
+        )
+        self.adapter = adapter
+
         // ---- Identity (AC-12): identity.v1 provision/load; no biometric flag.
         let identity = KeychainEd25519()
         guard let key = try? identity.loadOrCreate() else {
@@ -33,13 +43,6 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         // IDENT_DESIGN D1: node PeerId = Ed25519 public-key bytes (32 B).
         let nodeId = key.publicKey.rawRepresentation
-
-        // ---- Adapter + engine (AC-4..AC-9).
-        let adapter = IosBleAdapter(
-            central: RealBleCentralSeam(),
-            peripheral: RealBlePeripheralSeam()
-        )
-        self.adapter = adapter
         if let engine = try? IrisEngine(ble: adapter, nodeId: nodeId) {
             self.engine = engine
         } else {

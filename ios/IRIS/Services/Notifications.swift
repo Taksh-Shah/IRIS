@@ -1,8 +1,8 @@
 // IOS-001 — Notifications: UNUserNotificationCenter presenter seam.
 //
 // Standard notifications for delivered messages + a critical-alert seam
-// (entitlement-gated; falls back to the standard sound when the app lacks the
-// critical-alert entitlement). Emergency P0/P1 delivery never depends on
+// (entitlement-gated; without the entitlement the OS plays no sound — there is
+// no runtime fallback swap). Emergency P0/P1 delivery never depends on
 // notifications — they are a presentation convenience over the D-TN store.
 //
 // iOS-only (UserNotifications); macOS-host test bundle excludes this file.
@@ -12,8 +12,10 @@ import UserNotifications
 public protocol NotificationPresenting {
     /// Request authorization (standard options).
     func requestAuthorization() async -> Bool
-    /// Post a local notification. `sound` respects the critical-alert
-    /// entitlement; falls back to `.default` otherwise.
+    /// Post a local notification. `sound` requests the critical-alert
+    /// entitlement ONLY when `critical`; without the entitlement the OS
+    /// delivers the notification silently (no fallback sound swap exists at
+    /// runtime), so P0/P1 delivery NEVER depends on notifications.
     func present(title: String, body: String, userInfo: [String: Any], critical: Bool)
 }
 

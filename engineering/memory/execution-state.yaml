@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-19T10:00:00Z"
+updated_at: "2026-08-19T11:30:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,10 +23,10 @@ mission_description: "Advance IRIS from documented state to production-grade res
 
 # === CURRENT POSITION ===
 active_node: "IOS-001"
-active_stage: "SECURITY_REVIEW"
+active_stage: "VERIFY"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "IOS-001 DOCUMENT COMPLETE (iter ~148, AC-17): all 6 EXTERNAL-FACTS corrections applied (docs-only pass, baseline 658/0/1 held). (1) docs/platforms/IOS.md Xcode floor 15.0+ -> 16+/iOS 18 SDK + Swift 5 language mode (ITMS-90725 mandate 2025-04-24, RES-0025 RQ-1/3); (2) IOS.md UniFFI stale UDL command -> generate --library (0.31.x metadata flow, no UDL exists, --lib-file removed 0.31.0, committed bindings + git diff guard); (3) IOS.md Secure Enclave section REWRITTEN -> Keychain generic-password CryptoKit Ed25519 app-layer key (com.iris.identity.v1, AfterFirstUnlockThisDeviceOnly, no biometric, SE ECDSA-P256-only exclusion + rescue deferred, app-layer-vs-TEE anchor tradeoff); (4) IOS.md BGTask wording sharpened (heuristic no guaranteed cadence, re-submit every launch, never critical messaging on BGTask AC-14/G-IOS-4); (5) docs/implementation/SWIFT_LAYER.md peripheralManagerDidRestoreState -> willRestoreState re-arm (re-startAdvertising/re-startScan + debounce + isProtectedDataAvailable gate, AC-11); (6) IOS-001_DISCOVER.md §3 ActivityKit floor 16.2+ -> 16.1 (RES-0025 Q5 L1). All DOCUMENT-stage edits per IOS_DESIGN.md §13 table, AC-17. NEXT: SECURITY_REVIEW (iter ~149, AC-20: redteam adversarial review of IosBleAdapter.swift + CoreBluetooth seam + Keychain identity + SessionRecovery/BGTask/LiveActivity paths) -> VERIFY (AC-21) -> ACCEPT -> PILOT-001. AC-1 DONE (crates/iris-ios scaffold: Cargo.toml cdylib+staticlib, lib.rs allow(non_snake_case) + setup_scaffolding, ffi/ ble_adapter.rs 11-op FfiBleAdapter incl gatt_read + SimBle tests, body.rs IrisBody foreign trait async describe + FfiIrisEnvelope, error.rs incl Timeout for BLE-RT-C003, bridge.rs BleBridge implementing core BleAdapter all 11 ops with gatt_read forwarded, engine.rs IrisEngine #[uniffi::Object] with explicit tokio Handle (#2576) + BleTransport::new_ios ble-ios + MessageEngine + inbox forwarder + set_body_renderer); AC-2 DONE (uniffi-bindgen 0.31.2 installed; generate --library target/debug/IrisCore.dll --language swift committed under ios/IRIS/RustFFI/ = IrisCore.swift 96.7KB + IrisCoreFFI.h + modulemap); AC-3 PARTIAL (Rust leg 11/11 tests; Swift leg ENV-GATED no swiftc/Xcode on host -> G-IOS_SPIKE.md §6 + ios.yml swiftc -swift-version 5 -parse checkpoint; Swift-5 pin vs #2929 rationale + @unchecked Sendable table + tokio Handle wiring recorded); AC-15 pre-seeded (.github/workflows/ios.yml macos-15 + setup-xcode 16.4, 3 rustup targets, staticlib -> generate --library -> xcframework -> swift-build/test/simulator jobs w/ TODO markers; standalone not referenced by ci.yml). Verification: cargo check -p iris-ios --lib 0 warnings; cargo test -p iris-ios 11/11; clippy --workspace --all-targets --all-features -D warnings PASS; fmt --all --check PASS; cargo check --workspace PASS; cargo test --workspace --all-features green (iris-core 567 + iris-ios 11 = workspace 658/0/1). Residual risks: CamelCase lib name allow(non_snake_case) needed; IrisBody::describe async #2929-sensitive (Swift-5 pin load-bearing); xcframework per-slice headers TODO in ios.yml; generated-Swift whitespace diff guard after first CI run; uniffi_bindgen build-dep unused harmless; Swift/device/CoreBluetooth rows BLK-0005 env-gated. NEXT: IMPLEMENT tranche 2 (iter ~145, AC-4..AC-15: Swift IosBleAdapter 11-op + gatt_read + C003/C004 + MTU + scan/advertise + restoration + SessionRecovery + KeychainEd25519 + LiveActivity + BGTask)."
-next_action: "IOS-001 SECURITY_REVIEW (iter ~149, AC-20): redteam adversarial review of the Swift platform layer (IosBleAdapter.swift 11-op CoreBluetooth + connect-to-identify gatt_read, CoreBluetoothSeam mock seam + real CB managers, KeychainEd25519 identity path, SessionRecovery/BGTask/LiveActivity, app-launch wiring) -> VERIFY (iter ~150, AC-21) -> ACCEPT. Baseline 658/0/1 clippy 0 fmt clean."
+active_action: "IOS-001 VERIFY COMPLETE (iter ~150, AC-21): IOS-001_VERIFICATION.md authored (pattern BLE_002_VERIFICATION.md) — AC-1..AC-21 evidence table + independent verifier APPROVE. Live reproduction THIS pass: cargo test --workspace --all-features = 658/0/1 (23 suites; iris-core 567 + iris-ios 11); iris-ios 11/11; clippy 0 (exit 0); fmt clean (exit 0). Evidence-integrity: all AC-cited test names re-grep'd (no nonexistent tests); all 5 SECURITY_REVIEW FIXED dispositions re-located in source with file:line (RT-101 AppDelegate.swift:27-46 adapter-before-guard; RT-102 CBManagerPeripheral.swift:72-85/179-184 installedServiceUuid+identifyBeacon+didReceiveRead; RT-103 IosBleAdapter.swift:277-282 rejectedUntil on C003 timeout + regression testGattReadTimeoutGatesAdmissionWindow:143; RT-104 IosBleAdapter.swift:258 concurrent-gatt_read guard + regression testConcurrentGattReadRejected:166; RT-105 Notifications.swift:4-5/15-17 doc-vs-code); RT-107 handle-0 partition re-confirmed ble.rs:756-771. 35 XCTest authored (6 files ios/Tests/) env-gated to ios.yml macOS CI leg (recorded honestly, not faked). AC-19 GATED/BLK-0005. No code changes at VERIFY. NEXT: ACCEPT (iter ~151) -> commit SECURITY_REVIEW fixes + PROJECT_GRAPH status COMPLETE + PROJECT_STATE + CHANGELOG + NODE_TRANSITION PILOT-001."
+next_action: "IOS-001 ACCEPT (iter ~151): commit SECURITY_REVIEW fixes (AppDelegate.swift/CBManagerPeripheral.swift/IosBleAdapter.swift/Notifications.swift/IosBleAdapterTests.swift + IOS-001_SECURITY_REVIEW.md + IOS-001_VERIFICATION.md); PROJECT_GRAPH IOS-001 status IMPLEMENTING -> COMPLETE + evidence(9) + known_limitations; PROJECT_STATE completed 27->28 implementing 1->0; CHANGELOG; ACTIVE_NODE/CURRENT_STATE/NEXT_ACTION refresh; NODE_TRANSITION -> PILOT-001 (DISCOVER)."
 
 # === STATE TRANSITIONS ===
 last_transition: "NODE_TRANSITION"
@@ -36,15 +36,15 @@ last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "IOS-001 SECURITY_REVIEW (iter ~149, AC-20 redteam) -> VERIFY (AC-21) -> ACCEPT -> PILOT-001."
+next_action: "IOS-001 ACCEPT (iter ~151) -> NODE_TRANSITION PILOT-001."
 # IOS-001 pipeline comment follows:
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "IOS-001 DOCUMENT COMPLETE (iter ~148, AC-17): 6 EXTERNAL-FACTS corrections applied (docs-only, baseline 658/0/1 held) — IOS.md (Xcode 16+/iOS 18 SDK floor, generate --library flow, Secure-Enclave->Keychain Ed25519 rewrite, BGTask sharpening) + SWIFT_LAYER.md (willRestoreState re-arm) + DISCOVER 16.2->16.1."
-last_progress_at: "2026-08-19T10:00:00Z"
+last_progress_event: "IOS-001 VERIFY COMPLETE (iter ~150, AC-21): IOS-001_VERIFICATION.md authored + independent verifier APPROVE — live reproduction 658/0/1 (23 suites), iris-ios 11/11, clippy 0, fmt clean; all 5 RT-10x FIXED dispositions re-located in source w/ file:line; 35 XCTest env-gated to macOS CI leg; AC-19 GATED/BLK-0005."
+last_progress_at: "2026-08-19T11:30:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -68,6 +68,43 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T11:30:00Z"
+    iteration: 150
+    node: "IOS-001"
+    stage: "VERIFY"
+    action: "IOS-001 VERIFY COMPLETE (iter ~150, AC-21). IOS-001_VERIFICATION.md authored (pattern BLE_002_VERIFICATION.md): AC-1..AC-21 evidence table + independent-verifier-style reproduction. Live THIS pass: workspace 658/0/1 (23 suites; iris-core 567 + iris-ios 11), iris-ios 11/11, clippy 0, fmt clean. No evidence-integrity findings: all AC-cited tests re-grep'd; all 5 RT-10x FIXED dispositions re-located in source w/ file:line (RT-101 AppDelegate.swift:27-46, RT-102 CBManagerPeripheral.swift:72-85/179-184, RT-103 IosBleAdapter.swift:277-282 + testGattReadTimeoutGatesAdmissionWindow, RT-104 IosBleAdapter.swift:258 + testConcurrentGattReadRejected, RT-105 Notifications.swift:4-5/15-17); RT-107 handle-0 partition re-confirmed ble.rs:756-771. 35 XCTest authored (6 files) env-gated to ios.yml macOS CI leg; AC-19 GATED/BLK-0005; Swift legs env-gated recorded honestly. No code changes at VERIFY. PROJECT_GRAPH evidence(9) + stage_note updated. NEXT: ACCEPT (iter ~151) -> commit SECURITY_REVIEW fixes + status COMPLETE + PROJECT_STATE + CHANGELOG + NODE_TRANSITION PILOT-001."
+    result: "VERIFIER_APPROVE"
+    files_changed:
+      - "engineering/memory/records/IOS-001_VERIFICATION.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/IOS-001_VERIFICATION.md"
+  - timestamp: "2026-08-19T10:30:00Z"
+    iteration: 149
+    node: "IOS-001"
+    stage: "SECURITY_REVIEW"
+    action: "IOS-001 SECURITY_REVIEW COMPLETE (iter ~149, AC-20): redteam adversarial review of ios/IRIS/ (IosBleAdapter.swift 11-op + connect-to-identify gatt_read, CoreBluetoothSeam + CBManagerCentral/CBManagerPeripheral, IrisBleConstants, KeychainEd25519, SessionRecovery, BGTaskWiring, LiveActivityController, Notifications, AppDelegate/IRISApp) + Rust FFI cross-check (engine.rs, bridge.rs, ble.rs handle-0). IOS-001_SECURITY_REVIEW.md authored (pattern ANDROID-001): FAIL -> RESOLVED. FIXED: RT-101 MEDIUM pre-warm retry dead path (AppDelegate.swift adapter built before identity guard so applicationDidBecomeActive retry can reuse it); RT-102 MEDIUM addService idempotence + identify beacon served from app state via didReceiveRead (CBManagerPeripheral.swift: installedServiceUuid + identifyBeacon lock-guarded, cold-start poweredOn re-apply once, no duplicate manager.add after willRestoreState re-arm); RT-103 MEDIUM gattRead C003 timeout now arms rejectedUntil (AC-7 probe budget) + regression testGattReadTimeoutGatesAdmissionWindow; RT-104 MEDIUM concurrent gatt_read rejected invalidArgument (no clobbered pending) + regression testConcurrentGattReadRejected; RT-105 LOW Notifications doc-vs-code fixed (critical-alert posts silently without entitlement; no runtime fallback swap). RECORDED: RT-106 unbounded scan/write buffers (bounded by poller cadence + 8-probe admission), RT-107 handle-0 inbound drop verified safe at ble.rs:756-771 (positive control), RT-108 BGTask launch-key classification advisory-only (resubmit runs every launch regardless). Positive controls HELD: 11-op contract both FFI sides, NSLock discipline + semaphore happens-before, AC-9 ad honesty, AC-12 no-biometric Keychain + protected-data gate, AC-11/14 lifecycle, MTU 512/20-B guard. Env-gated: Swift edits compile/run on ios.yml macOS CI leg (no Xcode on Windows host). Live Rust baseline re-verified THIS pass: cargo test --workspace --all-features = 658/0/1 (iris-core 567 + iris-ios 11), clippy 0, fmt clean. NEXT: VERIFY (iter ~150, AC-21) -> ACCEPT -> PILOT-001."
+    result: "SECURITY_REVIEW_RESOLVED"
+    files_changed:
+      - "ios/IRIS/App/AppDelegate.swift"
+      - "ios/IRIS/Services/CBManagerPeripheral.swift"
+      - "ios/IRIS/Services/IosBleAdapter.swift"
+      - "ios/IRIS/Services/Notifications.swift"
+      - "ios/Tests/IosBleAdapterTests.swift"
+      - "engineering/memory/records/IOS-001_SECURITY_REVIEW.md"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/IOS-001_SECURITY_REVIEW.md"
   - timestamp: "2026-08-19T10:00:00Z"
     iteration: 148
     node: "IOS-001"

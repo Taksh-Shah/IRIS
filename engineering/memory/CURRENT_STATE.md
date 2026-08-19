@@ -1,7 +1,7 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T09:30:00Z
+**Last updated**: 2026-08-19T11:30:00Z
 
 ---
 
@@ -232,8 +232,23 @@ required). Control-plane carry-forward contracts for IOS-001: BLE-RT-C003
 (read-timeout → Swift read path), BLE-RT-C004 (probe cache → IOS-001/ANDROID-001),
 Android↔iOS identify-read (ANDROID-001 follow-up). **NEXT: IOS-001 DISCOVER
 (iter ~141) → DESIGN → … → PILOT-001.**
-**✅ IOS-001 IMPLEMENT + TEST + DOCUMENT COMPLETE (iter ~144..148) — AC-1..
-AC-18; SECURITY_REVIEW next:** Tranche 1 (iter ~144): `crates/iris-ios`
+**✅ IOS-001 VERIFY COMPLETE (iter ~150, AC-21) — independent verifier APPROVE;
+ACCEPT next:** `IOS-001_VERIFICATION.md` authored (pattern BLE_002_VERIFICATION.md)
+— AC-1..AC-21 evidence table. Live reproduction THIS pass: workspace
+**658/0/1** (23 suites; iris-core 567 + iris-ios 11), **iris-ios 11/11**,
+clippy **0**, fmt clean. No evidence-integrity findings — all AC-cited tests
+re-grep'd (no nonexistent tests); all 5 SECURITY_REVIEW FIXED dispositions
+re-located in source w/ file:line (RT-101 AppDelegate.swift:27-46; RT-102
+CBManagerPeripheral.swift:72-85/179-184; RT-103 IosBleAdapter.swift:277-282 +
+regression; RT-104 IosBleAdapter.swift:258 + regression; RT-105
+Notifications.swift:4-5/15-17); RT-107 handle-0 partition re-confirmed
+ble.rs:756-771. 35 XCTest authored (6 files) env-gated → ios.yml macOS CI leg
+(recorded honestly); AC-19 GATED/BLK-0005. No code changes at VERIFY.
+PROJECT_GRAPH evidence(9). **NEXT: ACCEPT (iter ~151) — commit SECURITY_REVIEW
+fixes, PROJECT_GRAPH IOS-001 → COMPLETE, PROJECT_STATE 27→28, CHANGELOG,
+NODE_TRANSITION → PILOT-001.**
+**✅ IOS-001 IMPLEMENT + TEST + DOCUMENT + SECURITY_REVIEW COMPLETE (iter
+~144..149) — AC-1..AC-20; VERIFY next:** Tranche 1 (iter ~144): `crates/iris-ios`
 scaffold (11-op `FfiBleAdapter` incl `gatt_read` + SimBle tests; `BleBridge`
 all 11 ops; `IrisEngine` explicit tokio Handle); `uniffi generate --library` →
 committed `ios/IRIS/RustFFI/` IrisCore.swift (96.7KB). **Tranche 2 (iter
@@ -251,10 +266,21 @@ iOS 16.1 gated + widget (AC-13), `ios.yml` full AC-15 + build-xcframework.sh.
 macOS CI), AC-18 **PASS** (live 658/0/1, clippy 0, fmt clean), AC-19
 GATED/BLK-0005. **DOCUMENT (iter ~148, AC-17)**: 6 EXTERNAL-FACTS corrections
 applied (IOS.md Xcode 16+/`generate --library`/Keychain-Ed25519/BGTask;
-SWIFT_LAYER.md willRestoreState re-arm; DISCOVER 16.2→16.1). Commits
-`110ef5b` + `7ca5499`. **NEXT: SECURITY_REVIEW (iter ~149, AC-20 redteam) →
-VERIFY (AC-21) → ACCEPT → PILOT-001.** Swift compile/run = macOS CI leg
-(env-gated); device rows BLK-0005.
+SWIFT_LAYER.md willRestoreState re-arm; DISCOVER 16.2→16.1). **SECURITY_REVIEW
+(iter ~149, AC-20)**: `IOS-001_SECURITY_REVIEW.md` authored (pattern
+ANDROID-001) — **FAIL → RESOLVED**: IOS-RT-101..108 dispositioned (no
+CRITICAL/HIGH). FIXED: RT-101 pre-warm retry dead path (AppDelegate builds
+adapter before identity guard), RT-102 addService idempotence + fresh
+identify-beacon serve via `didReceiveRead` (CBManagerPeripheral), RT-103 C003
+timeout arms `rejectedUntil` probe budget + regression, RT-104 concurrent
+gatt_read rejected + regression, RT-105 Notifications doc-vs-code; RECORDED:
+RT-106 (buffers poller-bounded), RT-107 (handle-0 inbound drop verified safe
+ble.rs:756-771), RT-108 (BGTask launch-key classification advisory-only).
+Rust baseline re-verified **658/0/1, clippy 0, fmt clean** — held. +2
+regression XCTest (33→35 authored, compile env-gated). Commits `110ef5b` +
+`7ca5499` + SECURITY_REVIEW pending. **NEXT: VERIFY (iter ~150, AC-21 —
+`IOS-001_VERIFICATION.md` + independent verifier) → ACCEPT (iter ~151) →
+PILOT-001.** Swift compile/run = macOS CI leg (env-gated); device rows BLK-0005.
 **🚀 OPERATOR AUTHORIZATION (DEC-0009, iter 54): ALL GATES + HUMAN GATES
 UNBLOCKED.** **✅ IDENT-001 COMPLETE (iter 63c/64):** Identity System ACCEPTED
 — IDENT_VERIFICATION.md v1.0 AC-1..11 all PASS, verifier APPROVE, redteam

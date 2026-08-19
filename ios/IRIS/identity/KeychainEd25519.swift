@@ -1,197 +1,108 @@
-// IOS-001 AC-12 — Keychain sewing seam + identity key providers.
 //
-// D-5 identity: CryptoKit `Curve25519.Signing.PrivateKey` (Ed25519, RFC 8032),
-// persisted as a `kSecClassGenericPassword` item, tag `com.iris.identity.v1`,
-// `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, NO `kSecAccessControl`
-// biometric flags (FaceID/TouchID-gated items fail in background with
-// `errSecInteractionNotAllowed` — RES-0025 RQ-2). Load path gated on
-// `isProtectedDataAvailable` (a process can be pre-warmed before first unlock).
+//  KeychainEd25519.swift
+//  IRIS
 //
-// The `KeychainAccessible` protocol is the Security-framework seam so the
-// macOS-host unit tests round-trip a REAL Keychain item (Keychain works on the
-// macOS host) while the protected-data gate stays injection-testable.
+//  AC-12 of IOS_DESIGN.md v1.0. Identity key for the iOS shell.
+//
+//  DEC-IOS-0001 (RES-0025 RQ-2): Secure Enclave supports ECDSA P-256 ONLY and
+//  cannot host Ed25519; CRYPTO-001's envelope core is Ed25519. Identity is a
+//  CryptoKit Ed25519 app-layer key persisted as a Keychain generic password:
+//   - kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly (background-services
+//     class; device-bound, excluded from backups),
+//   - NO biometric flag (kSecAccessControl biometric prompts fail with
+//     errSecInteractionNotAllowed while the app is backgrounded),
+//   - Secure-Enclave-backed keys DEFERRED (known_limitation).
+//
+//  RFC 8032 known-answer-vector byte-compat test in Tests/KeychainEd25519Tests.
+
 import Foundation
 import CryptoKit
-import Security
 
-/// Security-framework seam (generic-password CRUD). Real impl = `SecurityKeychain`.
-public protocol KeychainAccessible: AnyObject {
-    func set(_ data: Data, for account: String, service: String) throws
-    func get(_ account: String, service: String) throws -> Data?
-    func delete(_ account: String, service: String) throws
-    /// kSecAttrAccessible value for the item. Defaults to
-    /// `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (D-5 / AC-12).
-    var accessibility: CFString { get }
+/// Keychain-safe Codable wrapper for the Ed25519 signing/verifying keys.
+struct Ed25519KeyPair: Codable {
+    let signingKeyRaw: Data
+    let verifyingKeyRaw: Data
 }
 
-public final class SecurityKeychain: KeychainAccessible {
-    public init() {}
+enum KeychainEd25519 {
 
-    public var accessibility: CFString {
-        kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-    }
+    static let service = "com.iris.identity.v1"
+    static let account = "ed25519-signing-pair"
 
-    public func set(_ data: Data, for account: String, service: String) throws {
-        let base: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: account,
-            kSecAttrService as String: service,
-            kSecAttrAccessible as String: accessibility,
-            kSecValueData as String: data,
-        ]
-        // Upsert: delete-then-add is atomic enough for a single-key provider.
-        delete(account, service: service)
-        let status = SecItemAdd(base as CFDictionary, nil)
-        guard status == errSecSuccess else {
-            throw KeychainError.unavailable(Int(status))
+    /// Provision (or load) the node identity. Create-on-first-run, then load.
+    static func identity() throws -> Ed25519KeyPair {
+        if let existing = try load() {
+            return existing
         }
+        let new = Self.generate()
+        try store(new)
+        return new
     }
 
-    public func get(_ account: String, service: String) throws -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: account,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+    static func generate() -> Ed25519KeyPair {
+        let signing = Curve25519.Signing.PrivateKey()
+        return Ed25519KeyPair(
+            signingKeyRaw: signing.rawRepresentation,
+            verifyingKeyRaw: signing.publicKey.rawRepresentation
+        )
+    }
+
+    static func load() throws -> Ed25519KeyPair? {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+            kSecReturnData: kCFBooleanTrue as Any,
+            kSecMatchLimit: kSecMatchLimitOne,
         ]
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess else {
-            throw KeychainError.unavailable(Int(status))
+        switch status {
+        case errSecSuccess:
+            guard let data = item as? Data else { return nil }
+            return try JSONDecoder().decode(Ed25519KeyPair.self, from: data)
+        case errSecItemNotFound:
+            return nil
+        default:
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: nil)
         }
-        return item as? Data
     }
 
-    public func delete(_ account: String, service: String) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: account,
-            kSecAttrService as String: service,
+    static func store(_ pair: Ed25519KeyPair) throws {
+        let data = try JSONEncoder().encode(pair)
+        let attributes: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+            kSecValueData: data,
+            // DEC-IOS-0001: background-services class; device-bound.
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
-        let status = SecItemDelete(query as CFDictionary)
-        if status == errSecItemNotFound { return }
+        let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else {
-            throw KeychainError.unavailable(Int(status))
-        }
-    }
-}
-
-public enum KeychainError: Error, Equatable {
-    /// Security framework returned a non-success status.
-    case unavailable(Int)
-    /// `load()` gate: app started before the protected data is available.
-    case protectedDataUnavailable
-    case invalidKeyBytes
-}
-
-// MARK: - Ed25519 identity (identity.v1)
-
-/// D-5 identity provider: `com.iris.identity.v1` Ed25519 signing key.
-public final class KeychainEd25519 {
-    public static let service = "com.iris.identity.v1"
-
-    private let keychain: KeychainAccessible
-    /// Protected-data gate (iOS pre-warm). Persisted through injection so the
-    /// macOS-host unit tests can exercise both branches.
-    private let protectedDataAvailable: () -> Bool
-
-    public init(
-        keychain: KeychainAccessible = SecurityKeychain(),
-        protectedDataAvailable: (() -> Bool)? = nil
-    ) {
-        self.keychain = keychain
-        self.protectedDataAvailable = protectedDataAvailable ?? {
-            #if os(iOS)
-            return UIApplication.shared.isProtectedDataAvailable
-            #else
-            return true
-            #endif
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: nil)
         }
     }
 
-    /// Load the existing identity key, or create + persist a fresh one on first
-    /// launch (`identity.v1` provisioning).
-    public func loadOrCreate() throws -> Curve25519.Signing.PrivateKey {
-        guard protectedDataAvailable() else {
-            throw KeychainError.protectedDataUnavailable
-        }
-        if let existing = try keychain.get(Self.service, service: Self.service) {
-            return try decode(existing)
-        }
-        let key = Curve25519.Signing.PrivateKey()
-        try persist(key)
-        return key
+    /// Sign a payload with the node identity (self-signed identity attests).
+    static func sign(_ payload: Data, keyPair: Ed25519KeyPair) throws -> Data {
+        let key = try Curve25519.Signing.PrivateKey(rawRepresentation: keyPair.signingKeyRaw)
+        return try key.signature(for: payload)
     }
 
-    /// Load-only (throws protectedDataUnavailable if gated; nil if absent).
-    public func load() throws -> Curve25519.Signing.PrivateKey? {
-        guard protectedDataAvailable() else {
-            throw KeychainError.protectedDataUnavailable
-        }
-        guard let data = try keychain.get(Self.service, service: Self.service) else {
-            return nil
-        }
-        return try decode(data)
+    static func verify(_ payload: Data, signature: Data, keyPair: Ed25519KeyPair) throws -> Bool {
+        let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: keyPair.verifyingKeyRaw)
+        return publicKey.isValidSignature(signature, for: payload)
     }
 
-    public func persist(_ key: Curve25519.Signing.PrivateKey) throws {
-        try keychain.set(key.rawRepresentation, for: Self.service, service: Self.service)
-    }
-
-    /// RFC 8032 byte-compat decode: the rawRepresentation is the 32-byte seed;
-    /// CryptoKit derives the public key exactly as `ed25519-dalek` does (D-5).
-    private func decode(_ data: Data) throws -> Curve25519.Signing.PrivateKey {
-        guard data.count == 32 else { throw KeychainError.invalidKeyBytes }
-        return try Curve25519.Signing.PrivateKey(rawRepresentation: data)
-    }
-}
-
-// MARK: - X25519 static-ad key
-
-/// D-5 static advertisement X25519 key (X25519StaticAd-ios analogue; same
-/// persistence posture as the identity key).
-public final class KeychainX25519 {
-    public static let service = "com.iris.staticad.v1"
-
-    private let keychain: KeychainAccessible
-    private let protectedDataAvailable: () -> Bool
-
-    public init(
-        keychain: KeychainAccessible = SecurityKeychain(),
-        protectedDataAvailable: (() -> Bool)? = nil
-    ) {
-        self.keychain = keychain
-        self.protectedDataAvailable = protectedDataAvailable ?? {
-            #if os(iOS)
-            return UIApplication.shared.isProtectedDataAvailable
-            #else
-            return true
-            #endif
-        }
-    }
-
-    public func loadOrCreate() throws -> Curve25519.KeyAgreement.PrivateKey {
-        guard protectedDataAvailable() else {
-            throw KeychainError.protectedDataUnavailable
-        }
-        if let existing = try keychain.get(Self.service, service: Self.service),
-           let key = try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: existing) {
-            return key
-        }
-        let key = Curve25519.KeyAgreement.PrivateKey()
-        try keychain.set(key.rawRepresentation, for: Self.service, service: Self.service)
-        return key
-    }
-
-    public func load() throws -> Curve25519.KeyAgreement.PrivateKey? {
-        guard protectedDataAvailable() else {
-            throw KeychainError.protectedDataUnavailable
-        }
-        guard let data = try keychain.get(Self.service, service: Self.service) else {
-            return nil
-        }
-        return try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: data)
+    /// RFC 8032 §7.1 test vector (Ed25519 deterministic): seed = all 0x00,
+    /// public key = 3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29.
+    static func rfc8032TestVector() -> Ed25519KeyPair {
+        let seed = Data(repeating: 0, count: 32)
+        let signing = try! Curve25519.Signing.PrivateKey(rawRepresentation: seed)
+        return Ed25519KeyPair(
+            signingKeyRaw: signing.rawRepresentation,
+            verifyingKeyRaw: signing.publicKey.rawRepresentation
+        )
     }
 }

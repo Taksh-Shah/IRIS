@@ -1,14 +1,14 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T09:30:00Z
+**Last updated**: 2026-08-19T11:30:00Z
 
 ## Active Node: IOS-001 — iOS Platform Integration
 
 - **Type**: PLATFORM (Xcode/Swift shell, CoreBluetooth device layer, FFI)
 - **Priority**: P0
-- **Status**: **IMPLEMENTING** — IMPLEMENT + TEST + DOCUMENT COMPLETE
-  (iter ~144..148); **SECURITY_REVIEW next (iter ~149, AC-20)**
+- **Status**: **IMPLEMENTING** — IMPLEMENT + TEST + DOCUMENT + SECURITY_REVIEW
+  + VERIFY COMPLETE (iter ~144..150); **ACCEPT next (iter ~151)**
 - **Deps**: BLE-002 / MSG-001 / EMERG-001 — **all COMPLETE** (eligible)
 - **C2 gap**: **RESOLVED** at DESIGN (iter ~143) — AC-1..AC-21 defined
 
@@ -66,11 +66,43 @@ All 6 EXTERNAL-FACTS corrections applied (docs-only, baseline 658/0/1 held):
 IOS.md Xcode 16+ / `generate --library` / Keychain Ed25519 rewrite / BGTask
 sharpening; SWIFT_LAYER.md willRestoreState re-arm; DISCOVER 16.2→16.1.
 
+## SECURITY_REVIEW COMPLETE (iter ~149, AC-20)
+
+`IOS-001_SECURITY_REVIEW.md` authored (pattern ANDROID-001) — **FAIL → RESOLVED**,
+IOS-RT-101..108 dispositioned (no CRITICAL/HIGH):
+- **FIXED (4 MEDIUM + 1 LOW)**: RT-101 pre-warm retry dead path (AppDelegate
+  builds adapter before identity guard); RT-102 addService idempotence + identify
+  beacon served from app state via `didReceiveRead` (CBManagerPeripheral,
+  `installedServiceUuid`+`identifyBeacon` lock-guarded); RT-103 C003 timeout
+  arms `rejectedUntil` probe budget + regression; RT-104 concurrent gatt_read
+  rejected `invalidArgument` + regression; RT-105 Notifications doc-vs-code.
+- **DOC-FIXED (1 LOW)**: RT-106..108 RECORDED (unbounded buffers poller-bounded;
+  handle-0 inbound drop verified safe ble.rs:756-771; BGTask launch-key
+  classification advisory-only).
+- **Baseline 658/0/1, clippy 0, fmt clean — held** (re-verified this pass).
+- **Env-gated**: Swift fixes compile on ios.yml macOS CI leg; +2 regression
+  XCTest (33 → 35 authored).
+
+## VERIFY COMPLETE (iter ~150, AC-21)
+
+`IOS-001_VERIFICATION.md` authored (pattern BLE_002_VERIFICATION.md) — AC-1..AC-21
+evidence table + independent verifier **APPROVE**:
+- Live reproduction: workspace **658/0/1** (23 suites; iris-core 567 + iris-ios
+  11), **iris-ios 11/11**, clippy **0**, fmt clean.
+- No evidence-integrity findings: all AC-cited tests re-grep'd; all 5 RT-10x
+  FIXED dispositions re-located in source (RT-101 AppDelegate.swift:27-46;
+  RT-102 CBManagerPeripheral.swift:72-85/179-184; RT-103 IosBleAdapter.swift:
+  277-282; RT-104 IosBleAdapter.swift:258; RT-105 Notifications.swift:4-5/15-17);
+  RT-107 handle-0 partition re-confirmed ble.rs:756-771.
+- 35 XCTest authored (6 files `ios/Tests/`) env-gated → ios.yml macOS CI leg;
+  AC-19 GATED/BLK-0005. No code changes at VERIFY.
+
 ## Next (short)
 
-SECURITY_REVIEW (iter ~149, AC-20 — redteam on `IosBleAdapter`, seam, Keychain
-identity, SessionRecovery/BGTask/LiveActivity) → VERIFY (AC-21) → ACCEPT →
-PILOT-001. Baseline **658/0/1**.
+ACCEPT (iter ~151) — commit SECURITY_REVIEW fixes (+2 XCTest +
+`IOS-001_VERIFICATION.md`), PROJECT_GRAPH IOS-001 → COMPLETE (evidence 9),
+PROJECT_STATE 27→28, CHANGELOG, NODE_TRANSITION → **PILOT-001**. Baseline
+**658/0/1**.
 
 ## Carry-forward contracts into IOS-001 (from BLE-002)
 

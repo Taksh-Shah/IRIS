@@ -245,7 +245,18 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         }
 
         let pending = PendingIdentifyRead(timeout: gattReadTimeout)
-        lock.withLock { pendingReads[token] = pending }
+        // One outstanding read per token: a concurrent gatt_read for the same
+        // peer would otherwise clobber the parked PendingIdentifyRead and
+        // strand the first caller until its own hard timeout (SECURITY_REVIEW
+        // IOS-RT-104).
+        let installed: Bool = lock.withLock {
+            guard pendingReads[token] == nil else { return false }
+            pendingReads[token] = pending
+            return true
+        }
+        guard installed else {
+            throw IrisFfiError.invalidArgument("gatt_read already in flight for this peer")
+        }
 
         // Drive connect -> discover -> read -> didUpdateValueFor, advancing the
         // stage machine from the delegate callbacks.
@@ -264,6 +275,12 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
 
         switch outcome {
         case .timedOut:
+            // BLE-RT-C003 + AC-7: a connect-to-identify timeout IS an identify
+            // failure — gate the admission window so the next scan cycle does
+            // not re-probe a peer that already stalled once (IOS-RT-103).
+            lock.withLock {
+                rejectedUntil[token] = Date().addingTimeInterval(probeRejectionWindow)
+            }
             central.cancelConnection(identifier: peer.identifier)
             throw IrisFfiError.timeout
         case .success:
@@ -476,7 +493,7 @@ extension IosBleAdapter {
     }
 }
 
-private extension NSLock {
+extension NSLock {
     func withLock<T>(_ body: () throws -> T) rethrows -> T {
         lock()
         defer { unlock() }

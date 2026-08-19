@@ -20,9 +20,17 @@ public final class RealBlePeripheralSeam: NSObject, BlePeripheralSeam, Sendable 
     public private(set) var state: IOSBleCentralState = .unknown
 
     private let restoreIdentifier: String
+    private let lock = NSLock()
     private var pendingService: (uuid: CBUUID, characteristics: [CBMutableCharacteristic])?
     private var pendingAdvertisement: (serviceUuid: CBUUID, localName: String?)?
     private var restoredServiceUuids: [CBUUID] = []
+    /// Latest identify beacon value served on reads (updated by every
+    /// addService so re-arm after willRestoreState serves a fresh beacon —
+    /// CoreBluetooth forbids re-adding an already-published service UUID).
+    private var identifyBeacon: Data = Data()
+    /// Service UUID currently installed on the live manager (addService
+    /// idempotence: re-arms refresh the beacon, they never re-add).
+    private var installedServiceUuid: CBUUID?
 
     public init(restoreIdentifier: String = IrisBleConstants.peripheralRestoreIdentifier) {
         self.restoreIdentifier = restoreIdentifier
@@ -42,7 +50,11 @@ public final class RealBlePeripheralSeam: NSObject, BlePeripheralSeam, Sendable 
     // MARK: - BlePeripheralSeam
 
     public func addService(serviceUuid: CBUUID, characteristics: [IOSBleCharacteristicSpec]) {
+        var freshBeacon: Data?
         let cbCharacteristics: [CBMutableCharacteristic] = characteristics.map { spec in
+            if spec.uuid == IrisBleConstants.identifyUUID {
+                freshBeacon = spec.value
+            }
             var properties: CBCharacteristicProperties = []
             if spec.supportsRead { properties.insert(.read) }
             if spec.supportsWrite { properties.insert([.write, .writeWithoutResponse]) }
@@ -55,11 +67,22 @@ public final class RealBlePeripheralSeam: NSObject, BlePeripheralSeam, Sendable 
                 permissions: permissions
             )
         }
+        if let freshBeacon {
+            lock.lock()
+            identifyBeacon = freshBeacon
+            lock.unlock()
+        }
         let service = CBMutableService(type: serviceUuid, primary: true)
         service.characteristics = cbCharacteristics
+        // Idempotence: a re-arm after willRestoreState re-adds the same IRIS
+        // service UUID. CoreBluetooth errors on a second `add`, so only the
+        // beacon state above is refreshed; the live server keeps serving.
+        let alreadyInstalled = lock.withLock { installedServiceUuid == serviceUuid }
+        guard !alreadyInstalled else { return }
         pendingService = (serviceUuid, cbCharacteristics)
         // The manager may not be powered on yet (app cold-start); queue.
         guard state.isPoweredOn else { return }
+        lock.withLock { installedServiceUuid = serviceUuid }
         manager.add(service)
     }
 
@@ -123,9 +146,12 @@ extension RealBlePeripheralSeam: CBPeripheralManagerDelegate {
         synchronizeState(peripheral.state)
         guard peripheral.state == .poweredOn else { return }
         // Re-apply queued configuration from the cold-start window.
-        if let (uuid, chars) = pendingService {
+        if let (uuid, chars) = pendingService, lock.withLock({ installedServiceUuid != uuid }) {
             let service = CBMutableService(type: uuid, primary: true)
             service.characteristics = chars
+            lock.lock()
+            installedServiceUuid = uuid
+            lock.unlock()
             manager.add(service)
         }
         doStartAdvertising()
@@ -151,7 +177,12 @@ extension RealBlePeripheralSeam: CBPeripheralManagerDelegate {
     }
 
     public func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest) {
-        let value = request.characteristic.value ?? Data()
+        // Serve the CURRENT beacon from app state (updated by every addService)
+        // rather than the static characteristic value — re-arm refreshes the
+        // beacon even though the published service UUID is never re-added.
+        let value = request.characteristic.uuid == IrisBleConstants.identifyUUID
+            ? lock.withLock { identifyBeacon }
+            : (request.characteristic.value ?? Data())
         if request.offset > value.count {
             peripheral.respond(to: request, withResult: .invalidOffset)
             return

@@ -140,6 +140,52 @@ final class IosBleAdapterTests: XCTestCase {
         XCTAssertEqual(mock.cancelConnectionRecords.last, peerId)
     }
 
+    func testGattReadTimeoutGatesAdmissionWindow() throws {
+        // IOS-RT-103: a connect-to-identify TIMEOUT is an identify failure —
+        // the peer must enter the rejection window so the next scan cycle does
+        // not re-probe a peer that already stalled once.
+        mock.readDelay = 3.0
+        adapter = IosBleAdapter(central: mock, peripheral: mock, gattReadTimeout: 0.3)
+
+        let uuid = UUID()
+        let (handle, _) = try connectPeer(uuid: uuid, beacon: Data([0x01]))
+        let outcome = expect(timeout: 5) {
+            try self.adapter.gattRead(handle: handle, charUuid: IrisBleConstants.identifyCharacteristicHex)
+        }
+        guard case .failure(IrisFfiError.timeout) = outcome else {
+            return XCTFail("expected timeout error")
+        }
+        // Re-probe within the rejection window is denied (AC-7 budget gate).
+        XCTAssertThrowsError(try adapter.connectGatt(address: IrisBleConstants.token(for: uuid))) { error in
+            guard case IrisFfiError.deviceNotFound = error else {
+                return XCTFail("expected deviceNotFound for timed-out peer, got \(error)")
+            }
+        }
+    }
+
+    func testConcurrentGattReadRejected() throws {
+        // IOS-RT-104: one outstanding connect-to-identify read per token; a
+        // second gatt_read for the same peer is rejected up front rather than
+        // stranding the first caller until its hard timeout.
+        mock.readDelay = 3.0
+        adapter = IosBleAdapter(central: mock, peripheral: mock, gattReadTimeout: 1.0)
+
+        let (handle, _) = try connectPeer(uuid: UUID(), beacon: Data([0x01]))
+        let first = expectation(description: "first-read-still-parked")
+        DispatchQueue.global().async {
+            _ = try? self.adapter.gattRead(handle: handle, charUuid: IrisBleConstants.identifyCharacteristicHex)
+            first.fulfill()
+        }
+        // Give the first read a moment to park its PendingIdentifyRead.
+        Thread.sleep(forTimeInterval: 0.2)
+        XCTAssertThrowsError(try adapter.gattRead(handle: handle, charUuid: IrisBleConstants.identifyCharacteristicHex)) { error in
+            guard case IrisFfiError.invalidArgument(_) = error else {
+                return XCTFail("expected invalidArgument for concurrent read, got \(error)")
+            }
+        }
+        wait(for: [first], timeout: 5)
+    }
+
     // MARK: - AC-7: probe-admission budget
 
     func testProbeBudgetCapsProbeConnects() throws {
