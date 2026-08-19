@@ -1,11 +1,21 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T11:30:00Z
+**Last updated**: 2026-08-19T12:00:00Z
 
 ---
 
 ## Summary
+
+**✅ IOS-001 ACCEPTED (iter ~151) — 28 COMPLETE nodes; NODE_TRANSITION →
+PILOT-001 (DISCOVER, iter ~152):** commit `d13845c` (SECURITY_REVIEW fixes +
+`IOS-001_SECURITY_REVIEW.md` + `IOS-001_VERIFICATION.md` + state files; 16
+files +700/-478). PROJECT_GRAPH IOS-001 IMPLEMENTING → **COMPLETE**,
+evidence(9); PROJECT_STATE completed 27→**28**, implementing 1→0; CHANGELOG
+**0.3.58**. Baseline **658/0/1** (23 suites; iris-core 567 + iris-ios 11),
+iris-ios 11/11, clippy **0**, fmt clean. Services/ canonical layout kept
+(duplicate tranche-2 files removed). **NEXT: PILOT-001 DISCOVER (iter ~152) →
+RESEARCH (RES-0026) → DESIGN → PILOT.**
 
 All core-engine + routing + observability work packages (WP-A codec → WP-9
 OBS-001), the desktop platform shell (WP-10 DESKTOP-001), the ML routing
@@ -527,26 +537,37 @@ Background SEC-001 fuzz continues aggregating clean (49.5M+ execs) — no blocke
 
 ## Active Node
 
-**BLE-002 — BLE Transport iOS (P0 TRANSPORT, IMPLEMENTING → TEST COMPLETE,
-SECURITY_REVIEW next, iter ~137).**
-Selected per PRIORITY_POLICY P0-first after TEST-001 ACCEPT (iter ~131, 26
-COMPLETE nodes). BLE-002 is an **IOS-001 dependency** — must COMPLETE before
-the IOS-001 platform node. Deps: TRANSPORT-001 ✅ COMPLETE (eligible). Reference
-pattern: **BLE-001** (Android BLE, COMPLETE — same `BleTransport` core,
-`BleAdapter` trait = FFI seam, `supports_background_ios: false` pinned).
-**UNDERSTAND COMPLETE (iter ~132, BLE-002_DISCOVER.md)** — C2 gap confirmed.
-**RESEARCH COMPLETE (iter ~133, RES-0024 CONDITIONAL-PROCEED)** — no background
-relaxation through iOS 26; connect-to-identify confirmed. **DESIGN COMPLETE
-(iter ~134, BLE_002_DESIGN.md v1.0)** — AC-1..16 (C2 RESOLVED);
-DEC-BLE-002-0001..0008 ratified. **IMPLEMENT COMPLETE (iter ~135)** —
-DEC-BLE-002-0015 (`BleAdapter::gatt_read`); connect-to-read discovery wired;
-SimulatedBleAdapter SERVES identify char; +5 iOS-leg tests; transport::ble 53/0.
-**TEST COMPLETE (iter ~136, BLE-002_TEST.md)** — AC-1..13 PASS; independent
-live re-run: workspace **644/0/1**, clippy 0, fmt clean; AC-14 GATED/BLK-0005.
-**NEXT: SECURITY_REVIEW (iter ~137, AC-15 — redteam on gatt_read +
-connect-to-identify + 2-carrier asymmetry)** → VERIFY (AC-16) → ACCEPT →
-**IOS-001** → **PILOT-001**.
-Baseline **644/0/1 clippy 0 rustfmt clean** held.
+**PILOT-001 — Field Pilot Deployment (P2 OPERATIONS, DISCOVER next, iter ~152).**
+Selected after IOS-001 ACCEPT (iter ~151, commit `d13845c`) — first real-world
+deployment on the critical path (Beta/Pilot milestone: NGO + campus safety,
+100+ devices). Deps: ANDROID-001 ✅ / IOS-001 ✅ / EMERG-001 ✅ / SEC-001 ✅
+COMPLETE; LEGAL-001 RESEARCH_COMPLETE (open legal questions carry: IT Rules
+2021 SSMI, relay licensing, LoRa type approval, satellite licensing).
+**DISCOVER (iter ~152, read-only)**: catalog pilot scope + deployment topology
+(Android + iOS leaf nodes), ops-runbook prerequisites (app signing, Keychain/
+Keystore provisioning, EMERG-001 drill suppression, OBS-001 rollout), **C2 gap
+check** (expect no ACs — DESIGN defines AC-1..n), BLK-0005 device gates →
+write `PILOT-001_DISCOVER.md` → **PROJECT_GRAPH evidence(1) + stage_note**. →
+**RESEARCH (iter ~153, RES-0026) → DESIGN → … → ACCEPT.**
+Baseline **658/0/1 clippy 0 fmt clean (23 suites; iris-core 567 + iris-ios 11)**
+held. Quality process: DISCOVER → RESEARCH → DESIGN → IMPLEMENT → TEST →
+VERIFY → ACCEPT.
+
+**IOS-001 ACCEPTED (iter ~151) — carries forward (28 COMPLETE nodes):**
+- **ACCEPT (iter ~151)**: commit `d13845c` — SECURITY_REVIEW (iter ~149) Swift
+  fixes + `IOS-001_SECURITY_REVIEW.md` + `IOS-001_VERIFICATION.md` + state;
+  PROJECT_GRAPH IOS-001 → COMPLETE evidence(9); PROJECT_STATE 27→28;
+  CHANGELOG 0.3.58; NODE_TRANSITION → PILOT-001.
+- **VERIFY (iter ~150, AC-21)**: `IOS-001_VERIFICATION.md` AC-1..AC-21 evidence
+  table + independent verifier **APPROVE** — live reproduction **658/0/1** (23
+  suites), iris-ios 11/11, clippy 0, fmt clean; all RT dispositions re-located
+  in source w/ file:line; AC-19 GATED/BLK-0005.
+- **SECURITY_REVIEW (iter ~149, AC-20)**: IOS-RT-101..108 **FAIL → RESOLVED**
+  (no CRITICAL/HIGH; RT-101..105 FIXED, RT-106..108 RECORDED; +2 regressions).
+- **IMPLEMENT (iter ~144..146, AC-1..AC-15)**: `crates/iris-ios` + Swift shell
+  (IosBleAdapter gatt_read connect-to-identify, KeychainEd25519 no-biometric,
+  SessionRecovery, LiveActivity 16.1, ios.yml AC-15). Commits `110ef5b`,
+  `86cfaa8`.
 Quality process: DISCOVER → RESEARCH → DESIGN → IMPLEMENT → TEST → VERIFY →
 ACCEPT.
 **WIFIDIRECT-001 ACCEPTED COMPLETE (iter 109)** — carries forward:

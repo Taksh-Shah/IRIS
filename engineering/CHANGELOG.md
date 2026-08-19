@@ -1,4 +1,42 @@
 
+## [0.3.58] - 2026-08-19 - NODE
+
+**IOS-001 ACCEPTED (iter ~151, P0 PLATFORM) — full pipeline COMPLETE:
+redteam FAIL->RESOLVED (no CRITICAL/HIGH); independent verifier APPROVE;
+workspace 658/0/1, iris-ios 11/11, clippy 0, fmt clean. 28 COMPLETE nodes.
+NODE_TRANSITION -> PILOT-001.**
+- **IMPLEMENT (iter ~144..146, AC-1..AC-15)**: `crates/iris-ios` 11-op
+  `FfiBleAdapter` (incl `gatt_read`) + `IrisEngine` explicit tokio Handle
+  (uniffi-rs#2576) + `generate --library` -> committed `ios/IRIS/RustFFI/`
+  IrisCore.swift (96.7KB); Swift shell: `IosBleAdapter` gatt_read
+  connect-to-identify (DEC-BLE-002-0015) + BLE-RT-C003 10s timeout/cancel +
+  BLE-RT-C004 probe budget (8/scan + 60s reject window); CoreBluetoothSeam +
+  `willRestoreState` re-arm; KeychainEd25519 `com.iris.identity.v1`
+  (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no biometric); Swift-5
+  language-mode pin (uniffi-rs#2929); SessionRecovery; BGTaskWiring; LiveActivity
+  iOS 16.1 floor; ios.yml macOS-runner AC-15 (macos-15 + Xcode 16.4, iOS 18 SDK).
+- **TEST (iter ~147, AC-16..AC-18)**: `IOS-001_TEST.md` — 33 XCTest across 6
+  files (env-gated -> ios.yml macOS CI leg); AC-18 PASS live **658/0/1**; AC-19
+  GATED/BLK-0005. Commit `110ef5b`.
+- **DOCUMENT (iter ~148, AC-17)**: 6 EXTERNAL-FACTS corrections applied.
+  Commit `86cfaa8`.
+- **SECURITY_REVIEW (iter ~149, AC-20)**: `IOS-001_SECURITY_REVIEW.md` (pattern
+  ANDROID-001) — **FAIL → RESOLVED**, IOS-RT-101..108 (no CRITICAL/HIGH):
+  RT-101 pre-warm retry dead path FIXED (adapter-before-guard); RT-102 addService
+  idempotence + identify beacon via `didReceiveRead` FIXED; RT-103 C003 timeout
+  arms `rejectedUntil` + regression FIXED; RT-104 concurrent gatt_read rejected
+  + regression FIXED; RT-105 Notifications doc-vs-code FIXED; RT-106/107/108
+  RECORDED. +2 regression XCTest (33→35 authored).
+- **VERIFY (iter ~150, AC-21)**: `IOS-001_VERIFICATION.md` AC-1..AC-21 evidence
+  table + independent verifier **APPROVE** — live reproduction **658/0/1** (23
+  suites; iris-core 567 + iris-ios 11), iris-ios 11/11, clippy 0, fmt clean; all
+  RT dispositions re-located in source w/ file:line; RT-107 positive control
+  ble.rs:756-771. No code changes at VERIFY.
+- **ACCEPT (iter ~151)**: commit `d13845c` (SECURITY_REVIEW fixes + records +
+  state; 16 files +700/-478). PROJECT_GRAPH IOS-001 IMPLEMENTING → **COMPLETE**,
+  evidence(9); PROJECT_STATE completed 27 → **28**, implementing 1 → 0.
+- **NEXT: NODE_TRANSITION → PILOT-001 (P2 OPERATIONS, DISCOVER iter ~152)**.
+
 ## [0.3.57] - 2026-08-18 - NODE
 
 **BLE-002 ACCEPTED (iter ~140, P0 TRANSPORT iOS) — full pipeline COMPLETE:

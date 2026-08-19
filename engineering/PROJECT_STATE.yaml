@@ -3,31 +3,31 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-18 (hand-reconciled: BLE-002 IMPLEMENT iter ~135 — gatt_read + connect-to-read wired, sim SERVES identify char, 7 impls updated, +5 iOS-leg tests, transport::ble 53/0, clippy 0, fmt clean, DEC-BLE-002-0015 ratified; status DESIGNING->IMPLEMENTING, TEST next (iter ~136, AC-1..13); 26 COMPLETE nodes; TEST-001 iter ~131 ACCEPTED COMPLETE: workspace 633/0/1 clippy 0 audit exit 0)
+# Last updated: 2026-08-19 (hand-reconciled: IOS-001 ACCEPTED iter ~151 — P0 PLATFORM COMPLETE, full pipeline DISCOVER ~141 -> RESEARCH ~142 RES-0025 -> DESIGN ~143 AC-1..21 -> IMPLEMENT ~144..146 -> TEST ~147 -> DOCUMENT ~148 -> SECURITY_REVIEW ~149 iOS-RT-101..108 RESOLVED -> VERIFY ~150 verifier APPROVE -> ACCEPT ~151 commit d13845c; workspace 658/0/1 clippy 0; 28 COMPLETE nodes; NODE_TRANSITION -> PILOT-001 DISCOVER iter ~152)
 
 # Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
 #           MSG-001, INTERNET-001, DISCO-001, ROUTE-001, SCF-001, SIM-001,
 #           GW-001, ROUTE-002, OBS-001, DESKTOP-001, ML-001, CRYPTO-001, IDENT-001,
-#           EMERG-001, SEC-001, BLE-001, WIFIAWARE-001, WIFIDIRECT-001, ANDROID-001,
-#           TEST-001, BLE-002 (27)
+#            EMERG-001, SEC-001, BLE-001, WIFIAWARE-001, WIFIDIRECT-001, ANDROID-001,
+#            TEST-001, BLE-002, IOS-001 (28)
 # RESEARCH_COMPLETE: LEGAL-001 (1)
 # DESIGNING: (0)
 # IMPLEMENTING: (0)
 # VERIFYING: (0)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
 # DISCOVERED: LORA-001, SAT-001,
-#             IOS-001, PILOT-001 (4)  [next: IOS-001 DISCOVER (BLE-002 now COMPLETE)]
+#             PILOT-001 (3)  [next: PILOT-001 DISCOVER (IOS-001 now COMPLETE)]
 
 summary:
   total_nodes: 32
-  completed: 27              # + BLE-002 (2026-08-18, ACCEPT iter ~140, P0 TRANSPORT iOS, AC-1..16 PASS with AC-14 GATED/BLK-0005 + verifier APPROVE; deps TRANSPORT-001)
+  completed: 28              # + IOS-001 (2026-08-19, ACCEPT iter ~151, P0 PLATFORM iOS, AC-1..AC-21 PASS w/ AC-19 GATED/BLK-0005 + verifier APPROVE; deps BLE-002/MSG-001/EMERG-001)
   researching: 0
   research_complete: 1       # LEGAL-001 (TEST-001 advanced to DESIGNING iter 125)
   designing: 0
-  implementing: 1            # BLE-002 (P0 TRANSPORT iOS) — IMPLEMENT COMPLETE iter ~135, TEST next
+  implementing: 0            # None in flight — PILOT-001 DISCOVER next (iter ~152)
   verifying: 0
-  discovered: 4              # LORA-001/SAT-001 + IOS-001/PILOT-001 (next: IOS-001 DISCOVER after BLE-002)
+  discovered: 3              # LORA-001/SAT-001 + PILOT-001 (next: PILOT-001 DISCOVER after IOS-001)
   blocked: 0                 # All gates + human gates unblocked DEC-0009
   failed: 0
   deprecated: 0
@@ -35,7 +35,7 @@ summary:
 health:
   architecture_health: PROVISIONAL    # Architecture documents exist, need validation
   security_health: IMPLEMENTED       # CRYPTO-001 + IDENT-001 + EMERG-001 + SEC-001 COMPLETE (SEC-001 ACCEPTED iter 82: AC-1..16 PASS, verifier APPROVE_WITH_NOTES reconciled; 532 green, clippy 0)
-  testing_health: GOOD               # iter ~138: 647 tests green / 0 failed / 1 ignored, clippy 0, fmt clean; transport::ble 56/0; TEST-001 ACCEPTED; audit exit 0; loom 5/5 + tokio 4/4 + protocol 10 + golden 6 host-verified; nextest/kani/tarpaulin/mutants/jvm CI-leg env-gated. NEXT: BLE-002 ACCEPT -> IOS-001 DISCOVER
+  testing_health: GOOD               # iter ~151: 658 tests green / 0 failed / 1 ignored, clippy 0, fmt clean; iris-ios 11/11; 35 XCTest env-gated to ios.yml macOS CI leg; TEST-001 ACCEPTED; audit exit 0; loom 5/5 + tokio 4/4 + protocol 10 + golden 6 host-verified; nextest/kani/tarpaulin/mutants/jvm CI-leg env-gated. NEXT: PILOT-001 DISCOVER
   performance_health: NOT_STARTED    # No benchmarks run yet
   documentation_health: GOOD          # Documentation system created
   dependency_health: GOOD             # No circular dependencies
