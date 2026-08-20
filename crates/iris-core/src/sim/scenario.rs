@@ -264,6 +264,133 @@ pub fn loss(percent: f32) -> SimLoss {
     }
 }
 
+/// **PILOT-001 B-1: NCT-of-N relay capacity.** `nodes` all mutually in range
+/// on a recurring full-mesh schedule (5 rounds); `per_node` P4 messages
+/// injected at t=0 from every source to a rotating peer. Near-lossless all-N
+/// delivery + latency CDF at N = 20/50/100 (PILOT_001_DESIGN.md §5 B-1,
+/// AC-7). Same seed → same result anchor.
+pub fn pilot_nct_of_n(nodes: usize, per_node: usize, seed: u64) -> Simulation {
+    let mut sim = Simulation::new(nodes, seed);
+    for r in 0..5u64 {
+        let t = 1000 + r * 1000;
+        for a in 0..nodes {
+            for b in (a + 1)..nodes {
+                sim.add_contact(ContactEvent { at_ms: t, a, b });
+            }
+        }
+    }
+    for s in 0..nodes {
+        for k in 0..per_node {
+            let d = (s + 1 + k) % nodes;
+            sim.inject(Injection::new(
+                0,
+                s,
+                sim_peer(d),
+                MessagePriority::P4,
+                format!("nct{s}-k{k}").as_bytes(),
+                3600,
+            ));
+        }
+    }
+    sim
+}
+
+/// **PILOT-001 B-2: partition/healing.** Two equal, internally full-meshed
+/// partitions (A: 0..part, B: part..2*part) with NO inter-partition contact
+/// until `heal_at_ms` (the Internet-relay uplink is "down" for that window —
+/// B-2's uplink-down proxy at the SIM layer), then a full healing mesh.
+/// Intra-partition messages deliver during the partition; cross-partition
+/// messages ride the heal. Asserter asserts no duplicate terminal delivery
+/// after healing (PILOT_001_DESIGN.md §5 B-2, AC-8).
+pub fn pilot_partition_heal(part: usize, heal_at_ms: u64, seed: u64) -> Simulation {
+    let total = 2 * part;
+    let mut sim = Simulation::new(total, seed);
+    let b_base = part;
+    for a in 0..part {
+        for b in (a + 1)..part {
+            sim.add_contact(ContactEvent { at_ms: 1000, a, b });
+            sim.add_contact(ContactEvent { at_ms: 5000, a, b });
+        }
+    }
+    for a in 0..part {
+        for b in (a + 1)..part {
+            sim.add_contact(ContactEvent {
+                at_ms: 1000,
+                a: b_base + a,
+                b: b_base + b,
+            });
+            sim.add_contact(ContactEvent {
+                at_ms: 5000,
+                a: b_base + a,
+                b: b_base + b,
+            });
+        }
+    }
+    for a in 0..part {
+        for b in 0..part {
+            sim.add_contact(ContactEvent {
+                at_ms: heal_at_ms,
+                a,
+                b: b_base + b,
+            });
+            sim.add_contact(ContactEvent {
+                at_ms: heal_at_ms + 1000,
+                a,
+                b: b_base + b,
+            });
+        }
+    }
+    sim
+}
+
+/// **PILOT-001 B-3: multi-hop SCF mule-chain.** A strict chain of `segments`
+/// store-carry-forward legs: node `i` meets node `i+1` at `(i+1)*1000` ms,
+/// so a message injected at node 0 for node `segments` is carried leg-by-leg
+/// and delivered at `segments*1000` ms — the contact-window expectation
+/// (latency == legs * per-leg window; hop-count CDF = segments).
+pub fn pilot_mule_chain(segments: usize, seed: u64) -> Simulation {
+    let total = segments + 1;
+    let mut sim = Simulation::new(total, seed);
+    for i in 0..segments {
+        sim.add_contact(ContactEvent {
+            at_ms: (i as u64 + 1) * 1000,
+            a: i,
+            b: i + 1,
+        });
+    }
+    sim
+}
+
+/// **PILOT-001 B-4: iOS limited-relay.** 5 Android leaves in a full mesh plus
+/// one iOS leaf (index 5) that participates ONLY inside sparse foregrounded
+/// windows: one contact at t=2000 (meets Android 0) and one at t=12000 (meets
+/// Android 4). An iOS-recipient message delivers at window 1; an iOS-origin
+/// message buffers until window 2 — the limited-relay asymmetry (higher
+/// latency, still ≥ floor) is the recorded behavior (PILOT_001_DESIGN.md §5
+/// B-4, AC-10; physical legs BLK-0005-gated).
+pub fn pilot_ios_limited_relay(seed: u64) -> Simulation {
+    let total = 6;
+    let ios = 5;
+    let mut sim = Simulation::new(total, seed);
+    for a in 0..5 {
+        for b in (a + 1)..5 {
+            sim.add_contact(ContactEvent { at_ms: 1000, a, b });
+            sim.add_contact(ContactEvent { at_ms: 5000, a, b });
+        }
+    }
+    sim.add_contact(ContactEvent {
+        at_ms: 2000,
+        a: 0,
+        b: ios,
+    });
+    sim.add_contact(ContactEvent {
+        at_ms: 12_000,
+        a: 4,
+        b: ios,
+    });
+    sim
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -306,5 +433,200 @@ mod tests {
         let out = sim.run();
         assert!(out.delivered_total >= 1);
         assert!(out.max_hops_seen >= 1, "vehicle relay should traverse hops");
+    }
+
+    // --- PILOT-001 TEST (iter ~156): SIM-001 pre-validation of B-1..B-4 ---
+    use crate::sim::metrics::{wilson_ci_95, SimMetrics};
+
+    #[test]
+    fn pilot_b1_nct_of_n_delivers_all_with_latency_cdf() {
+        // B-1 NCT-of-N at N=20: all-N delivery + latency CDF within §7
+        // thresholds (AC-7). All messages ride the first 1000 ms contact round.
+        let sim = pilot_nct_of_n(20, 1, 7);
+        let out = sim.run();
+        assert_eq!(
+            out.delivered_total, out.injected_total,
+            "N=20: every injected message delivered (all-N)"
+        );
+        assert!(out.loop_free());
+        let m = SimMetrics::from_outcome(&out);
+        // Latency CDF: p50/p95 ≈ 1000 ms (1 hop) — well inside floor (5 s / 30 s).
+        assert!(m.latency_p50_ms <= 5000, "p50 {} ms", m.latency_p50_ms);
+        assert!(m.latency_p95_ms <= 30_000, "p95 {} ms", m.latency_p95_ms);
+        let (lo, _hi) = wilson_ci_95(out.delivered_total, out.injected_total);
+        // Honest small-N statistics: perfect delivery at N=20 has Wilson-95%
+        // lower bound 0.839 (k==n CI is wide at n<50); the ≥ 0.90 floor is met
+        // at the N=50/100 legs (0.929 / 0.963).
+        assert!(lo > 0.80 && lo < 0.90, "Wilson-95% lower bound {lo}");
+    }
+
+    #[test]
+    fn pilot_b1_nct_of_n_scales_to_100() {
+        // B-1 NCT-of-N at N=50 and N=100: all-N delivery holds at scale; the
+        // Wilson-95% lower bound clears the 0.90 delivery floor at both legs
+        // (0.929 / 0.963 — perfect delivery at n>=50 is statistically solid;
+        // cf. the n=20 leg in pilot_b1_nct_of_n_delivers_all_with_latency_cdf).
+        for n in [50usize, 100] {
+            let sim = pilot_nct_of_n(n, 1, 3);
+            let out = sim.run();
+            assert_eq!(
+                out.delivered_total, out.injected_total,
+                "N={n}: all-N delivery at scale"
+            );
+            assert!(out.loop_free());
+            let (lo, hi) = wilson_ci_95(out.delivered_total, out.injected_total);
+            assert!(
+                lo >= 0.90 && hi <= 1.0,
+                "N={n}: Wilson-95% lower bound {lo} < 0.90 floor"
+            );
+        }
+    }
+
+    #[test]
+    fn pilot_b2_partition_heals_without_duplicates() {
+        // B-2 partition/healing (AC-8): uplink down T=60 s (no A<->B contact),
+        // mesh continues, heal delivers cross-partition traffic, zero dups.
+        let part = 4;
+        let heal_at = 60_000;
+        let mut sim = pilot_partition_heal(part, heal_at, 99);
+        for s in 0..part {
+            sim.inject(Injection::new(
+                0,
+                s,
+                sim_peer((s + 1) % part),
+                MessagePriority::P2,
+                b"a",
+                3600,
+            ));
+        }
+        for s in 0..part {
+            sim.inject(Injection::new(
+                0,
+                part + s,
+                sim_peer(part + ((s + 1) % part)),
+                MessagePriority::P2,
+                b"b",
+                3600,
+            ));
+        }
+        sim.inject(Injection::new(
+            0,
+            0,
+            sim_peer(part),
+            MessagePriority::P2,
+            b"cross",
+            3600,
+        ));
+        let out = sim.run();
+        let cross_id = out
+            .injected_ids
+            .last()
+            .copied()
+            .expect("cross injection id");
+        // P1/P2 floor: all 9 P2 messages deliver (partitions + heal).
+        assert!(
+            out.delivered_ratio_for(MessagePriority::P2) >= 0.9,
+            "P2 delivery {}",
+            out.delivered_ratio_for(MessagePriority::P2)
+        );
+        // Intra-partition messages delivered DURING the partition (< heal).
+        let intra_during = out
+            .nodes
+            .iter()
+            .flat_map(|n| n.delivered.iter())
+            .filter(|(id, at)| *id != cross_id && *at < heal_at)
+            .count();
+        assert_eq!(intra_during, 8, "8 intra messages before heal");
+        // Cross-partition message delivered by the heal.
+        let cross_at = out
+            .nodes
+            .iter()
+            .flat_map(|n| n.delivered.iter())
+            .find(|(id, _)| *id == cross_id)
+            .map(|(_, at)| *at);
+        assert!(
+            cross_at.is_some() && cross_at.unwrap() >= heal_at,
+            "cross delivered at heal: {cross_at:?}"
+        );
+        // Heal introduces no duplicate terminal delivery.
+        assert!(out.loop_free());
+    }
+
+    #[test]
+    fn pilot_b3_mule_chain_delivers_within_contact_window() {
+        // B-3 multi-hop SCF mule-chain (AC-9): hop-count CDF + contact-window
+        // expectation — latency == legs × per-leg window (1000 ms each). P3
+        // (hop budget 5) so the 4-leg chain fits under the anti-loop budget.
+        let segments = 4;
+        let mut sim = pilot_mule_chain(segments, 17);
+        sim.inject(Injection::new(
+            0,
+            0,
+            sim_peer(segments),
+            MessagePriority::P3,
+            b"chain",
+            20_000,
+        ));
+        let out = sim.run();
+        let id = out.injected_ids[0];
+        let delivered_at = out
+            .nodes
+            .iter()
+            .flat_map(|n| n.delivered.iter())
+            .find(|(i, _)| *i == id)
+            .map(|(_, at)| *at)
+            .expect("chain message delivered");
+        assert_eq!(delivered_at, segments as u64 * 1000);
+        assert_eq!(out.max_hops_seen as usize, segments);
+        assert!(out.loop_free());
+    }
+
+    #[test]
+    fn pilot_b4_ios_limited_relay_participates_on_windows() {
+        // B-4 iOS limited-relay (AC-10): iOS leaf participates only in its
+        // foregrounded windows → delivers on-window; iOS-origin traffic waits
+        // for the next window (asymmetry recorded), still ≥ floor.
+        let mut sim = pilot_ios_limited_relay(11);
+        sim.inject(Injection::new(
+            0,
+            0,
+            sim_peer(5),
+            MessagePriority::P4,
+            b"to-ios",
+            7200,
+        ));
+        sim.inject(Injection::new(
+            2500,
+            5,
+            sim_peer(4),
+            MessagePriority::P4,
+            b"from-ios",
+            7200,
+        ));
+        let out = sim.run();
+        assert!(
+            out.delivery_ratio >= 0.95,
+            "limited-relay floor: {}",
+            out.delivery_ratio
+        );
+        let to_ios = out.injected_ids[0];
+        let from_ios = out.injected_ids[1];
+        let to_ios_at = out
+            .nodes
+            .iter()
+            .flat_map(|n| n.delivered.iter())
+            .find(|(i, _)| *i == to_ios)
+            .map(|(_, at)| *at)
+            .expect("to-ios delivered at first window");
+        assert_eq!(to_ios_at, 2000);
+        let from_ios_at = out
+            .nodes
+            .iter()
+            .flat_map(|n| n.delivered.iter())
+            .find(|(i, _)| *i == from_ios)
+            .map(|(_, at)| *at)
+            .expect("from-ios delivered at next window");
+        assert_eq!(from_ios_at, 12_000, "iOS-origin waits for next window");
+        assert!(out.loop_free());
     }
 }

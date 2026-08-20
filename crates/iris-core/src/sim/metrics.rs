@@ -131,6 +131,26 @@ fn percentiles(sorted: &[u64], p50: f64, p95: f64) -> (u64, u64) {
     (at(p50), at(p95))
 }
 
+/// Wilson score interval at 95% confidence for a binomial proportion —
+/// PILOT-001 KPI evaluation (docs/operations/PILOT_KPI_PLAN.md §1). Returns
+/// `(lower, upper)`. Small-N safe; sampling is per class/transport per leg
+/// (never pooled) — the interval's lower bound is the pass/fail statistic.
+pub fn wilson_ci_95(k: usize, n: usize) -> (f64, f64) {
+    let n = n as f64;
+    if n == 0.0 {
+        return (0.0, 0.0);
+    }
+    let z = 1.96; // two-tailed 95%
+    let p = k as f64 / n;
+    let z2 = z * z;
+    let centre = (p + z2 / (2.0 * n)) / (1.0 + z2 / n);
+    let margin = (z * ((p * (1.0 - p)) / n + z2 / (4.0 * n * n)).sqrt()) / (1.0 + z2 / n);
+    (
+        (centre - margin).clamp(0.0, 1.0),
+        (centre + margin).clamp(0.0, 1.0),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,5 +177,27 @@ mod tests {
             .ratio(),
             0.0
         );
+    }
+
+    #[test]
+    fn wilson_ci_95_full_samples_bind() {
+        // k == n: perfect delivery still gets a finite lower bound (0.886 for
+        // n=30, 0.929 for n=50, 0.963 for n=100) and an upper bound clamped to
+        // 1.0. The pilot's B-1 floor is met statistically at N >= 50.
+        let (lo, hi) = wilson_ci_95(30, 30);
+        assert!(
+            lo > 0.85 && lo < 0.90 && hi <= 1.0 + 1e-9,
+            "lo={lo} hi={hi}"
+        );
+        // k == 0: failure always keeps a small upper bound.
+        let (lo0, hi0) = wilson_ci_95(0, 50);
+        assert!(lo0.abs() < 1e-9 && hi0 < 0.08, "lo0={lo0} hi0={hi0}");
+        // Monotone in k and in n (perfect delivery tightens with more samples).
+        let (a, _) = wilson_ci_95(40, 50);
+        let (b, _) = wilson_ci_95(50, 50);
+        let (c, _) = wilson_ci_95(100, 100);
+        assert!(a < b && b < c);
+        // Empty sample is degenerate, does not panic.
+        assert_eq!(wilson_ci_95(0, 0), (0.0, 0.0));
     }
 }

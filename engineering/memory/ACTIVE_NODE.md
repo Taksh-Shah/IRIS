@@ -1,7 +1,7 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T13:30:00Z
+**Last updated**: 2026-08-19T13:50:00Z
 
 ## Active Node: PILOT-001 — Field Pilot Deployment
 
@@ -10,73 +10,49 @@
 - **Status**: **IMPLEMENTING** — DISCOVER (iter ~152) → RESEARCH (iter ~153,
   RES-0026, PROCEED) → DESIGN (iter ~154, `PILOT_001_DESIGN.md`, C2 gap
   RESOLVED) → IMPLEMENT COMPLETE (iter ~155, docs-only ops deliverables) →
-  **TEST next (iter ~156, SIM-001 B-1..B-4 pre-validation)** → SECURITY_REVIEW
-  → VERIFY → ACCEPT
+  **TEST COMPLETE (iter ~156, SIM-001 sim pre-validation of B-1..B-4)** →
+  **SECURITY_REVIEW next (iter ~157, AC-18)** → VERIFY → ACCEPT
 - **Deps**: ANDROID-001 / IOS-001 / EMERG-001 / SEC-001 — **COMPLETE**;
   LEGAL-001 — RESEARCH_COMPLETE (open legal questions carry)
 - **Description**: "First real-world deployment: NGO pilot, campus safety
   pilot" — 100+ devices (milestone Beta/Pilot); NDRF 50-device MoU + B2B
   5-device POC tier
 - **C2 gap**: **RESOLVED** at DESIGN — AC-1..AC-18 defined; ops docs authored
-  at IMPLEMENT (AC-1..AC-16); TEST/SECURITY_REVIEW evidence pending (AC-17/18)
+  at IMPLEMENT (AC-1..AC-16); TEST evidence complete (AC-7..AC-10, AC-17);
+  SECURITY_REVIEW + VERIFY evidence pending (AC-18)
 
-## DESIGN (iter ~154) — PILOT_001_DESIGN.md v1.0 (evidence 3)
+## TEST COMPLETE (iter ~156, evidence 5) — SIM-001 pre-validation of B-1..B-4
 
-`docs/implementation/PILOT_001_DESIGN.md` absorbing RES-0026 D-1..D-9;
-DEC-PILOT-0001..0009 ratified. Pinned: D-1 topology (50-100 leaves
-Android relay-primary / iOS limited-relay + 1-3 DESKTOP-001 gateways +
-Android-gateway fallback + gateway-scoped Internet-relay, mesh-primary, LoRa
-excluded GAP-004); D-2 relay-cadence rule (≤40 flat 0.6×..1.0×, >40 linear
-`1.0+(N-40)×f` default 0.075; P0/P1 + directed exempt); D-3 test battery
-B-1..B-4 (NCT-of-N + latency CDF, partition/healing, multi-hop SCF mule-chain,
-iOS limited-relay; SIM-001 pre-validation + field legs); D-4 ProvisioningFlow
-(mutual-QR batch 10-20, verified escalation, EMERG authority-root/DRILL-chain
-out-of-band bundle, decommission wipe+revoke+rotate, no-recovery); D-5 trust
-model (TOFU + verified tier); D-6 KPI + Wilson-CI 95%; D-7 NDMA DMEx M1/M2/M3;
-D-8 Play internal + TestFlight distribution; D-9 REG-NOTES (WPC 853(E) 2021
-865-868).
+`engineering/memory/records/PILOT-001_TEST.md` (pattern BLE-002_TEST.md) maps
+AC-7..AC-10 to live sim evidence on the SIM-001 harness
+(`crates/iris-core/src/sim/`):
 
-## IMPLEMENT COMPLETE (iter ~155, evidence 4) — ops deliverables
+| Battery | Test | Result |
+|---------|------|--------|
+| B-1 NCT-of-N (AC-7) | `pilot_b1_nct_of_n_delivers_all_with_latency_cdf` (N=20) + `pilot_b1_nct_of_n_scales_to_100` (N=50/100) | **PASS** — all-N delivery at every leg; latency p50/p95 = 1 s (≤ 5 s/30 s floor); loop-free. Wilson-95% lower bound **0.929 (N=50) / 0.963 (N=100) ≥ 0.90 floor**; honest small-N disclosure: N=20 perfect delivery → lo = 0.839 (< 0.90, CI width at n<50). |
+| B-2 partition/healing (AC-8) | `pilot_b2_partition_heals_without_duplicates` | **PASS** — 2×4 partitions, uplink down 60 s: 8 intra-partition messages delivered during the outage, cross-partition delivered at heal, **no duplicate terminal delivery** (`loop_free()`), P2 ratio ≥ 0.9. |
+| B-3 mule-chain (AC-9) | `pilot_b3_mule_chain_delivers_within_contact_window` | **PASS** — 4-leg SCF chain, P3 (budget 5): delivered at exactly **4000 ms = legs × 1000 ms window**; `max_hops_seen == 4`; loop-free. P3 chosen over P4 (budget 3) documented. |
+| B-4 iOS limited-relay (AC-10) | `pilot_b4_ios_limited_relay_participates_on_windows` | **PASS** — iOS leaf participates only in foregrounded windows: to-iOS delivered at first window t=2000; iOS-origin delivered at next window t=12000 (asymmetry recorded); ratio ≥ 0.95; loop-free. Physical iOS rows **BLK-0005-gated** → pilot field legs. |
 
-1. **`docs/operations/PILOT_RUNBOOK.md`** (AC-2): topology, gateway roles/
-   fallback, ProvisioningFlow ceremony (batch 10-20, mutual-QR, verified
-   escalation, authority-root/DRILL bundle), decommission (wipe+revoke+rotate),
-   day-0/day-N ops, incident ownership, diagnostics QR.
-2. **`docs/operations/PILOT_KPI_PLAN.md`** (AC-3/AC-11): OBS-001 mapping,
-   thresholds target/floor, Wilson-CI 95% formula + sampling (per class/
-   transport, never pooled), controlled fg/bg battery, collection cadence +
-   7-day retention.
-3. **`docs/operations/PILOT_EXERCISE.md`** (AC-4/AC-13): NDMA DMEx M1 TTEx →
-   M2 field ME (observers + self-assessment, TEST-only SOS under DRILL certs,
-   yellow banner) → M3 evaluation/AAR to NDRF; safety annex; EXP-002/003/005.
-4. **`docs/operations/PILOT_DISTRIBUTION.md`** (AC-5/AC-15): Play internal
-   (≤100) + closed 12×14 production clock; TestFlight external + 90-day
-   refresh; signing 2-person + PEPK; OEM battery-kill; telemetry consent.
-5. **`docs/operations/REG_NOTES.md`** (AC-14): WPC G.S.R. 853(E) 2021 865-868
-   supersedes 865-867 (LoRa future-leg only); SSMI non-applicable; NDRF MoU +
-   STQC GA; open counsel Qs QC-1..5; no legal opinion.
-6. **Relay-cadence seam** (AC-6): section appended to
-   `docs/routing/CONGESTION_CONTROL.md` (≤40 flat, >40 linear, P0/P1 + directed
-   exempt).
-7. **EXTERNAL-FACTS edits** (AC-16): GO_TO_MARKET internal-track note;
-   COMPLIANCE_RISK_REGISTER + SPECTRUM_CONSIDERATIONS 865-868/853(E);
-   FIELD_OPERATIONS 866.0 CONFIRMED.
+Also landed: `sim/metrics.rs::wilson_ci_95` (§7 KPI helper) + bounds regression
+`wilson_ci_95_full_samples_bind` (monotone in n: 0.886 < 0.929 < 0.963; hi ≤
+1.0; k=0 keeps finite upper bound 0.071 at n=50; empty → (0,0)).
+
+**AC-17 live THIS pass**: `cargo test --workspace --all-features` = **664/0/1**
+(23 suites; iris-core lib 573 = 567 + 6 net-new, iris-ios 11); clippy **0**;
+fmt clean. Baseline **658/0/1 → 664/0/1**.
 
 ## Pipeline position
 
-- **PILOT-001 IMPLEMENT COMPLETE (iter ~155, evidence 4)** — 28 COMPLETE
-  nodes. NEXT: **TEST (iter ~156, SIM-001 sim pre-validation of B-1..B-4)**.
-- Baseline **658/0/1** (23 suites; iris-core 567 + iris-ios 11), clippy 0,
-  fmt clean — held (docs-only pass).
+- **PILOT-001 TEST COMPLETE (iter ~156, evidence 5)** — 28 COMPLETE nodes.
+  NEXT: **SECURITY_REVIEW (iter ~157, AC-18)**.
 
-## TEST scope (iter ~156)
+## SECURITY_REVIEW scope (iter ~157)
 
-1. Run SIM-001 pre-validation of battery B-1..B-4 per PILOT_001_DESIGN.md §5:
-   B-1 NCT-of-N all-N delivery + latency CDF N=20/50/100; B-2 partition/healing
-   (uplink down, heals no-duplicates); B-3 multi-hop SCF mule-chain delivery +
-   hop CDF; B-4 iOS limited-relay marker (env/BLK-0005-gated honest).
-2. Author `PILOT-001_TEST.md` evidence map (pattern BLE-002_TEST.md) mapping
-   AC-7..AC-10.
-3. Persist iter ~156 in all durable artifacts + commit.
-4. → SECURITY_REVIEW (iter ~157, AC-18) → VERIFY (AC-17/18) → ACCEPT →
-   NODE_TRANSITION.
+1. Adversarial review per AC-18: provisioning/decommission/authority-root
+   (ProvisioningFlow D-4), TEST-only-SOS + DRILL-cert (AC-13), relay-cadence
+   scaling rule (AC-6), KPI/telemetry consent, distribution custody (AC-15) —
+   review record into `PILOT-001_SECURITY_REVIEW.md` (pattern
+   BLE_002_SECURITY_REVIEW.md).
+2. → VERIFY (AC-17/AC-18 independent evidence table) → ACCEPT +
+   NODE_TRANSITION LORA-001/SAT-001.

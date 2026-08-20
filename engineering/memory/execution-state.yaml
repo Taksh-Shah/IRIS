@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-19T13:30:00Z"
+updated_at: "2026-08-19T13:50:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,28 +23,28 @@ mission_description: "Advance IRIS from documented state to production-grade res
 
 # === CURRENT POSITION ===
 active_node: "PILOT-001"
-active_stage: "IMPLEMENT"
+active_stage: "TEST"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "PILOT-001 DESIGN COMPLETE (iter ~154, evidence 3): PILOT_001_DESIGN.md v1.0 authored (pattern BLE_002_DESIGN.md/ANDROID_DESIGN.md/IOS_DESIGN.md) — C2 gap RESOLVED via AC-1..AC-18. D-1 topology (50-100 leaves Android relay-primary / iOS limited-relay + 1-3 DESKTOP-001 gateways + Android-gateway fallback + gateway-scoped Internet-relay, mesh-primary, LoRa excluded GAP-004); D-2 relay-cadence scaling rule (congestionScalingCoefficient mirror: 0.6x<=10..1.0x 31-40, >40 linear 1.0+(N-40)*f default 0.075 configurable 0.01-0.1; P0/P1 + directed exempt; AC-6); D-3 fixed test battery B-1..B-4 (NCT-of-N all-N delivery + latency CDF N=20/50/100; partition/healing uplink-down; multi-hop SCF mule-chain; iOS limited-relay; sim pre-validation + field legs; BLK-0005 folded into pilot); D-4 ProvisioningFlow (mutual-QR batch 10-20, verified escalation, EMERG-001 authority-root + DRILL-chain out-of-band bundle, decommission wipe+revoke+rotate, no-recovery documented); D-5 trust model (TOFU + verified tier RES-0016 D-2; platform-store key isolation); D-6 KPI plan (OBS-001 mapping, thresholds target/floor, Wilson-CI 95% plan per class/transport, controlled fg/bg battery methodology, 7-day retention); D-7 NDMA DMEx schedule (M1 TTEx -> M2 field ME 50-dev observers+self-assessment -> M3 evaluation/AAR to NDRF; EXP-002/003/005 legs; safety annex communications-only); D-8 distribution runbook (Play internal track <=100 testers + closed 12x14 production clock at pilot close; TestFlight external + 90-day refresh; Play App Signing custody 2-person + PEPK; OEM battery-kill matrix; telemetry consent; incident ownership); D-9 REG-NOTES (WPC 853(E) 2021 865-868 supersedes 865-867; SSMI non-applicable memo; NDRF MoU + STQC GA Month 30; open counsel Qs — no legal opinion). DEC-PILOT-0001..0009 ratified in engineering/memory/DECISIONS.md. Risks G-P1..G-P9 mapped G1..G12. External-facts corrections staged for DOCUMENT (AC-16). PROJECT_GRAPH PILOT-001 status DESIGNING + acceptance_criteria(18) + evidence(3) + stage_note DESIGN COMPLETE + meta validation_status refreshed; PROJECT_STATE research_complete 2->1 designing 0->1 next_recommended refreshed; ALLOCATION + execution-log updated. NEXT: PILOT-001 IMPLEMENT (iter ~155, docs-only ops deliverables)."
-next_action: "PILOT-001 TEST (iter ~156): SIM-001 pre-validation of test battery B-1..B-4 per PILOT_001_DESIGN.md AC-7..AC-10 (NCT-of-N all-N delivery + latency CDF N=20/50/100 on crates/iris-core sim harness; delivery + Wilson-CI sample; partition/healing uplink-down; multi-hop SCF mule-chain; iOS limited-relay marker) -> PILOT-001_TEST.md evidence map (pattern BLE-002_TEST.md). Then SECURITY_REVIEW (iter ~157, AC-18 adversarial: provisioning/decommission/authority-root/TEST-only-SOS/DRILL-cert/relay-cadence) -> VERIFY (AC-17/AC-18 independent evidence table) -> ACCEPT + NODE_TRANSITION to LORA-001/SAT-001."
+active_action: "PILOT-001 TEST COMPLETE (iter ~156, evidence 5): SIM-001 sim pre-validation of B-1..B-4 per PILOT_001_DESIGN.md AC-7..AC-10 on crates/iris-core sim harness. B-1 NCT-of-N (N=20 all-N + latency CDF; N=50/100 Wilson-95% lo 0.929/0.963 >= 0.90 floor; honest small-N disclosure N=20 lo=0.839); B-2 partition/healing (2x4 partitions uplink-down 60s - 8 intra delivered during outage + cross at heal + no duplicates); B-3 4-leg SCF mule-chain (delivered at 4000ms = legs x window; max_hops 4; P3 budget 5 vs P4 3 recorded); B-4 iOS limited-relay (to-iOS at window1 t=2000, from-iOS at next window t=12000; ratio >= 0.95; BLK-0005 physical rows -> field legs). sim/metrics.rs wilson_ci_95 helper + bounds regression. PILOT-001_TEST.md evidence map authored (pattern BLE-002_TEST.md). AC-17 live: cargo test --workspace --all-features 664/0/1 (iris-core lib 573 + iris-ios 11), clippy 0, fmt clean. Baseline 658/0/1 -> 664/0/1 (+6)."
+next_action: "PILOT-001 SECURITY_REVIEW (iter ~157, AC-18 adversarial review: provisioning/decommission/authority-root/TEST-only-SOS/DRILL-cert/relay-cadence) -> VERIFY (AC-17/AC-18 independent evidence table) -> ACCEPT + NODE_TRANSITION to LORA-001/SAT-001."
 
 # === STATE TRANSITIONS ===
 last_transition: "STAGE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-19T13:30:00Z"
+last_transition_at: "2026-08-19T13:50:00Z"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "PILOT-001 TEST (iter ~156, SIM-001 sim pre-validation of B-1..B-4: NCT-of-N + latency CDF + partition/healing + multi-hop SCF mule-chain + iOS marker) -> PILOT-001_TEST.md."
+next_action: "PILOT-001 SECURITY_REVIEW (iter ~157, AC-18 adversarial review: provisioning/decommission/authority-root/TEST-only-SOS/DRILL-cert/relay-cadence) -> VERIFY (AC-17/AC-18 independent evidence table) -> ACCEPT + NODE_TRANSITION to LORA-001/SAT-001."
 # IOS-001 pipeline comment follows:
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "PILOT-001 IMPLEMENT COMPLETE (iter ~155, evidence 4): 5 ops docs authored (PILOT_RUNBOOK.md AC-2; PILOT_KPI_PLAN.md AC-3/11; PILOT_EXERCISE.md AC-4/13; PILOT_DISTRIBUTION.md AC-5/15; REG_NOTES.md AC-14 WPC 853(E)2021 865-868) + relay-cadence seam appended to CONGESTION_CONTROL.md (AC-6) + EXTERNAL-FACTS doc edits applied (AC-16). PROJECT_GRAPH status IMPLEMENTING + evidence(4); PROJECT_STATE designing 1->0 implementing 0->1; baseline 658/0/1 held docs-only."
-last_progress_at: "2026-08-19T13:30:00Z"
+last_progress_event: "PILOT-001 TEST COMPLETE (iter ~156, evidence 5): SIM-001 sim pre-validation of B-1..B-4 (NCT-of-N N=20/50/100 Wilson lo 0.929/0.963 >= floor; partition/healing no-dup; 4-leg mule-chain contact-window; iOS limited-relay window asymmetry) + wilson_ci_95 bounds regression. PILOT-001_TEST.md authored. AC-17 live workspace 664/0/1 clippy 0 fmt clean (was 658/0/1, +6 net-new). PROJECT_GRAPH status IMPLEMENTING + evidence(5) + stage_note TEST COMPLETE; PROJECT_STATE health/testing_health refreshed."
+last_progress_at: "2026-08-19T13:50:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -68,6 +68,25 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T13:50:00Z"
+    iteration: 156
+    node: "PILOT-001"
+    stage: "TEST"
+    action: "PILOT-001 TEST COMPLETE (iter ~156, evidence 5) - SIM-001 sim pre-validation of B-1..B-4 per PILOT_001_DESIGN.md AC-7..AC-10. crates/iris-core/src/sim/ additions: scenario.rs pilot_b1_nct_of_n_delivers_all_with_latency_cdf (N=20 all-N delivery + latency CDF p50/p95=1s within 5s/30s floor + loop-free + honest small-N Wilson-95% lo=0.839) + pilot_b1_nct_of_n_scales_to_100 (N=50/100 all-N + loop-free + Wilson lo 0.929/0.963 >= 0.90 floor), pilot_b2_partition_heals_without_duplicates (2x4 internally-meshed partitions, uplink-down 60s, 8 intra delivered during outage + cross delivered at heal + no duplicate terminal delivery + P2 ratio >= 0.9), pilot_b3_mule_chain_delivers_within_contact_window (4-leg SCF chain, P3 msg (budget 5; P4=3 recorded), delivered at exactly 4000ms = legs x 1000ms window, max_hops_seen==4, loop-free), pilot_b4_ios_limited_relay_participates_on_windows (iOS leaf participates only in foregrounded windows - to-iOS delivered t=2000 first window, iOS-origin delivered t=12000 next window (asymmetry), delivery ratio >= 0.95, loop-free; physical iOS rows BLK-0005-gated -> pilot field legs); metrics.rs wilson_ci_95 helper + wilson_ci_95_full_samples_bind bounds regression (monotone in n 0.886<0.929<0.963, hi<=1.0, k=0 hi 0.071, empty->(0,0)). PILOT-001_TEST.md evidence map authored (pattern BLE-002_TEST.md) mapping AC-7..AC-10. AC-17 live: cargo test --workspace --all-features = 664/0/1 (23 suites; iris-core lib 573 + iris-ios 11), clippy 0, fmt clean. PROJECT_GRAPH PILOT-001 evidence(5) + stage_note TEST COMPLETE + meta validation_status refreshed; PROJECT_STATE health/testing_health + next_recommended refreshed. Baseline 658/0/1 -> 664/0/1. NEXT: SECURITY_REVIEW (iter ~157, AC-18)."
+    result: "TEST_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/sim/scenario.rs"
+      - "crates/iris-core/src/sim/metrics.rs"
+      - "engineering/memory/records/PILOT-001_TEST.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/PILOT-001_TEST.md"
   - timestamp: "2026-08-19T13:30:00Z"
     iteration: 155
     node: "PILOT-001"
