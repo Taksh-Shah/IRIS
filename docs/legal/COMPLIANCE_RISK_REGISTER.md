@@ -1,7 +1,7 @@
 # Compliance Risk Register
 
 **Status:** Living document — reviewed quarterly  
-**Last updated:** 2026-08-11  
+**Last updated:** 2026-08-19  
 **Owner:** Legal / Compliance  
 **Review cycle:** Quarterly; or immediately following a regulatory change  
 
@@ -26,7 +26,7 @@
 | Likelihood | 2 (WPC de-licensing framework provides reasonable basis; active prosecution is unlikely in disaster context) |
 | Impact | 4 (Cease-and-desist order; potential criminal liability under Telegraph Act Section 20) |
 | Risk Score | 8 (Medium) |
-| Current Mitigation | (1) WPC de-licensing compliance (865–867 MHz within power limits); (2) Legal research in progress (LQ-001); (3) Government pilot deployments structured under NDRF/NDMA authority; (4) Pending formal legal opinion |
+| Current Mitigation | (1) WPC de-licensing compliance (865–868 MHz SRD band, G.S.R. 853(E) 2021 Table-I non-specific SRD: 25 mW e.r.p., duty cycle ≤1% — governs the future LoRa leg only; v1 pilot is BLE/Wi-Fi on unlicensed 2.4/5 GHz); (2) Legal research in progress (LQ-001); (3) Government pilot deployments structured under NDRF/NDMA authority; (4) Pending formal legal opinion |
 | Residual Risk | Medium (pending counsel opinion) |
 | Owner | Legal |
 | Next Review | On receipt of legal counsel opinion |
@@ -173,3 +173,4 @@
 | Date | Change |
 |------|--------|
 | 2026-08-11 | Initial document — 8 risks registered |
+| 2026-08-19 | PILOT-001 AC-16: CR-001 mitigation → G.S.R. 853(E) 2021 (865–868 MHz, ≤25 mW e.r.p., duty ≤1%); LoRa scoped future-leg only |

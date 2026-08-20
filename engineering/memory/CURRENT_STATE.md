@@ -1,11 +1,39 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T12:30:00Z
+**Last updated**: 2026-08-19T13:30:00Z
 
 ---
 
 ## Summary
+
+**✅ PILOT-001 IMPLEMENT COMPLETE (iter ~155, ops deliverables AC-1..AC-16,
+docs-only) — TEST next (iter ~156, SIM-001 B-1..B-4 pre-validation):**
+Ops docs authored per `PILOT_001_DESIGN.md` (pattern BLE_002/ANDROID-001/
+IOS-001 ops records): **PILOT_RUNBOOK.md** (AC-2: topology 50-100 leaves +
+1-3 DESKTOP-001 gateways + Android-gateway fallback + gateway-scoped
+Internet-relay; ProvisioningFlow mutual-QR ceremony batch 10-20 + verified
+escalation + EMERG authority-root/DRILL-chain out-of-band bundle + decommission
+wipe/revoke/rotate; day-0/day-N; incident ownership; diagnostics QR),
+**PILOT_KPI_PLAN.md** (AC-3/AC-11: OBS-001 mapping + thresholds target/floor +
+**Wilson-CI 95%** formula/sampling per class/transport never pooled + controlled
+fg/bg battery + collection cadence + 7-day retention), **PILOT_EXERCISE.md**
+(AC-4/AC-13: NDMA DMEx M1 TTEx → M2 field ME 50-dev observers + self-assessment
++ TEST-only SOS under DRILL certs + yellow banner → M3 evaluation/AAR to NDRF,
+HSEEP-portable; EXP-002/003/005 legs; safety annex), **PILOT_DISTRIBUTION.md**
+(AC-5/AC-15: Play **internal** ≤100 + closed 12×14 production clock; TestFlight
+external + 90-day refresh, calendar-owned; signing 2-person + PEPK; OEM
+battery-kill; telemetry consent), **REG_NOTES.md** (AC-14: **WPC G.S.R. 853(E)
+2021 865-868** supersedes 865-867, LoRa future-leg only; SSMI 50-lakh
+non-applicable; NDRF MoU + STQC GA; open counsel QCs; **no legal opinion**).
+**AC-6** relay-cadence section appended to `CONGESTION_CONTROL.md` (≤40 flat
+0.6×..1.0×, >40 linear `1.0+(N-40)×f` default 0.075; P0/P1 + directed exempt).
+**AC-16** EXTERNAL-FACTS doc edits applied (GO_TO_MARKET internal-track note;
+COMPLIANCE_RISK_REGISTER + SPECTRUM_CONSIDERATIONS 865-868/853(E);
+FIELD_OPERATIONS 866.0 CONFIRMED). PROJECT_GRAPH PILOT-001 **IMPLEMENTING** +
+evidence(4) + stage_note IMPLEMENT COMPLETE; PROJECT_STATE designing 1→0
+implementing 0→1. **NEXT: TEST (iter ~156, SIM-001 sim pre-validation of B-1..
+B-4) → SECURITY_REVIEW → VERIFY → ACCEPT.** Baseline **658/0/1** held (docs-only).
 
 **✅ PILOT-001 DESIGN COMPLETE (iter ~154, `PILOT_001_DESIGN.md` v1.0) — C2 gap
 RESOLVED (AC-1..AC-18); IMPLEMENT next (iter ~155, docs-only):** Design

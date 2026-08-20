@@ -349,3 +349,32 @@ Alerts:
 - `messages_dropped[P2] > 0` in any 5-minute window → critical alert
 - `storage_utilization > 0.85` for >10 minutes → add storage or reduce relay scope
 - `backpressure_events > 100/hour` → mesh topology change needed (add relay nodes)
+
+---
+
+## Relay-Cadence Scaling Rule (POLICY — PILOT-001, DEC-PILOT-0002 / AC-6)
+
+Named policy parameter **`relay_cadence`** at the INTERNET-001/ROUTE-001 seam:
+broadcast/telemetry cadence scales with **online-node count** `N` (mirror of
+Meshtastic `congestionScalingCoefficient`, verified at firmware source —
+RES-0026 RQ-1 f.3):
+
+| N (online) | Cadence multiplier |
+|-----------|--------------------|
+| <= 10 | 0.6x |
+| 11-20 | 0.7x |
+| 21-30 | 0.8x |
+| 31-40 | 1.0x |
+| > 40 | `1.0 + (N-40) x f` (default f = 0.075/node; configurable 0.01-0.1) |
+
+Applicability: telemetry heartbeat broadcast, neighbor-discovery broadcast,
+non-critical gossip. **Exempt**: P0/P1 emergency traffic (EMERG-001 priority
+bypass) and directed point-to-point messages.
+
+Example: 60 online nodes -> base 30-min telemetry interval x 2.5 = 75 min
+(`1.0 + 20 x 0.075`).
+
+Operator reference: PILOT_RUNBOOK.md section 3; operator calibration and
+monitoring via the OBS-001 transport/queue diagnostics (bytes/sec,
+`neighbors.active`). This is the pilot/policy value of the congestion-control
+stack — the module-level mechanisms above remain unchanged.

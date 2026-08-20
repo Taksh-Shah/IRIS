@@ -41,7 +41,7 @@ SOFTWARE
 [ ] Self-test output photographed for records: YES / NO
 
 RADIO COMPLIANCE
-[ ] Frequency: 866.0 MHz (within 865–867 MHz WPC band)
+[ ] Frequency: 866.0 MHz (865–868 MHz SRD band, WPC G.S.R. 853(E) 2021 — CONFIRMED)
 [ ] TX power: ≤ 14 dBm at modem (verify with AT+DRATE command)
 [ ] EIRP: ≤ 25 mW (≤ 14 dBm + antenna gain ≤ 0 dBi net)
 [ ] Duty cycle limiter: ENABLED in config

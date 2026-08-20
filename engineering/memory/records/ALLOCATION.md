@@ -1,6 +1,6 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-19T13:15:00Z (PILOT-001 DESIGN COMPLETE iter ~154; DEC-PILOT-0001..0009 ratified in DECISIONS.md)
+**Last updated**: 2026-08-19T13:30:00Z (PILOT-001 IMPLEMENT COMPLETE iter ~155 — 5 ops docs + relay-cadence seam + EXTERNAL-FACTS doc edits; TEST iter ~156 next)
 
 ## Next Available IDs
 

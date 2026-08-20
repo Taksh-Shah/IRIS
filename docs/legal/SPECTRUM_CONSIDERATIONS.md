@@ -1,7 +1,7 @@
 # Spectrum Considerations
 
 **Status:** Living document  
-**Last updated:** 2026-08-11  
+**Last updated:** 2026-08-19  
 **Owner:** Legal / Engineering  
 
 ---
@@ -24,11 +24,19 @@ WPC periodically issues de-licensing notifications that allow operation of speci
 
 - **2005 De-licensing notification:** First notification to explicitly de-license ISM-band frequencies including 865–867 MHz
 - **2018 Amendment:** Updated power limits and clarified outdoor/indoor use for 865–867 MHz
+- **G.S.R. 853(E), 10-Dec-2021 (CONTROLLING — see §2):** "Use of Low Power Equipment in the Frequency Band 865–868 MHz for Short Range Devices (Exemption from Licence) Rules, 2021" — **supersedes** the earlier 865–867 MHz basis. SRD band **865–868 MHz**; Table-I non-specific SRD: **25 mW e.r.p., duty cycle ≤1%**, FHSS/timing constraints per EN 300 220.
 - **2023 Revision (pending):** DoT consultation paper on updating de-licensing for IoT devices; outcome pending
 
 ---
 
-## 2. ISM Band 865–867 MHz: LoRa
+## 2. ISM Band 865–868 MHz: LoRa (Future Leg Only)
+
+> **Governing instrument: G.S.R. 853(E) 2021 (865–868 MHz SRD de-licensing).**
+> This supersedes the earlier 865–867 MHz basis in §2.1/§2.4 below.
+> **The v1 pilot uses BLE/Wi-Fi only (unlicensed 2.4/5 GHz) and does not
+> operate 865 MHz at all.** This section governs the future LoRa leg
+> (GAP-004; re-validated against TEC ER Annexure-gG5 + ETA before hardware).
+> Codification: REG_NOTES.md §1.
 
 ### 2.1 Channel Plan
 
@@ -54,22 +62,26 @@ IRIS operates at 14 dBm EIRP to ensure compliance across all hardware configurat
 
 ### 2.3 Duty Cycle
 
-WPC does not impose a duty cycle restriction on 865–867 MHz (unlike ETSI EN 300 220 which imposes 1% duty cycle on the EU 868 MHz band). IRIS self-imposes a 1% duty cycle limit for the following reasons:
+**WPC now imposes a duty cycle limit.** G.S.R. 853(E) 2021 Table-I (Non-Specific
+SRD — telemetry, telecommand, alarms, data) caps duty cycle at **≤1%** (whole
+transmission) — the earlier assumption that 865–867 MHz carried no duty-cycle
+mandate (vs ETSI EN 300 220) is superseded. IRIS therefore aligns with the
+**1% duty cycle** it had self-imposed:
 - Avoid excessive channel occupancy that degrades network performance for all users
-- Ensure compliance if WPC adopts ETSI-style limits in future (anticipated in DoT consultation)
+- Remain compliant with the enacted G.S.R. 853(E) 2021 Table-I limit
 - Reduce interference to other ISM users (medical equipment, industrial sensors)
 
 ### 2.4 Comparison: India vs EU vs US LoRa Spectrum
 
 | Parameter | India | EU (ETSI) | US (FCC) |
 |-----------|-------|-----------|----------|
-| Frequency | 865–867 MHz | 863–870 MHz | 902–928 MHz |
-| Max EIRP | 1 W (30 dBm) | 25 mW (14 dBm) | 30 dBm (915 MHz) |
-| Duty cycle | Not mandated | 1% (most sub-bands) | Not mandated |
+| Frequency | 865–868 MHz | 863–870 MHz | 902–928 MHz |
+| Max EIRP (non-specific SRD) | 25 mW (14 dBm) G.S.R. 853(E) 2021 | 25 mW (14 dBm) | 30 dBm (915 MHz) |
+| Duty cycle | 1% (Table-I, G.S.R. 853(E) 2021) | 1% (most sub-bands) | Not mandated |
 | License required | No | No | No |
 | Standard channel BW | 125 kHz | 125 kHz | 125/500 kHz |
 
-**Implication for IRIS hardware:** LoRa modules must be frequency-configured for India's 865 MHz band. EU-default modules (868 MHz) and US-default modules (915 MHz) will not operate in the correct Indian band without reconfiguration. IRIS firmware enforces the correct frequency band at boot based on a compile-time region flag: `IRIS_REGION=IN`.
+**Implication for IRIS hardware:** LoRa modules must be frequency-configured for India's 865/868 MHz band. EU-default modules (868 MHz) and US-default modules (915 MHz) will not operate in the correct Indian band without reconfiguration. IRIS firmware enforces the correct frequency band at boot based on a compile-time region flag: `IRIS_REGION=IN`. Any RF leg must be re-validated under G.S.R. 853(E) 2021 + TEC ER Annexure-G5 + ETA before shipping (REG_NOTES.md §1).
 
 ### 2.5 Type Approval for LoRa Hardware
 
@@ -150,7 +162,7 @@ IRIS monitors WPC regulatory developments through:
 - Industry associations: Internet and Mobile Association of India (IAMAI), Cellular Operators Association of India (COAI)
 
 Regulatory changes that would affect IRIS:
-- Duty cycle imposition on 865–867 MHz (if adopted, IRIS self-imposed limit already compliant)
+- Duty cycle re-imposition/re-scoping on 865–868 MHz (G.S.R. 853(E) 2021 already sets 1% — any amendment tracked)
 - Power limit reduction (unlikely; current limit is already generous)
 - Licensing requirement for mesh networking on ISM bands (see OPEN_PROBLEMS.md OP-005)
 - 5 GHz de-licensing expansion (would benefit IRIS desktop)
@@ -162,3 +174,4 @@ Regulatory changes that would affect IRIS:
 | Date | Change |
 |------|--------|
 | 2026-08-11 | Initial document |
+| 2026-08-19 | PILOT-001 AC-16: 865/868 MHz + G.S.R. 853(E) 2021 governing instrument; duty cycle ≤1% enacted; LoRa scoped future-leg only |

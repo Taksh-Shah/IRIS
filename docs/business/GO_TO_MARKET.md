@@ -30,6 +30,11 @@ Revenue follows trust. The GTM does not optimize for early revenue at the cost o
 - Month 1–3: Introductory meetings with NDRF Inspector General and NDMA officials. Present concept paper: "IRIS: India's Open Emergency Communication Mesh"
 - Month 3–6: Technical demonstration at NDRF training center (Pune/Nagpur facility). Deploy 10-device test mesh for live demonstration.
 - Month 6–9: Pilot MoU signed with NDRF 12th Battalion (Gandhinagar, Gujarat). Scope: 50-device pilot over 3 months.
+  - **Pilot distribution mechanism (PILOT-001, DEC-PILOT-0006):** this pilot cohort
+    is distributed via **Google Play internal testing track (≤100 testers)** +
+    **TestFlight external (≤10,000, 90-day refresh)** — internal/closed-testing
+    tracks, NOT a public store release. Closed-track 12×14 production clock
+    starts at pilot close. See docs/operations/PILOT_DISTRIBUTION.md.
 - Month 9–12: Pilot execution; data collection; NDRF evaluation report.
 
 **Target outcome:** NDMA endorsement letter stating IRIS is suitable for emergency communication deployments.
@@ -201,3 +206,4 @@ Revenue follows trust. The GTM does not optimize for early revenue at the cost o
 | Date | Change |
 |------|--------|
 | 2026-08-11 | Initial document |
+| 2026-08-19 | PILOT-001 AC-16: §2.1 pilot distribution clarified as Play internal + TestFlight tracks (DEC-PILOT-0006) |

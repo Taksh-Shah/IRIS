@@ -3,7 +3,7 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-19 (hand-reconciled: PILOT-001 DESIGN COMPLETE iter ~154 — PILOT_001_DESIGN.md v1.0 AC-1..AC-18, C2 gap RESOLVED, DEC-PILOT-0001..0009; 28 COMPLETE nodes; workspace 658/0/1 clippy 0; NEXT: PILOT-001 IMPLEMENT iter ~155)
+# Last updated: 2026-08-19 (hand-reconciled: PILOT-001 IMPLEMENT COMPLETE iter ~155 — 5 ops docs + relay-cadence seam + EXTERNAL-FACTS doc edits; 28 COMPLETE nodes; workspace 658/0/1 clippy 0; NEXT: PILOT-001 TEST iter ~156)
 
 # Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
@@ -12,9 +12,8 @@
 #            EMERG-001, SEC-001, BLE-001, WIFIAWARE-001, WIFIDIRECT-001, ANDROID-001,
 #            TEST-001, BLE-002, IOS-001 (28)
 # RESEARCH_COMPLETE: LEGAL-001 (1)
-# DESIGNING: PILOT-001 (1)  [NEXT: IMPLEMENT iter ~155]
 # DESIGNING: (0)
-# IMPLEMENTING: (0)
+# IMPLEMENTING: PILOT-001 (1)  [NEXT: TEST iter ~156]
 # VERIFYING: (0)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
 # DISCOVERED: LORA-001, SAT-001 (2)  [after PILOT-001]
@@ -24,8 +23,8 @@ summary:
   completed: 28              # + IOS-001 (2026-08-19, ACCEPT iter ~151, P0 PLATFORM iOS, AC-1..AC-21 PASS w/ AC-19 GATED/BLK-0005 + verifier APPROVE; deps BLE-002/MSG-001/EMERG-001)
   researching: 0
   research_complete: 1       # LEGAL-001 (PILOT-001 advanced to DESIGNING iter ~154)
-  designing: 1               # PILOT-001 (DESIGN COMPLETE iter ~154 — PILOT_001_DESIGN.md v1.0 AC-1..AC-18, C2 gap RESOLVED, DEC-PILOT-0001..0009)
-  implementing: 0            # None in flight — PILOT-001 IMPLEMENT next (iter ~155)
+  designing: 0               # PILOT-001 -> IMPLEMENTING iter ~155
+  implementing: 1            # PILOT-001 (IMPLEMENT COMPLETE iter ~155 — ops docs authored; NEXT: TEST iter ~156)
   verifying: 0
   discovered: 2              # LORA-001/SAT-001 (after PILOT-001)
   blocked: 0                 # All gates + human gates unblocked DEC-0009
@@ -113,9 +112,9 @@ critical_path:
 
 next_recommended_nodes:
   - id: "PILOT-001"
-    reason: "Field Pilot Deployment (P2 OPERATIONS) — **ACTIVE**: DESIGN COMPLETE (iter ~154, PILOT_001_DESIGN.md v1.0 — C2 gap RESOLVED via AC-1..AC-18; D-1 topology 50-100 leaves + 1-3 gateways + gateway-scoped relay, D-2 relay-cadence rule, D-3 test battery B-1..B-4, D-4 ProvisioningFlow, D-5 trust model, D-6 KPI + Wilson-CI, D-7 NDMA DMEx M1/M2/M3, D-8 Play internal + TestFlight distribution, D-9 REG-NOTES; DEC-PILOT-0001..0009 ratified). First real-world deployment (NGO + campus pilot, 100+ devices; NDRF 50-device MoU + B2B POC tier). Deps ANDROID-001/IOS-001/EMERG-001/SEC-001 COMPLETE + LEGAL-001 RESEARCH_COMPLETE — eligible. NEXT: IMPLEMENT (iter ~155, ops deliverables) -> TEST -> SECURITY_REVIEW -> VERIFY -> ACCEPT."
+    reason: "Field Pilot Deployment (P2 OPERATIONS) — **ACTIVE**: IMPLEMENT COMPLETE (iter ~155, ops deliverables per AC-1..AC-16 — PILOT_RUNBOOK.md, PILOT_KPI_PLAN.md, PILOT_EXERCISE.md, PILOT_DISTRIBUTION.md, REG_NOTES.md + relay-cadence seam in CONGESTION_CONTROL.md + EXTERNAL-FACTS doc edits). DESIGN COMPLETE (iter ~154, PILOT_001_DESIGN.md v1.0 — C2 gap RESOLVED via AC-1..AC-18; D-1 topology, D-2 relay-cadence, D-3 test battery B-1..B-4, D-4 ProvisioningFlow, D-5 trust model, D-6 KPI + Wilson-CI, D-7 NDMA DMEx M1/M2/M3, D-8 Play internal + TestFlight distribution, D-9 REG-NOTES; DEC-PILOT-0001..0009 ratified). First real-world deployment (NGO + campus pilot, 100+ devices; NDRF 50-device MoU + B2B POC tier). Deps ANDROID-001/IOS-001/EMERG-001/SEC-001 COMPLETE + LEGAL-001 RESEARCH_COMPLETE — eligible. NEXT: TEST (iter ~156, SIM-001 sim pre-validation B-1..B-4) -> SECURITY_REVIEW -> VERIFY -> ACCEPT."
     priority: P2
-    note: "ACTIVE — DESIGN COMPLETE, IMPLEMENT next (iter ~155). After ACCEPT: NODE_TRANSITION to LORA-001/SAT-001 (P2 hardware) then mission milestones (MVP/Alpha/Beta/Pilot)."
+    note: "ACTIVE — IMPLEMENT COMPLETE, TEST next (iter ~156). After ACCEPT: NODE_TRANSITION to LORA-001/SAT-001 (P2 hardware) then mission milestones (MVP/Alpha/Beta/Pilot)."
   - id: "TEST-001"
     reason: "Test Infrastructure (P0, TEST) — **COMPLETE (iter ~131, ACCEPTED)**: nextest + audit/deny + kani/loom/tokio-test + tarpaulin + mutants + protocol conformance fixtures + golden vectors + CI matrix + criterion benches. Deps ROUTE-001 + MSG-001 + CRYPTO-001 all COMPLETE. Workspace 633/0/1 clippy 0."
     priority: P0
