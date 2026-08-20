@@ -78,6 +78,12 @@ Co-located gateway (or operator device) re-confirms identity in person →
   mesh first-contact).
 - Devices confirm authority-root fingerprint at provisioning; mismatch = abort
   session + device quarantined away from pilot.
+- **Re-verify the authority-root fingerprint + DRILL-chain health at every drill
+  bundling and at each weekly review (§5).** The DRILL CA private key is held
+  under the same 2-person custody rule as signing keys
+  (PILOT_DISTRIBUTION.md §4) — never stored on a field leaf; if a DRILL cert is
+  re-issued, the bundle is re-pushed out-of-band before the next exercise leg
+  (SECURITY_REVIEW P-007 hardening).
 
 ### 2.5 Decommission
 1. **Wipe**: delete platform key (Keystore/Keychain destroy) on-device.
@@ -122,7 +128,9 @@ source — RES-0026 RQ-1 f.3):
    Android + TestFlight iOS.
 4. Distribute OEM battery-kill checklist + install "IRIS pilot" exception
    (PILOT_DISTRIBUTION.md §5).
-5. Telemetry opt-in consent capture (PILOT_KPI_PLAN.md §4).
+5. **Per-device telemetry opt-in consent** captured at provisioning
+   (timestamped, recorded in the node registry, revertible) per
+   PILOT_KPI_PLAN.md §4 (P-013 hardening).
 6. Calibrate `relay_cadence` baseline per §3 table at current N.
 7. Pre-drill connectivity map (Ahmedabad pilot city zones).
 
@@ -130,7 +138,8 @@ source — RES-0026 RQ-1 f.3):
 
 - **Daily**: gateway health check (uplink OK, telemetry flushing); mesh
   coverage scan (`neighbors.active`, partitions); battery cohort check.
-- **Weekly**: node-registry drift review; incident queue review
+- **Weekly**: node-registry drift review; **authority-root fingerprint +
+  DRILL-CA health re-verification (P-007)**; incident queue review
   (INCIDENT_MANAGEMENT.md severity ladder); diagnostics bundle review
   (DIAGNOSTICS.md QR export) for outliers; `relay_cadence` re-calibration at
   new N.

@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-19T13:50:00Z"
+updated_at: "2026-08-19T14:10:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,28 +23,28 @@ mission_description: "Advance IRIS from documented state to production-grade res
 
 # === CURRENT POSITION ===
 active_node: "PILOT-001"
-active_stage: "TEST"
+active_stage: "SECURITY_REVIEW"
 # UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "PILOT-001 TEST COMPLETE (iter ~156, evidence 5): SIM-001 sim pre-validation of B-1..B-4 per PILOT_001_DESIGN.md AC-7..AC-10 on crates/iris-core sim harness. B-1 NCT-of-N (N=20 all-N + latency CDF; N=50/100 Wilson-95% lo 0.929/0.963 >= 0.90 floor; honest small-N disclosure N=20 lo=0.839); B-2 partition/healing (2x4 partitions uplink-down 60s - 8 intra delivered during outage + cross at heal + no duplicates); B-3 4-leg SCF mule-chain (delivered at 4000ms = legs x window; max_hops 4; P3 budget 5 vs P4 3 recorded); B-4 iOS limited-relay (to-iOS at window1 t=2000, from-iOS at next window t=12000; ratio >= 0.95; BLK-0005 physical rows -> field legs). sim/metrics.rs wilson_ci_95 helper + bounds regression. PILOT-001_TEST.md evidence map authored (pattern BLE-002_TEST.md). AC-17 live: cargo test --workspace --all-features 664/0/1 (iris-core lib 573 + iris-ios 11), clippy 0, fmt clean. Baseline 658/0/1 -> 664/0/1 (+6)."
-next_action: "PILOT-001 SECURITY_REVIEW (iter ~157, AC-18 adversarial review: provisioning/decommission/authority-root/TEST-only-SOS/DRILL-cert/relay-cadence) -> VERIFY (AC-17/AC-18 independent evidence table) -> ACCEPT + NODE_TRANSITION to LORA-001/SAT-001."
+active_action: "PILOT-001 SECURITY_REVIEW COMPLETE (iter ~157, AC-18): adversarial review of provisioning/decommission/authority-root-DRILL-CA/TEST-only-SOS/relay-cadence/KPI-consent/distribution/incident/diagnostics surfaces - verdict PASS-with-fix: 2 FIXED + 12 RECORDED + 3 INFO, no CRITICAL/HIGH requiring code change. FIXED (docs): P-007 (runbook 2.4/5 DRILL-CA custody under 2-person rule, weekly authority-fingerprint/DRILL-CA re-verification, re-bundle before each leg); P-013 (per-device timestamped opt-in consent trail at provisioning; runbook 4 + KPI plan 4). RECORDED: P-001 SAS entropy to BQP spec, P-002 provenance attestation deferred, P-005 revocation-sync check in weekly drift review, P-006 decommission order revoke->retire->wipe, P-008 DRILL CA custody folded, P-010 drill-SOS cap/device/leg, P-011 relay_cadence clamp at seam, P-014 telemetry salt rotation, P-015 sideload contained by DEC-0010 gate, P-016 TestFlight validity pre-drill, P-017 diagnostics-QR confined. Positive controls verified in real code: EMERG-001 drill.rs (SosKind::Test/drill_flag_suppresses/verified_drill_suppressed/drill_mismatch_rejected), SEC-001 EmergencyAcl drill cap-exempt, IDENT-001 rotate/trust_store earliest-seen-wins + null-rotation revoke, DEC-0010 gate. PILOT-001_SECURITY_REVIEW.md authored (pattern BLE_002_SECURITY_REVIEW.md). AC-17 held this pass: cargo test --workspace --all-features 664/0/1, clippy 0, fmt clean (no Rust changes this pass)."
+next_action: "PILOT-001 VERIFY (iter ~158, AC-17/AC-18): independent verifier evidence table in PILOT-001_VERIFICATION.md reproducing 664/0/1 + clippy + fmt and confirming every P-00x disposition + both FIXED doc edits -> ACCEPT (iter ~159) + NODE_TRANSITION to LORA-001/SAT-001."
 
 # === STATE TRANSITIONS ===
 last_transition: "STAGE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-19T13:50:00Z"
+last_transition_at: "2026-08-19T14:10:00Z"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-next_action: "PILOT-001 SECURITY_REVIEW (iter ~157, AC-18 adversarial review: provisioning/decommission/authority-root/TEST-only-SOS/DRILL-cert/relay-cadence) -> VERIFY (AC-17/AC-18 independent evidence table) -> ACCEPT + NODE_TRANSITION to LORA-001/SAT-001."
+next_action: "PILOT-001 VERIFY (iter ~158, AC-17/AC-18): independent verifier evidence table in PILOT-001_VERIFICATION.md reproducing 664/0/1 + clippy + fmt and confirming every P-00x disposition + both FIXED doc edits -> ACCEPT (iter ~159) + NODE_TRANSITION to LORA-001/SAT-001."
 # IOS-001 pipeline comment follows:
 # WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "PILOT-001 TEST COMPLETE (iter ~156, evidence 5): SIM-001 sim pre-validation of B-1..B-4 (NCT-of-N N=20/50/100 Wilson lo 0.929/0.963 >= floor; partition/healing no-dup; 4-leg mule-chain contact-window; iOS limited-relay window asymmetry) + wilson_ci_95 bounds regression. PILOT-001_TEST.md authored. AC-17 live workspace 664/0/1 clippy 0 fmt clean (was 658/0/1, +6 net-new). PROJECT_GRAPH status IMPLEMENTING + evidence(5) + stage_note TEST COMPLETE; PROJECT_STATE health/testing_health refreshed."
-last_progress_at: "2026-08-19T13:50:00Z"
+last_progress_event: "PILOT-001 SECURITY_REVIEW COMPLETE (iter ~157, AC-18, evidence 6): adversarial review of provisioning/decommission/authority-root-DRILL-CA/TEST-only-SOS/relay-cadence/KPI-consent/distribution/incident - verdict PASS-with-fix (2 FIXED + 12 RECORDED + 3 INFO; no CRITICAL/HIGH). FIXED: P-007 DRILL-CA custody + weekly re-verification (runbook 2.4/5), P-013 per-device consent trail (runbook 4 + KPI 4). Positive controls verified in EMERG-001/SEC-001/IDENT-001 code. PILOT-001_SECURITY_REVIEW.md authored. AC-17 held: workspace 664/0/1 clippy 0 fmt clean."
+last_progress_at: "2026-08-19T14:10:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -68,6 +68,25 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T14:10:00Z"
+    iteration: 157
+    node: "PILOT-001"
+    stage: "SECURITY_REVIEW"
+    action: "PILOT-001 SECURITY_REVIEW COMPLETE (iter ~157, evidence 6, AC-18). Adversarial review of ops layer: provisioning (mutual-QR ceremony, verified escalation), decommission (wipe+revoke+rotate), authority-root + DRILL-CA bundle (out-of-band), TEST-only SOS (drill suppression + quota cap-exemption), relay-cadence config, KPI/telemetry consent, distribution custody, incident ownership, diagnostics QR. Verdict PASS-with-fix: 2 FIXED + 12 RECORDED + 3 INFO, no CRITICAL/HIGH requiring code change. FIXED (docs): P-007 (PILOT_RUNBOOK.md 2.4/5 - DRILL-CA private key 2-person custody never on field leaf + weekly authority-root/DRILL-CA re-verification + re-bundle before each exercise leg); P-013 (per-device timestamped opt-in consent trail at provisioning - runbook 4 day-0 item 5 + PILOT_KPI_PLAN.md 4). RECORDED hardening: P-001 SAS entropy to BQP spec, P-002 hardware-attestation deferred, P-003 registry integrity, P-005 revocation-sync check in weekly drift review, P-006 decommission order revoke->retire->wipe, P-008 DRILL CA custody folded into P-007, P-010 drill-SOS cap/device/leg, P-011 relay_cadence clamp (never <0.6x/>3x) at ROUTE-001 seam, P-014 telemetry salt rotation, P-015 sideload contained by DEC-0010 gate, P-016 TestFlight validity pre-drill check, P-017 diagnostics-QR confined to operator devices. Positive controls verified in real code: EMERG-001 drill.rs (SosKind::Test, drill_flag_suppresses, verified_drill_suppressed, drill_mismatch_rejected), SEC-001 EmergencyAcl drill cap-exempt (never consumes real-SOS), IDENT-001 rotate/trust_store earliest-seen-wins + null-rotation revoke + un_revoke healing, DEC-0010 pilot gate. PILOT-001_SECURITY_REVIEW.md authored (pattern BLE_002_SECURITY_REVIEW.md). AC-17 held: cargo test --workspace --all-features 664/0/1 (23 suites; iris-core 573 + iris-ios 11), clippy 0, fmt clean - no Rust code changed this pass. PROJECT_GRAPH PILOT-001 evidence(6) + stage_note SECURITY_REVIEW COMPLETE + meta validation_status refreshed; PROJECT_STATE IMPLEMENTING held + health/testing_health + next_recommended refreshed. NEXT: VERIFY (iter ~158, AC-17/AC-18)."
+    result: "SECURITY_REVIEW_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/PILOT-001_SECURITY_REVIEW.md"
+      - "docs/operations/PILOT_RUNBOOK.md"
+      - "docs/operations/PILOT_KPI_PLAN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+      - "engineering/memory/records/execution-log.md"
+    records_created:
+      - "engineering/memory/records/PILOT-001_SECURITY_REVIEW.md"
   - timestamp: "2026-08-19T13:50:00Z"
     iteration: 156
     node: "PILOT-001"

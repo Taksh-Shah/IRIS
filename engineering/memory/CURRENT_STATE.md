@@ -1,11 +1,38 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T13:50:00Z
+**Last updated**: 2026-08-19T14:10:00Z
 
 ---
 
 ## Summary
+
+**✅ PILOT-001 SECURITY_REVIEW COMPLETE (iter ~157, AC-18) — PASS-with-fix
+(2 FIXED + 12 RECORDED + 3 INFO, no CRITICAL/HIGH):** Adversarial review of the
+ops layer in `PILOT-001_SECURITY_REVIEW.md` (pattern BLE_002_SECURITY_REVIEW.md)
+— provisioning (mutual-QR ceremony, verified escalation), decommission
+(wipe+revoke+rotate), authority-root + DRILL-CA out-of-band bundle, TEST-only
+SOS (drill suppression + quota cap-exemption), relay-cadence config,
+KPI/telemetry consent, distribution custody, incident ownership, diagnostics
+QR. **FIXED (docs):** P-007 — `PILOT_RUNBOOK.md` §2.4/§5 DRILL-CA private key
+under the 2-person custody rule (never on a field leaf) + weekly
+authority-root/DRILL-CA re-verification + re-bundle before each exercise leg;
+P-013 — per-device timestamped opt-in consent trail at provisioning
+(runbook §4 day-0 + `PILOT_KPI_PLAN.md` §4). **RECORDED hardening:** P-001 SAS
+entropy → BQP spec, P-002 hardware attestation deferred, P-005 revocation-sync
+check in weekly drift review, P-006 decommission order revoke→retire→wipe,
+P-010 drill-SOS cap/device/leg, P-011 relay_cadence clamp, P-014 telemetry salt
+rotation, P-015 sideload contained by the DEC-0010 identity gate, P-016
+TestFlight validity pre-drill, P-017 diagnostics-QR confined. **Positive
+controls verified in real code:** EMERG-001 `drill.rs` (`SosKind::Test`,
+`drill_flag_suppresses`, `verified_drill_suppressed`, `drill_mismatch_rejected`),
+SEC-001 EmergencyAcl drill cap-exempt (drills never consume real-SOS), IDENT-001
+rotate/trust_store (earliest-seen-wins + null-rotation revoke), DEC-0010 pilot
+gate. **AC-17 held: workspace 664/0/1, clippy 0, fmt clean** (no Rust changes
+this pass). PROJECT_GRAPH PILOT-001 IMPLEMENTING + evidence(6) + stage_note
+SECURITY_REVIEW COMPLETE. **NEXT: VERIFY (iter ~158) → ACCEPT (iter ~159).**
+
+### Previous
 
 **✅ PILOT-001 TEST COMPLETE (iter ~156, SIM-001 B-1..B-4 pre-validation,
 AC-7..AC-10 + AC-17):**  Battery pre-validated on the SIM-001 harness in
@@ -22,10 +49,7 @@ BLK-0005-gated → pilot field legs. `wilson_ci_95` KPI helper + bounds
 regression landed in `sim/metrics.rs`. `PILOT-001_TEST.md` evidence map authored
 (pattern BLE-002_TEST.md). **AC-17 live: workspace 664/0/1** (was 658/0/1;
 iris-core lib 573 + iris-ios 11), clippy 0, fmt clean. PROJECT_GRAPH PILOT-001
-IMPLEMENTING + evidence(5) + stage_note TEST COMPLETE. **NEXT: SECURITY_REVIEW
-(iter ~157, AC-18) → VERIFY → ACCEPT.**
-
-### Previous
+evidence(5) + stage_note TEST COMPLETE.
 
 **✅ PILOT-001 IMPLEMENT COMPLETE (iter ~155, ops deliverables AC-1..AC-16,
 docs-only) — TEST next (iter ~156, SIM-001 B-1..B-4 pre-validation):**

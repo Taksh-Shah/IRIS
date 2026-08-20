@@ -69,7 +69,9 @@ off-by-default (local only v1 — OBS_VERIFICATION.md).
 
 ## 4. Consent / privacy
 
-- Opt-in consent slide in the M1 briefing; opt-out reversible per device.
+- Opt-in consent slide in the M1 briefing; **per-device opt-in captured at
+  provisioning with a timestamped node-registry record** (revertible opt-out at
+  any time) — DPDPA-visible consent trail per §4 (SECURITY_REVIEW P-013).
 - Telemetry definitions per TELEMETRY.md (allow-list attrs, HMAC-salted
   hashes, 8-byte ID truncation).
 - DPDPA posture: DPDPA Rules 2025 §4(1)(b)/§6(1) privacy-by-design —
