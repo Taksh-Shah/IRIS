@@ -119,7 +119,7 @@ Where P_init = 0.75, β = 0.25 (IRIS defaults, configurable).
 
 ### 4.1 LoRa Duty Cycle
 
-**REQ-ROUTE-C-001:** LoRa transmissions MUST comply with India WPC regulations at 865–867 MHz, maximum 1% duty cycle. The LoRa transport adapter MUST track airtime usage and refuse transmission requests from the routing engine when the duty cycle budget is exhausted.
+**REQ-ROUTE-C-001:** LoRa transmissions MUST comply with India WPC regulations at 865–868 MHz (G.S.R. 853(E) 2021 SRD band, ≤25 mW e.r.p. ≈ 14 dBm), maximum 1% duty cycle (36 s per device per hour). The LoRa transport adapter MUST track airtime usage and refuse transmission requests from the routing engine when the duty cycle budget is exhausted.
 
 **REQ-ROUTE-C-002:** LoRa airtime budget MUST be allocated proportionally by priority when contention exists. P0 receives 60% of available airtime, P1 receives 25%, P2 receives 10%, P3–P7 share 5%.
 

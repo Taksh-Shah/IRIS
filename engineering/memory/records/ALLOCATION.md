@@ -1,13 +1,13 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-19T13:30:00Z (PILOT-001 IMPLEMENT COMPLETE iter ~155 — 5 ops docs + relay-cadence seam + EXTERNAL-FACTS doc edits; TEST iter ~156 next)
+**Last updated**: 2026-08-19T15:45:00Z (LORA-001 RESEARCH COMPLETE iter ~161, RES-0027; DESIGN iter ~162 next)
 
 ## Next Available IDs
 
 | Type | Prefix | Next ID | Last Allocated |
 |------|--------|---------|---------------|
 | Decision | DEC- | DEC-0011 | DEC-0010 |
-| Research | RES- | RES-0027 | RES-0026 |
+| Research | RES- | RES-0028 | RES-0027 |
 | Redteam | RED- | RED-0003 | RED-0002 |
 | Experiment | EXP- | EXP-0001 | — |
 | Failure | FAIL- | FAIL-0006 | FAIL-0005 |
@@ -131,6 +131,8 @@
   relay-cadence rule, test battery, ProvisioningFlow, trust model, KPI plan,
   exercise schedule, distribution runbook, REG-NOTES) + external-facts
   reconciliation + gaps G-P1..G-P9. DESIGN iter ~154.
+
+- RES-0027: LORA-001 LoRa transport SOTA — allocated iter ~161 (RESEARCH COMPLETE 2026-08-19); websearch + primary-source passes (WPC G.S.R. 853(E) 2021 Table-I 865-868 25 mW e.r.p./1% duty L1-confirmed via thc.nic.in/G25977.pdf; LoRaWAN IN865 30 dBm = network-plan only; AN1200.13 sensitivity; BLE-GATT/USB-SLIP bridge; DutyCycleTracker; Meshtastic override NOT followed); verdict PROCEED; DESIGN inputs D-1..D-7 -> LORA_001_DESIGN.md (iter ~162).
 
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)

@@ -1,4 +1,100 @@
 
+## [0.3.61] - 2026-08-19 - RESEARCH
+
+**LORA-001 RESEARCH COMPLETE (iter ~161, RES-0027 PROCEED) - RQ-1..RQ-6
+resolved ADOPT/ADOPT-WITH-CONDITION; DESIGN next (iter ~162, AC-1..n).
+Read-only pass; baseline 664/0/1, clippy 0, fmt clean held.**
+- **REGULATORY (RQ-1)**: WPC G.S.R. 853(E) 2021 (10 Dec 2021 Gazette,
+  thc.nic.in/G25977.pdf) Table-I Non-Specific SRD **865-868 MHz / 25 mW e.r.p.
+  (≈14 dBm) / 1% duty (36 s/h device/hour)** L1-confirmed. **LORA.md "1W (30
+  dBm)" RESOLVED** = LoRaWAN IN865 network-plan uplink only (TTN/Semtech RP002:
+  865.0625-867.1375, 8 ch, 30 dBm EIRP, 1% duty) - IRIS raw-LoRa P2P governed by
+  Table-I; FIELD_OPERATIONS 866.0 MHz ≤25 mW CONFIRMED stands; WPC-ETA per-SKU
+  deferred as LEGAL-001 carry.
+- **DUTY (RQ-2)**: DutyCycleTracker rolling 1-h window 36,000 ms budget,
+  `check_and_consume` → R7 `next_send_window`; priority-proportional airtime
+  60/25/10/5; P0-switch-on-exhausted; **no runtime override** (Meshtastic
+  `override_duty_cycle_limit` NOT followed); global per-device budget.
+- **RADIO (RQ-3)**: SF9/BW125/CR4/5 default + SF12-P0 (sensitivity -129/-136
+  dBm BW125, AN1200.13/SX1276 whitepaper); 255-B cap + 5×51 B fragmentation;
+  raw-LoRa P2P v1 reaffirmed (LoRaWAN IN865 = future alternate uplink only).
+- **BRIDGE (RQ-4)**: BLE GATT primary (LORA_TX/RX/STATUS, 255-B ATT ≤512) +
+  USB-SLIP alt; Waveshare SX1262 HAT 868M (→866.0 MHz config) + EBYTE
+  E22-900M30S; `LoRaLinkAdapter` abstracts AT-vs-SPI.
+- **INTEGRATION (RQ-5)**: TransportAdapter impl (255 B / ≈14 B/s /
+  duty_cycle_remaining), Caps SubGHz, register/deregister, multipath dedup +
+  fragmentation + relay-cadence D-2 seam + OBS-001 `iris.transport.lora.*`.
+- **SIM (RQ-6)**: SimulatedLoRaTransport params + AN1200.13/Okumura-Hata +
+  EXP-LORA-001 calibration; SIMULATION_VALIDATED only (BLK-0005/GAP-004).
+- **META**: ALLOCATION.md **repaired** (1989-line corruption from prior append
+  loop → restored from git HEAD + RES-0027 registered, next RES-0028);
+  PROJECT_GRAPH LORA-001 DISCOVERED → RESEARCH_COMPLETE (evidence 1→2);
+  PROJECT_STATE research_complete 1→2, discovered 2→1.
+
+## [0.3.60] - 2026-08-19 - NODE
+
+**LORA-001 UNDERSTAND COMPLETE (iter ~160, P2 TRANSPORT, requires_hardware) —
+C2 gap CONFIRMED; RQ-1..RQ-6 staged for RESEARCH (RES-0027). Read-only pass;
+baseline 664/0/1, clippy 0, fmt clean held.**
+- **UNDERSTAND (iter ~160)**: `LORA-001_DISCOVER.md` authored (pattern BLE-002/
+  IOS-001_DISCOVER) — node def (P2 TRANSPORT, dep TRANSPORT-001 COMPLETE,
+  requires_hardware true, DISCOVERED); C2 gap CONFIRMED (no ACs → DESIGN
+  resolves AC-1..n). Reference surface: LORA.md (CSS/WPC 865-868 1% duty/
+  SF-BW-CR/raw-vs-LoRaWAN/SX1262/BLE-GATT+USB-SLIP/DutyCycleTracker/
+  SimulatedLoRaTransport) + TRANSPORT_ABSTRACTION row + RES-0003/0008/0018/0026
+  + ROUTING_REQUIREMENTS C-001..003 + FIELD_OPERATIONS (866.0 MHz ≤25 mW e.r.p.
+  CONFIRMED) + P0-envelope (237 B V001 ≤255 B, 84 B ceiling) + PILOT-001
+  relay-cadence seam + GAP-004. Scope: BLE GATT bridge (LORA_TX/RX/STATUS) +
+  USB SLIP alt, phone-as-gateway, SF9 default/SF12-P0, per-class floor P0
+  60B..P3 150B / P4+ never, 1% duty 36 s/h no-P0-override, envelope-layer ENC,
+  WPC compliance. RQ-1..RQ-6 staged for RESEARCH (RES-0027).
+- **STAGE_TRANSITION → LORA-001 RESEARCH (iter ~161)**: RES-0027 RQ-1..RQ-6 →
+  DESIGN (LORA_001_DESIGN.md AC-1..n) → IMPLEMENT → TEST → SECURITY_REVIEW →
+  VERIFY → ACCEPT → SAT-001.
+- **NEXT: LORA-001 RESEARCH (iter ~161) → SAT-001 → mission milestones
+  (MVP/Alpha/Beta/Pilot).**
+
+## [0.3.59] - 2026-08-19 - NODE
+
+**PILOT-001 ACCEPTED (iter ~159, P2 OPERATIONS) — first OPERATIONS node
+COMPLETE: independent verifier APPROVE; workspace 664/0/1, clippy 0, fmt clean.
+29 COMPLETE nodes. NODE_TRANSITION -> LORA-001 (P2 TRANSPORT,
+requires_hardware).**
+- **DISCOVER (iter ~152)**: `PILOT-001_DISCOVER.md` — C2 gap CONFIRMED; scope
+  (NGO + campus 100+ devices; NDRF 12th Bn Gandhinagar 50-device/3-month MoU +
+  B2B 5-device POC); RQ-1..RQ-6; known_limitations(7) incl GAP-004 LoRa
+  excluded.
+- **RESEARCH (iter ~153)**: `RES-0026` verdict PROCEED — managed-flood
+  >100-node + congestionScalingCoefficient; Briar/SecureJoin QR bootstrap;
+  NDMA DMEx 4-phase; WPC G.S.R. 853(E) 2021 = 865-868 SRD 25 mW e.r.p./≤1% duty
+  supersedes 865-867; Play internal track + TestFlight 90-day; EMERG-001 drill =
+  NDMA ME standard.
+- **DESIGN (iter ~154)**: `PILOT_001_DESIGN.md` v1.0 — C2 gap RESOLVED via
+  AC-1..AC-18; D-1..D-9 (topology/relay-cadence scaling/test-battery
+  B-1..B-4/ProvisioningFlow/trust/KPI-Wilson-CI/NDMA-DMEx/distribution/
+  REG-NOTES); DEC-PILOT-0001..0009 ratified.
+- **IMPLEMENT (iter ~155)**: ops docs AC-1..AC-16 — `PILOT_RUNBOOK.md`,
+  `PILOT_KPI_PLAN.md`, `PILOT_EXERCISE.md`, `PILOT_DISTRIBUTION.md`,
+  `REG_NOTES.md` + relay-cadence rule at CONGESTION_CONTROL.md seam +
+  EXTERNAL-FACTS reconciliation (AC-6/AC-16).
+- **TEST (iter ~156)**: SIM-001 sim pre-validation B-1..B-4 (AC-7..AC-10) —
+  NCT-of-N N=20/50/100 all-N Wilson lo 0.929/0.963; partition/healing no-dup;
+  4-leg mule-chain contact-window; iOS limited-relay window asymmetry +
+  `wilson_ci_95` helper. Baseline **658 → 664/0/1**.
+- **SECURITY_REVIEW (iter ~157, AC-18)**: PASS-with-fix — 2 FIXED (P-007
+  DRILL-CA 2-person custody + weekly re-verification; P-013 per-device consent
+  trail) + 12 RECORDED + 3 INFO, no CRITICAL/HIGH; positive controls verified in
+  EMERG-001/SEC-001/IDENT-001 real code.
+- **VERIFY (iter ~158, AC-1..AC-18)**: `PILOT-001_VERIFICATION.md` evidence
+  table + independent verifier **APPROVE** — live reproduction **664/0/1** at
+  HEAD 748eaec, clippy 0, fmt clean; all AC-cited tests + all 17 P-00x
+  dispositions re-located. No code changes.
+- **ACCEPT (iter ~159)**: PROJECT_GRAPH PILOT-001 → **COMPLETE**, evidence(7);
+  PROJECT_STATE completed 28 → **29**, implementing 1 → 0. First OPERATIONS node
+  done.
+- **NEXT: NODE_TRANSITION → LORA-001 (P2 TRANSPORT, requires_hardware,
+  UNDERSTAND iter ~160) → SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).**
+
 ## [0.3.58] - 2026-08-19 - NODE
 
 **IOS-001 ACCEPTED (iter ~151, P0 PLATFORM) — full pipeline COMPLETE:

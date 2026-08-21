@@ -42,11 +42,19 @@ India's Wireless Planning and Coordination (WPC) wing under DoT has designated:
 
 | Band | Frequency | Status | Max EIRP |
 |------|-----------|--------|----------|
-| SRD (Short Range Device) | 865–868 MHz (2021 Gazette) | License-exempt | 1W (30 dBm) |
+| SRD (Short Range Device) | 865–868 MHz (2021 Gazette) | License-exempt | 25 mW e.r.p. (≈14 dBm), 1% duty (36 s/h) |
 | SRD | 915 MHz | NOT license-exempt in India | — |
 | SRD | 433 MHz | License-exempt, lower power | 10 mW |
 
-**⚠️ Frequency revalidation required:** The 2021 WPC Gazette updated the band to 865–868 MHz.
+**⚠️ Power note (RES-0027 iter ~161):** WPC **G.S.R. 853(E) 2021** (10 Dec 2021
+Gazette) Table-I Non-Specific SRD limits device-level emission to **25 mW e.r.p.
+(≈14 dBm)** at ≤1% duty (36 s per device per hour). The earlier "1W (30 dBm)"
+figure is the **LoRaWAN IN865 network-plan uplink parameter** (865.0625–
+867.1375 MHz, 30 dBm EIRP, 1% duty) — a network-deployment figure, **not** a
+device-level license-exempt limit. IRIS uses raw LoRa peer-to-peer, so all
+devices MUST operate at **≤25 mW e.r.p. (≈14 dBm)** with the duty tracker
+enforcing ≤1% per hour (see Duty Cycle section). The 2021 Gazette also updated
+the band to 865–868 MHz.
 The older 865–867 MHz figure appears in pre-2021 documents and some secondary sources.
 IRIS hardware and documentation must be validated against the current Gazette before production.
 All IRIS LoRa hardware must be configured for this India-specific band (not 915 MHz, not 868 MHz EU).

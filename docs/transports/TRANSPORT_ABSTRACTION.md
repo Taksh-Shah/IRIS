@@ -21,7 +21,7 @@ The Transport Abstraction Layer is the foundational infrastructure of the IRIS R
 | **iOS Background**        | Partial        | N/A              | Yes (iOS 26+)    | Yes              | N/A              | Yes              | N/A              | Limited          | N/A              |
 | **Special Hardware**      | None           | None             | None             | None             | NIC + cable      | SIM              | LoRa module      | Terminal/dish    | Cable            |
 | **Cost Per Message**      | ₹0             | ₹0               | ₹0               | ₹0               | ₹0               | ₹0–₹0.01         | ₹0               | ₹0.05–₹5        | ₹0               |
-| **Regulatory**            | ISM (free)     | ISM (free)       | ISM (free)       | ISM/licensed     | None             | Licensed         | WPC 865–867 MHz  | DoT license      | None             |
+| **Regulatory**            | ISM (free)     | ISM (free)       | ISM (free)       | ISM/licensed     | None             | Licensed         | WPC 865–868 MHz SRD (G.S.R. 853(E) 2021), 25 mW e.r.p., ≤1% duty | DoT license      | None             |
 | **Best Priority Tier**    | P0–P5          | P0–P3 (files)   | P0–P4            | P0–P7            | P0–P7            | P0–P3            | P0–P2            | P0–P1 only       | P0–P2 (emergency)|
 
 ---

@@ -1,7 +1,7 @@
 # DECISIONS.md — Active Decision Log
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T13:15:00Z
+**Last updated**: 2026-08-19T16:10:00Z
 
 ---
 
@@ -931,3 +931,71 @@ Evidence: [Link to research/record]
 **Alternatives**: proceed without REG-NOTES (rejected — undocumented legal surface); research legal opinion (rejected — outside research scope, LEGAL-001 gate).
 **Consequence**: AC-14/AC-16; REG_NOTES.md; docs/legal corrections at DOCUMENT.
 **Evidence**: RES-0026 RQ-4; thc.nic.in G.S.R. 853(E) copy + egazette 231828.pdf (L1); TEC ER Annexures Dec-2024 (L1)
+
+### DEC-LORA-0001: Field config + compliance — 866.0 MHz, ≤25 mW e.r.p. (≈14 dBm), ≤1% duty (36 s/h per device) per WPC G.S.R. 853(E) 2021 Table-I, as a ComplianceConfig
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: IRIS raw-LoRa peer-to-peer field config pinned to **866.0 MHz, ≤25 mW e.r.p. (≈14 dBm), ≤1% duty (36 s per device per hour)** per **WPC G.S.R. 853(E) 2021** (10-Dec-2021 gazette, supersedes 2005 RFID 865-867 rules) Table-I Non-Specific SRD (865-868 MHz, EN 300 220). Codified as a `ComplianceConfig { freq_hz: 866_000_000, max_erp_dbm: 14, duty_percent: 1.0, window_ms: 3_600_000, airtime_budget_ms: 36_000 }` consumed by `DutyCycleTracker`; airtime counts the **whole transmission** (packet on-air at SF/BW/CR), not just payload bytes. The legacy "1W (30 dBm)" figure = **LoRaWAN IN865 network-plan uplink** only (REG-NOTES carry); WPC-ETA per-SKU + TEC ER Annexure-G5 band-lag reconciliation = LEGAL-001 carry (hardware procurement gate). FC-1..FC-4 external-fact corrections already applied to docs (iter ~161).
+**Context**: RES-0027 RQ-1/D-7; thc.nic.in/G25977.pdf (L1); LORA.md/TRANSPORT_ABSTRACTION/ROUTING_REQUIREMENTS/FIELD_OPERATIONS corrections; REG-NOTES.
+**Alternatives**: 30 dBm device power (rejected — LoRaWAN network-plan figure, not license-exempt device limit); 915 MHz (rejected — not license-exempt in India); no ComplianceConfig (rejected — legal floor untestable); runtime override (rejected — DEC-LORA-0002).
+**Consequence**: AC-1/AC-2/AC-7/AC-14; DutyCycleTracker + LORA_001_DESIGN.md §2.1.
+**Evidence**: RES-0027 §2 f.1-3 (L1); thc.nic.in G25977.pdf; egazette 231828.pdf (L1)
+
+### DEC-LORA-0002: DutyCycleTracker = rolling 1-h window, 36,000 ms budget, check_and_consume → next_send_window (RES-0008 R7); no runtime override
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: `DutyCycleTracker` enforces the Table-I 1% floor with a **rolling (sliding) 1-hour window** and a **36,000 ms airtime budget**. `check_and_consume(class, airtime_ms) -> Result<NextWindow, BudgetExhausted>` returns the **next legal send time** (`next_send_window`) per **RES-0008 R7** — the router/transport schedules around the window, never panics the caller (RFC 9171 §6.9 rate-limiter analogy). Budget is **global per-device** across all 865-868 TX. **No runtime override exists** — no config key, no debug switch: the Meshtastic `override_duty_cycle_limit` pattern is deliberately NOT followed (L4 discussion #3725 — a debug backdoor that defeats the regulatory constraint).
+**Context**: RES-0027 RQ-2/D-2; RES-0008 R7; REQ-ROUTE-C-001; RFC 9171 §6.9; meshtastic #3725 (L4).
+**Alternatives**: fixed-slot window (rejected — poor for bursty DTN, no self-healing); fail-hard drop (rejected — routing must schedule, R7); operator override switch (rejected — defeats legal floor, DEC-LORA-0001).
+**Consequence**: AC-2/AC-3/AC-4; DutyCycleTracker unit tests (exceed 36 s/h → refused + correct window).
+**Evidence**: RES-0027 §3 f.1-6; RES-0008 R7; meshtastic #3725 (L4)
+
+### DEC-LORA-0003: Priority-proportional airtime 60/25/10/5 under contention (REQ-ROUTE-C-002); P0-switch to next-best transport on exhaustion
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: When the LoRa airtime budget is contended, `DutyCycleTracker` allocates airtime **proportionally by priority** per **REQ-ROUTE-C-002**: P0 60% / P1 25% / P2 10% / P3-P7 share 5%. On budget exhaustion the routing layer executes **P0-switch**: the P0 message goes to the next-best available transport (BLE/Wi-Fi/Cellular/Satellite) — P0 is **never held or dropped** and **never overrides** the duty budget. recovery: budget recovers ≈1% per 100 s of silence; backlog drains in priority order (REQ-ROUTE-C-003).
+**Context**: RES-0027 RQ-2/D-2; REQ-ROUTE-C-001..003; P0-envelope discipline (DISC-0008).
+**Alternatives**: hold P0 indefinitely for LoRa budget (rejected — SOS latency); bypass duty for P0 (rejected — WPC violation, DEC-LORA-0002).
+**Consequence**: AC-3/AC-4/AC-5; BacklogQueue seam + P0-switch seam.
+**Evidence**: RES-0027 §3 f.2-3; ROUTING_REQUIREMENTS REQ-ROUTE-C-002/003
+
+### DEC-LORA-0004: Radio params — default SF9/BW125/CR4/5, P0 SF12 (+7 dB); 255-B cap; 5×51 B fragmentation reuse; BW500 gateway note only
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: Default link **`RadioProfile { sf: 9, bandwidth_khz: 125, coding_rate: 5, freq_hz: 866_000_000 }`**; **P0 uses SF12** (−136 dBm vs −129 dBm at SF9 BW125, AN1200.13) → ≈+7 dB P0 link-budget gain at ~4× airtime (acceptable: P0 is rare + P0-switch protects it). **255-B cap** (`max_message_size_bytes=255`, P0_MAX_ENVELOPE_BYTES V001=237≤255 fits); messages >255 B reuse the **existing 5×51 B fragmentation** (RES-0003) — no new fragment code. Airtime = pure fn per-SF/BW/CR table (Semtech formula, ifTNT/lora-air-time cross-check), budget-bound at 36 s/h; **BW500** (≈4× shorter airtime, ~6 dB sensitivity cost) documented as a gateway-side option, **not** a v1 default.
+**Context**: RES-0027 RQ-3/D-4; Semtech AN1200.13 + SX1276 datasheet Rev 7 (L1); ifTNT/lora-air-time (L4); RES-0003.
+**Alternatives**: SF7 default (rejected — range); BW500 default (rejected — sensitivity + channel slots); LoRaWAN v1 (rejected — network keys/join ceremony, DEC-LORA-0006).
+**Consequence**: AC-7/AC-9; RadioProfile + airtime table + budget math tests.
+**Evidence**: RES-0027 §4 f.1-5; AN1200.13; SX1276 datasheet
+### DEC-LORA-0005: Bridge — BLE GATT primary (LORA_TX/RX/STATUS, ≤255-B ATT ≤512-B MTU) + USB-SLIP alt (CDC-ACM, RFC 1055); LoRaLinkAdapter AT-vs-SPI seam
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: Phone/RPi gateway talks to the external LoRa module over **BLE GATT primary** — three characteristics **LORA_TX** (Write, ≤255-B ATT value ≤512-B negotiated MTU, single write no GATT fragmentation), **LORA_RX** (Notify), **LORA_STATUS** (Read/Notify — RSSI/SNR/duty-remaining/battery) — plus **USB-SLIP alternative** (CDC-ACM + RFC 1055 SLIP framing `frame.encode_slip()` for RPi/desktop gateways). Shared `LoRaFrame` encode/decode + status telemetry for OBS-001 `iris.transport.lora.*`. **`LoRaLinkAdapter` trait** (`open/close/tx/rx/status`) abstracts **AT-serial (EBYTE E22-900M30S)** vs **SPI-native (Waveshare SX1262 HAT)** firmware — the BleAdapter-seam lesson; Rust core never depends on a module-family API. Hardware candidates run at ≤14 dBm (M30S is a 30 dBm-variant module — cap the config).
+**Context**: RES-0027 RQ-4/D-3; RES-0019/BLE-001 Bridge patterns; RFC 1055 (L1); Waveshare SX1262 HAT + EBYTE E22-900M30S datasheets (L1); FIELD_OPERATIONS.
+**Alternatives**: module-family-specific API (rejected — E22 AT vs HAT SPI split); USB only (rejected — phone-primary needs BLE), raw serial UART (rejected — no LE on phone).
+**Consequence**: AC-6/AC-8/AC-13; simulated conformance + adapter shapes (BLK-0005 gate).
+**Evidence**: RES-0027 §5 f.1-5; RFC 1055; Waveshare/EBYTE (L1)
+### DEC-LORA-0006: Raw-LoRa P2P for v1; LoRaWAN/IN865 = future alternate uplink only (network-plan figure, not device power headroom)
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: v1 uses **raw LoRa peer-to-peer** (direct P2P over the IRIS protocol, no LoRaWAN stack/keys/join ceremony). **LoRaWAN/IN865** (RP002/TTN: 865.0625-867.1375 MHz, 8 ch, 30 dBm EIRP, 1% duty) is documented as a **future alternate uplink only** — a network-planning figure that is **never** assumed as device power headroom; the 30 dBm value does not alter DEC-LORA-0001's ≤25 mW e.r.p. device cap. `LoRaMode { Raw | LoRaWAN }` seam retained for the future path.
+**Context**: RES-0027 RQ-1/RQ-3/D-4; Semtech RP002 / TTN Regional Parameters (L1); LORA.md §Raw LoRa vs LoRaWAN.
+**Alternatives**: LoRaWAN v1 (rejected — gateway infra + keys + join ceremony; conflicts with offline-first); treat 30 dBm as device power (rejected — WPC violation, DEC-LORA-0001).
+**Consequence**: AC-1/AC-7/AC-17; design doc Scope + §8 risk; future alternate uplink documented.
+**Evidence**: RES-0027 §4 f.4; RP002/TTN (L1)
+### DEC-LORA-0007: Sim fidelity — SimulatedLoRaTransport + SimLinkBudget (AN1200.13 + Okumura-Hata urban), EXP-LORA-001 calibration hooks; SIMULATION_VALIDATED only
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: `SimulatedLoRaTransport::new(SimLoRaConfig { sf, bandwidth, range_km, packet_loss_rate, duty_cycle_enforced, propagation_delay_ms })` + `SimLinkBudget` link-budget model = **AN1200.13 receive sensitivity (−129/−136 dBm)** + **Okumura-Hata urban** path-loss (fc 150-1500 MHz, 866 valid; city-size + suburban corrections) to derive range→SNR→PDR curves instead of a flat loss rate. **EXP-LORA-001** calibration hooks (RPi4 + SX1262 RYLR890-class, RSSI/SNR/PDR sweep 200 m–2 km suburban Mumbai, Month 8) feed measured parameters back via a parameter-override file. **All LoRa test evidence is tagged SIMULATION_VALIDATED only** (BLK-0005/GAP-004) — the sim is an input to DESIGN/test, never evidence of field performance.
+**Context**: RES-0027 RQ-6/D-6; Semtech AN1200.13/SX1276 (L1); Okumura-Hata (L2); FIELD_OPERATIONS EXP-LORA-001.
+**Alternatives**: flat packet-loss sim (rejected — no distance-vs-reliability physics); claim FIELD_VALIDATED (rejected — no hardware yet, BLK-0005).
+**Consequence**: AC-12/AC-15; simulated adapter + link-budget tests + calibration file.
+**Evidence**: RES-0027 §7 f.1-4; AN1200.13; FIELD_OPERATIONS EXP-LORA-001
+### DEC-LORA-0008: No crypto changes — envelope X25519+ChaCha20-Poly1305 transported unchanged; duty tracker is the LoRa convergence-layer rate limit
+**Status**: APPROVED 2026-08-19 (LORA-001 DESIGN)
+**Node**: LORA-001
+**Summary**: LoRa carries the **same envelope format** as BLE/Wi-Fi (CRYPTO-001 X25519 per-message + ChaCha20-Poly1305) — **no new keys/rotations, no crypto code**. **P0-never-encrypted** policy (FIELD_OPERATIONS) is a routing-level rule, preserved above the transport. The **duty tracker is the LoRa convergence-layer rate limit** (RFC 9171 §6.9 analogy) and a flood-defense control (RES-0018) — trust anchor remains the app-layer AEAD; no dependency on LoRa link-layer security. Adversarial posture: circumvented duty enforcement is the primary LoRa-specific risk; the tracker has no override (DEC-LORA-0002).
+**Context**: RES-0027 RQ-5/D-5; CRYPTO-001; FIELD_OPERATIONS; RFC 9171 §6.9; RES-0018.
+**Alternatives**: LoRa-specific crypto key hierarchy (rejected — unnecessary, envelope is transport-agnostic); P0 encryption on LoRa (rejected — routing-level rule unchanged).
+**Consequence**: AC-11/AC-16; no crypto diffs; redteam focus = duty bypass.
+**Evidence**: RES-0027 §6 f.5; CRYPTO-001 (L1 project)

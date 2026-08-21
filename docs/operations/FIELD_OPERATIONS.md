@@ -61,12 +61,18 @@ TEAM LEAD SIGN-OFF: ____________  DATE: ____________
 |---|---|
 | Compute | Raspberry Pi 4 Model B, 8 GB RAM |
 | Storage | 64 GB microSD (Class 10, A2) or 256 GB USB SSD |
-| LoRa module | Waveshare SX1262 LoRa HAT or EBYTE E22-900M30S |
+| LoRa module | Waveshare SX1262 LoRa HAT (868M variant, configured to 866.0 MHz — see note) or EBYTE E22-900M30S (UART/AT) |
 | BLE/Wi-Fi | Built-in on RPi 4 (Broadcom BCM43455) |
 | Battery | LiFePO4, 20 Ah, 12.8V nominal (Lithium Iron Phosphate — safe for field use) |
 | Solar | 40W monocrystalline panel with MPPT charge controller |
 | Case | IP67 ABS enclosure, 300×200×130 mm |
 | Antenna (LoRa) | 3 dBi omni-directional, 866 MHz, N-connector |
+
+> **LoRa HAT note (RES-0027 iter ~161):** The Waveshare SX1262 LoRa HAT ships
+> 868M / 915M variants; IRIS uses the **868M variant programmed to 866.0 MHz**.
+> Both supported modules expose a UART/AT command surface (the `LoRaLinkAdapter`
+> seam abstracts AT-serial vs SPI-native firmware). Device TX must stay
+> **≤25 mW e.r.p. (14 dBm)** and ≤1% duty (WPC G.S.R. 853(E) 2021 Table-I).
 | Antenna (BLE/WiFi) | Internal (RPi built-in) |
 
 ### 3.2 Antenna Placement
@@ -191,7 +197,7 @@ iris-cli radio compliance-check
 Output:
 ```
 Radio Compliance Check
-  Frequency:    866.0 MHz      ✓ (within 865-867 MHz)
+  Frequency:    866.0 MHz      ✓ (within 865-868 MHz, WPC G.S.R. 853(E) 2021)
   TX power:     14 dBm         ✓ (≤ 14 dBm)
   Antenna gain: 2 dBi          ✓ (EIRP = 16 dBm = 40 mW ≤ 25 mW net... WARN)
 ```

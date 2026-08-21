@@ -1,11 +1,127 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T14:10:00Z
+**Last updated**: 2026-08-19T16:30:00Z
 
 ---
 
 ## Summary
+
+**✅ LORA-001 DESIGN COMPLETE (iter ~162, `LORA_001_DESIGN.md` v1.0, AC-1..17) —
+IMPLEMENT next (iter ~163).**
+Docs-only pass; baseline **664/0/1 clippy 0 fmt clean held**.
+`LORA_001_DESIGN.md` v1.0 authored (346 lines, pattern BLE_002_DESIGN.md,
+absorbs RES-0027 verdict PROCEED + D-1..D-7 + gaps G-1..G-5): **C2 gap
+RESOLVED via AC-1..17.** **AC-1..AC-13** Rust core — `LoRaTransport`
+(TransportAdapter impl, Caps SubGHz, 255 B / ≈14 B/s / duty_cycle_remaining),
+`DutyCycleTracker` (rolling 1-h 36,000 ms, `check_and_consume` →
+`next_send_window` R7, 60/25/10/5, P0-switch, **no runtime override**),
+`ComplianceConfig` (866.0 / ≤25 mW / 1% WPC G.S.R. 853(E) 2021 Table-I),
+`LoRaFrame`+SLIP, `RadioProfile` SF9/BW125/CR4/5 + SF12-P0 + airtime pure fn,
+`BacklogQueue` (REQ-ROUTE-C-003), `SimulatedLoRaTransport`+`SimLinkBudget`
+(AN1200.13 + Okumura-Hata), `LoRaLinkAdapter` AT-vs-SPI seam + conformance
+adapter, OBS-001 metrics + dedup + relay-cadence reuse. **AC-14** bridge contract
+BLE GATT (LORA_TX/RX/STATUS ≤255-B ATT) + USB-SLIP alt. **AC-15** workspace
+green + clippy 0 + 664/0/1 held. **AC-16** SIMULATION_VALIDATED only
+(BLK-0005/GAP-004). **AC-17** SECURITY_REVIEW pending. **DEC-LORA-0001..0008
+ratified**; FC-1..FC-4 verified applied. PROJECT_GRAPH LORA-001
+RESEARCH_COMPLETE → **DESIGNING** (AC-1..17, evidence 3); PROJECT_STATE
+research_complete 2→1, designing 0→1. **STAGE_TRANSITION → LORA-001 IMPLEMENT
+(iter ~163) → SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).**
+
+### Previous
+
+**✅ LORA-001 RESEARCH COMPLETE (iter ~161, RES-0027 PROCEED) — RQ-1..RQ-6
+resolved ADOPT/ADOPT-WITH-CONDITION; DESIGN next (iter ~162, AC-1..n).**
+Read-only pass; baseline **664/0/1 clippy 0 fmt clean held**.
+`RES-0027.md` authored (pattern RES-0026; websearch + primary-source passes,
+L1-L5, no AI citations): **RQ-1 regulatory ADOPT-WITH-CONDITION** — **WPC
+G.S.R. 853(E) 2021 Table-I (10 Dec 2021, thc.nic.in/G25977.pdf): 865-868 MHz,
+25 mW e.r.p. (≈14 dBm), 1% duty (36 s/h device/hour)** L1-confirmed;
+**LORA.md "1W (30 dBm)" = LoRaWAN IN865 network-plan only** (TTN/Semtech RP002:
+865.0625-867.1375, 8 ch, 30 dBm EIRP) — IRIS raw-LoRa P2P governed by Table-I,
+**FIELD_OPERATIONS 866.0 ≤25 mW CONFIRMED stands**; WPC-ETA per-SKU deferred
+legal carry. **RQ-2 ADOPT** — DutyCycleTracker rolling 1-h 36,000 ms budget +
+R7 `next_send_window` + 60/25/10/5 proportional + P0-switch-on-exhausted, no
+runtime override. **RQ-3 ADOPT** — SF9/BW125/CR4/5 + SF12-P0 (-129/-136 dBm
+AN1200.13), 255-B cap + 5×51 B fragmentation, raw-LoRa-P2P v1 reaffirmed.
+**RQ-4 ADOPT-WITH-CONDITION** — BLE GATT bridge (LORA_TX/RX/STATUS, 255-B ATT)
++ USB-SLIP alt; Waveshare SX1262 HAT (868M→866.0) + E22-900M30S; `LoRaLinkAdapter`
+abstracts AT vs SPI. **RQ-5 ADOPT** — TransportAdapter impl (255 B / ≈14 B/s /
+duty_cycle_remaining), Caps SubGHz, register/deregister, multipath dedup +
+fragmentation + relay-cadence D-2 seam + OBS-001 lora metrics reuse. **RQ-6
+ADOPT-WITH-CONDITION** — sim params + AN1200.13/Okumura-Hata + EXP-LORA-001
+calibration, SIMULATION_VALIDATED only. **DESIGN inputs D-1..D-7**; gaps
+G-1..G-5; external-facts FC-1..FC-4. **ALLOCATION.md repaired** (1989-line
+corruption from prior append loop → restored from git HEAD + RES-0027 registered,
+next RES-0028). PROJECT_GRAPH LORA-001 **DISCOVERED → RESEARCH_COMPLETE**
+(evidence 1→2, stage_note, validation_status); PROJECT_STATE research_complete
+1→2, discovered 2→1. **STAGE_TRANSITION → LORA-001 DESIGN (iter ~162,
+`LORA_001_DESIGN.md` AC-1..n) → SAT-001 → mission milestones
+(MVP/Alpha/Beta/Pilot).**
+
+### Previous
+
+**✅ LORA-001 UNDERSTAND COMPLETE (iter ~160) — C2 gap CONFIRMED; RQ-1..RQ-6
+staged for RESEARCH (RES-0027).** Read-only pass; baseline **664/0/1 clippy 0
+fmt clean held**. `LORA-001_DISCOVER.md` authored (pattern BLE-002/IOS-001_
+DISCOVER): node def (P2 TRANSPORT, dep TRANSPORT-001 COMPLETE, requires_hardware
+true, DISCOVERED); **C2 gap CONFIRMED** (no ACs → DESIGN resolves AC-1..n).
+Reference surface read: `docs/transports/LORA.md` (CSS, WPC 865-868 1% duty,
+SF/BW/CR, raw-vs-LoRaWAN, SX1262, BLE-GATT + USB-SLIP bridge, DutyCycleTracker,
+SimulatedLoRaTransport), TRANSPORT_ABSTRACTION row, RES-0003/0008/0018/0026,
+ROUTING_REQUIREMENTS REQ-ROUTE-C-001..003, FIELD_OPERATIONS (866.0 MHz ≤25 mW
+e.r.p. CONFIRMED), P0-envelope evidence (237 B V001 ≤255 B, 84 B payload
+ceiling), PILOT-001 relay-cadence seam, GAP-004. Scope: BLE GATT bridge
+(LORA_TX/RX/STATUS) + USB SLIP alt, phone-as-gateway, SF9 default/SF12-P0,
+per-class floor P0 60B..P3 150B / P4+ never, 1% duty 36 s/h no-P0-override,
+envelope-layer ENC, WPC compliance. **RQ-1..RQ-6** (regulatory reconciliation
+1W-vs-25 mW; duty-cycle enforcement + R7 coupling; radio params; bridge
+protocol; TRANSPORT-001 integration; sim fidelity vs GAP-004/EXP-LORA-001).
+PROJECT_GRAPH LORA-001 evidence(1) + stage_note UNDERSTAND COMPLETE +
+validation_status refreshed; PROJECT_STATE header/notes/testing_health
+refreshed. **STAGE_TRANSITION → LORA-001 RESEARCH (iter ~161, RES-0027) →
+SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).**
+
+### Previous
+
+**✅ PILOT-001 ACCEPTED COMPLETE (iter ~159) — 29 COMPLETE nodes;
+NODE_TRANSITION → LORA-001:** First OPERATIONS node accepted. PROJECT_GRAPH
+PILOT-001 IMPLEMENTING → **COMPLETE** (evidence 7, stage_note ACCEPTED full
+pipeline DISCOVER ~152 → RESEARCH ~153 (RES-0026 PROCEED) → DESIGN ~154
+(`PILOT_001_DESIGN.md` v1.0, C2 gap RESOLVED via AC-1..AC-18, DEC-PILOT-0001..
+0009) → IMPLEMENT ~155 (ops docs AC-1..AC-16) → TEST ~156 (SIM-001 sim
+pre-validation B-1..B-4, AC-7..AC-10) → SECURITY_REVIEW ~157 (AC-18, 2 FIXED +
+12 RECORDED + 3 INFO, no CRITICAL/HIGH) → VERIFY ~158 (AC-1..AC-18 evidence
+table complete, independent verifier APPROVE at HEAD 748eaec, no findings) →
+**ACCEPT ~159**). AC-1..AC-18 all PASS/GATED (AC-14 PASS, physical-device legs
+BLK-0005 recorded). **AC-17 live: 664/0/1, clippy 0, fmt clean**.
+PROJECT_STATE completed 28 → **29**, implementing 1 → 0. **NODE_TRANSITION →
+LORA-001** (P2 TRANSPORT, `requires_hardware: true`, DISCOVERED) UNDERSTAND next
+(iter ~160) → SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).
+
+### Previous
+
+**✅ PILOT-001 VERIFY COMPLETE (iter ~158, AC-17/AC-18) — independent verifier
+APPROVE, no findings:** `PILOT-001_VERIFICATION.md` authored (pattern
+BLE_002_VERIFICATION.md) — **AC-1..AC-18 evidence table complete**.
+Independent-verifier-style reproduction at HEAD `748eaec`: (1) **all
+AC-cited test names re-grepped in source** — the 5 pilot scenarios
+(`pilot_b1_nct_of_n_delivers_all_with_latency_cdf`,
+`pilot_b1_nct_of_n_scales_to_100`, `pilot_b2_partition_heals_without_duplicates`,
+`pilot_b3_mule_chain_delivers_within_contact_window`,
+`pilot_b4_ios_limited_relay_participates_on_windows`) + `wilson_ci_95` +
+`wilson_ci_95_full_samples_bind` (the KPI helper that replaced the discovery-era
+Wilson guess) all exist in source; (2) **all 17 P-00x dispositions + both FIXED
+doc edits (P-007 DRILL-CA custody runbook §2.4/§5, P-013 consent trail runbook §4
++ KPI plan §4) re-located in records/source**; (3) **AC-17 live THIS pass at
+HEAD**: `cargo test --workspace --all-features` = **664 passed / 0 failed / 1
+ignored**, clippy **0**, fmt clean (no Rust changes in the TEST→VERIFY window).
+No evidence-integrity findings, no code changes. PROJECT_GRAPH PILOT-001
+evidence → **7**, stage_note VERIFY COMPLETE. **NEXT: ACCEPT (iter ~159) →
+NODE_TRANSITION LORA-001/SAT-001 → mission milestones.**
+
+### Previous
 
 **✅ PILOT-001 SECURITY_REVIEW COMPLETE (iter ~157, AC-18) — PASS-with-fix
 (2 FIXED + 12 RECORDED + 3 INFO, no CRITICAL/HIGH):** Adversarial review of the
@@ -31,8 +147,6 @@ rotate/trust_store (earliest-seen-wins + null-rotation revoke), DEC-0010 pilot
 gate. **AC-17 held: workspace 664/0/1, clippy 0, fmt clean** (no Rust changes
 this pass). PROJECT_GRAPH PILOT-001 IMPLEMENTING + evidence(6) + stage_note
 SECURITY_REVIEW COMPLETE. **NEXT: VERIFY (iter ~158) → ACCEPT (iter ~159).**
-
-### Previous
 
 **✅ PILOT-001 TEST COMPLETE (iter ~156, SIM-001 B-1..B-4 pre-validation,
 AC-7..AC-10 + AC-17):**  Battery pre-validated on the SIM-001 harness in
