@@ -1,27 +1,29 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-22T08:00:00Z
+**Last updated**: 2026-08-22T09:30:00Z
 
 ---
 
-## Priority: SAT-001 (P2 TRANSPORT) — ACCEPT (iter ~175)
+## PRIORITY: OPERATOR DIRECTION REQUIRED — graph exhausted (iter ~175)
 
-**Pipeline POSITION: SAT-001 IMPLEMENTING (iter ~174, VERIFY COMPLETE,
-evidence 7 — verifier APPROVE).** 30 COMPLETE nodes. Baseline **720/0/1**,
-clippy 0, fmt clean.
+**31 COMPLETE nodes. SAT-001 ACCEPTED (evidence 8, verifier APPROVE,
+live 720/0/1 clippy 0 fmt clean, commit 0a2547c). No eligible autonomous-
+eligible software nodes remain in the graph.**
 
-## Next Action (iter ~175 — SAT-001 ACCEPT)
+## Continuation options (operator decision)
 
-1. Graph: status IMPLEMENTING → **COMPLETE**, evidence(8) + ACCEPT row,
-   stage_note ACCEPTED full pipeline DISCOVER ~168 → … → ACCEPT ~175;
-   validation_status refresh.
-2. PROJECT_STATE: completed 30→**31**, implementing 1→0.
-3. CHANGELOG version bump (SAT-001 accepted; 720/0/1 baseline).
-4. Commit per node convention (satellite core + security fixes + records +
-   state).
-5. NODE_TRANSITION: mission milestones (MVP/Alpha/Beta/Pilot) or next
-   eligible node selection per PRIORITY_POLICY.
+1. **(a) Ratify a new engineering-node batch** per BLK-0002 — candidates:
+   protocol conformance interop, supply-chain/SBOM hardening, CI/CD depth,
+   ML routing v2, platform expansion, PROTO-001 v2 deferred items.
+2. **(b) LEGAL-001 counsel engagement** — open questions (satellite
+   licensing/GMPCS authorized channel per DEC-SAT-0006 context, WPC-ETA
+   per-SKU) require human legal action; unblocks LEGAL-001 → DESIGN.
+3. **(c) Mission milestones** — MVP/Alpha/Beta/Pilot planning (tracked
+   outside the graph; ops/legal coordination).
+
+Supervisor parked `execution_status: IDLE`. Re-invoking `/resume` or
+`/autonomous` without new direction will report this handoff.
 ## Context
 
 29 COMPLETE nodes. Pipeline: BLE-001 → WIFIAWARE-001 → WIFIDIRECT-001 → BLE-002
