@@ -19,6 +19,7 @@ pub mod ble;
 pub mod ble_advert;
 pub mod ble_att;
 pub mod internet;
+pub mod lora;
 pub mod manager;
 pub mod simulated;
 pub mod wifi_direct;

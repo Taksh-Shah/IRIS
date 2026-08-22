@@ -123,15 +123,30 @@ Month 8 — stays SIMULATION_VALIDATED, DEC-LORA-0007).
   ~4× airtime — acceptable: P0 is rare and P0-switch protects it).
 - Airtime: LoRa symbol math (`Tsym = 2^SF/BW`; preamble + payload symbols;
   CR4/5 → 4/(4+CR) coding overhead); **per-SF/BW/CR airtime table as a pure
-  fn** + unit tests binding the 36 s/h budget math (cross-checked against
-  ifTNT/lora-air-time reference; Anandtool AN1200.13 sensitivity anchor). SF9/
-  BW125/CR4/5 255-B frame ≈ **1.82 s** airtime.
+  fn** + unit tests binding the 36 s/h budget math (Semtech AN1200.13
+  formula: `(preamble + 4.25 + Nsym) · Tsym`, CRC on, explicit header).
+  **CORRECTED at IMPLEMENT (iter ~163)**: the research-era "SF9 255-B ≈
+  1.82 s" figure was arithmetically wrong — the canonical formula gives
+  **≈1.25 s for a 255-B payload** and **≈1.17 s for the 237-B envelope
+  frame** (code anchors: `airtime_ms(SF9, 255) = 1251 ms`,
+  `airtime_ms(SF9, 237) = 1169 ms`, `airtime_ms(SF12, 237) = 8528 ms`).
+  **CORRECTED at SECURITY_REVIEW (iter ~165, RT-101 CRITICAL)**: the DUTY
+  BILLING BASIS is the full on-air frame (`HEADER_LEN + envelope`),
+  never the payload alone — payload-only billing under-counted small
+  frames up to ~79% and made a Table-I exceedance reachable. Transport
+  anchors are therefore `airtime_ms(SF9, 255 B frame) = 1251 ms` and
+  `airtime_ms(SF12, 255 B frame) = 9020 ms`; SLIP escapes are carrier
+  framing, not on-air, and are not billed.
 - **BW500 gateway note**: SF9/BW500 ≈ 4× shorter airtime at ~6 dB sensitivity
   cost — a plausible gate-to-gate uplink option; included in the airtime table,
   **not** a v1 default.
-- Message size: **255-B cap** (`max_message_size_bytes = 255`,
-  `P0_MAX_ENVELOPE_BYTES` — 237-B V001 envelope fits); messages >255 B reuse
-  the existing **5×51 B fragmentation** (RES-0003) — no new fragmentation code.
+- Message size: **255-B on-air frame cap** = **18-B IRIS header**
+  (`[ver u8][prio u8][msg_id 16B]`) + **≤237-B envelope payload** — the
+  `P0_MAX_ENVELOPE_BYTES` (237-B V001 envelope) fits exactly. Envelopes
+  >237 B reuse the existing **5×51 B fragmentation** (RES-0003) — no new
+  fragmentation code. `TransportCapabilities::max_message_size` reports the
+  **envelope capacity (237)** so manager gating excludes oversized
+  unfragmentable requests; the PHY frame stays ≤255 B.
 
 ### 2.4 Bridge protocol (RES-0027 RQ-4 / D-3)
 - **BLE GATT primary** bridge (phone as gateway): three characteristics —
@@ -183,7 +198,7 @@ Month 8 — stays SIMULATION_VALIDATED, DEC-LORA-0007).
 | Piece | Status | What LORA-001 delivers |
 |---|---|---|
 | `Transport` trait (mod.rs @315) | COMPLETE | implemented by `LoRaTransport`; `&self` shared-arc hot-plug register/deregister (manager.rs register @84 / deregister @109 — dongle plug/unplug surface already documented "LoRa dongle hot-plug") |
-| `TransportCapabilities` (@150) | COMPLETE | LoRa row: `max_message_size: 255`, `supports_broadcast: true`, unicast true, multicast false, `range_m_{min,max,typical}: 2000/15000/5000`, `typical_throughput_bps: 14_000` (≈250 bps–5 kbps peak band), `typical_latency_ms: 1500`, `requires_infrastructure: false`, bg flags platform-bridge-mediated, `requires_special_hardware: true`, `cost_class: Free`, **`regulatory_band: Some("WPC 865-868 MHz SRD (G.S.R. 853(E) 2021), ≤25 mW e.r.p., ≤1% duty")`** (esp. the SubGHz row — RES-0027 RQ-5) |
+| `TransportCapabilities` (@150) | COMPLETE | LoRa row: `max_message_size: 237` (envelope capacity inside the 255-B PHY frame; 18-B IRIS header), `supports_broadcast: true`, unicast true, multicast false, `range_m_{min,max,typical}: 2000/15000/5000`, `typical_throughput_bps: 1_757` (raw SF9/BW125/CR4/5 radio rate; **CORRECTED at IMPLEMENT iter ~163** — the drafted 14_000 exceeded the SF7/BW125 ceiling ≈5.5 kbps; sustained under 1% duty is far lower), `typical_latency_ms: 1500`, `requires_infrastructure: false`, bg flags platform-bridge-mediated, `requires_special_hardware: true`, `cost_class: Free`, **`regulatory_band: Some("WPC 865-868 MHz SRD (G.S.R. 853(E) 2021), ≤25 mW e.r.p., ≤1% duty")`** (esp. the SubGHz row — RES-0027 RQ-5) |
 | `TransportCostClass` (@181) | COMPLETE | Free (already names LoRa) |
 | `LORA_COST` (@244) | COMPLETE | already present (scan 1.5 mA / ad 0.5 / connected 1.2 / tx 10.0/kbps / rx 1.5) |
 | `DutyCycleTracker` | **NEW** | rolling 1-h window, 36,000 ms budget, `check_and_consume(class, airtime)->NextWindow` (RES-0008 R7), `duty_cycle_remaining_fraction()`, priority-proportional 60/25/10/5, global per-device, **no override knob**; unit tests (exceed 36 s/h → refused + correct window) |
@@ -248,7 +263,8 @@ evidence at TEST/VERIFY. Pattern BLE-001/BLE-002 AC-1..16.
   (type-checked guarantee, pattern BLE-001 AC-11); `AtSerialAdapter` +
   `SpiNativeAdapter` shapes present (BLK-0005 gate recorded) (D-1/D-3).
 - **AC-7** Radio profiles: default SF9/BW125/CR4/5 + P0 SF12; `airtime_ms` pure
-  fn matches the Semtech formula table (SF9→1.82 s / 255 B etc.), budget math
+  fn matches the Semtech AN1200.13 formula (SF9/255-B → 1251 ms, SF9/237-B →
+  1169 ms, SF12/237-B → 8528 ms — corrected figures per §2.3), budget math
   bound at 36 s/h; BW500 noted, not default (RES-0027 RQ-3 / D-4).
 - **AC-8** Bridge framing: `LoRaFrame` encode/decode + `encode_slip` round-trip
   (RFC 1055), 255-B cap enforced, defensive parse of malformed/truncated/

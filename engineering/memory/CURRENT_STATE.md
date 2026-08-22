@@ -1,33 +1,100 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T16:30:00Z
+**Last updated**: 2026-08-19T22:30:00Z
 
 ---
 
 ## Summary
 
-**✅ LORA-001 DESIGN COMPLETE (iter ~162, `LORA_001_DESIGN.md` v1.0, AC-1..17) —
-IMPLEMENT next (iter ~163).**
-Docs-only pass; baseline **664/0/1 clippy 0 fmt clean held**.
-`LORA_001_DESIGN.md` v1.0 authored (346 lines, pattern BLE_002_DESIGN.md,
-absorbs RES-0027 verdict PROCEED + D-1..D-7 + gaps G-1..G-5): **C2 gap
-RESOLVED via AC-1..17.** **AC-1..AC-13** Rust core — `LoRaTransport`
-(TransportAdapter impl, Caps SubGHz, 255 B / ≈14 B/s / duty_cycle_remaining),
-`DutyCycleTracker` (rolling 1-h 36,000 ms, `check_and_consume` →
-`next_send_window` R7, 60/25/10/5, P0-switch, **no runtime override**),
-`ComplianceConfig` (866.0 / ≤25 mW / 1% WPC G.S.R. 853(E) 2021 Table-I),
-`LoRaFrame`+SLIP, `RadioProfile` SF9/BW125/CR4/5 + SF12-P0 + airtime pure fn,
-`BacklogQueue` (REQ-ROUTE-C-003), `SimulatedLoRaTransport`+`SimLinkBudget`
-(AN1200.13 + Okumura-Hata), `LoRaLinkAdapter` AT-vs-SPI seam + conformance
-adapter, OBS-001 metrics + dedup + relay-cadence reuse. **AC-14** bridge contract
-BLE GATT (LORA_TX/RX/STATUS ≤255-B ATT) + USB-SLIP alt. **AC-15** workspace
-green + clippy 0 + 664/0/1 held. **AC-16** SIMULATION_VALIDATED only
-(BLK-0005/GAP-004). **AC-17** SECURITY_REVIEW pending. **DEC-LORA-0001..0008
-ratified**; FC-1..FC-4 verified applied. PROJECT_GRAPH LORA-001
-RESEARCH_COMPLETE → **DESIGNING** (AC-1..17, evidence 3); PROJECT_STATE
-research_complete 2→1, designing 0→1. **STAGE_TRANSITION → LORA-001 IMPLEMENT
-(iter ~163) → SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).**
+**✅ LORA-001 TEST COMPLETE (iter ~164, evidence 5) — SECURITY_REVIEW next
+(iter ~165).** `LORA-001_TEST.md` authored (pattern BLE-002_TEST.md):
+**AC-1..15 evidence map — AC-1..14 PASS** (manager register/select + 237-B
+caps row; duty budget refusal/recovery; bucket caps 60/25/10/5 +
+no-override-knob proof; P0-switch seam; backlog FIFO hold/drain-on-recovery;
+adapter conformance + HardwareGated stubs; airtime anchors 1251/1169/8528 ms;
+frame/SLIP defensive parse; fragment/dedup/crypto reuse as review assertions
+with MSG-001 layers + crypto_e2e green; OBS-001 counters live; SimLinkBudget
+SIMULATION_VALIDATED; hot-plug lifecycle), **AC-15 GATED/BLK-0005**.
+**Live: transport::lora 27/27, workspace 686/0/1** (`--all-features`, full
+`--no-fail-fast` sweep), clippy 0, fmt clean. Prior-664 bookkeeping reconciled
+to live (lib 600 = 567 default + 33 proptest cases incl. the 27 LORA tests).
+**Transient-flake IDENTIFIED**: single lib failure in 2 of 6 workspace runs
+under load — root-caused via proptest's auto-persisted regression seeds to
+`security::rate_limiter` proptests (SEC-001 scope; real-time token refill
+violates property bounds under CPU saturation; seeds replay green 12/12, zero
+lora involvement) → keep seeds checked in + clock-injection deflake follow-up
+at SECURITY_REVIEW. PROJECT_GRAPH LORA-001
+evidence 4→5, stage_note TEST COMPLETE. **STAGE_TRANSITION → LORA-001
+SECURITY_REVIEW (iter ~165) → VERIFY (~166) → ACCEPT → SAT-001 → mission
+milestones (MVP/Alpha/Beta/Pilot).**
+
+**✅ LORA-001 SECURITY_REVIEW COMPLETE (iter ~165, evidence 6) — VERIFY next
+(iter ~166).** `LORA-001_SECURITY_REVIEW.md` — independent redteam pass,
+verdict **FAIL → RESOLVED in-pass**: **RT-101 CRITICAL FIXED** (duty billed on
+payload only; 18-B header unbilled → Table-I exceedance reachable via
+minimal-frame flood: 344 sends = 35,776 ms accounted vs ~63,984 ms true ≈1.78%
+duty) → `try_send_inner` bills the full encoded frame. RT-102..106 MEDIUM
+FIXED (monotonic clock clamp; attach/connect/shutdown honesty;
+DutyCycleTracker::refund + tx_failures; poll skip-and-count malformed_rx;
+backlog size gate + 256 cap); RT-107/109 LOW FIXED; RT-108/110 RECORDED;
+RT-111 INFO sim-honesty PASS; **RT-200 FIXED cross-file** (rate_limiter
+injectable clock root-causes the iter ~164 flake; proptests hermetic,
+real-clock refill test kept, seeds checked in replay-green). **Live:
+workspace 695/0/1**, clippy 0, fmt clean, `transport::lora` **31/31**
+(+4 RT regressions), rate_limiter 12/12. Design-doc billing-basis correction
+applied (§2.3). PROJECT_GRAPH evidence 5→6, stage_note SECURITY_REVIEW
+COMPLETE. **STAGE_TRANSITION → LORA-001 VERIFY (iter ~166) → ACCEPT (~167) →
+SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).**
+**✅ LORA-001 VERIFY COMPLETE (iter ~166, evidence 7) — verifier APPROVE;
+ACCEPT next (iter ~167).** `LORA-001_VERIFICATION.md` authored — AC-1..17
+evidence table + independent-verifier-style reproduction at the recorded
+revision: **workspace 695/0/1** (`--all-features` full sweep),
+`transport::lora` **31/31**, rate_limiter **12/12** hermetic, clippy **0**,
+fmt clean. Evidence integrity clean: 18/18 AC-cited test names re-grep'd in
+source with file:line; all RT dispositions re-located as real code (RT-101
+lora.rs:1312, RT-102 :282, RT-104 :305, RT-105 :1419, RT-106 :523,
+RT-109 :492, RT-200 rate_limiter.rs:146); zero fabricated identifiers.
+Verdicts: **AC-1..14 PASS · AC-15 GATED/BLK-0005 · AC-16 PASS · AC-17 PASS →
+APPROVE**. Baseline trajectory 664 bookkept → 686/0/1 → **695/0/1**.
+PROJECT_GRAPH LORA-001 evidence 6→7, stage_note VERIFY COMPLETE.
+**STAGE_TRANSITION → LORA-001 ACCEPT (iter ~167) → NODE_TRANSITION SAT-001 →
+mission milestones (MVP/Alpha/Beta/Pilot).**
+**✅ LORA-001 ACCEPTED COMPLETE (iter ~167, evidence 8) — 30 COMPLETE nodes;
+NODE_TRANSITION → SAT-001.** PROJECT_GRAPH LORA-001 IMPLEMENTING →
+**COMPLETE** (stage_note ACCEPTED full pipeline DISCOVER ~160 → RESEARCH ~161
+RES-0027 → DESIGN ~162 → IMPLEMENT ~163 → TEST ~164 → SECURITY_REVIEW ~165 →
+VERIFY ~166 → ACCEPT ~167). AC-1..17 satisfied (AC-15 GATED/BLK-0005 explicit;
+verifier APPROVE at recorded revision; live **695/0/1**, clippy 0, fmt clean).
+PROJECT_STATE completed 29→**30**, implementing 1→0; CHANGELOG **0.3.62**.
+Commit per node convention. **NEXT: SAT-001 UNDERSTAND (iter ~168) → mission
+milestones (MVP/Alpha/Beta/Pilot).**
+### Previous
+
+**✅ LORA-001 IMPLEMENT COMPLETE (iter ~163) — TEST next (iter ~164).**
+`crates/iris-core/src/transport/lora.rs` **rewritten clean** — the prior
+orphan copy was corrupted invalid Rust never wired into the mod tree (same
+class as ALLOCATION.md iter ~161); `pub mod lora;` added to
+`transport/mod.rs`. Delivered per `LORA_001_DESIGN.md` **AC-1..AC-13**:
+ComplianceConfig+validate (Table-I pins; try_new refuses non-compliant → no
+override knob), DutyCycleTracker (sliding 1-h window, injectable clock, global
+36,000 ms + bucket caps 60/25/10/5, check_and_consume → NextWindow/
+BudgetExhausted w/ earliest-expiry recovery), BacklogQueue (priority FIFO),
+RadioProfile SF9/SF12-P0 + airtime_ms Semtech AN1200.13 (255-B→1251 ms /
+237-B→1169 ms / SF12→8528 ms) + raw_rate_bps (1757/292), LoRaFrame v1
+[ver][prio][msg_id16][payload≤237] (=255-B PHY cap; P0 envelope fits exactly)
++ SLIP RFC1055 defensive parse, LoRaLinkAdapter seam + AT/SPI BLK-0005 stubs +
+SimulatedLoRaAdapter pair, SimLinkBudget (AN1200.13 + Okumura-Hata,
+SIMULATION_VALIDATED only), LoRaTransport Transport impl (hot-plug auto
+open/close, duty refusal → Busy never panic, drain_backlog, poll_inbound
+zero-PeerId attribution, OBS-001 counters). **DESIGN CORRECTIONS resolved into
+doc**: airtime 1.82 s → formula values; throughput 14_000 → 1_757 bps raw;
+frame = 18-B header + ≤237-B envelope. **AC-15 LIVE: workspace 686/0/1**
+(iris-core lib 600 = 573 + 27 transport::lora tests), clippy 0, fmt clean.
+PROJECT_GRAPH LORA-001 DESIGNING → **IMPLEMENTING** (evidence 4);
+PROJECT_STATE designing 1→0, implementing 0→1. **STAGE_TRANSITION → LORA-001
+TEST (iter ~164) → SECURITY_REVIEW (~165) → VERIFY (~166) → ACCEPT →
+SAT-001 → mission milestones (MVP/Alpha/Beta/Pilot).**
 
 ### Previous
 

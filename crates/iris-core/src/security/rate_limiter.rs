@@ -116,7 +116,14 @@ pub struct RateLimiter {
     unknown_bucket: RwLock<Bucket>,
     config: RateLimiterConfig,
     metrics: RateLimiterMetrics,
+    /// RT-200: injectable clock. Production uses `Instant::now()`; property
+    /// tests freeze time so refill boundaries cannot be crossed by scheduler
+    /// jitter (the auto-persisted regression seeds were load-timing luck,
+    /// not logic bugs — `refill_tokens` itself is saturating + Kani-proven).
+    clock: ClockFn,
 }
+
+type ClockFn = Box<dyn Fn() -> Instant + Send + Sync>;
 
 /// Metrics for observability (OBS-001 integration).
 #[derive(Default, Debug)]
@@ -131,7 +138,13 @@ pub struct RateLimiterMetrics {
 impl RateLimiter {
     /// Create a new rate limiter with default configuration.
     pub fn new(config: RateLimiterConfig) -> Self {
-        let now = Instant::now();
+        RateLimiter::with_clock(config, Box::new(Instant::now))
+    }
+
+    /// Rate limiter with an injectable clock (RT-200): property tests freeze
+    /// time to keep refill-boundary semantics deterministic under load.
+    pub fn with_clock(config: RateLimiterConfig, clock: ClockFn) -> Self {
+        let now = (clock)();
         RateLimiter {
             buckets: RwLock::new(HashMap::with_capacity(1024)),
             unknown_bucket: RwLock::new(Bucket {
@@ -140,6 +153,7 @@ impl RateLimiter {
             }),
             config,
             metrics: RateLimiterMetrics::default(),
+            clock,
         }
     }
 
@@ -177,7 +191,7 @@ impl RateLimiter {
             }
         }
 
-        let now = Instant::now();
+        let now = (self.clock)();
         let bucket = buckets.entry(key).or_insert(Bucket {
             tokens: self.config.burst,
             last_refill: now,
@@ -185,6 +199,7 @@ impl RateLimiter {
 
         let decision = Self::check_bucket(
             bucket,
+            now,
             self.config.rate_per_sec,
             self.config.refill_interval,
             self.config.burst,
@@ -227,11 +242,11 @@ impl RateLimiter {
     /// Check a bucket and consume a token if allowed.
     fn check_bucket(
         bucket: &mut Bucket,
+        now: Instant,
         rate_per_sec: u64,
         refill_interval: Duration,
         burst: u64,
     ) -> RateLimitDecision {
-        let now = Instant::now();
         let elapsed = now.duration_since(bucket.last_refill);
         if elapsed >= refill_interval {
             // SEC-RT-11: guard refill_interval < 1s (as_secs() == 0) against
@@ -257,7 +272,7 @@ impl RateLimiter {
     /// burst, not the per-sender burst, or a quiet period lets it refill far
     /// past the intended aggregate limit).
     fn refill(&self, bucket: &mut Bucket, rate_per_sec: u64, burst: u64) {
-        let now = Instant::now();
+        let now = (self.clock)();
         let elapsed = now.duration_since(bucket.last_refill);
         if elapsed >= self.config.refill_interval {
             // SEC-RT-11: guard refill_interval < 1s (as_secs() == 0) against
@@ -276,7 +291,7 @@ impl RateLimiter {
         self.buckets.write().await.clear();
         let mut unknown = self.unknown_bucket.write().await;
         unknown.tokens = self.config.unknown_sender_burst;
-        unknown.last_refill = Instant::now();
+        unknown.last_refill = (self.clock)();
     }
 }
 
@@ -284,6 +299,17 @@ impl Default for RateLimiter {
     fn default() -> Self {
         Self::new(RateLimiterConfig::default())
     }
+}
+
+/// RT-200: a frozen clock makes the token-bucket properties hermetic —
+/// no scheduler jitter can cross the 1 s refill boundary mid-property,
+/// so `allowed <= burst` holds by construction. Refill semantics are
+/// covered separately by `rate_limiter_refill_after_interval` (real
+/// time, unit test).
+#[cfg(test)]
+fn frozen_limiter(config: RateLimiterConfig) -> RateLimiter {
+    let epoch = Instant::now();
+    RateLimiter::with_clock(config, Box::new(move || epoch))
 }
 
 #[cfg(feature = "proptest")]
@@ -334,7 +360,7 @@ mod proptest_tests {
                 unknown_sender_rate_per_sec: 10,
                 unknown_sender_burst: 20,
             };
-            let rl = RateLimiter::new(config);
+            let rl = frozen_limiter(config);
             for _ in 0..n_checks {
                 let _ = block_on(rl.check(sender, class));
             }
@@ -356,7 +382,7 @@ mod proptest_tests {
                 unknown_sender_rate_per_sec: 10,
                 unknown_sender_burst: 20,
             };
-            let rl = RateLimiter::new(config);
+            let rl = frozen_limiter(config);
             for _ in 0..n_checks {
                 prop_assert_eq!(block_on(rl.check(sender, MessageClass::P0)), RateLimitDecision::Exempt);
                 prop_assert_eq!(block_on(rl.check(sender, MessageClass::P1)), RateLimitDecision::Exempt);
@@ -379,7 +405,7 @@ mod proptest_tests {
                 unknown_sender_rate_per_sec: 10,
                 unknown_sender_burst: 20,
             };
-            let rl = RateLimiter::new(config);
+            let rl = frozen_limiter(config);
             let mut allowed = 0;
             let mut dropped = 0;
             for _ in 0..n_checks {
@@ -413,7 +439,7 @@ mod proptest_tests {
                 unknown_sender_rate_per_sec: 10,
                 unknown_sender_burst: 20,
             };
-            let rl = RateLimiter::new(config);
+            let rl = frozen_limiter(config);
             // Exhaust P4 (its own bucket)
             for _ in 0..burst {
                 let _ = block_on(rl.check(sender, MessageClass::P4));
@@ -458,7 +484,7 @@ mod tests {
             unknown_sender_rate_per_sec: 10,
             unknown_sender_burst: 20,
         };
-        let rl = RateLimiter::new(config);
+        let rl = frozen_limiter(config);
         let sender = [1u8; 16];
 
         // First 5 should be allowed (burst)
@@ -490,7 +516,7 @@ mod tests {
             unknown_sender_rate_per_sec: 10,
             unknown_sender_burst: 20,
         };
-        let rl = RateLimiter::new(config);
+        let rl = frozen_limiter(config);
         let sender = [2u8; 16];
 
         // P0 exempt
@@ -525,7 +551,7 @@ mod tests {
             unknown_sender_rate_per_sec: 2,
             unknown_sender_burst: 3,
         };
-        let rl = RateLimiter::new(config);
+        let rl = frozen_limiter(config);
 
         // Unknown P4: burst=3 allows 3
         for _ in 0..3 {
@@ -551,7 +577,7 @@ mod tests {
             unknown_sender_rate_per_sec: 2,
             unknown_sender_burst: 3,
         };
-        let rl = RateLimiter::new(config);
+        let rl = frozen_limiter(config);
 
         // check_unknown P0 -> exempt metric
         assert_eq!(
@@ -587,6 +613,9 @@ mod tests {
             unknown_sender_rate_per_sec: 1,
             unknown_sender_burst: 1,
         };
+        // REAL clock here on purpose: this test exercises actual refill
+        // semantics across a live 1 s interval (RT-200 keeps it hermetic
+        // everywhere else).
         let rl = RateLimiter::new(config);
         let sender = [4u8; 16];
 
@@ -626,7 +655,7 @@ mod tests {
             unknown_sender_rate_per_sec: 10,
             unknown_sender_burst: 20,
         };
-        let rl = RateLimiter::new(config);
+        let rl = frozen_limiter(config);
 
         // Fill beyond capacity -> oldest bucket evicted, never a panic.
         for i in 0..5u8 {
@@ -690,7 +719,7 @@ mod tests {
             unknown_sender_rate_per_sec: 10,
             unknown_sender_burst: 20,
         };
-        let rl = RateLimiter::new(config);
+        let rl = frozen_limiter(config);
         let sender = [3u8; 16];
 
         // Exhaust P4 bucket

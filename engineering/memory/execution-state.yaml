@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-19T16:30:00Z"
+updated_at: "2026-08-19T22:30:00Z"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -22,29 +22,23 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "LORA-001"
-active_stage: "IMPLEMENT"
-# UNDERSTAND | RESEARCH | REQUIREMENTS | DESIGN | IMPLEMENT | TEST | ATTACK | FUZZ | BENCHMARK | SECURITY_REVIEW | DOCUMENT | VERIFY | ACCEPT | INTEGRATE | DISCOVER
-active_action: "LORA-001 DESIGN COMPLETE (iter ~162, reconcilable from repo: LORA_001_DESIGN.md v1.0 present with AC-1..17, DEC-LORA-0001..0008 in DECISIONS.md, graph DESIGNING evidence 3 / PROJECT_STATE designing 1). Loop-state files were stale at RESEARCH->DESIGN (iter ~161) — reconciled to DESIGN COMPLETE -> IMPLEMENT (iter ~163). PROJECT_GRAPH LORA-001 evidence(0) corrupt text repaired (read-tool artifact restored from execution-log iter-160 row)."
-next_action: "LORA-001 IMPLEMENT (iter ~163): author Rust core per LORA_001_DESIGN.md AC-1..n (AC-1..AC-13 Rust, AC-14 BLE/USB bridge + LoRaLinkAdapter seam, AC-15 workspace/clippy held, AC-16 sim-only status, AC-17 pending SECURITY_REVIEW). Modules scheduled: DutyCycleTracker (rolling 1-h 36,000 ms budget, check_and_consume -> next_send_window R7, 60/25/10/5, P0-switch, no override, duty-violation unit tests); ComplianceConfig (866.0/<=25 mW e.r.p./1% duty); LoRaFrame + SLIP encode/decode; RadioProfile SF9/BW125/CR4/5 + SF12-P0 + airtime pure fn; BacklogQueue (REQ-ROUTE-C-003); LoRaLinkAdapter AT-vs-SPI seam + SimulatedLoRaAdapter conformance; SimulatedLoRaTransport + SimLinkBudget (AN1200.13 + Okumura-Hata); LoRaTransport TransportAdapter impl (register/transmit/poll/duty_cycle_remaining/estimated_bandwidth_bps ~14/max_message_size_bytes 255) + Caps SubGHz -> then TEST (iter ~164)."
-
-# === STATE TRANSITIONS ===
-last_transition: "STAGE_TRANSITION"
+active_node: "SAT-001"
+active_stage: "UNDERSTAND"
+active_action: "LORA-001 ACCEPTED COMPLETE (iter ~167, evidence 8): node COMPLETE - 30 COMPLETE nodes. Graph LORA-001 IMPLEMENTING -> COMPLETE (stage_note ACCEPTED full pipeline DISCOVER ~160 -> RESEARCH ~161 RES-0027 -> DESIGN ~162 -> IMPLEMENT ~163 lora.rs rewrite + corruption repair -> TEST ~164 AC-1..15 map live 686/0/1 -> SECURITY_REVIEW ~165 redteam FAIL->RESOLVED RT-101 CRITICAL billing basis + RT-102..107/109/200 live 695/0/1 -> VERIFY ~166 verifier APPROVE zero findings AC-1..17 table at recorded revision -> ACCEPT ~167). PROJECT_STATE completed 29->30 implementing 1->0. CHANGELOG 0.3.62. Commit per node convention."
+next_action: "SAT-001 UNDERSTAND (iter ~168): author engineering/memory/records/SAT-001_DISCOVER.md (pattern LORA-001_DISCOVER.md) - node def check (P2 TRANSPORT, dep TRANSPORT-001 COMPLETE, requires_hardware true, DISCOVERED); C2 gap check (no acceptance_criteria on graph node -> DESIGN resolves AC-1..n); reference surface read (docs/transports satellite row, TRANSPORT_ABSTRACTION, GW-001 gateway manager seam, EMERG-001 P0 coupling, LEGAL-001 satellite licensing carry); scope catalog (Iridium/Starlink last-resort gateway for P0-P2 emergency, hardware-gated BLK-0005-adjacent); RQ-1..n staged for RESEARCH (RES-0028 next per ALLOCATION). Then RESEARCH -> DESIGN -> IMPLEMENT -> TEST -> SECURITY_REVIEW -> VERIFY -> ACCEPT; mission milestones (MVP/Alpha/Beta/Pilot) tracked separately.last_transition: "NODE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-19T16:30:00Z"
+last_transition_at: "2026-08-19T22:30:00Z"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
 # === CONTINUATION ===
-# Pipeline history: transport nodes BLE-001 -> WIFIAWARE-001 -> WIFIDIRECT-001 -> BLE-002 -> platforms ANDROID-001 -> IOS-001 -> PILOT-001 (ACCEPTED iter ~159, 29 COMPLETE). Next: LORA-001 (P2 TRANSPORT, requires_hardware) DESIGNING (DESIGN COMPLETE iter ~162, evidence 3, AC-1..17) -> IMPLEMENT (iter ~163) -> then SAT-001 -> mission milestones (MVP/Alpha/Beta/Pilot).
-# IOS-001 pipeline comment follows:
-# WP-A codec (61/61) → WP-1 MSG-001 (94/94) → WP-2 STORE-001 PG (11/11) → WP-3 DISCO-001 (16/16) → WP-4 ROUTE-001 (24/24) → WP-5 SCF-001 (13/13+M6) + WP-6 SIM-001 (13/13) → WP-7 GW-001 (19/19) → WP-8 ROUTE-002 (17/17) → WP-9 OBS-001 (217 green) → WP-10 DESKTOP-001 (225 green, ACCEPT iter 48)
+# Pipeline history: transport nodes BLE-001 -> WIFIAWARE-001 -> WIFIDIRECT-001 -> BLE-002 -> platforms ANDROID-001 -> IOS-001 -> PILOT-001 (ACCEPTED iter ~159, 29 COMPLETE). Next: LORA-001 (P2 TRANSPORT, requires_hardware) IMPLEMENTING (TEST COMPLETE iter ~164, evidence 5) -> SECURITY_REVIEW (~165) -> VERIFY (~166) -> ACCEPT -> then SAT-001 -> mission milestones (MVP/Alpha/Beta/Pilot).
 
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "LORA-001 DESIGN COMPLETE (iter ~162, docs-only, baseline 664/0/1 clippy 0 fmt clean held). LORA_001_DESIGN.md v1.0 authored (346 lines, AC-1..17, DEC-LORA-0001..0008); graph RESEARCH_COMPLETE -> DESIGNING (AC-1..17, evidence 3); PROJECT_STATE research_complete 2->1 designing 0->1. STAGE_TRANSITION -> IMPLEMENT (iter ~163)."
-last_progress_at: "2026-08-19T16:30:00Z"
+last_progress_event: "LORA-001 ACCEPTED COMPLETE (iter ~167, evidence 8): node COMPLETE, 30 COMPLETE nodes; graph status COMPLETE + stage_note ACCEPTED full pipeline; PROJECT_STATE completed 29->30 implementing 1->0; CHANGELOG 0.3.62; commit per node convention. NODE_TRANSITION -> SAT-001 (UNDERSTAND iter ~168)."
+last_progress_at: "2026-08-19T22:30:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -68,6 +62,60 @@ human_gate_evidence: "engineering/memory/records/DEC-0010.md (operator ratificat
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-08-19T20:40:00Z"
+    iteration: 165
+    node: "LORA-001"
+    stage: "SECURITY_REVIEW"
+    action: "LORA-001 SECURITY_REVIEW COMPLETE (iter ~165, evidence 6). Independent redteam adversarial pass over transport/lora.rs + rate_limiter flake disposition: verdict FAIL -> RESOLVED in-pass. RT-101 CRITICAL FIXED: duty billed on payload only (18-B IRIS header unbilled; minimal-frame flood across buckets admitted 35,776 ms accounted vs ~63,984 ms true on-air ~1.78 pct duty) -> try_send_inner bills airtime_ms(encoded frame len); SLIP escapes documented as carrier framing not on-air; regressions duty_bills_full_encoded_frame_not_just_payload_rt101 (1-B payload books 186 ms not 104 ms; bulk flood bound 9 frames/h) + updated anchors SF9/255B->1251 ms SF12/255B->9020 ms. RT-102 MEDIUM FIXED: monotonic clamp in DutyCycleTracker::now (backward clock steps ignored); forward-jump residual RECORDED. RT-103 MEDIUM FIXED: attach_adapter -> Result (open failure stores nothing, state stays Unavailable; regression dead_dongle_attach_is_rejected_not_available_rt103), connect() probes adapter.status() before Connected, shutdown() takes adapter from slot, post-close tx/rx==Closed trait contract. RT-104 MEDIUM FIXED: DutyCycleTracker::refund(class, airtime) removes newest matching reservation on TX failure + tx_failures metric; race caveat never under-counts successful sends (regression tx_failure_refunds_duty_reservation_rt104). RT-105 MEDIUM FIXED: poll_inbound skips+counts malformed frames (malformed_rx) instead of aborting batch (regression malformed_inbound_frame_does_not_abort_poll_batch_rt105). RT-106 MEDIUM FIXED: enqueue_backlog rejects >237-B payloads + MAX_BACKLOG_ENTRIES=256 cap (BacklogQueue::push -> bool). RT-107 LOW FIXED: unified refusal-delay walk + drain_backlog doc corrected. RT-108 LOW RECORDED: receipt handed-to-radio contract on send(). RT-109 LOW FIXED: debug_assert RadioProfile PHY ranges. RT-110 LOW RECORDED: one-frame-per-rx firmware contract on LoRaLinkAdapter docs. RT-111 INFO: sim honesty PASS. RT-200 FIXED cross-file: security/rate_limiter.rs injectable clock RateLimiter::with_clock + cfg(test) frozen_limiter for all 4 proptests and non-sleeping unit tests (rate_limiter_refill_after_interval keeps REAL clock intentionally); root cause confirmed as real-time refill crossing the 1 s boundary under post-compile CPU saturation; regression seeds stay checked in and replay green. Live after fixes: cargo test --workspace --all-features full sweep = 695 passed / 0 failed / 1 ignored; clippy --workspace --all-targets --all-features -D warnings = 0; cargo fmt clean; transport::lora 31/31 (+4 RT regressions); rate_limiter 12/12 hermetic. Design-doc correction applied (billing basis note in LORA_001_DESIGN.md SS2.3). PROJECT_GRAPH evidence 5->6 stage_note SECURITY_REVIEW COMPLETE validation_status refreshed; loop-state files refreshed; STAGE_TRANSITION -> VERIFY (iter ~166, AC-17 independent verifier)."
+    result: "SECURITY_REVIEW_RESOLVED"
+    files_changed:
+      - "crates/iris-core/src/transport/lora.rs"
+      - "crates/iris-core/src/security/rate_limiter.rs"
+      - "crates/iris-core/proptest-regressions/security/rate_limiter.txt"
+      - "docs/implementation/LORA_001_DESIGN.md"
+      - "engineering/memory/records/LORA-001_SECURITY_REVIEW.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created:
+      - "engineering/memory/records/LORA-001_SECURITY_REVIEW.md"
+  - timestamp: "2026-08-19T19:10:00Z"
+    iteration: 164
+    node: "LORA-001"
+    stage: "TEST"
+    action: "LORA-001 TEST COMPLETE (iter ~164, evidence 5). engineering/memory/records/LORA-001_TEST.md authored (pattern BLE-002_TEST.md): AC-1..15 evidence map — AC-1..14 PASS (AC-9/10/11 as explicit review assertions citing reused MSG-001 fragment layer tests reassembles_two_fragment_adu/control_and_p0_never_fragment/refuses_more_than_max_fragments + dedup dedup_reports_first_win/dedup_drops_second_arrival + crypto_e2e m7 suite green; no new fragment/dedup/crypto code in lora.rs), AC-15 GATED/BLK-0005 recorded. Live verification THIS pass: cargo test -p iris-core --lib transport::lora = 27/27; cargo test --workspace --all-features full --no-fail-fast sweep = 686 passed / 0 failed / 1 ignored end-to-end green (crypto_e2e 3, golden 6, ml 8, obs 4, protocol 10, sim_scenarios 8+1 ignored, tokio 4, desktop 5+0+3+3, iris-ios 11, storage 7+1+13); cargo clippy --workspace --all-targets --all-features -D warnings = 0; cargo fmt --all --check clean. Count reconciliation: iris-core lib 600 all-features = 567 default-feature (incl. 27 LORA) + 33 proptest-gated cases; prior 664 bookkeeping reconciled to live measurement 686/0/1. TRANSIENT-FLAKE IDENTIFIED honestly: single lib-test failure 599/1 in 2 of 6 workspace invocations under post-compile load - ROOT-CAUSED via proptest auto-persisted regression seeds (security/rate_limiter.txt, two new cc entries) to security::rate_limiter proptests (SEC-001 scope; real-time token refill violates property bounds under CPU saturation); persisted seeds replay GREEN 12/12 regressions-first; standalone lib suite green 3x; ZERO transport::lora tests implicated -> keep seeds checked in (proptest best practice) + clock-injection deflake follow-up at SECURITY_REVIEW iter ~165; CI exposure mitigated by nextest ci-profile retries (TEST-001 AC-1). PROJECT_GRAPH LORA-001 evidence 4->5 + stage_note TEST COMPLETE + meta validation_status refreshed. STAGE_TRANSITION -> SECURITY_REVIEW (iter ~165, AC-16 redteam on lora.rs + flake identification)."
+    result: "TEST_COMPLETE"
+    files_changed:
+      - "engineering/memory/records/LORA-001_TEST.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created:
+      - "engineering/memory/records/LORA-001_TEST.md"
+  - timestamp: "2026-08-19T18:05:00Z"
+    iteration: 163
+    node: "LORA-001"
+    stage: "IMPLEMENT"
+    action: "LORA-001 IMPLEMENT COMPLETE (iter ~163). crates/iris-core/src/transport/lora.rs REWRITTEN CLEAN — prior orphan copy was corrupted invalid Rust (by_bucket[b]? 0 else 0, Instant::EpochMilliseconds casts, phantom duplicated methods, truncated at line 234) and was never wired into transport/mod.rs (why baseline held); same corruption class as ALLOCATION.md iter ~161. Delivered AC-1..AC-13 per LORA_001_DESIGN.md: ComplianceConfig + validate() (Table-I pins; DutyCycleTracker::try_new refuses non-compliant configs — no runtime override knob exists), DutyCycleTracker (sliding 1-h window via injectable ms clock, global 36,000 ms budget + bucket caps Emergency 21,600/Medical 9,000/Location 3,600/Bulk 1,800, check_and_consume -> NextWindow | BudgetExhausted with earliest-expiry recovery delay), BacklogQueue (stable priority FIFO, pop_highest), RadioProfile DEFAULT SF9/BW125/CR4/5@866 + P0_RADIO_PROFILE SF12 + profile_for_priority + airtime_ms Semtech AN1200.13 pure fn ((preamble+4.25+Nsym)*Tsym, CRC on, DE for SF11+/BW125) with anchors 255-B->1251 ms / 237-B->1169 ms @SF9 and 8528 ms @SF12 + raw_rate_bps 1757/292, LoRaFrame v1 [ver u8][prio u8][msg_id 16B][payload <=237] = 255-B on-air cap exactly fitting the 237-B P0 envelope + SLIP RFC1055 encode_slip/decode_slip defensive parse (leading-END tolerance, escape validation, 4096-B alloc cap), LoRaLinkAdapter trait open/close/tx/rx/status + AtSerialAdapter/SpiNativeAdapter HardwareGated stubs (BLK-0005) + SimulatedLoRaAdapter deterministic paired wire (ChaCha8 seeded loss, delay_ms propagation, opened gate) + connect_pair, SimLinkBudget (AN1200.13 sensitivity table SF7..SF12 w/ -129/-136 anchors + Okumura-Hata urban hb=30/hm=1.5 clamp 0.01..20 km + max_range_km solve + fade-margin delivery_probability; SIMULATION_VALIDATED only), LoRaMetrics atomics + snapshot + tracing target iris.transport.lora.*, LoRaTransport Transport impl (caps row max_message_size 237/regulatory_band WPC string/LORA_COST cost_snapshot x duty remaining, attach_adapter auto-open + Available, detach_adapter close + Unavailable = dongle hot-plug seam AC-13, send -> duty check_and_consume refusal maps Busy never panic + metrics.refusals, poll_inbound drains link rx into incoming stream w/ zero-PeerId attribution WAW-RT-007 precedent, drain_backlog priority-order w/ requeue, shutdown clean). DESIGN CORRECTIONS resolved into LORA_001_DESIGN.md (docs are the contract): SS2.3 airtime 1.82 s -> canonical formula values (research-era figure arithmetically wrong); SS4 caps row typical_throughput_bps 14_000 -> 1_757 raw SF9 rate (drafted value exceeded SF7/BW125 ceiling ~5.5 kbps); frame budget restated as 18-B header + <=237-B envelope so P0_MAX_ENVELOPE_BYTES fits exactly; caps report envelope capacity 237; graph AC-1/AC-7 rows updated to match. Verification LIVE THIS PASS: cargo test --workspace --all-features = 686 passed / 0 failed / 1 ignored (23 suites; iris-core lib 600 = 573 baseline + 27 new transport::lora tests all green; reconciles prior 664 bookkeeping to live measurement), cargo clippy --workspace --all-targets --all-features -- -D warnings = 0 warnings, cargo fmt --all applied + --check clean. PROJECT_GRAPH LORA-001 DESIGNING -> IMPLEMENTING (evidence 4, stage_note IMPLEMENT COMPLETE, meta validation_status); PROJECT_STATE designing 1->0 implementing 0->1 + testing_health refreshed. STAGE_TRANSITION -> TEST (iter ~164, LORA-001_TEST.md evidence map)."
+    result: "IMPLEMENT_COMPLETE"
+    files_changed:
+      - "crates/iris-core/src/transport/lora.rs"
+      - "crates/iris-core/src/transport/mod.rs"
+      - "docs/implementation/LORA_001_DESIGN.md"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/execution-log.md"
+      - "engineering/memory/ACTIVE_NODE.md"
+      - "engineering/memory/NEXT_ACTION.md"
+      - "engineering/memory/CURRENT_STATE.md"
+    records_created: []
   - timestamp: "2026-08-19T16:30:00Z"
     iteration: 162
     node: "LORA-001"

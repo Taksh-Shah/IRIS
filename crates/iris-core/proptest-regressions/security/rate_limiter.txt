@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 5b6b211281a94c4a1f6ba71bbbc62cf7a522ff4ebde640686dc8f41e05afa6a3 # shrinks to sender = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], rate = 1, burst = 1, n_checks = 2
+cc 7ff17981fca775049b1985b5d454fa802ca03968ab4d0bcd8f3cef24e044d971 # shrinks to sender = [114, 50, 185, 136, 18, 99, 103, 160, 90, 23, 162, 3, 129, 142, 96, 112], rate = 5, burst = 7, n_checks = 28
+cc 39f33ca4c42ffac42dfd5516609a84161e208d802a22818ea87c10b6db5385c1 # shrinks to sender = [249, 65, 208, 2, 191, 223, 106, 147, 126, 196, 178, 193, 254, 17, 75, 211], rate = 1, burst = 9, n_checks = 23

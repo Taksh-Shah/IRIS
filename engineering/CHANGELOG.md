@@ -1,4 +1,36 @@
 
+## [0.3.62] - 2026-08-19 - NODE
+
+**LORA-001 ACCEPTED COMPLETE (iter ~167, iter ~163..166 pipeline) — 30
+COMPLETE nodes; LoRa gateway transport (P2, hardware-gated) accepted; baseline
+695/0/1 clippy 0 fmt clean. NODE_TRANSITION → SAT-001.**
+- **IMPLEMENT (~163)**: `transport/lora.rs` rewritten clean (prior orphan copy
+  was corrupted invalid Rust never wired into the mod tree) + `pub mod lora;`.
+  AC-1..13 per LORA_001_DESIGN.md: ComplianceConfig+validate (Table-I pins,
+  no override knob), DutyCycleTracker (sliding 1-h 36,000 ms budget + bucket
+  caps 60/25/10/5, R7 windows, injectable clock), BacklogQueue, RadioProfile
+  SF9/SF12-P0 + Semtech airtime pure fn + raw_rate_bps, LoRaFrame v1
+  ([ver][prio][msg_id16][payload≤237] = exactly the 255-B on-air cap so the
+  237-B P0 envelope fits) + SLIP RFC1055 defensive parse, LoRaLinkAdapter seam
+  + AT/SPI BLK-0005 stubs + SimulatedLoRaAdapter pair, SimLinkBudget
+  (AN1200.13 + Okumura-Hata; SIMULATION_VALIDATED only), full Transport impl.
+  DESIGN CORRECTIONS into doc: airtime 1.82 s → formula values; throughput
+  14_000 → 1_757 bps raw; frame = 18-B header + ≤237-B envelope; caps 237.
+- **TEST (~164)**: AC-1..15 evidence map; live 686/0/1; transient lib flake
+  root-caused via proptest auto-persisted seeds (security::rate_limiter,
+  real-time refill under load — replay-green).
+- **SECURITY_REVIEW (~165)**: redteam FAIL → RESOLVED. **RT-101 CRITICAL**:
+  duty billed on payload only (18-B header unbilled → Table-I exceedance
+  reachable) → bills the FULL encoded frame. RT-102..106 MEDIUM fixed
+  (monotonic clock clamp; attach/connect/shutdown honesty; TX-failure refund +
+  tx_failures metric; malformed-frame skip-and-count; backlog size gate +
+  256 cap). RT-107/109 LOW fixed; RT-108/110 RECORDED; RT-111 sim-honesty
+  PASS. RT-200: rate_limiter injectable clock (hermetic proptests).
+- **VERIFY (~166)**: independent reproduction at recorded revision —
+  workspace **695/0/1**, transport::lora **31/31**, rate_limiter **12/12**,
+  clippy 0, fmt clean; 18/18 cited tests re-grep'd w/ file:line; verifier
+  APPROVE zero findings. AC-1..14 PASS, AC-15 GATED/BLK-0005, AC-16..17 PASS.
+
 ## [0.3.61] - 2026-08-19 - RESEARCH
 
 **LORA-001 RESEARCH COMPLETE (iter ~161, RES-0027 PROCEED) - RQ-1..RQ-6
