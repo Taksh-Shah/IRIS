@@ -1,31 +1,27 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T22:30:00Z
+**Last updated**: 2026-08-22T08:00:00Z
 
 ---
 
-## Priority: SAT-001 (P2 TRANSPORT) — UNDERSTAND (iter ~168)
+## Priority: SAT-001 (P2 TRANSPORT) — ACCEPT (iter ~175)
 
-**Pipeline POSITION: LORA-001 ACCEPTED COMPLETE (iter ~167, evidence 8) —
-30 COMPLETE nodes. NODE_TRANSITION → SAT-001 (DISCOVERED).** Baseline
-**695/0/1**, clippy 0, fmt clean.
+**Pipeline POSITION: SAT-001 IMPLEMENTING (iter ~174, VERIFY COMPLETE,
+evidence 7 — verifier APPROVE).** 30 COMPLETE nodes. Baseline **720/0/1**,
+clippy 0, fmt clean.
 
-## Next Action (iter ~168 — SAT-001 DISCOVER)
+## Next Action (iter ~175 — SAT-001 ACCEPT)
 
-1. Author `engineering/memory/records/SAT-001_DISCOVER.md` (pattern
-   LORA-001_DISCOVER.md): node def check (P2 TRANSPORT, dep TRANSPORT-001
-   COMPLETE, requires_hardware true, DISCOVERED); C2 gap check (no ACs on the
-   graph node → DESIGN resolves AC-1..n); reference surface read
-   (docs/transports satellite row + TRANSPORT_ABSTRACTION.md + GW-001 gateway
-   seam + EMERG-001 P0 coupling + LEGAL-001 satellite licensing carry);
-   scope catalog (Iridium/Starlink last-resort gateway for P0–P2 emergency,
-   hardware-gated BLK-0005-adjacent); RQ-1..n staged for RESEARCH
-   (RES-0028 next per ALLOCATION).
-2. Update PROJECT_GRAPH SAT-001 evidence(1) + stage_note; PROJECT_STATE
-   next_recommended.
-3. Then RESEARCH (~169) → DESIGN → IMPLEMENT → TEST → SECURITY_REVIEW →
-   VERIFY → ACCEPT.
+1. Graph: status IMPLEMENTING → **COMPLETE**, evidence(8) + ACCEPT row,
+   stage_note ACCEPTED full pipeline DISCOVER ~168 → … → ACCEPT ~175;
+   validation_status refresh.
+2. PROJECT_STATE: completed 30→**31**, implementing 1→0.
+3. CHANGELOG version bump (SAT-001 accepted; 720/0/1 baseline).
+4. Commit per node convention (satellite core + security fixes + records +
+   state).
+5. NODE_TRANSITION: mission milestones (MVP/Alpha/Beta/Pilot) or next
+   eligible node selection per PRIORITY_POLICY.
 ## Context
 
 29 COMPLETE nodes. Pipeline: BLE-001 → WIFIAWARE-001 → WIFIDIRECT-001 → BLE-002

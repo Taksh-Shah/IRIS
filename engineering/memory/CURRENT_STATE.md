@@ -1,7 +1,7 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T22:30:00Z
+**Last updated**: 2026-08-22T08:00:00Z
 
 ---
 
@@ -69,6 +69,101 @@ verifier APPROVE at recorded revision; live **695/0/1**, clippy 0, fmt clean).
 PROJECT_STATE completed 29→**30**, implementing 1→0; CHANGELOG **0.3.62**.
 Commit per node convention. **NEXT: SAT-001 UNDERSTAND (iter ~168) → mission
 milestones (MVP/Alpha/Beta/Pilot).**
+**✅ SAT-001 DISCOVER/UNDERSTAND COMPLETE (iter ~168, evidence 1) — RESEARCH
+next (iter ~169, RES-0028).** Read-only pass; baseline **695/0/1 clippy 0 fmt
+clean held**. `SAT-001_DISCOVER.md` authored (pattern LORA-001_DISCOVER):
+node eligible (dep TRANSPORT-001 ✅, requires_hardware true BLK-0005-adjacent,
+human gate resolved DEC-0009); **C2 gap CONFIRMED** → DESIGN resolves AC-1..n.
+Reference surface: SATELLITE.md full read (Iridium SBD 340-B MO/270-B MT,
+20–90 s, ~10 msg/h = key P0–P2 protocol; Starlink/VSAT = Internet-gateway
+reuse out of core scope; **bespoke SbdIrisMessage sketch CONFLICTS with
+CRYPTO-001** → RQ-2 expected REJECT; SatelliteCostGuard 10 TX/h + daily INR +
+P3+ hard gate; DoT/IN-SPACe summary), GW-001 GatewayType::Satellite already
+modeled (P0..P2), TRANSPORT_ABSTRACTION row (first `Expensive` cost class),
+LEGAL-001 licensing carry. RQ-1..RQ-6 staged for RES-0028. known_limitations(4).
+PROJECT_GRAPH SAT-001 evidence(1) + stage_note. **STAGE_TRANSITION → SAT-001
+RESEARCH (iter ~169) → mission milestones (MVP/Alpha/Beta/Pilot).**
+**✅ SAT-001 RESEARCH COMPLETE (iter ~169, evidence 2) — DESIGN next
+(iter ~170).** Read-only pass; baseline **695/0/1 clippy 0 fmt clean held**.
+`research/RES-0028.md` authored via researcher agent (11 websearch + 4
+primary passes, L1–L5): verdict **PROCEED-WITH-CONDITIONS**. RQ-1: SBD alive,
+v1 targets **AT-command SBD modems** (96xx / new Iridium 9604, Jun 2026);
+Iridium GO! local REST endpoints **do not exist** publicly (NDA/no-OSS policy)
+→ GO! path external-integration only. RQ-2: carry STANDARD envelopes verbatim
+(P0 ≈237 B fits 340-B MO); **REJECT the bespoke truncated-signature struct**.
+RQ-3: SOS-exempt cost guard (Garmin/Zoleo pattern), persisted counters, RX
+mailbox checks billable. RQ-4: RFC 9171 CLA MUST rate-limit; first
+`Expensive` cost class; custody-style async ACKs. RQ-5: arXiv:2603.12062
+proves cloning/spoofable downlink/no encryption/~1 mW jamming → envelope RX
+verification MANDATORY, Ring Alerts hint-only, monotonic-sequence freshness.
+RQ-6: Starlink GMPCS Jun 2025/IN-SPACe→2030 launch pending late 2026;
+Telecom Act 2023 criminalizes unauthorized satcom TX; Airtel–Iridium claim
+FAILS verification → India legal HIGH-RISK gate. D-1..D-6 inputs; FC-1..FC-8
+doc corrections staged; gaps G-1..G-7 (HIGH ×3). PROJECT_GRAPH SAT-001
+DISCOVERED → **RESEARCH_COMPLETE** evidence(2). **STAGE_TRANSITION → SAT-001
+DESIGN (iter ~170) → mission milestones (MVP/Alpha/Beta/Pilot).**
+**✅ SAT-001 DESIGN COMPLETE (iter ~170, evidence 3) — IMPLEMENT next
+(iter ~171).** Docs-only pass; baseline **695/0/1 clippy 0 fmt clean held**.
+`SAT_001_DESIGN.md` v1.0 authored (architect agent, pattern LORA_001_DESIGN)
+— C2 gap RESOLVED via AC-1..17 absorbing RES-0028 D-1..D-6 + FC-1..FC-8 +
+G-1..G-7: IridiumSbd over AT-command 96xx modems only (DEC-SAT-0001);
+standard-envelope verbatim carry ≤340-B MO / ≤270-B MT, bespoke
+truncated-signature struct REJECTED (DEC-SAT-0002); SOS-exempt
+SatelliteCostGuard + CostLedger persisted counters (DEC-SAT-0003);
+Expensive/EmergencyOnly + P3+ hard gate + async custody ACKs (DEC-SAT-0004);
+hostile-pipe posture mandatory RX envelope verification per arXiv:2603.12062
+(DEC-SAT-0005); India legal HIGH-RISK gate Telecom Act 2023 (DEC-SAT-0006);
+SIMULATION_VALIDATED discipline (DEC-SAT-0007). Module layout
+`satellite.rs`: provider enum, link seam, deterministic sim adapter, modem
+stub (BLK-0005), SbdFrame, ledger, guard, full Transport impl w/ RT lessons.
+DEC-SAT-0001..0007 ratified into DECISIONS.md. AC-16 = MANDATORY receive-path
+redteam. PROJECT_GRAPH SAT-001 RESEARCH_COMPLETE → **DESIGNING** evidence(3).
+**STAGE_TRANSITION → SAT-001 IMPLEMENT (iter ~171) → mission milestones
+(MVP/Alpha/Beta/Pilot).**
+**✅ SAT-001 IMPLEMENT COMPLETE (iter ~171, evidence 4) — TEST next
+(iter ~172).** `crates/iris-core/src/transport/satellite.rs` authored
+(pattern lora.rs) + wired into mod.rs per SAT_001_DESIGN.md AC-1..13:
+SatelliteProvider non_exhaustive; SOS-exempt SatelliteCostGuard (P0 never
+blocked, hourly+daily hard-stop w/ retry hints, refund-on-failure RT-104,
+CostLedger+Fanout double-write seam AC-3); SatelliteLinkAdapter seam +
+AtSbdModemAdapter BLK-0005 stub + deterministic Sim pair; SbdFrame verbatim
+carry (no on-air IRIS header, MO≤340/MT≤270 caps-only parse); full Transport
+impl (eligibility P3+-never gate AC-5, hot-plug RT-103 lessons, confirmation
+hook, queue-not-drop drain AC-4, async ACK consts AC-9, OBS counters).
+**Live: transport::satellite 21/21 · workspace 716/0/1 · clippy 0 · fmt
+clean.** PROJECT_GRAPH DESIGNING → IMPLEMENTING evidence(4).
+**STAGE_TRANSITION → SAT-001 TEST (iter ~172) → mission milestones.**
+**✅ SAT-001 TEST COMPLETE (iter ~172, evidence 5) — SECURITY_REVIEW next
+(iter ~173, MANDATORY receive-path redteam per G-2).**
+`SAT-001_TEST.md` authored (pattern LORA-001_TEST): **AC-1..14 PASS**
+(AC-8/10/11 review assertions w/ zero-fallback attribution + OBS counters
+asserted live + crypto_e2e green), **AC-15 GATED/BLK-0005**. Live:
+transport::satellite **21/21**, workspace **716/0/1**, clippy 0, fmt clean.
+Environmental note recorded honestly: two sweep attempts hit tool timeouts
+under machine load before the green completion; zero failures in any attempt.
+PROJECT_GRAPH evidence(5) stage_note TEST COMPLETE. **STAGE_TRANSITION →
+SAT-001 SECURITY_REVIEW (iter ~173) → mission milestones.**
+**✅ SAT-001 SECURITY_REVIEW COMPLETE (iter ~173, evidence 6) — VERIFY next
+(iter ~174).** Independent redteam adversarial pass w/ MANDATORY receive-path
+focus per G-2; verdict **FAIL → RESOLVED in-pass**: SAT-RT-102..106 MEDIUM +
+RT-108/109 LOW FIXED (monotonic clock clamp ported; exact-token refunds;
+push_deferred over-cap re-insert mirrored both transports; MT-relay caps
+advertised; hook panic containment; hot-plug TOCTOU; ledger bound);
+SAT-RT-101 HIGH + RT-107 MEDIUM RECORDED as binding above-transport
+obligations; SAT-RT-110 INFO positive-controls PASS. **Live: workspace
+720/0/1 · clippy 0 · fmt clean · transport::satellite 24/24** (+3 RT
+regressions). PROJECT_GRAPH evidence(6) stage_note SECURITY_REVIEW COMPLETE.
+**STAGE_TRANSITION → SAT-001 VERIFY (iter ~174) → mission milestones.**
+**✅ SAT-001 VERIFY COMPLETE (iter ~174, evidence 7) — verifier APPROVE;
+ACCEPT next (iter ~175).** `SAT-001_VERIFICATION.md` authored — AC-1..17
+evidence table + independent-verifier-style reproduction at recorded revision:
+**workspace 720/0/1** (`--all-features` full sweep), `transport::satellite`
+**24/24**, clippy **0**, fmt clean. Evidence integrity: 23/23 cited tests
+re-grep'd w/ file:line; all SAT-RT dispositions re-located as real code.
+Verdicts: **AC-1..14 PASS · AC-15 GATED/BLK-0005 (+ DEC-SAT-0006 legal gate)
+· AC-16 PASS · AC-17 PASS → APPROVE**. Baseline trajectory 695 → 716 →
+**720**. PROJECT_GRAPH evidence(7) stage_note VERIFY COMPLETE.
+**STAGE_TRANSITION → SAT-001 ACCEPT (iter ~175) → mission milestones.**
 ### Previous
 
 **✅ LORA-001 IMPLEMENT COMPLETE (iter ~163) — TEST next (iter ~164).**

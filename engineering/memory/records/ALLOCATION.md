@@ -1,13 +1,13 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-19T15:45:00Z (LORA-001 RESEARCH COMPLETE iter ~161, RES-0027; DESIGN iter ~162 next)
+**Last updated**: 2026-08-22T00:10:00Z (SAT-001 RESEARCH COMPLETE iter ~169, RES-0028; DESIGN iter ~170 next)
 
 ## Next Available IDs
 
 | Type | Prefix | Next ID | Last Allocated |
 |------|--------|---------|---------------|
 | Decision | DEC- | DEC-0011 | DEC-0010 |
-| Research | RES- | RES-0028 | RES-0027 |
+ | Research | RES- | RES-0029 | RES-0028 |
 | Redteam | RED- | RED-0003 | RED-0002 |
 | Experiment | EXP- | EXP-0001 | — |
 | Failure | FAIL- | FAIL-0006 | FAIL-0005 |
@@ -133,6 +133,7 @@
   reconciliation + gaps G-P1..G-P9. DESIGN iter ~154.
 
 - RES-0027: LORA-001 LoRa transport SOTA — allocated iter ~161 (RESEARCH COMPLETE 2026-08-19); websearch + primary-source passes (WPC G.S.R. 853(E) 2021 Table-I 865-868 25 mW e.r.p./1% duty L1-confirmed via thc.nic.in/G25977.pdf; LoRaWAN IN865 30 dBm = network-plan only; AN1200.13 sensitivity; BLE-GATT/USB-SLIP bridge; DutyCycleTracker; Meshtastic override NOT followed); verdict PROCEED; DESIGN inputs D-1..D-7 -> LORA_001_DESIGN.md (iter ~162).
+ | Research | RES-0028 | done | SAT-001 satellite gateway transport research (Iridium SBD/AT-modem target, envelope verdict, cost guard, security, India regulatory) | 2026-08-22 |
 
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)

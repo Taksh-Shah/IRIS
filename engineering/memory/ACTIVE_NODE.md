@@ -1,8 +1,21 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-19T22:30:00Z
+**Last updated**: 2026-08-22T08:00:00Z
 
+## Active Node: SAT-001 — Satellite Gateway Transport
+
+- **Type**: TRANSPORT (Iridium SBD constrained-data path; IP providers =
+  Internet-gateway reuse)
+- **Priority**: P2 · **requires_hardware**: true (BLK-0005-adjacent) ·
+  human gate: RESOLVED (DEC-0009)
+- **Status**: **UNDERSTANDING** (iter ~168, evidence 1, DISCOVER COMPLETE);
+  **Status**: RESEARCH_COMPLETE (iter ~169, evidence 2 — RES-0028 PROCEED-WITH-CONDITIONS)
+- **C2 gap**: CONFIRMED — DESIGN resolves AC-1..n
+- **Key facts**: Iridium SBD 340-B MO / 270-B MT, 20–90 s latency, ~10 msg/h;
+  P0–P2 only; first `Expensive` cost-class transport; bespoke doc struct
+  conflicts w/ CRYPTO-001 → RQ-2; GatewayType::Satellite already modeled in
+  GW-001.
 ## Active Node: LORA-001 — LoRa Gateway Transport
 ## NODE_TRANSITION → SAT-001 (iter ~167)
 

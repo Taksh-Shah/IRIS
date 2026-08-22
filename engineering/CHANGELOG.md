@@ -1,4 +1,32 @@
 
+## [0.3.63] - 2026-08-22 - NODE
+
+**SAT-001 ACCEPTED COMPLETE (iter ~175, iter ~168..175 pipeline) — 31 COMPLETE
+nodes; GRAPH EXHAUSTED of eligible autonomous nodes; baseline 720/0/1 clippy 0
+fmt clean.**
+- **DISCOVER/RESEARCH (~168/169)**: SATELLITE.md surface + RES-0028 verdict
+  PROCEED-WITH-CONDITIONS — Iridium SBD alive (no EOL), v1 targets AT-command
+  96xx modems; GO! REST endpoints proven fictional; standard-envelope verbatim
+  carry REJECTING the truncated-signature struct; SOS-exempt cost-guard
+  industry pattern; hostile-pipe security per arXiv:2603.12062; India Telecom
+  Act 2023 criminal exposure → legal HIGH-RISK gate.
+- **DESIGN (~170)**: SAT_001_DESIGN.md AC-1..17, DEC-SAT-0001..0007 ratified.
+- **IMPLEMENT (~171)**: `transport/satellite.rs` — SatelliteProvider,
+  SOS-exempt SatelliteCostGuard (P0 never blocked) + CostLedger seam,
+  SatelliteLinkAdapter + deterministic Sim pair + HardwareGated modem stub,
+  SbdFrame verbatim MO≤340/MT≤270 caps-only parse, full Transport impl w/
+  P3+-never gate, async ACK consts, OBS counters. Live 716/0/1.
+- **TEST (~172)**: AC-1..15 evidence map, live 716/0/1.
+- **SECURITY_REVIEW (~173)**: redteam FAIL → RESOLVED — RT-102 monotonic
+  clock clamp, RT-103 exact-token refunds, RT-104 push_deferred over-cap
+  re-insert (mirrored into lora), RT-105 MT-relay caps advertised (270),
+  RT-106 hook-panic containment, RT-108 hot-plug TOCTOU, RT-109 bounded
+  ledger; RT-101 HIGH (P0 classification authority above transport) +
+  RT-107 RECORDED as binding obligations. Live 720/0/1, satellite 24/24.
+- **VERIFY (~174)**: verifier APPROVE zero findings at recorded revision;
+  23/23 cited tests re-grepped w/ file:line. AC-15 GATED/BLK-0005 + India
+  legal gate DEC-SAT-0006 carried as known_limitations.
+
 ## [0.3.62] - 2026-08-19 - NODE
 
 **LORA-001 ACCEPTED COMPLETE (iter ~167, iter ~163..166 pipeline) — 30

@@ -1115,6 +1115,16 @@ impl<T> BacklogQueue<T> {
         true
     }
 
+    /// SAT-RT-104 lesson (mirrored from the satellite transport review):
+    /// re-insert an item that was ALREADY queued (drain deferral) — ignores
+    /// the depth cap so concurrent enqueues during a drain can never silently
+    /// drop held traffic. May temporarily exceed [`MAX_BACKLOG_ENTRIES`].
+    pub fn push_deferred(&self, priority: MessagePriority, item: T) {
+        let mut g = self.entries.lock().unwrap();
+        let pos = g.partition_point(|e| e.priority <= priority);
+        g.insert(pos, BacklogEntry { priority, item });
+    }
+
     /// Pop the highest-priority entry (front of the sorted vec).
     pub fn pop_highest(&self) -> Option<BacklogEntry<T>> {
         let mut g = self.entries.lock().unwrap();
@@ -1369,8 +1379,9 @@ impl LoRaTransport {
             }
         }
         for entry in deferred {
-            // Re-queue always fits: deferred entries came out of this queue.
-            let _ = self.backlog.push(entry.priority, entry.item);
+            // SAT-RT-104: deferred items were already queued once — re-insert
+            // over-capacity so concurrent enqueues can never drop them.
+            self.backlog.push_deferred(entry.priority, entry.item);
         }
         drained
     }
@@ -1950,6 +1961,24 @@ mod tests {
 
     // ---- backlog queue (AC-5) ----
 
+    #[test]
+    fn backlog_push_deferred_over_cap_retains_held_traffic_sat_rt104() {
+        let q: BacklogQueue<u8> = BacklogQueue::new();
+        for i in 0..MAX_BACKLOG_ENTRIES {
+            assert!(q.push(MessagePriority::P4, (i % 251) as u8 + 1));
+        }
+        assert!(!q.push(MessagePriority::P4, 7), "cap refuses new pushes");
+        // Deferred re-insert ignores the cap: nothing already-held is dropped
+        // when concurrent enqueues refill during a drain.
+        q.push_deferred(MessagePriority::P4, 7);
+        assert_eq!(q.len(), MAX_BACKLOG_ENTRIES + 1);
+        // Drain still works over the temporarily-over-cap queue.
+        let mut drained = 0;
+        while q.pop_highest().is_some() {
+            drained += 1;
+        }
+        assert_eq!(drained, MAX_BACKLOG_ENTRIES + 1);
+    }
     #[test]
     fn backlog_drains_in_priority_order_fifo_within_class() {
         let q: BacklogQueue<u8> = BacklogQueue::new();

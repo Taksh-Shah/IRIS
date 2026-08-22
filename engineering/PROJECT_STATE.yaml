@@ -3,7 +3,7 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-19 (LORA-001 ACCEPTED iter ~167 — 30 COMPLETE nodes — Rust core AC-1..13 delivered, 27 tests, 686/0/1 clippy 0 fmt clean; NEXT: LORA-001 TEST iter ~164, then SECURITY_REVIEW -> VERIFY -> ACCEPT -> SAT-001)
+# Last updated: 2026-08-22 (SAT-001 ACCEPTED iter ~175 - 31 COMPLETE nodes; graph exhausted of autonomous-eligible nodes — Rust core AC-1..13 delivered, 27 tests, 686/0/1 clippy 0 fmt clean; NEXT: LORA-001 TEST iter ~164, then SECURITY_REVIEW -> VERIFY -> ACCEPT -> SAT-001)
 
 # Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
@@ -13,14 +13,14 @@
 #            TEST-001, BLE-002, IOS-001, PILOT-001 (29)
 # RESEARCH_COMPLETE: LEGAL-001 (1)
 # DESIGNING: (0)
-# IMPLEMENTING: (0)  [LORA-001 COMPLETE iter ~167]
+# IMPLEMENTING: (0)  [SAT-001 COMPLETE iter ~175]
 # VERIFYING: (0)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
-# DISCOVERED: SAT-001 (1)  [next: UNDERSTAND iter ~168]
+# DISCOVERED: (0)  [graph exhausted; mission milestones outside graph]
 
 summary:
   total_nodes: 32
-  completed: 30              # + LORA-001 (2026-08-19, ACCEPT iter ~167, P2 TRANSPORT, AC-1..17 satisfied w/ AC-15 GATED/BLK-0005, verifier APPROVE, live 695/0/1)
+  completed: 31              # + SAT-001 (2026-08-22, ACCEPT iter ~175, P2 TRANSPORT, AC-1..17 satisfied w/ AC-15 GATED/BLK-0005, verifier APPROVE, live 695/0/1)
   researching: 0
   research_complete: 1       # LEGAL-001
   designing: 0               # LORA-001 advanced to IMPLEMENTING iter ~163

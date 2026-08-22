@@ -999,3 +999,59 @@ Evidence: [Link to research/record]
 **Alternatives**: LoRa-specific crypto key hierarchy (rejected — unnecessary, envelope is transport-agnostic); P0 encryption on LoRa (rejected — routing-level rule unchanged).
 **Consequence**: AC-11/AC-16; no crypto diffs; redteam focus = duty bypass.
 **Evidence**: RES-0027 §6 f.5; CRYPTO-001 (L1 project)
+
+### DEC-SAT-0001: v1 provider = IridiumSbd over AT-command 96xx modems only
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: RockBLOCK 9603/9602-N + Iridium 9604 AT-command SBD modems are the v1 reference hardware behind the adapter-injected SatelliteLinkAdapter seam. Iridium GO!/exec, Certus IMT, NTN Direct OUT-of-core (GO! official API is NDA-gated with explicit no-open-source policy; local REST endpoints do not exist publicly — FC-3 removal).
+**Context**: RES-0028 RQ-1/D-1/FC-3 (ifp.iridium.com L1; iridium.com L1; investor.iridium.com L1).
+**Alternatives**: GO! REST integration (rejected — API fictional/unverifiable + policy-blocked); Certus IMT first (deferred — immature tooling); NTN Direct first (deferred — trials-stage).
+**Consequence**: AC-1/AC-6; AtSbdModemAdapter stub BLK-0005; G-1 dispositioned.
+
+### DEC-SAT-0002: Standard-envelope verbatim carry into SBD payloads
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: CRYPTO-001 envelopes transported verbatim into <=340-B MO / <=270-B MT carrier frames. Bespoke SbdIrisMessage struct and ALL signature/crypto-material truncation REJECTED forever (truncated Ed25519 is cryptographically void). Stream-level fragmentation w/ per-fragment MAC only if >340 B ever needed. No LZ4 in v1.
+**Context**: RES-0028 RQ-2/D-2/FC-2.
+**Alternatives**: bespoke compact struct w/ truncated sig (rejected — voids verification); LZ4 pre-compression (deferred — overhead at tiny sizes).
+**Consequence**: AC-7/AC-11; P0 ~237-B envelope fits MO w/ headroom.
+
+### DEC-SAT-0003: SOS-exempt SatelliteCostGuard
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: P0 never blocked by any budget (industry SOS-exempt pattern). P1/P2 subject to hourly msg cap (default 10/h) + daily INR budget (default 200/day) hard-stop + queue-not-drop. Counters persisted on every mutation via CostLedger trait. RX mailbox checks cost-modeled (~$0.05/check). Confirmation hook for discretionary P1/P2 only.
+**Context**: RES-0028 RQ-3/D-3/FC-7 (Zoleo L1 SOS-exempt quote; Garmin L1 quotas).
+**Alternatives**: uniform budgets incl. P0 (rejected — violates EMERG-001 never-held principle); soft-only limits (rejected — unbounded spend on constrained disaster budgets).
+**Consequence**: AC-2..AC-4; CostLedger seam.
+
+### DEC-SAT-0004: Expensive/EmergencyOnly(P0-P2) classification + transport-side P3+ hard gate
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: First TransportCostClass::Expensive transport. Eligibility hard gate rejects P3-P7 transport-side regardless of manager routing. Async custody-style ACKs; retries >=300 s base +/-20 pct jittered; never assume RTT <90 s (transit 5-20 s vs practical end-to-end 20-90 s both documented).
+**Context**: RES-0028 RQ-4/D-4 (RFC 9171 CLA MUST rate-limit, L1); GW-001 GatewayType::Satellite serves_priority P0..P2 already aligned.
+**Alternatives**: manager-side-only gating (rejected — defense in depth); synchronous ACK timers (rejected — incompatible w/ store-and-forward).
+**Consequence**: AC-5/AC-9; Caps row pinned.
+
+### DEC-SAT-0005: Hostile-pipe posture
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: Iridium L-band treated as ZERO-authenticity/confidentiality pipe (arXiv:2603.12062 Mar 2026: SIM-cloning, cleartext signaling, spoofable downlink Ring Alerts, replay works, ~1 mW jamming). Envelope RX verification above the transport MANDATORY before any UI/alert/effect surface. Ring Alerts wake-up hints only. Freshness via per-sender monotonic sequence numbers (timestamps insufficient under multi-hour store-and-forward) — CRYPTO-001 owner coordination recorded as follow-up (G-7). Satellite never guaranteed-delivery.
+**Context**: RES-0028 RQ-5/D-5/G-2/G-6/G-7.
+**Alternatives**: link-layer trust anchors (rejected — none exist to build on); timestamp-only freshness (rejected — unsound under store-and-forward).
+**Consequence**: AC-8/AC-16 mandatory receive-path redteam; §3 posture.
+
+### DEC-SAT-0006: India legal HIGH-RISK gate
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: Telecom Act 2023 criminalizes unauthorized satcom device possession/use in India (up to 3 yr imprisonment); Customs Circular 37/2010 import controls apply. NO field activation of TX-capable satellite units without legal sign-off + an identified authorized GMPCS/MSS channel (LEGAL_REVIEW gap carried). Doc claim of Airtel-Iridium partnership failed verification. Starlink stays out-of-core (India commercial launch pending late 2026).
+**Context**: RES-0028 RQ-6/D-6/FC-4/G-3.
+**Alternatives**: treat as civil/regulatory matter (rejected — statute says criminal); defer entirely to pilot ops (rejected — legal exposure must gate IMPLEMENT scope claims).
+**Consequence**: AC-15 gating language; known_limitations carry; no code impact (operational/legal gate).
+
+### DEC-SAT-0007: SIMULATION_VALIDATED discipline until hardware benchmark
+**Status**: APPROVED 2026-08-22 (SAT-001 DESIGN)
+**Node**: SAT-001
+**Summary**: All SAT-001 test evidence simulated until HARDWARE_VALIDATED benchmark on a real modem (new EXP; "~10 msgs/hour" folklore-grade must not drive more than guard defaults, which stay provisional).
+**Context**: RES-0028 RQ-4/G-5/D-6.
+**Alternatives**: cite vendor marketing throughput (rejected — folklore-grade L5).
+**Consequence**: AC-12/AC-15; sim knobs deterministic seeded.
