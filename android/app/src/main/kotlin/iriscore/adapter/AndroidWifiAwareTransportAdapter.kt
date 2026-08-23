@@ -34,6 +34,11 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import uniffi.iriscode.IrisFfiException
+import android.net.wifi.aware.AttachCallback
 
 /**
  * 12-op async `FfiWifiAwareAdapter` foreign-trait implementation.

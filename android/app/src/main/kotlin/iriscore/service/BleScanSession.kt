@@ -90,7 +90,7 @@ class BleScanSession(private val context: Context) {
         )
         return try {
             val pendingIntent = buildScanPendingIntent()
-            scanner.startScan(filters, settings, pendingIntent)
+            scanner.bluetoothLeScanner?.startScan(filters, settings, pendingIntent)
             scanPendingIntent = pendingIntent
             true
         } catch (_: Exception) {

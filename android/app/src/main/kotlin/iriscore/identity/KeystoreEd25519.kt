@@ -82,7 +82,7 @@ class KeystoreEd25519 internal constructor(
         override fun getOrCreateKeyPair(): KeyPair {
             if (!keyStore.containsAlias(alias)) {
                 val kpg = KeyPairGenerator.getInstance(
-                    KeyProperties.KEY_ALGORITHM_ED25519,
+                    KeyProperties.KeyProperties.KEY_ALGORITHM_EC,
                     "AndroidKeyStore",
                 )
                 val spec = KeyGenParameterSpec.Builder(

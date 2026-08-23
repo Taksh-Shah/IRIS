@@ -30,6 +30,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import uniffi.iriscode.IrisFfiException
 
 /**
  * 20-op async `FfiWifiDirectAdapter` foreign-trait implementation.

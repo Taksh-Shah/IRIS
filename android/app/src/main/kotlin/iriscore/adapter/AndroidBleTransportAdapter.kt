@@ -27,6 +27,8 @@ import iriscode.FfiGattWriteEvent
 import iriscode.FfiScanFilter
 import iriscode.FfiScanResult
 import iriscode.IrisFfiException
+import iriscode.GattFailure
+import iriscode.DeviceNotFound
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.UUID
@@ -34,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ConcurrentSkipListSet
 import java.util.concurrent.atomic.AtomicLong
+import uniffi.iriscode.IrisFfiException
 
 /**
  * 10-op `FfiBleAdapter` foreign-trait implementation (Android platform).
