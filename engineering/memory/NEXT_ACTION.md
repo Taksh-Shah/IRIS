@@ -1,43 +1,79 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-22T09:30:00Z
+**Last updated**: 2026-08-22T14:00:00Z
 
 ---
 
-## PRIORITY: OPERATOR DIRECTION REQUIRED — graph exhausted (iter ~175)
+## CURRENT STATE: MISSION GRAPH COMPLETE — AWAITING PHYSICAL PHONES
 
-**31 COMPLETE nodes. SAT-001 ACCEPTED (evidence 8, verifier APPROVE,
-live 720/0/1 clippy 0 fmt clean, commit 0a2547c). No eligible autonomous-
-eligible software nodes remain in the graph.**
+**32 of 33 nodes COMPLETE.** LEGAL-001 DEFERRED_TO_FUTURE (carried
+obligations register at `docs/legal/CARRIED_OBLIGATIONS_REGISTER.md`).
+Baseline **727/0/1**, clippy 0, fmt clean, audit exit 0.
 
-## Continuation options (operator decision)
+Full test report: `docs/testing/SYSTEM_TEST_REPORT.md`
 
-1. **(a) Ratify a new engineering-node batch** per BLK-0002 — candidates:
-   protocol conformance interop, supply-chain/SBOM hardening, CI/CD depth,
-   ML routing v2, platform expansion, PROTO-001 v2 deferred items.
-2. **(b) LEGAL-001 counsel engagement** — open questions (satellite
-   licensing/GMPCS authorized channel per DEC-SAT-0006 context, WPC-ETA
-   per-SKU) require human legal action; unblocks LEGAL-001 → DESIGN.
-3. **(c) Mission milestones** — MVP/Alpha/Beta/Pilot planning (tracked
-   outside the graph; ops/legal coordination).
+---
 
-Supervisor parked `execution_status: IDLE`. Re-invoking `/resume` or
-`/autonomous` without new direction will report this handoff.
-## Context
+## PHYSICAL-PHONE TESTING PHASE — Setup Instructions for Operator
 
-29 COMPLETE nodes. Pipeline: BLE-001 → WIFIAWARE-001 → WIFIDIRECT-001 → BLE-002
-→ ANDROID-001 → IOS-001 → **PILOT-001 ✅** → **LORA-001** → SAT-001 → mission
-milestones (MVP/Alpha/Beta/Pilot). LORA-001/SAT-001 are P2
-`requires_hardware: true` — GAP-004 / BLK-0005 device gating applies. LEGAL-001
-open questions (LoRa type approval/WPC-ETA, satellite licensing) remain a carry
-— RES-0027 RQ-1. Iter ~163 design corrections + iter ~164 TEST evidence are
-durable in graph/doc/records.
+### What you need to provide
 
-## Recent state files touched
+| Item | Details |
+|------|---------|
+| 2+ Android phones | Old/repurposed is fine — Android 8.0+ (API 26+) required; BLE + Wi-Fi Direct hardware |
+| USB cables | For `adb` connection from your PC |
+| Developer mode | Enable on each phone: Settings → About → tap Build Number 7× → Developer Options → enable USB Debugging |
+| Your PC | Windows with USB ports; we'll install the Android SDK toolchain |
 
-- `engineering/memory/records/LORA-001_TEST.md` (new, iter ~164, evidence 5)
-- `engineering/PROJECT_GRAPH.yaml` (evidence 4→5, stage_note TEST COMPLETE)
-- `engineering/memory/execution-state.yaml` (stage TEST → SECURITY_REVIEW)
-- `engineering/memory/records/execution-log.md` (rows 163 + 164 + retro 162)
-- `engineering/memory/ACTIVE_NODE.md`, `CURRENT_STATE.md`, `NEXT_ACTION.md`
+### Is a 3rd phone useful?
+
+**YES — strongly recommended.** With 2 phones you can prove direct P2P
+(BLE discovery + message delivery). With 3 phones you unlock **true multi-hop
+mesh**: Phone A sends → Phone B relays (out-of-range of A) → Phone C
+receives. This exercises the DTN store-carry-forward code path on real
+hardware and proves the mesh actually meshes.
+
+### Build environment setup (I will guide step-by-step when you're ready)
+
+1. Install Android Studio (or just command-line tools) → gets you SDK + platform tools
+2. Install Rust Android targets: `rustup target add aarch64-linux-android armv7-linux-androideabi`
+3. Install cargo-ndk: `cargo install cargo-ndk`
+4. I build the APK: `cargo ndk -t arm64-v8a -p iris-android ... && gradlew assembleDebug`
+5. You connect phones via USB → `adb install` on each
+
+### What we'll test on real hardware
+
+| Test | Phones needed | What it proves |
+|------|--------------|----------------|
+| BLE discovery | 2 | One phone advertises IRIS service, other discovers it |
+| BLE GATT delivery | 2 | Message sent from A arrives at B over BLE |
+| Wi-Fi Aware discovery | 2 (both must support NAN) | NDP session formation |
+| Wi-Fi Direct group | 2 | P2P group formation + TCP delivery |
+| Multi-hop relay | **3** | A→B→C where B is out of BLE range of A |
+| SOS priority | 2–3 | P0 bypasses all queues, arrives first |
+| Background behaviour | 2 | App survives screen-off, Doze mode |
+| Battery drain | 2 | Measured vs estimated (EXP-003) |
+| OEM battery-kill | 2 | Verify whitelist guidance per OEM matrix |
+| Reconnect resilience | 2 | Toggle Bluetooth/Wi-Fi mid-session; auto-recovery |
+
+---
+
+## Pre-existing work: nothing pending in the software graph
+
+All engineering nodes are COMPLETE or DEFERRED_TO_FUTURE. The only remaining
+work items are:
+1. Physical-device testing (this phase)
+2. LEGAL-001 counsel engagement (deployment-time)
+3. Mission milestone planning (MVP/Alpha/Beta/Pilot)
+
+---
+
+## Recent commits
+
+```
+80f0091 SAT-001 post-accept bookkeeping
+109bf09 SAT-001 post-accept hygiene: FC-1..FC-8 SATELLITE.md corrections
+15bfdf4 supervisor: HUMAN_GATE set at graph exhaustion
+91d6924 SYSVAL-001 whole-system validation COMPLETE + LEGAL-001 deferred
+```

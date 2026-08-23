@@ -174,6 +174,14 @@ carried). PROJECT_STATE completed 30→**31**, implementing 1→**0**.
 CHANGELOG **0.3.63**. Commit **0a2547c**. **SUPERVISOR PARKED IDLE pending
 operator direction**: (a) ratify new node batch per BLK-0002; (b) LEGAL-001
 human legal counsel; (c) mission milestones MVP/Alpha/Beta/Pilot planning.
+**✅ SESSION SUMMARY + TEST REPORT (iter ~179).** Comprehensive test report
+authored at `docs/testing/SYSTEM_TEST_REPORT.md` — covers all tests across
+LORA-001 (24+), SAT-001 (24+), SYSVAL-001 (7), and re-verification of the
+full pre-existing corpus (~700). Issues found-and-fixed table: RT-101
+CRITICAL billing basis, RT-102/103/104/105/106/108/109 fixes, rate_limiter
+flake resolution. LEGAL-001 deferred to future w/ carried-obligations
+register. NEXT: physical-phone phase (operator to provide 2–3 Android
+devices; setup instructions in NEXT_ACTION.md).
 ### Previous
 
 **✅ LORA-001 IMPLEMENT COMPLETE (iter ~163) — TEST next (iter ~164).**
