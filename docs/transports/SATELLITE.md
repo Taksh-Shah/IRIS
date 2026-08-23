@@ -46,8 +46,8 @@ Not suitable for individual rescuers (dish not portable enough).
 | Altitude | 780 km |
 | Coverage | Truly global including poles |
 | Voice | 2.4 kbps CODEC (narrow but comprehensible) |
-| SBD data rate | ~340 bytes per message, ~10 messages/hour practical |
-| SBD latency | 20–90 seconds (polling interval) |
+| SBD data rate | 340 B MO / 270 B MT (96xx modules); 95xx handsets 1960/1890 B; ~10 messages/hour practical |
+| SBD latency | network transit ~5–20 s by size; practical end-to-end 20–90 s+ incl. polling cadence |
 | Terminal: Iridium GO! | ~₹40,000 purchase, ~₹1,500/month + ₹15–60/message |
 | Terminal: Iridium 9575 | Handset, ~₹55,000 |
 | IRIS integration | Iridium GO! provides Wi-Fi hotspot, smartphone connects |
@@ -57,75 +57,27 @@ Not suitable for individual rescuers (dish not portable enough).
 SBD is the key protocol for IRIS P0–P2 satellite relay:
 
 ```
-Maximum MO (Mobile Originated) message: 340 bytes
-Maximum MT (Mobile Terminated) message: 270 bytes
-Latency: 20–90 seconds from transmission to delivery
-Cost: ~$0.05–0.15 per message (depends on plan)
+Maximum MO (Mobile Originated) message: 340 bytes (96xx modules only; 95xx handsets support 1960 B MO / 1890 B MT)
+Maximum MT (Mobile Terminated) message: 270 bytes (96xx); 1890 bytes (95xx)
+Latency: network transit ~5–20 s by size; practical end-to-end 20–90 s+ including polling cadence and relay processing
+Billing: minimum billable message 10 B; RX mailbox checks cost ~$0.05 even when no MT message is queued (RECEIVING COSTS MONEY - FC-7)
 ```
 
-**340 bytes is perfectly sized for IRIS P0–P2 messages**:
+**Envelope carry (SAT-001, DEC-SAT-0002)**: IRIS carries its standard CRYPTO-001 signed envelopes VERBATIM inside SBD payloads - the P0 envelope (~237 B incl. full 64-byte Ed25519 signature) fits the 340-B MO budget with headroom. There is NO bespoke satellite wire struct and NO signature truncation: crypto material is never shortened. Field-level parsing happens at the envelope layer above the transport; the transport enforces directional size caps only (MO ≤ 340 B, MT ≤ 270 B on 96xx-class links). Mesh-relayed traffic rides the MT leg, so IRIS advertises 270 B for relayed messages; the full MO budget is available for gateway egress.
 
-```rust
-// IRIS P0 SOS packed for SBD (target: ≤ 340 bytes)
-pub struct SbdIrisMessage {
-    pub header: [u8; 4],       // "IRIS" magic
-    pub version: u8,           // protocol version
-    pub priority: u8,          // 0 for P0
-    pub sender_id: [u8; 16],   // truncated NodeId (first 16 bytes)
-    pub recipient_id: [u8; 16], // or broadcast [0xFF; 16]
-    pub timestamp: u32,        // Unix timestamp, 32-bit (sufficient until 2106)
-    pub sequence: u16,
-    pub location_lat: i32,     // fixed-point, microdegrees (divide by 1e6)
-    pub location_lon: i32,
-    pub message_type: u8,
-    pub payload_len: u8,
-    pub payload: [u8; 200],    // UTF-8 message text, max 200 bytes
-    pub signature: [u8; 32],   // Ed25519 signature truncated to 32 bytes
-    // Total: 4+1+1+16+16+4+2+4+4+1+1+200+32 = 286 bytes — fits in SBD
-}
-```
+### Iridium GO! / GO! exec
 
-### Iridium GO! Integration
+The GO! family provides a Wi-Fi hotspot over Iridium services. The ONLY
+official programmatic interface is the Iridium GO! Application Developer
+Program (ifp.iridium.com): NDA + signed agreement + mandatory application
+certification, exposing SOAP-over-CSD and a SIP-based SBD connection.
+**"Iridium GO! does not support open source projects."** No public REST API
+exists at 192.168.0.1 (earlier sketches of `/api/sbd/send` were unverifiable
+and have been REMOVED).
 
-The Iridium GO! device creates a Wi-Fi hotspot that phones connect to:
-
-```
-Rescue Team Phone (IRIS app)
-    ↓ Wi-Fi to 192.168.0.1
-Iridium GO! Device
-    ↓ Iridium L-band satellite link
-Iridium ground station
-    ↓ Internet
-IRIS Relay Server (receives P0–P2 from satellite)
-    ↓ Distributes via Internet/mesh
-Destination Node
-```
-
-IRIS connects to Iridium GO! via its REST API (local HTTP on 192.168.0.1):
-
-```rust
-pub struct IridiumGoClient {
-    base_url: String, // "http://192.168.0.1"
-    session_cookie: Option<String>,
-}
-
-impl IridiumGoClient {
-    pub async fn send_sbd_message(&self, payload: &[u8]) -> Result<SbdMessageId> {
-        assert!(payload.len() <= 340, "SBD MO max 340 bytes");
-        let resp = self.http.post(&format!("{}/api/sbd/send", self.base_url))
-            .json(&SbdSendRequest { payload: BASE64.encode(payload) })
-            .send().await?;
-        Ok(resp.json::<SbdSendResponse>().await?.message_id)
-    }
-
-    pub async fn check_inbox(&self) -> Result<Vec<SbdIncomingMessage>> {
-        let resp = self.http.get(&format!("{}/api/sbd/inbox", self.base_url))
-            .send().await?;
-        Ok(resp.json::<SbdInboxResponse>().await?.messages)
-    }
-}
-```
-
+**IRIS posture**: GO!/GO!-exec deployments are EXTERNAL integrations only -
+an operator-run GO! feeding an IRIS relay over IP. The IRIS core never talks
+to GO! directly; v1 targets AT-command SBD modems instead.
 ### Thuraya
 
 Regional geostationary satellite covering Asia, Middle East, Africa:
@@ -155,27 +107,56 @@ Geostationary broadband satellite:
 VSAT is for base camp and command center use, not field nodes. IRIS treats VSAT
 as an Internet gateway (same as Starlink, but higher latency).
 
+## Iridium IoT Evolution (2024-2026)
+
+Legacy SBD remains actively sold with **no published EOL**, but the ecosystem
+is steering toward three forward paths (Iridium press, Feb 2026):
+
+- **Certus 9704 / IMT** (Dec 2024): topic-based pub/sub messaging, MQTT via
+  partners (RockREMOTE/Ground Control).
+- **Iridium 9604 hybrid module** (commercial Jun 23, 2026): SBD + LTE-M
+  Cat-M1 + GNSS, unified AT command set - the recommended v1 IRIS target
+  alongside RockBLOCK 9603-class modems.
+- **NTN Direct NB-IoT** (3GPP Rel-19 over Iridium L-band): trials Jan/Jun
+  2026, service launching 2026 - not yet commercially mature.
+- **CloudConnect**: native AWS IoT Core integration for SBD AND IMT messages
+  (relay-side option).
+
+All future backends slot in behind the SAT-001 adapter-injected seam without
+core changes (DEC-SAT-0001).
 ## India Regulatory Status
 
-### SATCOM Policy
+**CORRECTED per RES-0028 (2026-08-22 research; supersedes earlier claims):**
 
-The Department of Telecommunications (DoT) and IN-SPACe govern satellite operations:
+1. **Starlink**: DoT Letter of Intent May 7, 2025; GMPCS licence granted
+   ~Jun 5-6, 2025; IN-SPACe authorization Jul 9, 2025 (Gen1 constellation,
+   valid to Jul 7, 2030); spectrum assignment Sep 2025; testing Oct 2025.
+   Commercial launch still pending as of mid-2026 (targeted late 2026).
+   (Earlier "DoT approved 2024" claim was WRONG.)
 
-1. **Starlink**: Approved by DoT in 2024 for mobility/maritime services. Individual
-   consumer terminals do not require separate license — covered by operator's license.
+2. **Iridium**: available in India through licensed service partners.
+   **REMOVED**: an earlier claim that "Bharti Airtel is Iridium's India
+   partner" FAILED verification (Airtel's satellite relationships are with
+   Starlink/OneWeb). The current authorized Iridium airtime channel post-
+   Telecom Act 2023 requires LEGAL_REVIEW confirmation.
 
-2. **Iridium**: Licensed in India via Bharti Airtel (Bharti is Iridium's India partner).
-   Iridium terminals can be used by individuals; no separate user license needed.
+3. **Telecommunications Act 2023** (No. 44 of 2023, effective Dec 24, 2023)
+   replaced the Telegraph Act framework: unauthorized possession/use of
+   satellite phones and two-way satellite messengers is a CRIMINAL offense
+   (penalties up to 3 years imprisonment). Customs Circular 37/2010 still
+   governs imports (declare + DoT permission). Devices in the prohibited-
+   without-permission class include Garmin inReach, SPOT, and Iridium GO!.
 
-3. **Thuraya**: Licensed through Indian operators. User terminal operation: legal with
-   registered terminal.
+4. **IRIS gate (DEC-SAT-0006)**: NO field activation of TX-capable satellite
+   units in India without legal sign-off AND an identified authorized
+   GMPCS/MSS channel. Receive-only GPS remains unaffected.
 
-4. **Uplink regulations**: transmitting from Indian soil via satellite always requires
-   operator authorization — which Iridium/Starlink/Thuraya provide to end customers
-   through their service agreements.
+5. **Uplink regulations**: transmitting from Indian soil always requires
+   operator authorization via service agreements; TRAI satcom recommendations
+   (May 2025): administrative assignment, 4% AGR, Rs 500/subscriber/yr urban.
 
-See `legal/SATELLITE_REGULATION.md` for detailed DoT/IN-SPACe policy analysis.
-
+See `legal/SATELLITE_REGULATION.md` and LEGAL-001 carry for the open counsel
+question list.
 ## Priority Routing to Satellite
 
 Only P0–P2 messages are eligible for satellite routing:
@@ -213,6 +194,12 @@ Satellite transmission has real monetary cost. IRIS enforces:
 4. **Rate limit**: max 10 satellite transmissions per hour (configurable)
 5. **User confirmation**: for non-P0 satellite use, UI shows "This will use satellite
    (estimated cost: ~₹10). Confirm?"
+6. **P0 exemption**: emergency sends NEVER wait for budgets or confirmation
+   (industry SOS-exempt pattern: Zoleo/Garmin) - DEC-SAT-0003.
+7. **RX costs count**: mailbox checks bill even when empty; poll cadence must
+   be budget-aware (FC-7), and counters persist across reboots (CostLedger).
+8. **No LZ4 in v1**: compression overhead dominates at <=340-B sizes;
+   benchmark before adopting.
 
 ```rust
 pub struct SatelliteCostGuard {
@@ -251,6 +238,25 @@ impl TransportAdapter for SimulatedSatelliteTransport {
 }
 ```
 
+## Security Posture
+
+**CORRECTED per RES-0028 / arXiv:2603.12062 (Mar 2026)**: the Iridium L-band
+link provides NO effective authentication or confidentiality - SIM keys are
+extractable (full device cloning), signaling is unencrypted, downlink
+spoofing is demonstrable (devices accept fake Ring Alerts), recorded auth
+bursts replay, and ~1 mW jamming disrupts reception regionally. Passive
+geolocation to ~10 km is also possible (RECORD, USENIX Sec 2024).
+
+**IRIS posture (DEC-SAT-0005)**: treat satellite as a HOSTILE PIPE -
+- Every inbound envelope MUST pass CRYPTO-001 signature verification ABOVE
+  this transport before any UI/alert/effect surface.
+- Ring Alerts are wake-up hints ONLY, never content or authenticity signals.
+- Freshness uses per-sender monotonic sequence numbers (timestamps alone are
+  unsound under multi-hour store-and-forward).
+- No transport trust anchors exist or will be added.
+- Satellite is best-effort redundancy: never presented as guaranteed
+  delivery (~1 mW jamming defeats it locally).
+- Any satellite TX reveals approximate location (~10 km) - accepted for P0.
 ## Field Deployment Checklist
 
 Before deploying satellite-capable IRIS node:
