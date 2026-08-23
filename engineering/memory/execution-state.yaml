@@ -4,9 +4,9 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-22T11:30:00Z"
+updated_at: "2026-08-22T12:30:00Z"
 # === EXECUTION CONTROL ===
-execution_status: "HUMAN_GATE"
+execution_status: "IDLE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
 
 autonomy_mode: "AUTONOMOUS"
@@ -24,8 +24,8 @@ mission_description: "Advance IRIS from documented state to production-grade res
 # === CURRENT POSITION ===
 active_node: "NONE"
 active_stage: "NONE"
-active_action: "SAT-001 ACCEPTED COMPLETE (iter ~175, evidence 8): node COMPLETE - 31 COMPLETE nodes. Full pipeline DISCOVER (~168) -> RESEARCH (~169, RES-0028 PROCEED-WITH-CONDITIONS) -> DESIGN (~170, AC-1..17 DEC-SAT-0001..0007) -> IMPLEMENT (~171, satellite.rs AC-1..13 live 716/0/1) -> TEST (~172, AC-1..15 map live 716/0/1) -> SECURITY_REVIEW (~173, redteam FAIL->RESOLVED SAT-RT-102..106+108/109, live 720/0/1) -> VERIFY (~174, verifier APPROVE zero findings at recorded revision) -> ACCEPT (~175). AC-1..17 satisfied (AC-15 GATED/BLK-0005; India legal HIGH-RISK gate DEC-SAT-0006 carried). Commit 0a2547c. CHANGELOG 0.3.63."
-next_action: "GRAPH EXHAUSTED of eligible autonomous software nodes - OPERATOR DIRECTION REQUIRED. Remaining graph state: LEGAL-001 RESEARCH_COMPLETE (open counsel questions - satellite licensing/GMPCS authorized channel per DEC-SAT-0006 context - NOT autonomously executable; requires human legal action). Options for continuation: (a) operator ratifies a new engineering-node batch per BLK-0002 (protocol conformance, supply chain, CI/CD hardening, platform expansion, ML routing v2 candidates); (b) human legal counsel engagement to unblock LEGAL-001 -> DESIGN; (c) mission milestones MVP/Alpha/Beta/Pilot planning (tracked outside graph, require ops/legal coordination). Supervisor parked in IDLE pending direction."last_transition: "HUMAN_GATE"
+active_action: "SYSVAL-001 COMPLETE (iter ~178, evidence: SYSVAL_001_TEST.md): whole-system soundness validation executed — Tracks A-F green (cross-transport relay, DTN multi-hop, crypto paths, security-engine flood, emergency priority, failure injection) + Phase 2 gates (workspace 727/0/1, clippy 0, fmt clean, audit exit 0). LEGAL-001 DEFERRED_TO_FUTURE per operator ruling (carried obligations register at docs/legal/CARRIED_OBLIGATIONS_REGISTER.md). 32/33 nodes COMPLETE; LEGAL-001 is the sole non-COMPLETE node and it is operator-deferred. MISSION GRAPH COMPLETE."
+next_action: "PHYSICAL-PHONE PHASE: awaiting operator-provided Android hardware. Device-tier GATED rows unlock on arrival: ANDROID-001 real-device acceptance, BLE physical tests, LORA/SAT modem benchmarks, EXP-003 battery. Until then supervisor remains IDLE. Re-invoke /resume when hardware is available."last_transition: "MISSION_GRAPH_COMPLETE"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
 last_transition_at: "2026-08-22T09:30:00Z"
 last_checkpoint: "CHK-0006"
@@ -37,7 +37,7 @@ last_checkpoint_at: "2026-08-13T18:30:00Z"
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "SAT-001 post-accept hygiene (iter ~176): FC-1..FC-8 corrections APPLIED to docs/transports/SATELLITE.md (AC-14 completion), commit 109bf09. Supervisor remains IDLE - graph exhausted; operator options (a) new node batch BLK-0002, (b) LEGAL-001 counsel, (c) milestones."
+last_progress_event: "MISSION GRAPH COMPLETE (iter ~178): SYSVAL-001 whole-system validation green (Tracks A-F + Phase 2 gates, workspace 727/0/1); LEGAL-001 deferred to future w/ carried-obligations register; 32/33 nodes COMPLETE (LEGAL-001 operator-deferred). Supervisor IDLE pending physical-phone phase."
 last_progress_at: "2026-08-22T10:40:00Z"
 # === RETRY / ERROR ===
 retry_count: 0
@@ -56,9 +56,7 @@ blockers:
   # BLK-0001 (CRYPTO-001/IDENT-001 human gate) REMOVED — RESOLVED by DEC-0009.
 
 # === HUMAN GATES ===
-human_gate_required: true
-human_gate_reason: "GRAPH EXHAUSTED (iter ~177): 31/32 nodes COMPLETE; remaining LEGAL-001 requires qualified human legal counsel (satellite licensing/GMPCS authorized channel per DEC-SAT-0006 context, WPC-ETA per-SKU) and continuation-path ratification by operator: (a) new engineering-node batch per BLK-0002, (b) LEGAL-001 counsel engagement, (c) mission milestones MVP/Alpha/Beta/Pilot planning. Supervisor must not fabricate legal positions or un-ratified scope."
-human_gate_evidence: "engineering/memory/NEXT_ACTION.md (options a/b/c); engineering/memory/records/research/RES-0028.md (RQ-6 legal findings); docs/implementation/SAT_001_DESIGN.md DEC-SAT-0006; PROJECT_GRAPH LEGAL-001 RESEARCH_COMPLETE"
+human_gate_required: false
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:

@@ -17,10 +17,11 @@
 # VERIFYING: (0)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
 # DISCOVERED: (0)  [graph exhausted; mission milestones outside graph]
+# DEFERRED_TO_FUTURE: LEGAL-001 (1) [operator ruling iter ~178; carried obligations in docs/legal/CARRIED_OBLIGATIONS_REGISTER.md]
 
 summary:
-  total_nodes: 32
-  completed: 31              # + SAT-001 (2026-08-22, ACCEPT iter ~175, P2 TRANSPORT, AC-1..17 satisfied w/ AC-15 GATED/BLK-0005, verifier APPROVE, live 695/0/1)
+  total_nodes: 33
+  completed: 32              # + SAT-001 (2026-08-22, ACCEPT iter ~175, P2 TRANSPORT, AC-1..17 satisfied w/ AC-15 GATED/BLK-0005, verifier APPROVE, live 695/0/1)
   researching: 0
   research_complete: 1       # LEGAL-001
   designing: 0               # LORA-001 advanced to IMPLEMENTING iter ~163

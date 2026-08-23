@@ -490,6 +490,27 @@ nodes:
       - "engineering/memory/records/SAT-001_VERIFICATION.md (iter ~174): VERIFY COMPLETE (evidence 7) — AC-1..17 evidence table; independent-verifier-style reproduction at recorded revision: workspace 720/0/1, transport::satellite 24/24, clippy 0, fmt clean; 23/23 AC-cited tests re-grepped w/ file:line; RT dispositions re-located as real code; verifier APPROVE zero findings.",
       - "ACCEPT (iter ~175): node COMPLETE - 31 COMPLETE nodes; graph status IMPLEMENTING -> COMPLETE (evidence 8); PROJECT_STATE completed 30 -> 31, implementing 1 -> 0; CHANGELOG 0.3.63; GRAPH EXHAUSTED of eligible software nodes (LEGAL-001 RESEARCH_COMPLETE = human/legal carry; BLK-0002 anticipates incremental node additions); NODE_TRANSITION -> mission milestones (MVP/Alpha/Beta/Pilot) pending operator direction.",
 
+  - id: "SYSVAL-001"
+    name: "Whole-System Soundness Validation"
+    type: VALIDATION
+    priority: P0
+    status: COMPLETE
+    description: "Full-system integration matrix (cross-transport relay, DTN multi-hop, crypto paths, security-engine flood, emergency priority, failure injection) + system-level gates. Operator-directed re-scope of the final gate (iter ~178)."
+    dependencies: ["TRANSPORT-001", "MSG-001", "CRYPTO-001", "IDENT-001", "EMERG-001", "SEC-001", "BLE-001", "WIFIAWARE-001", "WIFIDIRECT-001", "BLE-002", "LORA-001", "SAT-001"]
+    stage_note: "COMPLETE (iter ~178, evidence: tests/sysval_*.rs + SYSVAL_001_TEST.md): Tracks A-F executed as consolidated integration suites; Phase 2 gates (workspace/clippy/fmt/audit/bench-compile) green; device tier deferred to physical-phone phase."
+    evidence:
+      - "crates/iris-core/tests/sysval_mesh_integration.rs (Track A/C/E/F)"
+      - "crates/iris-core/tests/sysval_security_flood.rs (Track D)"
+      - "crates/iris-core/tests/sysval_dtn_multihop.rs (Track B)"
+      - "engineering/memory/records/SYSVAL_001_TEST.md (evidence map)"
+    acceptance_criteria:
+      - "AC-1 Track A: cross-transport three-node relay delivers verbatim envelopes across heterogeneous links; hot-plug chaos keeps state sane."
+      - "AC-2 Track B: multi-hop SCF-style chain with contact windows delivers with priorities preserved and no loops."
+      - "AC-3 Track C: envelope bytes survive every transport byte-for-byte; replay/freshness engines green in sweep."
+      - "AC-4 Track D: combined security engines hold invariants under abuse flood (P0 exempt, drops bounded, reputation never gates)."
+      - "AC-5 Track E: P0 multipath includes satellite only for emergency classes; drill/emergency separation held."
+      - "AC-6 Track F: clock-step + adapter-yank + malformed-flood injections leave both guards and transports consistent."
+      - "AC-7 Phase 2: workspace --all-features green, clippy -D warnings 0, fmt clean, cargo audit exit 0, benches compile."
   - id: "DISCO-001"
     name: "Discovery Engine"
     type: COMPONENT
@@ -973,7 +994,8 @@ nodes:
     name: "Legal & Compliance Research"
     type: COMPLIANCE
     priority: P1
-    status: RESEARCH_COMPLETE
+    status: DEFERRED_TO_FUTURE
+    stage_note: "DEFERRED TO FUTURE (iter ~178, operator ruling): node purpose (misuse prevention) is preserved by shipped technical controls (SEC/EMERG/IDENT + transport hard gates); legal-execution items moved to docs/legal/CARRIED_OBLIGATIONS_REGISTER.md with reactivation triggers. NOT counted as COMPLETE - removed from active mission graph."
     description: "India legal research: IT Act, DPDPA, spectrum regulations, telecom"
     dependencies: ["VISION-001"]
     requires_human_approval: false
