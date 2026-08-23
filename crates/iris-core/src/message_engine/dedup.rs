@@ -36,13 +36,43 @@ pub fn bloom_probes(n: usize, m: usize) -> usize {
     (((m as f64) / (n as f64).max(1.0)) * ln2).round().max(1.0) as usize
 }
 
-/// Split a 128-bit hash into two independent 64-bit seeds (blake3 16 bytes).
+/// Split a 128-bit hash into two independent 64-bit seeds.
 fn split_hash(h: [u8; 16]) -> (u64, u64) {
     let mut a = [0u8; 8];
     let mut b = [0u8; 8];
     a.copy_from_slice(&h[..8]);
     b.copy_from_slice(&h[8..]);
     (u64::from_le_bytes(a), u64::from_le_bytes(b))
+}
+
+/// Per-process key for the dedup hash.
+///
+/// The probe positions used to be derived from the raw `MessageId` bytes with
+/// no hashing at all, despite the doc comment claiming blake3. `MessageId` is
+/// 16 attacker-chosen wire bytes, so `h1` was literally `LE(bytes[0..8])` and
+/// the `i = 0` probe landed on `h1 % m` — an attacker could place a bit at any
+/// chosen position by choosing the id, and with ~k junk messages could set
+/// every probe bit of a *target* id, permanently censoring it at that node.
+///
+/// Keying with a random per-process value means probe positions cannot be
+/// computed off-box even though the hash itself is public.
+fn dedup_hash_key() -> &'static [u8; 32] {
+    use std::sync::OnceLock;
+    static KEY: OnceLock<[u8; 32]> = OnceLock::new();
+    KEY.get_or_init(|| {
+        use rand::RngCore;
+        let mut k = [0u8; 32];
+        rand::rngs::OsRng.fill_bytes(&mut k);
+        k
+    })
+}
+
+/// Keyed 128-bit digest of a message id, used for Bloom probe derivation.
+fn dedup_digest(id: MessageId) -> [u8; 16] {
+    let full = blake3::keyed_hash(dedup_hash_key(), &id.to_bytes());
+    let mut out = [0u8; 16];
+    out.copy_from_slice(&full.as_bytes()[..16]);
+    out
 }
 
 /// Fixed-size Bloom filter with double hashing (Kirsch–Mitzenmacher).
@@ -109,6 +139,16 @@ impl BloomFilter {
 
     pub fn probes(&self) -> usize {
         self.k
+    }
+
+    /// Elements inserted into this generation (drives rotation).
+    pub fn inserted(&self) -> usize {
+        self.inserted
+    }
+
+    #[cfg(test)]
+    fn probe_positions_for_test(&self, h: [u8; 16]) -> impl Iterator<Item = usize> + '_ {
+        self.probe_positions(h)
     }
 
     fn probe_positions(&self, h: [u8; 16]) -> impl Iterator<Item = usize> + '_ {
@@ -192,10 +232,26 @@ impl LruCache {
 }
 
 /// Combined dedup engine.
+///
+/// The Bloom tier is **generational**: two filters, `current` and `previous`.
+/// Once `current` reaches its design capacity it becomes `previous` and a fresh
+/// filter takes over, so the bit-set fraction — and therefore the false-positive
+/// rate — is bounded no matter how long the node runs.
+///
+/// The single fill-only filter this replaces was never cleared or rotated. Past
+/// ~1 M insertions its bitmap was ~99.9% set and the false-positive rate
+/// approached 1.0, at which point the node rejected essentially *all* new
+/// traffic as "duplicate" — including P0 SOS — and never recovered without a
+/// restart. That happened in normal long-lived operation, not just under
+/// attack; an attacker merely accelerated it.
 #[derive(Debug)]
 pub struct DedupEngine {
-    bloom: BloomFilter,
+    current: BloomFilter,
+    previous: BloomFilter,
     lru: LruCache,
+    capacity: usize,
+    fpr: f64,
+    rotations: u64,
 }
 
 impl Default for DedupEngine {
@@ -206,22 +262,45 @@ impl Default for DedupEngine {
 
 impl DedupEngine {
     pub fn new(bloom_capacity: usize, fpr: f64, lru_capacity: usize) -> Self {
+        let capacity = bloom_capacity.max(1);
+        let fpr = fpr.max(1e-6);
         DedupEngine {
-            bloom: BloomFilter::new(bloom_capacity, fpr),
+            current: BloomFilter::new(capacity, fpr),
+            previous: BloomFilter::new(capacity, fpr),
             lru: LruCache::new(lru_capacity),
+            capacity,
+            fpr,
+            rotations: 0,
         }
     }
 
     /// Record a message id and report whether it was a duplicate.
     pub fn seen(&mut self, id: MessageId) -> bool {
-        let dup = self.bloom.contains(id.to_bytes()) || self.lru.contains(&id);
+        let digest = dedup_digest(id);
+        let dup = self.lru.contains(&id)
+            || self.current.contains(digest)
+            || self.previous.contains(digest);
+
         self.lru.check_and_insert(id);
-        self.bloom.insert(id.to_bytes());
+
+        if self.current.inserted() >= self.capacity {
+            // Retire the older generation rather than letting either saturate.
+            self.previous =
+                std::mem::replace(&mut self.current, BloomFilter::new(self.capacity, self.fpr));
+            self.rotations += 1;
+        }
+        self.current.insert(digest);
         dup
     }
 
+    /// Total Bloom footprint across both generations.
     pub fn bloom_size_bytes(&self) -> usize {
-        self.bloom.size_bytes()
+        self.current.size_bytes() + self.previous.size_bytes()
+    }
+
+    /// Number of generation rotations so far (observability).
+    pub fn rotations(&self) -> u64 {
+        self.rotations
     }
 }
 
@@ -284,6 +363,93 @@ mod tests {
         c.check_and_insert(mid(3));
         assert!(c.contains(&mid(1)), "recently touched survives");
         assert!(!c.contains(&mid(2)), "untouched oldest evicted");
+    }
+
+    /// Deterministic distinct ids for saturation testing.
+    fn id_n(n: u64) -> MessageId {
+        let mut b = [0u8; 16];
+        b[..8].copy_from_slice(&n.to_le_bytes());
+        MessageId::from_bytes(b)
+    }
+
+    #[test]
+    fn bloom_rotation_bounds_the_false_positive_rate() {
+        // Regression: the single fill-only Bloom saturated and never recovered.
+        // Past its design capacity the false-positive rate climbed toward 1.0
+        // and the node dropped essentially all new traffic as "duplicate",
+        // permanently. Drive well past capacity and confirm fresh ids are still
+        // recognised as new.
+        let capacity = 512;
+        let mut d = DedupEngine::new(capacity, 0.001, 64);
+
+        for n in 0..(capacity as u64 * 20) {
+            d.seen(id_n(n));
+        }
+        assert!(d.rotations() > 0, "the filter must rotate generations");
+
+        // A block of ids never inserted must overwhelmingly read as new.
+        let probe_base = 10_000_000u64;
+        let mut false_positives = 0;
+        let probes = 2_000u64;
+        for n in 0..probes {
+            let mut fresh = DedupEngine::new(capacity, 0.001, 64);
+            std::mem::swap(&mut fresh, &mut d);
+            let dup = fresh.seen(id_n(probe_base + n));
+            std::mem::swap(&mut fresh, &mut d);
+            if dup {
+                false_positives += 1;
+            }
+        }
+        // Generous bound: the point is that it is nowhere near saturation,
+        // where this would have been ~100%.
+        assert!(
+            false_positives * 20 < probes,
+            "false-positive rate too high after {} inserts: {}/{}",
+            capacity * 20,
+            false_positives,
+            probes
+        );
+    }
+
+    #[test]
+    fn recent_ids_survive_a_rotation() {
+        // Rotation must not amnesia the immediately-preceding generation, or a
+        // message could legitimately loop back and be re-accepted.
+        let capacity = 128;
+        let mut d = DedupEngine::new(capacity, 0.001, 8);
+        assert!(!d.seen(id_n(1)), "first sighting");
+
+        // Fill just past one generation so a rotation happens.
+        for n in 100..(100 + capacity as u64 + 5) {
+            d.seen(id_n(n));
+        }
+        assert!(
+            d.seen(id_n(1)),
+            "an id from the previous generation must still read as duplicate"
+        );
+    }
+
+    #[test]
+    fn probe_positions_are_not_derived_from_raw_id_bytes() {
+        // Regression: probes were an affine function of the raw MessageId, so
+        // an attacker could set a chosen bit by choosing the id and censor a
+        // target id with ~k crafted messages. Ids differing only in the low 8
+        // bytes must not map to related probe positions.
+        let bloom = BloomFilter::new(4096, 0.001);
+        let a = dedup_digest(id_n(0));
+        let b = dedup_digest(id_n(1));
+        assert_ne!(a, b);
+
+        let pa: Vec<usize> = bloom.probe_positions_for_test(a).collect();
+        let pb: Vec<usize> = bloom.probe_positions_for_test(b).collect();
+        assert_ne!(pa, pb, "digests must not collide");
+
+        // The old scheme made probe[0] == LE(id[0..8]) % m, so id 0 landed on
+        // position 0. A keyed digest makes that vanishingly unlikely.
+        assert!(
+            pa[0] != 0 || pb[0] != 1,
+            "probe positions still track the raw id"
+        );
     }
 
     #[test]

@@ -342,10 +342,7 @@ mod tests {
             popped.push(m.envelope.priority);
         }
 
-        let lower = popped
-            .iter()
-            .filter(|p| **p == MessagePriority::P5)
-            .count();
+        let lower = popped.iter().filter(|p| **p == MessagePriority::P5).count();
         assert_eq!(lower, 3, "every queued P5 must eventually be dispatched");
 
         // With budget 2, a P5 must appear at least every third slot until the
