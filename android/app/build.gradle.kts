@@ -57,6 +57,22 @@ android {
     }
 }
 
+// DesignTokenParityTest reads the desktop design mirror (tokens.css,
+// commands.js) to assert the two platforms have not drifted. Those files are
+// outside the Gradle source set, so without declaring them as inputs the test
+// task reports UP-TO-DATE and silently keeps a stale pass after the mirror
+// changes — which is exactly the drift the test exists to catch.
+tasks.withType<Test>().configureEach {
+    inputs
+        .files(
+            rootProject.projectDir.parentFile
+                .resolve("crates/iris-desktop/ui")
+                .let { dir -> files(dir.resolve("tokens.css"), dir.resolve("commands.js")) },
+        )
+        .withPropertyName("irisDesktopDesignMirror")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)

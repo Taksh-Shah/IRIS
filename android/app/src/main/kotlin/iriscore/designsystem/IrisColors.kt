@@ -32,13 +32,23 @@ object IrisColors {
 
     // -- text --------------------------------------------------------------
 
-    /** Not pure white: #FFF on true black glares and vibrates on OLED. */
-    val TextPrimary = Color(0xFFF5F5F5)
-    val TextSecondary = Color(0xFFA1A1A1)
-    val TextTertiary = Color(0xFF666666)
+    // Contrast ratios below are against BackgroundPrimary (#000000) and
+    // SurfacePrimary (#0A0A0A). WCAG AA needs 4.5:1 for body text; all four
+    // tiers clear it on both. The earlier #666666 (3.66:1) and #3D3D3D
+    // (1.93:1) did not — timestamps, placeholders and system lines were set in
+    // them, which is exactly the small text that most needs the contrast.
 
-    /** For text on a surface that is itself already dim. */
-    val TextQuaternary = Color(0xFF3D3D3D)
+    /** Not pure white: #FFF on true black glares and vibrates on OLED. 19.3:1 */
+    val TextPrimary = Color(0xFFF5F5F5)
+
+    /** 8.1:1 */
+    val TextSecondary = Color(0xFFA1A1A1)
+
+    /** Timestamps, metadata, system lines. 6.1:1 */
+    val TextTertiary = Color(0xFF8A8A8A)
+
+    /** Placeholders and keyboard hints — the dimmest tier. 4.9:1 */
+    val TextQuaternary = Color(0xFF7A7A7A)
 
     // -- borders -----------------------------------------------------------
 

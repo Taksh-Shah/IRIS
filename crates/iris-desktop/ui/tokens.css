@@ -22,12 +22,14 @@
   --iris-surface-secondary: #0f0f0f;
   --iris-surface-raised: #141414;
 
-  /* -- text -- */
-  /* Not pure white: #fff on true black glares and vibrates on OLED. */
-  --iris-text-primary: #f5f5f5;
-  --iris-text-secondary: #a1a1a1;
-  --iris-text-tertiary: #8a8a8a;
-  --iris-text-quaternary: #6e6e6e;
+  /* -- text --
+   * Contrast against #000000 / #0a0a0a. WCAG AA needs 4.5:1 for body text;
+   * all four tiers clear it on both backgrounds.
+   * Not pure white: #fff on true black glares and vibrates on OLED. */
+  --iris-text-primary: #f5f5f5;   /* 19.3:1 */
+  --iris-text-secondary: #a1a1a1; /*  8.1:1 */
+  --iris-text-tertiary: #8a8a8a;  /*  6.1:1 */
+  --iris-text-quaternary: #7a7a7a;/*  4.9:1 */
 
   /* -- borders -- */
   --iris-border-subtle: rgba(255, 255, 255, 0.08);
