@@ -1658,14 +1658,14 @@ mod tests {
             .register_sent(id, MessagePriority::P1, std::time::Instant::now());
 
         // CAROL is not the recipient — her ACK must be ignored.
-        alice.consume_ack(id, &CAROL.to_vec()).await;
+        alice.consume_ack(id, CAROL.as_ref()).await;
         assert!(
             alice.acks.lock().await.is_pending(&id),
             "an ACK from a non-recipient must not clear the pending send"
         );
 
         // BOB is the recipient — his ACK resolves it.
-        alice.consume_ack(id, &BOB.to_vec()).await;
+        alice.consume_ack(id, BOB.as_ref()).await;
         assert!(
             !alice.acks.lock().await.is_pending(&id),
             "the recipient's ACK must clear the pending send"

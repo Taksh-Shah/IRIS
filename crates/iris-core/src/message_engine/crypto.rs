@@ -206,11 +206,74 @@ impl NodeIdentity {
 /// `info`/`aad` passed from the engine (`codec::encode_for_aead`).
 pub struct IrisCryptoProvider {
     identity: std::sync::Arc<NodeIdentity>,
+    short_id_resolver: Option<std::sync::Arc<dyn ShortIdResolver>>,
+}
+
+/// Length of the abbreviated `peer_short` sender form (SHA-256 prefix).
+const PEER_SHORT_LEN: usize = 16;
+
+/// Resolves an abbreviated 16-byte `peer_short` sender back to the full 32-byte
+/// Ed25519 identity key needed to verify a signature.
+///
+/// P0 abbreviated envelopes (the 255-byte LoRa SOS form) carry
+/// `peer_short = SHA-256(pubkey)[..16]` instead of the full key, because the
+/// full key does not fit. Verification therefore needs a directory lookup; a
+/// node that has never seen the sender cannot verify it and must fail closed.
+pub trait ShortIdResolver: Send + Sync + 'static {
+    /// Full identity key for `peer_short`, or `None` when unknown.
+    fn resolve(&self, peer_short: &[u8; 16]) -> Option<[u8; 32]>;
+}
+
+/// Resolves short ids by scanning the trust store's known identities.
+impl ShortIdResolver for crate::identity::trust_store::TrustStore {
+    fn resolve(&self, peer_short: &[u8; 16]) -> Option<[u8; 32]> {
+        self.entries().into_iter().find_map(|e| {
+            (crate::identity::peer_short_from_sender(&e.identity_pubkey) == *peer_short)
+                .then_some(e.identity_pubkey)
+        })
+    }
 }
 
 impl IrisCryptoProvider {
     pub fn new(identity: std::sync::Arc<NodeIdentity>) -> Self {
-        Self { identity }
+        Self {
+            identity,
+            short_id_resolver: None,
+        }
+    }
+
+    /// Attach the directory used to expand abbreviated P0 senders.
+    ///
+    /// Without one, abbreviated envelopes fail closed with `KeyUnavailable` —
+    /// an unverifiable signature must never be accepted.
+    pub fn with_short_id_resolver(mut self, resolver: std::sync::Arc<dyn ShortIdResolver>) -> Self {
+        self.short_id_resolver = Some(resolver);
+        self
+    }
+
+    /// Full verifying key for an envelope's `sender_id`.
+    ///
+    /// The codec accepts both the 32-byte full key and the 16-byte abbreviated
+    /// form, and the golden corpus pins an abbreviated P0 SOS vector — but this
+    /// used to be a bare `try_into::<[u8; 32]>()`, so every abbreviated
+    /// envelope returned `KeyUnavailable` and was hard-rejected before
+    /// delivery. The 255-byte LoRa SOS path, the system's primary emergency
+    /// use case, could not work end to end.
+    fn verifying_key_for(&self, sender_id: &[u8]) -> Result<[u8; 32], CryptoError> {
+        match sender_id.len() {
+            32 => sender_id
+                .try_into()
+                .map_err(|_| CryptoError::KeyUnavailable),
+            PEER_SHORT_LEN => {
+                let mut short = [0u8; PEER_SHORT_LEN];
+                short.copy_from_slice(sender_id);
+                self.short_id_resolver
+                    .as_ref()
+                    .and_then(|r| r.resolve(&short))
+                    .ok_or(CryptoError::KeyUnavailable)
+            }
+            _ => Err(CryptoError::KeyUnavailable),
+        }
     }
 }
 
@@ -230,11 +293,7 @@ impl CryptoProvider for IrisCryptoProvider {
         // IDENT-001: a node's identity IS its 32-byte Ed25519 public key
         // (captured in `sender_id`). Resolve it from the wire, never from the
         // local key store (we may be a relay).
-        let key_bytes: [u8; 32] = envelope
-            .sender_id
-            .as_slice()
-            .try_into()
-            .map_err(|_| CryptoError::KeyUnavailable)?;
+        let key_bytes = self.verifying_key_for(&envelope.sender_id)?;
         let verifying = ed25519_dalek::VerifyingKey::from_bytes(&key_bytes)
             .map_err(|_| CryptoError::KeyUnavailable)?;
         let signable = crate::protocol::codec::encode_for_signing(envelope)?;
@@ -321,6 +380,59 @@ mod tests {
             routing_hints: None,
             auth_cert_chain: None,
         }
+    }
+
+    /// Minimal resolver so the abbreviated-sender path can be exercised
+    /// without standing up a full trust store.
+    struct FixedResolver([u8; 32]);
+    impl ShortIdResolver for FixedResolver {
+        fn resolve(&self, peer_short: &[u8; 16]) -> Option<[u8; 32]> {
+            (crate::identity::peer_short_from_sender(&self.0) == *peer_short).then_some(self.0)
+        }
+    }
+
+    #[tokio::test]
+    async fn abbreviated_p0_sender_verifies_via_the_resolver() {
+        // Regression: `verify` did a bare try_into::<[u8; 32]>() on sender_id,
+        // so every 16-byte `peer_short` sender returned KeyUnavailable and was
+        // hard-rejected. The codec accepts that form and the golden corpus pins
+        // a P0 SOS vector using it, so the 255-byte LoRa SOS path — the primary
+        // emergency use case — could not work end to end.
+        let node = make_node();
+        let recipient = make_node();
+        let full_key = node.identity.verifying_bytes();
+
+        let signer = IrisCryptoProvider::new(node.clone());
+        let mut env = make_env(&node, &recipient, b"SOS");
+        env.priority = MessagePriority::P0;
+        // Abbreviate the sender to the on-air P0 form.
+        env.sender_id = crate::identity::peer_short_from_sender(&full_key).to_vec();
+        signer.sign(&mut env).await.unwrap();
+
+        // A relay that has never seen this peer cannot verify it and must fail
+        // closed rather than accept an unverifiable signature.
+        let stranger = IrisCryptoProvider::new(make_node());
+        assert!(
+            matches!(
+                stranger.verify(&env).await,
+                Err(CryptoError::KeyUnavailable)
+            ),
+            "unknown abbreviated sender must fail closed"
+        );
+
+        // A relay that knows the peer resolves the full key and verifies.
+        let knower = IrisCryptoProvider::new(make_node())
+            .with_short_id_resolver(std::sync::Arc::new(FixedResolver(full_key)));
+        assert!(
+            knower.verify(&env).await.unwrap(),
+            "abbreviated P0 envelope must verify once the sender is known"
+        );
+
+        // Tampering is still caught on the abbreviated path.
+        let mut tampered = env.clone();
+        tampered.payload = b"NOT SOS".to_vec();
+        tampered.payload_size = tampered.payload.len() as u64;
+        assert!(!knower.verify(&tampered).await.unwrap());
     }
 
     #[tokio::test]
