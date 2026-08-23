@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.wifi.aware.AttachCallback
 import android.net.wifi.aware.DiscoverySession
 import android.net.wifi.aware.DiscoverySessionCallback
 import android.net.wifi.aware.IdentityChangedListener
@@ -16,17 +17,18 @@ import android.net.wifi.aware.SubscribeDiscoverySession
 import android.net.wifi.aware.WifiAwareManager
 import android.net.wifi.aware.WifiAwareNetworkSpecifier
 import android.net.wifi.aware.WifiAwareSession
+import iriscode.DeviceNotFound
 import iriscode.FfiIncomingNdpData
 import iriscode.FfiPeerDiscovery
 import iriscode.FfiPublishConfig
 import iriscode.FfiWifiAwareAdapter
-import iriscode.IrisFfiException
+import iriscode.TransportFailure
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.coroutines.CancellableContinuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,11 +36,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import uniffi.iriscode.IrisFfiException
-import android.net.wifi.aware.AttachCallback
 
 /**
  * 12-op async `FfiWifiAwareAdapter` foreign-trait implementation.
@@ -134,11 +131,17 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     override suspend fun openNdp(peerHandle: ULong): ULong {
         return FfiCallTimeout.suspendCall {
-            val session = attachGate.ensureStarted()
+            attachGate.ensureStarted()
+            // The specifier is built from the DISCOVERY session, not the attach
+            // session: a PeerHandle is only meaningful within the discovery
+            // session that surfaced it. The subscribe session is seeded
+            // asynchronously by onSubscribeStarted, so it may not be live yet.
+            val discovery = subscribeGate.ensureStarted()
+                ?: throw TransportFailure("Wi-Fi Aware discovery session not started")
             val peer = peerHandles[peerHandle.toLong()]
-                ?: throw IrisFfiException.DeviceNotFound()
-            val specifier = WifiAwareNetworkSpecifier.Builder(session, peer)
-                .setPskPassphrase(NDP_PSK_PASSPHRASE.toByteArray()) // NCS passphrase hardening (WFA 4.0)
+                ?: throw DeviceNotFound()
+            val specifier = WifiAwareNetworkSpecifier.Builder(discovery, peer)
+                .setPskPassphrase(NDP_PSK_PASSPHRASE) // NCS passphrase hardening (WFA 4.0)
                 .build()
             val ndpHandle = nextHandle.getAndIncrement()
             // AND-RT-110: NOT registered as opened here — the handle becomes
@@ -168,7 +171,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
         FfiCallTimeout.suspendCall {
             // AND-RT-110: only enqueue once the NDP network is genuinely available.
             if (!ndpRegistry.accepts(ndpHandle.toLong())) {
-                throw IrisFfiException.Transport("NDP network not yet available")
+                throw TransportFailure("NDP network not yet available")
             }
             // Socket not yet live (platform plumbing, AC-6): ring-buffer the frame.
             outbox.enqueue(ndpHandle.toLong(), payload)
@@ -233,15 +236,17 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             cont.invokeOnCancellation { pendingAttach = null }
             pendingAttach = cont
             runCatching {
-                awareManager.attach(identityListener, null, attachCallback)
+                // Platform order is (AttachCallback, IdentityChangedListener,
+                // Handler?) — the listener is non-null in that overload.
+                awareManager.attach(attachCallback, identityListener, null)
             }.getOrElse { e ->
                 pendingAttach = null
-                cont.resumeWithException(IrisFfiException.Transport("Wi-Fi Aware attach failed: ${e.message}"))
+                cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed: ${e.message}"))
             }
         }
     }
 
-    private val attachCallback = object : WifiAwareManager.AttachCallback() {
+    private val attachCallback = object : AttachCallback() {
         override fun onAttached(session: WifiAwareSession) {
             availability.setAvailable(true)
             pendingAttach?.let { cont ->
@@ -254,7 +259,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             availability.setAvailable(false)
             pendingAttach?.let { cont ->
                 pendingAttach = null
-                cont.resumeWithException(IrisFfiException.Transport("Wi-Fi Aware attach failed"))
+                cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed"))
             }
         }
     }
@@ -283,7 +288,6 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     private val discoveryCallback = object : DiscoverySessionCallback() {
         override fun onServiceDiscovered(
-            session: DiscoverySession,
             peerHandle: PeerHandle,
             serviceSpecificInfo: ByteArray?,
             matchFilter: List<ByteArray>?,
@@ -304,15 +308,15 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             )
         }
 
-        override fun onSessionStarted(session: DiscoverySession) {
-            // markStarted is suspend (AND-RT-105); lift the platform callback.
-            callbackScope.launch {
-                when (session) {
-                    is SubscribeDiscoverySession -> subscribeGate.markStarted(session)
-                    is PublishDiscoverySession -> publishGate.markStarted(session)
-                    else -> Unit
-                }
-            }
+        // The platform has no single `onSessionStarted` — publish and subscribe
+        // sessions are delivered on their own typed callbacks.
+        // markStarted is suspend (AND-RT-105); lift the platform callback.
+        override fun onSubscribeStarted(session: SubscribeDiscoverySession) {
+            callbackScope.launch { subscribeGate.markStarted(session) }
+        }
+
+        override fun onPublishStarted(session: PublishDiscoverySession) {
+            callbackScope.launch { publishGate.markStarted(session) }
         }
 
         override fun onSessionConfigFailed() = Unit

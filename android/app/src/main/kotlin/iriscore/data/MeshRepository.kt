@@ -81,9 +81,14 @@ class MeshRepository @Inject constructor(
      */
     fun send(recipientHex: String, text: String, priority: UByte): Boolean {
         val normalized = recipientHex.trim().lowercase()
-        check(PeerIdCodec.isHex(normalized) && normalized.length == 64) {
-            "recipient must be a 64-hex PeerId"
+        // A malformed recipient is user input, not a programming error: `check`
+        // threw IllegalStateException on the IO dispatcher, which crashed the
+        // app on a typo. Report it through the UI state instead.
+        if (!PeerIdCodec.isHex(normalized) || normalized.length != RECIPIENT_HEX_LENGTH) {
+            _uiState.update { it.copy(lastError = "Recipient must be a $RECIPIENT_HEX_LENGTH-character hex PeerId") }
+            return false
         }
+        _uiState.update { it.copy(lastError = null) }
         return try {
             engine.sendText(normalized, text, priority)
             true
@@ -120,7 +125,10 @@ class MeshRepository @Inject constructor(
     val pendingRelayCount: Int get() = outbox.size
 
     companion object {
-        private fun FfiIncomingMessage.toUi(): InboxUiMessage = InboxUiMessage(
+        /** A PeerId is a 32-byte key rendered as hex (PeerIdCodec.toHex). */
+        const val RECIPIENT_HEX_LENGTH = 64
+
+        private fun FfiIncomingMessage.toUi(): InboxUiMessage = InboxUiMessage.received(
             senderId = PeerIdCodec.toHex(senderId),
             payloadUtf8 = payload.toString(Charsets.UTF_8),
             priority = priority,

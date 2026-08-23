@@ -8,7 +8,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import iriscore.data.MeshRepository
 import iriscore.service.IrisBleService
 import iriscore.ui.state.MeshUiState
+import iriscore.util.MeshPermissions
 import iriscore.worker.WorkScheduler
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,9 +46,25 @@ class MeshViewModel @Inject constructor(
     // scope that survives until the engine actually stops.
     private val teardownScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Guards [ensureStarted] so repeated recompositions bring the mesh up once. */
+    private val started = AtomicBoolean(false)
+
     init {
-        // Boot is best-effort: a missing runtime permission or unavailable radio
-        // must not crash the shell surface (permission UX is TEST-stage scope).
+        // Bring the mesh up immediately only when the runtime grants are already
+        // in place (returning user). Otherwise the shell requests them first and
+        // calls [ensureStarted]; starting the radios without BLUETOOTH_SCAN /
+        // NEARBY_WIFI_DEVICES yields a mesh that reports RUNNING while silently
+        // carrying no traffic.
+        if (MeshPermissions.allGranted(appContext)) ensureStarted()
+    }
+
+    /**
+     * Idempotent transport bring-up. Safe to call from a composable effect on
+     * every recomposition and after a permission result.
+     */
+    fun ensureStarted() {
+        if (!started.compareAndSet(false, true)) return
+        // Boot is best-effort: an unavailable radio must not crash the shell.
         try {
             IrisBleService.start(appContext)
             WorkScheduler.schedule(appContext)
@@ -57,8 +75,10 @@ class MeshViewModel @Inject constructor(
                 }
             }
         } catch (_: RuntimeException) {
-            // ForegroundServiceStartNotAllowedException / radio unavailable
-            // Surface stays on IDLE/UNAVAILABLE until permissions are granted.
+            // ForegroundServiceStartNotAllowedException / radio unavailable.
+            // Reset so a later attempt (permission granted, radio switched on)
+            // can retry instead of latching into a half-started state.
+            started.set(false)
         }
     }
 

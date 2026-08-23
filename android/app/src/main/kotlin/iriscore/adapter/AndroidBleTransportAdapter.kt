@@ -26,9 +26,8 @@ import iriscode.FfiBleAdapter
 import iriscode.FfiGattWriteEvent
 import iriscode.FfiScanFilter
 import iriscode.FfiScanResult
-import iriscode.IrisFfiException
-import iriscode.GattFailure
 import iriscode.DeviceNotFound
+import iriscode.GattFailure
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.UUID
@@ -36,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ConcurrentSkipListSet
 import java.util.concurrent.atomic.AtomicLong
-import uniffi.iriscode.IrisFfiException
 
 /**
  * 10-op `FfiBleAdapter` foreign-trait implementation (Android platform).
@@ -166,8 +164,8 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             characteristic: BluetoothGattCharacteristic,
             preparedWrite: Boolean,
             responseNeeded: Boolean,
-            value: ByteArray,
             offset: Int,
+            value: ByteArray,
         ) {
             if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
                 pendingGattWrites.add(
@@ -178,7 +176,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     ),
                 )
             }
-            gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+            // Only the platform contract's "response needed" writes get a reply;
+            // an unsolicited sendResponse on a WRITE_NO_RESPONSE write is a
+            // protocol violation on the GATT server side.
+            if (responseNeeded) {
+                gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+            }
         }
     }
 
@@ -253,7 +256,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 .setConnectable(!data.nonConnectable)
                 .build()
             val adData = AdvertiseData.Builder()
-                .setServiceData(ParcelUuid(IRIS_SERVICE_UUID), data.payload)
+                .addServiceData(ParcelUuid(IRIS_SERVICE_UUID), data.payload)
                 .build()
             if (adData.serviceData.isEmpty()) return@syncCall 0uL
             advertiser.startAdvertising(settings, adData, advertiseCallback)
@@ -272,7 +275,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     override fun connectGatt(address: String): ULong {
         return FfiCallTimeout.syncCall(onTimeout = 0uL) {
             val device: BluetoothDevice = bleManager.adapter.getRemoteDevice(address)
-            val gatt = device.connectGatt(appContext, autoConnect = false, callback = gattCallback)
+            // Positional args: connectGatt is a Java method, so Kotlin named
+            // arguments are not available for it.
+            val gatt = device.connectGatt(appContext, false, gattCallback)
                 ?: return@syncCall 0uL
             val handle = nextHandle.getAndIncrement()
             gattHandles[handle] = gatt
@@ -292,13 +297,13 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     override fun gattWrite(handle: ULong, charUuid: String, data: ByteArray) {
         FfiCallTimeout.syncCall(onTimeout = Unit) {
             val gatt = gattHandles[handle.toLong()]
-                ?: throw IrisFfiException.GattFailure("unknown gatt connection")
+                ?: throw GattFailure("unknown gatt connection")
             // AND-RT-111: a write before discovery resolves to a typed error,
             // never a silent false-success Unit.
             val characteristic = resolveCharacteristic(gatt, charUuid)
-                ?: throw IrisFfiException.GattFailure("characteristic $charUuid not yet discovered")
+                ?: throw GattFailure("characteristic $charUuid not yet discovered")
             gattWriteFailures[gatt]?.let { status ->
-                throw IrisFfiException.GattFailure("previous gatt write failed status=$status")
+                throw GattFailure("previous gatt write failed status=$status")
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 gatt.writeCharacteristic(
@@ -313,7 +318,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 if (!gatt.writeCharacteristic(characteristic)) {
                     // 2-arg form returns Boolean; a false return means the
                     // platform refused the write — surface as a typed error.
-                    throw IrisFfiException.GattFailure("gatt write not initiated")
+                    throw GattFailure("gatt write not initiated")
                 }
             }
         }
@@ -322,7 +327,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     override fun setMtu(handle: ULong, mtu: UShort): UShort {
         return FfiCallTimeout.syncCall(onTimeout = mtu) {
             val gatt = gattHandles[handle.toLong()]
-                ?: throw IrisFfiException.DeviceNotFound()
+                ?: throw DeviceNotFound()
             gatt.requestMtu(mtu.toInt())
             // AND-RT-111: return the negotiated value (from onMtuChanged) when
             // known, falling back to the requested value.

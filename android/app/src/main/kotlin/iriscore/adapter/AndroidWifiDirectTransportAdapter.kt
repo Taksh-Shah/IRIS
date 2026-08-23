@@ -12,13 +12,15 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
 import android.os.Build
 import android.os.Looper
 import android.os.SystemClock
+import java.security.SecureRandom
 import iriscode.FfiDirectPeerDiscovery
 import iriscode.FfiGroupConfig
 import iriscode.FfiGroupInfo
 import iriscode.FfiIncomingWifiDirectData
 import iriscode.FfiOperatingBand
+import iriscode.DeviceNotFound
 import iriscode.FfiWifiDirectAdapter
-import iriscode.IrisFfiException
+import iriscode.TransportFailure
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
@@ -30,7 +32,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import uniffi.iriscode.IrisFfiException
 
 /**
  * 20-op async `FfiWifiDirectAdapter` foreign-trait implementation.
@@ -98,6 +99,26 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     /** Current GO endpoint address, adapter-provided (G-WD-2 — never hard-coded). */
     private var cachedGoAddr: String? = null
 
+    /**
+     * Band hint recorded by `setOperatingBand`, applied at the next group
+     * formation (the platform accepts a band only at that point).
+     */
+    @Volatile
+    private var bandHint: FfiOperatingBand = FfiOperatingBand.AUTO
+
+    /**
+     * Credentials for a band-pinned autonomous GO. `WifiP2pConfig.Builder`
+     * requires both; the platform mandates the `DIRECT-xy` network-name prefix
+     * and an 8..63-character passphrase. Generated once per adapter instance so
+     * a re-formed group keeps a stable identity within the process lifetime.
+     */
+    private val groupNetworkName: String =
+        "DIRECT-ir-iris%04x".format(SecureRandom().nextInt(0x1_0000))
+    private val groupPassphrase: String =
+        java.math.BigInteger(1, ByteArray(12).also { SecureRandom().nextBytes(it) })
+            .toString(16)
+            .padStart(24, '0')
+
     private val p2pStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -155,9 +176,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     override suspend fun createGroup(config: FfiGroupConfig): FfiGroupInfo {
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
-                ?: throw IrisFfiException.Transport("Wi-Fi Direct not initialized")
-            if (config.band != FfiOperatingBand.AUTO) setOperatingBandSuspend(channel, config.band)
-            awaitAction { p2pManager.createGroup(channel, it) }
+                ?: throw TransportFailure("Wi-Fi Direct not initialized")
+            val band = if (config.band != FfiOperatingBand.AUTO) config.band else bandHint
+            awaitAction { createGroupWithBand(channel, band, it) }
             // AND-RT-103: the group snapshot arrives only via the async
             // CONNECTION_CHANGED broadcast — wait for it, never throw on a
             // momentarily-null snapshot.
@@ -168,9 +189,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     override suspend fun joinGroup(go: ULong, config: FfiGroupConfig): FfiGroupInfo {
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
-                ?: throw IrisFfiException.Transport("Wi-Fi Direct not initialized")
+                ?: throw TransportFailure("Wi-Fi Direct not initialized")
             val address = peerDevices[go.toLong()]
-                ?: throw IrisFfiException.DeviceNotFound()
+                ?: throw DeviceNotFound()
             val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
             awaitAction { p2pManager.connect(channel, wifiConfig, it) }
             awaitCurrentGroupInfo(channel) ?: degradedGroupInfo()
@@ -202,7 +223,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     override suspend fun groupInfo(): FfiGroupInfo? {
         return FfiCallTimeout.suspendCall {
-            val channel = startGate.ensureStarted() ?: return@suspendCall
+            val channel = startGate.ensureStarted() ?: return@suspendCall null
             currentGroupInfo(channel)
         }
     }
@@ -211,8 +232,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     override suspend fun setOperatingBand(band: FfiOperatingBand) {
         FfiCallTimeout.suspendCall {
-            val channel = startGate.ensureStarted() ?: return@suspendCall
-            setOperatingBandSuspend(channel, band)
+            startGate.ensureStarted() ?: return@suspendCall
+            // Recorded, not applied here: the platform accepts an operating band
+            // only at group formation (see [createGroupWithBand]).
+            bandHint = band
         }
     }
 
@@ -330,16 +353,49 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         return sb.toString().toByteArray(Charsets.UTF_8)
     }
 
-    private suspend fun setOperatingBandSuspend(channel: WifiP2pManager.Channel, band: FfiOperatingBand) {
-        val bandId = when (band) {
-            FfiOperatingBand.AUTO -> return
-            FfiOperatingBand.GHZ24 -> WifiP2pManager.BAND_24GHZ
-            FfiOperatingBand.GHZ5 -> WifiP2pManager.BAND_5GHZ
-            FfiOperatingBand.GHZ6 -> WifiP2pManager.BAND_6GHZ
+    /**
+     * Group formation carrying the band hint.
+     *
+     * The platform has no standalone band setter on [WifiP2pManager]; the
+     * operating band is only accepted as a group-formation parameter via
+     * `WifiP2pConfig.Builder.setGroupOperatingBand` (API 29+). That builder also
+     * requires a network name + passphrase, so a band-pinned group is always a
+     * named autonomous GO. Peers still join through `connect()` device-address
+     * negotiation (WPS provisioning), so the generated credentials do not have
+     * to be shared out-of-band.
+     *
+     * AUTO — and any band the platform cannot express — falls back to the
+     * plain `createGroup` overload and lets the platform choose, matching the
+     * core's "band is a hint" contract (`set_operating_band`, wifi_direct.rs).
+     */
+    private fun createGroupWithBand(
+        channel: WifiP2pManager.Channel,
+        band: FfiOperatingBand,
+        listener: WifiP2pManager.ActionListener,
+    ) {
+        val bandId = groupOwnerBand(band)
+        if (bandId == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            p2pManager.createGroup(channel, listener)
+            return
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            awaitAction { p2pManager.setGroupOperatingBand(channel, bandId, it) }
-        }
+        val p2pConfig = WifiP2pConfig.Builder()
+            .setNetworkName(groupNetworkName)
+            .setPassphrase(groupPassphrase)
+            .setGroupOperatingBand(bandId)
+            .build()
+        p2pManager.createGroup(channel, p2pConfig, listener)
+    }
+
+    /**
+     * FFI band -> platform GO band, or `null` when the platform cannot honour
+     * it. Wi-Fi Direct exposes no 6 GHz group-owner band, so GHZ6 degrades to
+     * the platform default rather than failing group formation outright.
+     */
+    private fun groupOwnerBand(band: FfiOperatingBand): Int? = when (band) {
+        FfiOperatingBand.AUTO -> null
+        FfiOperatingBand.GHZ24 -> WifiP2pConfig.GROUP_OWNER_BAND_2GHZ
+        FfiOperatingBand.GHZ5 -> WifiP2pConfig.GROUP_OWNER_BAND_5GHZ
+        FfiOperatingBand.GHZ6 -> null
     }
 
     private fun currentGroupInfo(channel: WifiP2pManager.Channel): FfiGroupInfo? {
@@ -392,7 +448,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 override fun onFailure(reason: Int) =
                     // AND-RT-103: typed FFI error — a raw IllegalStateException
                     // becomes UNIFFI_CALL_UNEXPECTED_ERROR and panics the Rust side.
-                    cont.resumeWithException(IrisFfiException.Transport("WifiP2p action failed reason=$reason"))
+                    cont.resumeWithException(TransportFailure("WifiP2p action failed reason=$reason"))
             })
         }
     }

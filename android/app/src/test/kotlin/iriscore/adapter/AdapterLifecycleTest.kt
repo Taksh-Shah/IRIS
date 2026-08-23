@@ -28,9 +28,11 @@ class AdapterLifecycleTest {
     // -- NEW-WA-RT-110 ------------------------------------------------------
 
     @Test
-    fun `rt110 suspendCall times out with TimeoutCancellationException`() = runBlocking {
+    fun `rt110 suspendCall times out with TimeoutCancellationException`() {
+        // assertThrows takes a non-suspend Executable, so the suspend call has
+        // to be driven by its own runBlocking inside the lambda.
         assertThrows(TimeoutCancellationException::class.java) {
-            FfiCallTimeout.suspendCall(timeoutMs = 20L) { delay(5_000L) }
+            runBlocking { FfiCallTimeout.suspendCall(timeoutMs = 20L) { delay(5_000L) } }
         }
     }
 
@@ -72,7 +74,7 @@ class AdapterLifecycleTest {
             if (attempts == 1) throw IllegalStateException("platform down")
             Unit
         }
-        assertThrows(IllegalStateException::class.java) { gate.ensureStarted() }
+        assertThrows(IllegalStateException::class.java) { runBlocking { gate.ensureStarted() } }
         gate.ensureStarted() // second attempt must retry, not reuse a failed latch
         assertEquals(2, attempts)
     }

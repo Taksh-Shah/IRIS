@@ -366,8 +366,8 @@ class VerifiedPeerCache {
  */
 internal fun beaconCandidatePeerIdHex(beacon: ByteArray): String? {
     if (beacon.size < 22) return null
-    if (beacon[0] != 1) return null
-    if (beacon[3] != 0) return null
+    if (beacon[0].toInt() != 1) return null
+    if (beacon[3].toInt() != 0) return null
     val padded = ByteArray(32)
     beacon.copyInto(padded, 0, 4, 20)
     return iriscore.util.PeerIdCodec.toHex(padded)

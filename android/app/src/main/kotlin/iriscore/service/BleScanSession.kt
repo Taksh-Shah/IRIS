@@ -2,7 +2,7 @@ package iriscore.service
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothLeScanner
+import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.content.Context
@@ -90,7 +90,7 @@ class BleScanSession(private val context: Context) {
         )
         return try {
             val pendingIntent = buildScanPendingIntent()
-            scanner.bluetoothLeScanner?.startScan(filters, settings, pendingIntent)
+            scanner.startScan(filters, settings, pendingIntent)
             scanPendingIntent = pendingIntent
             true
         } catch (_: Exception) {
