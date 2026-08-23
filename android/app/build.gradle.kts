@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "iriscore"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "org.iris.mesh"
@@ -99,8 +99,7 @@ dependencies {
     // (kotlin/.../iriscode/api.kt) re-exports `uniffi.iriscode` for the
     // adapter + shell source sets (AC-11 FQCN surface).
     implementation("net.java.dev.jna:jna:5.14.0")
-    implementation("net.java.dev.jna:jna-android:5.14.0")
-
+    
     // --- Unit tests (pure JVM leg; also runs AC-5 AdapterLifecycleTest) ---
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
