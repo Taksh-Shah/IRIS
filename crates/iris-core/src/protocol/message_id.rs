@@ -28,6 +28,28 @@ impl MessageId {
         MessageId(b)
     }
 
+    /// Per-sender ordering hint for replay protection.
+    ///
+    /// A UUIDv7 leads with a 48-bit big-endian millisecond timestamp
+    /// (RFC 9562), so the first 8 bytes read big-endian increase monotonically
+    /// for any sender minting ids normally.
+    ///
+    /// This exists because the envelope has no sequence field and the replay
+    /// engine was being fed `hop_count` instead — a value that is *outside the
+    /// signature* and incremented by every relay. That let any on-path node pin
+    /// a victim's high-water mark at 255 with one crafted packet and block
+    /// their traffic for the whole second, and it also rejected legitimate
+    /// messages that simply arrived over a shorter path.
+    ///
+    /// `message_id` is inside the signing scope, so a relay cannot alter it. A
+    /// malicious *sender* can choose it freely, but only ever harms its own
+    /// deliverability.
+    pub fn sequence_hint(&self) -> u64 {
+        let mut b = [0u8; 8];
+        b.copy_from_slice(&self.0[..8]);
+        u64::from_be_bytes(b)
+    }
+
     /// Raw bytes.
     pub fn as_bytes(&self) -> &[u8; 16] {
         &self.0

@@ -566,7 +566,13 @@ impl MessageEngine {
             .check_replay(
                 sender_short,
                 envelope.timestamp,
-                envelope.hop_count as u64, // Using hop_count as sequence for v1 (TODO: proper seq)
+                // Derived from the SIGNED message id, not `hop_count`. Feeding
+                // the replay high-water an unsigned, relay-incremented field
+                // let any on-path node pin a victim at seq 255 with one crafted
+                // packet — blocking that sender for the whole second — and
+                // rejected legitimate messages that arrived over a shorter path
+                // than an earlier one.
+                envelope.message_id.sequence_hint(),
             )
             .await;
         match replay_decision {
