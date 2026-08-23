@@ -6,12 +6,17 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pGroup
+import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
 import android.os.Build
 import android.os.Looper
 import android.os.SystemClock
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.ServerSocket
+import java.net.Socket
 import java.security.SecureRandom
 import iriscode.FfiDirectPeerDiscovery
 import iriscode.FfiGroupConfig
@@ -32,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 /**
  * 20-op async `FfiWifiDirectAdapter` foreign-trait implementation.
@@ -71,6 +77,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
         /** Poll interval while awaiting the group snapshot (AND-RT-103). */
         private const val GROUP_INFO_POLL_MS = 100L
+
+        /** Bounded dial timeout for the GO socket; never blocks the callback scope. */
+        private const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
     }
 
     private val appContext: Context = context.applicationContext
@@ -83,7 +92,21 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val availability = RadioStateTracker()
     private val groupRegistry = NdpRegistry()
     private val verifiedCache = VerifiedPeerCache()
+
+    /** Frames queued for a peer whose socket is not up yet; flushed on connect. */
     private val outbox = RingBufferOutbox<ByteArray>()
+
+    /**
+     * Frames genuinely received from peers. Strictly separate from [outbox] —
+     * draining the outbox on the inbound path made the adapter echo its own
+     * sends back to the core as peer traffic.
+     */
+    private val inbox = RingBufferOutbox<ByteArray>()
+
+    private val links = SocketLinkRegistry()
+
+    /** GO-side accept loop; null while this node is not the group owner. */
+    private var groupServer: FramedSocketServer? = null
 
     private val startGate = SessionGate<WifiP2pManager.Channel?> { initialize() }
     private val dnsSdGate = SessionGate<Unit> { registerDnsSd() }
@@ -131,7 +154,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     val group = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)
+                    val info = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
                     group?.let { groupState.update(it) }
+                    // Group formation is the only point at which the GO address
+                    // and this node's role are known — stand the data path up here.
+                    if (info != null && info.groupFormed) {
+                        callbackScope.launch { onGroupFormed(info, group) }
+                    }
                 }
             }
         }
@@ -211,13 +240,25 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted() ?: return@suspendCall
             awaitAction { p2pManager.removeGroup(channel, it) }
-            // AND-RT-109/110: closed destinations drop their retained frames.
-            groupRegistry.closeAll().forEach {
-                verifiedCache.evict(it)
-                outbox.drainDestination(it)
-            }
+            closeDataPath()
             groupState.clear()
             cachedGoAddr = null
+        }
+    }
+
+    /**
+     * Tears the data path down: sockets first, then the retained frames for
+     * every closed destination (AND-RT-109/110). Leaving the links open would
+     * strand accept/read coroutines on a dead radio.
+     */
+    private fun closeDataPath() {
+        groupServer?.close()
+        groupServer = null
+        links.close()
+        groupRegistry.closeAll().forEach {
+            verifiedCache.evict(it)
+            outbox.drainDestination(it)
+            inbox.drainDestination(it)
         }
     }
 
@@ -241,8 +282,12 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     override suspend fun p2pSend(peer: ULong, payload: ByteArray) {
         FfiCallTimeout.suspendCall {
-            // TCP-over-GO socket path = AC-6 platform plumbing; ring-buffer here (RT-112).
-            outbox.enqueue(peer.toLong(), payload)
+            val handle = peer.toLong()
+            val link = links.get(handle)
+            if (link != null && link.send(payload)) return@suspendCall
+            // No socket yet (group still forming, or the link just dropped):
+            // hold the frame in the bounded outbox and flush it on connect.
+            outbox.enqueue(handle, payload)
         }
     }
 
@@ -251,7 +296,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             val drained = mutableListOf<FfiIncomingWifiDirectData>()
             // Closed-group prune (RT-109): only frames for live group members surface.
             for (peer in groupRegistry.openHandles()) {
-                for (frame in outbox.drain(peer)) {
+                for (frame in inbox.drain(peer)) {
                     drained.add(
                         FfiIncomingWifiDirectData(
                             sender = verifiedCache.verifiedPeerIdFor(peer)?.hexToBytes(),
@@ -272,10 +317,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 runCatching { awaitAction { p2pManager.removeGroup(channel, it) } }
             }
             dnsSdGate.reset()
-            groupRegistry.closeAll().forEach {
-                verifiedCache.evict(it)
-                outbox.drainDestination(it)
-            }
+            closeDataPath()
             groupState.clear()
             cachedGoAddr = null
             availability.setAvailable(false)
@@ -434,6 +476,79 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         goAddr = cachedGoAddr,
         clients = emptyList(),
     )
+
+    // -- data path ---------------------------------------------------------
+
+    /**
+     * Brings the TCP-over-GO data path up once the group exists.
+     *
+     * The group owner listens on the well-known port; every client dials it.
+     * Wi-Fi Direct offers no port negotiation, so the port is a fixed constant
+     * both roles agree on.
+     */
+    private suspend fun onGroupFormed(info: WifiP2pInfo, group: WifiP2pGroup?) {
+        if (info.isGroupOwner) {
+            ensureGroupServer()
+        } else {
+            val goAddress = info.groupOwnerAddress ?: return
+            connectToGroupOwner(goAddress, peerHandleFor(group?.owner?.deviceAddress))
+        }
+    }
+
+    /** GO side: accept client links until the group is torn down. */
+    private fun ensureGroupServer() {
+        if (groupServer != null) return
+        val server = runCatching {
+            ServerSocket(FramedSocketServer.WIFI_DIRECT_GO_PORT)
+        }.getOrNull() ?: return
+        groupServer = FramedSocketServer(server, callbackScope) { socket ->
+            // An accepted socket identifies its peer only by IP — Wi-Fi Direct
+            // exposes no IP->MAC mapping to the app. The handle is therefore
+            // keyed by remote address, and the peer's real identity is resolved
+            // from the envelope above the transport (DEC-WA-0007), never from
+            // this handle.
+            val handle = peerHandleFor(socket.inetAddress?.hostAddress)
+            callbackScope.launch { attachLink(handle, socket) }
+        }
+    }
+
+    /** Client side: dial the group owner, retrying is left to the next group event. */
+    private suspend fun connectToGroupOwner(address: InetAddress, handle: Long) {
+        if (links.get(handle) != null) return
+        val socket = withContext(Dispatchers.IO) {
+            runCatching {
+                Socket().apply {
+                    connect(
+                        InetSocketAddress(address, FramedSocketServer.WIFI_DIRECT_GO_PORT),
+                        SOCKET_CONNECT_TIMEOUT_MS,
+                    )
+                }
+            }.getOrNull()
+        } ?: return
+        attachLink(handle, socket)
+    }
+
+    /**
+     * Registers a live socket for [handle], routes its frames to [inbox], and
+     * flushes anything queued while the socket was still coming up.
+     */
+    private suspend fun attachLink(handle: Long, socket: Socket) {
+        val link = FramedSocketLink(
+            socket = socket,
+            scope = callbackScope,
+            onFrame = { frame -> inbox.enqueue(handle, frame) },
+            onClosed = { links.remove(handle) },
+        )
+        links.put(handle, link)
+        groupRegistry.opened(handle)
+        for (frame in outbox.drain(handle)) {
+            if (!link.send(frame)) {
+                // Link died mid-flush: put the frame back and stop draining.
+                outbox.enqueue(handle, frame)
+                break
+            }
+        }
+    }
 
     private fun peerHandleFor(deviceAddress: String?): Long {
         if (deviceAddress == null) return 0L

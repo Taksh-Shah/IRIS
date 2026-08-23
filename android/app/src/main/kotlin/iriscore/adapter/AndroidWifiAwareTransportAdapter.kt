@@ -15,8 +15,10 @@ import android.net.wifi.aware.PublishDiscoverySession
 import android.net.wifi.aware.SubscribeConfig
 import android.net.wifi.aware.SubscribeDiscoverySession
 import android.net.wifi.aware.WifiAwareManager
+import android.net.wifi.aware.WifiAwareNetworkInfo
 import android.net.wifi.aware.WifiAwareNetworkSpecifier
 import android.net.wifi.aware.WifiAwareSession
+import java.net.Inet6Address
 import iriscode.DeviceNotFound
 import iriscode.FfiIncomingNdpData
 import iriscode.FfiPeerDiscovery
@@ -35,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 /**
@@ -79,7 +82,18 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private val availability = RadioStateTracker()
     private val ndpRegistry = NdpRegistry()
     private val verifiedCache = VerifiedPeerCache()
+
+    /** Frames queued for an NDP whose socket is not up yet; flushed on connect. */
     private val outbox = RingBufferOutbox<ByteArray>()
+
+    /**
+     * Frames genuinely received from peers. Strictly separate from [outbox] —
+     * draining the outbox on the inbound path made the adapter echo its own
+     * sends back to the core as peer traffic.
+     */
+    private val inbox = RingBufferOutbox<ByteArray>()
+
+    private val links = SocketLinkRegistry()
 
     // AND-RT-104: attach() awaits the platform `onAttached` session; the gate
     // caches it so `ensureStarted` never re-attaches.
@@ -158,8 +172,10 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
         FfiCallTimeout.suspendCall {
             ndpRegistry.closed(ndpHandle.toLong())
             ndpSpecifiers.remove(ndpHandle.toLong())
+            links.remove(ndpHandle.toLong())
             // AND-RT-109: closed NDPs must not retain frames.
             outbox.drainDestination(ndpHandle.toLong())
+            inbox.drainDestination(ndpHandle.toLong())
             ndpCallbacks.remove(ndpHandle.toLong())?.let { cb ->
                 runCatching { connectivityManager.unregisterNetworkCallback(cb) }
             }
@@ -170,11 +186,15 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     override suspend fun ndpSend(ndpHandle: ULong, payload: ByteArray) {
         FfiCallTimeout.suspendCall {
             // AND-RT-110: only enqueue once the NDP network is genuinely available.
-            if (!ndpRegistry.accepts(ndpHandle.toLong())) {
+            val handle = ndpHandle.toLong()
+            if (!ndpRegistry.accepts(handle)) {
                 throw TransportFailure("NDP network not yet available")
             }
-            // Socket not yet live (platform plumbing, AC-6): ring-buffer the frame.
-            outbox.enqueue(ndpHandle.toLong(), payload)
+            val link = links.get(handle)
+            if (link != null && link.send(payload)) return@suspendCall
+            // Network is up but the socket is still being established (the peer
+            // address arrives on onCapabilitiesChanged): hold and flush later.
+            outbox.enqueue(handle, payload)
         }
     }
 
@@ -185,7 +205,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             for (handle in ndpRegistry.openHandles()) {
                 val peerHandle = peerByNdp[handle] ?: continue
                 val sender = verifiedCache.verifiedPeerIdFor(peerHandle)
-                for (frame in outbox.drain(handle)) {
+                for (frame in inbox.drain(handle)) {
                     drained.add(
                         FfiIncomingNdpData(
                             sender = sender?.hexToBytes(),
@@ -348,12 +368,61 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 ndpRegistry.opened(ndpHandle)
             }
 
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                // The peer's link-local IPv6 address and port are only published
+                // here, via WifiAwareNetworkInfo — onAvailable does not carry
+                // them, so this is where the data socket can first be dialled.
+                val info = caps.transportInfo as? WifiAwareNetworkInfo ?: return
+                val peerAddress = info.peerIpv6Addr ?: return
+                if (info.port <= 0) return
+                callbackScope.launch {
+                    connectNdpSocket(network, peerAddress, info.port, ndpHandle)
+                }
+            }
+
             override fun onLost(network: Network) {
                 ndpRegistry.closed(ndpHandle)
+                links.remove(ndpHandle)
             }
         }
         ndpCallbacks[ndpHandle] = callback
         connectivityManager.requestNetwork(request, callback)
+    }
+
+    /**
+     * Dials the peer over the NDP link and registers the resulting frame link.
+     *
+     * The socket MUST be created from the NDP [Network]'s own socket factory:
+     * the peer address is link-local IPv6 and is only routable on that network,
+     * so a default-network socket would fail or leak onto the wrong interface.
+     */
+    private suspend fun connectNdpSocket(
+        network: Network,
+        peerAddress: Inet6Address,
+        port: Int,
+        ndpHandle: Long,
+    ) {
+        if (links.get(ndpHandle) != null) return
+        val socket = withContext(Dispatchers.IO) {
+            runCatching {
+                network.socketFactory.createSocket(peerAddress, port)
+            }.getOrNull()
+        } ?: return
+
+        val link = FramedSocketLink(
+            socket = socket,
+            scope = callbackScope,
+            onFrame = { frame -> inbox.enqueue(ndpHandle, frame) },
+            onClosed = { links.remove(ndpHandle) },
+        )
+        links.put(ndpHandle, link)
+        // Flush whatever was queued while the socket was coming up.
+        for (frame in outbox.drain(ndpHandle)) {
+            if (!link.send(frame)) {
+                outbox.enqueue(ndpHandle, frame)
+                break
+            }
+        }
     }
 
     /** Prunes all registered NDP state (AND-RT-110/109): registry, specifiers,
@@ -361,11 +430,13 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private fun pruneNdpRegistrations() {
         ndpRegistry.closeAll().forEach { handle ->
             ndpSpecifiers.remove(handle)
+            links.remove(handle)
             ndpCallbacks.remove(handle)?.let { cb ->
                 runCatching { connectivityManager.unregisterNetworkCallback(cb) }
             }
             peerByNdp.remove(handle)?.let { verifiedCache.evict(it) }
             outbox.drainDestination(handle)
+            inbox.drainDestination(handle)
         }
     }
 
