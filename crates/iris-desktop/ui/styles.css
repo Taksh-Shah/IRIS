@@ -1,95 +1,595 @@
-:root {
-  --bg: #0f1216;
-  --panel: #171b22;
-  --border: #262c36;
-  --text: #d7dde6;
-  --muted: #7b8698;
-  --accent: #2f81f7;
+/*
+ * IRIS desktop shell.
+ *
+ * Not a stretched mobile layout: the desktop earns a three-pane command centre
+ * — peers on the left, the console in the middle, thread context on the right —
+ * with keyboard-first interaction. Panes collapse by breakpoint rather than
+ * reflowing into a phone layout.
+ */
+
+@import url("tokens.css");
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-* { box-sizing: border-box; }
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
 
 body {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.45 system-ui, "Segoe UI", sans-serif;
-}
-
-header, footer {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  padding: 6px 12px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
+  background: var(--iris-bg-primary);
+  color: var(--iris-text-primary);
+  font-family: var(--iris-font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
-footer { border-top: 1px solid var(--border); border-bottom: none; }
-#node { font-family: ui-monospace, "Cascadia Mono", monospace; }
 
-#online.on { color: #4ade80; }
-#online.off { color: #f87171; }
+/* Keyboard focus must always be visible; this is a keyboard-first interface. */
+:focus-visible {
+  outline: 1px solid var(--iris-accent-primary);
+  outline-offset: 2px;
+}
 
-main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
 
-#inbox {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
+input {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+input::placeholder {
+  color: var(--iris-text-quaternary);
+}
+
+/* ------------------------------------------------------------------ shell */
+
+#shell {
+  display: grid;
+  grid-template-columns: var(--iris-sidebar-width) 1fr var(--iris-context-width);
+  grid-template-rows: 1fr;
+  height: 100vh;
+}
+
+/* Ultrawide: let the console breathe rather than stretching it indefinitely. */
+@media (min-width: 1800px) {
+  #shell {
+    grid-template-columns: var(--iris-sidebar-width) minmax(0, 1100px) var(--iris-context-width);
+    justify-content: center;
+  }
+}
+
+/* Tablet-width window: drop the context pane, keep peers. */
+@media (max-width: 1100px) {
+  #shell {
+    grid-template-columns: var(--iris-sidebar-width) 1fr;
+  }
+  #context {
+    display: none;
+  }
+}
+
+/* Narrow window: single pane, the mobile information architecture. */
+@media (max-width: 780px) {
+  #shell {
+    grid-template-columns: 1fr;
+  }
+  #sidebar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- sidebar */
+
+#sidebar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  min-height: 0;
+  border-right: 1px solid var(--iris-border-subtle);
+  background: var(--iris-bg-secondary);
 }
 
-.msg {
-  max-width: 72%;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  align-self: flex-start;
+.pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--iris-space-sm);
+  padding: var(--iris-space-lg) var(--iris-space-gutter) var(--iris-space-md);
 }
-.msg.me { align-self: flex-end; background: #12233a; border-color: #1d3a5f; }
-.msg .meta { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-family: ui-monospace, monospace; }
-.msg .body { word-break: break-word; }
-.msg.sys { align-self: center; font-size: 12px; color: var(--muted); border-style: dashed; }
 
-#empty { color: var(--muted); text-align: center; margin-top: 40px; }
+.pane-title {
+  font-family: var(--iris-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--iris-text-tertiary);
+  text-transform: uppercase;
+}
+
+#peer-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--iris-space-md) var(--iris-space-md);
+}
+
+.peer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--iris-space-md);
+  border-radius: var(--iris-radius-md);
+  text-align: left;
+  transition: background var(--iris-motion-fast) var(--iris-ease-standard);
+}
+
+.peer:hover {
+  background: var(--iris-glass-white);
+}
+
+.peer[aria-selected="true"] {
+  background: var(--iris-glass-highlight);
+}
+
+.peer-id {
+  font-family: var(--iris-font-mono);
+  font-size: 12px;
+  color: var(--iris-text-primary);
+}
+
+.peer-meta {
+  font-family: var(--iris-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--iris-text-tertiary);
+}
+
+.pane-empty {
+  padding: var(--iris-space-md);
+  font-size: 12px;
+  color: var(--iris-text-tertiary);
+}
+
+/* ---------------------------------------------------------------- console */
+
+#console {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--iris-space-md);
+  padding: var(--iris-space-md) var(--iris-space-gutter);
+  border-bottom: 1px solid var(--iris-border-subtle);
+  font-family: var(--iris-font-mono);
+  font-size: 11px;
+  color: var(--iris-text-tertiary);
+}
+
+.brand {
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--iris-text-secondary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.chip {
+  padding: 2px var(--iris-space-sm);
+  border: 1px solid currentColor;
+  border-radius: var(--iris-radius-sm);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--iris-text-tertiary);
+}
+
+.chip.on {
+  color: var(--iris-accent-success);
+}
+
+.chip.off {
+  color: var(--iris-accent-critical);
+}
+
+.chip.warn {
+  color: var(--iris-accent-warning);
+}
+
+#transcript {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--iris-space-lg) var(--iris-space-gutter);
+  /*
+   * The composer floats over the transcript, so the last entry needs room to
+   * clear it — without this the newest message sits under the input, which is
+   * exactly the message the user most wants to read.
+   */
+  padding-bottom: calc(var(--iris-input-height) + var(--iris-space-xxl));
+  scrollbar-width: thin;
+  scrollbar-color: var(--iris-border-active) transparent;
+}
+
+#transcript::-webkit-scrollbar {
+  width: 10px;
+}
+
+#transcript::-webkit-scrollbar-thumb {
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-color: var(--iris-border-active);
+}
+
+/* --------------------------------------------------------------- entries */
+
+.entry {
+  margin-top: var(--iris-space-lg);
+}
+
+.entry.grouped {
+  margin-top: var(--iris-space-xs);
+}
+
+/* Editorial, not bubbled: sender, body, quiet timestamp. */
+.msg-sender {
+  display: flex;
+  align-items: center;
+  gap: var(--iris-space-sm);
+  margin-bottom: var(--iris-space-xs);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--iris-text-secondary);
+}
+
+.msg-body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--iris-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg-time {
+  margin-top: var(--iris-space-xxs);
+  font-family: var(--iris-font-mono);
+  font-size: 11px;
+  color: var(--iris-text-tertiary);
+}
+
+.tag {
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--iris-radius-sm);
+  font-family: var(--iris-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.tag.sos {
+  color: var(--iris-accent-critical);
+}
+
+.tag.queued {
+  color: var(--iris-accent-warning);
+}
+
+/* IRIS speaking as a system rather than as a participant. */
+.sys-label {
+  font-family: var(--iris-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--iris-text-tertiary);
+}
+
+.sys-title {
+  margin-top: var(--iris-space-xs);
+  font-family: var(--iris-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--iris-text-primary);
+}
+
+.sys-lines {
+  margin: var(--iris-space-sm) 0 0;
+  font-family: var(--iris-font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--iris-text-secondary);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.sys-status {
+  margin-top: var(--iris-space-sm);
+  font-family: var(--iris-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--iris-text-secondary);
+}
+
+.echo {
+  font-family: var(--iris-font-mono);
+  font-size: 13px;
+  color: var(--iris-text-tertiary);
+}
+
+.entry.error .sys-title {
+  color: var(--iris-accent-critical);
+}
+
+/* First-run state: teaches the command system instead of sitting empty. */
+#empty {
+  padding: var(--iris-space-xxl) 0;
+  color: var(--iris-text-tertiary);
+}
+
+#empty h1 {
+  margin: 0 0 var(--iris-space-sm);
+  font-family: var(--iris-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--iris-text-secondary);
+}
+
+#empty ul {
+  margin: var(--iris-space-md) 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--iris-font-mono);
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+#empty code {
+  color: var(--iris-text-secondary);
+}
+
+/* -------------------------------------------------------------- composer */
+
+#composer-wrap {
+  position: relative;
+  padding: 0 var(--iris-space-gutter) var(--iris-space-lg);
+}
+
+/*
+ * Glass is reserved for the floating chrome — the composer and the palette.
+ * Messages and list rows stay solid; glazing everything would flatten both the
+ * hierarchy and the frame budget.
+ */
+.glass {
+  background: color-mix(in srgb, var(--iris-surface-primary) 82%, transparent);
+  backdrop-filter: blur(var(--iris-glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--iris-glass-blur)) saturate(140%);
+  border: 1px solid var(--iris-border-subtle);
+  /* Rim light: a lit top edge is most of what makes a panel read as physical. */
+  box-shadow:
+    inset 0 1px 0 var(--iris-glass-rim),
+    0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass {
+    background: var(--iris-surface-primary);
+  }
+}
 
 #composer {
   display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-  background: var(--panel);
-  border-top: 1px solid var(--border);
+  align-items: center;
+  gap: var(--iris-space-md);
+  min-height: var(--iris-input-height);
+  padding: var(--iris-space-md) var(--iris-space-lg);
+  border-radius: var(--iris-radius-xl);
 }
-#recipient { flex: 2; font-family: ui-monospace, monospace; }
-#text { flex: 3; }
-#priority { flex: 0 0 auto; }
 
-input, select {
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  outline: none;
+#sigil {
+  font-family: var(--iris-font-mono);
+  font-size: 14px;
+  color: var(--iris-text-tertiary);
+  transition: color var(--iris-motion-fast) var(--iris-ease-standard);
 }
-input:focus, select:focus { border-color: var(--accent); }
 
-button {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 18px;
-  cursor: pointer;
+#composer.mode-command #sigil {
+  color: var(--iris-accent-primary);
 }
-button:disabled { opacity: 0.5; cursor: default; }
+
+#composer.mode-context #sigil {
+  color: var(--iris-accent-success);
+}
+
+#input {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+}
+
+/* Commands and references are tokens; human text stays in the human face. */
+#composer.mode-command #input,
+#composer.mode-context #input {
+  font-family: var(--iris-font-mono);
+  font-size: 14px;
+}
+
+.hint {
+  font-family: var(--iris-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--iris-text-quaternary);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- palette */
+
+#palette {
+  position: absolute;
+  right: var(--iris-space-gutter);
+  bottom: calc(100% - var(--iris-space-sm));
+  left: var(--iris-space-gutter);
+  overflow: hidden;
+  border-radius: var(--iris-radius-lg);
+  /* Settles into place rather than popping; no translation, it is anchored. */
+  animation: palette-in var(--iris-motion-normal) var(--iris-ease-standard);
+}
+
+#palette[hidden] {
+  display: none;
+}
+
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#palette-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--iris-space-sm) 0;
+}
+
+.cmd-group {
+  padding: var(--iris-space-sm) var(--iris-space-lg) var(--iris-space-xs);
+  font-family: var(--iris-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--iris-text-tertiary);
+}
+
+.cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--iris-space-md);
+  width: 100%;
+  /* >=44px tall: a pointer target, not a text line. */
+  padding: var(--iris-space-md) var(--iris-space-lg);
+  text-align: left;
+}
+
+.cmd:hover,
+.cmd[aria-selected="true"] {
+  background: var(--iris-glass-highlight);
+}
+
+.cmd-name {
+  font-family: var(--iris-font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--iris-text-primary);
+}
+
+.cmd-arg {
+  font-family: var(--iris-font-mono);
+  font-size: 11px;
+  color: var(--iris-text-tertiary);
+}
+
+.cmd-desc {
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--iris-text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#palette-footer {
+  display: flex;
+  gap: var(--iris-space-lg);
+  padding: var(--iris-space-sm) var(--iris-space-lg);
+  border-top: 1px solid var(--iris-border-subtle);
+}
+
+/* ---------------------------------------------------------------- context */
+
+#context {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--iris-border-subtle);
+  background: var(--iris-bg-secondary);
+}
+
+.ctx-section {
+  padding: 0 var(--iris-space-gutter) var(--iris-space-lg);
+}
+
+.ctx-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--iris-space-sm);
+  padding: var(--iris-space-xs) 0;
+  font-family: var(--iris-font-mono);
+  font-size: 11px;
+}
+
+.ctx-key {
+  color: var(--iris-text-tertiary);
+}
+
+.ctx-val {
+  color: var(--iris-text-secondary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ toast */
+
+#toast {
+  position: fixed;
+  bottom: var(--iris-space-xl);
+  left: 50%;
+  padding: var(--iris-space-md) var(--iris-space-lg);
+  border-radius: var(--iris-radius-md);
+  font-family: var(--iris-font-mono);
+  font-size: 12px;
+  color: var(--iris-accent-critical);
+  transform: translateX(-50%);
+  transition: opacity var(--iris-motion-normal) var(--iris-ease-standard);
+}
+
+#toast[hidden] {
+  display: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -3,40 +3,102 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IRIS Mesh — Resilient Messenger</title>
+  <title>IRIS</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header id="statusbar">
-    <span id="node">node: …</span>
-    <span id="online">offline</span>
-    <span id="transports">no transports</span>
-  </header>
+  <!--
+    Three-pane command centre. The desktop is not a stretched phone layout:
+    peers on the left, the console in the middle, thread context on the right.
+    Panes drop out by breakpoint rather than reflowing.
+  -->
+  <div id="shell">
 
-  <main>
-    <section id="inbox" aria-live="polite">
-      <div id="empty">No messages yet. Send one to a peer node id below.</div>
-    </section>
+    <aside id="sidebar">
+      <div class="pane-header">
+        <span class="pane-title">Peers</span>
+        <span class="pane-title" id="peer-count">0</span>
+      </div>
+      <div id="peer-list" role="listbox" aria-label="Known peers">
+        <p class="pane-empty">No peers seen yet. Messages from a node add it here.</p>
+      </div>
+    </aside>
 
-    <section id="composer">
-      <input id="recipient" type="text" spellcheck="false" placeholder="recipient node id (64 hex)" />
-      <select id="priority" title="priority">
-        <option value="0">P0 SOS</option>
-        <option value="1">P1 Emergency</option>
-        <option value="2">P2 Location</option>
-        <option value="3">P3 Urgent</option>
-        <option value="4" selected>P4 Normal</option>
-        <option value="5">P5 Image</option>
-        <option value="6">P6 Voice</option>
-        <option value="7">P7 Bulk</option>
-      </select>
-      <input id="text" type="text" placeholder="message…" maxlength="60000" />
-      <button id="send" type="button">Send</button>
-    </section>
-  </main>
+    <main id="console">
+      <header id="statusbar">
+        <span class="brand">IRIS</span>
+        <span id="node">…</span>
+        <span class="spacer"></span>
+        <span id="recipient-chip" hidden></span>
+        <span id="queue-chip" class="chip warn" hidden></span>
+        <span id="link-chip" class="chip off">DOWN</span>
+      </header>
 
-  <footer id="telemetry">telemetry: …</footer>
+      <section id="transcript" aria-live="polite" aria-label="Console transcript">
+        <div id="empty">
+          <h1>Console ready</h1>
+          <p>Type a message, or start with a command.</p>
+          <ul>
+            <li><code>/to &lt;peer-id&gt;</code> — set the recipient</li>
+            <li><code>/sos &lt;message&gt;</code> — send at P0, the no-drop tier</li>
+            <li><code>/help</code> — list every command</li>
+          </ul>
+          <p><code>Ctrl</code>/<code>⌘</code> + <code>K</code> opens the command palette.</p>
+        </div>
+      </section>
 
+      <div id="composer-wrap">
+        <div id="palette" class="glass" hidden>
+          <div id="palette-list" role="listbox" aria-label="Commands"></div>
+          <div id="palette-footer">
+            <span class="hint">↑↓ navigate</span>
+            <span class="hint">↵ run</span>
+            <span class="hint">esc dismiss</span>
+          </div>
+        </div>
+
+        <div id="composer" class="glass">
+          <span id="sigil" aria-hidden="true">&gt;</span>
+          <label class="visually-hidden" for="input">Message or command</label>
+          <input
+            id="input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="60000"
+            placeholder="Message, /command, or @peer"
+          />
+          <span class="hint" id="composer-hint">⌘K</span>
+        </div>
+      </div>
+    </main>
+
+    <aside id="context">
+      <div class="pane-header">
+        <span class="pane-title">Context</span>
+      </div>
+
+      <div class="ctx-section">
+        <span class="pane-title">Node</span>
+        <div class="ctx-row"><span class="ctx-key">id</span><span class="ctx-val" id="ctx-node">…</span></div>
+        <div class="ctx-row"><span class="ctx-key">link</span><span class="ctx-val" id="ctx-link">down</span></div>
+      </div>
+
+      <div class="ctx-section">
+        <span class="pane-title">Transports</span>
+        <div id="ctx-transports"><p class="pane-empty">none</p></div>
+      </div>
+
+      <div class="ctx-section">
+        <span class="pane-title">Engine</span>
+        <div id="ctx-metrics"><p class="pane-empty">idle</p></div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="toast" role="status" hidden></div>
+
+  <script src="commands.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

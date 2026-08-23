@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "iris-desktop-ui",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5178",
+        "--directory",
+        "crates/iris-desktop/ui"
+      ],
+      "port": 5178
+    }
+  ]
+}
