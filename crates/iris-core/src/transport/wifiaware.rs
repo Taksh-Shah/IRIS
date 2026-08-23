@@ -1032,7 +1032,7 @@ impl Transport for WifiAwareTransport {
             .find(|l| l.peer_id == *peer)
             .map(|l| l.ndp)
             .ok_or(TransportError::NotConnected)?;
-        let frame = encode_frame(message);
+        let frame = encode_frame(message)?;
         match adapter.ndp_send(ndp, &frame).await {
             Ok(()) => {}
             Err(e) => {

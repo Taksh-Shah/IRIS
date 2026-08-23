@@ -50,16 +50,44 @@ pub fn compute_expiry(created_at_unix: u64, ttl_seconds: u64, now_unix: u64) -> 
 }
 
 /// Wall-clock TTL check. `now_unix` is the local clock.
+///
+/// Skew-suspect messages (creation time beyond the future skew budget) have no
+/// usable wall-clock basis and are treated as EXPIRED here.
+///
+/// The previous behaviour returned `false` for them, intending an "arrival-time
+/// lifetime" of `now + ttl`. But no arrival time was ever recorded, so the
+/// comparison was re-evaluated against a moving `now` on every call and could
+/// never become true: a single envelope with `timestamp = now + 10^9` was
+/// immortal at every checkpoint — insert, receive, dequeue and the GC sweep —
+/// on every node that saw it. That is a trivial, permanent memory-exhaustion
+/// vector, so this now fails closed.
+///
+/// Prefer [`is_expired_from_arrival`] wherever the caller knows when the
+/// message actually arrived; it keeps skew-suspect messages alive for a real,
+/// bounded TTL instead of dropping them, which matters for a device whose RTC
+/// is genuinely wrong rather than forged.
 pub fn is_expired(created_at_unix: u64, ttl_seconds: u64, now_unix: u64) -> bool {
     match compute_expiry(created_at_unix, ttl_seconds, now_unix) {
         Some(expiry) => expiry <= now_unix,
-        None => {
-            // Skew-suspect: judge from arrival. With no wall-clock basis the
-            // message has no proven lifetime — treat as expired is wrong (R1
-            // allows accepting it), so we use the conservative arrival-time
-            // lifetime: `now + ttl` is always in the future ⇒ not expired.
-            false
-        }
+        None => true,
+    }
+}
+
+/// TTL check that falls back to a recorded arrival instant when the sender's
+/// clock is not trustworthy.
+///
+/// `arrived_at_unix` must be a fixed instant captured when the message was
+/// first seen locally — not `now`. Because it does not move, the skew-suspect
+/// branch genuinely expires.
+pub fn is_expired_from_arrival(
+    created_at_unix: u64,
+    ttl_seconds: u64,
+    arrived_at_unix: u64,
+    now_unix: u64,
+) -> bool {
+    match compute_expiry(created_at_unix, ttl_seconds, now_unix) {
+        Some(expiry) => expiry <= now_unix,
+        None => arrived_at_unix.saturating_add(ttl_seconds) <= now_unix,
     }
 }
 
@@ -147,6 +175,42 @@ mod tests {
         // ... and the arrival-time fallback keeps it alive for ttl, not forever.
         let fallback = remaining_lifetime(NOW + 10_000, 300, NOW);
         assert!(fallback <= Duration::from_secs(301), "must not exceed ~ttl");
+    }
+
+    #[test]
+    fn skew_suspect_message_actually_expires_on_the_drop_path() {
+        // Regression: `is_expired` is what every checkpoint (insert, receive,
+        // dequeue, GC) actually calls, and it used to return false for a
+        // skew-suspect timestamp on EVERY call, re-evaluated against a moving
+        // `now`. One envelope with a far-future timestamp was therefore
+        // immortal on every node that saw it.
+        //
+        // The sibling test above passes either way because it exercises
+        // `remaining_lifetime`, which is not on the drop path.
+        assert!(
+            is_expired(NOW + 1_000_000_000, 300, NOW),
+            "forged-future timestamp must not survive the TTL check"
+        );
+        assert!(
+            is_expired(NOW + 1_000_000_000, 300, NOW + 10_000_000),
+            "and must still be expired however far the clock advances"
+        );
+    }
+
+    #[test]
+    fn arrival_based_expiry_bounds_a_skewed_sender() {
+        // A device with a genuinely wrong RTC should still get its full TTL,
+        // measured from when we saw the message — and then expire.
+        let created = NOW + 1_000_000; // skew-suspect
+        let arrived = NOW;
+        assert!(
+            !is_expired_from_arrival(created, 300, arrived, NOW + 100),
+            "within ttl of arrival"
+        );
+        assert!(
+            is_expired_from_arrival(created, 300, arrived, NOW + 301),
+            "past ttl of arrival"
+        );
     }
 
     #[test]

@@ -1269,7 +1269,7 @@ impl Transport for WifiDirectTransport {
             .find(|l| l.peer_id == *peer)
             .map(|l| l.handle)
             .ok_or(TransportError::NotConnected)?;
-        let frame = encode_frame(message);
+        let frame = encode_frame(message)?;
         match adapter.p2p_send(handle, &frame).await {
             Ok(()) => {}
             Err(e) => {
