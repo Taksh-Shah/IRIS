@@ -57,6 +57,19 @@ object IrisSizing {
     /** Width past which the layout earns a second pane. */
     val TabletBreakpoint = 640.dp
     val DesktopBreakpoint = 1000.dp
+
+    /**
+     * Maximum width of the reading column.
+     *
+     * Message text set edge-to-edge on a tablet or an unfolded foldable runs to
+     * well over 120 characters a line, which is genuinely hard to read and is
+     * the clearest giveaway of a phone layout that was simply stretched. The
+     * transcript is centred and capped instead; chrome still spans the window.
+     */
+    val ReadableContentWidth = 680.dp
+
+    /** Gutter used once the window is wider than [TabletBreakpoint]. */
+    val WideGutter = 32.dp
 }
 
 /**

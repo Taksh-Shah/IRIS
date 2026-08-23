@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,7 +19,9 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,6 +43,7 @@ import iriscore.command.CommandRegistry
 import iriscore.command.ConsoleInputParser
 import iriscore.command.InputMode
 import iriscore.designsystem.IrisColors
+import iriscore.designsystem.IrisSizing
 import iriscore.designsystem.IrisSpacing
 import iriscore.designsystem.IrisType
 import iriscore.designsystem.glass.ProvideGlassTier
@@ -107,11 +112,24 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         if (entries.isNotEmpty()) listState.animateScrollToItem(entries.lastIndex)
     }
 
-    Box(
+    BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .background(IrisColors.BackgroundPrimary),
     ) {
+        // Phase 6: the layout adapts by width rather than assuming a phone.
+        // Past the tablet breakpoint the reading column is capped and centred
+        // so message text does not run to 120+ characters a line, and the
+        // gutters open up. Chrome still spans the full window.
+        val wide = maxWidth >= IrisSizing.TabletBreakpoint
+        val gutter = if (wide) IrisSizing.WideGutter else IrisSpacing.Gutter
+        val contentWidth: Modifier =
+            if (wide) {
+                Modifier.widthIn(max = IrisSizing.ReadableContentWidth)
+            } else {
+                Modifier.fillMaxWidth()
+            }
+
         Column(
             Modifier
                 .fillMaxSize()
@@ -139,8 +157,18 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = IrisSpacing.Gutter),
+                    .align(Alignment.CenterHorizontally)
+                    .then(contentWidth),
+                // The composer floats OVER this list, so the transcript has to
+                // reserve room for it. Without this the newest entry — the one
+                // the user most wants to read — sits underneath the input and
+                // cannot be scrolled into view, because the list believes it is
+                // already at the end.
+                contentPadding = PaddingValues(
+                    start = gutter,
+                    end = gutter,
+                    bottom = IrisSizing.InputHeight + IrisSpacing.XXL,
+                ),
             ) {
                 items(count = entries.size, key = { entries[it].uid }) { index ->
                     ConsoleRow(entries = entries, index = index)
@@ -152,9 +180,12 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.ime)
-                .windowInsetsPadding(WindowInsets.navigationBars)
+                .then(contentWidth)
+                // One union, not two chained calls: the IME and navigation-bar
+                // insets overlap, and applying them separately makes the
+                // composer ride too high above the keyboard. `union` takes the
+                // larger of the two, which is what "clear both" actually means.
+                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
                 .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD),
         ) {
             IrisCommandPalette(
