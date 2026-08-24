@@ -146,10 +146,12 @@ fn encode_routing_hints(rh: &RoutingHints) -> Value {
 ///
 /// `scope` controls which fields are included:
 /// - `Scope::Full`: the full wire envelope (fields 1–18).
-/// - `Scope::Signing`: fields 1–7, 9–14 (signature scope, ADR-0011), excluding
-///   8 (`hop_count`), 15 (`signature`), 16+.
+/// - `Scope::Signing`: fields 1–7, 9–14, 16, 18 (signature scope), excluding
+///   8 (`hop_count`, mutated by relays), 15 (`signature` itself) and
+///   17 (`routing_hints`, a mutable scheduling hint).
 /// - `Scope::Aead`: fields 1–7, 9–11, 14 (AEAD associated data, CRYPTO-001),
-///   excluding 12 (`payload_hash`) and 13 (`payload`) from the signing scope.
+///   excluding 12 (`payload_hash`) and 13 (`payload`) from the signing scope,
+///   and excluding 16 (produced by the encryption it would authenticate).
 fn build_map(env: &Envelope, scope: Scope) -> Map {
     let mut m = Map::new();
     insert_u64(&mut m, 1, u64::from(env.version));
@@ -184,11 +186,32 @@ fn build_map(env: &Envelope, scope: Scope) -> Map {
         if let Some(sig) = env.signature {
             insert_bytes(&mut m, 15, &sig);
         }
-        if let Some(hdr) = &env.encryption_hdr {
-            insert_value(&mut m, 16, encode_encryption_hdr(hdr));
-        }
         if let Some(rh) = &env.routing_hints {
             insert_value(&mut m, 17, encode_routing_hints(rh));
+        }
+    }
+
+    // Fields 16 and 18 are covered by the SIGNATURE as well as the full wire
+    // form. They are still excluded from the AEAD AAD: the encryption header is
+    // produced *by* encryption, so binding it into that encryption's own AAD
+    // would be circular.
+    //
+    // Leaving them signature-exempt was exploitable by any relay:
+    //
+    //  - field 16 (`encryption_hdr`) carries the ephemeral public key and the
+    //    nonce. Flipping one byte still verified, so the message was recorded
+    //    in dedup and advanced the replay high-water mark, and only then failed
+    //    to decrypt. Every later copy arriving over a redundant mesh path was
+    //    then dropped as a duplicate — silently destroying the message in a
+    //    system whose entire availability model is multipath flooding.
+    //
+    //  - field 18 (`auth_cert_chain`) is what the emergency ACL checks. Simply
+    //    deleting it still verified, and the receiver then dropped the alert as
+    //    `InvalidAuthority` — a silent, untraceable suppression of emergency
+    //    broadcasts for the whole downstream subtree.
+    if !matches!(scope, Scope::Aead) {
+        if let Some(hdr) = &env.encryption_hdr {
+            insert_value(&mut m, 16, encode_encryption_hdr(hdr));
         }
         if let Some(chain) = &env.auth_cert_chain {
             let arr = chain.iter().map(|c| Value::Bytes(c.clone())).collect();
@@ -677,8 +700,17 @@ mod tests {
                 "field {k} must be in signature scope"
             );
         }
-        // Excluded: 8 (hop_count), 15 (signature), 16+ (extension).
-        for k in [8u8, 15, 16, 17, 18] {
+        // Field 16 (encryption_hdr) is INSIDE the signature scope: it carries
+        // the ephemeral key and nonce, and leaving it unsigned let any relay
+        // corrupt a message irrecoverably while the signature still verified.
+        assert!(
+            get(map, 16).is_some(),
+            "encryption_hdr must be covered by the signature"
+        );
+
+        // Excluded: 8 (hop_count, relays mutate it), 15 (the signature itself),
+        // 17 (routing_hints, a mutable scheduling hint).
+        for k in [8u8, 15, 17] {
             assert!(
                 get(map, k).is_none(),
                 "field {k} must be excluded from signature scope"
@@ -728,11 +760,77 @@ mod tests {
         let signing = encode_for_signing(&env).unwrap();
         let decoded_signing: Value = ciborium::de::from_reader(&signing[..]).unwrap();
         let smap = expect_map(&decoded_signing).unwrap();
-        assert!(get(smap, 16).is_none(), "encryption_hdr unsigned");
-        assert!(get(smap, 17).is_none(), "routing_hints unsigned");
+        assert!(get(smap, 16).is_some(), "encryption_hdr must be signed");
+        assert!(get(smap, 18).is_some(), "auth_cert_chain must be signed");
+        assert!(
+            get(smap, 17).is_none(),
+            "routing_hints stays unsigned (mutable scheduling hint)"
+        );
+
+        // The AEAD AAD must NOT contain field 16: the encryption header is
+        // produced by the very encryption whose AAD this is.
+        let aad = encode_for_aead(&env).unwrap();
+        let decoded_aad: Value = ciborium::de::from_reader(&aad[..]).unwrap();
+        let amap = expect_map(&decoded_aad).unwrap();
+        assert!(
+            get(amap, 16).is_none(),
+            "encryption_hdr must stay out of its own AAD"
+        );
 
         // verify_signing_bytes passes when fields are consistent.
         assert!(verify_signing_bytes(&env).is_ok());
+    }
+
+    #[test]
+    fn relay_cannot_tamper_with_encryption_header_or_auth_chain() {
+        // The concrete attacks these fields were open to. A relay mutating
+        // either used to leave the signature bytes unchanged, so the tamper was
+        // undetectable; now the signing bytes must differ, which is what makes
+        // `verify_strict` reject it downstream.
+        let env = Envelope {
+            encryption_hdr: Some(EncryptionHdr {
+                ephemeral_pubkey: [1u8; 32],
+                nonce: [2u8; 12],
+                key_id: None,
+            }),
+            auth_cert_chain: Some(vec![vec![0xAA; 8]]),
+            ..p0_sos_envelope()
+        };
+        let baseline = encode_for_signing(&env).unwrap();
+
+        // Attack 1: flip a nonce byte — previously caused permanent message
+        // loss via a dedup tombstone plus a decrypt failure.
+        let mut nonce_tampered = env.clone();
+        nonce_tampered.encryption_hdr = Some(EncryptionHdr {
+            ephemeral_pubkey: [1u8; 32],
+            nonce: [3u8; 12],
+            key_id: None,
+        });
+        assert_ne!(
+            encode_for_signing(&nonce_tampered).unwrap(),
+            baseline,
+            "a mutated nonce must change the signed bytes"
+        );
+
+        // Attack 2: strip the authority chain — previously a silent suppression
+        // of emergency broadcasts for the whole downstream subtree.
+        let mut chain_stripped = env.clone();
+        chain_stripped.auth_cert_chain = None;
+        assert_ne!(
+            encode_for_signing(&chain_stripped).unwrap(),
+            baseline,
+            "removing the authority chain must change the signed bytes"
+        );
+
+        // Control: hop_count stays outside the signature so relays can still
+        // increment it.
+        let mut hopped = env.clone();
+        hopped.hop_count = env.hop_count.saturating_add(1);
+        assert_eq!(
+            encode_for_signing(&hopped).unwrap(),
+            baseline,
+            "hop_count must remain relay-mutable"
+        );
     }
 
     #[test]

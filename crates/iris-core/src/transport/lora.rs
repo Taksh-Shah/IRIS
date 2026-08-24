@@ -244,7 +244,56 @@ pub struct DutyCycleTracker {
     /// manual set) must never make records look younger and freeze the
     /// budget. Accepted time never decreases.
     last_ms: AtomicU64,
+    /// Forward-jump guard. `None` when an explicit clock is injected.
+    monotonic: Option<Mutex<MonotonicGuard>>,
 }
+
+/// Bounds wall-clock advancement by real elapsed time.
+///
+/// The duty-cycle window is a legal limit, so the clock that ages it must not
+/// be something an attacker (or a misconfigured NTP client) can fast-forward.
+#[derive(Debug)]
+struct MonotonicGuard {
+    anchor: std::time::Instant,
+    /// Wall-clock value last returned.
+    last_out: u64,
+    /// Elapsed-at-last-observation, so successive calls measure real time.
+    last_elapsed_ms: u64,
+}
+
+impl MonotonicGuard {
+    fn new() -> Self {
+        MonotonicGuard {
+            anchor: std::time::Instant::now(),
+            last_out: 0,
+            last_elapsed_ms: 0,
+        }
+    }
+
+    /// Clamp `raw` to at most "previous output + real time since then".
+    fn bound(&mut self, raw: u64) -> u64 {
+        let elapsed = self.anchor.elapsed().as_millis() as u64;
+        if self.last_out == 0 {
+            // First observation establishes the baseline; nothing to compare to.
+            self.last_out = raw;
+            self.last_elapsed_ms = elapsed;
+            return raw;
+        }
+        let real_delta = elapsed.saturating_sub(self.last_elapsed_ms);
+        // A small tolerance absorbs scheduling jitter without permitting a jump.
+        let ceiling = self
+            .last_out
+            .saturating_add(real_delta)
+            .saturating_add(MONOTONIC_TOLERANCE_MS);
+        let out = raw.min(ceiling).max(self.last_out);
+        self.last_out = out;
+        self.last_elapsed_ms = elapsed;
+        out
+    }
+}
+
+/// Jitter allowance for the forward-jump guard.
+const MONOTONIC_TOLERANCE_MS: u64 = 1_000;
 
 impl DutyCycleTracker {
     /// Tracker pinned to the Table-I default field config (866.0 MHz /
@@ -265,10 +314,16 @@ impl DutyCycleTracker {
             tx: Mutex::new(VecDeque::new()),
             now_fn,
             last_ms: AtomicU64::new(0),
+            // Real wall clock => guard against forward jumps.
+            monotonic: Some(Mutex::new(MonotonicGuard::new())),
         })
     }
 
     /// Tracker with an injectable millisecond clock (deterministic tests).
+    ///
+    /// The monotonic guard is disabled here: an injected clock IS the authority
+    /// under test, and bounding it by real elapsed time would make every
+    /// time-travel test a no-op.
     pub fn with_clock(cfg: ComplianceConfig, now_fn: NowFn) -> Result<Self, ComplianceError> {
         cfg.validate()?;
         Ok(DutyCycleTracker {
@@ -276,13 +331,32 @@ impl DutyCycleTracker {
             tx: Mutex::new(VecDeque::new()),
             now_fn,
             last_ms: AtomicU64::new(0),
+            monotonic: None,
         })
     }
 
-    /// Monotonic-clamped current time: a backward wall-clock step is ignored
-    /// (records keep aging on the pre-jump timeline; RT-102).
+    /// Monotonic-clamped current time.
+    ///
+    /// A backward wall-clock step is ignored (records keep aging on the
+    /// pre-jump timeline; RT-102), and a FORWARD step is bounded by the time
+    /// that has actually elapsed.
+    ///
+    /// Only the backward clamp existed before. A forward jump of >= 1 h — an
+    /// NTP correction, a hostile time source, or simply setting the device
+    /// clock — made `prune_locked` drop every transmission record, and the
+    /// backward clamp then wrote the jumped time into `last_ms` so it could
+    /// never be walked back. That is an unlimited, repeatable evasion of a
+    /// duty-cycle limit the module documents as "a hard legal floor with no
+    /// runtime override".
     fn now(&self) -> u64 {
-        let t = (self.now_fn)();
+        let raw = (self.now_fn)();
+        let t = match &self.monotonic {
+            None => raw,
+            Some(guard) => {
+                let mut g = guard.lock().unwrap();
+                g.bound(raw)
+            }
+        };
         let mut prev = self.last_ms.load(Ordering::Acquire);
         while t > prev {
             match self
@@ -1728,6 +1802,29 @@ mod tests {
     }
 
     // ---- radio profiles + airtime (AC-7) ----
+
+    #[test]
+    fn monotonic_guard_bounds_a_forward_clock_jump() {
+        // Regression: only a BACKWARD clamp existed. A forward jump of >= 1 h
+        // made prune_locked drop every transmission record, and the backward
+        // clamp then wrote the jumped time into last_ms so it could never be
+        // walked back — an unlimited, repeatable evasion of the Table-I duty
+        // budget, which the module documents as a hard legal floor.
+        let mut g = MonotonicGuard::new();
+        let base = 1_000_000_000u64;
+        assert_eq!(
+            g.bound(base),
+            base,
+            "first observation establishes baseline"
+        );
+        let jumped = g.bound(base + 3_600_000);
+        assert!(
+            jumped < base + MONOTONIC_TOLERANCE_MS + 1_000,
+            "forward jump must be bounded by real elapsed time, got {}",
+            jumped - base
+        );
+        assert!(g.bound(base - 5_000) >= jumped, "backward step ignored");
+    }
 
     #[test]
     fn airtime_matches_semtech_formula_anchors() {

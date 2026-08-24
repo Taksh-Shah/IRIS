@@ -114,6 +114,22 @@ impl ContentType {
 
     /// True for payload codes that carry encrypted user data end-to-end
     /// (everything except control-plane and acknowledgment types).
+    /// Whether the payload is genuine emergency content.
+    ///
+    /// This is what qualifies a message for the P0/P1 rate-limit exemption.
+    /// The exemption used to be granted on the *claimed priority* alone, so
+    /// setting `priority = P0` on an ordinary `Text` envelope bought
+    /// top-of-heap scheduling, multipath fan-out over every radio and complete
+    /// freedom from rate limiting — the whole network-starvation primitive, for
+    /// free. Priority is a scheduling hint the sender picks; the content type
+    /// is what the emergency ACL actually validates.
+    pub fn is_emergency(self) -> bool {
+        matches!(
+            self,
+            ContentType::Sos | ContentType::Medical | ContentType::EmergencyAlert
+        )
+    }
+
     pub fn is_user_payload(self) -> bool {
         !matches!(
             self,

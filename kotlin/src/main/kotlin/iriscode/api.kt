@@ -30,8 +30,34 @@ typealias IrisEngineInterface = uniffi.iriscode.IrisEngineInterface
 typealias IrisEngine = uniffi.iriscode.IrisEngine
 
 // --- Exceptions ---
+//
+// `IrisFfiException` is a *sealed* class whose variants are nested classifiers.
+// Kotlin does not resolve nested classifiers through a type alias qualifier
+// (`IrisFfiException.GattFailure` fails to resolve when `IrisFfiException` is an
+// alias), so each variant is re-exported as its own top-level alias. Adapters
+// throw the variant directly (`throw GattFailure("...")`) and catch the base
+// type; both surfaces stay inside the `iriscode.*` FQCN contract (AC-11).
 @Suppress("unused")
 typealias IrisFfiException = _IrisFfiException
+
+@Suppress("unused")
+typealias NotSupported = _IrisFfiException.NotSupported
+@Suppress("unused")
+typealias PermissionDenied = _IrisFfiException.PermissionDenied
+@Suppress("unused")
+typealias AdapterOff = _IrisFfiException.AdapterOff
+@Suppress("unused")
+typealias DeviceNotFound = _IrisFfiException.DeviceNotFound
+@Suppress("unused")
+typealias GattFailure = _IrisFfiException.GattFailure
+@Suppress("unused")
+typealias FfiTimeout = _IrisFfiException.Timeout
+@Suppress("unused")
+typealias IoException = _IrisFfiException.IoException
+@Suppress("unused")
+typealias InvalidArgument = _IrisFfiException.InvalidArgument
+@Suppress("unused")
+typealias TransportFailure = _IrisFfiException.Transport
 
 // --- Data classes (records) ---
 @Suppress("unused")

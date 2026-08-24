@@ -1,5 +1,6 @@
 package iriscore.data
 
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -27,19 +28,24 @@ class RelayOutbox(
     private val queue = ArrayDeque<QueuedMessage>()
     private val mutex = Mutex()
 
+    /**
+     * Published size. `ArrayDeque` is not thread-safe and [size] is read from
+     * the UI without holding [mutex], so the count is mirrored into an atomic
+     * that is updated under the lock rather than reading the deque directly.
+     */
+    private val count = AtomicInteger(0)
+
     /** @return `true` if accepted, `false` if dropped (overflow at same sender pressure). */
     suspend fun enqueue(message: QueuedMessage): Boolean = mutex.withLock {
         if (queue.size >= capacity) {
             queue.removeFirst()
-            queue.addLast(message)
-            true
-        } else {
-            queue.addLast(message)
-            true
         }
+        queue.addLast(message)
+        count.set(queue.size)
+        true
     }
 
-    val size: Int get() = queue.size
+    val size: Int get() = count.get()
 
     /** Drain up to [maxItems] applying [drain]. Items are consumed in FIFO order. */
     suspend fun drain(
@@ -55,6 +61,7 @@ class RelayOutbox(
                 break
             }
         }
+        count.set(queue.size)
         sent
     }
 

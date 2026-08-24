@@ -198,6 +198,14 @@ impl FragmentSet {
     }
 }
 
+/// Maximum concurrently-tracked partial fragment sets.
+///
+/// `original_id` is attacker-chosen, so without a ceiling a peer streaming
+/// distinct first-fragments grows the table at `rate x timeout x MTU` with no
+/// bound. Dedup does not help — each wire envelope in that stream carries a
+/// distinct `message_id`.
+const MAX_ACTIVE_SETS: usize = 256;
+
 /// Reassembly tracker: original message_id → fragment set.
 #[derive(Debug, Default)]
 pub struct FragmentAssembler {
@@ -227,9 +235,47 @@ impl FragmentAssembler {
         if hdr.total > MAX_FRAGMENTS {
             return None; // R8 DoS guard
         }
+        // A fragment set must have at least two members — a single-chunk
+        // "fragment" is a whole message and should never have been fragmented.
+        //
+        // Without this floor, one packet claiming `total <= 1` reassembles
+        // instantly (for `total == 0` the completeness range is vacuously
+        // satisfied, yielding an empty payload). `feed` then stamps the
+        // reassembled envelope with `hdr.original_id` — a value read straight
+        // out of the attacker-controlled fragment body — and the caller
+        // registers that id in the dedup engine. That let one packet tombstone
+        // any message id in the 2^128 space, including ids for messages that
+        // had not been sent yet, silently censoring them.
+        if hdr.total < 2 {
+            return None;
+        }
+        if hdr.index >= hdr.total {
+            return None; // index outside the declared set
+        }
         let now = Instant::now();
         self.gc_expired(now);
         let deadline = now + self.timeout;
+
+        // Bound the partial-set table. `original_id` is attacker-chosen, so a
+        // peer streaming distinct first-fragments — each opening a new set that
+        // never completes — grew this map at `rate x timeout x MTU` bytes with
+        // no ceiling at all. Dedup does not help: every wire envelope in that
+        // stream carries a distinct `message_id`.
+        //
+        // When full, evict the set closest to its own deadline: it is the one
+        // about to be discarded anyway, so this degrades to normal expiry under
+        // pressure rather than dropping a set that just started arriving.
+        if !self.active.contains_key(&hdr.original_id) && self.active.len() >= MAX_ACTIVE_SETS {
+            if let Some(victim) = self
+                .active
+                .iter()
+                .min_by_key(|(_, s)| s.deadline)
+                .map(|(id, _)| *id)
+            {
+                self.active.remove(&victim);
+            }
+        }
+
         let set = self
             .active
             .entry(hdr.original_id)
@@ -355,6 +401,30 @@ mod tests {
         let mut a = FragmentAssembler::new(Duration::from_secs(30));
         let f0 = mk_fragment(0, 5, id, b"x"); // total = 5 > MAX 2
         assert!(a.feed(f0).is_none(), "over-split ADU refused (R8)");
+    }
+
+    #[test]
+    fn single_chunk_fragment_cannot_forge_a_reassembled_message() {
+        // Regression: a lone fragment declaring `total <= 1` completed
+        // instantly and stamped the result with an attacker-chosen
+        // `original_id`, which the caller then registered in dedup. One packet
+        // could tombstone any message id — including ids not yet used — and
+        // silently censor the real message when it arrived.
+        let mut a = FragmentAssembler::new(Duration::from_secs(30));
+        let victim = MessageId::from_bytes([0x99; 16]);
+
+        assert!(
+            a.feed(mk_fragment(0, 1, victim, b"forged")).is_none(),
+            "total = 1 must not reassemble"
+        );
+        assert!(
+            a.feed(mk_fragment(0, 0, victim, b"")).is_none(),
+            "total = 0 must not reassemble (range is vacuously complete)"
+        );
+        assert!(
+            a.feed(mk_fragment(3, 2, victim, b"x")).is_none(),
+            "index outside the declared set must be refused"
+        );
     }
 
     // RED-0007: a fragment set is rejected when fragments arrive from

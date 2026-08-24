@@ -1,11 +1,10 @@
 package iriscore.service
 
-import android.bluetooth.BluetoothLeScanner
+import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanResult
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 
 /**
  * PendingIntent scan delivery receiver (AC-7, API 26+). The platform sends the
@@ -17,13 +16,15 @@ class BleScanReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_SCAN_RESULTS) return
 
-        val results: List<ScanResult> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            intent.getParcelableArrayListExtra(BluetoothLeScanner.EXTRA_SCAN_RESULT)
-        } else {
-            @Suppress("DEPRECATION")
-            (intent.getSerializableExtra(BluetoothLeScanner.EXTRA_SCAN_RESULT) as? List<*>)
-                ?.filterIsInstance<ScanResult>()
-        } ?: emptyList()
+        // PendingIntent scans are API 26+ only, which is also this module's
+        // minSdk — so the list extra is always the delivery path (there is no
+        // pre-O branch to fall back to). The typed getParcelableArrayListExtra
+        // overload is API 33+; the deprecated one is the only option at 26.
+        @Suppress("DEPRECATION")
+        val results: List<ScanResult> =
+            intent.getParcelableArrayListExtra<ScanResult>(
+                BluetoothLeScanner.EXTRA_LIST_SCAN_RESULT,
+            ) ?: emptyList()
 
         for (result in results) {
             BleScanEvents.onScanResult(result)

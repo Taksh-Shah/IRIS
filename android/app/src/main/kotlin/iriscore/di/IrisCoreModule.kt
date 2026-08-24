@@ -10,6 +10,7 @@ import iriscode.FfiBleAdapter
 import iriscode.FfiWifiAwareAdapter
 import iriscode.FfiWifiDirectAdapter
 import iriscode.IrisEngine
+import iriscore.data.RelayOutbox
 import iriscore.identity.KeystoreEd25519
 import javax.inject.Singleton
 
@@ -32,6 +33,15 @@ object IrisCoreModule {
     @Singleton
     @NodeId
     fun provideNodeId(keystore: KeystoreEd25519): ByteArray = keystore.publicKeyRaw()
+
+    /**
+     * Shared relay spool. The UI send path and the WorkManager drain cadence
+     * must observe the same queue, so this is a singleton — a per-injection
+     * instance would silently strand queued messages in a dead copy.
+     */
+    @Provides
+    @Singleton
+    fun provideRelayOutbox(): RelayOutbox = RelayOutbox()
 
     @Provides
     @Singleton

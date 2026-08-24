@@ -99,7 +99,7 @@ impl ReplaySnapshot {
             highwater: hw,
             snapshot_timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_secs(),
             version: 1,
         }
@@ -135,7 +135,7 @@ mod proptest_tests {
     fn unix_now() -> u64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs()
     }
 
@@ -351,7 +351,7 @@ impl ReplayEngine {
     pub async fn check(&self, sender: SenderShort, ts: u64, seq: u64) -> ReplayDecision {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // Freshness window: too old?
@@ -387,10 +387,27 @@ impl ReplayEngine {
             // the write guard.
             let mut highwater = self.highwater.write().await;
 
-            // Enforce max senders
+            // Enforce max senders.
+            //
+            // `HashMap::keys().next()` was used here, which is arbitrary order
+            // and not adversary-resistant: minting an Ed25519 identity is free
+            // (a node id *is* its public key), so an attacker could register
+            // `max_sender_highwater` throwaway senders and flush any victim's
+            // high-water mark, after which an old replayed message read as a
+            // first sighting.
+            //
+            // Prefer evicting marks that are already outside the freshness
+            // window — those are safe to drop, because the window alone now
+            // rejects anything they were protecting. Only if none are stale do
+            // we fall back to the oldest mark.
             if highwater.len() >= self.config.max_sender_highwater {
-                // Simple eviction: remove one (TODO: LRU).
-                if let Some(k) = highwater.keys().next().copied() {
+                let victim = highwater
+                    .iter()
+                    .filter(|(_, hw)| hw.timestamp < min_ts)
+                    .min_by_key(|(_, hw)| hw.timestamp)
+                    .or_else(|| highwater.iter().min_by_key(|(_, hw)| hw.timestamp))
+                    .map(|(k, _)| *k);
+                if let Some(k) = victim {
                     highwater.remove(&k);
                 }
             }
@@ -419,7 +436,7 @@ impl ReplayEngine {
     pub async fn check_freshness_only(&self, ts: u64) -> ReplayDecision {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         let min_ts = now.saturating_sub(self.config.freshness_window_past.as_secs());
@@ -506,7 +523,7 @@ mod tests {
         // Message from 2 hours ago (too old)
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
         let ts = now - 7200;
         assert_eq!(re.check(sender, ts, 1).await, ReplayDecision::TooOld);
@@ -526,7 +543,7 @@ mod tests {
         // Message 10 minutes in future (too future)
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
         let ts = now + 600;
         assert_eq!(re.check(sender, ts, 1).await, ReplayDecision::TooFuture);
@@ -538,7 +555,7 @@ mod tests {
         let sender = [3u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // First message
@@ -566,7 +583,7 @@ mod tests {
         let sender = [9u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // Crafted future-highwater (poison attempt).
@@ -617,7 +634,7 @@ mod tests {
         let sender = [4u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // First message
@@ -631,12 +648,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn stale_highwater_marks_are_evicted_before_live_ones() {
+        // Regression: eviction used `HashMap::keys().next()` — arbitrary order.
+        // Minting an Ed25519 identity is free (a node id IS its public key), so
+        // an attacker could register `max_sender_highwater` throwaway senders
+        // and flush a victim's mark, after which an old replayed message read
+        // as a first sighting.
+        let cfg = ReplayConfig {
+            max_sender_highwater: 8,
+            ..Default::default()
+        };
+        let re = ReplayEngine::new(cfg);
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // A live victim with a recent mark.
+        let victim = [0xAB_u8; 16];
+        assert_eq!(re.check(victim, now, 100).await, ReplayDecision::Accepted);
+
+        // Flood with throwaway senders, all older than the victim.
+        for i in 0..32u8 {
+            let attacker = [i; 16];
+            if attacker == victim {
+                continue;
+            }
+            let _ = re.check(attacker, now - 600, 1).await;
+        }
+
+        // The victim's mark must have survived, so replaying its old message
+        // is still rejected.
+        assert_eq!(
+            re.check(victim, now, 100).await,
+            ReplayDecision::Replay,
+            "a flood of throwaway senders must not flush a live sender's mark"
+        );
+    }
+
+    #[tokio::test]
     async fn replay_out_of_order_accepted() {
         let re = ReplayEngine::default();
         let sender = [5u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // Message 5 arrives first
@@ -655,7 +711,7 @@ mod tests {
         let sender = [7u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         assert_eq!(re.check(sender, now, 1).await, ReplayDecision::Accepted);
@@ -716,7 +772,7 @@ mod tests {
         let sender = [8u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         re.check(sender, now, 5).await;
@@ -741,7 +797,7 @@ mod tests {
         let sender = [9u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         re.check(sender, now, 1).await;
@@ -768,7 +824,7 @@ mod tests {
         let sender = [6u8; 16];
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // Accept some messages
@@ -799,7 +855,7 @@ mod tests {
         let re = ReplayEngine::default();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_secs();
 
         // Untrusted sender: only freshness checked

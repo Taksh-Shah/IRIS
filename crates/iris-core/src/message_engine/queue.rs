@@ -187,6 +187,12 @@ impl PriorityQueue {
         let top = self.heap.pop().expect("checked non-empty");
         if top.priority() == MessagePriority::P0 {
             self.p0_dispatched_since_gate += 1;
+            self.lower_dispatched_since_gate = 0;
+            // "Consecutive" is the whole point of the gate: the lower counter
+            // has to clear when a P0 run starts, otherwise it only ever climbs.
+            // Leaving it set made `budget_hit` (which requires == 0) unsatisfiable
+            // after the very first lower-priority dispatch, so the gate fired
+            // once per process and a sustained P0 stream starved P1-P7 forever.
         } else {
             self.lower_dispatched_since_gate += 1;
             self.p0_dispatched_since_gate = 0;
@@ -307,6 +313,53 @@ mod tests {
                 MessagePriority::P0,
             ],
             "P5 must be admitted after the P0 budget without starving"
+        );
+    }
+
+    #[test]
+    fn fairness_gate_keeps_firing_under_a_sustained_p0_stream() {
+        // Regression: the gate requires `lower_dispatched_since_gate == 0`, and
+        // that counter was incremented but never reset. It therefore fired at
+        // most once per process — after the first lower-priority dispatch a
+        // sustained P0 stream starved P1-P7 permanently.
+        //
+        // The sibling test above cannot catch this: it enqueues a single P5, so
+        // the gate only ever needs to fire once.
+        let mut q = PriorityQueue::new(2);
+        for seq in 1u8..=8 {
+            let mut e = env(MessagePriority::P0, seq);
+            e.message_id = MessageId::from_bytes([seq; 16]);
+            q.push(QueuedMessage::new(e));
+        }
+        for seq in 20u8..=22 {
+            let mut e = env(MessagePriority::P5, seq);
+            e.message_id = MessageId::from_bytes([seq; 16]);
+            q.push(QueuedMessage::new(e));
+        }
+
+        let mut popped = Vec::new();
+        while let Some(m) = q.dequeue() {
+            popped.push(m.envelope.priority);
+        }
+
+        let lower = popped.iter().filter(|p| **p == MessagePriority::P5).count();
+        assert_eq!(lower, 3, "every queued P5 must eventually be dispatched");
+
+        // With budget 2, a P5 must appear at least every third slot until the
+        // lower-priority backlog drains — not just once.
+        let first = popped
+            .iter()
+            .position(|p| *p == MessagePriority::P5)
+            .expect("a P5 is dispatched");
+        let second = popped
+            .iter()
+            .skip(first + 1)
+            .position(|p| *p == MessagePriority::P5)
+            .expect("the gate fires more than once");
+        assert!(
+            second <= 2,
+            "gate must re-arm: second P5 came {} slots after the first",
+            second + 1
         );
     }
 

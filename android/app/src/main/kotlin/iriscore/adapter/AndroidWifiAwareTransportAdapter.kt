@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.wifi.aware.AttachCallback
 import android.net.wifi.aware.DiscoverySession
 import android.net.wifi.aware.DiscoverySessionCallback
 import android.net.wifi.aware.IdentityChangedListener
@@ -14,31 +15,31 @@ import android.net.wifi.aware.PublishDiscoverySession
 import android.net.wifi.aware.SubscribeConfig
 import android.net.wifi.aware.SubscribeDiscoverySession
 import android.net.wifi.aware.WifiAwareManager
+import android.net.wifi.aware.WifiAwareNetworkInfo
 import android.net.wifi.aware.WifiAwareNetworkSpecifier
 import android.net.wifi.aware.WifiAwareSession
+import java.net.Inet6Address
+import iriscode.DeviceNotFound
+import iriscode.NotSupported
 import iriscode.FfiIncomingNdpData
 import iriscode.FfiPeerDiscovery
 import iriscode.FfiPublishConfig
 import iriscode.FfiWifiAwareAdapter
-import iriscode.IrisFfiException
+import iriscode.TransportFailure
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.coroutines.CancellableContinuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import uniffi.iriscode.IrisFfiException
-import android.net.wifi.aware.AttachCallback
 
 /**
  * 12-op async `FfiWifiAwareAdapter` foreign-trait implementation.
@@ -76,13 +77,29 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     }
 
     private val appContext: Context = context.applicationContext
-    private val awareManager: WifiAwareManager =
-        appContext.getSystemService(Context.WIFI_AWARE_SERVICE) as WifiAwareManager
+    /**
+     * Null on any device without Wi-Fi Aware hardware — which is most of the
+     * market. The cast used to be non-null, so Hilt injection threw an NPE on
+     * the main thread and the app could not launch at all on those devices.
+     */
+    private val awareManager: WifiAwareManager? =
+        appContext.getSystemService(Context.WIFI_AWARE_SERVICE) as? WifiAwareManager
 
     private val availability = RadioStateTracker()
     private val ndpRegistry = NdpRegistry()
     private val verifiedCache = VerifiedPeerCache()
+
+    /** Frames queued for an NDP whose socket is not up yet; flushed on connect. */
     private val outbox = RingBufferOutbox<ByteArray>()
+
+    /**
+     * Frames genuinely received from peers. Strictly separate from [outbox] —
+     * draining the outbox on the inbound path made the adapter echo its own
+     * sends back to the core as peer traffic.
+     */
+    private val inbox = RingBufferOutbox<ByteArray>()
+
+    private val links = SocketLinkRegistry()
 
     // AND-RT-104: attach() awaits the platform `onAttached` session; the gate
     // caches it so `ensureStarted` never re-attaches.
@@ -98,13 +115,14 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private val ndpSpecifiers = ConcurrentHashMap<Long, WifiAwareNetworkSpecifier>()
     private val peerByNdp = ConcurrentHashMap<Long, Long>() // NDP handle -> peer (platform) handle
     private val ndpCallbacks = ConcurrentHashMap<Long, ConnectivityManager.NetworkCallback>()
-    private val discoveredMatches = CopyOnWriteArrayList<FfiPeerDiscovery>()
+    private val discoveredMatches = ConcurrentLinkedQueue<FfiPeerDiscovery>()
     private val inboundFrames = MutableSharedFlow<FfiIncomingNdpData>(extraBufferCapacity = 256)
 
     override suspend fun start() {
         FfiCallTimeout.suspendCall {
+            val manager = awareManager ?: throw NotSupported()
             attachGate.ensureStarted()
-            availability.setAvailable(awareManager.isAvailable)
+            availability.setAvailable(manager.isAvailable)
         }
     }
 
@@ -126,19 +144,27 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     override suspend fun matches(): List<FfiPeerDiscovery> {
         return FfiCallTimeout.suspendCall {
-            val drained = discoveredMatches.toList()
-            discoveredMatches.clear()
+            // Atomic per item: `toList()` + `clear()` silently discarded any
+            // match that arrived between the snapshot and the clear.
+            val drained = ArrayList<FfiPeerDiscovery>(discoveredMatches.size)
+            while (true) drained.add(discoveredMatches.poll() ?: break)
             drained
         }
     }
 
     override suspend fun openNdp(peerHandle: ULong): ULong {
         return FfiCallTimeout.suspendCall {
-            val session = attachGate.ensureStarted()
+            attachGate.ensureStarted()
+            // The specifier is built from the DISCOVERY session, not the attach
+            // session: a PeerHandle is only meaningful within the discovery
+            // session that surfaced it. The subscribe session is seeded
+            // asynchronously by onSubscribeStarted, so it may not be live yet.
+            val discovery = subscribeGate.ensureStarted()
+                ?: throw TransportFailure("Wi-Fi Aware discovery session not started")
             val peer = peerHandles[peerHandle.toLong()]
-                ?: throw IrisFfiException.DeviceNotFound()
-            val specifier = WifiAwareNetworkSpecifier.Builder(session, peer)
-                .setPskPassphrase(NDP_PSK_PASSPHRASE.toByteArray()) // NCS passphrase hardening (WFA 4.0)
+                ?: throw DeviceNotFound()
+            val specifier = WifiAwareNetworkSpecifier.Builder(discovery, peer)
+                .setPskPassphrase(NDP_PSK_PASSPHRASE) // NCS passphrase hardening (WFA 4.0)
                 .build()
             val ndpHandle = nextHandle.getAndIncrement()
             // AND-RT-110: NOT registered as opened here — the handle becomes
@@ -155,10 +181,12 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
         FfiCallTimeout.suspendCall {
             ndpRegistry.closed(ndpHandle.toLong())
             ndpSpecifiers.remove(ndpHandle.toLong())
+            links.remove(ndpHandle.toLong())
             // AND-RT-109: closed NDPs must not retain frames.
             outbox.drainDestination(ndpHandle.toLong())
+            inbox.drainDestination(ndpHandle.toLong())
             ndpCallbacks.remove(ndpHandle.toLong())?.let { cb ->
-                runCatching { connectivityManager.unregisterNetworkCallback(cb) }
+                runCatching { connectivityManager?.unregisterNetworkCallback(cb) }
             }
             peerByNdp.remove(ndpHandle.toLong())?.let { verifiedCache.evict(it) }
         }
@@ -167,11 +195,15 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     override suspend fun ndpSend(ndpHandle: ULong, payload: ByteArray) {
         FfiCallTimeout.suspendCall {
             // AND-RT-110: only enqueue once the NDP network is genuinely available.
-            if (!ndpRegistry.accepts(ndpHandle.toLong())) {
-                throw IrisFfiException.Transport("NDP network not yet available")
+            val handle = ndpHandle.toLong()
+            if (!ndpRegistry.accepts(handle)) {
+                throw TransportFailure("NDP network not yet available")
             }
-            // Socket not yet live (platform plumbing, AC-6): ring-buffer the frame.
-            outbox.enqueue(ndpHandle.toLong(), payload)
+            val link = links.get(handle)
+            if (link != null && link.send(payload)) return@suspendCall
+            // Network is up but the socket is still being established (the peer
+            // address arrives on onCapabilitiesChanged): hold and flush later.
+            outbox.enqueue(handle, payload)
         }
     }
 
@@ -182,7 +214,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             for (handle in ndpRegistry.openHandles()) {
                 val peerHandle = peerByNdp[handle] ?: continue
                 val sender = verifiedCache.verifiedPeerIdFor(peerHandle)
-                for (frame in outbox.drain(handle)) {
+                for (frame in inbox.drain(handle)) {
                     drained.add(
                         FfiIncomingNdpData(
                             sender = sender?.hexToBytes(),
@@ -209,13 +241,16 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     }
 
     override fun isAvailable(): Boolean =
-        FfiCallTimeout.syncCall(onTimeout = false) { availability.isAvailable() }
+        awareManager != null && FfiCallTimeout.syncCall(onTimeout = false) {
+            availability.isAvailable()
+        }
 
     // -- platform plumbing -------------------------------------------------
 
-    private val connectivityManager: ConnectivityManager =
-        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val connectivityManager: ConnectivityManager? =
+        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
+    @Volatile
     private var pendingAttach: CancellableContinuation<WifiAwareSession>? = null
 
     private val identityListener = object : IdentityChangedListener() {
@@ -233,15 +268,18 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             cont.invokeOnCancellation { pendingAttach = null }
             pendingAttach = cont
             runCatching {
-                awareManager.attach(identityListener, null, attachCallback)
+                // Platform order is (AttachCallback, IdentityChangedListener,
+                // Handler?) — the listener is non-null in that overload.
+                val manager = awareManager ?: throw NotSupported()
+                manager.attach(attachCallback, identityListener, null)
             }.getOrElse { e ->
                 pendingAttach = null
-                cont.resumeWithException(IrisFfiException.Transport("Wi-Fi Aware attach failed: ${e.message}"))
+                cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed: ${e.message}"))
             }
         }
     }
 
-    private val attachCallback = object : WifiAwareManager.AttachCallback() {
+    private val attachCallback = object : AttachCallback() {
         override fun onAttached(session: WifiAwareSession) {
             availability.setAvailable(true)
             pendingAttach?.let { cont ->
@@ -254,7 +292,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             availability.setAvailable(false)
             pendingAttach?.let { cont ->
                 pendingAttach = null
-                cont.resumeWithException(IrisFfiException.Transport("Wi-Fi Aware attach failed"))
+                cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed"))
             }
         }
     }
@@ -283,7 +321,6 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     private val discoveryCallback = object : DiscoverySessionCallback() {
         override fun onServiceDiscovered(
-            session: DiscoverySession,
             peerHandle: PeerHandle,
             serviceSpecificInfo: ByteArray?,
             matchFilter: List<ByteArray>?,
@@ -304,15 +341,15 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             )
         }
 
-        override fun onSessionStarted(session: DiscoverySession) {
-            // markStarted is suspend (AND-RT-105); lift the platform callback.
-            callbackScope.launch {
-                when (session) {
-                    is SubscribeDiscoverySession -> subscribeGate.markStarted(session)
-                    is PublishDiscoverySession -> publishGate.markStarted(session)
-                    else -> Unit
-                }
-            }
+        // The platform has no single `onSessionStarted` — publish and subscribe
+        // sessions are delivered on their own typed callbacks.
+        // markStarted is suspend (AND-RT-105); lift the platform callback.
+        override fun onSubscribeStarted(session: SubscribeDiscoverySession) {
+            callbackScope.launch { subscribeGate.markStarted(session) }
+        }
+
+        override fun onPublishStarted(session: PublishDiscoverySession) {
+            callbackScope.launch { publishGate.markStarted(session) }
         }
 
         override fun onSessionConfigFailed() = Unit
@@ -344,12 +381,62 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 ndpRegistry.opened(ndpHandle)
             }
 
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                // The peer's link-local IPv6 address and port are only published
+                // here, via WifiAwareNetworkInfo — onAvailable does not carry
+                // them, so this is where the data socket can first be dialled.
+                val info = caps.transportInfo as? WifiAwareNetworkInfo ?: return
+                val peerAddress = info.peerIpv6Addr ?: return
+                if (info.port <= 0) return
+                callbackScope.launch {
+                    connectNdpSocket(network, peerAddress, info.port, ndpHandle)
+                }
+            }
+
             override fun onLost(network: Network) {
                 ndpRegistry.closed(ndpHandle)
+                links.remove(ndpHandle)
             }
         }
+        val cm = connectivityManager ?: return
         ndpCallbacks[ndpHandle] = callback
-        connectivityManager.requestNetwork(request, callback)
+        cm.requestNetwork(request, callback)
+    }
+
+    /**
+     * Dials the peer over the NDP link and registers the resulting frame link.
+     *
+     * The socket MUST be created from the NDP [Network]'s own socket factory:
+     * the peer address is link-local IPv6 and is only routable on that network,
+     * so a default-network socket would fail or leak onto the wrong interface.
+     */
+    private suspend fun connectNdpSocket(
+        network: Network,
+        peerAddress: Inet6Address,
+        port: Int,
+        ndpHandle: Long,
+    ) {
+        if (links.get(ndpHandle) != null) return
+        val socket = withContext(Dispatchers.IO) {
+            runCatching {
+                network.socketFactory.createSocket(peerAddress, port)
+            }.getOrNull()
+        } ?: return
+
+        val link = FramedSocketLink(
+            socket = socket,
+            scope = callbackScope,
+            onFrame = { frame -> inbox.enqueue(ndpHandle, frame) },
+            onClosed = { links.remove(ndpHandle) },
+        )
+        links.put(ndpHandle, link)
+        // Flush whatever was queued while the socket was coming up.
+        for (frame in outbox.drain(ndpHandle)) {
+            if (!link.send(frame)) {
+                outbox.enqueue(ndpHandle, frame)
+                break
+            }
+        }
     }
 
     /** Prunes all registered NDP state (AND-RT-110/109): registry, specifiers,
@@ -357,11 +444,13 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private fun pruneNdpRegistrations() {
         ndpRegistry.closeAll().forEach { handle ->
             ndpSpecifiers.remove(handle)
+            links.remove(handle)
             ndpCallbacks.remove(handle)?.let { cb ->
-                runCatching { connectivityManager.unregisterNetworkCallback(cb) }
+                runCatching { connectivityManager?.unregisterNetworkCallback(cb) }
             }
             peerByNdp.remove(handle)?.let { verifiedCache.evict(it) }
             outbox.drainDestination(handle)
+            inbox.drainDestination(handle)
         }
     }
 

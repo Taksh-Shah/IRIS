@@ -3,10 +3,11 @@ package iriscore.adapter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.TimeoutCancellationException
+import iriscode.FfiTimeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -28,9 +29,39 @@ class AdapterLifecycleTest {
     // -- NEW-WA-RT-110 ------------------------------------------------------
 
     @Test
-    fun `rt110 suspendCall times out with TimeoutCancellationException`() = runBlocking {
-        assertThrows(TimeoutCancellationException::class.java) {
-            FfiCallTimeout.suspendCall(timeoutMs = 20L) { delay(5_000L) }
+    fun `rt110 suspendCall reports an overrun as the declared FFI error`() {
+        // Regression: this asserted TimeoutCancellationException, which is what
+        // `withTimeout` throws — and which is NOT part of IrisFfiException. It
+        // therefore escaped every suspend adapter op as
+        // UNIFFI_CALL_UNEXPECTED_ERROR, and several of those ops have no error
+        // channel at all, so it aborted the process. An overrun must surface as
+        // the declared, typed error.
+        //
+        // assertThrows takes a non-suspend Executable, so the suspend call has
+        // to be driven by its own runBlocking inside the lambda.
+        assertThrows(FfiTimeout::class.java) {
+            runBlocking { FfiCallTimeout.suspendCall(timeoutMs = 20L) { delay(5_000L) } }
+        }
+    }
+
+    @Test
+    fun `rt110 syncCall does not deadlock when called from a coroutine dispatcher`() {
+        // Regression: syncCall dispatched the work to Dispatchers.Default and
+        // then runBlocking-waited for it. Called FROM a Default worker — which
+        // engine bring-up always is — it waited on a pool it was occupying.
+        // The watchdog is now a dedicated thread pool, so the work always runs.
+        val result = runBlocking(Dispatchers.Default) {
+            FfiCallTimeout.syncCall(timeoutMs = 2_000L, onTimeout = -1) { 99 }
+        }
+        assertEquals(99, result)
+    }
+
+    @Test
+    fun `rt110 syncCall propagates the adapter's typed failure`() {
+        // A typed error thrown inside the block must reach the caller rather
+        // than being wrapped in ExecutionException by the watchdog pool.
+        assertThrows(FfiTimeout::class.java) {
+            FfiCallTimeout.syncCall<Int>(timeoutMs = 2_000L, onTimeout = -1) { throw FfiTimeout() }
         }
     }
 
@@ -72,7 +103,7 @@ class AdapterLifecycleTest {
             if (attempts == 1) throw IllegalStateException("platform down")
             Unit
         }
-        assertThrows(IllegalStateException::class.java) { gate.ensureStarted() }
+        assertThrows(IllegalStateException::class.java) { runBlocking { gate.ensureStarted() } }
         gate.ensureStarted() // second attempt must retry, not reuse a failed latch
         assertEquals(2, attempts)
     }

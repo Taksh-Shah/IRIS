@@ -37,6 +37,9 @@ class MeshRepository @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
+    /** Guards [subscribeInbox] against duplicate registration. */
+    private val inboxSubscribed = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private val nodeIdHex = PeerIdCodec.toHex(nodeId)
 
     private val _uiState = MutableStateFlow(
@@ -60,17 +63,37 @@ class MeshRepository @Inject constructor(
     fun stopMesh() {
         try {
             engine.stopAll()
+        } catch (_: IrisFfiException) {
+            // Teardown is best-effort. This used to be try/finally with no
+            // catch, so an FFI error propagated into a bare `launch` on a
+            // SupervisorJob — which isolates siblings but does NOT handle the
+            // exception — and terminated the process during shutdown.
         } finally {
             _uiState.update { it.copy(status = MeshStatus.IDLE) }
         }
     }
 
-    /** Install the inbox listener; engine invokes it from its tokio runtime. */
+    /**
+     * Install the inbox listener; engine invokes it from its tokio runtime.
+     *
+     * Idempotent. This repository is a `@Singleton` but `ensureStarted` is
+     * guarded per-ViewModel, so every ViewModel recreation (screen rotation,
+     * config change) used to register ANOTHER listener against the same engine:
+     * N rotations meant every message rendered N times and N leaked tokio tasks.
+     */
     fun subscribeInbox() {
+        if (!inboxSubscribed.compareAndSet(false, true)) return
         engine.subscribeInbox(object : FfiInboxListener {
             override fun onMessage(message: FfiIncomingMessage) {
                 val ui = message.toUi()
-                scope.launch { _uiState.update { it.copy(messages = it.messages + ui) } }
+                scope.launch {
+                    _uiState.update {
+                        // Bounded: the comment claiming the engine bounds this
+                        // was wrong — nothing trimmed it on the Kotlin side, so
+                        // a long session grew until it OOMed.
+                        it.copy(messages = (it.messages + ui).takeLast(MAX_UI_MESSAGES))
+                    }
+                }
             }
         })
     }
@@ -81,9 +104,14 @@ class MeshRepository @Inject constructor(
      */
     fun send(recipientHex: String, text: String, priority: UByte): Boolean {
         val normalized = recipientHex.trim().lowercase()
-        check(PeerIdCodec.isHex(normalized) && normalized.length == 64) {
-            "recipient must be a 64-hex PeerId"
+        // A malformed recipient is user input, not a programming error: `check`
+        // threw IllegalStateException on the IO dispatcher, which crashed the
+        // app on a typo. Report it through the UI state instead.
+        if (!PeerIdCodec.isHex(normalized) || normalized.length != RECIPIENT_HEX_LENGTH) {
+            _uiState.update { it.copy(lastError = "Recipient must be a $RECIPIENT_HEX_LENGTH-character hex PeerId") }
+            return false
         }
+        _uiState.update { it.copy(lastError = null) }
         return try {
             engine.sendText(normalized, text, priority)
             true
@@ -120,7 +148,13 @@ class MeshRepository @Inject constructor(
     val pendingRelayCount: Int get() = outbox.size
 
     companion object {
-        private fun FfiIncomingMessage.toUi(): InboxUiMessage = InboxUiMessage(
+        /** A PeerId is a 32-byte key rendered as hex (PeerIdCodec.toHex). */
+        const val RECIPIENT_HEX_LENGTH = 64
+
+        /** Ceiling on retained UI messages; the engine holds the durable copy. */
+        const val MAX_UI_MESSAGES = 500
+
+        private fun FfiIncomingMessage.toUi(): InboxUiMessage = InboxUiMessage.received(
             senderId = PeerIdCodec.toHex(senderId),
             payloadUtf8 = payload.toString(Charsets.UTF_8),
             priority = priority,

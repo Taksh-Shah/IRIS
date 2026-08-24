@@ -1,5 +1,12 @@
 package iriscore.adapter
 
+import iriscode.FfiTimeout
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,7 +18,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
-import java.util.concurrent.TimeoutException
 import kotlinx.coroutines.TimeoutCancellationException
 
 /**
@@ -43,10 +49,20 @@ import kotlinx.coroutines.TimeoutCancellationException
  *
  * Android platform calls can block for seconds-scale worst case. Both adapter
  * paths are covered:
- *  - `suspendCall` wraps suspend adapter ops in `withTimeout` (the Rust side
- *    awaits the generated Kotlin `suspend fun`; the coroutine is parked).
- *  - `syncCall` runs a blocking adapter op on a watchdog dispatcher and returns
- *    `onTimeout` if it overruns.
+ *  - `suspendCall` wraps suspend adapter ops in `withTimeout`, translating an
+ *    overrun into the declared FFI error type.
+ *  - `syncCall` runs a blocking adapter op on a dedicated watchdog thread pool
+ *    and returns `onTimeout` if it overruns.
+ *
+ * `syncCall` deliberately does NOT use `runBlocking` over a coroutine
+ * dispatcher. It is invoked from Rust tokio worker threads (the BLE pollers
+ * call it every 50 ms per peer, and engine bring-up calls it inline from
+ * `block_on`). Dispatching the work to `Dispatchers.Default` and then
+ * `runBlocking`-waiting for it deadlocked whenever the caller was itself on a
+ * Default worker — which engine bring-up always is — and every timeout leaked
+ * the orphaned coroutine, because it belonged to a separate scope that
+ * `withTimeout` could not cancel. A dedicated pool has neither problem: the
+ * work can always start, and a timed-out task is a plain `Future.cancel`.
  *
  * NOTE: a blocking platform call that has already started cannot be forcibly
  * interrupted; the caller is released after the timeout and the platform call
@@ -61,32 +77,54 @@ object FfiCallTimeout {
     /** Short budget for idempotence/state queries (never blocks on the radio). */
     const val SHORT_TIMEOUT_MS = 5_000L
 
-    private val watchdogScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /**
+     * Watchdog pool for [syncCall]. A cached pool so a stalled platform call
+     * never prevents the next one from starting, with daemon threads so it can
+     * never hold the process open.
+     */
+    private val watchdog: ExecutorService = Executors.newCachedThreadPool { r ->
+        Thread(r, "iris-ffi-watchdog").apply { isDaemon = true }
+    }
 
     /**
-     * Run a `suspend` platform op under a timeout. Re-throws the platform
-     * exception on early completion, or `TimeoutException` on overrun.
+     * Run a `suspend` platform op under a timeout.
+     *
+     * An overrun is translated into [FfiTimeout], the declared FFI error.
+     * `withTimeout` throws `TimeoutCancellationException`, which is NOT part of
+     * `IrisFfiException`; letting it escape turned every slow radio call into
+     * `UNIFFI_CALL_UNEXPECTED_ERROR` on the Rust side — and several of these
+     * ops have no error channel at all, so that aborted the process.
      */
     suspend fun <T> suspendCall(
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
         block: suspend () -> T,
-    ): T = withTimeout(timeoutMs) { block() }
+    ): T = try {
+        withTimeout(timeoutMs) { block() }
+    } catch (e: TimeoutCancellationException) {
+        throw FfiTimeout()
+    }
 
     /**
      * Run a synchronous platform op under a timeout. On overrun `onTimeout` is
      * returned (the caller decides whether that is an error fallback or a
-     * benign default). Must not be invoked from inside another `runBlocking`.
+     * benign default). Safe to call from any thread, including a Rust tokio
+     * worker.
      */
     fun <T> syncCall(
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
         onTimeout: T,
         block: () -> T,
     ): T {
-        val deferred = watchdogScope.async { block() }
+        val future = watchdog.submit(Callable { block() })
         return try {
-            runBlocking { withTimeout(timeoutMs) { deferred.await() } }
-        } catch (_: TimeoutCancellationException) {
+            future.get(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (_: TimeoutException) {
+            // Release the caller; the platform call is observed asynchronously.
+            future.cancel(true)
             onTimeout
+        } catch (e: ExecutionException) {
+            // Preserve the adapter's own typed failure across the pool boundary.
+            throw e.cause ?: e
         }
     }
 
@@ -366,8 +404,8 @@ class VerifiedPeerCache {
  */
 internal fun beaconCandidatePeerIdHex(beacon: ByteArray): String? {
     if (beacon.size < 22) return null
-    if (beacon[0] != 1) return null
-    if (beacon[3] != 0) return null
+    if (beacon[0].toInt() != 1) return null
+    if (beacon[3].toInt() != 0) return null
     val padded = ByteArray(32)
     beacon.copyInto(padded, 0, 4, 20)
     return iriscore.util.PeerIdCodec.toHex(padded)

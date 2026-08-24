@@ -294,7 +294,13 @@ pub enum RadioConflictGroup {
 /// Adapt a `tokio::sync::broadcast` receiver into a `Stream` of items.
 ///
 /// `broadcast::Receiver` implements `Stream` with `Item = Result<T, RecvError>`;
-/// this helper strips errors, skipping `Lagged` and terminating on `Closed`.
+/// this helper strips errors, reporting `Lagged` and terminating on `Closed`.
+///
+/// A `Lagged` means inbound messages were dropped because the consumer fell
+/// behind the channel. This used to `continue` silently, discarding the skipped
+/// count — so a burst could drop traffic, including P0 SOS, with no metric, no
+/// log and no retransmit trigger. In a disruption-tolerant mesh that is exactly
+/// the failure that must never be invisible.
 pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
     rx: tokio::sync::broadcast::Receiver<T>,
 ) -> Pin<Box<dyn Stream<Item = T> + Send>> {
@@ -302,11 +308,27 @@ pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
         loop {
             match rx.recv().await {
                 Ok(item) => return Some((item, rx)),
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                    INBOUND_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
+                    tracing::warn!(
+                        event = "transport.inbound_lagged",
+                        skipped,
+                        "inbound transport buffer overran; messages were dropped"
+                    );
+                    continue;
+                }
                 Err(tokio::sync::broadcast::error::RecvError::Closed) => return None,
             }
         }
     }))
+}
+
+/// Count of inbound messages dropped because a receive buffer overran.
+static INBOUND_LAGGED_TOTAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Total inbound messages lost to receive-buffer overrun since process start.
+pub fn inbound_lagged_total() -> u64 {
+    INBOUND_LAGGED_TOTAL.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// The core transport abstraction. Every transport must implement this trait.

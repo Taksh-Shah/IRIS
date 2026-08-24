@@ -196,7 +196,7 @@ fn corrupted_frame_length_byte_bounded_recovery() {
         priority: MessagePriority::P4,
         payload: vec![0x55; 64],
     };
-    let frame = encode_frame(&msg);
+    let frame = encode_frame(&msg).expect("frame encodes");
     assert_eq!(frame.len(), 4 + 64);
     // Flip a length byte to a huge value: the receiver must REJECT the frame
     // (bounded recovery), and every byte walked must stay inside the buffer.
@@ -296,7 +296,8 @@ fn capture_all_pdus_until_parse_end() {
         message_id: env.message_id,
         priority: MessagePriority::P3,
         payload: cde.clone(),
-    });
+    })
+    .expect("frame encodes");
     // Sniffer dissects: [len][PDU]...
     let len = frame_payload_len(&frame[..4]).expect("frame header parseable");
     assert_eq!(len, cde.len());

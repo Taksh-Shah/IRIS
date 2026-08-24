@@ -148,13 +148,25 @@ pub fn backoff_ms(attempt: u32, seed: u64) -> u64 {
 }
 
 /// Encode a message into a wire frame.
-pub fn encode_frame(message: &SerializedMessage) -> Vec<u8> {
+///
+/// Returns `Protocol` rather than panicking on an oversized payload. The
+/// previous `assert!` was remotely reachable: `frame_payload_len` accepts a
+/// payload of exactly `MAX_FRAME_BYTES`, and relaying re-encodes the envelope
+/// with an incremented `hop_count`, which can widen the CBOR integer by a byte
+/// and push the frame one over the limit. The panic then unwound inside the
+/// spawned delivery loop, whose handle is never joined — so the node stopped
+/// delivering and relaying everything, silently and permanently.
+pub fn encode_frame(message: &SerializedMessage) -> Result<Vec<u8>, TransportError> {
     let len = message.payload.len();
-    assert!(len <= MAX_FRAME_BYTES, "frame exceeds max size");
+    if len > MAX_FRAME_BYTES {
+        return Err(TransportError::Protocol(format!(
+            "frame of {len} bytes exceeds the {MAX_FRAME_BYTES}-byte maximum"
+        )));
+    }
     let mut frame = Vec::with_capacity(FRAME_LEN_BYTES + len);
     frame.extend_from_slice(&(len as u32).to_le_bytes());
     frame.extend_from_slice(&message.payload);
-    frame
+    Ok(frame)
 }
 
 /// Decode the payload length from a frame header (or None if incomplete).
@@ -399,7 +411,7 @@ impl Transport for InternetTransport {
             last_seen: Some(Instant::now()),
         };
         let mut write = self.get_connection(&peer_info).await?;
-        let frame = encode_frame(message);
+        let frame = encode_frame(message)?;
         let write_res: Result<(), std::io::Error> = async {
             write.write_all(&frame).await?;
             write.flush().await?;
@@ -474,7 +486,7 @@ mod tests {
     #[test]
     fn frame_roundtrip() {
         let msg = sample_message(b"hello iris", MessagePriority::P1);
-        let frame = encode_frame(&msg);
+        let frame = encode_frame(&msg).expect("sample message encodes");
         let len = frame_payload_len(&frame[..4]).unwrap();
         assert_eq!(len, 10);
         assert_eq!(&frame[4..], b"hello iris");
@@ -593,11 +605,28 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "frame exceeds max size")]
     fn encode_frame_rejects_oversized_payload() {
-        // Adversarial: a payload above MAX_FRAME_BYTES must never reach the wire.
+        // Adversarial: a payload above MAX_FRAME_BYTES must never reach the
+        // wire — and must be REPORTED, not panicked. This runs inside the
+        // spawned delivery loop, where a panic silently kills delivery and
+        // relaying for the lifetime of the process.
         let msg = sample_message(&vec![0u8; MAX_FRAME_BYTES + 1], MessagePriority::P0);
-        let _ = encode_frame(&msg);
+        assert!(matches!(
+            encode_frame(&msg),
+            Err(TransportError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn encode_frame_accepts_exactly_max_frame_bytes() {
+        // The boundary is inclusive on both encode and decode, so a max-size
+        // frame round-trips rather than being rejected on one side only.
+        let msg = sample_message(&vec![0u8; MAX_FRAME_BYTES], MessagePriority::P4);
+        let frame = encode_frame(&msg).expect("max-size frame encodes");
+        assert_eq!(
+            frame_payload_len(&frame[..FRAME_LEN_BYTES]),
+            Some(MAX_FRAME_BYTES)
+        );
     }
 
     #[test]

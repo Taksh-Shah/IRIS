@@ -411,7 +411,9 @@ impl MessageEngine {
         let sender_short = self.sender_short_id();
         let class = crate::security::MessageClass::from(envelope.priority);
         let policy = self.security.read().unwrap().clone();
-        let rl_decision = policy.rate_limit(sender_short, class).await;
+        let rl_decision = policy
+            .rate_limit_with_claim(sender_short, class, emergency_claim(&envelope))
+            .await;
         if matches!(rl_decision, crate::security::RateLimitDecision::SilentDrop) {
             self.metrics.delivery_failed.fetch_add(1, Ordering::Relaxed);
             self.telemetry
@@ -566,7 +568,13 @@ impl MessageEngine {
             .check_replay(
                 sender_short,
                 envelope.timestamp,
-                envelope.hop_count as u64, // Using hop_count as sequence for v1 (TODO: proper seq)
+                // Derived from the SIGNED message id, not `hop_count`. Feeding
+                // the replay high-water an unsigned, relay-incremented field
+                // let any on-path node pin a victim at seq 255 with one crafted
+                // packet — blocking that sender for the whole second — and
+                // rejected legitimate messages that arrived over a shorter path
+                // than an earlier one.
+                envelope.message_id.sequence_hint(),
             )
             .await;
         match replay_decision {
@@ -793,7 +801,35 @@ impl MessageEngine {
         }
 
         let mine = recipient_matches(&envelope, &self.config.node_id);
+        let broadcast = is_broadcast(&envelope);
+
+        // A broadcast is addressed to everyone, so `recipient_matches` sent it
+        // down the deliver branch and returned — it was never relayed. A P0 SOS
+        // broadcast therefore propagated exactly one hop, which defeats the
+        // primary emergency use case. Broadcasts are now delivered locally AND
+        // forwarded (subject to the same hop cap and dedup as any relay).
+        if mine && broadcast {
+            let outcome = self.deliver_to_self(envelope.clone()).await?;
+            // A relay failure must not mask a successful local delivery.
+            if let Err(e) = self.enqueue_relay(envelope).await {
+                tracing::debug!(
+                    event = event::MSG_QUEUED,
+                    error = %e,
+                    "broadcast delivered locally but not relayed"
+                );
+            }
+            return Ok(outcome);
+        }
+
         if mine {
+            return self.deliver_to_self(envelope).await;
+        }
+        self.enqueue_relay(envelope).await
+    }
+
+    /// Deliver an envelope addressed to this node.
+    async fn deliver_to_self(&self, envelope: Envelope) -> Result<InboundOutcome, MsgEngineError> {
+        {
             // CRYPTO-001 deliver path: decrypt when the envelope is E2EE
             // (engine policy — absent hdr ⇒ plaintext, e.g. P0 SOS broadcast).
             let mut e = envelope;
@@ -808,6 +844,18 @@ impl MessageEngine {
                 e.payload_size = e.payload.len() as u64;
                 e.payload_hash = Envelope::compute_payload_hash(&e.payload);
             }
+
+            // An inbound ACK resolves a pending send rather than surfacing as a
+            // message. Nothing consumed these before, so no sender ever learned
+            // of delivery and every message retried its full budget after
+            // arriving successfully.
+            if e.payload_type == ContentType::Ack {
+                if let Some(ref_id) = e.payload_ref {
+                    self.consume_ack(ref_id, &e.sender_id).await;
+                }
+                return Ok(InboundOutcome::Delivered);
+            }
+
             self.storage
                 .update_status(&e.message_id, MessageStatus::Delivered)
                 .await?;
@@ -821,32 +869,137 @@ impl MessageEngine {
                 hops = e.hop_count,
                 "message delivered to final recipient"
             );
-            Ok(InboundOutcome::Delivered)
-        } else {
-            // Relay: enqueue for the next hop (routing layer in WP-4 may
-            // override the next-hop selection).
-            let mut e = envelope.clone();
-            e.hop_count = e.hop_count.saturating_add(1);
-            let mut q = self.queue.lock().await;
-            if q.len() >= self.config.max_queue_depth {
-                return Err(MsgEngineError::QueueFull);
+
+            // Acknowledge unicast deliveries so the sender's retry loop can
+            // terminate. Never acknowledge an ACK (that would ping-pong) and
+            // never acknowledge a broadcast (no single sender is waiting, and
+            // every receiver replying would be an amplification vector).
+            if !is_broadcast(&e) && !e.sender_id.is_empty() {
+                if let Err(err) = self.send_ack(&e).await {
+                    tracing::debug!(
+                        event = event::MSG_DELIVERED,
+                        error = %err,
+                        "delivered but ACK could not be sent"
+                    );
+                }
             }
-            let mut item = QueuedMessage::new(e);
-            item.local = false;
-            q.push(item);
-            let depth = q.len();
-            drop(q);
-            self.metrics.relayed.fetch_add(1, Ordering::Relaxed);
-            self.telemetry.increment(metric::MESSAGES_RELAYED_TOTAL);
+            Ok(InboundOutcome::Delivered)
+        }
+    }
+
+    /// Apply an inbound ACK to the pending-send table.
+    ///
+    /// Only the message's own recipient may acknowledge it. `AckTracker::
+    /// acknowledge` is an unguarded remove, so without this binding any peer
+    /// could cancel any in-flight message by echoing its id — a one-packet
+    /// denial primitive.
+    async fn consume_ack(&self, original_id: MessageId, ack_sender: &[u8]) {
+        let original = match self.storage.load(&original_id).await {
+            Ok(Some(env)) => env,
+            _ => return, // unsolicited ACK for something we never sent
+        };
+        if original.recipient_id.is_empty() || original.recipient_id != ack_sender {
+            tracing::debug!(
+                event = event::MSG_ACKNOWLEDGED,
+                message_id = %original_id.short(),
+                "ACK rejected: sender is not the message recipient"
+            );
+            return;
+        }
+        self.acknowledge(original_id).await;
+    }
+
+    /// Enqueue an envelope for forwarding, enforcing the hop ceiling.
+    async fn enqueue_relay(&self, envelope: Envelope) -> Result<InboundOutcome, MsgEngineError> {
+        // Nothing bounded hop count on this path before: the signed `max_hops`
+        // field was decoded, stored and never read, and the per-priority flood
+        // policy lives in the routing module, which the live path does not call.
+        // Loop termination rested entirely on per-node dedup.
+        // Relayed traffic was governed by nothing at all: neither `rate_limit`
+        // nor `add_message` runs on this path, so a remote peer's flood cost it
+        // nothing and consumed this node's queue and airtime without limit.
+        // The sender is authenticated by this point (signature verified in
+        // `process_incoming`), so keying the limit on it is sound.
+        let relay_sender = crate::identity::peer_short_from_sender(&envelope.sender_id);
+        let relay_class = crate::security::MessageClass::from(envelope.priority);
+        let policy = self
+            .security
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        if matches!(
+            policy
+                .rate_limit_with_claim(relay_sender, relay_class, emergency_claim(&envelope))
+                .await,
+            crate::security::RateLimitDecision::SilentDrop
+        ) {
+            self.telemetry
+                .increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+            tracing::debug!(
+                event = event::MSG_RATE_LIMITED,
+                message_id = %envelope.message_id.short(),
+                priority = envelope.priority.as_u8(),
+                "relay dropped: sender rate limit"
+            );
+            return Ok(InboundOutcome::Expired);
+        }
+
+        let cap = hop_cap(&envelope);
+        if envelope.hop_count >= cap {
+            self.metrics.expired.fetch_add(1, Ordering::Relaxed);
             tracing::debug!(
                 event = event::MSG_QUEUED,
                 message_id = %envelope.message_id.short(),
-                priority = envelope.priority.as_u8(),
-                queue_depth = depth,
-                "message queued for relay"
+                hops = envelope.hop_count,
+                cap,
+                "relay dropped: hop ceiling reached"
             );
-            Ok(InboundOutcome::Relayed)
+            return Ok(InboundOutcome::Expired);
         }
+
+        let mut e = envelope.clone();
+        e.hop_count = e.hop_count.saturating_add(1);
+        let mut q = self.queue.lock().await;
+        if q.len() >= self.config.max_queue_depth {
+            return Err(MsgEngineError::QueueFull);
+        }
+        let mut item = QueuedMessage::new(e);
+        item.local = false;
+        q.push(item);
+        let depth = q.len();
+        drop(q);
+        self.metrics.relayed.fetch_add(1, Ordering::Relaxed);
+        self.telemetry.increment(metric::MESSAGES_RELAYED_TOTAL);
+        tracing::debug!(
+            event = event::MSG_QUEUED,
+            message_id = %envelope.message_id.short(),
+            priority = envelope.priority.as_u8(),
+            queue_depth = depth,
+            "message queued for relay"
+        );
+        Ok(InboundOutcome::Relayed)
+    }
+
+    /// Re-queue an already-sealed stored envelope for another delivery attempt.
+    ///
+    /// Deliberately not `send_message`: that path re-runs `seal_outbound`,
+    /// which does not check whether the envelope is already sealed. Retrying
+    /// through it encrypted the ciphertext again on every cycle — the payload
+    /// grew by an AEAD tag each time and the recipient could never decrypt it.
+    /// It also re-charged the sender's storage quota per retry (with a single
+    /// refund) and re-inserted into dedup. A retry re-sends bytes that were
+    /// already accepted; none of that bookkeeping should run twice.
+    async fn requeue_for_retry(&self, envelope: Envelope) -> Result<(), MsgEngineError> {
+        let now = unix_now();
+        if is_expired(envelope.timestamp, envelope.ttl_seconds, now) {
+            return Err(MsgEngineError::TtlExpired);
+        }
+        let mut q = self.queue.lock().await;
+        if q.len() >= self.config.max_queue_depth {
+            return Err(MsgEngineError::QueueFull);
+        }
+        q.push(QueuedMessage::new(envelope));
+        Ok(())
     }
 
     /// Acknowledge a pending message (positive ACK received).
@@ -1165,8 +1318,29 @@ impl MessageEngine {
                 for id in due {
                     // Re-queue a retry for the stored envelope.
                     let env = this.storage.load(&id).await.ok().flatten();
-                    let Some(env) = env else { continue };
-                    let _ = this.send_message(env).await;
+                    let Some(env) = env else {
+                        // No stored copy means no retry can ever succeed. Stop
+                        // tracking it, otherwise the entry stays permanently due
+                        // and is re-examined every tick forever.
+                        this.acks.lock().await.forget(id);
+                        continue;
+                    };
+                    // Record the attempt BEFORE dispatching. This is what
+                    // advances `next_retry` and the attempt count; without it
+                    // `due_retries` returned the same id on every tick, so every
+                    // message ever sent was retransmitted once per second for
+                    // the life of the process — a self-inflicted storm that grew
+                    // linearly with lifetime message count and needed no attacker.
+                    if this
+                        .acks
+                        .lock()
+                        .await
+                        .record_retry(id, std::time::Instant::now())
+                        .is_none()
+                    {
+                        continue; // acknowledged concurrently
+                    }
+                    let _ = this.requeue_for_retry(env).await;
                 }
                 let failed: Vec<_> = this.acks.lock().await.exhausted();
                 for (id, _attempts) in failed {
@@ -1248,6 +1422,41 @@ fn recipient_matches(e: &Envelope, node_id: &[u8; 32]) -> bool {
     e.recipient_id.is_empty()
         || e.recipient_id == EMERGENCY_BROADCAST
         || (e.recipient_id.len() == 32 && e.recipient_id.as_slice() == node_id)
+}
+
+/// Whether an envelope's payload justifies the P0/P1 rate-limit exemption.
+///
+/// Read from the content type, never from the sender-chosen priority.
+fn emergency_claim(e: &Envelope) -> crate::security::EmergencyClaim {
+    if e.payload_type.is_emergency() {
+        crate::security::EmergencyClaim::Emergency
+    } else {
+        crate::security::EmergencyClaim::Ordinary
+    }
+}
+
+/// Whether this envelope is addressed to everyone rather than to one node.
+///
+/// A broadcast matches every recipient, so it must be both delivered locally
+/// and forwarded — and must never be individually acknowledged.
+fn is_broadcast(e: &Envelope) -> bool {
+    e.recipient_id.is_empty() || e.recipient_id == EMERGENCY_BROADCAST
+}
+
+/// Maximum hop count an envelope may reach before it stops being forwarded.
+///
+/// The sender-signed `max_hops` is authoritative when present — it is inside
+/// the signature scope, so a relay cannot raise it. Absent that, the
+/// per-priority flood policy applies.
+///
+/// NOTE: that policy is `u8::MAX` for P0. Combined with `saturating_add` the
+/// relay does terminate (at 255 hops), but 255 is not a meaningful bound for a
+/// mesh and P0 is exactly the class an attacker would forge. Tightening it is a
+/// protocol-policy decision, deliberately left to the design owners rather than
+/// changed here; senders can bound their own P0 traffic today via `max_hops`.
+fn hop_cap(e: &Envelope) -> u8 {
+    e.max_hops
+        .unwrap_or_else(|| crate::routing::flood::max_hops_for_priority(e.priority).max_hops)
 }
 
 /// Result of the EMERG-001 receive-path gate for one emergency envelope.
@@ -1410,6 +1619,105 @@ mod tests {
             .expect("transport must deliver")
             .expect("stream item");
         engine.process_incoming(msg).await
+    }
+
+    const CAROL: [u8; 32] = [0xCC; 32];
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn relay_stops_at_the_signed_hop_ceiling() {
+        // Regression: nothing bounded hop count on the live relay path. The
+        // signed `max_hops` was decoded, stored and never read, and the
+        // per-priority flood policy lives in the routing module, which the
+        // live path never calls. Loop termination rested entirely on dedup.
+        let (alice, _t) = alice_engine().await;
+
+        let mut under = envelope_for(CAROL, MessagePriority::P4, b"transit");
+        under.max_hops = Some(4);
+        under.hop_count = 3;
+        assert!(
+            matches!(
+                alice.deliver_or_relay(under, PeerId(BOB)).await.unwrap(),
+                InboundOutcome::Relayed
+            ),
+            "below the ceiling the message is forwarded"
+        );
+
+        let mut at_cap = envelope_for(CAROL, MessagePriority::P4, b"transit");
+        at_cap.max_hops = Some(4);
+        at_cap.hop_count = 4;
+        assert!(
+            matches!(
+                alice.deliver_or_relay(at_cap, PeerId(BOB)).await.unwrap(),
+                InboundOutcome::Expired
+            ),
+            "at the ceiling the relay must stop"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn relay_falls_back_to_priority_policy_without_max_hops() {
+        let (alice, _t) = alice_engine().await;
+        // P4 policy caps at 3 hops.
+        let mut e = envelope_for(CAROL, MessagePriority::P4, b"transit");
+        e.max_hops = None;
+        e.hop_count = 3;
+        assert!(matches!(
+            alice.deliver_or_relay(e, PeerId(BOB)).await.unwrap(),
+            InboundOutcome::Expired
+        ));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn broadcast_is_delivered_and_also_relayed() {
+        // Regression: `recipient_matches` treats a broadcast as "mine", so the
+        // deliver branch returned early and the message was never forwarded.
+        // A P0 SOS broadcast therefore propagated exactly one hop.
+        let (alice, _t) = alice_engine().await;
+
+        let mut e = envelope_for(BOB, MessagePriority::P0, b"sos");
+        e.recipient_id = EMERGENCY_BROADCAST.to_vec();
+        e.hop_count = 0;
+
+        let before = alice.queue.lock().await.len();
+        let out = alice.deliver_or_relay(e, PeerId(BOB)).await.unwrap();
+        let after = alice.queue.lock().await.len();
+
+        assert!(matches!(out, InboundOutcome::Delivered));
+        assert!(
+            after > before,
+            "a broadcast must be forwarded as well as delivered"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn forged_ack_cannot_cancel_another_peers_message() {
+        // `AckTracker::acknowledge` is an unguarded remove, so the ACK must be
+        // bound to the original's recipient — otherwise any peer can cancel any
+        // in-flight message by echoing its id.
+        let (alice, _t) = alice_engine().await;
+
+        let original = envelope_for(BOB, MessagePriority::P1, b"payload");
+        let id = original.message_id;
+        alice.storage.persist(&original).await.unwrap();
+        alice
+            .acks
+            .lock()
+            .await
+            .register_sent(id, MessagePriority::P1, std::time::Instant::now());
+
+        // CAROL is not the recipient — her ACK must be ignored.
+        alice.consume_ack(id, CAROL.as_ref()).await;
+        assert!(
+            alice.acks.lock().await.is_pending(&id),
+            "an ACK from a non-recipient must not clear the pending send"
+        );
+
+        // BOB is the recipient — his ACK resolves it.
+        alice.consume_ack(id, BOB.as_ref()).await;
+        assert!(
+            !alice.acks.lock().await.is_pending(&id),
+            "the recipient's ACK must clear the pending send"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -1,0 +1,104 @@
+/*
+ * IRIS design tokens — desktop mirror.
+ *
+ * SOURCE OF TRUTH: android/app/src/main/kotlin/iriscore/designsystem/IrisColors.kt
+ * and IrisTokens.kt. The two platforms render with different toolkits, so the
+ * values are mirrored here rather than shared at build time — but they must not
+ * drift. `DesignTokenParityTest` on the Android side parses both this file and
+ * the Kotlin sources and fails the build if any colour diverges, so a change on
+ * either side has to be made on both.
+ *
+ * Rule of the palette: ~95% black and charcoal, ~4% grey and white, ~1% accent.
+ * Accents mark state (link up, queued, P0, failure) and never emphasis.
+ */
+
+:root {
+  /* -- environment -- */
+  --iris-bg-primary: #000000;
+  --iris-bg-secondary: #050505;
+
+  /* -- surfaces -- */
+  --iris-surface-primary: #0a0a0a;
+  --iris-surface-secondary: #0f0f0f;
+  --iris-surface-raised: #141414;
+
+  /* -- text --
+   * Contrast against #000000 / #0a0a0a. WCAG AA needs 4.5:1 for body text;
+   * all four tiers clear it on both backgrounds.
+   * Not pure white: #fff on true black glares and vibrates on OLED. */
+  --iris-text-primary: #f5f5f5;   /* 19.3:1 */
+  --iris-text-secondary: #a1a1a1; /*  8.1:1 */
+  --iris-text-tertiary: #8a8a8a;  /*  6.1:1 */
+  --iris-text-quaternary: #7a7a7a;/*  4.9:1 */
+
+  /* -- borders -- */
+  --iris-border-subtle: rgba(255, 255, 255, 0.08);
+  --iris-border-active: rgba(255, 255, 255, 0.16);
+
+  /* -- glass -- */
+  --iris-glass-white: rgba(255, 255, 255, 0.04);
+  --iris-glass-highlight: rgba(255, 255, 255, 0.08);
+  --iris-glass-rim: rgba(255, 255, 255, 0.20);
+  --iris-glass-blur: 24px;
+  --iris-glass-blur-strong: 36px;
+
+  /* -- accents (rare by design) -- */
+  --iris-accent-primary: #e8edf2;
+  --iris-accent-success: #6e9e7f;
+  --iris-accent-warning: #b8935f;
+  --iris-accent-critical: #b4685f;
+
+  /* -- spacing: 4px base -- */
+  --iris-space-xxs: 2px;
+  --iris-space-xs: 4px;
+  --iris-space-sm: 8px;
+  --iris-space-md: 12px;
+  --iris-space-lg: 16px;
+  --iris-space-xl: 24px;
+  --iris-space-xxl: 32px;
+  --iris-space-gutter: 20px;
+
+  /* -- radii -- */
+  --iris-radius-sm: 8px;
+  --iris-radius-md: 12px;
+  --iris-radius-lg: 18px;
+  --iris-radius-xl: 26px;
+
+  /* -- type -- */
+  --iris-font-sans: Inter, "SF Pro Text", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, system-ui, sans-serif;
+  --iris-font-mono: "JetBrains Mono", "SF Mono", "IBM Plex Mono", Menlo,
+    Consolas, "Roboto Mono", ui-monospace, monospace;
+
+  /* -- motion -- */
+  --iris-motion-fast: 120ms;
+  --iris-motion-normal: 200ms;
+  --iris-motion-slow: 320ms;
+  --iris-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --iris-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* -- layout -- */
+  --iris-sidebar-width: 264px;
+  --iris-context-width: 280px;
+  --iris-input-height: 52px;
+}
+
+/*
+ * Every effect has a fallback (design rule 18). Where the compositor cannot
+ * blur, or the user asked for less motion, glass degrades to an opaque tinted
+ * panel with the same geometry and rim light rather than to nothing.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --iris-motion-fast: 1ms;
+    --iris-motion-normal: 1ms;
+    --iris-motion-slow: 1ms;
+  }
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  :root {
+    --iris-glass-blur: 0px;
+    --iris-glass-blur-strong: 0px;
+  }
+}

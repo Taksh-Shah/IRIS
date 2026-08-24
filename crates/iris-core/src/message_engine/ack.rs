@@ -95,20 +95,37 @@ impl AckTracker {
         Self::default()
     }
 
-    /// Register a sent message as awaiting ACK. Overwrites any prior entry
-    /// (a re-sent message re-arms its window from `sent_at`).
+    /// Register a sent message as awaiting ACK. A re-sent message re-arms its
+    /// wait window from `sent_at` but **keeps its attempt count**.
+    ///
+    /// Resetting `attempts` to 0 here would make the retry budget unreachable:
+    /// every retransmission goes through the delivery path, which re-registers
+    /// on success, so a message with a finite cap would never exhaust it and
+    /// would retry forever.
     pub fn register_sent(&mut self, id: MessageId, priority: MessagePriority, sent_at: Instant) {
         let policy = retry_policy(priority);
-        let next_retry = sent_at + policy.timeout_for_attempt(0);
+        let attempts = self.pending.get(&id).map(|p| p.attempts).unwrap_or(0);
+        let next_retry = sent_at + policy.timeout_for_attempt(attempts);
         self.pending.insert(
             id,
             PendingAck {
                 priority,
-                attempts: 0,
+                attempts,
                 last_attempt_at: sent_at,
                 next_retry: Some(next_retry),
             },
         );
+    }
+
+    /// Stop tracking `id` without treating it as acknowledged (e.g. the stored
+    /// copy is gone, so no retry can ever be dispatched for it).
+    pub fn forget(&mut self, id: MessageId) {
+        self.pending.remove(&id);
+    }
+
+    /// Number of messages awaiting acknowledgement.
+    pub fn pending_len(&self) -> usize {
+        self.pending.len()
     }
 
     /// Record that a retry was dispatched for `id`; returns the *new* policy
@@ -262,6 +279,69 @@ mod tests {
             "budget exhausted"
         );
         assert_eq!(t.exhausted().len(), 1);
+    }
+
+    #[test]
+    fn resend_preserves_attempt_budget() {
+        // Regression: `register_sent` used to reset `attempts` to 0. Every
+        // retry goes through the delivery path, which re-registers on success,
+        // so a finite budget could never be reached and the message retried
+        // forever.
+        let mut t = AckTracker::new();
+        let now = Instant::now();
+        t.register_sent(id(3), MessagePriority::P4, now); // max 2 attempts
+
+        let t1 = now + Duration::from_secs(601);
+        t.record_retry(id(3), t1);
+        // The retry is dispatched and the delivery path re-registers it.
+        t.register_sent(id(3), MessagePriority::P4, t1);
+
+        let t2 = t1 + Duration::from_secs(1_201);
+        t.record_retry(id(3), t2);
+        t.register_sent(id(3), MessagePriority::P4, t2);
+
+        assert_eq!(
+            t.exhausted().len(),
+            1,
+            "budget must be reachable across re-sends"
+        );
+        assert!(
+            t.due_retries(t2 + Duration::from_secs(100_000)).is_empty(),
+            "an exhausted message must stop being due"
+        );
+    }
+
+    #[test]
+    fn recorded_retry_is_not_immediately_due_again() {
+        // Regression: the retry task never called `record_retry`, so
+        // `next_retry` stayed in the past and `due_retries` returned the same
+        // id on every one-second tick — for every message ever sent.
+        let mut t = AckTracker::new();
+        let now = Instant::now();
+        t.register_sent(id(4), MessagePriority::P1, now); // 60 s window
+
+        let due_at = now + Duration::from_secs(61);
+        assert!(t.due_retries(due_at).contains(&id(4)));
+
+        t.record_retry(id(4), due_at);
+        assert!(
+            t.due_retries(due_at + Duration::from_secs(1)).is_empty(),
+            "backoff must push the next retry into the future"
+        );
+        // Second window is 120 s (60 s doubled).
+        assert!(t
+            .due_retries(due_at + Duration::from_secs(121))
+            .contains(&id(4)));
+    }
+
+    #[test]
+    fn forget_stops_tracking_without_acknowledging() {
+        let mut t = AckTracker::new();
+        t.register_sent(id(5), MessagePriority::P2, Instant::now());
+        assert_eq!(t.pending_len(), 1);
+        t.forget(id(5));
+        assert_eq!(t.pending_len(), 0);
+        assert!(!t.is_pending(&id(5)));
     }
 
     #[test]
