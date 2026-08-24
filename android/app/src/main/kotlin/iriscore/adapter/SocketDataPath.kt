@@ -92,6 +92,11 @@ internal class FramedSocketLink(
                 }
                 val payload = ByteArray(length)
                 input.readFully(payload)
+                // Re-check before delivering: `close()` cannot interrupt a
+                // blocking `readFully`, so a frame already buffered when the
+                // link was torn down would otherwise be handed to `onFrame`
+                // after teardown and enqueued into an inbox nobody drains.
+                if (closed) return
                 onFrame(payload)
             }
         } catch (e: IOException) {
@@ -114,7 +119,13 @@ internal class FramedSocketLink(
         if (closed) return
         closed = true
         readJob.cancel()
+        // Close the socket first: the read coroutine is parked in a blocking
+        // `readFully` that cancellation cannot interrupt, so closing the fd is
+        // what actually unblocks it.
         runCatching { socket.close() }
+        // Notify on this path too. Only `closeQuietly` used to, so the
+        // registry kept a dead entry whenever teardown went through `close()`.
+        onClosed(null)
     }
 }
 
@@ -167,6 +178,9 @@ internal class FramedSocketServer(
     @Volatile
     private var closed = false
 
+    /** Currently-accepted links, bounded by [MAX_CONCURRENT_LINKS]. */
+    private val live = java.util.concurrent.atomic.AtomicInteger(0)
+
     private val acceptJob: Job = scope.launch(Dispatchers.IO) {
         while (!closed) {
             val socket = try {
@@ -174,8 +188,29 @@ internal class FramedSocketServer(
             } catch (_: IOException) {
                 return@launch // socket closed, or the radio went away
             }
-            onAccepted(socket)
+            // Bounded: an in-range attacker could otherwise open sockets until
+            // the IO dispatcher and the process fd limit were exhausted.
+            if (live.get() >= MAX_CONCURRENT_LINKS) {
+                runCatching { socket.close() }
+                continue
+            }
+            live.incrementAndGet()
+            // `onAccepted` runs adapter code. A throw used to escape the
+            // `while`, ending the loop with `closed == false` and the socket
+            // still bound — the group owner silently stopped accepting for the
+            // rest of the process, with no error anywhere.
+            try {
+                onAccepted(socket)
+            } catch (_: Throwable) {
+                live.decrementAndGet()
+                runCatching { socket.close() }
+            }
         }
+    }
+
+    /** Releases one slot from the concurrent-link budget. */
+    fun releaseSlot() {
+        live.updateAndGet { if (it > 0) it - 1 else 0 }
     }
 
     override fun close() {
@@ -191,5 +226,11 @@ internal class FramedSocketServer(
          * agree on it ahead of time.
          */
         const val WIFI_DIRECT_GO_PORT = 47_631
+
+        /**
+         * Ceiling on simultaneously-accepted links. A mesh group owner serves a
+         * handful of clients; anything beyond this is abuse.
+         */
+        const val MAX_CONCURRENT_LINKS = 16
     }
 }

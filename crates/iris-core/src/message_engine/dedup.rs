@@ -22,6 +22,13 @@ pub const BLOOM_FPR: f64 = 0.001;
 /// Exact-set LRU capacity.
 pub const LRU_CAPACITY: usize = 10_000;
 
+/// Hard ceiling on probe count for a filter reconstructed from the wire.
+///
+/// `bloom_probes` never produces anything near this for realistic parameters;
+/// the bound exists purely to stop a hostile `k` from turning `contains()` into
+/// an unbounded loop.
+pub const MAX_BLOOM_PROBES: usize = 64;
+
 /// Compute the Bloom bitmap size (bits) for capacity `n` at FPR `p`:
 /// `m = -n·ln(p) / (ln 2)²`, rounded up to the byte.
 pub fn bloom_bits(n: usize, p: f64) -> usize {
@@ -124,9 +131,16 @@ impl BloomFilter {
     }
 
     /// Reconstruct a filter from `(m, k, bits)` — inverse of [`BloomFilter::bits`].
-    /// Validates that `bits.len() * 8 == m` and `k >= 1`.
+    ///
+    /// Validates `m`, `bits.len()` **and** `k`. `k` arrives from a peer over the
+    /// discovery Bloom exchange, and it was previously unchecked: a peer
+    /// sending `{ m: 8, k: usize::MAX, bits: vec![0xFF] }` passed validation
+    /// (`bits.len() == 8.div_ceil(8)`), and the next `contains()` iterated
+    /// `0..usize::MAX`. `.all()` short-circuits only on a zero bit, and every
+    /// bit was 1, so the call never returned — an unkillable hang in whichever
+    /// task touched it, from three attacker-chosen fields.
     pub fn from_parts(m: usize, k: usize, bits: Vec<u8>) -> Option<Self> {
-        if m == 0 || k == 0 || bits.len() != m.div_ceil(8) {
+        if m == 0 || k == 0 || k > MAX_BLOOM_PROBES || bits.len() != m.div_ceil(8) {
             return None;
         }
         Some(BloomFilter {
@@ -450,6 +464,25 @@ mod tests {
             pa[0] != 0 || pb[0] != 1,
             "probe positions still track the raw id"
         );
+    }
+
+    #[test]
+    fn from_parts_rejects_a_hostile_probe_count() {
+        // Regression: `k` arrives from a peer over the discovery Bloom
+        // exchange and was unvalidated. `{ m: 8, k: usize::MAX, bits: [0xFF] }`
+        // passed (bits.len() == 8.div_ceil(8)), and the next `contains()`
+        // iterated 0..usize::MAX — `.all()` short-circuits only on a ZERO bit,
+        // and every bit was 1, so the call never returned. An unkillable hang
+        // in whichever task touched it, from three attacker-chosen fields.
+        assert!(BloomFilter::from_parts(8, usize::MAX, vec![0xFF]).is_none());
+        assert!(BloomFilter::from_parts(8, MAX_BLOOM_PROBES + 1, vec![0xFF]).is_none());
+        assert!(BloomFilter::from_parts(8, 0, vec![0xFF]).is_none());
+
+        // A filter with realistic parameters still round-trips.
+        let ok = BloomFilter::from_parts(8, 4, vec![0xFF]).expect("sane parameters accepted");
+        assert_eq!(ok.k(), 4);
+        // And terminates.
+        assert!(ok.contains([0u8; 16]));
     }
 
     #[test]

@@ -13,6 +13,7 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
 import android.os.Build
 import android.os.Looper
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -24,10 +25,11 @@ import iriscode.FfiGroupInfo
 import iriscode.FfiIncomingWifiDirectData
 import iriscode.FfiOperatingBand
 import iriscode.DeviceNotFound
+import iriscode.NotSupported
 import iriscode.FfiWifiDirectAdapter
 import iriscode.TransportFailure
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -83,8 +85,12 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     private val appContext: Context = context.applicationContext
-    private val p2pManager: WifiP2pManager =
-        appContext.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
+    /**
+     * Null when the device has no Wi-Fi Direct support. The cast used to be
+     * non-null, throwing at Hilt injection on the main thread.
+     */
+    private val p2pManager: WifiP2pManager? =
+        appContext.getSystemService(Context.WIFI_P2P_SERVICE) as? WifiP2pManager
 
     /** Lifts non-suspend platform callbacks into suspend [SessionGate] calls. */
     private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -106,6 +112,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val links = SocketLinkRegistry()
 
     /** GO-side accept loop; null while this node is not the group owner. */
+    @Volatile
     private var groupServer: FramedSocketServer? = null
 
     private val startGate = SessionGate<WifiP2pManager.Channel?> { initialize() }
@@ -114,12 +121,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val nextPeerHandle = AtomicLong(1L)
     private val deviceHandles = ConcurrentHashMap<String, Long>()
     private val peerDevices = ConcurrentHashMap<Long, String>() // handle -> P2P device address
-    private val discoveredMatches = CopyOnWriteArrayList<FfiDirectPeerDiscovery>()
+    private val discoveredMatches = ConcurrentLinkedQueue<FfiDirectPeerDiscovery>()
     private val pendingTxtBeacons = ConcurrentHashMap<String, ByteArray>()
 
     private val groupState = GroupState()
 
     /** Current GO endpoint address, adapter-provided (G-WD-2 — never hard-coded). */
+    @Volatile
     private var cachedGoAddr: String? = null
 
     /**
@@ -182,22 +190,22 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted() ?: return@suspendCall
             val request = WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_SERVICE_TYPE)
-            awaitAction { p2pManager.addServiceRequest(channel, request, it) }
-            awaitAction { p2pManager.discoverServices(channel, it) }
+            awaitAction { p2pManagerOrThrow().addServiceRequest(channel, request, it) }
+            awaitAction { p2pManagerOrThrow().discoverServices(channel, it) }
         }
     }
 
     override suspend fun stopDiscovery() {
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted() ?: return@suspendCall
-            awaitAction { p2pManager.stopPeerDiscovery(channel, it) }
+            awaitAction { p2pManagerOrThrow().stopPeerDiscovery(channel, it) }
         }
     }
 
     override suspend fun matches(): List<FfiDirectPeerDiscovery> {
         return FfiCallTimeout.suspendCall {
-            val drained = discoveredMatches.toList()
-            discoveredMatches.clear()
+            val drained = ArrayList<FfiDirectPeerDiscovery>(discoveredMatches.size)
+            while (true) drained.add(discoveredMatches.poll() ?: break)
             drained
         }
     }
@@ -222,7 +230,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             val address = peerDevices[go.toLong()]
                 ?: throw DeviceNotFound()
             val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
-            awaitAction { p2pManager.connect(channel, wifiConfig, it) }
+            awaitAction { p2pManagerOrThrow().connect(channel, wifiConfig, it) }
             awaitCurrentGroupInfo(channel) ?: degradedGroupInfo()
         }
     }
@@ -232,14 +240,14 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             val channel = startGate.ensureStarted() ?: return@suspendCall
             val address = peerDevices[client.toLong()] ?: return@suspendCall
             val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
-            awaitAction { p2pManager.connect(channel, wifiConfig, it) } // invitation (p2p_invite)
+            awaitAction { p2pManagerOrThrow().connect(channel, wifiConfig, it) } // invitation (p2p_invite)
         }
     }
 
     override suspend fun removeGroup() {
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted() ?: return@suspendCall
-            awaitAction { p2pManager.removeGroup(channel, it) }
+            awaitAction { p2pManagerOrThrow().removeGroup(channel, it) }
             closeDataPath()
             groupState.clear()
             cachedGoAddr = null
@@ -313,8 +321,8 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
             if (channel != null) {
-                runCatching { awaitAction { p2pManager.clearLocalServices(channel, it) } }
-                runCatching { awaitAction { p2pManager.removeGroup(channel, it) } }
+                runCatching { awaitAction { p2pManagerOrThrow().clearLocalServices(channel, it) } }
+                runCatching { awaitAction { p2pManagerOrThrow().removeGroup(channel, it) } }
             }
             dnsSdGate.reset()
             closeDataPath()
@@ -326,7 +334,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override fun isAvailable(): Boolean =
-        FfiCallTimeout.syncCall(onTimeout = false) { availability.isAvailable() }
+        p2pManager != null && FfiCallTimeout.syncCall(onTimeout = false) {
+            availability.isAvailable()
+        }
 
     // -- platform plumbing -------------------------------------------------
 
@@ -339,8 +349,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     private fun initialize(): WifiP2pManager.Channel? {
+        val manager = p2pManager ?: return null
         val channel = runCatching {
-            p2pManager.initialize(appContext, Looper.getMainLooper(), channelListener)
+            manager.initialize(appContext, Looper.getMainLooper(), channelListener)
         }.getOrNull() ?: return null
         registerStateReceiver()
         availability.setAvailable(true)
@@ -352,7 +363,20 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
         }
-        runCatching { appContext.registerReceiver(p2pStateReceiver, filter) }
+        // API 34+ REQUIRES an export flag; without it registerReceiver throws
+        // SecurityException, which runCatching swallowed. The adapter then never
+        // saw WIFI_P2P_CONNECTION_CHANGED, so onGroupFormed never ran and the
+        // whole TCP-over-GO data path was silently dead on modern devices —
+        // while availability still reported true.
+        val registered = runCatching {
+            ContextCompat.registerReceiver(
+                appContext,
+                p2pStateReceiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }.isSuccess
+        if (!registered) availability.setAvailable(false)
     }
 
     private suspend fun registerDnsSd() {
@@ -362,8 +386,8 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             DNS_SD_SERVICE_TYPE,
             emptyMap(),
         )
-        awaitAction { p2pManager.addLocalService(channel, serviceInfo, it) }
-        p2pManager.setDnsSdResponseListeners(channel, dnsSdServiceListener, dnsSdTxtRecordListener)
+        awaitAction { p2pManagerOrThrow().addLocalService(channel, serviceInfo, it) }
+        p2pManagerOrThrow().setDnsSdResponseListeners(channel, dnsSdServiceListener, dnsSdTxtRecordListener)
     }
 
     private val dnsSdServiceListener = WifiP2pManager.DnsSdServiceResponseListener { instanceName, registrationType, srcDevice ->
@@ -417,7 +441,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     ) {
         val bandId = groupOwnerBand(band)
         if (bandId == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            p2pManager.createGroup(channel, listener)
+            p2pManagerOrThrow().createGroup(channel, listener)
             return
         }
         val p2pConfig = WifiP2pConfig.Builder()
@@ -425,7 +449,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             .setPassphrase(groupPassphrase)
             .setGroupOperatingBand(bandId)
             .build()
-        p2pManager.createGroup(channel, p2pConfig, listener)
+        p2pManagerOrThrow().createGroup(channel, p2pConfig, listener)
     }
 
     /**
@@ -498,9 +522,19 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     /** GO side: accept client links until the group is torn down. */
     private fun ensureGroupServer() {
         if (groupServer != null) return
+        // SO_REUSEADDR before bind: after a group teardown the fixed GO port
+        // sits in TIME_WAIT, so a plain `ServerSocket(port)` threw, the
+        // exception was swallowed, and the data path was silently dead with no
+        // error reachable by the core.
         val server = runCatching {
-            ServerSocket(FramedSocketServer.WIFI_DIRECT_GO_PORT)
-        }.getOrNull() ?: return
+            ServerSocket().apply {
+                reuseAddress = true
+                bind(java.net.InetSocketAddress(FramedSocketServer.WIFI_DIRECT_GO_PORT))
+            }
+        }.getOrNull() ?: run {
+            availability.setAvailable(false)
+            return
+        }
         groupServer = FramedSocketServer(server, callbackScope) { socket ->
             // An accepted socket identifies its peer only by IP — Wi-Fi Direct
             // exposes no IP->MAC mapping to the app. The handle is therefore
@@ -537,7 +571,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             socket = socket,
             scope = callbackScope,
             onFrame = { frame -> inbox.enqueue(handle, frame) },
-            onClosed = { links.remove(handle) },
+            onClosed = {
+                links.remove(handle)
+                groupServer?.releaseSlot()
+            },
         )
         links.put(handle, link)
         groupRegistry.opened(handle)
@@ -549,6 +586,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             }
         }
     }
+
+    /** The platform manager, or a typed error when the device lacks Wi-Fi Direct. */
+    private fun p2pManagerOrThrow(): WifiP2pManager = p2pManager ?: throw NotSupported()
 
     private fun peerHandleFor(deviceAddress: String?): Long {
         if (deviceAddress == null) return 0L

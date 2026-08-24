@@ -20,7 +20,7 @@ use crate::identity::TrustStore;
 
 pub use acl::{AclDecision, AlertClass, EmergencyAcl};
 pub use quota::{QuotaDecision, QuotaManager};
-pub use rate_limiter::{MessageClass, RateLimitDecision, RateLimiter};
+pub use rate_limiter::{EmergencyClaim, MessageClass, RateLimitDecision, RateLimiter};
 pub use replay::{HighWaterMark, ReplayDecision, ReplayEngine, ReplaySnapshot};
 pub use reputation::{ReputationEngine, ReputationEvent};
 pub use spam::{SpamDecision, SpamEngine};
@@ -39,6 +39,19 @@ pub trait SecurityPolicy: Send + Sync {
     async fn rate_limit(&self, sender: SenderShort, class: MessageClass) -> RateLimitDecision {
         let _ = (sender, class);
         RateLimitDecision::Allowed
+    }
+
+    /// Rate-limit check that also weighs whether the payload justifies the
+    /// P0/P1 exemption. Prefer this over [`SecurityPolicy::rate_limit`] on any
+    /// path where the content type is known.
+    async fn rate_limit_with_claim(
+        &self,
+        sender: SenderShort,
+        class: MessageClass,
+        claim: EmergencyClaim,
+    ) -> RateLimitDecision {
+        let _ = claim;
+        self.rate_limit(sender, class).await
     }
 
     /// Check rate limit for unknown sender (aggregate).
@@ -233,6 +246,20 @@ impl SecurityPolicy for FullSecurityPolicy {
             return RateLimitDecision::Allowed;
         }
         self.rate_limiter.check(sender, class).await
+    }
+
+    async fn rate_limit_with_claim(
+        &self,
+        sender: SenderShort,
+        class: MessageClass,
+        claim: EmergencyClaim,
+    ) -> RateLimitDecision {
+        if !self.armed.load(Ordering::Relaxed) {
+            return RateLimitDecision::Allowed;
+        }
+        self.rate_limiter
+            .check_with_claim(sender, class, claim)
+            .await
     }
 
     async fn rate_limit_unknown(&self, class: MessageClass) -> RateLimitDecision {

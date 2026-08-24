@@ -198,6 +198,14 @@ impl FragmentSet {
     }
 }
 
+/// Maximum concurrently-tracked partial fragment sets.
+///
+/// `original_id` is attacker-chosen, so without a ceiling a peer streaming
+/// distinct first-fragments grows the table at `rate x timeout x MTU` with no
+/// bound. Dedup does not help — each wire envelope in that stream carries a
+/// distinct `message_id`.
+const MAX_ACTIVE_SETS: usize = 256;
+
 /// Reassembly tracker: original message_id → fragment set.
 #[derive(Debug, Default)]
 pub struct FragmentAssembler {
@@ -247,6 +255,27 @@ impl FragmentAssembler {
         let now = Instant::now();
         self.gc_expired(now);
         let deadline = now + self.timeout;
+
+        // Bound the partial-set table. `original_id` is attacker-chosen, so a
+        // peer streaming distinct first-fragments — each opening a new set that
+        // never completes — grew this map at `rate x timeout x MTU` bytes with
+        // no ceiling at all. Dedup does not help: every wire envelope in that
+        // stream carries a distinct `message_id`.
+        //
+        // When full, evict the set closest to its own deadline: it is the one
+        // about to be discarded anyway, so this degrades to normal expiry under
+        // pressure rather than dropping a set that just started arriving.
+        if !self.active.contains_key(&hdr.original_id) && self.active.len() >= MAX_ACTIVE_SETS {
+            if let Some(victim) = self
+                .active
+                .iter()
+                .min_by_key(|(_, s)| s.deadline)
+                .map(|(id, _)| *id)
+            {
+                self.active.remove(&victim);
+            }
+        }
+
         let set = self
             .active
             .entry(hdr.original_id)

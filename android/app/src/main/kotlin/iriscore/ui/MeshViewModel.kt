@@ -15,6 +15,7 @@ import iriscore.ui.state.MeshUiState
 import iriscore.util.MeshPermissions
 import iriscore.worker.WorkScheduler
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -89,7 +90,14 @@ class MeshViewModel @Inject constructor(
 
     // viewModelScope is cancelled before onCleared() runs, so teardown uses a
     // scope that survives until the engine actually stops.
-    private val teardownScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // A SupervisorJob isolates siblings but does NOT handle exceptions; without
+    // a handler an escaping throw reaches the default handler and terminates
+    // the process during teardown.
+    private val teardownScope = CoroutineScope(
+        SupervisorJob() +
+            Dispatchers.Default +
+            CoroutineExceptionHandler { _, _ -> /* teardown is best-effort */ },
+    )
 
     /** Guards [ensureStarted] so repeated recompositions bring the mesh up once. */
     private val started = AtomicBoolean(false)
@@ -248,9 +256,29 @@ class MeshViewModel @Inject constructor(
         private const val MAX_CONSOLE_EVENTS = 200
     }
 
+    /**
+     * Deliberately does NOT stop the mesh.
+     *
+     * `onCleared` runs on every ViewModel destruction, including a screen
+     * rotation. It used to call `repository.stopMesh()`, which reaches
+     * `MessageEngine::shutdown()` — a terminal operation — on an engine that is
+     * a `@Singleton`. One rotation therefore killed the mesh permanently for
+     * the rest of the process, while the UI happily reported RUNNING again
+     * because `startMesh()` set the status without the engine being alive.
+     *
+     * Mesh lifetime belongs to the foreground service, which is the component
+     * whose whole purpose is outliving the UI. The service is stopped by
+     * [stopMesh], invoked when the user actually leaves the mesh — not when the
+     * screen turns.
+     */
     override fun onCleared() {
+        super.onCleared()
+    }
+
+    /** Explicit user-initiated teardown: stop the transports and the service. */
+    fun stopMesh() {
         teardownScope.launch { meshMutex.withLock { repository.stopMesh() } }
         IrisBleService.stop(appContext)
-        super.onCleared()
+        started.set(false)
     }
 }

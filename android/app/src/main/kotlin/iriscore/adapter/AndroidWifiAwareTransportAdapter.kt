@@ -20,13 +20,14 @@ import android.net.wifi.aware.WifiAwareNetworkSpecifier
 import android.net.wifi.aware.WifiAwareSession
 import java.net.Inet6Address
 import iriscode.DeviceNotFound
+import iriscode.NotSupported
 import iriscode.FfiIncomingNdpData
 import iriscode.FfiPeerDiscovery
 import iriscode.FfiPublishConfig
 import iriscode.FfiWifiAwareAdapter
 import iriscode.TransportFailure
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -76,8 +77,13 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     }
 
     private val appContext: Context = context.applicationContext
-    private val awareManager: WifiAwareManager =
-        appContext.getSystemService(Context.WIFI_AWARE_SERVICE) as WifiAwareManager
+    /**
+     * Null on any device without Wi-Fi Aware hardware — which is most of the
+     * market. The cast used to be non-null, so Hilt injection threw an NPE on
+     * the main thread and the app could not launch at all on those devices.
+     */
+    private val awareManager: WifiAwareManager? =
+        appContext.getSystemService(Context.WIFI_AWARE_SERVICE) as? WifiAwareManager
 
     private val availability = RadioStateTracker()
     private val ndpRegistry = NdpRegistry()
@@ -109,13 +115,14 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private val ndpSpecifiers = ConcurrentHashMap<Long, WifiAwareNetworkSpecifier>()
     private val peerByNdp = ConcurrentHashMap<Long, Long>() // NDP handle -> peer (platform) handle
     private val ndpCallbacks = ConcurrentHashMap<Long, ConnectivityManager.NetworkCallback>()
-    private val discoveredMatches = CopyOnWriteArrayList<FfiPeerDiscovery>()
+    private val discoveredMatches = ConcurrentLinkedQueue<FfiPeerDiscovery>()
     private val inboundFrames = MutableSharedFlow<FfiIncomingNdpData>(extraBufferCapacity = 256)
 
     override suspend fun start() {
         FfiCallTimeout.suspendCall {
+            val manager = awareManager ?: throw NotSupported()
             attachGate.ensureStarted()
-            availability.setAvailable(awareManager.isAvailable)
+            availability.setAvailable(manager.isAvailable)
         }
     }
 
@@ -137,8 +144,10 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     override suspend fun matches(): List<FfiPeerDiscovery> {
         return FfiCallTimeout.suspendCall {
-            val drained = discoveredMatches.toList()
-            discoveredMatches.clear()
+            // Atomic per item: `toList()` + `clear()` silently discarded any
+            // match that arrived between the snapshot and the clear.
+            val drained = ArrayList<FfiPeerDiscovery>(discoveredMatches.size)
+            while (true) drained.add(discoveredMatches.poll() ?: break)
             drained
         }
     }
@@ -177,7 +186,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             outbox.drainDestination(ndpHandle.toLong())
             inbox.drainDestination(ndpHandle.toLong())
             ndpCallbacks.remove(ndpHandle.toLong())?.let { cb ->
-                runCatching { connectivityManager.unregisterNetworkCallback(cb) }
+                runCatching { connectivityManager?.unregisterNetworkCallback(cb) }
             }
             peerByNdp.remove(ndpHandle.toLong())?.let { verifiedCache.evict(it) }
         }
@@ -232,13 +241,16 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     }
 
     override fun isAvailable(): Boolean =
-        FfiCallTimeout.syncCall(onTimeout = false) { availability.isAvailable() }
+        awareManager != null && FfiCallTimeout.syncCall(onTimeout = false) {
+            availability.isAvailable()
+        }
 
     // -- platform plumbing -------------------------------------------------
 
-    private val connectivityManager: ConnectivityManager =
-        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val connectivityManager: ConnectivityManager? =
+        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
+    @Volatile
     private var pendingAttach: CancellableContinuation<WifiAwareSession>? = null
 
     private val identityListener = object : IdentityChangedListener() {
@@ -258,7 +270,8 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             runCatching {
                 // Platform order is (AttachCallback, IdentityChangedListener,
                 // Handler?) — the listener is non-null in that overload.
-                awareManager.attach(attachCallback, identityListener, null)
+                val manager = awareManager ?: throw NotSupported()
+                manager.attach(attachCallback, identityListener, null)
             }.getOrElse { e ->
                 pendingAttach = null
                 cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed: ${e.message}"))
@@ -385,8 +398,9 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 links.remove(ndpHandle)
             }
         }
+        val cm = connectivityManager ?: return
         ndpCallbacks[ndpHandle] = callback
-        connectivityManager.requestNetwork(request, callback)
+        cm.requestNetwork(request, callback)
     }
 
     /**
@@ -432,7 +446,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             ndpSpecifiers.remove(handle)
             links.remove(handle)
             ndpCallbacks.remove(handle)?.let { cb ->
-                runCatching { connectivityManager.unregisterNetworkCallback(cb) }
+                runCatching { connectivityManager?.unregisterNetworkCallback(cb) }
             }
             peerByNdp.remove(handle)?.let { verifiedCache.evict(it) }
             outbox.drainDestination(handle)

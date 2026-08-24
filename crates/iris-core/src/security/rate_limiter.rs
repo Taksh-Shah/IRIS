@@ -88,6 +88,17 @@ impl Default for RateLimiterConfig {
     }
 }
 
+/// Whether a message's payload justifies the P0/P1 rate-limit exemption.
+///
+/// Derived from the content type, never from the sender-chosen priority.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EmergencyClaim {
+    /// Payload is genuine emergency content (SOS / medical / emergency alert).
+    Emergency,
+    /// Ordinary content, whatever priority it claims.
+    Ordinary,
+}
+
 /// Result of a rate-limit check.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RateLimitDecision {
@@ -172,8 +183,31 @@ impl RateLimiter {
     /// Returns Allowed / SilentDrop / Exempt.
     /// P0/P1 are exempt from rate-limit drops (queue-priority only) per DEC-SEC-0001.
     pub async fn check(&self, sender: SenderShort, class: MessageClass) -> RateLimitDecision {
-        // P0/P1 exempt from rate-limit drops
-        if self.config.exempt_p0_p1 && matches!(class, MessageClass::P0 | MessageClass::P1) {
+        self.check_with_claim(sender, class, EmergencyClaim::Emergency)
+            .await
+    }
+
+    /// Rate-limit check that also weighs whether the CONTENT justifies the
+    /// P0/P1 exemption.
+    ///
+    /// The exemption exists so a genuine SOS is never dropped (DEC-SEC-0001).
+    /// Granting it on the claimed priority alone made it a free
+    /// network-starvation primitive: `priority = P0` on an ordinary `Text`
+    /// envelope bought top-of-heap scheduling, multipath fan-out over every
+    /// radio, and total freedom from rate limiting. Priority is a hint the
+    /// sender picks; the payload type is what the emergency ACL validates.
+    pub async fn check_with_claim(
+        &self,
+        sender: SenderShort,
+        class: MessageClass,
+        claim: EmergencyClaim,
+    ) -> RateLimitDecision {
+        // P0/P1 are exempt from rate-limit drops only when the payload really
+        // is emergency content.
+        if self.config.exempt_p0_p1
+            && matches!(class, MessageClass::P0 | MessageClass::P1)
+            && claim == EmergencyClaim::Emergency
+        {
             self.metrics.exempt.fetch_add(1, Ordering::Relaxed);
             return RateLimitDecision::Exempt;
         }
@@ -563,6 +597,63 @@ mod tests {
         assert_eq!(
             rl.check_unknown(MessageClass::P4).await,
             RateLimitDecision::SilentDrop
+        );
+    }
+
+    #[tokio::test]
+    async fn p0_exemption_requires_genuine_emergency_content() {
+        // Regression: the P0/P1 exemption was granted on the claimed priority
+        // alone. Setting `priority = P0` on an ordinary Text envelope bought
+        // top-of-heap scheduling, multipath fan-out over every radio, and total
+        // freedom from rate limiting — a free network-starvation primitive.
+        let config = RateLimiterConfig {
+            rate_per_sec: 1,
+            burst: 2,
+            refill_interval: Duration::from_secs(1),
+            exempt_p0_p1: true,
+            max_sender_buckets: 100,
+            unknown_sender_rate_per_sec: 1,
+            unknown_sender_burst: 1,
+        };
+        let rl = frozen_limiter(config);
+        let attacker = [0x11u8; 16];
+        let responder = [0x22u8; 16];
+
+        // A P0 claim on ordinary content is metered like any other traffic:
+        // the tiny bucket drains and then drops.
+        let mut dropped = false;
+        for _ in 0..8 {
+            if rl
+                .check_with_claim(attacker, MessageClass::P0, EmergencyClaim::Ordinary)
+                .await
+                == RateLimitDecision::SilentDrop
+            {
+                dropped = true;
+                break;
+            }
+        }
+        assert!(
+            dropped,
+            "P0 on ordinary content must be rate limited, not exempt"
+        );
+
+        // A genuine emergency payload keeps the exemption — the whole point of
+        // DEC-SEC-0001 is that a real SOS is never dropped.
+        for _ in 0..50 {
+            assert_eq!(
+                rl.check_with_claim(responder, MessageClass::P0, EmergencyClaim::Emergency)
+                    .await,
+                RateLimitDecision::Exempt,
+                "genuine emergency content must stay exempt"
+            );
+        }
+
+        // Lower priorities are unaffected by the claim either way.
+        assert_ne!(
+            rl.check_with_claim(responder, MessageClass::P4, EmergencyClaim::Emergency)
+                .await,
+            RateLimitDecision::Exempt,
+            "the exemption is P0/P1 only"
         );
     }
 

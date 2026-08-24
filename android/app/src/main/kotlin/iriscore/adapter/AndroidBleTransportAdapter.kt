@@ -26,13 +26,17 @@ import iriscode.FfiBleAdapter
 import iriscode.FfiGattWriteEvent
 import iriscode.FfiScanFilter
 import iriscode.FfiScanResult
+import iriscode.AdapterOff
 import iriscode.DeviceNotFound
+import iriscode.FfiTimeout
 import iriscode.GattFailure
+import iriscode.InvalidArgument
+import iriscode.TransportFailure
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ConcurrentSkipListSet
 import java.util.concurrent.atomic.AtomicLong
 
@@ -66,11 +70,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         /** Adapter-side guard ceiling (Android 8+ throttling); core backoff is authoritative. */
         const val SCAN_RESTART_CEILING = 5
         const val SCAN_WINDOW_MS = 30_000L
+
+        /** Ceiling on undrained inbound items per buffer (oldest-drop). */
+        const val MAX_PENDING = 512
     }
 
     private val appContext: Context = context.applicationContext
-    private val bleManager: BluetoothManager =
-        appContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    /**
+     * Null when the device has no Bluetooth hardware. The cast used to be
+     * non-null (`as BluetoothManager`), which threw at Hilt injection time on
+     * the main thread — the app died before it could report anything.
+     */
+    private val bleManager: BluetoothManager? =
+        appContext.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
 
     // Handle tables (handle -> live platform object).
     private val nextHandle = AtomicLong(1L)
@@ -79,8 +91,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     private val gattHandles = ConcurrentHashMap<Long, BluetoothGatt>()
 
     // Drain buffers (proj-BLE-1 — owned projection of the core drains).
-    private val pendingScanResults = CopyOnWriteArrayList<FfiScanResult>()
-    private val pendingGattWrites = CopyOnWriteArrayList<FfiGattWriteEvent>()
+    // ConcurrentLinkedQueue, not CopyOnWriteArrayList: the drain is a
+    // poll-until-empty loop (atomic per item), and every COW `add` copied the
+    // whole backing array — O(n^2) churn precisely when the core has stopped
+    // draining and the buffer is growing.
+    private val pendingScanResults = ConcurrentLinkedQueue<FfiScanResult>()
+    private val pendingGattWrites = ConcurrentLinkedQueue<FfiGattWriteEvent>()
 
     // AND-RT-111: IRIS characteristic cached by onServicesDiscovered (async);
     // negotiated MTU + last client-write status tracked per connection.
@@ -96,6 +112,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             if (result.rssi < rssiFloor) return
             val device = result.device ?: return
             val bytes = result.scanRecord?.bytes ?: ByteArray(0)
+            while (pendingScanResults.size >= MAX_PENDING) pendingScanResults.poll()
             pendingScanResults.add(
                 FfiScanResult(
                     address = device.address,
@@ -107,6 +124,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     /** RSSI floor applied on the platform side (core filter default -95 dBm). */
+    @Volatile
     private var rssiFloor: Int = -127
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -155,6 +173,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
      * those writes are DRAINed by the core bridge via `incomingGattWrites()`
      * (proj-BLE-1 — never a MutexGuard across FFI).
      */
+    @Volatile
     private var gattServer: BluetoothGattServer? = null
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
@@ -168,6 +187,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             value: ByteArray,
         ) {
             if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
+                // Bounded: if the core stops draining, drop the oldest rather
+                // than growing without limit.
+                while (pendingGattWrites.size >= MAX_PENDING) pendingGattWrites.poll()
                 pendingGattWrites.add(
                     FfiGattWriteEvent(
                         handle = deviceHash(device),
@@ -201,7 +223,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     /** Open the process-scoped GATT server once and serve the IRIS transport characteristic. */
     private fun ensureGattServer() {
         if (gattServer != null) return
-        val server = bleManager.openGattServer(appContext, gattServerCallback) ?: return
+        val server = bleManager?.openGattServer(appContext, gattServerCallback) ?: return
         val service = BluetoothGattService(
             IRIS_SERVICE_UUID,
             BluetoothGattService.SERVICE_TYPE_PRIMARY,
@@ -224,12 +246,23 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun startScan(filter: FfiScanFilter): ULong {
-        rssiFloor = filter.rssiFloor
-        return FfiCallTimeout.syncCall(onTimeout = 0uL) {
-            val scanner = bleManager.adapter.bluetoothLeScanner ?: return@syncCall 0uL
+        return FfiCallTimeout.syncCall(onTimeout = throwTimeout()) {
+            // A handle of 0 used to be returned for "no scanner", "throttled"
+            // and "timed out". Rust wrapped that as Ok(ScanHandle(0)), so the
+            // core believed a scan was live when nothing had started and never
+            // retried. These are now typed failures.
+            val scanner = bleManager?.adapter?.bluetoothLeScanner
+                ?: throw AdapterOff()
             val now = SystemClock.elapsedRealtime()
             pruneOldStarts(now)
-            if (scanStartTimes.size >= SCAN_RESTART_CEILING) return@syncCall 0uL
+            if (scanStartTimes.size >= SCAN_RESTART_CEILING) {
+                // Reported, not silently swallowed — the core's own backoff is
+                // authoritative and needs to know the start was refused.
+                throw TransportFailure("BLE scan restart ceiling reached")
+            }
+            // Only mutate the shared filter once the start is actually going
+            // ahead; a refused call used to leave rssiFloor changed globally.
+            rssiFloor = filter.rssiFloor
             scanStartTimes.add(now)
 
             val filters = buildScanFilters(filter)
@@ -247,8 +280,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun startAdvertising(data: FfiAdvertisementData): ULong {
-        return FfiCallTimeout.syncCall(onTimeout = 0uL) {
-            val advertiser = bleManager.adapter.bluetoothLeAdvertiser ?: return@syncCall 0uL
+        return FfiCallTimeout.syncCall(onTimeout = throwTimeout()) {
+            val advertiser = bleManager?.adapter?.bluetoothLeAdvertiser
+                ?: throw AdapterOff()
             ensureGattServer()
             val settings = AdvertiseSettings.Builder()
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
@@ -258,7 +292,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             val adData = AdvertiseData.Builder()
                 .addServiceData(ParcelUuid(IRIS_SERVICE_UUID), data.payload)
                 .build()
-            if (adData.serviceData.isEmpty()) return@syncCall 0uL
+            if (adData.serviceData.isEmpty()) {
+                throw InvalidArgument("advertisement payload produced no service data")
+            }
             advertiser.startAdvertising(settings, adData, advertiseCallback)
             val handle = nextHandle.getAndIncrement()
             advertiseHandles[handle] = advertiser
@@ -274,7 +310,15 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun connectGatt(address: String): ULong {
         return FfiCallTimeout.syncCall(onTimeout = 0uL) {
-            val device: BluetoothDevice = bleManager.adapter.getRemoteDevice(address)
+            val adapter = bleManager?.adapter ?: throw AdapterOff()
+            // The Rust bridge emits a bare 12-hex address ("AABBCCDDEEFF"), but
+            // getRemoteDevice demands "AA:BB:CC:DD:EE:FF" and throws
+            // IllegalArgumentException otherwise — an untyped exception that
+            // became UNIFFI_CALL_UNEXPECTED_ERROR. BLE outbound connection could
+            // never succeed. Normalise here and reject cleanly.
+            val mac = toBluetoothMac(address)
+                ?: throw InvalidArgument("malformed BLE address: $address")
+            val device: BluetoothDevice = adapter.getRemoteDevice(mac)
             // Positional args: connectGatt is a Java method, so Kotlin named
             // arguments are not available for it.
             val gatt = device.connectGatt(appContext, false, gattCallback)
@@ -336,20 +380,45 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun incomingGattWrites(): List<FfiGattWriteEvent> =
-        FfiCallTimeout.syncCall(onTimeout = emptyList()) {
-            val drained = pendingGattWrites.toList()
-            pendingGattWrites.clear()
-            drained
-        }
+        FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(pendingGattWrites) }
 
     override fun scanResults(): List<FfiScanResult> =
-        FfiCallTimeout.syncCall(onTimeout = emptyList()) {
-            val drained = pendingScanResults.toList()
-            pendingScanResults.clear()
-            drained
-        }
+        FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(pendingScanResults) }
+
+    /**
+     * Atomically removes and returns every buffered item.
+     *
+     * The previous `toList()` + `clear()` pair was not atomic: a GATT write
+     * arriving on the binder thread between the snapshot and the clear was
+     * discarded unread. Because the core reassembles multi-frame messages,
+     * losing one chunk corrupts a whole message rather than dropping a frame.
+     * `poll()` until empty removes exactly what it returns.
+     */
+    private fun <T> drain(queue: java.util.Queue<T>): List<T> {
+        val out = ArrayList<T>(queue.size)
+        while (true) out.add(queue.poll() ?: break)
+        return out
+    }
 
     // -- platform plumbing -------------------------------------------------
+
+    /**
+     * `syncCall` needs an `onTimeout` value of the op's return type. These ops
+     * have no benign default — a fabricated handle is worse than an error — so
+     * the fallback throws instead.
+     */
+    private fun throwTimeout(): ULong = throw FfiTimeout()
+
+    /**
+     * Normalises a BLE address to the colon-separated upper-case form the
+     * platform requires. Accepts both the bridge's bare-hex form and an already
+     * separated address. Returns null when the input is not 12 hex digits.
+     */
+    private fun toBluetoothMac(address: String): String? {
+        val hex = address.filter { it != ':' && it != '-' }.uppercase()
+        if (hex.length != 12 || !hex.all { it.isDigit() || it in 'A'..'F' }) return null
+        return hex.chunked(2).joinToString(":")
+    }
 
     /**
      * Resolves the write target: prefer the characteristic cached by

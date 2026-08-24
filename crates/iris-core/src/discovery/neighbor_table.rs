@@ -232,11 +232,17 @@ impl NeighborTable {
     /// `PeerLost` event per eviction (LinkedDown-only now; hard eviction).
     pub async fn sweep(&self) -> Vec<TopologyEvent> {
         let mut map = self.inner.lock().await;
-        let cutoff = Instant::now() - self.ttl;
+        let now = Instant::now();
         let mut events = Vec::new();
+        // Compare elapsed-since-last-seen rather than building a cutoff
+        // instant. `Instant::now() - ttl` overflows and PANICS when process
+        // uptime is below the TTL — which is the normal case for an app that
+        // autostarts at device boot with the 300 s default. The panic happened
+        // inside the spawned discovery loop, so the task died silently and
+        // neighbour discovery stayed dead for the whole process lifetime.
         let to_remove: Vec<PeerId> = map
             .iter()
-            .filter(|(_, n)| n.last_seen < cutoff)
+            .filter(|(_, n)| now.duration_since(n.last_seen) >= self.ttl)
             .map(|(id, _)| *id)
             .collect();
         for id in to_remove {

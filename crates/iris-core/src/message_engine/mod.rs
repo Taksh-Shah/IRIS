@@ -411,7 +411,9 @@ impl MessageEngine {
         let sender_short = self.sender_short_id();
         let class = crate::security::MessageClass::from(envelope.priority);
         let policy = self.security.read().unwrap().clone();
-        let rl_decision = policy.rate_limit(sender_short, class).await;
+        let rl_decision = policy
+            .rate_limit_with_claim(sender_short, class, emergency_claim(&envelope))
+            .await;
         if matches!(rl_decision, crate::security::RateLimitDecision::SilentDrop) {
             self.metrics.delivery_failed.fetch_add(1, Ordering::Relaxed);
             self.telemetry
@@ -913,6 +915,35 @@ impl MessageEngine {
         // field was decoded, stored and never read, and the per-priority flood
         // policy lives in the routing module, which the live path does not call.
         // Loop termination rested entirely on per-node dedup.
+        // Relayed traffic was governed by nothing at all: neither `rate_limit`
+        // nor `add_message` runs on this path, so a remote peer's flood cost it
+        // nothing and consumed this node's queue and airtime without limit.
+        // The sender is authenticated by this point (signature verified in
+        // `process_incoming`), so keying the limit on it is sound.
+        let relay_sender = crate::identity::peer_short_from_sender(&envelope.sender_id);
+        let relay_class = crate::security::MessageClass::from(envelope.priority);
+        let policy = self
+            .security
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        if matches!(
+            policy
+                .rate_limit_with_claim(relay_sender, relay_class, emergency_claim(&envelope))
+                .await,
+            crate::security::RateLimitDecision::SilentDrop
+        ) {
+            self.telemetry
+                .increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+            tracing::debug!(
+                event = event::MSG_RATE_LIMITED,
+                message_id = %envelope.message_id.short(),
+                priority = envelope.priority.as_u8(),
+                "relay dropped: sender rate limit"
+            );
+            return Ok(InboundOutcome::Expired);
+        }
+
         let cap = hop_cap(&envelope);
         if envelope.hop_count >= cap {
             self.metrics.expired.fetch_add(1, Ordering::Relaxed);
@@ -1391,6 +1422,17 @@ fn recipient_matches(e: &Envelope, node_id: &[u8; 32]) -> bool {
     e.recipient_id.is_empty()
         || e.recipient_id == EMERGENCY_BROADCAST
         || (e.recipient_id.len() == 32 && e.recipient_id.as_slice() == node_id)
+}
+
+/// Whether an envelope's payload justifies the P0/P1 rate-limit exemption.
+///
+/// Read from the content type, never from the sender-chosen priority.
+fn emergency_claim(e: &Envelope) -> crate::security::EmergencyClaim {
+    if e.payload_type.is_emergency() {
+        crate::security::EmergencyClaim::Emergency
+    } else {
+        crate::security::EmergencyClaim::Ordinary
+    }
 }
 
 /// Whether this envelope is addressed to everyone rather than to one node.
