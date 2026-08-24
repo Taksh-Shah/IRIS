@@ -31,6 +31,7 @@ import iriscode.DeviceNotFound
 import iriscode.FfiTimeout
 import iriscode.GattFailure
 import iriscode.InvalidArgument
+import iriscode.PermissionDenied
 import iriscode.TransportFailure
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -202,7 +203,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // an unsolicited sendResponse on a WRITE_NO_RESPONSE write is a
             // protocol violation on the GATT server side.
             if (responseNeeded) {
-                gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+                // Binder thread: nothing above can catch a throw here.
+                quietly {
+                    gattServer?.sendResponse(
+                        device,
+                        requestId,
+                        BluetoothGatt.GATT_SUCCESS,
+                        offset,
+                        null,
+                    )
+                }
             }
         }
     }
@@ -264,9 +274,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // ahead; a refused call used to leave rssiFloor changed globally.
             rssiFloor = filter.rssiFloor
             scanStartTimes.add(now)
+            // A revoked BLUETOOTH_SCAN throws SecurityException; map it to the
+            // declared FFI error rather than letting it abort the Rust side.
 
             val filters = buildScanFilters(filter)
-            scanner.startScan(filters, scanSettings(), scanCallback)
+            permitted { scanner.startScan(filters, scanSettings(), scanCallback) }
             val handle = nextHandle.getAndIncrement()
             scanHandles[handle] = scanner
             handle.toULong()
@@ -275,7 +287,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun stopScan(handle: ULong) {
         FfiCallTimeout.syncCall(onTimeout = Unit) {
-            scanHandles.remove(handle.toLong())?.stopScan(scanCallback)
+            // `stop_scan` has no error type in the FFI contract, so anything
+            // thrown here becomes UNIFFI_CALL_UNEXPECTED_ERROR on a method with
+            // no error channel — which aborts the process. A user revoking
+            // BLUETOOTH_SCAN from Settings mid-session did exactly that.
+            quietly { scanHandles.remove(handle.toLong())?.stopScan(scanCallback) }
         }
     }
 
@@ -295,7 +311,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             if (adData.serviceData.isEmpty()) {
                 throw InvalidArgument("advertisement payload produced no service data")
             }
-            advertiser.startAdvertising(settings, adData, advertiseCallback)
+            permitted { advertiser.startAdvertising(settings, adData, advertiseCallback) }
             val handle = nextHandle.getAndIncrement()
             advertiseHandles[handle] = advertiser
             handle.toULong()
@@ -304,7 +320,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun stopAdvertising(handle: ULong) {
         FfiCallTimeout.syncCall(onTimeout = Unit) {
-            advertiseHandles.remove(handle.toLong())?.stopAdvertising(advertiseCallback)
+            quietly { advertiseHandles.remove(handle.toLong())?.stopAdvertising(advertiseCallback) }
         }
     }
 
@@ -321,8 +337,8 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             val device: BluetoothDevice = adapter.getRemoteDevice(mac)
             // Positional args: connectGatt is a Java method, so Kotlin named
             // arguments are not available for it.
-            val gatt = device.connectGatt(appContext, false, gattCallback)
-                ?: return@syncCall 0uL
+            val gatt = permitted { device.connectGatt(appContext, false, gattCallback) }
+                ?: throw DeviceNotFound()
             val handle = nextHandle.getAndIncrement()
             gattHandles[handle] = gatt
             handle.toULong()
@@ -331,9 +347,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun disconnectGatt(handle: ULong) {
         FfiCallTimeout.syncCall(onTimeout = Unit) {
-            gattHandles.remove(handle.toLong())?.let { gatt ->
-                gatt.disconnect()
-                gatt.close()
+            quietly {
+                gattHandles.remove(handle.toLong())?.let { gatt ->
+                    gatt.disconnect()
+                    gatt.close()
+                }
             }
         }
     }
@@ -408,6 +426,36 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
      * the fallback throws instead.
      */
     private fun throwTimeout(): ULong = throw FfiTimeout()
+
+    /**
+     * Runs a platform call, translating a revoked runtime permission into the
+     * declared FFI error.
+     *
+     * On Android 12+ every BLE call throws `SecurityException` when its grant is
+     * missing, and permissions can be revoked at any time after start — so this
+     * is a live path, not a start-up concern.
+     */
+    private inline fun <T> permitted(block: () -> T): T = try {
+        block()
+    } catch (e: SecurityException) {
+        throw PermissionDenied()
+    }
+
+    /**
+     * Runs a platform call that has no way to report failure.
+     *
+     * `stop_scan`, `stop_advertising` and `disconnect_gatt` declare no error
+     * type, so a throw becomes UNIFFI_CALL_UNEXPECTED_ERROR on a method with no
+     * error channel — an abort. Teardown is best-effort by nature; swallow.
+     */
+    private inline fun quietly(block: () -> Unit) {
+        try {
+            block()
+        } catch (_: SecurityException) {
+        } catch (_: IllegalStateException) {
+        } catch (_: NullPointerException) {
+        }
+    }
 
     /**
      * Normalises a BLE address to the colon-separated upper-case form the

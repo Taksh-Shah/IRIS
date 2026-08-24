@@ -141,16 +141,39 @@ impl DiscoveryManager {
     /// Ingest an inbound handshake envelope (CAPABILITY bundle or Bloom
     /// exchange). Updates the neighbor table with the peer's capabilities and
     /// records its dedup Bloom filter for the dispatch layer.
+    /// The claimed node id must be the envelope's own authenticated sender.
+    ///
+    /// Without this binding, the table was keyed on an id read out of the
+    /// PAYLOAD while the envelope came from somebody else — so any peer able to
+    /// deliver one Capability envelope could rewrite an arbitrary victim's
+    /// capabilities (claiming `gateway` to attract routing, say) or plant a
+    /// hostile Bloom filter that makes the dispatch layer suppress every real
+    /// message to that peer.
+    fn sender_matches(env: &crate::protocol::Envelope, claimed: &PeerId) -> bool {
+        env.sender_id.len() == 32 && env.sender_id.as_slice() == claimed.as_bytes()
+    }
+
     pub async fn ingest_handshake(&self, env: &crate::protocol::Envelope) {
+        // Handshakes mutate routing-visible state, so they must be
+        // authenticated first. An unsigned handshake is not ingestable.
+        if env.signature.is_none() {
+            return;
+        }
         let Ok(msg) = parse_handshake(env) else {
             return;
         };
         match msg {
             HandshakeMessage::Capability(bundle) => {
                 let node_id = bundle.node_id;
+                if !Self::sender_matches(env, &node_id) {
+                    return;
+                }
                 self.table.set_capabilities(&node_id, bundle).await;
             }
             HandshakeMessage::BloomExchange(exchange) => {
+                if !Self::sender_matches(env, &exchange.node_id) {
+                    return;
+                }
                 if let Some(filter) = exchange.into_filter() {
                     self.table.set_peer_bloom(exchange.node_id, filter).await;
                 }
@@ -406,6 +429,61 @@ mod tests {
     // --- Handshake relay across SimulatedTransport (M4-style connector) ---
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn handshake_from_a_different_sender_is_refused() {
+        // Regression: the table was keyed on the node id read out of the
+        // PAYLOAD while the envelope came from somebody else, and nothing
+        // compared the two. Any peer able to deliver one Capability envelope
+        // could rewrite an arbitrary victim's capabilities — claiming
+        // "gateway" to attract routing — or plant a hostile Bloom filter that
+        // makes the dispatch layer suppress every real message to that peer.
+        let mut bloom = BloomFilter::new(1000, 0.001);
+        bloom.insert([0x11; 16]);
+        let (cap_env, _bloom_env) = handshake::build_handshake(
+            PeerId::from_bytes(ALICE),
+            vec!["gateway".into()],
+            vec!["sim-alice".into()],
+            &bloom,
+            &PeerId::from_bytes(BOB),
+        )
+        .unwrap();
+
+        let dm = manager(0xBB);
+        dm.report_peer(
+            &PeerInfo {
+                peer_id: PeerId::from_bytes(ALICE),
+                addresses: vec![],
+                transport_addresses: vec![],
+                last_seen: None,
+            },
+            &TransportId::from("sim-alice"),
+            LinkQuality::Good,
+        )
+        .await;
+
+        // Same payload, but delivered by CAROL rather than ALICE.
+        let mut spoofed = cap_env.clone();
+        spoofed.signature = Some([0u8; 64]);
+        spoofed.sender_id = vec![0xCC; 32];
+        dm.ingest_handshake(&spoofed).await;
+
+        let alice = dm.neighbors().get(&PeerId::from_bytes(ALICE)).await;
+        assert!(
+            alice.map(|n| n.capabilities.is_none()).unwrap_or(true),
+            "a handshake whose sender is not the claimed node must be refused"
+        );
+
+        // An unsigned handshake is refused even when the sender does match.
+        let mut unsigned = cap_env.clone();
+        unsigned.signature = None;
+        dm.ingest_handshake(&unsigned).await;
+        let alice = dm.neighbors().get(&PeerId::from_bytes(ALICE)).await;
+        assert!(
+            alice.map(|n| n.capabilities.is_none()).unwrap_or(true),
+            "an unsigned handshake must be refused"
+        );
+    }
+
+    #[tokio::test]
     async fn handshake_round_trip_records_capabilities_and_bloom() {
         // Alice's side: handshake envelopes flow through the simulated
         // transport to Bob's discovery manager (M4-style connector).
@@ -432,7 +510,12 @@ mod tests {
             &PeerId::from_bytes(BOB),
         )
         .unwrap();
-        for env in [cap_env, bloom_env] {
+        for mut env in [cap_env, bloom_env] {
+            // `ingest_handshake` only accepts an envelope that has been through
+            // verification (`process_incoming` runs `crypto.verify` before any
+            // discovery state is touched). Stamp a signature so this exercises
+            // the authenticated path rather than bypassing it.
+            env.signature = Some([0u8; 64]);
             let payload = codec::encode(&env).unwrap();
             a_transport
                 .send(
