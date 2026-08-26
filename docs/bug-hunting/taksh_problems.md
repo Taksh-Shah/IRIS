@@ -201,7 +201,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-3** | Low | `known_path.rs:77-80` | `RoutingTable::prune_expired` panics on `Instant::now() - expiry` | ✅ `4b03ae8` (SYS-1) |
 | **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist | ✅ `ade3acd` |
 | **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ✅ `1821c48` |
-| **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ⬜ |
+| **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ✅ `50d3a9b` |
 | **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ⬜ |
 | **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ⬜ |
 | **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ⬜ |
@@ -831,7 +831,7 @@ fn evict_old(&mut self) {
 #### ROUT-6: Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-6)  ·  Tier 2  ·  commit `50d3a9b`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/mod.rs:268-269` (fn `decide_inner`); `crates/iris-core/src/routing/store.rs:20-26, 38-49`
 - **What:** `decide_inner`'s terminal branch is a bare `ForwardingDecision::Store` with no TTL evaluation. `decide` does not take a timestamp, ttl, or message id, so it *cannot* evaluate TTL. `store_or_drop`, `ShouldStore`, `StoreAction` and `build_store_action` have no callers outside `store.rs`'s own tests and the `mod.rs:47` re-export (repo-wide grep). `ForwardingDecision::Drop` is constructed **nowhere** in the crate — the only occurrence outside the enum definition is the label arm at `mod.rs:90`.
