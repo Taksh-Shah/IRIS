@@ -191,6 +191,9 @@ impl RoutingEngine {
     pub async fn decide(
         &mut self,
         message_id: MessageId,
+        now_unix: u64,
+        timestamp: u64,
+        ttl_seconds: u64,
         sender: PeerId,
         recipient: PeerId,
         hop_count: u8,
@@ -201,6 +204,9 @@ impl RoutingEngine {
         let decision = self
             .decide_inner(
                 message_id,
+                now_unix,
+                timestamp,
+                ttl_seconds,
                 sender,
                 recipient,
                 hop_count,
@@ -225,6 +231,9 @@ impl RoutingEngine {
     async fn decide_inner(
         &mut self,
         message_id: MessageId,
+        now_unix: u64,
+        timestamp: u64,
+        ttl_seconds: u64,
         sender: PeerId,
         recipient: PeerId,
         hop_count: u8,
@@ -232,6 +241,10 @@ impl RoutingEngine {
         already_flooded: Vec<PeerId>,
         neighbor_table: &NeighborTable,
     ) -> ForwardingDecision {
+        // ROUT-6: TTL gate — do not store or forward expired messages.
+        if crate::routing::store::is_expired(now_unix, timestamp, ttl_seconds) {
+            return ForwardingDecision::Drop;
+        }
         // ROUT-4: dedup gate — drop messages we already forwarded (anti-loop).
         if self.forward_cache.is_duplicate(&message_id) {
             return ForwardingDecision::Drop;
@@ -365,7 +378,7 @@ mod tests {
             )
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -387,7 +400,7 @@ mod tests {
             .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -408,7 +421,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(MessageId::new_v7(), pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         if let ForwardingDecision::Flood { recipients } = decision {
             assert_eq!(recipients.len(), 3);
@@ -426,7 +439,7 @@ mod tests {
             .upsert(&peer_info(2), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(decision, ForwardingDecision::Store);
     }
@@ -477,6 +490,7 @@ mod tests {
         let decision = engine
             .decide(
                 MessageId::new_v7(),
+                0, 0, u64::MAX,
                 pid(1),
                 pid(42),
                 0,
@@ -561,6 +575,9 @@ mod tests {
         let decision = rte
             .decide(
                 env.message_id.clone(),
+                env.timestamp,
+                env.timestamp,
+                env.ttl_seconds,
                 crate::message::PeerId(alice),
                 crate::message::PeerId(bob),
                 env.hop_count,

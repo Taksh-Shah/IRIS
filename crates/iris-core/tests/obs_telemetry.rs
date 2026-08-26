@@ -104,7 +104,7 @@ async fn shared_registry_accumulates_across_routing_and_scf() {
         )
         .await;
     let direct = engine
-        .decide(MessageId::new_v7(), pid(1), pid(7), 0, MessagePriority::P4, vec![], &table2)
+        .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(7), 0, MessagePriority::P4, vec![], &table2)
         .await;
     assert!(matches!(direct, ForwardingDecision::Forward { .. }));
     let _ = table;
@@ -233,7 +233,7 @@ async fn engine_accepts_injected_shared_registry() {
         )
         .await;
     let _ = routing
-        .decide(MessageId::new_v7(), pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
+        .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
         .await;
 
     let snap = reg.snapshot();
