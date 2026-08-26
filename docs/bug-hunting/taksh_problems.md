@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 COMPLETE. All 11 fixed (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 `2df2c9d`, RF-36 `c22b3b6`, RF-37 `c9f28f0`, RF-38 RF38_PLACEHOLDER). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup. Next: Tier 4 or further Tier 0 findings.
+**Last updated:** 2026-08-26 — Tier 1 COMPLETE. All 11 fixed (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 `2df2c9d`, RF-36 `c22b3b6`, RF-37 `c9f28f0`, RF-38 bc1f2ed). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup. Next: Tier 4 or further Tier 0 findings.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -5317,7 +5317,7 @@ if state.load() == TransportState::Connected && live_connections.fetch_sub(1, Ac
 #### RF-38: There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit RF38_PLACEHOLDER  ·  2026-08-26
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit bc1f2ed  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:139-148` (`backoff_ms`), `253-278` (`get_connection`), `399-440` (`send`)
 - **What:** `grep -rn "backoff_ms" crates/ --include=*.rs` returns **only** the definition (140) and its four unit tests (505, 513, 523, 700). No attempt counter exists, nothing sleeps between connection attempts, and no code path retries a failed connection. `get_connection` dials once with a 3 s timeout and returns the error.
