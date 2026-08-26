@@ -22,6 +22,7 @@ use crate::message::{LinkQuality, PeerId};
 use crate::observability::event;
 use crate::observability::metric;
 use crate::observability::MetricsRegistry;
+use crate::protocol::MessageId;
 
 pub mod dedup_cache;
 pub mod direct;
@@ -189,6 +190,7 @@ impl RoutingEngine {
     /// see [`RoutingEngine::decide_opportunistic`].
     pub async fn decide(
         &mut self,
+        message_id: MessageId,
         sender: PeerId,
         recipient: PeerId,
         hop_count: u8,
@@ -198,6 +200,7 @@ impl RoutingEngine {
     ) -> ForwardingDecision {
         let decision = self
             .decide_inner(
+                message_id,
                 sender,
                 recipient,
                 hop_count,
@@ -221,6 +224,7 @@ impl RoutingEngine {
     /// Four-algorithm chain (Algorithm 1 → 2 → 2.5 → 3 → 4).
     async fn decide_inner(
         &mut self,
+        message_id: MessageId,
         sender: PeerId,
         recipient: PeerId,
         hop_count: u8,
@@ -228,20 +232,34 @@ impl RoutingEngine {
         already_flooded: Vec<PeerId>,
         neighbor_table: &NeighborTable,
     ) -> ForwardingDecision {
+        // ROUT-4: dedup gate — drop messages we already forwarded (anti-loop).
+        if self.forward_cache.is_duplicate(&message_id) {
+            return ForwardingDecision::Drop;
+        }
         // Algorithm 1: Direct delivery.
         if let Some(decision) = try_direct(recipient, neighbor_table).await {
+            self.forward_cache.record(message_id);
+            if let ForwardingDecision::Forward { next_hop, .. } = &decision {
+                self.forward_cache.record_peer(next_hop.0);
+            }
             return decision;
         }
         // Algorithm 2: Known path (validate next-hop reachability).
         if let Some(decision) =
             try_known_path(recipient, &mut self.routing_table, neighbor_table).await
         {
+            self.forward_cache.record(message_id);
+            if let ForwardingDecision::Forward { next_hop, .. } = &decision {
+                self.forward_cache.record_peer(next_hop.0);
+            }
             return decision;
         }
         // Algorithm 2.5 (ROUTE-002): opportunistic DP forward — consulted with
         // zero candidates here; transport wiring may supply neighbor DPs via
         // [`RoutingEngine::decide_opportunistic`] and short-circuit the flood.
         if let Some(nb) = self.decide_opportunistic(recipient, priority, hop_count, &[]) {
+            self.forward_cache.record(message_id);
+            self.forward_cache.record_peer(nb.0);
             return ForwardingDecision::Forward {
                 next_hop: nb,
                 algorithm: ForwardingAlgorithm::Opportunistic,
@@ -260,10 +278,12 @@ impl RoutingEngine {
             )
             .await;
             if !recipients.is_empty() {
+                self.forward_cache.record(message_id);
+                for r in &recipients {
+                    self.forward_cache.record_peer(r.0);
+                }
                 return ForwardingDecision::Flood { recipients };
             }
-        } else if hop_count >= policy.max_hops {
-            // Hop budget exhausted — fall through to Store.
         }
         // Algorithm 4: Store.
         ForwardingDecision::Store
@@ -345,7 +365,7 @@ mod tests {
             )
             .await;
         let decision = engine
-            .decide(pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -367,7 +387,7 @@ mod tests {
             .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -388,7 +408,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         if let ForwardingDecision::Flood { recipients } = decision {
             assert_eq!(recipients.len(), 3);
@@ -406,7 +426,7 @@ mod tests {
             .upsert(&peer_info(2), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(decision, ForwardingDecision::Store);
     }
@@ -456,6 +476,7 @@ mod tests {
         let mut engine = RoutingEngine::new();
         let decision = engine
             .decide(
+                MessageId::new_v7(),
                 pid(1),
                 pid(42),
                 0,
@@ -539,6 +560,7 @@ mod tests {
         let table = NeighborTable::new(std::time::Duration::from_secs(60));
         let decision = rte
             .decide(
+                env.message_id.clone(),
                 crate::message::PeerId(alice),
                 crate::message::PeerId(bob),
                 env.hop_count,
