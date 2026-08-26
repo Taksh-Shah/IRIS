@@ -203,7 +203,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ✅ `1821c48` |
 | **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ✅ `50d3a9b` |
 | **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ✅ `eac839f` |
-| **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ⬜ |
+| **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ✅ `6f8eda8` |
 | **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ⬜ |
 | **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ⬜ |
 | **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ⬜ |
@@ -886,7 +886,7 @@ fn evict_old(&mut self) {
 #### ROUT-8: A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** PARTIALLY-CORRECT. (missing input validation on a public API that will be fed wire data later), not High. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-8)  ·  Tier 2  ·  commit `6f8eda8`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/opportunistic.rs:146-173, 187-194` (fns `gtmx_advantage`, `decide`)
 - **What:** All three rejection tests are `<=` comparisons against `p_candidate`. Every IEEE-754 comparison with `NaN` is false, so a `NaN` candidate falls through all three `return false` guards and `gtmx_advantage` returns `true`. In `decide`, the tie-break `*p > *bp` is also false for `NaN`, so once a `NaN` candidate becomes `best` no honest candidate can displace it. Finally `*e = p.max(*e)` — `f64::max` returns the **non-NaN** operand — so `max_dp_seen` is written as `0.0` and the attacker wins again on the next call.
