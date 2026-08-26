@@ -444,7 +444,13 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun connectGatt(address: String): ULong {
-        return FfiCallTimeout.syncCall(onTimeout = 0uL) {
+        // Was `syncCall(onTimeout = 0uL)`: on a real overrun (device out of
+        // range, ACL handshake stuck, ...) that silently returned handle 0
+        // as if it were a genuine connection — Rust had no way to tell a
+        // timed-out connect from a successful one, so it proceeded straight
+        // to gattWrite() against a handle nothing was ever registered
+        // under. syncCallOrThrow surfaces the overrun as FfiTimeout instead.
+        return FfiCallTimeout.syncCallOrThrow {
             val adapter = bleManager?.adapter ?: throw AdapterOff()
             // The Rust bridge emits a bare 12-hex address ("AABBCCDDEEFF"), but
             // getRemoteDevice demands "AA:BB:CC:DD:EE:FF" and throws
@@ -458,6 +464,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // arguments are not available for it.
             val gatt = permitted { device.connectGatt(appContext, false, gattCallback) }
                 ?: throw DeviceNotFound()
+            android.util.Log.d("IrisBleDiag", "connectGatt: initiated, waiting for ready")
             val ready = java.util.concurrent.CompletableFuture<Unit>()
             connectionReady[gatt] = ready
             // BLE-2: block this watchdog-pool thread (never the main/Binder
@@ -467,7 +474,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // (30s) is the backstop if neither ever arrives.
             try {
                 ready.get()
+                android.util.Log.d("IrisBleDiag", "connectGatt: ready resolved successfully")
             } catch (e: java.util.concurrent.ExecutionException) {
+                android.util.Log.w("IrisBleDiag", "connectGatt: ready failed", e)
                 connectionReady.remove(gatt)
                 throw (e.cause as? Exception) ?: GattFailure("connect failed: ${e.cause}")
             }
@@ -490,6 +499,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun gattWrite(handle: ULong, charUuid: String, data: ByteArray) {
         FfiCallTimeout.syncCall(onTimeout = Unit) {
+            android.util.Log.d("IrisBleDiag", "gattWrite ENTER handle=$handle len=${data.size} known=${gattHandles.keys}")
             val gatt = gattHandles[handle.toLong()]
                 ?: throw GattFailure("unknown gatt connection")
             // AND-RT-111: a write before discovery resolves to a typed error,
