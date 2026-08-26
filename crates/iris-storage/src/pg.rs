@@ -276,42 +276,59 @@ fn backend(e: tokio_postgres::Error) -> StorageError {
 /// VALIDATED before acceptance (plaintext by successful CBOR decode; sealed
 /// by AEAD authentication), so a legacy blob whose first byte coincides with
 /// a tag value cannot be misrouted — its tagged reading fails validation and
-/// the legacy reading still resolves.
+/// the legacy reading still resolves. Sealed candidates are tried against
+/// every supplied AAD in order: current-format first, then historical
+/// formats (TAK-14 v1 fallback).
 pub(crate) fn decode_stored_blob_with(
     sealer: &dyn crate::seal::RowSealer,
-    aad: &[u8],
+    aads: &[Vec<u8>],
     blob: &[u8],
 ) -> Result<Vec<u8>, StorageError> {
     let try_plain = |payload: &[u8]| codec::decode(payload).map(|_| payload.to_vec());
-    let try_sealed = |payload: &[u8]| sealer.unseal(aad, payload);
+    let try_sealed = |payload: &[u8]| {
+        for aad in aads {
+            if let Ok(cbor) = sealer.unseal(aad, payload) {
+                return Ok(cbor);
+            }
+        }
+        Err(StorageError::DecryptionFailed)
+    };
 
     match crate::seal::split_format_tag(blob) {
         Some((tag, rest)) if tag == crate::seal::envelope_format::PLAINTEXT_CBOR => {
             if let Ok(cbor) = try_plain(rest) {
                 return Ok(cbor);
             }
-            try_legacy(sealer, aad, blob)
+            try_legacy(sealer, aads, blob)
         }
         Some((tag, rest)) if tag == crate::seal::envelope_format::SEALED => {
             if let Ok(cbor) = try_sealed(rest) {
                 return Ok(cbor);
             }
-            try_legacy(sealer, aad, blob)
+            try_legacy(sealer, aads, blob)
         }
         // First byte is neither tag: only the legacy reading exists.
-        _ => try_legacy(sealer, aad, blob),
+        _ => try_legacy(sealer, aads, blob),
     }
 }
 
-/// Untagged-era rows: verbatim plaintext CBOR, else a raw sealed container.
+/// Untagged-era rows: verbatim plaintext CBOR, else a raw sealed container
+/// under any known AAD generation (TAK-14 fallback).
 fn try_legacy(
     sealer: &dyn crate::seal::RowSealer,
-    aad: &[u8],
+    aads: &[Vec<u8>],
     blob: &[u8],
 ) -> Result<Vec<u8>, StorageError> {
     match codec::decode(blob) {
         Ok(_) => Ok(blob.to_vec()),
-        Err(_) => sealer.unseal(aad, blob),
+        Err(_) => {
+            for aad in aads {
+                if let Ok(cbor) = sealer.unseal(aad, blob) {
+                    return Ok(cbor);
+                }
+            }
+            Err(StorageError::DecryptionFailed)
+        }
     }
 }
 
@@ -440,14 +457,47 @@ impl PgStorage {
     /// back to plaintext-then-sealed probing so enabling sealing can never
     /// strand an existing plaintext store. Genuine failures surface to the
     /// caller, which quarantines per TAK-3.
-    fn decode_stored_blob(&self, aad: &[u8], blob: &[u8]) -> Result<Vec<u8>, StorageError> {
-        decode_stored_blob_with(self.sealer.as_ref(), aad, blob)
+    /// AAD candidates in try-order for a stored row: current v2 format first,
+    /// then historical v1 (TAK-14).
+    #[allow(clippy::too_many_arguments)]
+    fn aad_candidates(
+        &self,
+        id: &str,
+        priority: i16,
+        expires_at: i64,
+        status: &str,
+        created_at: i64,
+        hop_count: i16,
+        max_hops: Option<i16>,
+        payload_size: i64,
+        is_own_message: bool,
+    ) -> Vec<Vec<u8>> {
+        vec![
+            crate::seal::row_aad_v2(
+                id,
+                priority as u8,
+                expires_at as u64,
+                status,
+                created_at,
+                hop_count,
+                max_hops,
+                payload_size,
+                is_own_message,
+            ),
+            crate::seal::row_aad(id, priority as u8, expires_at as u64),
+        ]
     }
-    /// One-shot migration to the tagged row format (TAK-15). Rewrites every
-    /// plaintext-tagged (or untagged legacy plaintext) row into a sealed,
-    /// explicitly tagged row under the configured sealer. A no-op for
-    /// `NoSealer`. Intended to run once after `with_sealer` on upgrade;
-    /// reads remain compatible with all three shapes either way.
+
+    fn decode_stored_blob(&self, aads: Vec<Vec<u8>>, blob: &[u8]) -> Result<Vec<u8>, StorageError> {
+        decode_stored_blob_with(self.sealer.as_ref(), &aads, blob)
+    }
+
+    /// One-shot migration to the current row format (TAK-15 + TAK-14):
+    /// rewrites every plaintext-tagged or untagged legacy plaintext row into a
+    /// SEALED, explicitly tagged row under the v2 AAD (full-scalar
+    /// authentication), using each row's live status column. A no-op for
+    /// `NoSealer`. Intended to run once after `with_sealer` on upgrade; reads
+    /// remain compatible with all historical shapes either way.
     pub async fn migrate_envelope_format(&self) -> Result<usize, StorageError> {
         if self.sealer.is_identity() {
             return Ok(0);
@@ -455,7 +505,9 @@ impl PgStorage {
         let client = self.live_client().await?;
         let rows = client
             .query(
-                "SELECT message_id, priority, expires_at, envelope_cbor FROM messages",
+                "SELECT message_id, priority, expires_at, envelope_cbor, status,
+                        created_at, hop_count, max_hops, payload_size, is_own_message
+                 FROM messages",
                 &[],
             )
             .await
@@ -466,16 +518,45 @@ impl PgStorage {
             let priority: i16 = r.get(1);
             let expires_at: i64 = r.get(2);
             let blob: Vec<u8> = r.get(3);
-            let already_sealed = matches!(crate::seal::split_format_tag(&blob), Some((tag, _)) if tag == crate::seal::envelope_format::SEALED);
+            let status: String = r.get(4);
+            let created_at: i64 = r.get(5);
+            let hop_count: i16 = r.get(6);
+            let max_hops: Option<i16> = r.get(7);
+            let payload_size: i64 = r.get(8);
+            let is_own: bool = r.get(9);
+            let already_sealed = matches!(
+                crate::seal::split_format_tag(&blob),
+                Some((tag, _)) if tag == crate::seal::envelope_format::SEALED
+            );
             if already_sealed {
                 continue;
             }
             let cbor = self.decode_stored_blob(
-                &crate::seal::row_aad(&id, priority as u8, expires_at as u64),
+                self.aad_candidates(
+                    &id,
+                    priority,
+                    expires_at,
+                    &status,
+                    created_at,
+                    hop_count,
+                    max_hops,
+                    payload_size,
+                    is_own,
+                ),
                 &blob,
             )?;
             let sealed = self.sealer.seal(
-                &crate::seal::row_aad(&id, priority as u8, expires_at as u64),
+                &crate::seal::row_aad_v2(
+                    &id,
+                    priority as u8,
+                    expires_at as u64,
+                    &status,
+                    created_at,
+                    hop_count,
+                    max_hops,
+                    payload_size,
+                    is_own,
+                ),
                 &cbor,
             )?;
             let mut tagged = Vec::with_capacity(1 + sealed.len());
@@ -516,10 +597,28 @@ impl MessageStorage for PgStorage {
 
         let cbor = codec::encode(envelope).map_err(|e| StorageError::Backend(e.to_string()))?;
         let expires_u64 = envelope.timestamp.saturating_add(envelope.ttl_seconds);
-        let aad = crate::seal::row_aad(
+        // TAK-10: real ownership when the node identity is configured — the
+        // eviction policy's "relayed before own" tie-break needs a live key.
+        // Malformed sender vectors simply stay marked relayed.
+        let is_own = match (
+            &self.config.node_id,
+            <[u8; 32]>::try_from(envelope.sender_id.as_slice()),
+        ) {
+            (Some(node_id), Ok(sender)) => *node_id == sender,
+            _ => false,
+        };
+        // TAK-14: rows are sealed under the v2 AAD, which authenticates every
+        // scalar column including status (fresh rows always start PENDING_SEND).
+        let aad = crate::seal::row_aad_v2(
             &envelope.message_id.to_string(),
             envelope.priority as u8,
             expires_u64,
+            "PENDING_SEND",
+            created_at,
+            envelope.hop_count as i16,
+            envelope.max_hops.map(|h| h as i16),
+            payload_size,
+            is_own,
         );
         // TAK-15: every row written carries an explicit 1-byte format tag so
         // reads never guess the blob's nature.
@@ -534,16 +633,6 @@ impl MessageStorage for PgStorage {
             stored.push(crate::seal::envelope_format::SEALED);
         }
         stored.extend_from_slice(&stored_body);
-        // TAK-10: real ownership when the node identity is configured — the
-        // eviction policy's "relayed before own" tie-break needs a live key.
-        // Malformed sender vectors simply stay marked relayed.
-        let is_own = match (
-            &self.config.node_id,
-            <[u8; 32]>::try_from(envelope.sender_id.as_slice()),
-        ) {
-            (Some(node_id), Ok(sender)) => *node_id == sender,
-            _ => false,
-        };
 
         // Duplicate suppression keeps its old semantics (a repeated persist
         // of the same id is Ok): check first so a 0-row-affected result from
@@ -625,10 +714,13 @@ impl MessageStorage for PgStorage {
 
     async fn load(&self, id: &MessageId) -> Result<Option<Envelope>, StorageError> {
         let client = self.live_client().await?;
+        let id_hex = id.to_string();
         let row = client
             .query_opt(
-                "SELECT envelope_cbor, priority, expires_at FROM messages WHERE message_id = $1",
-                &[&id.to_string()],
+                "SELECT envelope_cbor, priority, expires_at, status, created_at,
+                        hop_count, max_hops, payload_size, is_own_message
+                 FROM messages WHERE message_id = $1",
+                &[&id_hex],
             )
             .await
             .map_err(|e| StorageError::Backend(format!("load: {e}")))?;
@@ -637,12 +729,31 @@ impl MessageStorage for PgStorage {
                 let bytes: Vec<u8> = r.get(0);
                 let priority: i16 = r.get(1);
                 let expires_at: i64 = r.get(2);
-                let aad = crate::seal::row_aad(&id.to_string(), priority as u8, expires_at as u64);
+                let status: String = r.get(3);
+                let created_at: i64 = r.get(4);
+                let hop_count: i16 = r.get(5);
+                let max_hops: Option<i16> = r.get(6);
+                let payload_size: i64 = r.get(7);
+                let is_own: bool = r.get(8);
                 // TAK-15: tagged dispatch replaces the equality heuristic
                 // that could never run for a real sealer (the `?` above it
                 // returned first, stranding every legacy plaintext row the
-                // moment sealing was enabled).
-                let cbor = self.decode_stored_blob(&aad, &bytes)?;
+                // moment sealing was enabled). TAK-14: sealed candidates are
+                // verified against the full v2 AAD, falling back to v1.
+                let cbor = self.decode_stored_blob(
+                    self.aad_candidates(
+                        &id_hex,
+                        priority,
+                        expires_at,
+                        &status,
+                        created_at,
+                        hop_count,
+                        max_hops,
+                        payload_size,
+                        is_own,
+                    ),
+                    &bytes,
+                )?;
                 codec::decode(&cbor)
                     .map(Some)
                     .map_err(|e| StorageError::Backend(format!("load decode: {e}")))
@@ -657,14 +768,87 @@ impl MessageStorage for PgStorage {
         status: MessageStatus,
     ) -> Result<(), StorageError> {
         let client = self.live_client().await?;
-        client
-            .execute(
-                "UPDATE messages SET status = $2 WHERE message_id = $1",
-                &[&id.to_string(), &status_to_text(status)],
-            )
-            .await
-            .map_err(|e| StorageError::Backend(format!("update_status: {e}")))?;
-        Ok(())
+        let id_hex = id.to_string();
+        let new_status = status_to_text(status);
+        // TAK-14: status is authenticated, so a plain single-column UPDATE
+        // would desynchronise the AEAD tag. Read-modify-reseal instead, made
+        // atomic by an optimistic CAS on the old status in the final UPDATE
+        // (no &mut client available under the Arc slot for a real transaction;
+        // concurrent status transitions on one id are not a production shape,
+        // and the CAS makes any race fail loudly rather than corrupt).
+        for _ in 0..3 {
+            let row = client
+                .query_opt(
+                    "SELECT envelope_cbor, priority, expires_at, status, created_at,
+                            hop_count, max_hops, payload_size, is_own_message
+                     FROM messages WHERE message_id = $1",
+                    &[&id_hex],
+                )
+                .await
+                .map_err(|e| StorageError::Backend(format!("update_status read: {e}")))?;
+            let Some(r) = row else { return Ok(()) }; // nothing stored: no-op
+            let bytes: Vec<u8> = r.get(0);
+            let priority: i16 = r.get(1);
+            let expires_at: i64 = r.get(2);
+            let old_status: String = r.get(3);
+            let created_at: i64 = r.get(4);
+            let hop_count: i16 = r.get(5);
+            let max_hops: Option<i16> = r.get(6);
+            let payload_size: i64 = r.get(7);
+            let is_own: bool = r.get(8);
+
+            if old_status == new_status {
+                return Ok(());
+            }
+            let cbor = self.decode_stored_blob(
+                self.aad_candidates(
+                    &id_hex,
+                    priority,
+                    expires_at,
+                    &old_status,
+                    created_at,
+                    hop_count,
+                    max_hops,
+                    payload_size,
+                    is_own,
+                ),
+                &bytes,
+            )?;
+            let sealed = self.sealer.seal(
+                &crate::seal::row_aad_v2(
+                    &id_hex,
+                    priority as u8,
+                    expires_at as u64,
+                    new_status,
+                    created_at,
+                    hop_count,
+                    max_hops,
+                    payload_size,
+                    is_own,
+                ),
+                &cbor,
+            )?;
+            let mut tagged = Vec::with_capacity(1 + sealed.len());
+            tagged.push(crate::seal::envelope_format::SEALED);
+            tagged.extend_from_slice(&sealed);
+
+            let updated = client
+                .execute(
+                    "UPDATE messages SET status = $2, envelope_cbor = $3
+                     WHERE message_id = $1 AND status = $4",
+                    &[&id_hex, &new_status, &tagged, &old_status],
+                )
+                .await
+                .map_err(|e| StorageError::Backend(format!("update_status: {e}")))?;
+            if updated > 0 {
+                return Ok(());
+            }
+            // CAS lost: another writer changed status between read and write.
+            // Loop and re-read; after 3 attempts surface the contention.
+        }
+        Err(StorageError::Backend(format!(
+            "update_status: concurrent status transition on {id_hex}"
+        )))
     }
 
     async fn delete(&self, id: &MessageId) -> Result<(), StorageError> {
@@ -706,7 +890,9 @@ impl MessageStorage for PgStorage {
         let client = self.live_client().await?;
         let rows = client
             .query(
-                "SELECT envelope_cbor, message_id, priority, expires_at FROM messages
+                "SELECT envelope_cbor, message_id, priority, expires_at, status, created_at,
+                        hop_count, max_hops, payload_size, is_own_message
+                 FROM messages
                  WHERE status IN ('PENDING_SEND', 'IN_TRANSIT')
                  ORDER BY priority ASC, created_at ASC, message_id ASC
                  LIMIT $1",
@@ -720,14 +906,28 @@ impl MessageStorage for PgStorage {
             let id: String = r.get(1);
             let priority: i16 = r.get(2);
             let expires_at: i64 = r.get(3);
-            let aad = crate::seal::row_aad(&id, priority as u8, expires_at as u64);
-            // TAK-3: one unreadable row must not brick the whole queue. The
-            // row is quarantined (status -> DELIVERY_FAILED), which removes it
-            // from this predicate and makes it evictable; the failure is
-            // logged at ERROR and counted (see `quarantined_rows`). A
-            // systemic cause (e.g. wrong sealing key) shows up as the counter
-            // rising once per queued row — visible, not silent.
-            let cbor = self.decode_stored_blob(&aad, &bytes);
+            let status: String = r.get(4);
+            let created_at: i64 = r.get(5);
+            let hop_count: i16 = r.get(6);
+            let max_hops: Option<i16> = r.get(7);
+            let payload_size: i64 = r.get(8);
+            let is_own: bool = r.get(9);
+            // TAK-3: unreadable rows are quarantined, not fatal (see below).
+            // TAK-14: candidates cover v2 + legacy AADs.
+            let cbor = self.decode_stored_blob(
+                self.aad_candidates(
+                    &id,
+                    priority,
+                    expires_at,
+                    &status,
+                    created_at,
+                    hop_count,
+                    max_hops,
+                    payload_size,
+                    is_own,
+                ),
+                &bytes,
+            );
             let cbor = match cbor {
                 Ok(c) => c,
                 Err(e) => {
