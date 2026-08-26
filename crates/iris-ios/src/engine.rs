@@ -207,27 +207,50 @@ impl IrisEngine {
         let listener = listener.clone();
         let body: Option<Arc<dyn IrisBody>> = self.body.lock().unwrap().clone();
         self.runtime.spawn(async move {
-            while let Ok(env) = rx.recv().await {
-                let view = FfiIncomingMessage {
-                    sender_id: env.sender_id.clone(),
-                    message_id: env.message_id.to_bytes().to_vec(),
-                    recipient_id: env.recipient_id.clone(),
-                    payload: env.payload.clone(),
-                    priority: env.priority.as_u8(),
-                    received_at_ms: env.timestamp.saturating_mul(1000),
-                };
-                if let Some(renderer) = &body {
-                    let proj = FfiIrisEnvelope {
-                        message_id: view.message_id.clone(),
-                        sender_id: view.sender_id.clone(),
-                        recipient_id: view.recipient_id.clone(),
-                        priority: view.priority,
-                        originated_at_ms: view.received_at_ms,
-                        payload: view.payload.clone(),
-                    };
-                    tracing::debug!("ios: body renderer: {}", renderer.summarize(proj));
+            // GAP-4: `Lagged` is recoverable and must not be treated as
+            // `Closed` — doing so silently and permanently kills the user's
+            // inbox with no error surfaced (subscribe_inbox already returned
+            // Ok(())), while delivered messages keep being decrypted and
+            // dropped for the rest of the process.
+            loop {
+                match rx.recv().await {
+                    Ok(env) => {
+                        // GAP-9: `received_at_ms` must be the local receipt
+                        // time, not the sender's self-declared origination
+                        // time (peer-controlled; used as a sort key it lets
+                        // a peer pin or bury its own messages in the inbox).
+                        // `originated_at_ms` on the body-renderer projection
+                        // is the one that should reflect `env.timestamp`.
+                        let view = FfiIncomingMessage {
+                            sender_id: env.sender_id.clone(),
+                            message_id: env.message_id.to_bytes().to_vec(),
+                            recipient_id: env.recipient_id.clone(),
+                            payload: env.payload.clone(),
+                            priority: env.priority.as_u8(),
+                            received_at_ms: unix_now().saturating_mul(1000),
+                        };
+                        if let Some(renderer) = &body {
+                            let proj = FfiIrisEnvelope {
+                                message_id: view.message_id.clone(),
+                                sender_id: view.sender_id.clone(),
+                                recipient_id: view.recipient_id.clone(),
+                                priority: view.priority,
+                                originated_at_ms: env.timestamp.saturating_mul(1000),
+                                payload: view.payload.clone(),
+                            };
+                            tracing::debug!("ios: body renderer: {}", renderer.summarize(proj));
+                        }
+                        listener.on_message(view);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::warn!(
+                            event = "inbox.lagged",
+                            skipped,
+                            "inbox listener fell behind; delivered messages were dropped"
+                        );
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
-                listener.on_message(view);
             }
         });
         Ok(())

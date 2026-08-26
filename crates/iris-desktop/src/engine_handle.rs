@@ -297,10 +297,25 @@ impl DesktopEngine {
     pub fn subscribe_inbox(&self, channel: tauri::ipc::Channel<IncomingMessageView>) {
         let mut rx = self.engine.delivered_messages();
         tauri::async_runtime::spawn(async move {
-            while let Ok(env) = rx.recv().await {
-                let view = IncomingMessageView::from_envelope(&env);
-                if channel.send(view).is_err() {
-                    break; // webview gone
+            // GAP-4: `Lagged` is recoverable and must not be treated as
+            // `Closed` — doing so silently and permanently kills the user's
+            // inbox with no error surfaced.
+            loop {
+                match rx.recv().await {
+                    Ok(env) => {
+                        let view = IncomingMessageView::from_envelope(&env);
+                        if channel.send(view).is_err() {
+                            break; // webview gone
+                        }
+                    }
+                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::warn!(
+                            event = "inbox.lagged",
+                            skipped,
+                            "inbox listener fell behind; delivered messages were dropped"
+                        );
+                    }
+                    Err(broadcast::error::RecvError::Closed) => break,
                 }
             }
         });

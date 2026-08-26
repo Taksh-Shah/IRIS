@@ -231,16 +231,39 @@ impl IrisEngine {
         let mut rx = self.engine.delivered_messages();
         let listener = listener.clone();
         self.runtime.spawn(async move {
-            while let Ok(env) = rx.recv().await {
-                let view = FfiIncomingMessage {
-                    sender_id: env.sender_id,
-                    message_id: env.message_id.to_bytes().to_vec(),
-                    recipient_id: env.recipient_id,
-                    payload: env.payload,
-                    priority: env.priority.as_u8(),
-                    received_at_ms: env.timestamp.saturating_mul(1000),
-                };
-                listener.on_message(view);
+            // GAP-4: `Lagged` is recoverable (the consumer merely fell behind
+            // the 1024-slot channel) — it is not `Closed`. Treating it as
+            // Closed silently and permanently kills the user's inbox: no
+            // error is surfaced, `subscribe_inbox` already returned `Ok(())`,
+            // and delivered messages keep being decrypted and dropped for
+            // the rest of the process. Skip the count and keep draining.
+            loop {
+                match rx.recv().await {
+                    Ok(env) => {
+                        // GAP-9: `received_at_ms` must be the local receipt
+                        // time, not the sender's self-declared origination
+                        // time — that field is peer-controlled and, used as
+                        // a sort key, lets a peer pin or bury its own
+                        // messages in every recipient's inbox.
+                        let view = FfiIncomingMessage {
+                            sender_id: env.sender_id,
+                            message_id: env.message_id.to_bytes().to_vec(),
+                            recipient_id: env.recipient_id,
+                            payload: env.payload,
+                            priority: env.priority.as_u8(),
+                            received_at_ms: unix_now().saturating_mul(1000),
+                        };
+                        listener.on_message(view);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                        tracing::warn!(
+                            event = "inbox.lagged",
+                            skipped,
+                            "inbox listener fell behind; delivered messages were dropped"
+                        );
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
             }
         });
         Ok(())
