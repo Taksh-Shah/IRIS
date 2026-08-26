@@ -187,10 +187,24 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             // AND-RT-111: cache the IRIS characteristic so gattWrite can resolve
             // it without a full re-scan of gatt.services.
-            if (status != BluetoothGatt.GATT_SUCCESS) return
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                // BLE-2: service discovery is part of what connectGatt() now
+                // waits for (see connectionReady) — a failure here must wake
+                // that waiter with an error, not leave it blocked until the
+                // outer FFI watchdog times out 30s later.
+                connectionReady.remove(gatt)
+                    ?.completeExceptionally(GattFailure("service discovery failed status=$status"))
+                gatt.disconnect()
+                gatt.close()
+                return
+            }
             gatt.getService(IRIS_SERVICE_UUID)?.getCharacteristic(IRIS_CHARACTERISTIC_UUID)?.let {
                 serviceCharacteristics[gatt] = it
             }
+            // Connection is genuinely usable now: STATE_CONNECTED happened AND
+            // the characteristic gattWrite needs is resolvable. This is what
+            // connectGatt() has been blocking on.
+            connectionReady.remove(gatt)?.complete(Unit)
         }
 
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
@@ -203,21 +217,49 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 // already returned Ok) but can never actually carry a message.
                 // This callback runs off the FFI call stack (async platform
                 // event), so a permission loss here has nowhere typed to go;
-                // swallow it the same way disconnect/close teardown already
-                // does and let the eventual gattWrite failure surface it.
+                // wake the connectGatt() waiter with an error instead of
+                // leaving it to time out, then fall through to the normal
+                // teardown-on-failure path.
                 try {
                     gatt.discoverServices()
-                } catch (_: SecurityException) {
+                } catch (e: SecurityException) {
+                    connectionReady.remove(gatt)?.completeExceptionally(e)
                 }
             } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
                 gattHandles.entries.removeIf { it.value == gatt }
                 serviceCharacteristics.remove(gatt)
                 negotiatedMtu.remove(gatt)
                 gattWriteFailures.remove(gatt)
+                // BLE-2: a disconnect before onServicesDiscovered ever ran
+                // means the connect attempt failed outright (refused, out of
+                // range, ACL timeout, ...) — surface that to connectGatt()'s
+                // waiter immediately rather than blocking it for the full
+                // FFI watchdog timeout only to fail anyway.
+                connectionReady.remove(gatt)
+                    ?.completeExceptionally(GattFailure("disconnected before connect completed, status=$status"))
                 gatt.close()
             }
         }
     }
+
+    /**
+     * BLE-2: resolved by [gattCallback] once a connection initiated by
+     * [connectGatt] is genuinely usable — `STATE_CONNECTED` AND service
+     * discovery both completed — or fails outright. `connectGatt()` blocks
+     * on the matching entry so its FFI contract (a synchronous return)
+     * means "this peer can actually be written to now", which it did not
+     * before: `device.connectGatt()` only *initiates* the platform's ACL
+     * handshake, and the old code returned the instant that call was made,
+     * long before Android confirmed anything. Rust believed the peer was
+     * connected and immediately tried to write to it — before the real
+     * handshake had even finished — so the very first write always failed
+     * ("characteristic not yet discovered") and tore the brand-new
+     * connection back down (BLE-1) before it was ever usable. Every
+     * subsequent discovery cycle repeated the identical race: no message
+     * could ever be delivered on real hardware.
+     */
+    private val connectionReady =
+        ConcurrentHashMap<BluetoothGatt, java.util.concurrent.CompletableFuture<Unit>>()
 
     /**
      * Peripheral-side GATT server (ANDROID.md §BLE: GATT server write/notify
@@ -416,6 +458,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // arguments are not available for it.
             val gatt = permitted { device.connectGatt(appContext, false, gattCallback) }
                 ?: throw DeviceNotFound()
+            val ready = java.util.concurrent.CompletableFuture<Unit>()
+            connectionReady[gatt] = ready
+            // BLE-2: block this watchdog-pool thread (never the main/Binder
+            // thread — see FfiCallTimeout) until gattCallback resolves
+            // [ready]: STATE_CONNECTED *and* service discovery both
+            // completed, or a failure. The outer syncCall's own timeout
+            // (30s) is the backstop if neither ever arrives.
+            try {
+                ready.get()
+            } catch (e: java.util.concurrent.ExecutionException) {
+                connectionReady.remove(gatt)
+                throw (e.cause as? Exception) ?: GattFailure("connect failed: ${e.cause}")
+            }
             val handle = nextHandle.getAndIncrement()
             gattHandles[handle] = gatt
             handle.toULong()

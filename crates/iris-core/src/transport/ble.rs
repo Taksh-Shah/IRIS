@@ -367,6 +367,17 @@ pub struct BleTransport {
     /// per peer is reused for all sends (AC-9; RES-0019 R6.4/G2 bounds
     /// GATT-client churn). MTU is per-link (BLE-RT-003), never global.
     connections: std::sync::Mutex<std::collections::HashMap<PeerId, (GattHandle, u16)>>,
+    /// Per-peer async lock (BLE-2): concurrent `connect()` calls to the SAME
+    /// peer serialize on this (BLE-RT-002 — exactly one GATT link/poller per
+    /// peer), but connects to DIFFERENT peers run fully in parallel. The
+    /// previous design held `connections` (a `std::sync::Mutex`) across the
+    /// entire blocking `connect_gatt()`/`set_mtu()` FFI round trip — on
+    /// Android that is a real ACL handshake, 100ms to 30s — so dialling one
+    /// slow/unreachable peer stalled `send()` to every OTHER already-
+    /// connected peer, including P0 emergency traffic, and could exhaust the
+    /// tokio worker pool outright.
+    connect_locks:
+        std::sync::Mutex<std::collections::HashMap<PeerId, std::sync::Arc<tokio::sync::Mutex<()>>>>,
     /// Abort handles for the per-peer inbound-poll tasks so shutdown() actually
     /// stops them (RED-0009-02, was an unowned infinite loop leaking a task).
     pollers: std::sync::RwLock<std::collections::HashMap<PeerId, tokio::task::AbortHandle>>,
@@ -431,6 +442,7 @@ impl BleTransport {
             scan_handle: std::sync::Mutex::new(None),
             adv_handle: std::sync::Mutex::new(None),
             connections: std::sync::Mutex::new(std::collections::HashMap::new()),
+            connect_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
             pollers: std::sync::RwLock::new(std::collections::HashMap::new()),
             segmenter: AttSegmenter::new(),
             scan_times: std::sync::Mutex::new(std::collections::VecDeque::new()),
@@ -482,6 +494,10 @@ impl BleTransport {
         if let Some((handle, _)) = self.connections.lock().unwrap().remove(peer) {
             adapter.disconnect_gatt(handle);
         }
+        // Not load-bearing for correctness (a stale empty-Mutex entry just
+        // gets reused on the next connect), only for not growing forever
+        // across a long-lived node's peer churn.
+        self.connect_locks.lock().unwrap().remove(peer);
         if let Some(p) = self.pollers.write().unwrap().remove(peer) {
             p.abort();
         }
@@ -703,14 +719,33 @@ impl Transport for BleTransport {
 
     async fn connect(&self, peer: &PeerInfo) -> Result<TransportLink, TransportError> {
         let adapter = self.adapter()?;
-        // Serialize per-peer connect setup under the connections lock so two
-        // concurrent connects to the same peer cannot create a duplicate GATT
-        // link or orphan a poller task (BLE-RT-002).
-        let mut conns = self.connections.lock().unwrap();
         // Peer already connected: reuse the link (AC-9 — one GATT connection per
         // peer; GATT-client churn bounded, RES-0019 R6.4/G2).
-        if let Some(&(handle, _)) = conns.get(&peer.peer_id) {
-            let _ = handle;
+        if self.connections.lock().unwrap().contains_key(&peer.peer_id) {
+            return Ok(TransportLink {
+                peer_id: peer.peer_id,
+                transport_id: self.id.0.clone(),
+                established_at: Instant::now(),
+            });
+        }
+        // BLE-2: per-peer async lock. Concurrent connects to the SAME peer
+        // serialize here (BLE-RT-002 — exactly one GATT link/poller ever
+        // gets created), but connects to DIFFERENT peers no longer share one
+        // lock held across the blocking FFI round trip below — see the
+        // `connect_locks` field doc for what that used to cost.
+        let peer_lock = {
+            let mut locks = self.connect_locks.lock().unwrap();
+            locks
+                .entry(peer.peer_id)
+                .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
+                .clone()
+        };
+        let _peer_guard = peer_lock.lock().await;
+        // Re-check now that we hold the per-peer lock: the connect that held
+        // it before us may have just finished (this is what makes rt002's
+        // "both calls succeed, only one real GATT connection" contract work
+        // without the second caller redoing any work).
+        if self.connections.lock().unwrap().contains_key(&peer.peer_id) {
             return Ok(TransportLink {
                 peer_id: peer.peer_id,
                 transport_id: self.id.0.clone(),
@@ -732,11 +767,36 @@ impl Transport for BleTransport {
         // `_ => -1000.0`) treats as "eliminate this transport", so every
         // other live peer briefly lost all routing eligibility on every new
         // connect attempt.
-        let had_other_connections = !conns.is_empty();
+        let had_other_connections = !self.connections.lock().unwrap().is_empty();
         if !had_other_connections {
             self.set_state(TransportState::Connecting);
         }
-        let connect_result = adapter.connect_gatt(mac).map_err(to_transport_err);
+        // BLE-2: `connect_gatt` now blocks until the platform actually
+        // confirms the connection (or fails/times out) — see
+        // AndroidBleTransportAdapter.connectGatt(), which used to return the
+        // instant `device.connectGatt()` was merely CALLED, not once Android
+        // reported `STATE_CONNECTED`. Rust believed the peer was live and
+        // immediately tried to write to it — before the real ACL handshake
+        // had even finished — so the first write always failed
+        // "characteristic not yet discovered" and tore the brand-new
+        // connection back down via `close_peer` (BLE-1) before it was ever
+        // usable. Every subsequent discovery cycle repeated the identical
+        // race forever: no message could ever be delivered.
+        //
+        // Now that the FFI call itself can take real wall-clock seconds
+        // (a genuine ACL handshake, not a fire-and-forget request), running
+        // it inline on this tokio worker would stall every other task
+        // scheduled on it — `spawn_blocking` hands it to the blocking pool
+        // instead.
+        let blocking_adapter = adapter.clone();
+        let connect_result = tokio::task::spawn_blocking(move || blocking_adapter.connect_gatt(mac))
+            .await
+            .unwrap_or_else(|e| {
+                Err(BleError::GattFailure(format!(
+                    "connect_gatt task panicked: {e}"
+                )))
+            })
+            .map_err(to_transport_err);
         let handle = match connect_result {
             Ok(h) => h,
             // Restore a usable state on connection failure (BLE-RT-004,
@@ -758,9 +818,16 @@ impl Transport for BleTransport {
         // Android 14+ negotiates 517 on first requestMtu and disregards later
         // ones). Record the negotiated MTU PER CONNECTION (BLE-RT-003) — later
         // writes to this peer are sized to its own MTU, never a global value.
-        let negotiated = adapter
-            .set_mtu(handle, crate::transport::ble_att::MTU_NEGOTIATED)
-            .unwrap_or(crate::transport::ble_att::MTU_DEFAULT);
+        // Also run on the blocking pool: it is the same kind of synchronous
+        // platform round trip as connect_gatt above.
+        let mtu_adapter = adapter.clone();
+        let negotiated = tokio::task::spawn_blocking(move || {
+            mtu_adapter.set_mtu(handle, crate::transport::ble_att::MTU_NEGOTIATED)
+        })
+        .await
+        .ok()
+        .and_then(Result::ok)
+        .unwrap_or(crate::transport::ble_att::MTU_DEFAULT);
         // iOS reports the negotiated ATT *payload* (`maximumWriteValueLength`,
         // no request API) rather than the MTU — translate so per-connection
         // frame sizing honors the FULL report (DEC-BLE-002-0004). Degraded
@@ -770,7 +837,10 @@ impl Transport for BleTransport {
         } else {
             negotiated
         };
-        conns.insert(peer.peer_id, (handle, stored_mtu));
+        self.connections
+            .lock()
+            .unwrap()
+            .insert(peer.peer_id, (handle, stored_mtu));
         self.set_state(TransportState::Connected);
         let established_at = Instant::now();
         // Poll inbound GATT writes for THIS peer into a per-peer reassembler,
@@ -1972,6 +2042,89 @@ mod tests {
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
         }
+    }
+
+    /// `connect_gatt` blocks for `delay` when dialling `slow_mac`, simulating
+    /// a real ACL handshake that takes real wall-clock time (BLE-2). Every
+    /// other op forwards to the inner simulated adapter unchanged.
+    struct SlowConnectAdapter {
+        inner: SimulatedBleAdapter,
+        slow_mac: BleAddress,
+        delay: Duration,
+    }
+
+    impl BleAdapter for SlowConnectAdapter {
+        fn start_scan(&self, f: ScanFilter) -> Result<ScanHandle, BleError> {
+            self.inner.start_scan(f)
+        }
+        fn stop_scan(&self, h: ScanHandle) {
+            self.inner.stop_scan(h)
+        }
+        fn start_advertising(&self, d: AdvertisementData) -> Result<AdvHandle, BleError> {
+            self.inner.start_advertising(d)
+        }
+        fn stop_advertising(&self, h: AdvHandle) {
+            self.inner.stop_advertising(h)
+        }
+        fn connect_gatt(&self, a: BleAddress) -> Result<GattHandle, BleError> {
+            if a == self.slow_mac {
+                std::thread::sleep(self.delay);
+            }
+            self.inner.connect_gatt(a)
+        }
+        fn disconnect_gatt(&self, h: GattHandle) {
+            self.inner.disconnect_gatt(h)
+        }
+        fn gatt_write(&self, h: GattHandle, c: Uuid, d: Vec<u8>) -> Result<(), BleError> {
+            self.inner.gatt_write(h, c, d)
+        }
+        fn gatt_read(&self, h: GattHandle, c: Uuid) -> Result<Vec<u8>, BleError> {
+            self.inner.gatt_read(h, c)
+        }
+        fn set_mtu(&self, h: GattHandle, mtu: u16) -> Result<u16, BleError> {
+            self.inner.set_mtu(h, mtu)
+        }
+        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
+            self.inner.incoming_gatt_writes()
+        }
+        fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
+            self.inner.scan_results()
+        }
+    }
+
+    /// BLE-2: a slow/unreachable peer's `connect()` must not stall a
+    /// concurrent `connect()` to a DIFFERENT peer. Before the fix, both
+    /// calls serialized on one `connections` lock held across the entire
+    /// blocking `connect_gatt` FFI round trip, so the fast peer's connect
+    /// could not complete until the slow one did — real behaviour observed
+    /// on physical hardware as every message stalling behind one bad dial.
+    #[tokio::test]
+    async fn ble2_slow_connect_to_one_peer_does_not_stall_another() {
+        let slow_mac = BleAddress([0xAA; 6]);
+        let adapter = std::sync::Arc::new(SlowConnectAdapter {
+            inner: SimulatedBleAdapter::new(),
+            slow_mac,
+            delay: Duration::from_millis(500),
+        });
+        let t = BleTransport::new(Some(adapter));
+        let slow_peer = peer_with_mac(PeerId([0x40; 32]), "AA:AA:AA:AA:AA:AA");
+        let fast_peer = peer_with_mac(PeerId([0x41; 32]), "BB:BB:BB:BB:BB:BB");
+
+        let slow_fut = t.connect(&slow_peer);
+        // Give the slow connect a head start so it is genuinely holding
+        // whatever it holds before the fast one starts.
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        let start = std::time::Instant::now();
+        t.connect(&fast_peer)
+            .await
+            .expect("fast peer connect must succeed");
+        let fast_elapsed = start.elapsed();
+        assert!(
+            fast_elapsed < Duration::from_millis(300),
+            "connect to a different, healthy peer must not wait on a slow peer's \
+             connect_gatt (BLE-2): took {fast_elapsed:?}"
+        );
+        slow_fut.await.expect("slow peer connect must also succeed");
     }
 
     #[derive(Default)]
