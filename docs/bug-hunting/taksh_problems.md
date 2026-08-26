@@ -1,4 +1,4 @@
-# Section 3 — Routing, Transport & Storage: Deep Bug-Hunt Report
+﻿# Section 3 — Routing, Transport & Storage: Deep Bug-Hunt Report
 
 **Owner:** Taksh Shah
 **Section:** 3 — Routing, Transport & Storage (`docs/testing/CODE_REVIEW_SECTIONS.md`)
@@ -43,13 +43,13 @@ These three results interact rather than simply stack: the parts of this section
 | Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
-| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain |
+| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
-| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
-| **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
+| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** | ⬜ |
+| **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime | ⬜ |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **258** | **0** | **22** | **2** | **0** | |
+| **Total** | | **284** | **258** | **0** | **22** | **2** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -115,12 +115,12 @@ Hardware was not required: `transport/simulated.rs` and `sim/scenario.rs` exist 
 
 | Field | Meaning |
 |---|---|
-| **Severity** | Consequence if it fires in production, independent of likelihood. |
-| **Confidence** | `Certain` = the cited line is unambiguous. `High` = defect is clear, exact trigger may vary. `Medium` = mechanism is real, reachability not fully established. |
-| **Verdict** | Result of the adversarial pass, where one was run. |
-| **Location** | `file.rs:line` — line numbers are against commit `28a76f6`. |
-| **Root cause** | Why the code came to be this way. Included because several defects here are the *same mistake repeated*, and those are only fixable at the cause. |
-| **Dependencies / blast radius** | What else must change or be re-verified. Several fixes cross into Sections 2, 4 and 5 and need their owners' agreement — those are called out explicitly. |
+| **Severity** | Consequence if it fires in production, independent of likelihood. | ⬜ |
+| **Confidence** | `Certain` = the cited line is unambiguous. `High` = defect is clear, exact trigger may vary. `Medium` = mechanism is real, reachability not fully established. | ⬜ |
+| **Verdict** | Result of the adversarial pass, where one was run. | ⬜ |
+| **Location** | `file.rs:line` — line numbers are against commit `28a76f6`. | ⬜ |
+| **Root cause** | Why the code came to be this way. Included because several defects here are the *same mistake repeated*, and those are only fixable at the cause. | ⬜ |
+| **Dependencies / blast radius** | What else must change or be re-verified. Several fixes cross into Sections 2, 4 and 5 and need their owners' agreement — those are called out explicitly. | ⬜ |
 
 ### Severity scale
 
@@ -188,292 +188,292 @@ Only `iris-desktop` even declares a dependency on `iris-storage`, and it does no
 
 All 284 findings, in report order. Severities are post-verification.
 
-| ID | Severity | File | Finding |
-|---|---|---|---|
-| **SYS-1** | Medium | `dedup_cache.rs:63` | A known, documented, already-fixed panic class was left unfixed at three routing sites |
-| **SYS-2** | High | `{ble,lora,satellite,wifiaware,wifi_direct}.rs` | Five of the six transports have no timeout on any adapter call — a hung radio blocks the node indefinitely |
-| **SYS-3** | High | `transport/mod.rs:294-332` | The inbound-lag counter — whose own comment says this failure "must never be invisible" — has no reader |
-| **SYS-4** | Medium | `gateway/mod.rs` | Error-discarding `let _ =` is used 68 times across Section 3, concentrated in the gateway |
-| **SYS-5** | High | `{ble,wifiaware,wifi_direct,lora,satellite}.rs` | 113 production `.lock().unwrap()` sites make every radio transport one panic away from permanently dead |
-| **SYS-6** | Low | `ble.rs:179-181` | Mock transports that silently report success are `pub` in the production API |
-| **ROUT-1** | Medium | `dedup_cache.rs:62-64` | `ForwardedCache::evict_old` panics on `Instant::now() - 1h` — the exact bug the repo already fixed in `neighbor_table.rs` |
-| **ROUT-2** | Low | `routing/mod.rs:301-302` | `RoutingEngine::prune` panics on `Instant::now() - 3600s` |
-| **ROUT-3** | Low | `known_path.rs:77-80` | `RoutingTable::prune_expired` panics on `Instant::now() - expiry` |
-| **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist |
-| **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented |
-| **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable |
-| **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever |
-| **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates |
-| **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set |
-| **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h |
-| **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound |
-| **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one |
-| **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound |
-| **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned |
-| **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window |
-| **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument |
-| **ROUT-17** | Medium | `flood.rs:42-73` | Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender |
-| **ROUT-18** | Medium | `flood.rs:26-31` | `max_hops_for_priority(P0) = u8::MAX` — "unlimited" is a 255-hop amplification budget on the one class an attacker forges |
-| **ROUT-19** | Medium | `routing/mod.rs:231-249` | Direct and KnownPath bypass the hop budget entirely, contradicting `decide`'s own contract |
-| **ROUT-20** | Medium | `flood.rs:51` | Every flood decision deep-clones every neighbor's ~175 KB Bloom filter |
-| **ROUT-21** | Medium | `routing/mod.rs:62-75` | `ForwardingDecision` carries no transport; neither Direct nor Flood verifies a usable transport exists |
-| **ROUT-22** | Medium | `opportunistic.rs:212-220` | `OpportunisticRouter::spray` has no memory of which contacts already hold a copy |
-| **ROUT-23** | Medium | `opportunistic.rs:25,` | Spray L values contradict both spec tables; `DEFAULT_SPRAY_L = 8` is unreachable |
-| **ROUT-24** | Medium | `routing/mod.rs:241-249` | Algorithm 2.5 is hard-wired to zero candidates — the opportunistic layer can never fire inside `decide` |
-| **ROUT-25** | Medium | `opportunistic.rs:212-220` | `OpportunisticRouter::spray` is never called by the engine — cold-start fallback is unimplemented |
-| **ROUT-26** | Medium | `dedup_cache.rs:22,` | `ForwardedCache`'s Bloom is ~351 KB — 5.5× the mandated 64 KB cap |
-| **ROUT-27** | Low | `routing/mod.rs:209-217` | `iris.routing.floods_total` is registered but never incremented |
-| **ROUT-28** | High | `flood.rs:147-218` | `flood_terminates_no_loops_property` asserts nothing — a tautological "property test" cited as verification evidence |
-| **ROUT-29** | Medium | `flood.rs:220-245` | `flood_no_backtrack_no_reflood_property` builds a nonsensical already-flooded set, making its assertions near-vacuous |
-| **ROUT-30** | Medium | `dedup_cache.rs:116-127` | `ring_eviction_removes_expired_exact_entries` tests no eviction |
-| **ROUT-31** | Medium | `store.rs:33,` | `ttl_check_arrival_time` enshrines the immortality bug, and `>` vs `<=` puts `store::is_expired` one second out of step with `expiry::is_expired` |
-| **ROUT-32** | Medium | `routing.rs:36-39,` | `opportunistic_decide_50_candidates` benchmarks the degenerate `NoAdvantage` path |
-| **ROUT-33** | Medium | `routing.rs:1-6,` | The routing benchmark measures shared mutated state, times an unrelated `clone`, benchmarks aging with K=0, benches no L0 algorithm, and its header describes a spray bench that does not exist |
-| **ROUT-34** | Low | `flood.rs:53-56,` | Dead placeholder code that reads as load-bearing |
-| **ROUT-35** | Low | `routing/mod.rs:265-267` | Empty tautological `else if` branch in the decision chain |
-| **ROUT-36** | Low | `store.rs:31` | Two functions named `is_expired` in one crate with swapped argument orders and opposite skew semantics |
-| **DTN-1** | Critical | `scf.rs:199-226` | SCF store is completely unbounded — `buffer_message` never enforces `max_bytes` and eviction is never called in production |
-| **DTN-2** | High | `scf.rs:56-71` | No message-COUNT bound and no duplicate suppression — the same `MessageId` can occupy unlimited slots |
-| **DTN-3** | High | `scf_contact.rs:64-97` | No per-peer "already offered" record — the same message is re-offered to the same peer on every contact event |
-| **DTN-4** | Critical | `scf.rs:257-276` | `messages_forwardable_to` requires an EXACT recipient match — multi-hop store-carry-forward relaying is impossible |
-| **DTN-5** | High | `scf.rs:278-299` | Delivered / Dropped messages are never removed from the buffer — terminal entries leak forever |
-| **DTN-6** | High | `scf.rs:63-70` | `expiry_unix` and the TTL check trust an attacker-controlled `timestamp`/`ttl_seconds` — messages can be made unexpirable and eviction-proof |
-| **DTN-7** | High | `scf.rs:337-366` | `evict_until` silently gives up when only P0 remains — a P0/SOS flood is an unbounded, uncapped memory sink |
-| **DTN-8** | Medium | `scf.rs:170-175` | `evict_until` recomputes `usage()` (an O(n) fold) twice per evicted message — quadratic blowup under pressure |
-| **DTN-9** | Medium | `scf.rs:53-61` | The `BTreeMap` key ordering does not match the eviction order the spec and doc comments claim |
-| **DTN-10** | Medium | `scf.rs:187-189` | `approx_bytes` counts only the payload — attacker-controlled envelope fields (cert chain, routing hints, encryption header) are invisible to capacity accounting |
-| **DTN-11** | Medium | `scf_eviction.rs:32-70` | `ScfEvictionPolicy` is entirely unwired decoration — `is_evictable`/`eviction_weight` never called, `evict_to_capacity`/`DeviceClass` have no production caller |
-| **DTN-12** | High | `prophet.rs:151-181` | PRoPHET aging is never executed in production — `age()` and `prune()` have no non-benchmark callers, so DPs only ever increase |
-| **DTN-13** | High | `prophet.rs:154-181` | `age()` resets `last_meet` to *now* for every entry — calling it more often than `aging_interval` means aging never happens at all |
-| **DTN-14** | Medium | `prophet.rs:176-179` | `age()` also clobbers the Eq. 1 encounter-interval clock, permanently pinning `P_encounter` at its ceiling |
-| **DTN-15** | Critical | `prophet.rs:186-239` | The transitivity loop bypasses `MAX_DP_ENTRIES` entirely — one `meet` from a hostile peer can insert unlimited DP entries |
-| **DTN-16** | Medium | `prophet.rs:405-414` | `capped_entries_evict_lowest` is a fake test — a `u8` cast makes it insert 10 entries instead of 4106, so the cap is never exercised |
-| **DTN-17** | Medium | `prophet.rs:164-168` | `gamma.powi(k as i32)` — `u64 → i32` truncation can wrap negative and inflate a DP to `+inf` |
-| **DTN-18** | High | `prophet.rs:224-237` | No DP value is ever clamped to `[0, 1]`, and no self-exclusion exists — a peer can make this node believe it is the best carrier for itself |
-| **DTN-19** | Low | `prophet.rs:258-273` | `prune()` allocates a full clone of the table only to feed a `debug_assert`, and runs the same `retain` twice |
-| **DTN-20** | High | `scf.rs:73-81` | No retry, no backoff, no ack timeout — `AckPending` is an absorbing state and `StoredMessage` lacks the `last_forward_attempt` field the spec requires |
-| **DTN-21** | Medium | `scf.rs:228-246` | `status_for` fabricates a `Delivered` status for a message that has not been delivered |
-| **DTN-22** | Medium | `scf.rs:24-35` | Three of the seven `DeliveryStatus` states are never constructed — the SCF state machine is only half implemented |
-| **DTN-23** | Medium | `scf_contact.rs:64-101` | `on_new_contact` ranking is O(n²), and its `unwrap_or(7)` fallback silently demotes any message it cannot find |
-| **DTN-24** | Medium | `scf_contact.rs:107-115` | `enqueue_forward` discards the only failure signal it has and unconditionally returns `Ok(())` |
-| **DTN-25** | Medium | `scf_contact.rs:64-97` | `bandwidth_limit` is counted in **messages**, so a contact window is budgeted without reference to message size |
-| **BLE-1** | High | `ble.rs:157-178` | `BleAdapter` has no disconnect callback — a vanished peer stays `Connected` forever |
-| **BLE-2** | High | `ble.rs:686-806` | `connect()` holds a `std::sync::Mutex` across blocking FFI calls inside an async fn |
-| **BLE-3** | High | `ble.rs:704` | A per-peer connect flips a transport-global state, evicting the whole transport from routing |
-| **BLE-4** | High | `ble.rs:756-771` | The poller's frame-partition write-back is destroyed by the FFI bridge — cross-peer frame loss on real devices |
-| **BLE-5** | High | `ble_att.rs:110-156` | The whole negotiate-late MTU mechanism is unwired — `AttSegmenter`'s live MTU is dead code |
-| **BLE-6** | Medium | `ble.rs:720-731` | iOS-leg `set_mtu` failure fallback misinterprets an MTU as a payload — every frame 3 bytes over the link budget |
-| **BLE-7** | Medium | `ble.rs:720-722` | `set_mtu` errors are silently swallowed |
-| **BLE-8** | Low | `ble.rs:619-624` | Unauthenticated advert bytes become `IncomingMessage.peer_id` |
-| **BLE-9** | Critical | `ble.rs:80-85` | `AdvertisementData` cannot express connectability, and its UUID/name are dropped at the FFI seam |
-| **BLE-10** | Medium | `ble.rs:829-842` | A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking |
-| **BLE-11** | Medium | `ble.rs:897-904` | `parse_mac` silently converts malformed input into a valid-looking address |
-| **BLE-12** | Medium | `ble.rs:888-895` | `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported` |
-| **BLE-13** | Medium | `ble.rs:560-564` | `.drain(..).take(n)` silently destroys every scan result past `max_peers` |
-| **BLE-14** | Medium | `ble.rs:583-605` | Blocking GATT connect/read/disconnect inside a synchronous closure in an async fn, with no timeout |
-| **BLE-15** | Medium | `ble.rs:637-679` | Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind |
-| **BLE-16** | Medium | `ble.rs:779-785` | BLE inbound drops are invisible; Wi-Fi Aware counts the same event |
-| **BLE-17** | Medium | `ble.rs:477-512` | Scan backoff escalates permanently and is never reset by a successful scan |
-| **BLE-18** | Medium | `ble.rs:828` | The service UUID is used as the data characteristic UUID |
-| **BLE-19** | Medium | `ble.rs:533-627` | BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout` |
-| **BLE-20** | Low | `ble_advert.rs:58-60` | `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects |
-| **BLE-21** | Low | `ble_advert.rs:151-152` | `MAX_ADVERT_BYTES` is unwired — `DiscoveryBeacon::parse` has no upper bound |
-| **BLE-22** | Low | `ble_advert.rs:92-93` | Beacon `freshness_minutes` and `capabilities` are parsed and then thrown away |
-| **BLE-23** | Medium | `ble_att.rs:230-249` | Reassembly has no aggregate byte cap and no per-chunk length validation |
-| **BLE-24** | Low | `ble_att.rs:481-497` | Tests that pass regardless of the logic they claim to cover |
-| **BLE-25** | Low | `ble_att.rs:146-148` | One shared `msg_id` counter for all peers, `Relaxed`, with silent wrap |
-| **BLE-26** | Low | `ble.rs:74-77` | `ScanFilter::rssi_threshold` is never set and `ScanResult::rssi` is never read |
-| **BLE-27** | High | `wifiaware.rs:754-799` | Wi-Fi Aware poller backlog is unbounded — the per-tick budget bounds CPU but not memory |
-| **BLE-28** | High | `wifiaware.rs:199-201` | The availability watcher never runs on real hardware — `Degraded` is a simulator-only state |
-| **BLE-29** | High | `wifiaware.rs:583-594` | Link death is classified by substring-matching the adapter's error text |
-| **BLE-30** | High | `wifiaware.rs:172-173` | The two hot-path drains are infallible by signature, forcing every adapter error to be swallowed |
-| **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` |
-| **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented |
-| **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader |
-| **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call |
-| **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call |
-| **BLE-36** | Medium | `wifiaware.rs:906-913` | `stop_discovery` is a partial stop, and `shutdown` is irreversible |
-| **BLE-37** | Low | `wifiaware.rs:125-147` | `PublishConfig` is a constant — every field is dead configuration |
-| **BLE-38** | Low | `wifiaware.rs:98-103` | NAN RSSI is carried across the FFI and dropped at the bridge |
-| **BLE-39** | Low | `wifiaware.rs:945-950` | `connect()` trusts a caller-supplied peer handle with no cross-check against the beacon |
-| **BLE-40** | Low | `wifiaware.rs:276-293` | `SimMeshCoordinator` masks two real backpressure behaviours from every test |
-| **RF-1** | High | `lora.rs:794-803` | The duty tracker bills a radio profile the module is never actually configured with |
-| **RF-2** | High | `lora.rs:309-336` | The hourly duty budget is reset to 100 % by every process restart |
-| **RF-3** | High | `lora.rs:161-175` | P0 SOS is refused on LoRa while 40 % of the legal budget sits unused |
-| **RF-4** | Medium | `lora.rs:1414-1421` | Airtime is refunded on *any* `tx()` error, including errors raised after the PA keyed up |
-| **RF-5** | Medium | `lora.rs:1403-1412` | `BudgetExhausted`'s next-legal-send-window is computed, then thrown away |
-| **RF-6** | Medium | `lora.rs:264-293` | The monotonic guard is anchored to `Instant`, so device suspend silently redefines "one hour" |
-| **RF-7** | Medium | `lora.rs:516-524` | No maximum per-transmission on-time — a single P0 frame is a 9.02 s continuous emission |
-| **RF-8** | Medium | `lora.rs:74-84` | Pinned centre frequency 866.000 MHz is not in the documented IN865 channel plan, and duty is tracked globally rather than per sub-band |
-| **RF-9** | Medium | `lora.rs:1476-1512` | `poll_inbound` has an unbounded receive loop — a hostile in-range transmitter livelocks the poller |
-| **RF-10** | Medium | `lora.rs:151-159` | Spec says "P4+ never transmitted over LoRa"; the code gives P3–P7 a 5 % airtime share and the tests exercise it |
-| **RF-11** | Medium | `lora.rs:1562-1580` | LoRa (and satellite) never leave `Connected` on link failure and never report `Degraded`; `LinkStatus` telemetry is fetched and discarded |
-| **RF-12** | Medium | `lora.rs:1441-1461` | `drain_backlog` swallows every error class identically (LoRa and satellite) |
-| **RF-13** | Medium | `lora.rs:1153-1219` | The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held |
-| **RF-14** | Low | `lora.rs:571-575` | LDRO condition omits SF12/BW250 — airtime is *under*-counted for that profile |
-| **RF-15** | Low | `lora.rs:1010-1077` | The whole link-budget model is unwired, and its distance clamp makes far links look reachable |
-| **RF-16** | Low | `lora.rs:373-389` | `DutyCycleTracker::refund` is a public de-billing API on a tracker documented as having "no runtime override" |
-| **RF-17** | Low | `lora.rs:1320-1327` | `close()` errors are discarded on every LoRa/satellite teardown path |
-| **RF-18** | High | `satellite.rs:387-417` | The satellite spend guard has **no** forward-clock-jump guard — the LoRa fix was never mirrored |
-| **RF-19** | High | `satellite.rs:1008-1016` | The `Expensive`-transport priority gate does not exist in the selector — P3+ can be selected onto satellite and then hard-fails with no fallback |
-| **RF-20** | High | `satellite.rs:1050-1068` | "User is warned before the satellite send" is a no-op — the hook has zero production callers and defaults to auto-approve |
-| **RF-21** | High | `satellite.rs:437-449` | P0 satellite sends are completely unmetered and unrecorded — unbounded spend and a lying spend meter |
-| **RF-22** | Medium | `satellite.rs:523-530` | `record_mailbox_check` is unthrottled and can never be refused — ~44 polls exhaust the daily budget and lock out all P1/P2 |
-| **RF-23** | Low | `satellite.rs:56-59` | `RETRY_BASE_MS` / `RETRY_JITTER_FRACTION` are "pinned by a test" but no retry logic exists |
-| **RF-24** | Medium | `wifi_direct.rs:1032-1042` | `discovery_should_rearm()` never arms the window — it returns `true` on every call, so the 30 s cadence is dead code |
-| **RF-25** | High | `wifi_direct.rs:1049-1059` | `is_link_loss_error` matches strings that the real Android adapter never produces — a dead group is never torn down |
-| **RF-26** | High | `wifi_direct.rs:98-100` | The default `GroupConfig` makes **both** peers Group Owners; GO intent is never negotiated and never reaches the platform |
-| **RF-27** | Medium | `wifi_direct.rs:196-197` | Two adapter-trait methods cannot report failure by signature, forcing the Android bridge to swallow every error |
-| **RF-28** | Medium | `wifi_direct.rs:947-982` | The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames |
-| **RF-29** | Medium | `wifi_direct.rs:959-966` | Malformed, truncated and zero-length inbound frames are dropped with no counter and no log |
-| **RF-30** | Medium | `wifi_direct.rs:1312-1329` | `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever |
-| **RF-31** | Low | `wifi_direct.rs:794-795` | `dropped_inbound` is write-only — the counter has no accessor |
-| **RF-32** | Medium | `wifi_direct.rs:20-24` | The TCP-over-GO data plane described in the module docs is not implemented — `go_addr`, `group_info` and `set_operating_band` are never called |
-| **RF-33** | Low | `wifi_direct.rs:1095-1114` | `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering |
-| **RF-34** | Low | `wifi_direct_serv.rs:109-112` | The TXT record's `freshness_minutes` is parsed and never used, and `peer_short` is fully attacker-chosen |
-| **RF-35** | High | `internet.rs:1-13` | No TLS and no relay authentication — the transport is plaintext TCP, contradicting its own module docs and INTERNET.md |
-| **RF-36** | High | `internet.rs:241-250` | `resolve_relay`'s fallback chain re-opens RED-0001-01 — a send for peer B goes out on peer A's relay |
-| **RF-37** | High | `internet.rs:280-325` | A reader task resurrects a shut-down transport by unconditionally storing `Available` on EOF |
-| **RF-38** | High | `internet.rs:139-148` | There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff |
-| **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection |
-| **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half |
-| **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames |
-| **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers |
-| **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous |
-| **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused |
-| **RF-45** | Medium | `simulated.rs:159-166` | `connect()` cannot fail, `bandwidth_bps` never throttles, ordering is not preserved, and in-flight sends survive shutdown |
-| **MG-1** | Medium | `manager.rs:154-162` | Single-best selection has no score floor — an "eliminated" transport is still returned |
-| **MG-2** | Medium | `manager.rs:141` | `Connecting` passes the `>= Available` eligibility filter |
-| **MG-3** | Medium | `manager.rs:152-160` | `total_cmp` does not reject NaN — a NaN score sorts **first** and wins selection |
-| **MG-4** | Medium | `manager.rs:178-206` | Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected |
-| **MG-5** | Medium | `manager.rs:156-160` | No fallback candidate for P2–P7 — the manager provides no transport-level failover at all |
-| **MG-6** | Medium | `manager.rs:109-117` | `deregister` holds the registry write lock across `transport.shutdown().await` |
-| **MG-7** | Medium | `manager.rs:84-106` | State-forwarder task is spawned before the duplicate check and is never aborted on deregister |
-| **MG-8** | Medium | `manager.rs:78-81` | `topology_events()` has zero subscribers — transport state changes are broadcast into a void |
-| **MG-9** | Medium | `manager.rs:173-207` | `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority |
-| **MG-10** | Medium | `transport/mod.rs:282-292` | `RadioConflictGroup` is defined and never enforced anywhere |
-| **MG-11** | Medium | `manager.rs:69-164` | `TransportManager::shutdown()` does not exist |
-| **MG-12** | Medium | `manager.rs:84-106` | No recovery-after-failure logic — no backoff, no retry, no `TransportPermanentFailure` |
-| **MG-13** | Medium | `manager.rs:38-43` | `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send |
-| **MG-14** | Medium | `manager.rs:47-60` | `target_peer` is never read — spec selection rule 1 (reachability) is unimplemented, and broadcast/unicast capability flags are ignored |
-| **MG-15** | Medium | `manager.rs:52` | `max_latency_ms` is never read |
-| **MG-16** | Medium | `manager.rs:209-226` | Battery cost model is entirely unwired — `cost_from_model`, `BLE_COST`, and cost accounting have no callers |
-| **MG-17** | Medium | `transport/mod.rs:192-203` | `TransportCost` is static — the "dynamic cost snapshot" never changes |
-| **MG-18** | Medium | `manager.rs:228-331` | `StubTransport` — a silent blackhole that reports success — ships in the public API |
-| **MG-19** | Medium | `transport/mod.rs:181-190` | `TransportCostClass` variants carry no cost data, so the required cost warning cannot be built |
-| **MG-20** | Medium | `manager.rs:586-599` | Three tests would still pass with the logic inverted or deleted |
-| **MG-21** | Medium | `transport/mod.rs:112-125` | `AtomicState` enforces no transitions and its inner field is public |
-| **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths |
-| **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa |
-| **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable |
-| **MG-25** | High | `gateway/mod.rs:672-718` | The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation |
-| **MG-26** | High | `gateway/mod.rs:393-401` | `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle |
-| **MG-27** | Medium | `gateway/mod.rs:745-763` | `sanitize_capability` sanitises only the four float fields — bandwidth, latency, queue depth, `max_priority`, and `gateway_type` are unchecked attacker input |
-| **MG-28** | Medium | `gateway/mod.rs:380-391` | Probation auto-expires to **full** trust with no successful delivery — the recovery rule is inverted |
-| **MG-29** | Medium | `gateway/mod.rs:693-705` | `reconcile` fabricates all-zero quality metrics, so an unmeasured peer scores near-maximum on 70 % of the weight budget |
-| **MG-30** | High | `gateway/mod.rs:407-726` | The entire GW-001 engine is unwired — `GatewayManager` is never constructed outside its own tests |
-| **MG-31** | Medium | `gateway/mod.rs:494-501` | Every `TopologyEvent` the gateway layer produces is discarded |
-| **MG-32** | Medium | `gateway/mod.rs:434-456` | This node's own uplink is never a selection candidate — a gateway node reports "no gateway available" |
-| **MG-33** | Medium | `gateway/mod.rs:597-665` | No hysteresis and no elected-gateway state — the gateway is re-elected from scratch on every message |
-| **MG-34** | Medium | `gateway/mod.rs:142-146` | `hop_count`, `path`, `transport_id`, `last_success`, and `primary_score` are stored and never read |
-| **MG-35** | Medium | `gateway/mod.rs:491-502` | Registry eviction picks oldest-confirmed, drops the withdrawal event, and mislabels the reason |
-| **MG-36** | Low | `gateway/mod.rs:728-743` | `self_internet_gateway` ignores live bandwidth, hardcodes reliability, and can emit NaN |
-| **MG-37** | Low | `gateway/mod.rs:137` | `Debug` derives print full 32-byte `PeerId`s, contradicting the project's own logging privacy rule |
-| **MG-38** | Low | `gateway/mod.rs:408-415` | `GatewayManager: Clone` silently forks the health monitor |
-| **MG-39** | Medium | `error.rs:25-26` | `TransportError::Io(String)` discards `ErrorKind` — callers cannot separate retryable from fatal |
-| **MG-40** | Medium | `error.rs:23-24` | `Protocol(String)` is overloaded across framing errors, MTU violations, and policy denials |
-| **MG-41** | Medium | `error.rs:10-12` | `NotSupported` conflates "hardware absent" with "permission denied" — different user remediations |
-| **MG-42** | Low | `error.rs:6` | `TransportError` drops the error source chain and compares by message string |
-| **SIM-1** | Critical | `sim/mod.rs:691` | Simulator forwarding order is non-deterministic because SCF buffer keys tie-break on wall-clock UUIDv7 |
-| **SIM-2** | High | `sim/mod.rs:674` | `result_anchor` is too weak to detect any behavioural change, so all "determinism" tests are near-tautologies |
-| **SIM-3** | Medium | `ml_experiments.rs:223-232` | `ac5_ten_seeds_reproducible_both_regimes` asserts 20 distinct anchors — the seed is literally in the string |
-| **SIM-4** | High | `sim/mod.rs:242-246` | The virtual clock is quantised to whole seconds, so TTL, message age and expiry are blind to sub-second sim time |
-| **SIM-5** | High | `sim/mod.rs:47` | `SimNode.evictions` is read in two places and written in none — the eviction metric is always zero |
-| **SIM-6** | Medium | `metrics.rs:38-39,67-73` | `peak_storage_bytes` is not a peak — it is the final usage after the run |
-| **SIM-7** | Critical | `sim/mod.rs:297-403` | The simulator implements its own forwarding pipeline and never calls the production `RoutingEngine` |
-| **SIM-8** | Critical | `sim/mod.rs:114-118` | The discrete-event simulator models no transport at all — no latency, bandwidth, MTU, reordering, duplication, corruption, or mid-transfer disconnect |
-| **SIM-9** | High | `sim/mod.rs:75-81` | `ContactEvent` is an instant, not a window — contact duration is unmodelled, so "contact window" assertions are fiction |
-| **SIM-10** | High | `sim/mod.rs:44,315,377` | `ForwardedCache` ages on `Instant::now()` (real time), so the sim's anti-loop cache never expires — `loop_free()` is guaranteed by construction |
-| **SIM-11** | Medium | `sim/mod.rs:120-127` | `ForwardResult` is computed on every forward and discarded — the enum is dead and the sim cannot count blocked/sinked forwards |
-| **SIM-12** | Medium | `sim/mod.rs:530-542,555-557` | Contacts sort before injections at the same timestamp, so a message injected at time T misses the contact at time T |
-| **SIM-13** | Critical | `experiment.rs:57-75` | Label leakage — the LP training labels come from the whole run, including test-window deliveries, in direct violation of the documented leakage guard |
-| **SIM-14** | High | `experiment.rs:62-63,72` | Group leakage — the same `msg_id` appears in both train and test slices, so the model memorises per-message outcomes |
-| **SIM-15** | Medium | `experiment.rs:110-124` | `agreement()` takes a `_labelled` closure it never uses — "decision agreement" measures agreement with L2, and the threshold sweep optimises for that, not for delivery |
-| **SIM-16** | Medium | `experiment.rs:152-174` | `evaluate_gt` never dedups contact times, so a duplicate timestamp injects a zero interval that drags the learned period down |
-| **SIM-17** | High | `sim_scenarios.rs:174-192` | `route2_opportunistic_matches_delivery_with_lower_overhead` never asserts overhead — and no test anywhere reads `overhead_ratio` |
-| **SIM-18** | Medium | `metrics.rs:85-89` | `overhead_ratio` returns 0.0 — the best possible value — when nothing was delivered |
-| **SIM-19** | Medium | `metrics.rs:123-132` | Percentile index uses `round()` on `(n-1)*p`, so `p95` of 20 samples returns the 90th percentile |
-| **SIM-20** | Medium | `metrics.rs:138-152` | `wilson_ci_95` produces silent `NaN` when `k > n`, and never validates its inputs |
-| **SIM-21** | High | `observability/mod.rs:124-160` | OBSERVABILITY.md promises gauges, a latency histogram and priority labels; the implementation ships bare counters with no labels |
-| **SIM-22** | Medium | `observability/mod.rs:219-231` | `MetricsRegistry::increment` silently discards unknown metric names, and a test enshrines that as a feature |
-| **SIM-23** | Medium | `observability/mod.rs:255-280` | `PriorityTally` and `DeliveryWindow` are public API, re-exported from the crate root, and constructed nowhere outside their own unit tests |
-| **SIM-24** | Medium | `observability/mod.rs:15-16` | P5 "bounded retention" is a comment, not a mechanism — `reset()` has no caller |
-| **SIM-25** | Medium | `observability/mod.rs:13-14,70-71` | The P3 "default-deny attribute allow-list" does not exist — `tracing` call sites pass free-form fields with no enforcement |
-| **SIM-26** | Medium | `routing/mod.rs:210-213` | Truncated but stable peer pseudonyms in routing and security logs let a log holder reconstruct the social graph |
-| **SIM-27** | Medium | `ml_experiments.rs:74-99` | `ac1_no_shadow_is_zero_cost` never runs the no-shadow case, and `ac2`'s "byte-identical" assertion compares a trivially-true inequality |
-| **SIM-28** | Medium | `ml_experiments.rs:237-251` | `ac6_shadow_features_encode_priority_rank` and `ac3`'s Brier assertion are tautologies |
-| **SIM-29** | Medium | `sim_scenarios.rs:104-112` | `loss_reduces_delivery_ratio_monotonically` and `route2_spray_bounds_overhead_property` both pass when the mechanism they test is disabled |
-| **SIM-30** | Medium | `sim/mod.rs:45,52` | Per-node sim state grows unboundedly with message count — `hops_by_msg`, `spray`, and the dedup ring are never pruned |
-| **SIM-31** | Low | `sim/mod.rs:178-180,205-207,232-234,750-756` | Dead sim API — `avg_latency_ms`, `shadow_enabled`, `injections_public`, `loss_rate`, `peak_storage_bytes` and `SimMetrics::overhead` have no readers |
-| **SIM-32** | Low | `scenario.rs:231-246` | `inject_standard` can address a message to its own sender, producing a permanently undeliverable message that silently deflates the delivery ratio |
-| **TAK-1** | Critical | `common/mod.rs:18-22` | All 14 PostgreSQL-backed storage tests silently no-op yet report PASS |
-| **TAK-2** | Critical | `pg.rs:160,170-179` | Remote attacker can permanently exhaust the store with unevictable P0 rows |
-| **TAK-3** | High | `pg.rs:294-305` | A single undecodable row permanently blocks the entire send queue |
-| **TAK-4** | High | `pg.rs:92-96` | No reconnection — one dropped PG connection bricks storage for the process lifetime |
-| **TAK-5** | High | `pg.rs:172-179` | Quota admission is a cross-store TOCTOU and never triggers eviction |
-| **TAK-6** | High | `pg.rs:88` | Database connection uses `NoTls` — password and all message CBOR travel in cleartext |
-| **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test |
-| **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three |
-| **TAK-9** | Medium | `pg.rs:191-195` | `u64 → i64` wrapping casts let a peer write negative timestamps into the store |
-| **TAK-10** | Medium | `pg.rs:197` | `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code |
-| **TAK-11** | Medium | `schema.rs:24-27` | Both partial indexes are unusable by the queries they were created for |
-| **TAK-12** | Medium | `eviction.rs:44-70` | The eviction loop issues two round trips per evicted row and can livelock |
-| **TAK-13** | Low | `gc.rs:22-28` | GC uses the default `MissedTickBehavior::Burst`, so a slow tick is followed by a stampede |
-| **TAK-14** | High | `seal.rs:28-34` | The at-rest AAD binds only 3 of 8 metadata columns, contradicting the module's tamper claim |
-| **TAK-15** | Medium | `pg.rs:220-229` | Enabling sealing makes every pre-existing plaintext row permanently unreadable — no data migration exists |
-| **TAK-16** | Medium | `seal.rs:60-63` | `Debug` derives expose the at-rest key and the DB password |
-| **TAK-17** | Low | `seal.rs:60-63` | The at-rest key is never zeroized |
-| **TAK-18** | High | `loom_models.rs:38-86` | The loom concurrency models exercise no Section 3 code at all |
-| **TAK-19** | High | `tokio_behavior.rs:140-177` | The test that claims to guard the transport-selection comparator cannot execute a single comparison |
-| **TAK-20** | Medium | `tokio_behavior.rs:179-197` | Two of the four `tokio_behavior` tests assert nothing about IRIS code |
-| **TAK-21** | Medium | `features.rs:28-34` | `FeatureVec` finiteness is enforced only by `debug_assert!`, so NaN reaches the scorer in release builds |
-| **TAK-22** | Low | `predictor.rs:103-105` | `GtPredictor::predict_next` can overflow `u64` on a sparse contact schedule |
-| **TAK-23** | Informational | `ml/mod.rs:9-15` | VERIFIED CLEAN — the ML predictor cannot bypass any security check |
-| **TAK-24** | Low | `eviction.rs:59` | Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy |
-| **TAK-25** | Low | `pg.rs:30-31` | `eviction_threshold` is a config field with no way to configure it |
-| **FFI-1** | Critical | `wifi_direct.rs:1095-1112` | Wi-Fi Direct peer handles are allocated from two independent namespaces — every `p2p_send` misses its link |
-| **FFI-2** | Critical | `wifi_direct.rs:1049-1058` | `p2pSend` reports success for a frame that was only queued — `is_link_loss_error` can never fire |
-| **FFI-3** | Critical | `wifi_direct.rs:1189-1205` | GO-side links are keyed by remote **IP**, client-side by **MAC** — the two roles disagree on handles |
-| **FFI-4** | Critical | `wifiaware.rs:126-145` | Wi-Fi Aware never advertises the IRIS beacon — `publish()` discards its entire config and sets no `serviceSpecificInfo` |
-| **FFI-5** | Critical | `wifi_direct_serv.rs:19-27` | Wi-Fi Direct never advertises the TXT-record beacon either — `addLocalService` is given `emptyMap()` |
-| **FFI-6** | Critical | `wifiaware.rs:1020-1050` | The Wi-Fi Aware NDP data path has no responder — no socket can ever be established |
-| **FFI-7** | Critical | `error.rs:7-26` | Missing runtime permissions surface as `SecurityException` — an undeclared error that aborts the Rust call |
-| **FFI-8** | High | `wifi_direct.rs:968-970` | Inbound Wi-Fi Direct frames are always attributed to the all-zero PeerId |
-| **FFI-9** | Medium | `wifi_direct.rs:1192-1199` | The band-fallback path in `create_group` can never fire — Kotlin's error string contains no "band" |
-| **FFI-10** | High | `wifi_direct.rs:92-96` | `go_addr` returns the GO's MAC address where Rust expects a routable endpoint address |
-| **FFI-11** | High | `wifiaware.rs:587-594` | Wi-Fi Aware link loss is reported as `"NDP network not yet available"` — a string no Rust matcher accepts |
-| **FFI-12** | High | `wifiaware.rs:1006-1012` | `unsubscribe` / `unpublish` / `stopDnsSd` drop session references without closing the platform sessions |
-| **FFI-13** | High | `wifi_direct.rs:906-931` | `start()` and `startDnsSd()` return success on a device that has no Wi-Fi Direct |
-| **FFI-14** | High | `wifi_direct.rs:1189-1215` | `addClient` silently succeeds for an unknown peer; `createGroup`/`joinGroup` return a fabricated group |
-| **FFI-15** | Medium | `wifi_direct.rs:1030-1042` | `startDiscovery` adds an unbounded number of DNS-SD service requests; `stopDiscovery` removes none |
-| **FFI-16** | High | `wifi_direct.rs:232-237` | The availability push channel is dead on Android — `spawn_avail_watcher` returns immediately for both transports |
-| **FFI-17** | Medium | `wifi_aware_adapter.rs:34-36` | RSSI is fabricated as 0 in Kotlin and then discarded by the bridge |
-| **FFI-18** | Medium | `wifi_direct.rs:1273` | `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks |
-| **FFI-19** | Medium | `wifi_direct_serv.rs:32-34` | Service-name constants disagree across the seam; `PublishConfig.service_name` and `PeerDiscovery.service_name` are both ignored |
-| **GAP-1** | High | `message_engine/mod.rs:1091-1140` | Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized |
-| **GAP-2** | High | `ble.rs:384` | `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB |
-| **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection |
-| **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms |
-| **GAP-5** | Medium | `ble_att.rs:9-14,` | The two live data-plane framings carry no version field, while all four discovery/latent framings do — the live wire format cannot be evolved |
-| **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field |
-| **GAP-7** | Critical | `message_engine/mod.rs:1207-1260` | `Transport::connect()` has zero production callers — no live transport can ever send a message |
-| **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start |
-| **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded |
-| **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender |
-| **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable |
-| **GAP-12** | Medium | `ble.rs:744-790` | The BLE per-peer poller wakes 20×/second forever, per connected peer, while its two sibling transports implement adaptive backoff |
-| **GAP-13** | Medium | `internet.rs:100-136` | The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently |
-| **GAP-14** | Informational | `-` | Verified-clean classes (a negative result, recorded so nobody re-hunts them) |
+| ID | Severity | File | Finding | Fix |
+|---|---|---|---|---|
+| **SYS-1** | Medium | `dedup_cache.rs:63` | A known, documented, already-fixed panic class was left unfixed at three routing sites | ✅ `4b03ae8` |
+| **SYS-2** | High | `{ble,lora,satellite,wifiaware,wifi_direct}.rs` | Five of the six transports have no timeout on any adapter call — a hung radio blocks the node indefinitely | ✅ `fec08ac` |
+| **SYS-3** | High | `transport/mod.rs:294-332` | The inbound-lag counter — whose own comment says this failure "must never be invisible" — has no reader | ✅ `57f8d85` |
+| **SYS-4** | Medium | `gateway/mod.rs` | Error-discarding `let _ =` is used 68 times across Section 3, concentrated in the gateway | ✅ `5d3199c` |
+| **SYS-5** | High | `{ble,wifiaware,wifi_direct,lora,satellite}.rs` | 113 production `.lock().unwrap()` sites make every radio transport one panic away from permanently dead | ✅ `5b1422c` (step 1) |
+| **SYS-6** | Low | `ble.rs:179-181` | Mock transports that silently report success are `pub` in the production API | ✅ `ec2036d` |
+| **ROUT-1** | Medium | `dedup_cache.rs:62-64` | `ForwardedCache::evict_old` panics on `Instant::now() - 1h` — the exact bug the repo already fixed in `neighbor_table.rs` | ⬜ |
+| **ROUT-2** | Low | `routing/mod.rs:301-302` | `RoutingEngine::prune` panics on `Instant::now() - 3600s` | ⬜ |
+| **ROUT-3** | Low | `known_path.rs:77-80` | `RoutingTable::prune_expired` panics on `Instant::now() - expiry` | ⬜ |
+| **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist | ⬜ |
+| **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ⬜ |
+| **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ⬜ |
+| **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ⬜ |
+| **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ⬜ |
+| **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ⬜ |
+| **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ⬜ |
+| **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ⬜ |
+| **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ⬜ |
+| **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound | ⬜ |
+| **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned | ⬜ |
+| **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window | ⬜ |
+| **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument | ⬜ |
+| **ROUT-17** | Medium | `flood.rs:42-73` | Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender | ⬜ |
+| **ROUT-18** | Medium | `flood.rs:26-31` | `max_hops_for_priority(P0) = u8::MAX` — "unlimited" is a 255-hop amplification budget on the one class an attacker forges | ⬜ |
+| **ROUT-19** | Medium | `routing/mod.rs:231-249` | Direct and KnownPath bypass the hop budget entirely, contradicting `decide`'s own contract | ⬜ |
+| **ROUT-20** | Medium | `flood.rs:51` | Every flood decision deep-clones every neighbor's ~175 KB Bloom filter | ⬜ |
+| **ROUT-21** | Medium | `routing/mod.rs:62-75` | `ForwardingDecision` carries no transport; neither Direct nor Flood verifies a usable transport exists | ⬜ |
+| **ROUT-22** | Medium | `opportunistic.rs:212-220` | `OpportunisticRouter::spray` has no memory of which contacts already hold a copy | ⬜ |
+| **ROUT-23** | Medium | `opportunistic.rs:25,` | Spray L values contradict both spec tables; `DEFAULT_SPRAY_L = 8` is unreachable | ⬜ |
+| **ROUT-24** | Medium | `routing/mod.rs:241-249` | Algorithm 2.5 is hard-wired to zero candidates — the opportunistic layer can never fire inside `decide` | ⬜ |
+| **ROUT-25** | Medium | `opportunistic.rs:212-220` | `OpportunisticRouter::spray` is never called by the engine — cold-start fallback is unimplemented | ⬜ |
+| **ROUT-26** | Medium | `dedup_cache.rs:22,` | `ForwardedCache`'s Bloom is ~351 KB — 5.5× the mandated 64 KB cap | ⬜ |
+| **ROUT-27** | Low | `routing/mod.rs:209-217` | `iris.routing.floods_total` is registered but never incremented | ⬜ |
+| **ROUT-28** | High | `flood.rs:147-218` | `flood_terminates_no_loops_property` asserts nothing — a tautological "property test" cited as verification evidence | ⬜ |
+| **ROUT-29** | Medium | `flood.rs:220-245` | `flood_no_backtrack_no_reflood_property` builds a nonsensical already-flooded set, making its assertions near-vacuous | ⬜ |
+| **ROUT-30** | Medium | `dedup_cache.rs:116-127` | `ring_eviction_removes_expired_exact_entries` tests no eviction | ⬜ |
+| **ROUT-31** | Medium | `store.rs:33,` | `ttl_check_arrival_time` enshrines the immortality bug, and `>` vs `<=` puts `store::is_expired` one second out of step with `expiry::is_expired` | ⬜ |
+| **ROUT-32** | Medium | `routing.rs:36-39,` | `opportunistic_decide_50_candidates` benchmarks the degenerate `NoAdvantage` path | ⬜ |
+| **ROUT-33** | Medium | `routing.rs:1-6,` | The routing benchmark measures shared mutated state, times an unrelated `clone`, benchmarks aging with K=0, benches no L0 algorithm, and its header describes a spray bench that does not exist | ⬜ |
+| **ROUT-34** | Low | `flood.rs:53-56,` | Dead placeholder code that reads as load-bearing | ⬜ |
+| **ROUT-35** | Low | `routing/mod.rs:265-267` | Empty tautological `else if` branch in the decision chain | ⬜ |
+| **ROUT-36** | Low | `store.rs:31` | Two functions named `is_expired` in one crate with swapped argument orders and opposite skew semantics | ⬜ |
+| **DTN-1** | Critical | `scf.rs:199-226` | SCF store is completely unbounded — `buffer_message` never enforces `max_bytes` and eviction is never called in production | ⬜ |
+| **DTN-2** | High | `scf.rs:56-71` | No message-COUNT bound and no duplicate suppression — the same `MessageId` can occupy unlimited slots | ⬜ |
+| **DTN-3** | High | `scf_contact.rs:64-97` | No per-peer "already offered" record — the same message is re-offered to the same peer on every contact event | ⬜ |
+| **DTN-4** | Critical | `scf.rs:257-276` | `messages_forwardable_to` requires an EXACT recipient match — multi-hop store-carry-forward relaying is impossible | ⬜ |
+| **DTN-5** | High | `scf.rs:278-299` | Delivered / Dropped messages are never removed from the buffer — terminal entries leak forever | ⬜ |
+| **DTN-6** | High | `scf.rs:63-70` | `expiry_unix` and the TTL check trust an attacker-controlled `timestamp`/`ttl_seconds` — messages can be made unexpirable and eviction-proof | ⬜ |
+| **DTN-7** | High | `scf.rs:337-366` | `evict_until` silently gives up when only P0 remains — a P0/SOS flood is an unbounded, uncapped memory sink | ⬜ |
+| **DTN-8** | Medium | `scf.rs:170-175` | `evict_until` recomputes `usage()` (an O(n) fold) twice per evicted message — quadratic blowup under pressure | ⬜ |
+| **DTN-9** | Medium | `scf.rs:53-61` | The `BTreeMap` key ordering does not match the eviction order the spec and doc comments claim | ⬜ |
+| **DTN-10** | Medium | `scf.rs:187-189` | `approx_bytes` counts only the payload — attacker-controlled envelope fields (cert chain, routing hints, encryption header) are invisible to capacity accounting | ⬜ |
+| **DTN-11** | Medium | `scf_eviction.rs:32-70` | `ScfEvictionPolicy` is entirely unwired decoration — `is_evictable`/`eviction_weight` never called, `evict_to_capacity`/`DeviceClass` have no production caller | ⬜ |
+| **DTN-12** | High | `prophet.rs:151-181` | PRoPHET aging is never executed in production — `age()` and `prune()` have no non-benchmark callers, so DPs only ever increase | ⬜ |
+| **DTN-13** | High | `prophet.rs:154-181` | `age()` resets `last_meet` to *now* for every entry — calling it more often than `aging_interval` means aging never happens at all | ⬜ |
+| **DTN-14** | Medium | `prophet.rs:176-179` | `age()` also clobbers the Eq. 1 encounter-interval clock, permanently pinning `P_encounter` at its ceiling | ⬜ |
+| **DTN-15** | Critical | `prophet.rs:186-239` | The transitivity loop bypasses `MAX_DP_ENTRIES` entirely — one `meet` from a hostile peer can insert unlimited DP entries | ⬜ |
+| **DTN-16** | Medium | `prophet.rs:405-414` | `capped_entries_evict_lowest` is a fake test — a `u8` cast makes it insert 10 entries instead of 4106, so the cap is never exercised | ⬜ |
+| **DTN-17** | Medium | `prophet.rs:164-168` | `gamma.powi(k as i32)` — `u64 → i32` truncation can wrap negative and inflate a DP to `+inf` | ⬜ |
+| **DTN-18** | High | `prophet.rs:224-237` | No DP value is ever clamped to `[0, 1]`, and no self-exclusion exists — a peer can make this node believe it is the best carrier for itself | ⬜ |
+| **DTN-19** | Low | `prophet.rs:258-273` | `prune()` allocates a full clone of the table only to feed a `debug_assert`, and runs the same `retain` twice | ⬜ |
+| **DTN-20** | High | `scf.rs:73-81` | No retry, no backoff, no ack timeout — `AckPending` is an absorbing state and `StoredMessage` lacks the `last_forward_attempt` field the spec requires | ⬜ |
+| **DTN-21** | Medium | `scf.rs:228-246` | `status_for` fabricates a `Delivered` status for a message that has not been delivered | ⬜ |
+| **DTN-22** | Medium | `scf.rs:24-35` | Three of the seven `DeliveryStatus` states are never constructed — the SCF state machine is only half implemented | ⬜ |
+| **DTN-23** | Medium | `scf_contact.rs:64-101` | `on_new_contact` ranking is O(n²), and its `unwrap_or(7)` fallback silently demotes any message it cannot find | ⬜ |
+| **DTN-24** | Medium | `scf_contact.rs:107-115` | `enqueue_forward` discards the only failure signal it has and unconditionally returns `Ok(())` | ⬜ |
+| **DTN-25** | Medium | `scf_contact.rs:64-97` | `bandwidth_limit` is counted in **messages**, so a contact window is budgeted without reference to message size | ⬜ |
+| **BLE-1** | High | `ble.rs:157-178` | `BleAdapter` has no disconnect callback — a vanished peer stays `Connected` forever | ⬜ |
+| **BLE-2** | High | `ble.rs:686-806` | `connect()` holds a `std::sync::Mutex` across blocking FFI calls inside an async fn | ⬜ |
+| **BLE-3** | High | `ble.rs:704` | A per-peer connect flips a transport-global state, evicting the whole transport from routing | ⬜ |
+| **BLE-4** | High | `ble.rs:756-771` | The poller's frame-partition write-back is destroyed by the FFI bridge — cross-peer frame loss on real devices | ⬜ |
+| **BLE-5** | High | `ble_att.rs:110-156` | The whole negotiate-late MTU mechanism is unwired — `AttSegmenter`'s live MTU is dead code | ⬜ |
+| **BLE-6** | Medium | `ble.rs:720-731` | iOS-leg `set_mtu` failure fallback misinterprets an MTU as a payload — every frame 3 bytes over the link budget | ⬜ |
+| **BLE-7** | Medium | `ble.rs:720-722` | `set_mtu` errors are silently swallowed | ⬜ |
+| **BLE-8** | Low | `ble.rs:619-624` | Unauthenticated advert bytes become `IncomingMessage.peer_id` | ⬜ |
+| **BLE-9** | Critical | `ble.rs:80-85` | `AdvertisementData` cannot express connectability, and its UUID/name are dropped at the FFI seam | ⬜ |
+| **BLE-10** | Medium | `ble.rs:829-842` | A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking | ⬜ |
+| **BLE-11** | Medium | `ble.rs:897-904` | `parse_mac` silently converts malformed input into a valid-looking address | ⬜ |
+| **BLE-12** | Medium | `ble.rs:888-895` | `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported` | ⬜ |
+| **BLE-13** | Medium | `ble.rs:560-564` | `.drain(..).take(n)` silently destroys every scan result past `max_peers` | ⬜ |
+| **BLE-14** | Medium | `ble.rs:583-605` | Blocking GATT connect/read/disconnect inside a synchronous closure in an async fn, with no timeout | ⬜ |
+| **BLE-15** | Medium | `ble.rs:637-679` | Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind | ⬜ |
+| **BLE-16** | Medium | `ble.rs:779-785` | BLE inbound drops are invisible; Wi-Fi Aware counts the same event | ⬜ |
+| **BLE-17** | Medium | `ble.rs:477-512` | Scan backoff escalates permanently and is never reset by a successful scan | ⬜ |
+| **BLE-18** | Medium | `ble.rs:828` | The service UUID is used as the data characteristic UUID | ⬜ |
+| **BLE-19** | Medium | `ble.rs:533-627` | BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout` | ⬜ |
+| **BLE-20** | Low | `ble_advert.rs:58-60` | `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects | ⬜ |
+| **BLE-21** | Low | `ble_advert.rs:151-152` | `MAX_ADVERT_BYTES` is unwired — `DiscoveryBeacon::parse` has no upper bound | ⬜ |
+| **BLE-22** | Low | `ble_advert.rs:92-93` | Beacon `freshness_minutes` and `capabilities` are parsed and then thrown away | ⬜ |
+| **BLE-23** | Medium | `ble_att.rs:230-249` | Reassembly has no aggregate byte cap and no per-chunk length validation | ⬜ |
+| **BLE-24** | Low | `ble_att.rs:481-497` | Tests that pass regardless of the logic they claim to cover | ⬜ |
+| **BLE-25** | Low | `ble_att.rs:146-148` | One shared `msg_id` counter for all peers, `Relaxed`, with silent wrap | ⬜ |
+| **BLE-26** | Low | `ble.rs:74-77` | `ScanFilter::rssi_threshold` is never set and `ScanResult::rssi` is never read | ⬜ |
+| **BLE-27** | High | `wifiaware.rs:754-799` | Wi-Fi Aware poller backlog is unbounded — the per-tick budget bounds CPU but not memory | ⬜ |
+| **BLE-28** | High | `wifiaware.rs:199-201` | The availability watcher never runs on real hardware — `Degraded` is a simulator-only state | ⬜ |
+| **BLE-29** | High | `wifiaware.rs:583-594` | Link death is classified by substring-matching the adapter's error text | ⬜ |
+| **BLE-30** | High | `wifiaware.rs:172-173` | The two hot-path drains are infallible by signature, forcing every adapter error to be swallowed | ⬜ |
+| **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` | ⬜ |
+| **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ⬜ |
+| **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ⬜ |
+| **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ⬜ |
+| **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ⬜ |
+| **BLE-36** | Medium | `wifiaware.rs:906-913` | `stop_discovery` is a partial stop, and `shutdown` is irreversible | ⬜ |
+| **BLE-37** | Low | `wifiaware.rs:125-147` | `PublishConfig` is a constant — every field is dead configuration | ⬜ |
+| **BLE-38** | Low | `wifiaware.rs:98-103` | NAN RSSI is carried across the FFI and dropped at the bridge | ⬜ |
+| **BLE-39** | Low | `wifiaware.rs:945-950` | `connect()` trusts a caller-supplied peer handle with no cross-check against the beacon | ⬜ |
+| **BLE-40** | Low | `wifiaware.rs:276-293` | `SimMeshCoordinator` masks two real backpressure behaviours from every test | ⬜ |
+| **RF-1** | High | `lora.rs:794-803` | The duty tracker bills a radio profile the module is never actually configured with | ⬜ |
+| **RF-2** | High | `lora.rs:309-336` | The hourly duty budget is reset to 100 % by every process restart | ⬜ |
+| **RF-3** | High | `lora.rs:161-175` | P0 SOS is refused on LoRa while 40 % of the legal budget sits unused | ⬜ |
+| **RF-4** | Medium | `lora.rs:1414-1421` | Airtime is refunded on *any* `tx()` error, including errors raised after the PA keyed up | ⬜ |
+| **RF-5** | Medium | `lora.rs:1403-1412` | `BudgetExhausted`'s next-legal-send-window is computed, then thrown away | ⬜ |
+| **RF-6** | Medium | `lora.rs:264-293` | The monotonic guard is anchored to `Instant`, so device suspend silently redefines "one hour" | ⬜ |
+| **RF-7** | Medium | `lora.rs:516-524` | No maximum per-transmission on-time — a single P0 frame is a 9.02 s continuous emission | ⬜ |
+| **RF-8** | Medium | `lora.rs:74-84` | Pinned centre frequency 866.000 MHz is not in the documented IN865 channel plan, and duty is tracked globally rather than per sub-band | ⬜ |
+| **RF-9** | Medium | `lora.rs:1476-1512` | `poll_inbound` has an unbounded receive loop — a hostile in-range transmitter livelocks the poller | ⬜ |
+| **RF-10** | Medium | `lora.rs:151-159` | Spec says "P4+ never transmitted over LoRa"; the code gives P3–P7 a 5 % airtime share and the tests exercise it | ⬜ |
+| **RF-11** | Medium | `lora.rs:1562-1580` | LoRa (and satellite) never leave `Connected` on link failure and never report `Degraded`; `LinkStatus` telemetry is fetched and discarded | ⬜ |
+| **RF-12** | Medium | `lora.rs:1441-1461` | `drain_backlog` swallows every error class identically (LoRa and satellite) | ⬜ |
+| **RF-13** | Medium | `lora.rs:1153-1219` | The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held | ⬜ |
+| **RF-14** | Low | `lora.rs:571-575` | LDRO condition omits SF12/BW250 — airtime is *under*-counted for that profile | ⬜ |
+| **RF-15** | Low | `lora.rs:1010-1077` | The whole link-budget model is unwired, and its distance clamp makes far links look reachable | ⬜ |
+| **RF-16** | Low | `lora.rs:373-389` | `DutyCycleTracker::refund` is a public de-billing API on a tracker documented as having "no runtime override" | ⬜ |
+| **RF-17** | Low | `lora.rs:1320-1327` | `close()` errors are discarded on every LoRa/satellite teardown path | ⬜ |
+| **RF-18** | High | `satellite.rs:387-417` | The satellite spend guard has **no** forward-clock-jump guard — the LoRa fix was never mirrored | ⬜ |
+| **RF-19** | High | `satellite.rs:1008-1016` | The `Expensive`-transport priority gate does not exist in the selector — P3+ can be selected onto satellite and then hard-fails with no fallback | ⬜ |
+| **RF-20** | High | `satellite.rs:1050-1068` | "User is warned before the satellite send" is a no-op — the hook has zero production callers and defaults to auto-approve | ⬜ |
+| **RF-21** | High | `satellite.rs:437-449` | P0 satellite sends are completely unmetered and unrecorded — unbounded spend and a lying spend meter | ⬜ |
+| **RF-22** | Medium | `satellite.rs:523-530` | `record_mailbox_check` is unthrottled and can never be refused — ~44 polls exhaust the daily budget and lock out all P1/P2 | ⬜ |
+| **RF-23** | Low | `satellite.rs:56-59` | `RETRY_BASE_MS` / `RETRY_JITTER_FRACTION` are "pinned by a test" but no retry logic exists | ⬜ |
+| **RF-24** | Medium | `wifi_direct.rs:1032-1042` | `discovery_should_rearm()` never arms the window — it returns `true` on every call, so the 30 s cadence is dead code | ⬜ |
+| **RF-25** | High | `wifi_direct.rs:1049-1059` | `is_link_loss_error` matches strings that the real Android adapter never produces — a dead group is never torn down | ⬜ |
+| **RF-26** | High | `wifi_direct.rs:98-100` | The default `GroupConfig` makes **both** peers Group Owners; GO intent is never negotiated and never reaches the platform | ⬜ |
+| **RF-27** | Medium | `wifi_direct.rs:196-197` | Two adapter-trait methods cannot report failure by signature, forcing the Android bridge to swallow every error | ⬜ |
+| **RF-28** | Medium | `wifi_direct.rs:947-982` | The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames | ⬜ |
+| **RF-29** | Medium | `wifi_direct.rs:959-966` | Malformed, truncated and zero-length inbound frames are dropped with no counter and no log | ⬜ |
+| **RF-30** | Medium | `wifi_direct.rs:1312-1329` | `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever | ⬜ |
+| **RF-31** | Low | `wifi_direct.rs:794-795` | `dropped_inbound` is write-only — the counter has no accessor | ⬜ |
+| **RF-32** | Medium | `wifi_direct.rs:20-24` | The TCP-over-GO data plane described in the module docs is not implemented — `go_addr`, `group_info` and `set_operating_band` are never called | ⬜ |
+| **RF-33** | Low | `wifi_direct.rs:1095-1114` | `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering | ⬜ |
+| **RF-34** | Low | `wifi_direct_serv.rs:109-112` | The TXT record's `freshness_minutes` is parsed and never used, and `peer_short` is fully attacker-chosen | ⬜ |
+| **RF-35** | High | `internet.rs:1-13` | No TLS and no relay authentication — the transport is plaintext TCP, contradicting its own module docs and INTERNET.md | ✅ `2df2c9d` |
+| **RF-36** | High | `internet.rs:241-250` | `resolve_relay`'s fallback chain re-opens RED-0001-01 — a send for peer B goes out on peer A's relay | ✅ `c22b3b6` |
+| **RF-37** | High | `internet.rs:280-325` | A reader task resurrects a shut-down transport by unconditionally storing `Available` on EOF | ✅ `c9f28f0` |
+| **RF-38** | High | `internet.rs:139-148` | There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff | ✅ `bc1f2ed` |
+| **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection | ⬜ |
+| **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ⬜ |
+| **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ⬜ |
+| **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ⬜ |
+| **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ⬜ |
+| **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused | ⬜ |
+| **RF-45** | Medium | `simulated.rs:159-166` | `connect()` cannot fail, `bandwidth_bps` never throttles, ordering is not preserved, and in-flight sends survive shutdown | ⬜ |
+| **MG-1** | Medium | `manager.rs:154-162` | Single-best selection has no score floor — an "eliminated" transport is still returned | ⬜ |
+| **MG-2** | Medium | `manager.rs:141` | `Connecting` passes the `>= Available` eligibility filter | ⬜ |
+| **MG-3** | Medium | `manager.rs:152-160` | `total_cmp` does not reject NaN — a NaN score sorts **first** and wins selection | ⬜ |
+| **MG-4** | Medium | `manager.rs:178-206` | Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected | ⬜ |
+| **MG-5** | Medium | `manager.rs:156-160` | No fallback candidate for P2–P7 — the manager provides no transport-level failover at all | ⬜ |
+| **MG-6** | Medium | `manager.rs:109-117` | `deregister` holds the registry write lock across `transport.shutdown().await` | ⬜ |
+| **MG-7** | Medium | `manager.rs:84-106` | State-forwarder task is spawned before the duplicate check and is never aborted on deregister | ⬜ |
+| **MG-8** | Medium | `manager.rs:78-81` | `topology_events()` has zero subscribers — transport state changes are broadcast into a void | ⬜ |
+| **MG-9** | Medium | `manager.rs:173-207` | `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority | ⬜ |
+| **MG-10** | Medium | `transport/mod.rs:282-292` | `RadioConflictGroup` is defined and never enforced anywhere | ⬜ |
+| **MG-11** | Medium | `manager.rs:69-164` | `TransportManager::shutdown()` does not exist | ⬜ |
+| **MG-12** | Medium | `manager.rs:84-106` | No recovery-after-failure logic — no backoff, no retry, no `TransportPermanentFailure` | ⬜ |
+| **MG-13** | Medium | `manager.rs:38-43` | `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send | ⬜ |
+| **MG-14** | Medium | `manager.rs:47-60` | `target_peer` is never read — spec selection rule 1 (reachability) is unimplemented, and broadcast/unicast capability flags are ignored | ⬜ |
+| **MG-15** | Medium | `manager.rs:52` | `max_latency_ms` is never read | ⬜ |
+| **MG-16** | Medium | `manager.rs:209-226` | Battery cost model is entirely unwired — `cost_from_model`, `BLE_COST`, and cost accounting have no callers | ⬜ |
+| **MG-17** | Medium | `transport/mod.rs:192-203` | `TransportCost` is static — the "dynamic cost snapshot" never changes | ⬜ |
+| **MG-18** | Medium | `manager.rs:228-331` | `StubTransport` — a silent blackhole that reports success — ships in the public API | ⬜ |
+| **MG-19** | Medium | `transport/mod.rs:181-190` | `TransportCostClass` variants carry no cost data, so the required cost warning cannot be built | ⬜ |
+| **MG-20** | Medium | `manager.rs:586-599` | Three tests would still pass with the logic inverted or deleted | ⬜ |
+| **MG-21** | Medium | `transport/mod.rs:112-125` | `AtomicState` enforces no transitions and its inner field is public | ⬜ |
+| **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths | ⬜ |
+| **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa | ⬜ |
+| **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable | ⬜ |
+| **MG-25** | High | `gateway/mod.rs:672-718` | The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation | ⬜ |
+| **MG-26** | High | `gateway/mod.rs:393-401` | `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle | ⬜ |
+| **MG-27** | Medium | `gateway/mod.rs:745-763` | `sanitize_capability` sanitises only the four float fields — bandwidth, latency, queue depth, `max_priority`, and `gateway_type` are unchecked attacker input | ⬜ |
+| **MG-28** | Medium | `gateway/mod.rs:380-391` | Probation auto-expires to **full** trust with no successful delivery — the recovery rule is inverted | ⬜ |
+| **MG-29** | Medium | `gateway/mod.rs:693-705` | `reconcile` fabricates all-zero quality metrics, so an unmeasured peer scores near-maximum on 70 % of the weight budget | ⬜ |
+| **MG-30** | High | `gateway/mod.rs:407-726` | The entire GW-001 engine is unwired — `GatewayManager` is never constructed outside its own tests | ⬜ |
+| **MG-31** | Medium | `gateway/mod.rs:494-501` | Every `TopologyEvent` the gateway layer produces is discarded | ⬜ |
+| **MG-32** | Medium | `gateway/mod.rs:434-456` | This node's own uplink is never a selection candidate — a gateway node reports "no gateway available" | ⬜ |
+| **MG-33** | Medium | `gateway/mod.rs:597-665` | No hysteresis and no elected-gateway state — the gateway is re-elected from scratch on every message | ⬜ |
+| **MG-34** | Medium | `gateway/mod.rs:142-146` | `hop_count`, `path`, `transport_id`, `last_success`, and `primary_score` are stored and never read | ⬜ |
+| **MG-35** | Medium | `gateway/mod.rs:491-502` | Registry eviction picks oldest-confirmed, drops the withdrawal event, and mislabels the reason | ⬜ |
+| **MG-36** | Low | `gateway/mod.rs:728-743` | `self_internet_gateway` ignores live bandwidth, hardcodes reliability, and can emit NaN | ⬜ |
+| **MG-37** | Low | `gateway/mod.rs:137` | `Debug` derives print full 32-byte `PeerId`s, contradicting the project's own logging privacy rule | ⬜ |
+| **MG-38** | Low | `gateway/mod.rs:408-415` | `GatewayManager: Clone` silently forks the health monitor | ⬜ |
+| **MG-39** | Medium | `error.rs:25-26` | `TransportError::Io(String)` discards `ErrorKind` — callers cannot separate retryable from fatal | ⬜ |
+| **MG-40** | Medium | `error.rs:23-24` | `Protocol(String)` is overloaded across framing errors, MTU violations, and policy denials | ⬜ |
+| **MG-41** | Medium | `error.rs:10-12` | `NotSupported` conflates "hardware absent" with "permission denied" — different user remediations | ⬜ |
+| **MG-42** | Low | `error.rs:6` | `TransportError` drops the error source chain and compares by message string | ⬜ |
+| **SIM-1** | Critical | `sim/mod.rs:691` | Simulator forwarding order is non-deterministic because SCF buffer keys tie-break on wall-clock UUIDv7 | ⬜ |
+| **SIM-2** | High | `sim/mod.rs:674` | `result_anchor` is too weak to detect any behavioural change, so all "determinism" tests are near-tautologies | ⬜ |
+| **SIM-3** | Medium | `ml_experiments.rs:223-232` | `ac5_ten_seeds_reproducible_both_regimes` asserts 20 distinct anchors — the seed is literally in the string | ⬜ |
+| **SIM-4** | High | `sim/mod.rs:242-246` | The virtual clock is quantised to whole seconds, so TTL, message age and expiry are blind to sub-second sim time | ⬜ |
+| **SIM-5** | High | `sim/mod.rs:47` | `SimNode.evictions` is read in two places and written in none — the eviction metric is always zero | ⬜ |
+| **SIM-6** | Medium | `metrics.rs:38-39,67-73` | `peak_storage_bytes` is not a peak — it is the final usage after the run | ⬜ |
+| **SIM-7** | Critical | `sim/mod.rs:297-403` | The simulator implements its own forwarding pipeline and never calls the production `RoutingEngine` | ⬜ |
+| **SIM-8** | Critical | `sim/mod.rs:114-118` | The discrete-event simulator models no transport at all — no latency, bandwidth, MTU, reordering, duplication, corruption, or mid-transfer disconnect | ⬜ |
+| **SIM-9** | High | `sim/mod.rs:75-81` | `ContactEvent` is an instant, not a window — contact duration is unmodelled, so "contact window" assertions are fiction | ⬜ |
+| **SIM-10** | High | `sim/mod.rs:44,315,377` | `ForwardedCache` ages on `Instant::now()` (real time), so the sim's anti-loop cache never expires — `loop_free()` is guaranteed by construction | ⬜ |
+| **SIM-11** | Medium | `sim/mod.rs:120-127` | `ForwardResult` is computed on every forward and discarded — the enum is dead and the sim cannot count blocked/sinked forwards | ⬜ |
+| **SIM-12** | Medium | `sim/mod.rs:530-542,555-557` | Contacts sort before injections at the same timestamp, so a message injected at time T misses the contact at time T | ⬜ |
+| **SIM-13** | Critical | `experiment.rs:57-75` | Label leakage — the LP training labels come from the whole run, including test-window deliveries, in direct violation of the documented leakage guard | ⬜ |
+| **SIM-14** | High | `experiment.rs:62-63,72` | Group leakage — the same `msg_id` appears in both train and test slices, so the model memorises per-message outcomes | ⬜ |
+| **SIM-15** | Medium | `experiment.rs:110-124` | `agreement()` takes a `_labelled` closure it never uses — "decision agreement" measures agreement with L2, and the threshold sweep optimises for that, not for delivery | ⬜ |
+| **SIM-16** | Medium | `experiment.rs:152-174` | `evaluate_gt` never dedups contact times, so a duplicate timestamp injects a zero interval that drags the learned period down | ⬜ |
+| **SIM-17** | High | `sim_scenarios.rs:174-192` | `route2_opportunistic_matches_delivery_with_lower_overhead` never asserts overhead — and no test anywhere reads `overhead_ratio` | ⬜ |
+| **SIM-18** | Medium | `metrics.rs:85-89` | `overhead_ratio` returns 0.0 — the best possible value — when nothing was delivered | ⬜ |
+| **SIM-19** | Medium | `metrics.rs:123-132` | Percentile index uses `round()` on `(n-1)*p`, so `p95` of 20 samples returns the 90th percentile | ⬜ |
+| **SIM-20** | Medium | `metrics.rs:138-152` | `wilson_ci_95` produces silent `NaN` when `k > n`, and never validates its inputs | ⬜ |
+| **SIM-21** | High | `observability/mod.rs:124-160` | OBSERVABILITY.md promises gauges, a latency histogram and priority labels; the implementation ships bare counters with no labels | ⬜ |
+| **SIM-22** | Medium | `observability/mod.rs:219-231` | `MetricsRegistry::increment` silently discards unknown metric names, and a test enshrines that as a feature | ⬜ |
+| **SIM-23** | Medium | `observability/mod.rs:255-280` | `PriorityTally` and `DeliveryWindow` are public API, re-exported from the crate root, and constructed nowhere outside their own unit tests | ⬜ |
+| **SIM-24** | Medium | `observability/mod.rs:15-16` | P5 "bounded retention" is a comment, not a mechanism — `reset()` has no caller | ⬜ |
+| **SIM-25** | Medium | `observability/mod.rs:13-14,70-71` | The P3 "default-deny attribute allow-list" does not exist — `tracing` call sites pass free-form fields with no enforcement | ⬜ |
+| **SIM-26** | Medium | `routing/mod.rs:210-213` | Truncated but stable peer pseudonyms in routing and security logs let a log holder reconstruct the social graph | ⬜ |
+| **SIM-27** | Medium | `ml_experiments.rs:74-99` | `ac1_no_shadow_is_zero_cost` never runs the no-shadow case, and `ac2`'s "byte-identical" assertion compares a trivially-true inequality | ⬜ |
+| **SIM-28** | Medium | `ml_experiments.rs:237-251` | `ac6_shadow_features_encode_priority_rank` and `ac3`'s Brier assertion are tautologies | ⬜ |
+| **SIM-29** | Medium | `sim_scenarios.rs:104-112` | `loss_reduces_delivery_ratio_monotonically` and `route2_spray_bounds_overhead_property` both pass when the mechanism they test is disabled | ⬜ |
+| **SIM-30** | Medium | `sim/mod.rs:45,52` | Per-node sim state grows unboundedly with message count — `hops_by_msg`, `spray`, and the dedup ring are never pruned | ⬜ |
+| **SIM-31** | Low | `sim/mod.rs:178-180,205-207,232-234,750-756` | Dead sim API — `avg_latency_ms`, `shadow_enabled`, `injections_public`, `loss_rate`, `peak_storage_bytes` and `SimMetrics::overhead` have no readers | ⬜ |
+| **SIM-32** | Low | `scenario.rs:231-246` | `inject_standard` can address a message to its own sender, producing a permanently undeliverable message that silently deflates the delivery ratio | ⬜ |
+| **TAK-1** | Critical | `common/mod.rs:18-22` | All 14 PostgreSQL-backed storage tests silently no-op yet report PASS | ✅ `c5325d8` |
+| **TAK-2** | Critical | `pg.rs:160,170-179` | Remote attacker can permanently exhaust the store with unevictable P0 rows | ⬜ |
+| **TAK-3** | High | `pg.rs:294-305` | A single undecodable row permanently blocks the entire send queue | ⬜ |
+| **TAK-4** | High | `pg.rs:92-96` | No reconnection — one dropped PG connection bricks storage for the process lifetime | ⬜ |
+| **TAK-5** | High | `pg.rs:172-179` | Quota admission is a cross-store TOCTOU and never triggers eviction | ⬜ |
+| **TAK-6** | High | `pg.rs:88` | Database connection uses `NoTls` — password and all message CBOR travel in cleartext | ⬜ |
+| **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test | ⬜ |
+| **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three | ⬜ |
+| **TAK-9** | Medium | `pg.rs:191-195` | `u64 → i64` wrapping casts let a peer write negative timestamps into the store | ⬜ |
+| **TAK-10** | Medium | `pg.rs:197` | `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code | ⬜ |
+| **TAK-11** | Medium | `schema.rs:24-27` | Both partial indexes are unusable by the queries they were created for | ⬜ |
+| **TAK-12** | Medium | `eviction.rs:44-70` | The eviction loop issues two round trips per evicted row and can livelock | ⬜ |
+| **TAK-13** | Low | `gc.rs:22-28` | GC uses the default `MissedTickBehavior::Burst`, so a slow tick is followed by a stampede | ⬜ |
+| **TAK-14** | High | `seal.rs:28-34` | The at-rest AAD binds only 3 of 8 metadata columns, contradicting the module's tamper claim | ⬜ |
+| **TAK-15** | Medium | `pg.rs:220-229` | Enabling sealing makes every pre-existing plaintext row permanently unreadable — no data migration exists | ⬜ |
+| **TAK-16** | Medium | `seal.rs:60-63` | `Debug` derives expose the at-rest key and the DB password | ⬜ |
+| **TAK-17** | Low | `seal.rs:60-63` | The at-rest key is never zeroized | ⬜ |
+| **TAK-18** | High | `loom_models.rs:38-86` | The loom concurrency models exercise no Section 3 code at all | ⬜ |
+| **TAK-19** | High | `tokio_behavior.rs:140-177` | The test that claims to guard the transport-selection comparator cannot execute a single comparison | ⬜ |
+| **TAK-20** | Medium | `tokio_behavior.rs:179-197` | Two of the four `tokio_behavior` tests assert nothing about IRIS code | ⬜ |
+| **TAK-21** | Medium | `features.rs:28-34` | `FeatureVec` finiteness is enforced only by `debug_assert!`, so NaN reaches the scorer in release builds | ⬜ |
+| **TAK-22** | Low | `predictor.rs:103-105` | `GtPredictor::predict_next` can overflow `u64` on a sparse contact schedule | ⬜ |
+| **TAK-23** | Informational | `ml/mod.rs:9-15` | VERIFIED CLEAN — the ML predictor cannot bypass any security check | ⬜ |
+| **TAK-24** | Low | `eviction.rs:59` | Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy | ⬜ |
+| **TAK-25** | Low | `pg.rs:30-31` | `eviction_threshold` is a config field with no way to configure it | ⬜ |
+| **FFI-1** | Critical | `wifi_direct.rs:1095-1112` | Wi-Fi Direct peer handles are allocated from two independent namespaces — every `p2p_send` misses its link | ⬜ |
+| **FFI-2** | Critical | `wifi_direct.rs:1049-1058` | `p2pSend` reports success for a frame that was only queued — `is_link_loss_error` can never fire | ⬜ |
+| **FFI-3** | Critical | `wifi_direct.rs:1189-1205` | GO-side links are keyed by remote **IP**, client-side by **MAC** — the two roles disagree on handles | ⬜ |
+| **FFI-4** | Critical | `wifiaware.rs:126-145` | Wi-Fi Aware never advertises the IRIS beacon — `publish()` discards its entire config and sets no `serviceSpecificInfo` | ⬜ |
+| **FFI-5** | Critical | `wifi_direct_serv.rs:19-27` | Wi-Fi Direct never advertises the TXT-record beacon either — `addLocalService` is given `emptyMap()` | ⬜ |
+| **FFI-6** | Critical | `wifiaware.rs:1020-1050` | The Wi-Fi Aware NDP data path has no responder — no socket can ever be established | ⬜ |
+| **FFI-7** | Critical | `error.rs:7-26` | Missing runtime permissions surface as `SecurityException` — an undeclared error that aborts the Rust call | ⬜ |
+| **FFI-8** | High | `wifi_direct.rs:968-970` | Inbound Wi-Fi Direct frames are always attributed to the all-zero PeerId | ⬜ |
+| **FFI-9** | Medium | `wifi_direct.rs:1192-1199` | The band-fallback path in `create_group` can never fire — Kotlin's error string contains no "band" | ⬜ |
+| **FFI-10** | High | `wifi_direct.rs:92-96` | `go_addr` returns the GO's MAC address where Rust expects a routable endpoint address | ⬜ |
+| **FFI-11** | High | `wifiaware.rs:587-594` | Wi-Fi Aware link loss is reported as `"NDP network not yet available"` — a string no Rust matcher accepts | ⬜ |
+| **FFI-12** | High | `wifiaware.rs:1006-1012` | `unsubscribe` / `unpublish` / `stopDnsSd` drop session references without closing the platform sessions | ⬜ |
+| **FFI-13** | High | `wifi_direct.rs:906-931` | `start()` and `startDnsSd()` return success on a device that has no Wi-Fi Direct | ⬜ |
+| **FFI-14** | High | `wifi_direct.rs:1189-1215` | `addClient` silently succeeds for an unknown peer; `createGroup`/`joinGroup` return a fabricated group | ⬜ |
+| **FFI-15** | Medium | `wifi_direct.rs:1030-1042` | `startDiscovery` adds an unbounded number of DNS-SD service requests; `stopDiscovery` removes none | ⬜ |
+| **FFI-16** | High | `wifi_direct.rs:232-237` | The availability push channel is dead on Android — `spawn_avail_watcher` returns immediately for both transports | ⬜ |
+| **FFI-17** | Medium | `wifi_aware_adapter.rs:34-36` | RSSI is fabricated as 0 in Kotlin and then discarded by the bridge | ⬜ |
+| **FFI-18** | Medium | `wifi_direct.rs:1273` | `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks | ⬜ |
+| **FFI-19** | Medium | `wifi_direct_serv.rs:32-34` | Service-name constants disagree across the seam; `PublishConfig.service_name` and `PeerDiscovery.service_name` are both ignored | ⬜ |
+| **GAP-1** | High | `message_engine/mod.rs:1091-1140` | Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized | ⬜ |
+| **GAP-2** | High | `ble.rs:384` | `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB | ⬜ |
+| **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection | ⬜ |
+| **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms | ⬜ |
+| **GAP-5** | Medium | `ble_att.rs:9-14,` | The two live data-plane framings carry no version field, while all four discovery/latent framings do — the live wire format cannot be evolved | ⬜ |
+| **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field | ⬜ |
+| **GAP-7** | Critical | `message_engine/mod.rs:1207-1260` | `Transport::connect()` has zero production callers — no live transport can ever send a message | ✅ `d32c4cc` |
+| **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start | ⬜ |
+| **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded | ⬜ |
+| **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender | ⬜ |
+| **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable | ⬜ |
+| **GAP-12** | Medium | `ble.rs:744-790` | The BLE per-peer poller wakes 20×/second forever, per connected peer, while its two sibling transports implement adaptive backoff | ⬜ |
+| **GAP-13** | Medium | `internet.rs:100-136` | The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently | ⬜ |
+| **GAP-14** | Informational | `-` | Verified-clean classes (a negative result, recorded so nobody re-hunts them) | ⬜ |
 
 ## 6. Systemic findings — patterns that span the whole section
 
@@ -8912,10 +8912,10 @@ $ grep -rn "GatewayManager" --include=*.rs --include=*.kt --include=*.swift . | 
 
 | Verdict | Findings |
 |---|---|
-| **Confirmed as stated** | MG-30 (1) |
-| **Confirmed but downgraded** | MG-1, MG-2, MG-3, MG-5, MG-6, MG-8, MG-9, MG-26, MG-27, MG-28, MG-29, MG-39, MG-40 (13) |
-| **Partially correct** | MG-4, MG-7, MG-25 (3) |
-| **Refuted** | none (0) |
+| **Confirmed as stated** | MG-30 (1) | ⬜ |
+| **Confirmed but downgraded** | MG-1, MG-2, MG-3, MG-5, MG-6, MG-8, MG-9, MG-26, MG-27, MG-28, MG-29, MG-39, MG-40 (13) | ⬜ |
+| **Partially correct** | MG-4, MG-7, MG-25 (3) | ⬜ |
+| **Refuted** | none (0) | ⬜ |
 
 - **Net: 17 of 17 findings describe real code defects — zero fabrications.** The auditor's *code reading* is excellent: every line number I checked was exact and every snippet verbatim, which is rare and worth saying.
 - **But severity is systematically inflated: 0 of 3 Criticals survive as Critical, and 0 of 14 Highs survive as High.** Corrected distribution: **2 High** (MG-26, MG-30), **15 Medium**, 0 Critical.
@@ -9836,11 +9836,11 @@ a **hardware-leg release blocker**.
 
 | Verdict | Findings |
 |---|---|
-| **CONFIRMED** (severity unchanged) | RF-2, RF-3, RF-20, RF-21, RF-25, RF-26, RF-35, RF-36, RF-37, RF-38 — **10** |
-| **CONFIRMED-BUT-DOWNGRADED** | RF-1 (Critical→High), RF-4 (High→Medium), RF-18 (Critical→High), RF-24 (High→Medium), RF-42 (High→Medium), RF-43 (High→Medium) — **6** |
-| **PARTIALLY-CORRECT** | RF-19 (severity holds at High; the stated failure mechanism is wrong — the engine *does* requeue) — **1** |
-| **REFUTED** | none — **0** |
-| **UNPROVABLE** | none — **0** |
+| **CONFIRMED** (severity unchanged) | RF-2, RF-3, RF-20, RF-21, RF-25, RF-26, RF-35, RF-36, RF-37, RF-38 — **10** | ⬜ |
+| **CONFIRMED-BUT-DOWNGRADED** | RF-1 (Critical→High), RF-4 (High→Medium), RF-18 (Critical→High), RF-24 (High→Medium), RF-42 (High→Medium), RF-43 (High→Medium) — **6** | ⬜ |
+| **PARTIALLY-CORRECT** | RF-19 (severity holds at High; the stated failure mechanism is wrong — the engine *does* requeue) — **1** | ⬜ |
+| **REFUTED** | none — **0** | ⬜ |
+| **UNPROVABLE** | none — **0** | ⬜ |
 
 - **Net: 17 of 17 findings survive as real defects.** Not one was fabricated, and every cited line number and code quotation I checked was verbatim-accurate. That is an unusually clean result and the auditor deserves the credit.
 - **But 7 of 17 (41%) carry a severity or impact statement I would not put in front of the team as written.** The corrections cluster in one recognisable pattern: the auditor establishes the defect rigorously, then reasons about consequences one layer up without checking that layer. RF-19 (missed `requeue_or_fail`), RF-42 and RF-43 (missed the manager's `state()` and `max_message_size` filters), and RF-1/RF-4/RF-18 (did not weigh that no transmitting adapter exists) are all the same error.
@@ -10820,20 +10820,20 @@ This is the review's most consequential result, and it came from the one lens th
 
 | ID | What |
 |---|---|
-| **FFI-1** | Wi-Fi Direct peer handles are allocated from two independent namespaces, so every `p2p_send` misses its link. |
-| **FFI-3** | Group-owner-side links are keyed by remote IP, client-side by MAC — the two roles disagree on handles. |
-| **FFI-4** | Wi-Fi Aware never advertises the IRIS beacon: `publish()` discards its config and sets no `serviceSpecificInfo`. |
-| **FFI-5** | Wi-Fi Direct never advertises its TXT-record beacon either — `addLocalService` is handed `emptyMap()`. |
-| **FFI-6** | The Wi-Fi Aware NDP data path has no responder, so no socket can ever be established. |
-| **FFI-2** | `p2pSend` reports success for a frame that was merely queued, so `is_link_loss_error` can never fire. |
-| **FFI-7** | Missing runtime permissions surface as an undeclared `SecurityException` that aborts the Rust call. |
+| **FFI-1** | Wi-Fi Direct peer handles are allocated from two independent namespaces, so every `p2p_send` misses its link. | ⬜ |
+| **FFI-3** | Group-owner-side links are keyed by remote IP, client-side by MAC — the two roles disagree on handles. | ⬜ |
+| **FFI-4** | Wi-Fi Aware never advertises the IRIS beacon: `publish()` discards its config and sets no `serviceSpecificInfo`. | ⬜ |
+| **FFI-5** | Wi-Fi Direct never advertises its TXT-record beacon either — `addLocalService` is handed `emptyMap()`. | ⬜ |
+| **FFI-6** | The Wi-Fi Aware NDP data path has no responder, so no socket can ever be established. | ⬜ |
+| **FFI-2** | `p2pSend` reports success for a frame that was merely queued, so `is_link_loss_error` can never fire. | ⬜ |
+| **FFI-7** | Missing runtime permissions surface as an undeclared `SecurityException` that aborts the Rust call. | ⬜ |
 
 And **BLE messaging may be non-functional on Android** for two further reasons:
 
 | ID | What |
 |---|---|
-| **BLE-M1** | Android keys inbound GATT writes by `deviceHash(device)` (63-bit) while the Rust poller matches on sequential `connect_gatt` handles. The two never match, so no inbound BLE frame is ever delivered. |
-| **BLE-9** | The Android bridge publishes the advert un-GATT-connectable, so the peer cannot open the connection the data path depends on. |
+| **BLE-M1** | Android keys inbound GATT writes by `deviceHash(device)` (63-bit) while the Rust poller matches on sequential `connect_gatt` handles. The two never match, so no inbound BLE frame is ever delivered. | ⬜ |
+| **BLE-9** | The Android bridge publishes the advert un-GATT-connectable, so the peer cannot open the connection the data path depends on. | ⬜ |
 
 The common thread — and the reason none of this was noticed — is **FFI-13/FFI-14**: the Kotlin adapters return success unconditionally, including on a device with no Wi-Fi Direct at all. Every one of these failures is masked as a healthy transport.
 
@@ -10847,11 +10847,11 @@ Fix these next, because until they are fixed every other field report is unrelia
 
 | ID | What |
 |---|---|
-| **SYS-2** | No timeout on any adapter call in five of six transports. A hung radio stalls the whole outbound queue, including P0/SOS, forever. |
-| **SYS-3** | Inbound messages are silently dropped on channel lag; the counter that records it has no reader, so the loss is invisible. |
-| **SYS-5** | 113 `.lock().unwrap()` sites — one panic inside any lock scope permanently disables that transport. |
-| **BLE-29 / BLE-30** | Link death is classified by substring-matching adapter error text, and the strings the shipped Kotlin actually throws match none of the patterns. |
-| **TAK-1** | Fourteen storage tests report success without running. Live in CI **right now**, on every build. |
+| **SYS-2** | No timeout on any adapter call in five of six transports. A hung radio stalls the whole outbound queue, including P0/SOS, forever. | ⬜ |
+| **SYS-3** | Inbound messages are silently dropped on channel lag; the counter that records it has no reader, so the loss is invisible. | ⬜ |
+| **SYS-5** | 113 `.lock().unwrap()` sites — one panic inside any lock scope permanently disables that transport. | ⬜ |
+| **BLE-29 / BLE-30** | Link death is classified by substring-matching adapter error text, and the strings the shipped Kotlin actually throws match none of the patterns. | ⬜ |
+| **TAK-1** | Fourteen storage tests report success without running. Live in CI **right now**, on every build. | ⬜ |
 
 ### Tier 2 — Gates on the wiring commit (do not let it merge without these)
 
