@@ -14,6 +14,8 @@ thiserror.workspace = true
 tokio.workspace = true
 tokio-postgres.workspace = true
 tracing.workspace = true
+zeroize = { workspace = true, features = ["derive"] }
+
 
 [dev-dependencies]
 futures-util.workspace = true

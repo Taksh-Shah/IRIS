@@ -74,6 +74,16 @@ impl std::fmt::Debug for StorageKeySealer {
     }
 }
 
+/// TAK-17: zero the key material on drop, so the at-rest storage key does not
+/// linger in freed heap memory recoverable from core dumps, swap or
+/// hibernation images — consistent with how `iris-core` treats key material.
+impl Drop for StorageKeySealer {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        self.key.zeroize();
+    }
+}
+
 impl StorageKeySealer {
     /// Derive the at-rest key with `kdf::storage_key` (HKDF, domain-separated).
     pub fn from_master_key(master_key: &[u8]) -> Result<Self, CryptoError> {

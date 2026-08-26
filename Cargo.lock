@@ -2150,6 +2150,7 @@ dependencies = [
  "tokio-postgres",
  "tokio-test",
  "tracing",
+ "zeroize",
 ]
 
 [[package]]
