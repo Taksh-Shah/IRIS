@@ -87,6 +87,9 @@ pub struct PgStorage {
     config: PgStorageConfig,
     /// At-rest row sealing (CRYPTO-001 gate). `NoSealer` by default.
     sealer: Arc<dyn RowSealer>,
+    /// Rows quarantined by [`PgStorage::get_queue`] because they could not be
+    /// unsealed or decoded (TAK-3). Observable via [`PgStorage::quarantined_rows`].
+    quarantined: std::sync::atomic::AtomicU64,
 }
 
 fn status_to_text(s: MessageStatus) -> &'static str {
@@ -129,6 +132,7 @@ impl PgStorage {
             client: Arc::new(client),
             config,
             sealer: Arc::new(NoSealer),
+            quarantined: std::sync::atomic::AtomicU64::new(0),
         };
         store
             .client
@@ -176,6 +180,32 @@ impl PgStorage {
     /// Access the raw client for maintenance/administration.
     pub fn client(&self) -> &tokio_postgres::Client {
         &self.client
+    }
+
+    /// Rows quarantined by `get_queue` so far (TAK-3): unreadable rows are
+    /// skipped, marked `DELIVERY_FAILED` and counted instead of bricking the
+    /// send queue. A sudden rise equal to the whole queue indicates a
+    /// systemic cause — most likely a sealing-key mismatch — and should page
+    /// an operator before more traffic is accepted.
+    pub fn quarantined_rows(&self) -> u64 {
+        self.quarantined.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Move a row out of the send queue after an unrecoverable read failure:
+    /// `status -> DELIVERY_FAILED` leaves the `get_queue` predicate and makes
+    /// the row evictable. Failures to quarantine itself are logged and do not
+    /// propagate into the drain path.
+    async fn quarantine_row(&self, message_id: &str) {
+        if let Err(e) = self
+            .client
+            .execute(
+                "UPDATE messages SET status = 'DELIVERY_FAILED' WHERE message_id = $1",
+                &[&message_id],
+            )
+            .await
+        {
+            tracing::error!(message_id = %message_id, error = %e, "quarantine update failed");
+        }
     }
 
     fn projected_row_bytes(cbor_len: u64) -> u64 {
@@ -327,10 +357,31 @@ impl MessageStorage for PgStorage {
             let priority: i16 = r.get(2);
             let expires_at: i64 = r.get(3);
             let aad = crate::seal::row_aad(&id, priority as u8, expires_at as u64);
-            let cbor = self.sealer.unseal(&aad, &bytes)?;
+            // TAK-3: one unreadable row must not brick the whole queue. The
+            // row is quarantined (status -> DELIVERY_FAILED), which removes it
+            // from this predicate and makes it evictable; the failure is
+            // logged at ERROR and counted (see `quarantined_rows`). A
+            // systemic cause (e.g. wrong sealing key) shows up as the counter
+            // rising once per queued row — visible, not silent.
+            let cbor = match self.sealer.unseal(&aad, &bytes) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::error!(message_id = %id, error = %e, "quarantining unsealable row");
+                    self.quarantined
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.quarantine_row(&id).await;
+                    continue;
+                }
+            };
             match codec::decode(&cbor) {
                 Ok(env) => out.push(env),
-                Err(e) => return Err(StorageError::Backend(format!("get_queue decode: {e}"))),
+                Err(e) => {
+                    tracing::error!(message_id = %id, error = %e, "quarantining undecodable row");
+                    self.quarantined
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.quarantine_row(&id).await;
+                    continue;
+                }
             }
         }
         Ok(out)

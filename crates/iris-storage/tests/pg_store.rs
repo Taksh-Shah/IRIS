@@ -490,3 +490,62 @@ async fn eviction_tie_break_removes_oldest_first() {
         "oldest row must be evicted first among full ties (created_at ASC)"
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn undecodable_row_is_quarantined_not_queue_bricking() {
+    if !pg_available() {
+        eprintln!("SKIP: IRIS_PG_PASSWORD unset");
+        return;
+    }
+    let _g = LOCK.lock().await;
+    let store = fresh_store().await;
+    let good = env_for(
+        PEER_BOB,
+        MessagePriority::P1,
+        unix_now() - 30,
+        3600,
+        b"good",
+    );
+    store.persist(&good).await.expect("persist good");
+    let bad = env_for(PEER_BOB, MessagePriority::P0, unix_now() - 20, 3600, b"bad");
+    store.persist(&bad).await.expect("persist bad");
+
+    // Corrupt the P0 row's payload directly on disk: pre-TAK-3 this single
+    // row made every get_queue call fail forever (P0 sorts first).
+    store
+        .client()
+        .execute(
+            "UPDATE messages SET envelope_cbor = decode('deadbeef', 'hex')
+             WHERE message_id = $1",
+            &[&bad.message_id.to_string()],
+        )
+        .await
+        .expect("corrupt row");
+
+    let quarantined_before = store.quarantined_rows();
+    let drained = store
+        .get_queue(10)
+        .await
+        .expect("get_queue must not abort the batch");
+    assert_eq!(drained.len(), 1, "healthy row still drains");
+    assert_eq!(drained[0].message_id, good.message_id);
+
+    let status: String = store
+        .client()
+        .query_one(
+            "SELECT status FROM messages WHERE message_id = $1",
+            &[&bad.message_id.to_string()],
+        )
+        .await
+        .expect("row query")
+        .get(0);
+    assert_eq!(
+        status, "DELIVERY_FAILED",
+        "unreadable row leaves the queue predicate"
+    );
+
+    // The queue stays drained on every subsequent call.
+    let again = store.get_queue(10).await.expect("second drain");
+    assert_eq!(again.len(), 1);
+    assert_eq!(store.quarantined_rows() - quarantined_before, 1);
+}
