@@ -336,6 +336,12 @@ impl RoutingEngine {
         // Elapsed comparison — same boot-time panic guard as SYS-1 / neighbor_table.rs.
         let now = Instant::now();
         self.contact_log.retain(|_, t| now.duration_since(*t) < Duration::from_secs(3600));
+        // ROUT-14: flush per-message GTMX+ monotonicity state every pruning
+        // cycle — in-flight messages within a 5-min window are short-lived
+        // enough that resetting the map at most causes one extra forward.
+        if let Some(opp) = self.opportunistic.as_mut() {
+            opp.prune_dp_seen();
+        }
         if before > 0 {
             tracing::debug!(
                 event = event::ROUTE_PRUNED,

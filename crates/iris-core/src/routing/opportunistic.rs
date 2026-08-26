@@ -25,6 +25,10 @@ use crate::routing::prophet::{DeliveryPredictability, ProphetConfig};
 /// EXP-ROUTE-002 validated).
 pub const DEFAULT_SPRAY_L: u32 = 8;
 
+/// Maximum number of (message_id, destination) entries in `max_dp_seen`
+/// (ROUT-14 capacity bound). Matches the PRoPHET table limit.
+pub const MAX_DP_SEEN: usize = 4_096;
+
 /// DPs are advice only — a neighbor must clear this floor to be consulted.
 pub const DP_FLOOR_EPS: f64 = 1e-6;
 
@@ -204,7 +208,16 @@ impl OpportunisticRouter {
         match best {
             Some((nb, p)) => {
                 // ROUT-7: record per-message max DP under the (message_id, dest) key.
+                // ROUT-14: evict an arbitrary entry when at the capacity bound so
+                // the map stays ≤ MAX_DP_SEEN entries regardless of message count.
                 let key = (*message_id, *dest);
+                if !self.max_dp_seen.contains_key(&key)
+                    && self.max_dp_seen.len() >= MAX_DP_SEEN
+                {
+                    if let Some(evict) = self.max_dp_seen.keys().next().copied() {
+                        self.max_dp_seen.remove(&evict);
+                    }
+                }
                 let e = self.max_dp_seen.entry(key).or_insert(0.0);
                 *e = p.max(*e);
                 OpportunisticDecision::ForwardTo {
@@ -214,6 +227,28 @@ impl OpportunisticRouter {
             }
             None => OpportunisticDecision::NoAdvantage,
         }
+    }
+
+    /// Length of the `max_dp_seen` map — exposed for testing only.
+    #[cfg(test)]
+    pub fn dp_seen_len(&self) -> usize {
+        self.max_dp_seen.len()
+    }
+
+    /// True when the `max_dp_seen` map is empty — exposed for testing only.
+    #[cfg(test)]
+    pub fn dp_seen_is_empty(&self) -> bool {
+        self.max_dp_seen.is_empty()
+    }
+
+    /// Periodic maintenance: drop the entire `max_dp_seen` map.
+    ///
+    /// Called by `RoutingEngine::prune()` every PRUNE_INTERVAL (5 min) so
+    /// in-flight message entries do not accumulate forever (ROUT-14).
+    /// Losing the map causes at most one extra forward per message per period —
+    /// the monotonicity property resets cleanly at each prune.
+    pub fn prune_dp_seen(&mut self) {
+        self.max_dp_seen.clear();
     }
 
     /// Cold-start spray: hand off a binary-spray copy to `contact` when the
@@ -391,5 +426,38 @@ mod tests {
             },
             "honest candidate should win over NaN"
         );
+    }
+
+    #[test]
+    fn rout14_max_dp_seen_bounded_by_capacity() {
+        // Regression: max_dp_seen was unbounded; an attacker advertising
+        // many destinations could exhaust RAM (ROUT-14).
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(99);
+
+        // Insert exactly MAX_DP_SEEN + 10 unique (message_id, dest) pairs.
+        for _ in 0..(MAX_DP_SEEN + 10) {
+            let m = mid();
+            // Give a strong candidate so a ForwardTo is returned and the map is written.
+            r.on_contact(&pid(8), &[(dest, 0.9)]);
+            let _ = r.decide(&m, &dest, &[(pid(5), 0.95)], MessagePriority::P4, 3);
+        }
+
+        assert!(
+            r.dp_seen_len() <= MAX_DP_SEEN,
+            "max_dp_seen must not exceed MAX_DP_SEEN (got {})",
+            r.dp_seen_len()
+        );
+    }
+
+    #[test]
+    fn rout14_prune_dp_seen_clears_map() {
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(9);
+        r.on_contact(&pid(8), &[(dest, 0.9)]);
+        let _ = r.decide(&mid(), &dest, &[(pid(5), 0.95)], MessagePriority::P4, 3);
+        assert!(!r.dp_seen_is_empty(), "expected entry before prune");
+        r.prune_dp_seen();
+        assert!(r.dp_seen_is_empty(), "prune_dp_seen must clear the map");
     }
 }
