@@ -139,6 +139,52 @@ fn backend(e: tokio_postgres::Error) -> StorageError {
     StorageError::Backend(e.to_string())
 }
 
+/// Free-function core of [`PgStorage::decode_stored_blob`] so the dispatch is
+/// unit-testable without a database (TAK-15).
+///
+/// Interpretations are probed in priority order and each candidate is
+/// VALIDATED before acceptance (plaintext by successful CBOR decode; sealed
+/// by AEAD authentication), so a legacy blob whose first byte coincides with
+/// a tag value cannot be misrouted — its tagged reading fails validation and
+/// the legacy reading still resolves.
+pub(crate) fn decode_stored_blob_with(
+    sealer: &dyn crate::seal::RowSealer,
+    aad: &[u8],
+    blob: &[u8],
+) -> Result<Vec<u8>, StorageError> {
+    let try_plain = |payload: &[u8]| codec::decode(payload).map(|_| payload.to_vec());
+    let try_sealed = |payload: &[u8]| sealer.unseal(aad, payload);
+
+    match crate::seal::split_format_tag(blob) {
+        Some((tag, rest)) if tag == crate::seal::envelope_format::PLAINTEXT_CBOR => {
+            if let Ok(cbor) = try_plain(rest) {
+                return Ok(cbor);
+            }
+            try_legacy(sealer, aad, blob)
+        }
+        Some((tag, rest)) if tag == crate::seal::envelope_format::SEALED => {
+            if let Ok(cbor) = try_sealed(rest) {
+                return Ok(cbor);
+            }
+            try_legacy(sealer, aad, blob)
+        }
+        // First byte is neither tag: only the legacy reading exists.
+        _ => try_legacy(sealer, aad, blob),
+    }
+}
+
+/// Untagged-era rows: verbatim plaintext CBOR, else a raw sealed container.
+fn try_legacy(
+    sealer: &dyn crate::seal::RowSealer,
+    aad: &[u8],
+    blob: &[u8],
+) -> Result<Vec<u8>, StorageError> {
+    match codec::decode(blob) {
+        Ok(_) => Ok(blob.to_vec()),
+        Err(_) => sealer.unseal(aad, blob),
+    }
+}
+
 impl PgStorage {
     /// Connect, spawn the connection driver task, and apply the schema.
     pub async fn connect(config: PgStorageConfig) -> Result<Self, StorageError> {
@@ -253,6 +299,64 @@ impl PgStorage {
         }
     }
 
+    /// Recover canonical CBOR from a stored blob (TAK-15). Tagged rows
+    /// dispatch deterministically; untagged legacy rows (pre-format) fall
+    /// back to plaintext-then-sealed probing so enabling sealing can never
+    /// strand an existing plaintext store. Genuine failures surface to the
+    /// caller, which quarantines per TAK-3.
+    fn decode_stored_blob(&self, aad: &[u8], blob: &[u8]) -> Result<Vec<u8>, StorageError> {
+        decode_stored_blob_with(self.sealer.as_ref(), aad, blob)
+    }
+    /// One-shot migration to the tagged row format (TAK-15). Rewrites every
+    /// plaintext-tagged (or untagged legacy plaintext) row into a sealed,
+    /// explicitly tagged row under the configured sealer. A no-op for
+    /// `NoSealer`. Intended to run once after `with_sealer` on upgrade;
+    /// reads remain compatible with all three shapes either way.
+    pub async fn migrate_envelope_format(&self) -> Result<usize, StorageError> {
+        if self.sealer.is_identity() {
+            return Ok(0);
+        }
+        let rows = self
+            .client
+            .query(
+                "SELECT message_id, priority, expires_at, envelope_cbor FROM messages",
+                &[],
+            )
+            .await
+            .map_err(|e| StorageError::Backend(format!("migrate scan: {e}")))?;
+        let mut migrated = 0usize;
+        for r in rows {
+            let id: String = r.get(0);
+            let priority: i16 = r.get(1);
+            let expires_at: i64 = r.get(2);
+            let blob: Vec<u8> = r.get(3);
+            let already_sealed = matches!(crate::seal::split_format_tag(&blob), Some((tag, _)) if tag == crate::seal::envelope_format::SEALED);
+            if already_sealed {
+                continue;
+            }
+            let cbor = self.decode_stored_blob(
+                &crate::seal::row_aad(&id, priority as u8, expires_at as u64),
+                &blob,
+            )?;
+            let sealed = self.sealer.seal(
+                &crate::seal::row_aad(&id, priority as u8, expires_at as u64),
+                &cbor,
+            )?;
+            let mut tagged = Vec::with_capacity(1 + sealed.len());
+            tagged.push(crate::seal::envelope_format::SEALED);
+            tagged.extend_from_slice(&sealed);
+            self.client
+                .execute(
+                    "UPDATE messages SET envelope_cbor = $2 WHERE message_id = $1",
+                    &[&id, &tagged],
+                )
+                .await
+                .map_err(|e| StorageError::Backend(format!("migrate rewrite {id}: {e}")))?;
+            migrated += 1;
+        }
+        Ok(migrated)
+    }
+
     fn projected_row_bytes(cbor_len: u64) -> u64 {
         cbor_len + crate::eviction::ROW_OVERHEAD_BYTES
     }
@@ -274,15 +378,25 @@ impl MessageStorage for PgStorage {
             .map_err(|_| StorageError::Backend("payload_size out of i64 range".into()))?;
 
         let cbor = codec::encode(envelope).map_err(|e| StorageError::Backend(e.to_string()))?;
+        let expires_u64 = envelope.timestamp.saturating_add(envelope.ttl_seconds);
         let aad = crate::seal::row_aad(
             &envelope.message_id.to_string(),
             envelope.priority as u8,
-            envelope.timestamp.saturating_add(envelope.ttl_seconds),
+            expires_u64,
         );
-        let stored = self
+        // TAK-15: every row written carries an explicit 1-byte format tag so
+        // reads never guess the blob's nature.
+        let stored_body = self
             .sealer
             .seal(&aad, &cbor)
             .map_err(|e| StorageError::Backend(format!("seal: {e}")))?;
+        let mut stored = Vec::with_capacity(1 + stored_body.len());
+        if matches!(self.sealer.as_ref(), sealer if sealer.is_identity()) {
+            stored.push(crate::seal::envelope_format::PLAINTEXT_CBOR);
+        } else {
+            stored.push(crate::seal::envelope_format::SEALED);
+        }
+        stored.extend_from_slice(&stored_body);
         let is_p0 = envelope.priority == MessagePriority::P0;
         // TAK-10: real ownership when the node identity is configured — the
         // eviction policy's "relayed before own" tie-break needs a live key.
@@ -343,16 +457,14 @@ impl MessageStorage for PgStorage {
                 let priority: i16 = r.get(1);
                 let expires_at: i64 = r.get(2);
                 let aad = crate::seal::row_aad(&id.to_string(), priority as u8, expires_at as u64);
-                let restored = self.sealer.unseal(&aad, &bytes)?;
-                if bytes == restored {
-                    // Plaintext row (legacy / NoSealer) — decode directly.
-                    return codec::decode(&bytes)
-                        .map(Some)
-                        .map_err(|e| StorageError::Backend(format!("load decode: {e}")));
-                }
-                codec::decode(&restored)
+                // TAK-15: tagged dispatch replaces the equality heuristic
+                // that could never run for a real sealer (the `?` above it
+                // returned first, stranding every legacy plaintext row the
+                // moment sealing was enabled).
+                let cbor = self.decode_stored_blob(&aad, &bytes)?;
+                codec::decode(&cbor)
                     .map(Some)
-                    .map_err(|e| StorageError::Backend(format!("load unseal decode: {e}")))
+                    .map_err(|e| StorageError::Backend(format!("load decode: {e}")))
             }
             None => Ok(None),
         }
@@ -429,7 +541,8 @@ impl MessageStorage for PgStorage {
             // logged at ERROR and counted (see `quarantined_rows`). A
             // systemic cause (e.g. wrong sealing key) shows up as the counter
             // rising once per queued row — visible, not silent.
-            let cbor = match self.sealer.unseal(&aad, &bytes) {
+            let cbor = self.decode_stored_blob(&aad, &bytes);
+            let cbor = match cbor {
                 Ok(c) => c,
                 Err(e) => {
                     tracing::error!(message_id = %id, error = %e, "quarantining unsealable row");

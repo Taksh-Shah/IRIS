@@ -33,6 +33,25 @@ pub fn row_aad(message_id_hex: &str, priority: u8, expires_at: u64) -> Vec<u8> {
     out
 }
 
+/// Stored-envelope format tags (TAK-15). Every row written by the current
+/// code carries a leading 1-byte tag so reads never have to GUESS whether the
+/// blob is plaintext CBOR or a sealed container — the old equality heuristic
+/// only worked for `NoSealer` and made every pre-existing plaintext row
+/// unreadable (`DecryptionFailed`) the moment sealing was enabled.
+pub mod envelope_format {
+    /// Untagged plaintext canonical CBOR (legacy rows and `NoSealer` writes).
+    pub const PLAINTEXT_CBOR: u8 = 0x00;
+    /// Sealed container: nonce(12) ‖ ciphertext ‖ tag(16).
+    pub const SEALED: u8 = 0x01;
+}
+
+/// Split a stored blob into its format tag and payload (TAK-15). Returns
+/// `None` for blobs written before the format existed (untagged), which the
+/// read path then resolves heuristically for backwards compatibility.
+pub fn split_format_tag(blob: &[u8]) -> Option<(u8, &[u8])> {
+    blob.split_first().map(|(tag, rest)| (*tag, rest))
+}
+
 /// Row-encryption strategy for the persistent store. The caller supplies the
 /// AAD so seal/unseal work from whichever side has data (live envelope on
 /// write, scalar columns + id on read).
@@ -41,6 +60,9 @@ pub trait RowSealer: Send + Sync + std::fmt::Debug {
     fn seal(&self, aad: &[u8], cbor: &[u8]) -> Result<Vec<u8>, StorageError>;
     /// Recover the canonical CBOR envelope from a stored blob.
     fn unseal(&self, aad: &[u8], blob: &[u8]) -> Result<Vec<u8>, StorageError>;
+    /// Whether this sealer stores rows verbatim (`NoSealer`). Drives which
+    /// format tag new rows carry (TAK-15).
+    fn is_identity(&self) -> bool;
 }
 
 /// Default: transparent pass-through (pre-gate behavior, tests).
@@ -53,6 +75,9 @@ impl RowSealer for NoSealer {
     }
     fn unseal(&self, _aad: &[u8], blob: &[u8]) -> Result<Vec<u8>, StorageError> {
         Ok(blob.to_vec())
+    }
+    fn is_identity(&self) -> bool {
+        true
     }
 }
 
@@ -114,6 +139,10 @@ impl RowSealer for StorageKeySealer {
             .try_into()
             .map_err(|_| StorageError::DecryptionFailed)?;
         aead::decrypt(&self.key, nonce, sealed, aad).map_err(|_e| StorageError::DecryptionFailed)
+    }
+
+    fn is_identity(&self) -> bool {
+        false
     }
 }
 
@@ -296,8 +325,7 @@ mod tests {
     }
 
     /// TAK-16 (config side, exercised here since pg.rs owns the type):
-    /// PgStorageConfig::debug must not contain the password. The test lives
-    /// beside the sealer tests for the same reason TAK-16 groups both sites.
+    /// PgStorageConfig::debug must not contain the password.
     #[test]
     fn config_debug_redacts_password() {
         use crate::pg::PgStorageConfig;
@@ -309,6 +337,7 @@ mod tests {
             password: "S3cr3t-Hunter2".into(),
             max_storage_bytes: 1024,
             eviction_threshold: 0.8,
+            node_id: None,
         };
         let rendered = format!("{cfg:?}");
         assert!(rendered.contains("[redacted]"), "rendered: {rendered}");
@@ -317,5 +346,58 @@ mod tests {
             rendered.contains("db.internal"),
             "non-secret fields stay useful"
         );
+    }
+
+    /// TAK-15: the read dispatcher must handle all three stored shapes —
+    /// tagged plaintext, tagged sealed, and UNTAGGED legacy plaintext. The
+    /// last one is the headline: the old equality heuristic made every
+    /// pre-existing plaintext row unreadable the moment a real sealer was
+    /// configured, because its `?` returned before the fallback could run.
+    #[test]
+    fn decode_dispatch_handles_tagged_and_legacy_shapes() {
+        let env = sample_envelope();
+        let cbor = codec::encode(&env).expect("encode");
+        let aad = env_aad(&env);
+        let sealer = StorageKeySealer::from_master_key(&master_key()).expect("sealer");
+
+        // Tagged sealed round trip.
+        let mut tagged_sealed = vec![envelope_format::SEALED];
+        tagged_sealed.extend(sealer.seal(&aad, &cbor).expect("seal"));
+        assert_eq!(
+            crate::pg::decode_stored_blob_with(&sealer, &aad, &tagged_sealed).expect("decode"),
+            cbor
+        );
+
+        // Tagged plaintext.
+        let mut tagged_plain = vec![envelope_format::PLAINTEXT_CBOR];
+        tagged_plain.extend_from_slice(&cbor);
+        assert_eq!(
+            crate::pg::decode_stored_blob_with(&sealer, &aad, &tagged_plain).expect("decode"),
+            cbor
+        );
+
+        // Untagged LEGACY plaintext row with a real sealer configured: must
+        // still decode (this is exactly the upgrade scenario that used to
+        // strand the whole store).
+        assert_eq!(
+            crate::pg::decode_stored_blob_with(&sealer, &aad, &cbor).expect("legacy decode"),
+            cbor
+        );
+
+        // Untagged legacy SEALED blob (old sealing-era rows) also resolves.
+        let legacy_sealed = sealer.seal(&aad, &cbor).expect("seal legacy");
+        assert_eq!(
+            crate::pg::decode_stored_blob_with(&sealer, &aad, &legacy_sealed).expect("decode"),
+            cbor
+        );
+    }
+
+    /// TAK-15 helpers: tag splitting is exact and rejects empty input by
+    /// returning no payload rather than panicking.
+    #[test]
+    fn split_format_tag_basics() {
+        assert_eq!(split_format_tag(b"\x00hello"), Some((0x00, &b"hello"[..])));
+        assert_eq!(split_format_tag(&[0x01]), Some((0x01, &[][..])));
+        assert_eq!(split_format_tag(&[]), None);
     }
 }
