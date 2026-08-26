@@ -21,14 +21,22 @@ pub const MAX_FLOOD_FANOUT: usize = 8;
 /// max_hops + no-backtrack).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FloodPolicy {
-    /// Hard hop ceiling. `u8::MAX` encodes "unlimited" (P0).
+    /// Hard hop ceiling. No priority class uses `u8::MAX` — see ROUT-18.
     pub max_hops: u8,
 }
 
 /// Hop ceiling per priority band.
+///
+/// ROUT-18: P0 previously mapped to `u8::MAX` ("unlimited"), which in a
+/// dedup-free mesh produced unbounded amplification. It is now bounded to
+/// `P0_MAX_HOPS` (16), a real mesh-diameter ceiling matching EMERG_DESIGN.md.
+pub const P0_MAX_HOPS: u8 = 16;
+
+/// Hop ceiling per priority band.
 pub fn max_hops_for_priority(p: MessagePriority) -> FloodPolicy {
     let max_hops = match p {
-        MessagePriority::P0 => u8::MAX, // unlimited
+        // ROUT-18: use a real diameter bound, not the u8::MAX sentinel.
+        MessagePriority::P0 => P0_MAX_HOPS,
         MessagePriority::P1 | MessagePriority::P2 | MessagePriority::P3 => 5,
         MessagePriority::P4 | MessagePriority::P5 | MessagePriority::P6 | MessagePriority::P7 => 3,
     };
@@ -157,7 +165,12 @@ mod tests {
 
     #[tokio::test]
     async fn priority_hop_budgets() {
-        assert_eq!(max_hops_for_priority(MessagePriority::P0).max_hops, u8::MAX);
+        // ROUT-18: P0 must never be u8::MAX again.
+        assert_eq!(max_hops_for_priority(MessagePriority::P0).max_hops, P0_MAX_HOPS);
+        assert!(
+            P0_MAX_HOPS < u8::MAX,
+            "P0 hop budget must be a real bound, not u8::MAX sentinel (ROUT-18)"
+        );
         assert_eq!(max_hops_for_priority(MessagePriority::P1).max_hops, 5);
         assert_eq!(max_hops_for_priority(MessagePriority::P3).max_hops, 5);
         assert_eq!(max_hops_for_priority(MessagePriority::P4).max_hops, 3);
