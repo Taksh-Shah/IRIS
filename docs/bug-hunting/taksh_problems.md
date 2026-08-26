@@ -210,8 +210,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ✅ `440f610` |
 | **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound | ✅ `440f610` |
 | **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned | ✅ `e60c555` |
-| **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window | ⬜ |
-| **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument | ⬜ |
+| **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window | ✅ `d0ac125` |
+| **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument | ✅ `440f610` (subsumed by ROUT-12/13) |
 | **ROUT-17** | Medium | `flood.rs:42-73` | Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender | ⬜ |
 | **ROUT-18** | Medium | `flood.rs:26-31` | `max_hops_for_priority(P0) = u8::MAX` — "unlimited" is a 255-hop amplification budget on the one class an attacker forges | ⬜ |
 | **ROUT-19** | Medium | `routing/mod.rs:231-249` | Direct and KnownPath bypass the hop budget entirely, contradicting `decide`'s own contract | ⬜ |
@@ -1066,7 +1066,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-15: `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `d0ac125`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/dedup_cache.rs:21-22, 36, 53-60`
 - **What:** `WINDOW_CAPACITY = 200_000` is used solely as the Bloom's `capacity` argument (line 36). Neither `exact: HashSet<MessageId>` nor `ring: VecDeque<(MessageId, Instant)>` is capped; `record` pushes unconditionally and eviction is purely time-based (1 h).
@@ -1095,7 +1095,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-16: `RoutingTable::new` silently discards its `expiry` argument
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `440f610` (subsumed by ROUT-12/13 — `RoutingTable` now stores `expiry: Duration`)  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/known_path.rs:33-35` (fn `new`)
 - **What:** The constructor takes `_expiry: Duration` and returns `RoutingTable::default()`. The value is dropped; the struct has no expiry field. Expiry is instead re-supplied at every `prune_expired(expiry)` call, so two call sites can disagree and nothing detects it.
