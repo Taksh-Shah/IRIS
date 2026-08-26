@@ -13,7 +13,7 @@ use iris_core::message_engine::storage::{MessageStorage, StorageError};
 use iris_core::protocol::{codec, Envelope, MessageId};
 
 use crate::eviction::{delete_expired, evict_lowest_priority, usage_bytes};
-use crate::schema::{DDL, MIGRATE_DROP_PLAINTEXT_IDENTITY};
+use crate::schema::{DDL, MIGRATE_DROP_PLAINTEXT_IDENTITY, MIGRATE_NONNEGATIVE_CONSTRAINT};
 use crate::seal::{NoSealer, RowSealer};
 
 /// Connection + quota configuration for [`PgStorage`].
@@ -145,6 +145,12 @@ impl PgStorage {
             .batch_execute(MIGRATE_DROP_PLAINTEXT_IDENTITY)
             .await
             .map_err(|e| StorageError::Backend(format!("pg migrate v2: {e}")))?;
+        // TAK-9: non-negative scalars enforced at the DB layer as well.
+        store
+            .client
+            .batch_execute(MIGRATE_NONNEGATIVE_CONSTRAINT)
+            .await
+            .map_err(|e| StorageError::Backend(format!("pg migrate v3: {e}")))?;
         Ok(store)
     }
 
@@ -216,12 +222,23 @@ impl PgStorage {
 #[async_trait::async_trait]
 impl MessageStorage for PgStorage {
     async fn persist(&self, envelope: &Envelope) -> Result<(), StorageError> {
-        let cbor = codec::encode(envelope).map_err(|e| StorageError::Backend(e.to_string()))?;
+        // TAK-9: same-width `as` casts silently reinterpret bits, letting a
+        // peer-chosen u64 timestamp/expiry/payload_size land as a NEGATIVE
+        // BIGINT (instant-expiring or immortal rows, corrupted ordering).
+        // Reject out-of-domain values at the boundary instead.
+        let created_at = i64::try_from(envelope.timestamp)
+            .map_err(|_| StorageError::Backend("timestamp out of i64 range".into()))?;
         let expires_at = envelope.timestamp.saturating_add(envelope.ttl_seconds);
+        let expires_at = i64::try_from(expires_at)
+            .map_err(|_| StorageError::Backend("expiry out of i64 range".into()))?;
+        let payload_size = i64::try_from(envelope.payload_size)
+            .map_err(|_| StorageError::Backend("payload_size out of i64 range".into()))?;
+
+        let cbor = codec::encode(envelope).map_err(|e| StorageError::Backend(e.to_string()))?;
         let aad = crate::seal::row_aad(
             &envelope.message_id.to_string(),
             envelope.priority as u8,
-            expires_at,
+            envelope.timestamp.saturating_add(envelope.ttl_seconds),
         );
         let stored = self
             .sealer
@@ -248,11 +265,11 @@ impl MessageStorage for PgStorage {
                 &[
                     &envelope.message_id.to_string(),
                     &(envelope.priority as i16),
-                    &(envelope.timestamp as i64),
-                    &(expires_at as i64),
+                    &created_at,
+                    &expires_at,
                     &(envelope.hop_count as i16),
                     &envelope.max_hops.map(|h| h as i16),
-                    &(envelope.payload_size as i64),
+                    &payload_size,
                     &stored,
                     &false,
                 ],

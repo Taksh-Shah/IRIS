@@ -27,6 +27,23 @@ CREATE INDEX IF NOT EXISTS idx_messages_priority ON messages (priority, created_
     WHERE status = 'PENDING_SEND';
 "#;
 
+/// TAK-9 defence-in-depth: reject negative BIGINT scalars at the database
+/// layer too (peer-chosen u64 timestamps/sizes must never land as negatives
+/// even if an application-side check is bypassed). Idempotent via named
+/// constraint + pg_constraint probe (PG has no ADD CONSTRAINT IF NOT EXISTS).
+pub const MIGRATE_NONNEGATIVE_CONSTRAINT: &str = r#"
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'messages_scalars_nonnegative'
+    ) THEN
+        ALTER TABLE messages ADD CONSTRAINT messages_scalars_nonnegative
+            CHECK (created_at >= 0 AND expires_at >= 0 AND payload_size >= 0);
+    END IF;
+END
+$$;
+"#;
+
 /// CRYPTO-001 at-rest hardening for databases created before the gate
 /// (v1 schema carried plaintext `sender_id`/`recipient_id` + a recipient
 /// index). Idempotent: drops the plaintext identity columns/index when
