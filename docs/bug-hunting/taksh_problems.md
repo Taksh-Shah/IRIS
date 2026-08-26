@@ -200,7 +200,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-2** | Low | `routing/mod.rs:301-302` | `RoutingEngine::prune` panics on `Instant::now() - 3600s` | ✅ `4b03ae8` (SYS-1) |
 | **ROUT-3** | Low | `known_path.rs:77-80` | `RoutingTable::prune_expired` panics on `Instant::now() - expiry` | ✅ `4b03ae8` (SYS-1) |
 | **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist | ✅ `ade3acd` |
-| **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ⬜ |
+| **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ✅ `1821c48` |
 | **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ⬜ |
 | **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ⬜ |
 | **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ⬜ |
@@ -808,7 +808,7 @@ fn evict_old(&mut self) {
 #### ROUT-5: `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented
 - **Severity:** Medium  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. Real, latent; Critical the moment SCF sits behind a transport without the `message_engine` ingestion check in front of it. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-5)  ·  Tier 2  ·  commit `1821c48`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/store.rs:31-34` (fn `is_expired`)
 - **What:** `lifetime_start = timestamp.min(now_unix)`. For a forged/skewed timestamp far in the future, `min` always selects `now_unix`, so `now_unix - lifetime_start == 0` on **every** call, forever. The message never expires at any node, at any time.
