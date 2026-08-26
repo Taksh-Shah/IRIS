@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 started. 4/11 Tier 1 findings fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`). 7 Tier 1 findings remain (SYS-2, SYS-3, SYS-4, RF-35..38). Tier 0 still in progress: 10/32 fixed, 2 blocked, 20 hardware-remaining. Build verification for this session's commits requires a Rust toolchain (cargo build --workspace) — run on a machine with rustup installed to confirm green.
+**Last updated:** 2026-08-26 — Tier 1 in progress. 5/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`). 6 remain (SYS-3, SYS-4, RF-35..38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -44,12 +44,12 @@ These three results interact rather than simply stack: the parts of this section
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain |
-| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 7 | 0 | 4 | 0 | 0 | **IN PROGRESS** — SYS-1, TAK-1, SYS-5-step1, SYS-6 fixed; SYS-2/3/4, RF-35..38 remain |
+| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 6 | 0 | 5 | 0 | 0 | **IN PROGRESS** — SYS-1/2, TAK-1, SYS-5-step1, SYS-6 fixed; SYS-3/4, RF-35..38 remain |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **265** | **0** | **15** | **2** | **0** | |
+| **Total** | | **284** | **264** | **0** | **16** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -532,7 +532,7 @@ self.contact_log.retain(|_, t| now.duration_since(*t) < Duration::from_secs(3600
 
 #### SYS-2: Five of the six transports have no timeout on any adapter call — a hung radio blocks the node indefinitely
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit fec08ac  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** Production code in `crates/iris-core/src/transport/{ble,lora,satellite,wifiaware,wifi_direct}.rs` — no timeout anywhere. Only `crates/iris-core/src/transport/internet.rs:267,291,302` bounds its I/O.
 - **What:** `tokio::time::timeout` appears 23 times across Section 3's transports, but 20 of those are inside `#[cfg(test)]` modules. Only three are production, all in `internet.rs`. Every call into a platform radio adapter — connect, send, scan, MTU negotiation, teardown — is awaited with no deadline.
