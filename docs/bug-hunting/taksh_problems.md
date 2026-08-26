@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier -1 complete. Tier 0 in progress: 10/32 fixed (all pure-Rust findings — GAP-4, GAP-9, GAP-12, BLE-3, BLE-5, BLE-27, BLE-28, BLE-29, BLE-30, FFI-16), 2 blocked (BLE-1, BLE-2 — need a real concurrency/architecture redesign, not rushed), 20 remaining (the Kotlin-touching FFI-1..19 cluster + BLE-4, BLE-9 — no Gradle/kotlinc on this machine, see the PENDING HARDWARE VERIFICATION notes throughout). Every ✅ so far passed `cargo build --workspace --all-targets` + `cargo test --workspace` (618/618 lib tests, zero regressions across 9 commits) but has NOT been confirmed on the two connected Android devices — no build toolchain exists on this machine to produce an installable APK.
+**Last updated:** 2026-08-26 — Tier 1 started. 4/11 Tier 1 findings fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`). 7 Tier 1 findings remain (SYS-2, SYS-3, SYS-4, RF-35..38). Tier 0 still in progress: 10/32 fixed, 2 blocked, 20 hardware-remaining. Build verification for this session's commits requires a Rust toolchain (cargo build --workspace) — run on a machine with rustup installed to confirm green.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -44,12 +44,12 @@ These three results interact rather than simply stack: the parts of this section
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain |
-| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 11 | 0 | 0 | 0 | 0 | Tier -1 complete |
+| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 7 | 0 | 4 | 0 | 0 | **IN PROGRESS** — SYS-1, TAK-1, SYS-5-step1, SYS-6 fixed; SYS-2/3/4, RF-35..38 remain |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **269** | **0** | **11** | **2** | **0** | |
+| **Total** | | **284** | **265** | **0** | **15** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -481,7 +481,7 @@ These four are not individual defects but *habits* visible only when the whole s
 
 #### SYS-1: A known, documented, already-fixed panic class was left unfixed at three routing sites
 - **Severity:** Medium today — **High the moment the routing engine is wired up** (see ROUT-11)
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit 4b03ae8  ·  2026-08-26
 - **Confidence:** Certain (the three sites and the prior fix) / verified as to reachability
 - **Verdict:** CONFIRMED, downgraded from Critical during adversarial verification. Two corrections were forced and are reflected below: the underflow is **platform-dependent** (it panics on Linux/Android; an empirical probe on Windows/rustc 1.97.1 did not), and `RoutingEngine::prune()` has **zero callers**, so the worst of the three sites cannot fire today. The systemic point — a documented, previously-fixed bug class left unfixed at three sites — is unaffected and is why this remains a headline finding.
 - **Location:** `crates/iris-core/src/routing/dedup_cache.rs:63` (`evict_old`), `crates/iris-core/src/routing/known_path.rs:78` (`prune_expired`), `crates/iris-core/src/routing/mod.rs:301` (`prune`). Prior fix and incident record: `crates/iris-core/src/discovery/neighbor_table.rs:235-245` (`sweep`).
@@ -617,7 +617,7 @@ self.adapter.set_mtu(peer, mtu).map_err(to_transport_err)?;
 
 #### SYS-5: 113 production `.lock().unwrap()` sites make every radio transport one panic away from permanently dead
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed (step 1)  ·  Tier 1  ·  commit 5b1422c  ·  2026-08-26
 - **Confidence:** Certain (mechanism) / Medium (ease of trigger)
 - **Location:** `crates/iris-core/src/transport/{ble,wifiaware,wifi_direct,lora,satellite}.rs` — production code only (above each file's `#[cfg(test)]` boundary): `wifi_direct.rs` 35 sites, `ble.rs` 27, `wifiaware.rs` 27, `lora.rs` 13, `satellite.rs` 11. `internet.rs` and `simulated.rs` have none — they use tokio async locks throughout.
 - **What:** These five transports hold their live state (`adapter`, `connections`, `scan_handle`, `adv_handle`, `pollers`, `scan_times`, session and peer maps) in `std::sync::Mutex`/`RwLock` and access it with `.lock().unwrap()`. A `std::sync::Mutex` becomes **poisoned** if any thread panics while holding its guard, and from that moment every `lock()` returns `Err`. With `.unwrap()` at all 113 sites, the first panic inside any lock scope converts that transport into a component that panics on every subsequent operation for the rest of the process lifetime.
@@ -654,7 +654,7 @@ fn lock_or_recover<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 
 #### SYS-6: Mock transports that silently report success are `pub` in the production API
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit ec2036d  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:179-181` (`SimulatedBleAdapter`), `crates/iris-core/src/transport/manager.rs:228-331` (`StubTransport`), `crates/iris-core/src/transport/simulated.rs` (whole module)
 - **What:** Test doubles are declared `pub` and are not `#[cfg(test)]`-gated, so they compile into release builds and are reachable by any consumer of the crate. `StubTransport` in particular reports `send()` success without delivering anything (MG-18).
@@ -7837,7 +7837,7 @@ Checked deliberately and found sound — recorded so the next reviewer does not 
 
 #### TAK-1: All 14 PostgreSQL-backed storage tests silently no-op yet report PASS
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit c5325d8  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/tests/common/mod.rs:18-22` (`pg_available`), applied at `tests/pg_store.rs` (13 sites) and `tests/m3_engine.rs:23-26`
 - **What:** Every DB-dependent test begins `if !pg_available() { eprintln!("SKIP..."); return; }`. `pg_available()` is false whenever `IRIS_PG_PASSWORD` is unset. The tests then `return` normally, so libtest records them as **passed**, not ignored.
