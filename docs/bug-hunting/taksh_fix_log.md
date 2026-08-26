@@ -85,6 +85,27 @@ then test-infra trio TAK-18/19/20 and TAK-14 (AAD expansion — coordinate note:
 touches update_status into read-modify-reseal; STORE_SECURITY_REVIEW.md doc
 update named in Dependencies).
 
+---
+
+## Run 3 — 2026-08-26 — Wave 1 batch C
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | TAK-5 | ✅ Fixed · PENDING LIVE-PG | f766383 | Admission atomic in ONE statement (server-side SUM in same snapshot as guard); refusal → one eviction pass + single retry before StorageFull; dup pre-check preserves Ok semantics. |
+| 2 | MG-3 + TAK-19 | ✅ Fixed | 5852ff2 | SimConfig.battery_ma_override injection; new paused-time test registers healthy + NaN-cost transports. **Test caught MG-3 live**: total_cmp orders NaN ABOVE +inf, so the poisoned transport WON selection on the truncate(1) path. Fix: non-finite scores dropped before ranking. The test failed against pre-fix code — it discriminates. |
+| 3 | TAK-20 | ✅ Fixed | efc8e6d | Bare-timer test DELETED per finding prescription (pure tokio duplication, zero IRIS coverage); drop test now asserts num_alive_tasks returns to baseline via bounded yield/advance drain. |
+| 4 | TAK-14 | ✅ Fixed · PENDING LIVE-PG | 92c6110 | row_aad_v2 authenticates status+created_at+hop_count+max_hops+payload_size+is_own; read paths verify v2→v1 candidates; update_status = read-modify-reseal with optimistic CAS on old status (Arc slot blocks &mut transaction — documented); migrate rewrites under v2 using live status; module doc now precise per generation. Unit test proves the SET status=DELIVERED attack fails verification. |
+| 5 | TAK-18 | ✅ Fixed (shape-analog scope) | c8d237e | Three Section-3 loom models: registry register/deregister vs lookup (no torn payload), reassembly bounded append-vs-sweep, SCF insert-vs-max-key-evict accounting. All 8 loom models pass. Honest residual: analogs not extracted sync cores — carried. |
+| — | TAK-6 | 🔒 Blocked → Run 4 | — | TLS for non-loopback PG: introducing rustls/tokio-postgres-rustls/native-certs is a supply-chain event needing fresh session budget for version-API wrangling + deny/licence review. Not rushed at run end on the connection path. |
+
+**Batch C closeout:** workspace build --all-targets clean; full sweep **0
+failed across all suites**; loom suite 8/8 under `--cfg loom`.
+
+### Next run (Run 4)
+TAK-6 (TLS — fresh budget, supply-chain review). Wave 1 then COMPLETE except
+carried residuals (sync-core extraction; PENDING LIVE-PG promotions). Then
+Wave 3: RF lora/satellite findings per run order 1→3→4→2.
+
 **Commit convention (from TAK-24 onward):** per-finding §6 code commit first
 (stable hash), report/fix-log status flips accumulate and land in one
 `docs(bug-hunting)` commit at batch end citing the real hashes — this avoids

@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — **Tier 4 Wave 1, batches A+B complete (ox-alpha loop)**: 14/126 fixed. Batch B commits: TAK-3 `8d8ead9`, TAK-9 `518b4ab`, TAK-10 `c52f1a5`, TAK-11 `0e1f2d3`, TAK-15 `dff5358`, TAK-4 `f2fc6a7`. Batch sweep: build clean · **734/0/1** (zero regressions; +8 net-new tests this run). PG-gated legs recorded PENDING LIVE-PG in [`taksh_fix_log.md`](taksh_fix_log.md).
+**Last updated:** 2026-08-26 — **Tier 4 Wave 1, batches A+B+C complete (ox-alpha loop): 20/126 fixed, 1 blocked (TAK-6 → Run 4).** Batch C commits: TAK-5 `f766383`, MG-3+TAK-19 `5852ff2` (the new NaN test caught MG-3 live — non-finite scores were WINNING selection), TAK-20 `efc8e6d`, TAK-14 `92c6110` (v2 AAD authenticates status; update_status = read-modify-reseal w/ CAS), TAK-18 `c8d237e` (3 Section-3 loom models; sync-core extraction carried). Batch sweep: build clean · **0 failed** across all suites; all 8 loom models pass. Wave 1 residual: TAK-6 only. Journal: [`taksh_fix_log.md`](taksh_fix_log.md).
 
 **Tier 0 status (unchanged, owned by operator+Claude):** Tier -1 complete. Tier 0 in progress: 10/32 fixed (all pure-Rust findings — GAP-4, GAP-9, GAP-12, BLE-3, BLE-5, BLE-27, BLE-28, BLE-29, BLE-30, FFI-16), 2 blocked (BLE-1, BLE-2 — need a real concurrency/architecture redesign, not rushed), 20 remaining (the Kotlin-touching FFI-1..19 cluster + BLE-4, BLE-9 — no Gradle/kotlinc on this machine, see the PENDING HARDWARE VERIFICATION notes throughout). Every ✅ so far passed `cargo build --workspace --all-targets` + `cargo test --workspace` but has NOT been confirmed on the two connected Android devices — no build toolchain exists on this machine to produce an installable APK.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
@@ -49,9 +49,9 @@ These three results interact rather than simply stack: the parts of this section
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 11 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 112 | 0 | 14 | 0 | 0 | Wave 1 running (ox-alpha loop) — batches A+B done: TAK-25/24/12/13/16/17/21/22 + TAK-3/9/10/11/15/4 |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 105 | 0 | 20 | 1 | 0 | Wave 1 nearly done (ox-alpha) — A+B+C: 19 TAK + MG-3 fixed; TAK-6 🔒 deferred to Run 4 |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **255** | **0** | **25** | **2** | **0** | |
+| **Total** | | **284** | **249** | **0** | **31** | **3** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -5657,7 +5657,7 @@ manager.rs:
 #### MG-3: `total_cmp` does not reject NaN — a NaN score sorts **first** and wins selection
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. Latent; becomes High the moment a platform-supplied `cost_snapshot` lands. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 5852ff2 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:152-160`, `:192`, `:204`
 - **What:** The in-line comment claims `total_cmp` "rejects NaN deterministically". It does not. `f32::total_cmp` implements IEEE-754 totalOrder: `−NaN < −inf < … < +inf < +NaN`. Sorting **descending** therefore places `+NaN` at index 0. `truncate(1)` keeps it. The multipath branch's `score > 0.0` is false for NaN and does drop it — so the protection exists on exactly the branch that doesn't need it.
@@ -7937,7 +7937,7 @@ gc.rs:27    }
 
 #### TAK-5: Quota admission is a cross-store TOCTOU and never triggers eviction
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit f766383 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:172-179` (`persist`)
 - **What:** `persist` reads total usage, then decides, then inserts — three separate round trips with no transaction and no lock. Concurrent writers all observe the same pre-insert usage and all admit. Separately, when the quota is hit the write is simply **refused**; nothing evicts to make room.
@@ -7959,7 +7959,7 @@ pg.rs:181   self.client.execute("INSERT INTO messages ...
 
 #### TAK-6: Database connection uses `NoTls` — password and all message CBOR travel in cleartext
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** 🔒 Blocked · Tier 4 · reason: deferred to Run 4 — introducing rustls + tokio-postgres-rustls + rustls-native-certs is a supply-chain event (new deps, licence/deny review, version-API wrangling) that deserves fresh session budget, not a rushed end-of-run change to the connection path
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:88` (`connect`), also `tests/common/mod.rs:38`
 - **What:** `pg.connect(tokio_postgres::NoTls)` — TLS is not merely optional, it is impossible: the type parameter forecloses it. `host` is configurable to any address via `IRIS_PG_HOST` (pg.rs:37).
@@ -8162,7 +8162,7 @@ gc.rs:25        if let Err(e) = store.gc_once(unix_now()).await {
 
 #### TAK-14: The at-rest AAD binds only 3 of 8 metadata columns, contradicting the module's tamper claim
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 92c6110 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/seal.rs:28-34` (`row_aad`), claim at `seal.rs:6-8`
 - **What:** The AAD covers `message_id ‖ priority ‖ expires_at`. The `messages` table also carries `status`, `created_at`, `hop_count`, `max_hops`, `payload_size`, and `is_own_message` — none of which are authenticated. The module doc asserts that *any* out-of-band metadata tamper is detected.
@@ -8257,9 +8257,9 @@ seal.rs:63   }
 
 #### TAK-18: The loom concurrency models exercise no Section 3 code at all
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (shape-analog scope; sync-core extraction carried) · Tier 4 · commit c8d237e · 2026-08-26
 - **Confidence:** Certain
-- **Location:** `crates/iris-core/loom/loom_models.rs:38-86` (all three modelled structures), run by `engineering/tools/verify-loom.sh`
+- **Location:** `crates/iris-core/src/loom/loom_models.rs:38-86` (all three modelled structures), run by `engineering/tools/verify-loom.sh`
 - **What:** The section brief lists `verify-loom.sh` as Section 3's concurrency verification. All five loom models are **re-implemented analogs** of Section 2 structures: `HighWaterLeaf` (mirrors `replay.rs`), `atomic_saturating_add` (mirrors `quota.rs`), and `DedupLeaf` (a bare `Mutex<HashSet<u64>>`). None of Section 3's concurrent code — `TransportManager`'s registry, the SCF store, gateway election, or the BLE/Wi-Fi reassembly buffers — is modelled. The file says so itself.
 - **Evidence:**
 ```
@@ -8278,7 +8278,7 @@ loom_models.rs:76   struct DedupLeaf(Mutex<HashSet<u64>>);
 
 #### TAK-19: The test that claims to guard the transport-selection comparator cannot execute a single comparison
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 5852ff2 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/tests/tokio_behavior.rs:140-177` (`transport_manager_register_select_deregister_under_paused_time`)
 - **What:** The test registers exactly **one** transport, then loops 10 times asserting the selection has length 1. Its comment claims it covers the RED-0003-01 `total_cmp` path. Sorting a one-element slice performs zero comparisons, so `manager.rs:154` is never invoked.
@@ -8308,7 +8308,7 @@ assert_eq!(sel.iter().map(|s| s.transport_id.clone()).collect::<Vec<_>>(),
 
 #### TAK-20: Two of the four `tokio_behavior` tests assert nothing about IRIS code
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit efc8e6d · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/tests/tokio_behavior.rs:179-197` and `:199-217`
 - **What:** `engine_background_tasks_advance_with_virtual_time_only` constructs a bare `tokio::time::sleep` and asserts it is pending before an advance and ready after — it tests **tokio's own timer**, not any engine background task, despite the name. `engine_send_abort_clean_when_dropped_under_paused_time` drops the engine and yields once, with no assertion that anything was actually cancelled.
