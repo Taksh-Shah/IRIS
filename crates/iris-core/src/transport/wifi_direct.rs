@@ -292,16 +292,16 @@ impl SimP2pCoordinator {
     /// Latest TXT-record bytes advertised by `tag`, if any (inbound candidate
     /// attribution).
     fn txt_of(&self, tag: u64) -> Option<Vec<u8>> {
-        self.services.lock().unwrap().get(&tag).map(|e| e.1.clone())
+        self.services.lock().unwrap_or_else(|p| p.into_inner()).get(&tag).map(|e| e.1.clone())
     }
 
     fn unregister_peer(&self, tag: u64) {
-        self.services.lock().unwrap().remove(&tag);
-        self.groups.lock().unwrap().retain(|_, g| {
+        self.services.lock().unwrap_or_else(|p| p.into_inner()).remove(&tag);
+        self.groups.lock().unwrap_or_else(|p| p.into_inner()).retain(|_, g| {
             g.members.remove(&tag);
             !g.members.is_empty()
         });
-        let mut outbox = self.outbox.lock().unwrap();
+        let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         outbox.retain(|(to, _, _)| *to != tag);
     }
 
@@ -318,7 +318,7 @@ impl SimP2pCoordinator {
     }
 
     fn has_peer(&self, tag: u64) -> bool {
-        self.services.lock().unwrap().contains_key(&tag)
+        self.services.lock().unwrap_or_else(|p| p.into_inner()).contains_key(&tag)
     }
 
     fn create_group(&self, go: u64) -> u64 {
@@ -342,7 +342,7 @@ impl SimP2pCoordinator {
     }
 
     fn add_member(&self, group_id: u64, tag: u64) {
-        if let Some(g) = self.groups.lock().unwrap().get_mut(&group_id) {
+        if let Some(g) = self.groups.lock().unwrap_or_else(|p| p.into_inner()).get_mut(&group_id) {
             g.members.insert(tag);
         }
     }
@@ -357,7 +357,7 @@ impl SimP2pCoordinator {
     }
 
     fn go_of(&self, group_id: u64) -> Option<u64> {
-        self.groups.lock().unwrap().get(&group_id).map(|g| g.go)
+        self.groups.lock().unwrap_or_else(|p| p.into_inner()).get(&group_id).map(|g| g.go)
     }
 
     fn in_same_group(&self, a: u64, b: u64) -> bool {
@@ -369,7 +369,7 @@ impl SimP2pCoordinator {
     }
 
     fn remove_group(&self, group_id: u64) {
-        self.groups.lock().unwrap().remove(&group_id);
+        self.groups.lock().unwrap_or_else(|p| p.into_inner()).remove(&group_id);
     }
 
     /// Max queued frames in the in-memory outbox before senders are refused;
@@ -382,7 +382,7 @@ impl SimP2pCoordinator {
     const MAX_DRAIN_PER_CALL: usize = MAX_FRAMES_PER_TICK;
 
     fn proxy_send(&self, from_tag: u64, to_tag: u64, payload: &[u8]) {
-        let mut outbox = self.outbox.lock().unwrap();
+        let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         if outbox.len() >= Self::MAX_OUTBOX_FRAMES {
             // RT-002: drop the oldest frame queued for the *same* destination
             // when full, so one busy sender can never evict frames staged for
@@ -398,7 +398,7 @@ impl SimP2pCoordinator {
     }
 
     fn drain_outbox(&self, tag: u64) -> Vec<(u64, Vec<u8>)> {
-        let mut outbox = self.outbox.lock().unwrap();
+        let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         let mut mine = Vec::with_capacity(Self::MAX_DRAIN_PER_CALL.min(outbox.len()));
         let mut keep = Vec::with_capacity(outbox.len());
         let mut budget = Self::MAX_DRAIN_PER_CALL;
@@ -474,7 +474,7 @@ impl SimulatedWifiDirectAdapter {
 
     /// Register (first call) or update (later calls) our DNS-SD advertisement.
     fn register(&self) {
-        let mut tag = self.tag.lock().unwrap();
+        let mut tag = self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if *tag == 0 {
             *tag = self.coordinator.alloc_tag();
         }
@@ -506,7 +506,7 @@ impl SimulatedWifiDirectAdapter {
 #[async_trait]
 impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     fn availability_stream(&self) -> Option<Pin<Box<dyn Stream<Item = bool> + Send + 'static>>> {
-        self.available_rx.lock().unwrap().take().map(|rx| {
+        self.available_rx.lock().unwrap_or_else(|p| p.into_inner()).take().map(|rx| {
             Box::pin(crate::transport::broadcast_stream(rx))
                 as Pin<Box<dyn Stream<Item = bool> + Send + 'static>>
         })
@@ -526,7 +526,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     }
 
     async fn stop_dns_sd(&self) -> Result<(), String> {
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if tag != 0 {
             self.coordinator.unregister_peer(tag);
         }
@@ -551,7 +551,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         if !self.discovery_on.load(Ordering::Acquire) {
             return Vec::new();
         }
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         self.coordinator
             .visible_services(tag)
             .into_iter()
@@ -570,18 +570,18 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         if self.band_restricted.load(Ordering::Acquire) && config.band != OperatingBand::Auto {
             return Err("band_restricted".to_string());
         }
-        if self.group_id.lock().unwrap().is_some() {
+        if self.group_id.lock().unwrap_or_else(|p| p.into_inner()).is_some() {
             return self
                 .group_info()
                 .await
                 .ok_or_else(|| "group_missing".into());
         }
-        let my_tag = *self.tag.lock().unwrap();
+        let my_tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if my_tag == 0 {
             return Err("wifi_direct_not_registered".to_string());
         }
         let gid = self.coordinator.create_group(my_tag);
-        *self.group_id.lock().unwrap() = Some(gid);
+        *self.group_id.lock().unwrap_or_else(|p| p.into_inner()) = Some(gid);
         Ok(GroupInfo {
             group_id: gid,
             go: PeerHandle(my_tag),
@@ -597,7 +597,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         if !self.coordinator.has_peer(go.0) {
             return Err("peer not found".to_string());
         }
-        let my_tag = *self.tag.lock().unwrap();
+        let my_tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if my_tag == 0 {
             return Err("wifi_direct_not_registered".to_string());
         }
@@ -608,7 +608,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
             .group_of_go(go.0)
             .ok_or_else(|| "peer is not a group owner".to_string())?;
         {
-            let mut slot = self.group_id.lock().unwrap();
+            let mut slot = self.group_id.lock().unwrap_or_else(|p| p.into_inner());
             if let Some(current) = *slot {
                 // Single-group-per-adapter platform contract: joining a second
                 // group must not silently overwrite the first.
@@ -658,14 +658,14 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     }
 
     async fn remove_group(&self) -> Result<(), String> {
-        if let Some(gid) = self.group_id.lock().unwrap().take() {
+        if let Some(gid) = self.group_id.lock().unwrap_or_else(|p| p.into_inner()).take() {
             self.coordinator.remove_group(gid);
         }
         Ok(())
     }
 
     async fn group_info(&self) -> Option<GroupInfo> {
-        let gid = (*self.group_id.lock().unwrap())?;
+        let gid = (*self.group_id.lock().unwrap_or_else(|p| p.into_inner()))?;
         let go = PeerHandle(self.coordinator.go_of(gid)?);
         Some(GroupInfo {
             group_id: gid,
@@ -689,7 +689,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     }
 
     async fn set_operating_band(&self, band: OperatingBand) -> Result<(), String> {
-        *self.band.lock().unwrap() = band;
+        *self.band.lock().unwrap_or_else(|p| p.into_inner()) = band;
         Ok(())
     }
 
@@ -697,7 +697,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         if !self.available.load(Ordering::Acquire) {
             return Err("wifi_direct_unavailable".to_string());
         }
-        let my_tag = *self.tag.lock().unwrap();
+        let my_tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if !self.coordinator.in_same_group(my_tag, peer.0) {
             return Err("peer not in group".to_string());
         }
@@ -706,7 +706,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     }
 
     async fn incoming(&self) -> Vec<IncomingWifiDirectData> {
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         self.coordinator
             .drain_outbox(tag)
             .into_iter()
@@ -722,11 +722,11 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     }
 
     async fn shutdown(&self) -> Result<(), String> {
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if tag != 0 {
             self.coordinator.unregister_peer(tag);
         }
-        if let Some(gid) = self.group_id.lock().unwrap().take() {
+        if let Some(gid) = self.group_id.lock().unwrap_or_else(|p| p.into_inner()).take() {
             self.coordinator.remove_group(gid);
         }
         self.dns_sd_on.store(false, Ordering::Release);
@@ -886,12 +886,12 @@ impl WifiDirectTransport {
     /// "Available" to the manager.
     async fn teardown_link(&self, adapter: &Arc<dyn WifiDirectAdapter>, handle: PeerHandle) {
         let removed = {
-            let mut links = self.links.lock().unwrap();
+            let mut links = self.links.lock().unwrap_or_else(|p| p.into_inner());
             let before = links.len();
             links.retain(|l| l.handle != handle);
             before != links.len()
         };
-        if removed && self.links.lock().unwrap().is_empty() {
+        if removed && self.links.lock().unwrap_or_else(|p| p.into_inner()).is_empty() {
             let next = if adapter.is_available() {
                 TransportState::Available
             } else {
@@ -948,7 +948,7 @@ impl WifiDirectTransport {
             let mut backlog: std::collections::VecDeque<IncomingWifiDirectData> =
                 std::collections::VecDeque::new();
             loop {
-                let fast = !links.lock().unwrap().is_empty();
+                let fast = !links.lock().unwrap_or_else(|p| p.into_inner()).is_empty();
                 tokio::time::sleep(Duration::from_millis(if fast { 10 } else { IDLE_POLL_MS }))
                     .await;
                 backlog.extend(adapter.incoming().await);
@@ -1015,7 +1015,7 @@ impl WifiDirectTransport {
                         );
                     }
                 } else if current == TransportState::Degraded {
-                    let restored = if links.lock().unwrap().is_empty() {
+                    let restored = if links.lock().unwrap_or_else(|p| p.into_inner()).is_empty() {
                         TransportState::Available
                     } else {
                         TransportState::Connected
@@ -1030,7 +1030,7 @@ impl WifiDirectTransport {
     /// Discovery re-arm gate: re-arms the framework find window only when the
     /// app-level cadence has elapsed (AC-5, G-WD-7).
     fn discovery_should_rearm(&self) -> bool {
-        let mut slot = self.discovery_until.lock().unwrap();
+        let mut slot = self.discovery_until.lock().unwrap_or_else(|p| p.into_inner());
         match *slot {
             None => true,
             Some(until) if Instant::now() >= until => {
@@ -1042,7 +1042,7 @@ impl WifiDirectTransport {
     }
 
     fn clear_discovery(&self) {
-        *self.discovery_until.lock().unwrap() = None;
+        *self.discovery_until.lock().unwrap_or_else(|p| p.into_inner()) = None;
     }
 }
 
@@ -1167,7 +1167,7 @@ impl Transport for WifiDirectTransport {
             return Err(TransportError::NotSupported);
         }
         {
-            let links = self.links.lock().unwrap();
+            let links = self.links.lock().unwrap_or_else(|p| p.into_inner());
             if links.iter().any(|l| l.peer_id == peer.peer_id) {
                 // RT-004: a reused link re-promotes the transport to Connected
                 // so a pull-only adapter whose state drifted (no availability
@@ -1212,7 +1212,7 @@ impl Transport for WifiDirectTransport {
         if self.state.load() == TransportState::Unavailable || !adapter.is_available() {
             return Err(TransportError::ShuttingDown);
         }
-        self.links.lock().unwrap().push(WifiDirectLink {
+        self.links.lock().unwrap_or_else(|p| p.into_inner()).push(WifiDirectLink {
             handle: PeerHandle(handle),
             peer_id: peer.peer_id,
         });
@@ -1321,7 +1321,7 @@ impl Transport for WifiDirectTransport {
             let _ = adapter.remove_group().await;
             let _ = adapter.shutdown().await;
         }
-        self.links.lock().unwrap().clear();
+        self.links.lock().unwrap_or_else(|p| p.into_inner()).clear();
         self.clear_discovery();
         self.shutdown_flag.store(true, Ordering::SeqCst);
         self.set_state(TransportState::Unavailable);
@@ -1515,7 +1515,7 @@ mod tests {
         assert_eq!(peers.len(), 1);
         // Stop the find window (WIFI_P2P_DISCOVERY_CHANGED_ACTION stop event).
         ta.stop_discovery().await.unwrap();
-        assert!(ta.discovery_until.lock().unwrap().is_none());
+        assert!(ta.discovery_until.lock().unwrap_or_else(|p| p.into_inner()).is_none());
         // Re-arm works after stop.
         let peers2: Vec<PeerInfo> = ta
             .discover_peers(DiscoveryConfig::default())
@@ -1611,7 +1611,7 @@ mod tests {
             results.push(h.await.unwrap());
         }
         assert!(results.iter().all(|r| r.is_ok()));
-        assert_eq!(ta.links.lock().unwrap().len(), 1, "single link per peer");
+        assert_eq!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).len(), 1, "single link per peer");
     }
 
     /// WD-AC-1 — registration: an Unavailable transport is never selected by the
@@ -1648,7 +1648,7 @@ mod tests {
         let ta = WifiDirectTransport::new(Some(a.clone()));
         advertise(&ta).await;
 
-        let tag = *a.tag.lock().unwrap();
+        let tag = *a.tag.lock().unwrap_or_else(|p| p.into_inner());
         assert_ne!(tag, 0, "registered");
         let txt = coord.txt_of(tag).expect("advertisement present");
         let parsed = WifiDirectTxtRecord::parse(&txt).expect("advertised TXT parses");
@@ -1665,10 +1665,10 @@ mod tests {
             coord.proxy_send(9, 2, b"a");
             coord.proxy_send(9, 4, b"b");
         }
-        assert_eq!(coord.outbox.lock().unwrap().len(), cap);
+        assert_eq!(coord.outbox.lock().unwrap_or_else(|p| p.into_inner()).len(), cap);
         // One more frame for dest 2 → evicts the oldest dest-2 frame only.
         coord.proxy_send(9, 2, b"c");
-        let outbox = coord.outbox.lock().unwrap();
+        let outbox = coord.outbox.lock().unwrap_or_else(|p| p.into_inner());
         assert_eq!(outbox.len(), cap, "still bounded");
         let to2 = outbox.iter().filter(|(to, _, _)| *to == 2).count();
         let to4 = outbox.iter().filter(|(to, _, _)| *to == 4).count();
@@ -1717,7 +1717,7 @@ mod tests {
         ));
         assert_eq!(tb.state(), TransportState::Available, "no phantom group");
         assert_eq!(
-            coord.groups.lock().unwrap().len(),
+            coord.groups.lock().unwrap_or_else(|p| p.into_inner()).len(),
             0,
             "no group manufactured"
         );
@@ -1768,7 +1768,7 @@ mod tests {
         ta.connect(&peer).await.unwrap();
         tokio::time::sleep(Duration::from_millis(100)).await;
         assert_eq!(ta.state(), TransportState::Connected);
-        assert_eq!(ta.links.lock().unwrap().len(), 1, "single link reused");
+        assert_eq!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).len(), 1, "single link reused");
     }
 
     /// RT-005 — sending on an unavailable adapter refuses and tears the group
@@ -1803,14 +1803,14 @@ mod tests {
             .await;
         let peer = peers[0].clone();
         ta.connect(&peer).await.unwrap();
-        assert_eq!(ta.links.lock().unwrap().len(), 1);
+        assert_eq!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).len(), 1);
 
         a.set_available(false);
         assert!(matches!(
             ta.send(&peer.peer_id, &sample_message(b"x")).await,
             Err(TransportError::NotSupported)
         ));
-        assert!(ta.links.lock().unwrap().is_empty(), "links torn down");
+        assert!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).is_empty(), "links torn down");
         assert_eq!(ta.state(), TransportState::Degraded);
     }
 

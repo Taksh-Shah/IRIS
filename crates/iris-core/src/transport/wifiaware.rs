@@ -244,25 +244,25 @@ impl SimMeshCoordinator {
 
     fn register_peer(&self, beacon: Vec<u8>) -> u64 {
         let tag = self.next_tag.fetch_add(1, Ordering::Relaxed);
-        self.peers.lock().unwrap().insert(tag, beacon);
+        self.peers.lock().unwrap_or_else(|p| p.into_inner()).insert(tag, beacon);
         tag
     }
 
     fn set_beacon(&self, tag: u64, beacon: Vec<u8>) {
-        self.peers.lock().unwrap().insert(tag, beacon);
+        self.peers.lock().unwrap_or_else(|p| p.into_inner()).insert(tag, beacon);
     }
 
     /// Latest beacon bytes published by `tag`, if any (used for inbound
     /// candidate attribution; NEW-WA-RT-101).
     fn beacon_of(&self, tag: u64) -> Option<Vec<u8>> {
-        self.peers.lock().unwrap().get(&tag).cloned()
+        self.peers.lock().unwrap_or_else(|p| p.into_inner()).get(&tag).cloned()
     }
 
     fn unregister_peer(&self, tag: u64) {
-        self.peers.lock().unwrap().remove(&tag);
+        self.peers.lock().unwrap_or_else(|p| p.into_inner()).remove(&tag);
         // RT-010: also drop any queued frames destined to the departed tag so
         // the outbox cannot grow for peers that will never drain them.
-        let mut outbox = self.outbox.lock().unwrap();
+        let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         outbox.retain(|(to, _, _)| *to != tag);
     }
 
@@ -293,7 +293,7 @@ impl SimMeshCoordinator {
     const MAX_DRAIN_PER_CALL: usize = MAX_FRAMES_PER_TICK;
 
     fn proxy_send(&self, from_tag: u64, to_tag: u64, payload: &[u8]) {
-        let mut outbox = self.outbox.lock().unwrap();
+        let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         if outbox.len() >= Self::MAX_OUTBOX_FRAMES {
             // Drop the oldest frame; keep the newest (finite NDP buffer).
             outbox.remove(0);
@@ -303,7 +303,7 @@ impl SimMeshCoordinator {
 
     /// True when a peer with this tag is registered in the mesh (RT-010).
     fn has_peer(&self, tag: u64) -> bool {
-        self.peers.lock().unwrap().contains_key(&tag)
+        self.peers.lock().unwrap_or_else(|p| p.into_inner()).contains_key(&tag)
     }
 
     /// Drain up to `MAX_DRAIN_PER_CALL` frames addressed to `tag`, returning
@@ -313,7 +313,7 @@ impl SimMeshCoordinator {
     /// intentionally not forwarded. Overflow stays queued for the next call
     /// (bounded work per poll, no loss).
     fn drain_outbox(&self, tag: u64) -> Vec<(u64, Vec<u8>)> {
-        let mut outbox = self.outbox.lock().unwrap();
+        let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         let mut mine = Vec::with_capacity(Self::MAX_DRAIN_PER_CALL.min(outbox.len()));
         let mut keep = Vec::with_capacity(outbox.len());
         let mut budget = Self::MAX_DRAIN_PER_CALL;
@@ -384,7 +384,7 @@ impl SimulatedWifiAwareAdapter {
     /// The sim peer_short is derived from the registration tag (a stable
     /// in-process identity — not a NAN MAC).
     fn register(&self) {
-        let mut tag = self.tag.lock().unwrap();
+        let mut tag = self.tag.lock().unwrap_or_else(|p| p.into_inner());
         let mut short = [0u8; 16];
         if *tag == 0 {
             *tag = self.coordinator.register_peer(vec![]);
@@ -404,7 +404,7 @@ impl SimulatedWifiAwareAdapter {
 #[async_trait]
 impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
     fn availability_stream(&self) -> Option<Pin<Box<dyn Stream<Item = bool> + Send + 'static>>> {
-        self.available_rx.lock().unwrap().take().map(|rx| {
+        self.available_rx.lock().unwrap_or_else(|p| p.into_inner()).take().map(|rx| {
             Box::pin(crate::transport::broadcast_stream(rx))
                 as Pin<Box<dyn Stream<Item = bool> + Send + 'static>>
         })
@@ -434,7 +434,7 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
     }
 
     async fn unpublish(&self) -> Result<(), String> {
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if tag != 0 {
             self.coordinator.unregister_peer(tag);
         }
@@ -446,7 +446,7 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
         if !self.subscribed.load(Ordering::Acquire) {
             return Ok(Vec::new());
         }
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         Ok(self
             .coordinator
             .visible_peers(tag)
@@ -461,17 +461,17 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
     async fn open_ndp(&self, peer_handle: PeerHandle) -> Result<NdpHandle, String> {
         // RT-010: reject self-NDPs and handles with no registered peer so the
         // sim mirrors the platform (open_ndp to an unknown handle fails).
-        let my_tag = *self.tag.lock().unwrap();
+        let my_tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if peer_handle.0 == my_tag || !self.coordinator.has_peer(peer_handle.0) {
             return Err("ndp peer not available".to_string());
         }
         let ndp = self.coordinator.alloc_ndp();
-        self.ndp_open.lock().unwrap().insert(ndp, peer_handle.0);
+        self.ndp_open.lock().unwrap_or_else(|p| p.into_inner()).insert(ndp, peer_handle.0);
         Ok(ndp)
     }
 
     async fn close_ndp(&self, ndp: NdpHandle) -> Result<(), String> {
-        self.ndp_open.lock().unwrap().remove(&ndp);
+        self.ndp_open.lock().unwrap_or_else(|p| p.into_inner()).remove(&ndp);
         Ok(())
     }
 
@@ -483,13 +483,13 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
             .get(&ndp)
             .copied()
             .ok_or_else(|| "ndp_not_open".to_string())?;
-        let from_tag = *self.tag.lock().unwrap();
+        let from_tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         self.coordinator.proxy_send(from_tag, to_tag, payload);
         Ok(())
     }
 
     async fn incoming_ndp(&self) -> Result<Vec<IncomingNdpData>, String> {
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         Ok(self
             .coordinator
             .drain_outbox(tag)
@@ -513,13 +513,13 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
     }
 
     async fn shutdown(&self) -> Result<(), String> {
-        let tag = *self.tag.lock().unwrap();
+        let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if tag != 0 {
             self.coordinator.unregister_peer(tag);
         }
         self.subscribed.store(false, Ordering::Release);
         self.published.store(false, Ordering::Release);
-        self.ndp_open.lock().unwrap().clear();
+        self.ndp_open.lock().unwrap_or_else(|p| p.into_inner()).clear();
         Ok(())
     }
 
@@ -693,14 +693,14 @@ impl WifiAwareTransport {
     /// whose last link dies mid-outage never lies "Available" to the manager.
     async fn teardown_link(&self, adapter: &Arc<dyn WifiAwareAdapter>, ndp: NdpHandle) {
         let removed = {
-            let mut links = self.links.lock().unwrap();
+            let mut links = self.links.lock().unwrap_or_else(|p| p.into_inner());
             let before = links.len();
             links.retain(|l| l.ndp != ndp);
             before != links.len()
         };
         if removed {
             let _ = adapter.close_ndp(ndp).await;
-            if self.links.lock().unwrap().is_empty() {
+            if self.links.lock().unwrap_or_else(|p| p.into_inner()).is_empty() {
                 let next = if adapter.is_available() {
                     TransportState::Available
                 } else {
@@ -785,7 +785,7 @@ impl WifiAwareTransport {
             loop {
                 // RT-014: back off to the idle interval when no NDP links are
                 // active; only wake at the fast interval while linked.
-                let fast = !links.lock().unwrap().is_empty();
+                let fast = !links.lock().unwrap_or_else(|p| p.into_inner()).is_empty();
                 tokio::time::sleep(Duration::from_millis(if fast { 10 } else { IDLE_POLL_MS }))
                     .await;
                 // Top up the backlog from the adapter, then forward at most
@@ -895,7 +895,7 @@ impl WifiAwareTransport {
                     // survived the outage, else Available (NEW-WA-RT-106:
                     // restoring to Available while linked would clobber
                     // Connected and mislead the manager's steer logic).
-                    let restored = if links.lock().unwrap().is_empty() {
+                    let restored = if links.lock().unwrap_or_else(|p| p.into_inner()).is_empty() {
                         TransportState::Available
                     } else {
                         TransportState::Connected
@@ -1028,7 +1028,7 @@ impl Transport for WifiAwareTransport {
             return Err(TransportError::NotSupported);
         }
         {
-            let links = self.links.lock().unwrap();
+            let links = self.links.lock().unwrap_or_else(|p| p.into_inner());
             // WAW-RT-001: per-peer single NDP (AC-9). Reuse an existing link
             // instead of opening a fresh NDP on every connect.
             if links.iter().any(|l| l.peer_id == peer.peer_id) {
@@ -1056,7 +1056,7 @@ impl Transport for WifiAwareTransport {
             let _ = adapter.close_ndp(ndp).await;
             return Err(TransportError::ShuttingDown);
         }
-        self.links.lock().unwrap().push(NdpLink {
+        self.links.lock().unwrap_or_else(|p| p.into_inner()).push(NdpLink {
             ndp,
             peer_id: peer.peer_id,
         });
@@ -1152,13 +1152,13 @@ impl Transport for WifiAwareTransport {
         // Close every open NDP before tearing down the adapter so handles
         // don't leak (WAW-RT-001).
         if let Ok(adapter) = self.adapter().await {
-            let ndps: Vec<NdpHandle> = self.links.lock().unwrap().iter().map(|l| l.ndp).collect();
+            let ndps: Vec<NdpHandle> = self.links.lock().unwrap_or_else(|p| p.into_inner()).iter().map(|l| l.ndp).collect();
             for ndp in ndps {
                 let _ = adapter.close_ndp(ndp).await;
             }
             let _ = adapter.shutdown().await;
         }
-        self.links.lock().unwrap().clear();
+        self.links.lock().unwrap_or_else(|p| p.into_inner()).clear();
         // NEW-WA-RT-102: latch shutdown so no later ensure_started() can
         // resurrect the transport (e.g. a discover_peers on a dead transport).
         self.shutdown_flag.store(true, Ordering::SeqCst);
@@ -1387,7 +1387,7 @@ mod tests {
             results.iter().all(|r| r.is_ok()),
             "all connects succeed via reuse"
         );
-        assert_eq!(ta.links.lock().unwrap().len(), 1, "single NDP per peer");
+        assert_eq!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).len(), 1, "single NDP per peer");
     }
 
     /// WIAW-SEC-HT-002 (WAW-RT-001) — a connect() racing shutdown() must never
@@ -1422,7 +1422,7 @@ mod tests {
 
         assert_eq!(ta.state(), TransportState::Unavailable);
         assert!(
-            ta.links.lock().unwrap().is_empty(),
+            ta.links.lock().unwrap_or_else(|p| p.into_inner()).is_empty(),
             "no link survives shutdown"
         );
         // Any NDP that the in-flight connect opened must have been closed.
@@ -1456,7 +1456,7 @@ mod tests {
         for _ in 0..SimMeshCoordinator::MAX_OUTBOX_FRAMES * 4 {
             let _ = ta.send(&peer.peer_id, &msg).await;
         }
-        let outbox_len = coord.outbox.lock().unwrap().len();
+        let outbox_len = coord.outbox.lock().unwrap_or_else(|p| p.into_inner()).len();
         assert!(
             outbox_len <= SimMeshCoordinator::MAX_OUTBOX_FRAMES,
             "outbox capped ({outbox_len} > {})",
@@ -1464,7 +1464,7 @@ mod tests {
         );
 
         // A single drain obeys the per-call budget and carries sender tags.
-        let drained = coord.drain_outbox(*b.tag.lock().unwrap());
+        let drained = coord.drain_outbox(*b.tag.lock().unwrap_or_else(|p| p.into_inner()));
         assert!(drained.len() <= SimMeshCoordinator::MAX_DRAIN_PER_CALL);
         // (Sender attribution is asserted in the round-trip test; here the
         //  sender never registered, so a zero from-tag is legitimate.)
@@ -1558,7 +1558,7 @@ mod tests {
             ),
             "transient congestion → Busy, no teardown"
         );
-        assert_eq!(ta.links.lock().unwrap().len(), 1, "link kept");
+        assert_eq!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).len(), 1, "link kept");
 
         // Second send succeeds because the transient has passed.
         assert!(ta.send(&peer.peer_id, &msg).await.is_ok());
@@ -1590,7 +1590,7 @@ mod tests {
         // last link + close the NDP) while the adapter is unavailable.
         a.set_available(false);
         let adapter: Arc<dyn WifiAwareAdapter> = a.clone();
-        let ndp = ta.links.lock().unwrap()[0].ndp;
+        let ndp = ta.links.lock().unwrap_or_else(|p| p.into_inner())[0].ndp;
         ta.teardown_link(&adapter, ndp).await;
 
         // NEW-WA-RT-104: last-link death while the data scope is down must land

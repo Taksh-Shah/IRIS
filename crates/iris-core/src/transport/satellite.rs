@@ -248,7 +248,7 @@ impl InMemoryLedger {
 
     /// Oldest-to-newest snapshot of retained events (bounded).
     pub fn events(&self) -> Vec<LedgerEvent> {
-        self.events.lock().unwrap().iter().copied().collect()
+        self.events.lock().unwrap_or_else(|p| p.into_inner()).iter().copied().collect()
     }
 }
 
@@ -260,7 +260,7 @@ impl Default for InMemoryLedger {
 
 impl CostLedger for InMemoryLedger {
     fn record(&self, event: LedgerEvent) {
-        let mut q = self.events.lock().unwrap();
+        let mut q = self.events.lock().unwrap_or_else(|p| p.into_inner());
         q.push_back(event);
         while q.len() > IN_MEMORY_LEDGER_CAP {
             q.pop_front();
@@ -447,7 +447,7 @@ impl SatelliteCostGuard {
                 token: 0,
             });
         }
-        let mut q = self.hourly.lock().unwrap();
+        let mut q = self.hourly.lock().unwrap_or_else(|p| p.into_inner());
         Self::prune_hourly_locked(&mut q, t);
         if q.len() as u32 >= self.cfg.hourly_msg_cap {
             self.ledger.record(LedgerEvent::TxRefusedHourly);
@@ -495,7 +495,7 @@ impl SatelliteCostGuard {
         let t = self.now();
         let removed_day;
         {
-            let mut q = self.hourly.lock().unwrap();
+            let mut q = self.hourly.lock().unwrap_or_else(|p| p.into_inner());
             Self::prune_hourly_locked(&mut q, t);
             let pos = q.iter().position(|e| e.token == token);
             let Some(pos) = pos else {
@@ -531,7 +531,7 @@ impl SatelliteCostGuard {
 
     /// Remaining slots this hour for non-emergency traffic.
     pub fn hourly_remaining(&self) -> u32 {
-        let mut q = self.hourly.lock().unwrap();
+        let mut q = self.hourly.lock().unwrap_or_else(|p| p.into_inner());
         Self::prune_hourly_locked(&mut q, self.now());
         self.cfg.hourly_msg_cap.saturating_sub(q.len() as u32)
     }
@@ -694,8 +694,8 @@ impl SimulatedSatelliteAdapter {
 
     /// Wire two adapters to each other (both directions).
     pub fn connect_pair(a: &SimulatedSatelliteAdapter, b: &SimulatedSatelliteAdapter) {
-        a.0.state.lock().unwrap().peer = Some(Arc::clone(&b.0));
-        b.0.state.lock().unwrap().peer = Some(Arc::clone(&a.0));
+        a.0.state.lock().unwrap_or_else(|p| p.into_inner()).peer = Some(Arc::clone(&b.0));
+        b.0.state.lock().unwrap_or_else(|p| p.into_inner()).peer = Some(Arc::clone(&a.0));
     }
 }
 
@@ -716,7 +716,7 @@ impl SatelliteLinkAdapter for SimulatedSatelliteAdapter {
             return Err(SatelliteLinkError::Closed);
         }
         let peer = {
-            let mut st = self.0.state.lock().unwrap();
+            let mut st = self.0.state.lock().unwrap_or_else(|p| p.into_inner());
             let lost = rand::Rng::gen_range(&mut st.rng, 0.0..1.0) < self.0.outage_probability;
             if lost {
                 return Ok(()); // transmitted during an outage — silently gone
@@ -728,13 +728,13 @@ impl SatelliteLinkAdapter for SimulatedSatelliteAdapter {
             let jitter = if spread == 0 {
                 0
             } else {
-                rand::Rng::gen_range(&mut peer.state.lock().unwrap().rng, 0..=spread)
+                rand::Rng::gen_range(&mut peer.state.lock().unwrap_or_else(|p| p.into_inner()).rng, 0..=spread)
             };
             let pending = PendingPayload {
                 ready_at: Instant::now() + Duration::from_millis(self.0.latency_base_ms + jitter),
                 data: payload.to_vec(),
             };
-            peer.state.lock().unwrap().inbound.push_back(pending);
+            peer.state.lock().unwrap_or_else(|p| p.into_inner()).inbound.push_back(pending);
         }
         Ok(())
     }
@@ -743,7 +743,7 @@ impl SatelliteLinkAdapter for SimulatedSatelliteAdapter {
         if !self.0.opened.load(Ordering::Acquire) {
             return Err(SatelliteLinkError::Closed);
         }
-        let mut st = self.0.state.lock().unwrap();
+        let mut st = self.0.state.lock().unwrap_or_else(|p| p.into_inner());
         let now = Instant::now();
         let idx = st.inbound.iter().position(|p| p.ready_at <= now);
         if let Some(idx) = idx {

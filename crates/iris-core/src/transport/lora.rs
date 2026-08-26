@@ -353,7 +353,7 @@ impl DutyCycleTracker {
         let t = match &self.monotonic {
             None => raw,
             Some(guard) => {
-                let mut g = guard.lock().unwrap();
+                let mut g = guard.lock().unwrap_or_else(|p| p.into_inner());
                 g.bound(raw)
             }
         };
@@ -378,7 +378,7 @@ impl DutyCycleTracker {
     /// ever REMOVES usage).
     pub fn refund(&self, class: MessagePriority, airtime_ms: u64) -> bool {
         let bucket = DutyBucket::from_priority(class);
-        let mut q = self.tx.lock().unwrap();
+        let mut q = self.tx.lock().unwrap_or_else(|p| p.into_inner());
         for idx in (0..q.len()).rev() {
             if q[idx].bucket == bucket && q[idx].airtime_ms == airtime_ms {
                 q.remove(idx);
@@ -390,7 +390,7 @@ impl DutyCycleTracker {
 
     /// Fraction of the per-device hourly budget still unused, in [0, 1].
     pub fn duty_cycle_remaining_fraction(&self) -> f32 {
-        let mut q = self.tx.lock().unwrap();
+        let mut q = self.tx.lock().unwrap_or_else(|p| p.into_inner());
         prune_locked(&mut q, self.cfg.window_ms, self.now());
         let (used, _) = usage_locked(&q);
         remaining_fraction(used, self.cfg.airtime_budget_ms)
@@ -414,7 +414,7 @@ impl DutyCycleTracker {
         let budget = self.cfg.airtime_budget_ms;
         let bucket = DutyBucket::from_priority(class);
 
-        let mut q = self.tx.lock().unwrap();
+        let mut q = self.tx.lock().unwrap_or_else(|p| p.into_inner());
         prune_locked(&mut q, window, now);
         let (used, by_bucket) = usage_locked(&q);
         let global_remaining = budget.saturating_sub(used);
@@ -935,8 +935,8 @@ impl SimulatedLoRaAdapter {
 
     /// Wire two adapters to each other (both directions).
     pub fn connect_pair(a: &SimulatedLoRaAdapter, b: &SimulatedLoRaAdapter) {
-        a.0.state.lock().unwrap().peer = Some(Arc::clone(&b.0));
-        b.0.state.lock().unwrap().peer = Some(Arc::clone(&a.0));
+        a.0.state.lock().unwrap_or_else(|p| p.into_inner()).peer = Some(Arc::clone(&b.0));
+        b.0.state.lock().unwrap_or_else(|p| p.into_inner()).peer = Some(Arc::clone(&a.0));
     }
 }
 
@@ -957,7 +957,7 @@ impl LoRaLinkAdapter for SimulatedLoRaAdapter {
             return Err(LoRaLinkError::Closed);
         }
         let peer = {
-            let mut st = self.0.state.lock().unwrap();
+            let mut st = self.0.state.lock().unwrap_or_else(|p| p.into_inner());
             let lost = rand::Rng::gen_range(&mut st.rng, 0.0..1.0) < self.0.loss_rate;
             if lost {
                 return Ok(()); // transmitted into a fade — silently gone
@@ -969,7 +969,7 @@ impl LoRaLinkAdapter for SimulatedLoRaAdapter {
                 ready_at: Instant::now() + Duration::from_millis(self.0.delay_ms),
                 data: frame_slip.to_vec(),
             };
-            peer.state.lock().unwrap().inbound.push_back(pending);
+            peer.state.lock().unwrap_or_else(|p| p.into_inner()).inbound.push_back(pending);
         }
         // An unpaired open link still transmits (raw radio broadcasts to nobody).
         Ok(())
@@ -979,7 +979,7 @@ impl LoRaLinkAdapter for SimulatedLoRaAdapter {
         if !self.0.opened.load(Ordering::Acquire) {
             return Err(LoRaLinkError::Closed);
         }
-        let mut st = self.0.state.lock().unwrap();
+        let mut st = self.0.state.lock().unwrap_or_else(|p| p.into_inner());
         let now = Instant::now();
         let idx = st.inbound.iter().position(|p| p.ready_at <= now);
         if let Some(idx) = idx {
@@ -1180,7 +1180,7 @@ impl<T> BacklogQueue<T> {
     /// Insert keeping ascending-priority order (P0 first), FIFO within class.
     /// Returns false when at capacity (RT-106 memory bound).
     pub fn push(&self, priority: MessagePriority, item: T) -> bool {
-        let mut g = self.entries.lock().unwrap();
+        let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
         if g.len() >= MAX_BACKLOG_ENTRIES {
             return false;
         }
@@ -1194,14 +1194,14 @@ impl<T> BacklogQueue<T> {
     /// the depth cap so concurrent enqueues during a drain can never silently
     /// drop held traffic. May temporarily exceed [`MAX_BACKLOG_ENTRIES`].
     pub fn push_deferred(&self, priority: MessagePriority, item: T) {
-        let mut g = self.entries.lock().unwrap();
+        let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
         let pos = g.partition_point(|e| e.priority <= priority);
         g.insert(pos, BacklogEntry { priority, item });
     }
 
     /// Pop the highest-priority entry (front of the sorted vec).
     pub fn pop_highest(&self) -> Option<BacklogEntry<T>> {
-        let mut g = self.entries.lock().unwrap();
+        let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
         if g.is_empty() {
             None
         } else {
@@ -1210,7 +1210,7 @@ impl<T> BacklogQueue<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.entries.lock().unwrap().len()
+        self.entries.lock().unwrap_or_else(|p| p.into_inner()).len()
     }
 
     pub fn is_empty(&self) -> bool {

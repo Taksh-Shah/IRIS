@@ -231,19 +231,19 @@ impl SimulatedBleAdapter {
     /// Inject the node's identification-characteristic value (its 22-byte
     /// discovery beacon) that `gatt_read` serves for `IRIS_IDENTIFY_CHARACTERISTIC`.
     pub fn inject_identify_read(&self, data: Vec<u8>) {
-        *self.identify_data.lock().unwrap() = data;
+        *self.identify_data.lock().unwrap_or_else(|p| p.into_inner()) = data;
     }
     /// Advertisement data as passed to `start_advertising` by the transport.
     pub fn last_ad_received(&self) -> Option<AdvertisementData> {
-        self.last_ad_raw.lock().unwrap().clone()
+        self.last_ad_raw.lock().unwrap_or_else(|p| p.into_inner()).clone()
     }
     /// Advertisement data as actually transmitted on the wire.
     pub fn last_ad_wire(&self) -> Option<AdvertisementData> {
-        self.last_ad_wire.lock().unwrap().clone()
+        self.last_ad_wire.lock().unwrap_or_else(|p| p.into_inner()).clone()
     }
     /// Inject an inbound GATT write (simulates a peer writing to our server).
     pub fn inject_write(&self, handle: GattHandle, char_uuid: Uuid, data: Vec<u8>) {
-        self.events.lock().unwrap().push(GattWriteEvent {
+        self.events.lock().unwrap_or_else(|p| p.into_inner()).push(GattWriteEvent {
             handle,
             char_uuid,
             data,
@@ -251,7 +251,7 @@ impl SimulatedBleAdapter {
     }
     /// Inject a discovered advertisement (simulates a peer advertising near us).
     pub fn inject_scan_result(&self, address: BleAddress, payload: Vec<u8>, rssi: i32) {
-        self.scan_results.lock().unwrap().push(ScanResult {
+        self.scan_results.lock().unwrap_or_else(|p| p.into_inner()).push(ScanResult {
             address,
             payload,
             rssi,
@@ -259,15 +259,15 @@ impl SimulatedBleAdapter {
     }
     /// Last GATT write received (for asserting outbound segmentation).
     pub fn last_writes(&self) -> std::sync::MutexGuard<'_, Vec<(GattWriteEvent, GattHandle)>> {
-        self.writes.lock().unwrap()
+        self.writes.lock().unwrap_or_else(|p| p.into_inner())
     }
     /// Number of `connect_gatt` calls (AC-9: must be 1 across reconnects).
     pub fn connect_count(&self) -> usize {
-        *self.connect_calls.lock().unwrap()
+        *self.connect_calls.lock().unwrap_or_else(|p| p.into_inner())
     }
     /// Handles assigned to live connections (for multi-peer tests).
     pub fn assigned_handles(&self) -> std::sync::MutexGuard<'_, Vec<GattHandle>> {
-        self.handles.lock().unwrap()
+        self.handles.lock().unwrap_or_else(|p| p.into_inner())
     }
 }
 
@@ -277,14 +277,14 @@ impl BleAdapter for SimulatedBleAdapter {
     }
     fn stop_scan(&self, _handle: ScanHandle) {}
     fn start_advertising(&self, data: AdvertisementData) -> Result<AdvHandle, BleError> {
-        *self.last_ad_raw.lock().unwrap() = Some(data.clone());
+        *self.last_ad_raw.lock().unwrap_or_else(|p| p.into_inner()) = Some(data.clone());
         // A real adapter that advertises an IRIS discovery beacon serves the
         // SAME beacon via the GATT identification characteristic on the
         // connect-to-identify path (DEC-BLE-002-0002). Mirror that in the sim:
         // the beacon the peer reads is the beacon this node advertises
         // (BLE-RT-C005) — no separate injection needed for the honest path.
         if !data.service_data.is_empty() {
-            *self.identify_data.lock().unwrap() = data.service_data.clone();
+            *self.identify_data.lock().unwrap_or_else(|p| p.into_inner()) = data.service_data.clone();
         }
         let wire = if self.ios_mode.load(std::sync::atomic::Ordering::Relaxed) {
             // iOS `startAdvertising(_:)` transmits ONLY local name + service
@@ -299,12 +299,12 @@ impl BleAdapter for SimulatedBleAdapter {
         } else {
             data
         };
-        *self.last_ad_wire.lock().unwrap() = Some(wire);
+        *self.last_ad_wire.lock().unwrap_or_else(|p| p.into_inner()) = Some(wire);
         Ok(AdvHandle(1))
     }
     fn stop_advertising(&self, _handle: AdvHandle) {}
     fn connect_gatt(&self, _address: BleAddress) -> Result<GattHandle, BleError> {
-        *self.connect_calls.lock().unwrap() += 1;
+        *self.connect_calls.lock().unwrap_or_else(|p| p.into_inner()) += 1;
         // Distinct handle per connection so multi-peer tests can attribute
         // inbound writes to the right link (BLE-RT-016).
         let h = GattHandle(
@@ -312,7 +312,7 @@ impl BleAdapter for SimulatedBleAdapter {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
                 + 1,
         );
-        self.handles.lock().unwrap().push(h);
+        self.handles.lock().unwrap_or_else(|p| p.into_inner()).push(h);
         Ok(h)
     }
     fn disconnect_gatt(&self, _handle: GattHandle) {}
@@ -322,7 +322,7 @@ impl BleAdapter for SimulatedBleAdapter {
         char_uuid: Uuid,
         data: Vec<u8>,
     ) -> Result<(), BleError> {
-        self.writes.lock().unwrap().push((
+        self.writes.lock().unwrap_or_else(|p| p.into_inner()).push((
             GattWriteEvent {
                 handle,
                 char_uuid,
@@ -336,7 +336,7 @@ impl BleAdapter for SimulatedBleAdapter {
         // Only the IRIS identification characteristic exists on the simulated
         // server; reads of anything else fail like an absent characteristic.
         if char_uuid == IRIS_IDENTIFY_CHARACTERISTIC {
-            Ok(self.identify_data.lock().unwrap().clone())
+            Ok(self.identify_data.lock().unwrap_or_else(|p| p.into_inner()).clone())
         } else {
             Err(BleError::DeviceNotFound)
         }
@@ -345,10 +345,10 @@ impl BleAdapter for SimulatedBleAdapter {
         Ok(mtu)
     }
     fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-        self.events.lock().unwrap()
+        self.events.lock().unwrap_or_else(|p| p.into_inner())
     }
     fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
-        self.scan_results.lock().unwrap()
+        self.scan_results.lock().unwrap_or_else(|p| p.into_inner())
     }
 }
 
@@ -491,19 +491,19 @@ impl BleTransport {
         adapter: std::sync::Arc<dyn BleAdapter>,
         _cause: Option<&BleError>,
     ) {
-        if let Some((handle, _)) = self.connections.lock().unwrap().remove(peer) {
+        if let Some((handle, _)) = self.connections.lock().unwrap_or_else(|p| p.into_inner()).remove(peer) {
             adapter.disconnect_gatt(handle);
         }
         // Not load-bearing for correctness (a stale empty-Mutex entry just
         // gets reused on the next connect), only for not growing forever
         // across a long-lived node's peer churn.
-        self.connect_locks.lock().unwrap().remove(peer);
-        if let Some(p) = self.pollers.write().unwrap().remove(peer) {
+        self.connect_locks.lock().unwrap_or_else(|p| p.into_inner()).remove(peer);
+        if let Some(p) = self.pollers.write().unwrap_or_else(|p| p.into_inner()).remove(peer) {
             p.abort();
         }
         // Fall back to `Available` once a dead link is gone so the manager's
         // `state >= Available` selection filter doesn't keep routing into it.
-        if self.connections.lock().unwrap().is_empty() {
+        if self.connections.lock().unwrap_or_else(|p| p.into_inner()).is_empty() {
             self.set_state(TransportState::Available);
         }
     }
@@ -515,7 +515,7 @@ impl BleTransport {
     /// RES-0019 R6.2/G4).
     fn scan_allowed(&self) -> bool {
         let now = std::time::Instant::now();
-        let mut times = self.scan_times.lock().unwrap();
+        let mut times = self.scan_times.lock().unwrap_or_else(|p| p.into_inner());
         while let Some(&t) = times.front() {
             if now.duration_since(t) > SCAN_WINDOW {
                 times.pop_front();
@@ -525,7 +525,7 @@ impl BleTransport {
         }
         // Honor an active backoff refusal window first.
         {
-            let refused = self.refused_until.read().unwrap();
+            let refused = self.refused_until.read().unwrap_or_else(|p| p.into_inner());
             if let Some(until) = *refused {
                 if now < until {
                     return false;
@@ -534,7 +534,7 @@ impl BleTransport {
         }
         if times.len() >= SCAN_CEILING {
             // Refuse and grow the backoff for future attempts.
-            let mut backoff = self.scan_backoff_s.lock().unwrap();
+            let mut backoff = self.scan_backoff_s.lock().unwrap_or_else(|p| p.into_inner());
             *backoff = if *backoff == 0 {
                 1
             } else {
@@ -543,7 +543,7 @@ impl BleTransport {
             let wait = *backoff;
             drop(backoff);
             let until = now + std::time::Duration::from_secs(wait);
-            *self.refused_until.write().unwrap() = Some(until);
+            *self.refused_until.write().unwrap_or_else(|p| p.into_inner()) = Some(until);
             return false;
         }
         times.push_back(now);
@@ -591,7 +591,7 @@ impl Transport for BleTransport {
             ScanFilter::default()
         };
         let handle = adapter.start_scan(filter).map_err(to_transport_err)?;
-        *self.scan_handle.lock().unwrap() = Some(handle);
+        *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
         // Drain scan results produced by the adapter (real impl: Android
         // BluetoothLeScanner callbacks; simulated: inject_scan_result). Advert
         // floods are bounded BEFORE materializing the Vec (BLE-RT-C007) — the
@@ -667,7 +667,7 @@ impl Transport for BleTransport {
     }
 
     async fn stop_discovery(&self) -> Result<(), TransportError> {
-        if let Some(h) = *self.scan_handle.lock().unwrap() {
+        if let Some(h) = *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) {
             self.adapter()?.stop_scan(h);
         }
         Ok(())
@@ -678,7 +678,7 @@ impl Transport for BleTransport {
         // Re-announcement (e.g. after identity/key rotation) must stop any prior
         // advertisement first so Android's max ~4 advertising-set budget is not
         // leaked and the radio doesn't keep a stale set alive (BLE-RT-011).
-        if let Some(prior) = *self.adv_handle.lock().unwrap() {
+        if let Some(prior) = *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) {
             adapter.stop_advertising(prior);
         }
         // Build the IRIS discovery beacon (22-byte, candidate-level, never a
@@ -706,12 +706,12 @@ impl Transport for BleTransport {
                 service_data: beacon,
             })
             .map_err(to_transport_err)?;
-        *self.adv_handle.lock().unwrap() = Some(handle);
+        *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
         Ok(())
     }
 
     async fn stop_advertising(&self) -> Result<(), TransportError> {
-        if let Some(h) = *self.adv_handle.lock().unwrap() {
+        if let Some(h) = *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) {
             self.adapter()?.stop_advertising(h);
         }
         Ok(())
@@ -721,7 +721,7 @@ impl Transport for BleTransport {
         let adapter = self.adapter()?;
         // Peer already connected: reuse the link (AC-9 — one GATT connection per
         // peer; GATT-client churn bounded, RES-0019 R6.4/G2).
-        if self.connections.lock().unwrap().contains_key(&peer.peer_id) {
+        if self.connections.lock().unwrap_or_else(|p| p.into_inner()).contains_key(&peer.peer_id) {
             return Ok(TransportLink {
                 peer_id: peer.peer_id,
                 transport_id: self.id.0.clone(),
@@ -734,7 +734,7 @@ impl Transport for BleTransport {
         // lock held across the blocking FFI round trip below — see the
         // `connect_locks` field doc for what that used to cost.
         let peer_lock = {
-            let mut locks = self.connect_locks.lock().unwrap();
+            let mut locks = self.connect_locks.lock().unwrap_or_else(|p| p.into_inner());
             locks
                 .entry(peer.peer_id)
                 .or_insert_with(|| std::sync::Arc::new(tokio::sync::Mutex::new(())))
@@ -745,7 +745,7 @@ impl Transport for BleTransport {
         // it before us may have just finished (this is what makes rt002's
         // "both calls succeed, only one real GATT connection" contract work
         // without the second caller redoing any work).
-        if self.connections.lock().unwrap().contains_key(&peer.peer_id) {
+        if self.connections.lock().unwrap_or_else(|p| p.into_inner()).contains_key(&peer.peer_id) {
             return Ok(TransportLink {
                 peer_id: peer.peer_id,
                 transport_id: self.id.0.clone(),
@@ -767,7 +767,7 @@ impl Transport for BleTransport {
         // `_ => -1000.0`) treats as "eliminate this transport", so every
         // other live peer briefly lost all routing eligibility on every new
         // connect attempt.
-        let had_other_connections = !self.connections.lock().unwrap().is_empty();
+        let had_other_connections = !self.connections.lock().unwrap_or_else(|p| p.into_inner()).is_empty();
         if !had_other_connections {
             self.set_state(TransportState::Connecting);
         }
@@ -922,7 +922,7 @@ impl Transport for BleTransport {
         });
         // Abort any previous poller for this peer (a reconnect after a partial
         // teardown must not leave the old task draining the shared queue).
-        if let Some(prev) = self.pollers.write().unwrap().remove(&peer.peer_id) {
+        if let Some(prev) = self.pollers.write().unwrap_or_else(|p| p.into_inner()).remove(&peer.peer_id) {
             prev.abort();
         }
         self.pollers
@@ -996,7 +996,7 @@ impl Transport for BleTransport {
 
     async fn shutdown(&self) -> Result<(), TransportError> {
         // Abort all per-peer pollers (RED-0009-02).
-        for (_, p) in self.pollers.write().unwrap().drain() {
+        for (_, p) in self.pollers.write().unwrap_or_else(|p| p.into_inner()).drain() {
             p.abort();
         }
         self.set_state(TransportState::Unavailable);
@@ -1280,26 +1280,26 @@ mod tests {
 
     impl BleAdapter for RecordingBleAdapter {
         fn start_scan(&self, filter: ScanFilter) -> Result<ScanHandle, BleError> {
-            self.started_scans.lock().unwrap().push(filter.clone());
+            self.started_scans.lock().unwrap_or_else(|p| p.into_inner()).push(filter.clone());
             self.inner.start_scan(filter)
         }
         fn stop_scan(&self, handle: ScanHandle) {
-            self.stopped_scans.lock().unwrap().push(handle);
+            self.stopped_scans.lock().unwrap_or_else(|p| p.into_inner()).push(handle);
             self.inner.stop_scan(handle);
         }
         fn start_advertising(&self, data: AdvertisementData) -> Result<AdvHandle, BleError> {
-            self.started_adv.lock().unwrap().push(data.clone());
+            self.started_adv.lock().unwrap_or_else(|p| p.into_inner()).push(data.clone());
             self.inner.start_advertising(data)
         }
         fn stop_advertising(&self, handle: AdvHandle) {
-            self.stopped_adv.lock().unwrap().push(handle);
+            self.stopped_adv.lock().unwrap_or_else(|p| p.into_inner()).push(handle);
             self.inner.stop_advertising(handle);
         }
         fn connect_gatt(&self, address: BleAddress) -> Result<GattHandle, BleError> {
             self.inner.connect_gatt(address)
         }
         fn disconnect_gatt(&self, handle: GattHandle) {
-            self.disconnects.lock().unwrap().push(handle);
+            self.disconnects.lock().unwrap_or_else(|p| p.into_inner()).push(handle);
             self.inner.disconnect_gatt(handle);
         }
         fn gatt_write(
@@ -1335,7 +1335,7 @@ mod tests {
         t.shutdown().await.unwrap();
         assert_eq!(t.state(), TransportState::Unavailable);
         assert_eq!(
-            adapter.disconnects.lock().unwrap().len(),
+            adapter.disconnects.lock().unwrap_or_else(|p| p.into_inner()).len(),
             1,
             "shutdown must disconnect the GATT link"
         );
@@ -1348,10 +1348,10 @@ mod tests {
 
         // Scan start → stop: stop_scans must receive the exact handle from start_scan.
         let _stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
-        assert_eq!(adapter.started_scans.lock().unwrap().len(), 1);
+        assert_eq!(adapter.started_scans.lock().unwrap_or_else(|p| p.into_inner()).len(), 1);
         t.stop_discovery().await.unwrap();
         {
-            let scans = adapter.stopped_scans.lock().unwrap();
+            let scans = adapter.stopped_scans.lock().unwrap_or_else(|p| p.into_inner());
             assert_eq!(scans.len(), 1, "stop_discovery must stop the scan");
             assert_eq!(
                 scans[0],
@@ -1368,9 +1368,9 @@ mod tests {
             tags: Vec::new(),
         };
         t.start_advertising(adv).await.unwrap();
-        assert_eq!(adapter.started_adv.lock().unwrap().len(), 1);
+        assert_eq!(adapter.started_adv.lock().unwrap_or_else(|p| p.into_inner()).len(), 1);
         t.stop_advertising().await.unwrap();
-        let advs = adapter.stopped_adv.lock().unwrap();
+        let advs = adapter.stopped_adv.lock().unwrap_or_else(|p| p.into_inner());
         assert_eq!(
             advs.len(),
             1,
@@ -1769,7 +1769,7 @@ mod tests {
             1,
             "exactly one GATT handle assigned"
         );
-        assert_eq!(t.pollers.read().unwrap().len(), 1, "exactly one poller");
+        assert_eq!(t.pollers.read().unwrap_or_else(|p| p.into_inner()).len(), 1, "exactly one poller");
         t.shutdown().await.unwrap();
     }
 
@@ -1910,11 +1910,11 @@ mod tests {
         };
         assert!(t.send(&peer.peer_id, &msg).await.is_err());
         assert_eq!(
-            t.connections.lock().unwrap().len(),
+            t.connections.lock().unwrap_or_else(|p| p.into_inner()).len(),
             0,
             "dead peer must be removed from connections (BLE-RT-005)"
         );
-        assert_eq!(t.pollers.read().unwrap().len(), 0, "poller aborted");
+        assert_eq!(t.pollers.read().unwrap_or_else(|p| p.into_inner()).len(), 0, "poller aborted");
         assert_eq!(t.state(), TransportState::Available);
     }
 
@@ -1935,7 +1935,7 @@ mod tests {
         // demo: RecordingBleAdapter returns AdvHandle(1) always, so a second
         // start must still issue a stop of the prior handle).
         t.start_advertising(adv).await.unwrap();
-        let stopped = adapter.stopped_adv.lock().unwrap();
+        let stopped = adapter.stopped_adv.lock().unwrap_or_else(|p| p.into_inner());
         assert_eq!(
             stopped.len(),
             1,
