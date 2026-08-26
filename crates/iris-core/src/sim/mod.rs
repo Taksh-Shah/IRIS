@@ -490,6 +490,7 @@ impl Simulation {
             // (GTMX+), withhold from worse carriers than we've seen for this
             // msg — this is where overhead drops vs epidemic.
             let decision = src_opp.decide(
+                &id,
                 &recipient,
                 &[(b.peer_id, their_dp)],
                 msg.envelope.priority,

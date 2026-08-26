@@ -7,6 +7,7 @@
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use iris_core::message::{MessagePriority, PeerId};
+use iris_core::protocol::MessageId;
 use iris_core::routing::opportunistic::OpportunisticRouter;
 use iris_core::routing::prophet::{DeliveryPredictability, ProphetConfig};
 use std::hint::black_box;
@@ -48,9 +49,11 @@ fn bench_routing(c: &mut Criterion) {
     c.bench_function("routing/prophet_age_1000", |b| {
         b.iter(|| black_box(pred.age()))
     });
+    let bench_msg_id = MessageId::new_v7();
     c.bench_function("routing/opportunistic_decide_50_candidates", |b| {
         b.iter(|| {
             black_box(router.decide(
+                black_box(&bench_msg_id),
                 black_box(&pid(7)),
                 black_box(&candidates),
                 black_box(MessagePriority::P3),

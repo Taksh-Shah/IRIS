@@ -270,7 +270,7 @@ impl RoutingEngine {
         // Algorithm 2.5 (ROUTE-002): opportunistic DP forward — consulted with
         // zero candidates here; transport wiring may supply neighbor DPs via
         // [`RoutingEngine::decide_opportunistic`] and short-circuit the flood.
-        if let Some(nb) = self.decide_opportunistic(recipient, priority, hop_count, &[]) {
+        if let Some(nb) = self.decide_opportunistic(&message_id, recipient, priority, hop_count, &[]) {
             self.forward_cache.record(message_id);
             self.forward_cache.record_peer(nb.0);
             return ForwardingDecision::Forward {
@@ -309,6 +309,7 @@ impl RoutingEngine {
     /// chain continues unchanged.
     pub fn decide_opportunistic(
         &mut self,
+        message_id: &MessageId,
         recipient: PeerId,
         priority: crate::message::MessagePriority,
         hop_count: u8,
@@ -319,7 +320,7 @@ impl RoutingEngine {
         if hop_count >= budget {
             return None;
         }
-        match opp.decide(&recipient, candidates, priority, budget) {
+        match opp.decide(message_id, &recipient, candidates, priority, budget) {
             crate::routing::opportunistic::OpportunisticDecision::ForwardTo {
                 next_hop, ..
             } => Some(next_hop),

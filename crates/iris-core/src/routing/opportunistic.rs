@@ -18,6 +18,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use crate::message::{MessagePriority, PeerId};
+use crate::protocol::MessageId;
 use crate::routing::prophet::{DeliveryPredictability, ProphetConfig};
 
 /// Default binary spray budget (≈10–15% of M=50–100, Spyropoulos ToN 2008;
@@ -100,8 +101,8 @@ impl SprayBudget {
 #[derive(Debug)]
 pub struct OpportunisticRouter {
     pred: DeliveryPredictability,
-    /// (sender, recipient) → highest DP this node has seen for that message.
-    max_dp_seen: HashMap<(PeerId, PeerId), f64>,
+    /// (message_id, destination) → highest DP this node has seen for that message.
+    max_dp_seen: HashMap<(MessageId, PeerId), f64>,
 }
 
 impl OpportunisticRouter {
@@ -145,6 +146,7 @@ impl OpportunisticRouter {
     /// beat the best DP seen for this message so far?
     pub fn gtmx_advantage(
         &mut self,
+        message_id: &MessageId,
         candidate: &PeerId,
         p_candidate: f64,
         dest: &PeerId,
@@ -161,9 +163,9 @@ impl OpportunisticRouter {
         if hop_budget == 0 {
             return false;
         }
-        // Per-message monotonicity (GTMX+): never hand a message to a node
-        // with DP ≤ the best already seen for this message.
-        let key = (*candidate, *dest);
+        // ROUT-7: per-message monotonicity (GTMX+): key is (message_id, dest),
+        // not (candidate, dest) — each message has its own monotonicity state.
+        let key = (*message_id, *dest);
         let seen = self.max_dp_seen.get(&key).copied().unwrap_or(0.0);
         if p_candidate <= seen + DP_FLOOR_EPS {
             return false;
@@ -179,6 +181,7 @@ impl OpportunisticRouter {
     /// advantage, else `NoAdvantage`.
     pub fn decide(
         &mut self,
+        message_id: &MessageId,
         dest: &PeerId,
         candidates: &[(PeerId, f64)],
         priority: MessagePriority,
@@ -186,7 +189,7 @@ impl OpportunisticRouter {
     ) -> OpportunisticDecision {
         let mut best: Option<(PeerId, f64)> = None;
         for (nb, p) in candidates {
-            if self.gtmx_advantage(nb, *p, dest, priority, hop_budget)
+            if self.gtmx_advantage(message_id, nb, *p, dest, priority, hop_budget)
                 && best.as_ref().map(|(_, bp)| *p > *bp).unwrap_or(true)
             {
                 best = Some((*nb, *p));
@@ -194,8 +197,8 @@ impl OpportunisticRouter {
         }
         match best {
             Some((nb, p)) => {
-                // Record the new max DP for the message (anti-oscillation).
-                let key = (nb, *dest);
+                // ROUT-7: record per-message max DP under the (message_id, dest) key.
+                let key = (*message_id, *dest);
                 let e = self.max_dp_seen.entry(key).or_insert(0.0);
                 *e = p.max(*e);
                 OpportunisticDecision::ForwardTo {
@@ -224,11 +227,16 @@ impl OpportunisticRouter {
 mod tests {
     use super::*;
     use crate::message::PeerId;
+    use crate::protocol::MessageId;
 
     fn pid(id: u8) -> PeerId {
         let mut b = [0u8; 32];
         b[0] = id;
         PeerId::from_bytes(b)
+    }
+
+    fn mid() -> MessageId {
+        MessageId::new_v7()
     }
 
     #[test]
@@ -265,12 +273,13 @@ mod tests {
         let me = pid(1);
         // Prime my own DP for dest via a meet (P(A,dest)=0.495 first contact).
         r.on_contact(&pid(8), &[(dest, 0.9)]);
+        let msg = mid();
         // Candidate below floor → no.
-        assert!(!r.gtmx_advantage(&pid(3), 0.05, &dest, MessagePriority::P4, 3));
+        assert!(!r.gtmx_advantage(&msg, &pid(3), 0.05, &dest, MessagePriority::P4, 3));
         // Candidate below my DP → no.
-        assert!(!r.gtmx_advantage(&pid(3), r.p_for(&dest), &dest, MessagePriority::P4, 3));
+        assert!(!r.gtmx_advantage(&msg, &pid(3), r.p_for(&dest), &dest, MessagePriority::P4, 3));
         // Candidate strictly better → yes.
-        assert!(r.gtmx_advantage(&pid(4), 0.9, &dest, MessagePriority::P4, 3));
+        assert!(r.gtmx_advantage(&msg, &pid(4), 0.9, &dest, MessagePriority::P4, 3));
         let _ = me;
     }
 
@@ -280,6 +289,7 @@ mod tests {
         let dest = pid(9);
         r.on_contact(&pid(8), &[(dest, 0.9)]); // my DP for dest now > 0
         let decision = r.decide(
+            &mid(),
             &dest,
             &[(pid(2), 0.3), (pid(3), 0.8), (pid(4), 0.75)],
             MessagePriority::P4,
@@ -300,10 +310,10 @@ mod tests {
         let dest = pid(9);
         // Empty DP table: a candidate below the P_first_threshold floor is
         // never consulted (no DP advantage claimed).
-        let decision = r.decide(&dest, &[(pid(2), 0.05)], MessagePriority::P4, 3);
+        let decision = r.decide(&mid(), &dest, &[(pid(2), 0.05)], MessagePriority::P4, 3);
         assert_eq!(decision, OpportunisticDecision::NoAdvantage);
         // Hop budget exhausted → no advantage even for a strong candidate.
-        let decision = r.decide(&dest, &[(pid(2), 0.9)], MessagePriority::P4, 0);
+        let decision = r.decide(&mid(), &dest, &[(pid(2), 0.9)], MessagePriority::P4, 0);
         assert_eq!(decision, OpportunisticDecision::NoAdvantage);
     }
 
@@ -315,13 +325,13 @@ mod tests {
         r.on_contact(&pid(8), &[(dest, 0.9)]);
         // Candidate 0.05 is below the discard floor → no advantage.
         assert_eq!(
-            r.decide(&dest, &[(pid(2), 0.05)], MessagePriority::P4, 3),
+            r.decide(&mid(), &dest, &[(pid(2), 0.05)], MessagePriority::P4, 3),
             OpportunisticDecision::NoAdvantage
         );
         // Candidate below/equal my own DP → no advantage.
         let mine = r.p_for(&dest);
         assert_eq!(
-            r.decide(&dest, &[(pid(2), mine)], MessagePriority::P4, 3),
+            r.decide(&mid(), &dest, &[(pid(2), mine)], MessagePriority::P4, 3),
             OpportunisticDecision::NoAdvantage
         );
     }
