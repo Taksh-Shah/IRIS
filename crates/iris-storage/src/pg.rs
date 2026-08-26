@@ -17,7 +17,11 @@ use crate::schema::{DDL, MIGRATE_DROP_PLAINTEXT_IDENTITY};
 use crate::seal::{NoSealer, RowSealer};
 
 /// Connection + quota configuration for [`PgStorage`].
-#[derive(Debug, Clone)]
+///
+/// `Debug` is hand-implemented to redact `password` (TAK-16): the derived form
+/// printed the literal secret, so any `tracing::debug!(?config, ...)` or
+/// panic payload containing the config wrote `IRIS_PG_PASSWORD` to the logs.
+#[derive(Clone)]
 pub struct PgStorageConfig {
     pub host: String,
     pub port: u16,
@@ -29,6 +33,20 @@ pub struct PgStorageConfig {
     pub max_storage_bytes: u64,
     /// Fraction of quota that triggers eviction (STORAGE.md: 0.8).
     pub eviction_threshold: f64,
+}
+
+impl std::fmt::Debug for PgStorageConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PgStorageConfig")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("dbname", &self.dbname)
+            .field("user", &self.user)
+            .field("password", &"[redacted]")
+            .field("max_storage_bytes", &self.max_storage_bytes)
+            .field("eviction_threshold", &self.eviction_threshold)
+            .finish()
+    }
 }
 
 impl PgStorageConfig {

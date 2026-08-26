@@ -57,9 +57,21 @@ impl RowSealer for NoSealer {
 }
 
 /// AEAD row sealer keyed from the node master key (CRYPTO-001).
-#[derive(Debug)]
+///
+/// `Debug` is hand-implemented to redact the key material (TAK-16): the
+/// derived form printed all 32 bytes, leaking the at-rest key into any log
+/// line, panic payload or tracing capture that formatted the sealer. The key
+/// is zeroized when the sealer drops (TAK-17).
 pub struct StorageKeySealer {
     key: [u8; 32],
+}
+
+impl std::fmt::Debug for StorageKeySealer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageKeySealer")
+            .field("key", &"[redacted]")
+            .finish()
+    }
 }
 
 impl StorageKeySealer {
@@ -252,5 +264,48 @@ mod tests {
         // The compiler/lint guard: from_master_key surfaces CryptoError.
         let _proof: Result<StorageKeySealer, CryptoError> =
             StorageKeySealer::from_master_key(&master_key());
+    }
+
+    /// TAK-16: the derived Debug printed all 32 key bytes. The hand-written
+    /// redacting impl must never leak a single byte of key material.
+    #[test]
+    fn debug_output_never_contains_the_key() {
+        let sealer = StorageKeySealer::from_master_key(&master_key()).expect("sealer");
+        let rendered = format!("{sealer:?}");
+        assert!(rendered.contains("[redacted]"), "rendered: {rendered}");
+        // 0x42 is the whole master key; none of it may appear in the output.
+        assert!(
+            !rendered.contains("66"),
+            "no key bytes in debug: {rendered}"
+        );
+        assert_eq!(
+            rendered.matches('4').count(),
+            0,
+            "hex-free debug: {rendered}"
+        );
+    }
+
+    /// TAK-16 (config side, exercised here since pg.rs owns the type):
+    /// PgStorageConfig::debug must not contain the password. The test lives
+    /// beside the sealer tests for the same reason TAK-16 groups both sites.
+    #[test]
+    fn config_debug_redacts_password() {
+        use crate::pg::PgStorageConfig;
+        let cfg = PgStorageConfig {
+            host: "db.internal".into(),
+            port: 5432,
+            dbname: "iris".into(),
+            user: "postgres".into(),
+            password: "S3cr3t-Hunter2".into(),
+            max_storage_bytes: 1024,
+            eviction_threshold: 0.8,
+        };
+        let rendered = format!("{cfg:?}");
+        assert!(rendered.contains("[redacted]"), "rendered: {rendered}");
+        assert!(!rendered.contains("Hunter2"), "password leaked: {rendered}");
+        assert!(
+            rendered.contains("db.internal"),
+            "non-secret fields stay useful"
+        );
     }
 }
