@@ -33,6 +33,14 @@ pub struct PgStorageConfig {
     pub max_storage_bytes: u64,
     /// Fraction of quota that triggers eviction (STORAGE.md: 0.8).
     pub eviction_threshold: f64,
+    /// This node's identity, when known (TAK-10). When set, `persist` derives
+    /// the `is_own_message` column by comparing the envelope sender to it, so
+    /// the documented eviction policy ("relayed before own") actually has a
+    /// live key. `None` keeps every row marked relayed — the pre-TAK-10
+    /// behaviour — and is what `from_env` produces until `IRIS_NODE_ID` is
+    /// provided. Deliberately carried in config rather than widening the
+    /// Section-2-owned `MessageStorage::persist` signature.
+    pub node_id: Option<[u8; 32]>,
 }
 
 impl std::fmt::Debug for PgStorageConfig {
@@ -67,8 +75,29 @@ impl PgStorageConfig {
             eviction_threshold: parse_eviction_threshold(
                 std::env::var("IRIS_EVICTION_THRESHOLD").ok(),
             ),
+            node_id: std::env::var("IRIS_NODE_ID")
+                .ok()
+                .as_deref()
+                .and_then(parse_node_id),
         }
     }
+}
+
+/// Parse a 64-hex-char `IRIS_NODE_ID` into the 32-byte peer identity
+/// (TAK-10). Absent or malformed values yield `None` (rows stay marked
+/// relayed) rather than a wrong identity.
+fn parse_node_id(raw: &str) -> Option<[u8; 32]> {
+    let hex = raw.trim();
+    if hex.len() != 64 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    let mut out = [0u8; 32];
+    for (i, chunk) in hex.as_bytes().chunks(2).enumerate() {
+        let hi = (chunk[0] as char).to_digit(16)? as u8;
+        let lo = (chunk[1] as char).to_digit(16)? as u8;
+        out[i] = (hi << 4) | lo;
+    }
+    Some(out)
 }
 
 /// Parse and range-validate `IRIS_EVICTION_THRESHOLD` (TAK-25). Anything
@@ -245,6 +274,16 @@ impl MessageStorage for PgStorage {
             .seal(&aad, &cbor)
             .map_err(|e| StorageError::Backend(format!("seal: {e}")))?;
         let is_p0 = envelope.priority == MessagePriority::P0;
+        // TAK-10: real ownership when the node identity is configured — the
+        // eviction policy's "relayed before own" tie-break needs a live key.
+        // Malformed sender vectors simply stay marked relayed.
+        let is_own = match (
+            &self.config.node_id,
+            <[u8; 32]>::try_from(envelope.sender_id.as_slice()),
+        ) {
+            (Some(node_id), Ok(sender)) => *node_id == sender,
+            _ => false,
+        };
 
         if self.config.max_storage_bytes > 0 {
             let current = usage_bytes(&self.client).await.map_err(backend)?;
@@ -271,7 +310,7 @@ impl MessageStorage for PgStorage {
                     &envelope.max_hops.map(|h| h as i16),
                     &payload_size,
                     &stored,
-                    &false,
+                    &is_own,
                 ],
             )
             .await
@@ -408,6 +447,26 @@ impl MessageStorage for PgStorage {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn node_id_parser_accepts_well_formed_hex() {
+        let hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        let parsed = parse_node_id(hex).expect("valid id");
+        assert_eq!(parsed[0], 0x01);
+        assert_eq!(parsed[15], 0xef);
+        assert_eq!(parsed[31], 0xef);
+    }
+
+    #[test]
+    fn node_id_parser_rejects_malformed_input() {
+        assert_eq!(parse_node_id(""), None);
+        assert_eq!(parse_node_id("zz"), None);
+        assert_eq!(parse_node_id("0123"), None); // too short
+        let long_odd = format!("0{}", "a".repeat(64));
+        assert_eq!(parse_node_id(&long_odd), None);
+        let not_hex = "g".repeat(64);
+        assert_eq!(parse_node_id(&not_hex), None);
+    }
 
     #[test]
     fn threshold_defaults_when_absent_or_invalid() {
