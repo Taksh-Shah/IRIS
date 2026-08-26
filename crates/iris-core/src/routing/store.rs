@@ -25,12 +25,15 @@ pub fn store_or_drop(expired: bool) -> ShouldStore {
     }
 }
 
-/// TTL-based expiry check (RFC 9171 §4.4.2 semantics: arrival-time lifetime
-/// for skew-suspect messages). Exposed here so the routing layer and the store
-/// share one definition.
+/// TTL-based expiry check delegating to the hardened implementation in
+/// `message_engine::expiry`. Skew-suspect messages (creation time beyond the
+/// 300-second skew budget) fail closed — see `expiry::is_expired` for rationale.
+///
+/// # Argument order
+/// Callers pass `(now_unix, timestamp, ttl_seconds)`; this shim re-maps them
+/// to `expiry::is_expired(created_at_unix, ttl_seconds, now_unix)`.
 pub fn is_expired(now_unix: u64, timestamp: u64, ttl_seconds: u64) -> bool {
-    let lifetime_start = timestamp.min(now_unix);
-    now_unix.saturating_sub(lifetime_start) > ttl_seconds
+    crate::message_engine::expiry::is_expired(timestamp, ttl_seconds, now_unix)
 }
 
 /// The routing layer's store hand-off: the message id plus the decision. The
@@ -71,8 +74,25 @@ mod tests {
         assert!(is_expired(120, 0, 60));
         // still within budget.
         assert!(!is_expired(59, 0, 60));
-        // timestamp in the future (skew) never counts against earlier.
+        // timestamp 100 s in the future (within the 300 s skew budget) → trusted clock,
+        // expiry = 200 + 60 = 260, now = 100 → not expired.
         assert!(!is_expired(100, 200, 60));
+    }
+
+    #[test]
+    fn rout5_far_future_timestamp_fails_closed() {
+        // Regression: the old `min(timestamp, now)` implementation made a message with
+        // timestamp far in the future immortal — `is_expired` always returned false.
+        // Now it delegates to message_engine::expiry which treats skew-suspect timestamps
+        // (beyond the 300-second budget) as expired (fail-closed).
+        assert!(
+            is_expired(100, u64::MAX, 1),
+            "far-future timestamp must be treated as expired (ROUT-5)"
+        );
+        assert!(
+            is_expired(100, 1_000_000_000, 1),
+            "forged timestamp >> skew budget must not grant immortality"
+        );
     }
 
     #[test]
