@@ -206,9 +206,9 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ✅ `6f8eda8` |
 | **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ✅ `367b2dc` |
 | **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ✅ `a95ed8d` |
-| **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ⬜ |
-| **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ⬜ |
-| **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound | ⬜ |
+| **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ✅ `440f610` |
+| **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ✅ `440f610` |
+| **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound | ✅ `440f610` |
 | **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned | ⬜ |
 | **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window | ⬜ |
 | **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument | ⬜ |
@@ -970,7 +970,7 @@ dedup_cache.rs:77	    }
 #### ROUT-11: `RoutingEngine::prune()` is never called — routing table and contact log grow without bound
 - **Severity:** Low  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. (missing wiring in an unwired subsystem). Must still be listed as a prerequisite item for whoever wires the engine, together with ROUT-2/ROUT-3. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `440f610`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/mod.rs:298-311` (fn `prune`)
 - **What:** Repo-wide grep for `.prune()` finds no caller of `RoutingEngine::prune` anywhere in `crates/` (only `prophet::prune` and unrelated names). `routing_table` (`HashMap<PeerId, RouteEntry>`, `known_path.rs:29`) and `contact_log` (`HashMap<PeerId, Instant>`, `mod.rs:100`) are therefore append-only for the process lifetime. There is no background task, no timer, no call from `decide` or `record_contact`.
@@ -993,7 +993,7 @@ dedup_cache.rs:77	    }
 #### ROUT-12: `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. (dead fields + missing route-preference comparison, no attacker path today), not High. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `440f610`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/known_path.rs:43-62` (fn `upsert`); `crates/iris-core/src/routing/mod.rs:171-172`
 - **What:** `upsert` is a bare `HashMap::insert`. It never compares the incoming `hop_count` or `quality` against the existing entry. Last writer wins, regardless of route quality, hop count, or the trustworthiness of the advertiser. `best_route` (line 38-40) is therefore a misnomer: there is exactly one candidate and no selection.
@@ -1023,7 +1023,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-13: `RoutingTable` has no capacity bound
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `440f610`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/known_path.rs:27-30, 43-62`
 - **What:** `entries: HashMap<PeerId, RouteEntry>` with no maximum, no LRU, no eviction other than the (never-invoked, see ROUT-11) time-based prune. Every distinct destination an attacker advertises adds a permanent entry.
