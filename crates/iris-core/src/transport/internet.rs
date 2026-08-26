@@ -1,9 +1,16 @@
 //! INTERNET-001 — Internet Gateway Transport.
 //!
 //! Implements the transport abstraction's TCP-framing path
-//! (`docs/transports/INTERNET.md` §TCP + TLS 1.3). QUIC (quinn) and WebSocket
-//! fallback are future work; the framing + connection-pool + backoff machinery
-//! is transport-agnostic and shared.
+//! (`docs/transports/INTERNET.md` §TCP framing). QUIC (quinn), WebSocket
+//! fallback, and TLS are future work; the framing + connection-pool + backoff
+//! machinery is transport-agnostic and shared.
+//!
+//! **Known gap (RF-35):** connections are plaintext TCP. `INTERNET.md` §TCP+TLS
+//! specifies `tokio-rustls` with relay SPKI pinning; that layer has not been
+//! added yet. Payload confidentiality is preserved by the IRIS envelope
+//! (CRYPTO-001), but frame metadata is exposed and injection is unauthenticated
+//! at the transport layer. Tracked in
+//! `docs/implementation/INTERNET_TRANSPORT_VERIFICATION.md` §Known Limitations.
 //!
 //! Design notes applied from `INTERNET.md`:
 //! - Length-prefixed frames on a TCP stream (one connection per relay).

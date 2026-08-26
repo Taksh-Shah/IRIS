@@ -56,3 +56,9 @@ transport::simulated: zero-loss deliver, full-loss drop, state transitions
    shared substrate; QUIC/WS layer deferred
 4. Android ConnectivityManager / iOS NWPathMonitor network-change hooks pending
    platform crate
+5. **TLS not implemented (RF-35):** connections are plaintext TCP. `INTERNET.md` §TCP+TLS
+   specifies `tokio-rustls` with relay SPKI pinning; this has not been added. Payload
+   confidentiality is provided by the IRIS envelope (CRYPTO-001), but frame metadata
+   (timing, sizes, endpoints) is exposed and frames are unauthenticated at the transport
+   layer, enabling injection into the envelope parser. Fix: wrap `TcpStream` in
+   `tokio-rustls` `TlsStream` with pinned relay certificate before the pool layer.
