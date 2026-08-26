@@ -12,6 +12,11 @@ use crate::discovery::neighbor_table::NeighborTable;
 use crate::message::{MessagePriority, PeerId};
 use crate::transport::TransportId;
 
+/// Hard per-hop fan-out cap: at most this many neighbors receive a flood copy
+/// from a single node on a single hop (ROUT-17, CONGESTION_CONTROL.md §204).
+/// 8 is the L1 value in the spec; P0 is exempt (epidemic semantics).
+pub const MAX_FLOOD_FANOUT: usize = 8;
+
 /// Priority-derived flood policy (BASELINE_ROUTING.md §Algorithm 3 default
 /// max_hops + no-backtrack).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,16 +40,21 @@ pub fn max_hops_for_priority(p: MessagePriority) -> FloodPolicy {
 /// Excludes:
 /// - the message source (`sender`) — no backtracking,
 /// - neighbors already in `already_flooded`,
-/// - neighbors the peer believes were already reached (dedup hint), and
 /// - the recipient itself if it happens to be a neighbor here (Direct handles
 ///   that case first; kept out to avoid needless copies).
+///
+/// ROUT-17: the result is capped at `MAX_FLOOD_FANOUT` to prevent broadcast
+/// storms — a fully-connected K-regular mesh with no cap yields K^hop_count
+/// transmissions per injected message. `hop_count` is available for future
+/// priority-based tapering; the cap applies uniformly for now.
 pub async fn recipients_for_flood(
     neighbor_table: &NeighborTable,
     sender: PeerId,
     already_flooded: &[PeerId],
-    _hop_count: u8,
+    hop_count: u8,
     recipient: &PeerId,
 ) -> Vec<PeerId> {
+    let _ = hop_count; // available for future priority-based taper (ROUT-17 TODO)
     let mut recipients = Vec::new();
     for neighbor in neighbor_table.neighbors().await {
         let nb = neighbor;
@@ -64,6 +74,10 @@ pub async fn recipients_for_flood(
             crate::discovery::neighbor_table::NeighborState::LinkedUp
         ) {
             recipients.push(nb.peer_id);
+            // ROUT-17: hard fan-out cap — stop collecting once we hit the limit.
+            if recipients.len() >= MAX_FLOOD_FANOUT {
+                break;
+            }
         }
     }
     recipients
@@ -109,6 +123,20 @@ mod tests {
             .await;
         }
         t
+    }
+
+    #[tokio::test]
+    async fn rout17_fanout_capped_at_max() {
+        // Regression: recipients_for_flood had no cap; a K-connected node
+        // produced K-1 copies per hop (ROUT-17). Result must never exceed
+        // MAX_FLOOD_FANOUT regardless of how many LinkedUp neighbors exist.
+        let t = table_with(&(1..=(MAX_FLOOD_FANOUT as u8 + 5)).collect::<Vec<_>>()).await;
+        let r = recipients_for_flood(&t, pid(0), &[], 0, &pid(99)).await;
+        assert!(
+            r.len() <= MAX_FLOOD_FANOUT,
+            "flood fanout must not exceed MAX_FLOOD_FANOUT (got {})",
+            r.len()
+        );
     }
 
     #[tokio::test]
