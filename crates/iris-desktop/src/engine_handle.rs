@@ -14,7 +14,8 @@ use futures_util::StreamExt;
 use rand::RngCore;
 use tokio::sync::broadcast;
 
-use iris_core::message::MessagePriority;
+use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
+use iris_core::message::{MessagePriority, PeerId};
 use iris_core::message_engine::crypto::DevCryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
 use iris_core::message_engine::{InboundOutcome, MessageEngine, MessageEngineConfig};
@@ -63,6 +64,12 @@ pub struct DesktopEngine {
     manager: Arc<TransportManager>,
     transports: Vec<TransportId>,
     identity: Option<Arc<DesktopIdentity>>,
+    /// GAP-7: owns the background scan loop that calls `Transport::connect()`
+    /// on first contact with a peer — without it, `InternetTransport` in
+    /// particular never leaves `Unavailable` (nothing else ever connects it)
+    /// and the manager's own eligibility filter excludes it from selection.
+    #[allow(dead_code)]
+    discovery: Arc<DiscoveryManager>,
 }
 
 impl DesktopEngine {
@@ -199,12 +206,21 @@ impl DesktopEngine {
             engine.set_key_directory(dir);
         }
 
+        // GAP-7: discovery is what actually calls `Transport::connect()` on
+        // first contact — without it every send() fails NotConnected forever,
+        // and InternetTransport specifically never leaves `Unavailable`.
+        let discovery = Arc::new(DiscoveryManager::new(
+            PeerId::from_bytes(node_id),
+            DiscoveryConfig::default(),
+        ));
+
         let this = Arc::new(DesktopEngine {
             node_id,
             engine,
             manager,
             transports,
             identity,
+            discovery: discovery.clone(),
         });
 
         // Production receive path: every registered transport's frames feed the
@@ -212,9 +228,11 @@ impl DesktopEngine {
         let registered = this.transports.clone();
         for id in registered {
             if let Some(t) = this.manager.get(&id).await {
-                this.spawn_inbox_forwarder(t);
+                this.spawn_inbox_forwarder(t.clone());
+                discovery.register_transport(t).await;
             }
         }
+        discovery.start().await;
         Ok(this)
     }
 

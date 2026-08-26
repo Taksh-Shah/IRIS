@@ -14,6 +14,7 @@ use std::sync::Arc;
 use futures_util::StreamExt;
 use tokio::runtime::{Handle, Runtime};
 
+use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
 use iris_core::message_engine::crypto::DevCryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
@@ -64,6 +65,12 @@ pub struct IrisEngine {
     engine: Arc<MessageEngine>,
     transports: Vec<TransportId>,
     node_id: [u8; 32],
+    /// GAP-7: owns the background scan loop that calls `Transport::connect()`
+    /// on first contact with a peer. Without this, `deliver_outbound` can
+    /// select a transport but every `send()` fails with `NotConnected`
+    /// forever — nothing else in the engine ever establishes a link.
+    #[allow(dead_code)]
+    discovery: Arc<DiscoveryManager>,
 }
 
 #[uniffi::export]
@@ -88,7 +95,7 @@ impl IrisEngine {
         // The engine's background tasks and the transport registrations all
         // need a live tokio context — build them inside `block_on` on the
         // engine's own runtime (the explicit-handle pattern, issue #2576).
-        let (manager, engine, transports) = runtime.block_on(async {
+        let (manager, engine, transports, discovery) = runtime.block_on(async {
             let manager = Arc::new(TransportManager::new());
 
             let ble_t = Arc::new(BleTransport::new(Some(Arc::new(BleBridge::new(ble)))));
@@ -130,11 +137,24 @@ impl IrisEngine {
             );
 
             let all: [Arc<dyn Transport>; 3] = [ble_t, aware_t, direct_t];
-            for t in all {
-                Self::spawn_inbox_forwarder(engine.clone(), t);
+            for t in &all {
+                Self::spawn_inbox_forwarder(engine.clone(), t.clone());
             }
 
-            Ok::<_, IrisFfiError>((manager, engine, transports))
+            // GAP-7: discovery is what actually calls `Transport::connect()`
+            // on first contact — without it every send() fails NotConnected
+            // forever. Register the same three transports it just registered
+            // with the manager, then start its background scan loop.
+            let discovery = Arc::new(DiscoveryManager::new(
+                PeerId::from_bytes(node_id),
+                DiscoveryConfig::default(),
+            ));
+            for t in &all {
+                discovery.register_transport(t.clone()).await;
+            }
+            discovery.start().await;
+
+            Ok::<_, IrisFfiError>((manager, engine, transports, discovery))
         })?;
 
         Ok(Arc::new(Self {
@@ -144,6 +164,7 @@ impl IrisEngine {
             engine,
             transports,
             node_id,
+            discovery,
         }))
     }
 

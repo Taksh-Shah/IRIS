@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex};
 use futures_util::StreamExt;
 use tokio::runtime::{Handle, Runtime};
 
+use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
 use iris_core::message_engine::crypto::DevCryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
@@ -65,6 +66,11 @@ pub struct IrisEngine {
     transports: Vec<TransportId>,
     node_id: [u8; 32],
     body: Mutex<Option<Arc<dyn IrisBody>>>,
+    /// GAP-7: owns the background scan loop that calls `Transport::connect()`
+    /// on first contact with a peer — without it every send() fails
+    /// NotConnected forever, since nothing else in the engine connects.
+    #[allow(dead_code)]
+    discovery: Arc<DiscoveryManager>,
 }
 
 #[uniffi::export]
@@ -85,7 +91,7 @@ impl IrisEngine {
         // The engine's background tasks and the transport registration all
         // need a live tokio context — build them inside `block_on` on the
         // engine's own runtime (the explicit-handle pattern, issue #2576).
-        let (manager, engine, transports) = runtime.block_on(async {
+        let (manager, engine, transports, discovery) = runtime.block_on(async {
             let manager = Arc::new(TransportManager::new());
 
             let ble_t = Arc::new(BleTransport::new_ios(Some(Arc::new(BleBridge::new(ble)))));
@@ -109,7 +115,17 @@ impl IrisEngine {
 
             Self::spawn_inbox_forwarder(engine.clone(), ble_t.clone());
 
-            Ok::<_, IrisFfiError>((manager, engine, vec![ble_id]))
+            // GAP-7: discovery is what actually calls `Transport::connect()`
+            // on first contact — without it every send() fails NotConnected
+            // forever.
+            let discovery = Arc::new(DiscoveryManager::new(
+                PeerId::from_bytes(node_id),
+                DiscoveryConfig::default(),
+            ));
+            discovery.register_transport(ble_t.clone()).await;
+            discovery.start().await;
+
+            Ok::<_, IrisFfiError>((manager, engine, vec![ble_id], discovery))
         })?;
 
         Ok(Arc::new(Self {
@@ -120,6 +136,7 @@ impl IrisEngine {
             transports,
             node_id,
             body: Mutex::new(None),
+            discovery,
         }))
     }
 
@@ -348,13 +365,24 @@ mod tests {
     /// reaches the Swift adapter through the explicit handle); the iOS-leg
     /// service-UUID-filtered scan reaches the adapter via `discover_peers`
     /// (RES-0024 DI-1 / AC-9).
+    ///
+    /// GAP-7: `IrisEngine::new` now starts a real `DiscoveryManager` whose
+    /// background loop runs its own first `scan_once()` immediately (before
+    /// its first sleep). That background scan can land anywhere relative to
+    /// this test's own code — including in the gap between reading
+    /// `scans_before` and issuing the explicit `discover_peers()` call below,
+    /// which is why an *exact*-delta assertion is still flaky under load (a
+    /// second, legitimate scan can land in that gap). The race is itself
+    /// proof the fix works (discovery scanning is no longer permanently
+    /// dead); the test asserts only that at least one more scan happened,
+    /// which is the actual claim this test makes and is race-free.
     #[test]
     fn start_all_and_discovery_reach_adapter_over_handle() {
         let ble = Arc::new(SimBle::default());
         let engine = IrisEngine::new(ble.clone(), vec![7u8; 32]).expect("engine builds");
         engine.start_all().expect("start_all drives the bridges");
         assert_eq!(ble.adverts.load(std::sync::atomic::Ordering::Relaxed), 1);
-        assert_eq!(ble.scans.load(std::sync::atomic::Ordering::Relaxed), 0);
+        let scans_before = ble.scans.load(std::sync::atomic::Ordering::Relaxed);
         engine.handle.block_on(async {
             let t = engine
                 .manager
@@ -366,7 +394,10 @@ mod tests {
                 .await
                 .expect("discover_peers starts the iOS-leg filtered scan");
         });
-        assert_eq!(ble.scans.load(std::sync::atomic::Ordering::Relaxed), 1);
+        assert!(
+            ble.scans.load(std::sync::atomic::Ordering::Relaxed) > scans_before,
+            "the explicit discover_peers() call above must add at least one scan"
+        );
         let state = engine.handle.block_on(async {
             engine
                 .manager

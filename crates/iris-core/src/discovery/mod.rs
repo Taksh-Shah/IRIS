@@ -204,6 +204,25 @@ impl DiscoveryManager {
                     .await;
                 if matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })) {
                     new_peers.push(peer.peer_id);
+                    // GAP-7: nothing else in the engine ever calls
+                    // `Transport::connect()` — deliver_outbound goes straight
+                    // to `send()`, which every live transport rejects with
+                    // `NotConnected` until a link exists. Establish the link
+                    // here, on first contact, so it exists before the first
+                    // send is attempted. Idempotent on every transport that
+                    // has been checked (BLE/Wi-Fi Aware/Wi-Fi Direct reuse an
+                    // existing link; a failure here just means the peer
+                    // wasn't reachable this round — discovery will retry it
+                    // on the next scan).
+                    if let Err(e) = transport.connect(&peer).await {
+                        tracing::warn!(
+                            event = "discovery.connect_failed",
+                            peer = %peer.peer_id,
+                            transport = %transport.transport_id(),
+                            error = %e,
+                            "failed to establish link with newly discovered peer"
+                        );
+                    }
                 }
                 if let Some(ev) = ev {
                     let _ = self.events.send(ev);
