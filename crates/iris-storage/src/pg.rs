@@ -6,6 +6,7 @@
 //! password read from `IRIS_PG_PASSWORD` (never hardcoded / committed).
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use iris_core::message::MessagePriority;
 use iris_core::message_engine::lifecycle::MessageStatus;
@@ -13,10 +14,6 @@ use iris_core::message_engine::storage::{MessageStorage, StorageError};
 use iris_core::protocol::{codec, Envelope, MessageId};
 
 use crate::eviction::{delete_expired, evict_lowest_priority, usage_bytes};
-use crate::schema::{
-    DDL, MIGRATE_DROP_PLAINTEXT_IDENTITY, MIGRATE_FIX_PARTIAL_INDEXES,
-    MIGRATE_NONNEGATIVE_CONSTRAINT,
-};
 use crate::seal::{NoSealer, RowSealer};
 
 /// Connection + quota configuration for [`PgStorage`].
@@ -114,14 +111,147 @@ fn parse_eviction_threshold(raw: Option<String>) -> f64 {
 }
 
 /// PostgreSQL message store.
+///
+/// TAK-4: the connection is supervised. The live [`tokio_postgres::Client`]
+/// lives behind `client_slot`; when the connection driver dies the supervisor
+/// clears the slot and drives a jittered-exponential reconnect loop
+/// (re-applying schema migrations on success), so a routine database restart
+/// degrades into transient errors instead of bricking persistence for the
+/// process lifetime. Methods surface a distinct "storage unavailable" error
+/// while offline rather than a stream of confusing per-query failures.
 pub struct PgStorage {
-    client: Arc<tokio_postgres::Client>,
+    client_slot: Arc<tokio::sync::RwLock<Option<Arc<tokio_postgres::Client>>>>,
     config: PgStorageConfig,
     /// At-rest row sealing (CRYPTO-001 gate). `NoSealer` by default.
     sealer: Arc<dyn RowSealer>,
     /// Rows quarantined by [`PgStorage::get_queue`] because they could not be
     /// unsealed or decoded (TAK-3). Observable via [`PgStorage::quarantined_rows`].
     quarantined: std::sync::atomic::AtomicU64,
+}
+
+/// Schema statements applied on every (re)connection, in order.
+const CONNECTION_MIGRATIONS: &[&str] = &[
+    crate::schema::DDL,
+    crate::schema::MIGRATE_DROP_PLAINTEXT_IDENTITY,
+    crate::schema::MIGRATE_NONNEGATIVE_CONSTRAINT,
+    crate::schema::MIGRATE_FIX_PARTIAL_INDEXES,
+];
+
+const RECONNECT_INITIAL_MS: u64 = 1_000;
+const RECONNECT_MAX_MS: u64 = 30_000;
+
+/// Deterministic exponential progression: 1s → 2s → 4s … capped at 30s.
+fn doubled_capped(current_ms: u64) -> u64 {
+    current_ms.saturating_mul(2).min(RECONNECT_MAX_MS)
+}
+
+/// Apply up to ±20% deterministic jitter derived from wall-clock sub-second
+/// nanos, so a fleet of nodes does not reconnect in lockstep.
+fn apply_jitter(ms: u64) -> u64 {
+    let spread = ms / 5;
+    if spread == 0 {
+        return ms;
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos() as u64)
+        .unwrap_or(0);
+    ms - spread + (nanos % (2 * spread + 1))
+}
+
+fn initial_backoff_ms() -> u64 {
+    RECONNECT_INITIAL_MS
+}
+
+fn next_backoff_ms(current_ms: u64) -> u64 {
+    apply_jitter(doubled_capped(current_ms))
+}
+
+/// Establish one connection, spawn its driver task internally, and apply
+/// every schema migration. Used both for the initial `connect` and by the
+/// supervisor on every reconnect, so a new connection is always fully
+/// migrated before it becomes visible to callers.
+async fn establish(
+    pg: &tokio_postgres::Config,
+) -> Result<Arc<tokio_postgres::Client>, StorageError> {
+    let (client, connection) = pg
+        .connect(tokio_postgres::NoTls)
+        .await
+        .map_err(|e| StorageError::Backend(format!("pg connect: {e}")))?;
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            tracing::debug!("pg connection driver ended: {e}");
+        }
+    });
+    for statement in CONNECTION_MIGRATIONS {
+        client
+            .batch_execute(statement)
+            .await
+            .map_err(|e| StorageError::Backend(format!("pg migrate: {e}")))?;
+    }
+    Ok(Arc::new(client))
+}
+
+/// How often the supervisor probes the installed connection. A probe failure
+/// (or a dead driver) clears the slot and starts reconnecting.
+const HEALTH_PROBE_SECS: u64 = 5;
+
+async fn connection_is_alive(client: &tokio_postgres::Client) -> bool {
+    matches!(
+        tokio::time::timeout(Duration::from_secs(3), client.simple_query("SELECT 1")).await,
+        Ok(Ok(_))
+    )
+}
+
+/// Drive reconnects for the lifetime of the process (TAK-4): probe the
+/// installed connection on a short interval, clear the slot the moment it is
+/// unusable, and re-dial with jittered exponential backoff — re-applying all
+/// migrations on every fresh connection.
+fn spawn_connection_supervisor(
+    pg: tokio_postgres::Config,
+    client_slot: Arc<tokio::sync::RwLock<Option<Arc<tokio_postgres::Client>>>>,
+) {
+    tokio::spawn(async move {
+        let mut backoff_ms = initial_backoff_ms();
+        loop {
+            // The INITIAL connection is established inline by `connect` — the
+            // supervisor only takes over once that one has died and cleared
+            // the slot, so two live connections never coexist.
+            while client_slot.read().await.is_some() {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+            match establish(&pg).await {
+                Ok(client) => {
+                    backoff_ms = initial_backoff_ms();
+                    tracing::info!("pg connected");
+                    *client_slot.write().await = Some(client.clone());
+                    // Supervise: poll until this connection stops answering,
+                    // then evict it so callers see "unavailable" immediately.
+                    while connection_is_alive(&client).await {
+                        tokio::time::sleep(Duration::from_secs(HEALTH_PROBE_SECS)).await;
+                        let still_installed = matches!(
+                            &*client_slot.read().await,
+                            Some(installed) if Arc::ptr_eq(installed, &client)
+                        );
+                        if !still_installed {
+                            break; // replaced or cleared elsewhere; stand down
+                        }
+                    }
+                    let mut guard = client_slot.write().await;
+                    if matches!(&*guard, Some(installed) if Arc::ptr_eq(installed, &client)) {
+                        tracing::warn!("pg connection lost; supervisor will reconnect");
+                        *guard = None;
+                    }
+                    drop(guard);
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, backoff_ms, "pg reconnect failed");
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(next_backoff_ms(backoff_ms))).await;
+            backoff_ms = next_backoff_ms(backoff_ms);
+        }
+    });
 }
 
 fn status_to_text(s: MessageStatus) -> &'static str {
@@ -186,7 +316,7 @@ fn try_legacy(
 }
 
 impl PgStorage {
-    /// Connect, spawn the connection driver task, and apply the schema.
+    /// Connect, spawn the supervised connection driver, and apply the schema.
     pub async fn connect(config: PgStorageConfig) -> Result<Self, StorageError> {
         let mut pg = tokio_postgres::Config::new();
         pg.host(&config.host)
@@ -195,48 +325,22 @@ impl PgStorage {
             .user(&config.user)
             .password(&config.password);
 
-        let (client, connection) = pg
-            .connect(tokio_postgres::NoTls)
-            .await
-            .map_err(|e| StorageError::Backend(format!("pg connect: {e}")))?;
-        // Drive the connection in the background.
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                tracing::warn!("pg connection closed: {e}");
-            }
-        });
+        // Initial establishment happens inline so callers see real connection
+        // errors at startup; afterwards the supervisor owns reconnection.
+        let client = establish(&pg).await.map_err(|e| {
+            tracing::error!(error = %e, "initial pg connection failed");
+            e
+        })?;
 
-        let store = Self {
-            client: Arc::new(client),
+        let client_slot = Arc::new(tokio::sync::RwLock::new(Some(client)));
+        spawn_connection_supervisor(pg, client_slot.clone());
+
+        Ok(Self {
+            client_slot,
             config,
             sealer: Arc::new(NoSealer),
             quarantined: std::sync::atomic::AtomicU64::new(0),
-        };
-        store
-            .client
-            .batch_execute(DDL)
-            .await
-            .map_err(|e| StorageError::Backend(format!("pg migrate: {e}")))?;
-        // CRYPTO-001: harden pre-gate databases (drop plaintext identity cols).
-        store
-            .client
-            .batch_execute(MIGRATE_DROP_PLAINTEXT_IDENTITY)
-            .await
-            .map_err(|e| StorageError::Backend(format!("pg migrate v2: {e}")))?;
-        // TAK-9: non-negative scalars enforced at the DB layer as well.
-        store
-            .client
-            .batch_execute(MIGRATE_NONNEGATIVE_CONSTRAINT)
-            .await
-            .map_err(|e| StorageError::Backend(format!("pg migrate v3: {e}")))?;
-        // TAK-11: replace the unusable partial indexes on existing DBs
-        // (fresh databases already get the corrected DDL).
-        store
-            .client
-            .batch_execute(MIGRATE_FIX_PARTIAL_INDEXES)
-            .await
-            .map_err(|e| StorageError::Backend(format!("pg migrate v4: {e}")))?;
-        Ok(store)
+        })
     }
 
     /// Connect using environment configuration.
@@ -253,14 +357,13 @@ impl PgStorage {
     /// Run one GC tick: reclaim expired rows, then evict by priority if usage
     /// exceeds the quota threshold (STORAGE.md). P0 never evicted while live.
     pub async fn gc_once(&self, now_unix: u64) -> Result<(), StorageError> {
-        let _expired = delete_expired(&self.client, now_unix)
-            .await
-            .map_err(backend)?;
+        let client = self.live_client().await?;
+        let _expired = delete_expired(&client, now_unix).await.map_err(backend)?;
         if self.config.max_storage_bytes > 0 {
             let target =
                 (self.config.max_storage_bytes as f64 * self.config.eviction_threshold) as u64;
-            if usage_bytes(&self.client).await.map_err(backend)? > target {
-                let _ = evict_lowest_priority(&self.client, target)
+            if usage_bytes(&client).await.map_err(backend)? > target {
+                let _ = evict_lowest_priority(&client, target)
                     .await
                     .map_err(backend)?;
             }
@@ -268,9 +371,40 @@ impl PgStorage {
         Ok(())
     }
 
+    /// Current live client, or the distinct "storage unavailable" error
+    /// (TAK-4) while the supervisor is reconnecting. Callers treat this as
+    /// retry-later rather than as bad data.
+    async fn live_client(&self) -> Result<Arc<tokio_postgres::Client>, StorageError> {
+        self.client_slot
+            .read()
+            .await
+            .clone()
+            .ok_or_else(|| StorageError::Backend("storage unavailable: reconnecting".into()))
+    }
+
+    /// Whether a connection is currently installed and responsive (TAK-4):
+    /// runs a trivial round-trip so "slot filled" means genuinely usable.
+    /// The engine can poll this to degrade deliberately during outages.
+    pub async fn is_healthy(&self) -> bool {
+        match self.live_client().await {
+            Ok(client) => matches!(
+                tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    client.simple_query("SELECT 1")
+                )
+                .await,
+                Ok(Ok(_))
+            ),
+            Err(_) => false,
+        }
+    }
+
     /// Access the raw client for maintenance/administration.
-    pub fn client(&self) -> &tokio_postgres::Client {
-        &self.client
+    ///
+    /// TAK-4: now falls through to [`PgStorage::live_client`], so it returns
+    /// the same "unavailable" error instead of handing out a dead handle.
+    pub async fn client(&self) -> Result<Arc<tokio_postgres::Client>, StorageError> {
+        self.live_client().await
     }
 
     /// Rows quarantined by `get_queue` so far (TAK-3): unreadable rows are
@@ -287,8 +421,10 @@ impl PgStorage {
     /// the row evictable. Failures to quarantine itself are logged and do not
     /// propagate into the drain path.
     async fn quarantine_row(&self, message_id: &str) {
-        if let Err(e) = self
-            .client
+        let Ok(client) = self.live_client().await else {
+            return;
+        };
+        if let Err(e) = client
             .execute(
                 "UPDATE messages SET status = 'DELIVERY_FAILED' WHERE message_id = $1",
                 &[&message_id],
@@ -316,8 +452,8 @@ impl PgStorage {
         if self.sealer.is_identity() {
             return Ok(0);
         }
-        let rows = self
-            .client
+        let client = self.live_client().await?;
+        let rows = client
             .query(
                 "SELECT message_id, priority, expires_at, envelope_cbor FROM messages",
                 &[],
@@ -345,7 +481,7 @@ impl PgStorage {
             let mut tagged = Vec::with_capacity(1 + sealed.len());
             tagged.push(crate::seal::envelope_format::SEALED);
             tagged.extend_from_slice(&sealed);
-            self.client
+            client
                 .execute(
                     "UPDATE messages SET envelope_cbor = $2 WHERE message_id = $1",
                     &[&id, &tagged],
@@ -365,6 +501,7 @@ impl PgStorage {
 #[async_trait::async_trait]
 impl MessageStorage for PgStorage {
     async fn persist(&self, envelope: &Envelope) -> Result<(), StorageError> {
+        let client = self.live_client().await?;
         // TAK-9: same-width `as` casts silently reinterpret bits, letting a
         // peer-chosen u64 timestamp/expiry/payload_size land as a NEGATIVE
         // BIGINT (instant-expiring or immortal rows, corrupted ordering).
@@ -410,7 +547,7 @@ impl MessageStorage for PgStorage {
         };
 
         if self.config.max_storage_bytes > 0 {
-            let current = usage_bytes(&self.client).await.map_err(backend)?;
+            let current = usage_bytes(&client).await.map_err(backend)?;
             let grow = Self::projected_row_bytes(stored.len() as u64);
             if current.saturating_add(grow) > self.config.max_storage_bytes && !is_p0 {
                 // Non-P0 write would exceed quota → refuse; P0 always accepted.
@@ -418,7 +555,7 @@ impl MessageStorage for PgStorage {
             }
         }
 
-        self.client
+        client
             .execute(
                 "INSERT INTO messages
                    (message_id, priority, status, created_at,
@@ -443,8 +580,8 @@ impl MessageStorage for PgStorage {
     }
 
     async fn load(&self, id: &MessageId) -> Result<Option<Envelope>, StorageError> {
-        let row = self
-            .client
+        let client = self.live_client().await?;
+        let row = client
             .query_opt(
                 "SELECT envelope_cbor, priority, expires_at FROM messages WHERE message_id = $1",
                 &[&id.to_string()],
@@ -475,7 +612,8 @@ impl MessageStorage for PgStorage {
         id: &MessageId,
         status: MessageStatus,
     ) -> Result<(), StorageError> {
-        self.client
+        let client = self.live_client().await?;
+        client
             .execute(
                 "UPDATE messages SET status = $2 WHERE message_id = $1",
                 &[&id.to_string(), &status_to_text(status)],
@@ -486,7 +624,8 @@ impl MessageStorage for PgStorage {
     }
 
     async fn delete(&self, id: &MessageId) -> Result<(), StorageError> {
-        self.client
+        let client = self.live_client().await?;
+        client
             .execute(
                 "DELETE FROM messages WHERE message_id = $1",
                 &[&id.to_string()],
@@ -497,28 +636,31 @@ impl MessageStorage for PgStorage {
     }
 
     async fn evict_expired(&self, before_unix: u64) -> Result<usize, StorageError> {
-        delete_expired(&self.client, before_unix)
+        let client = self.live_client().await?;
+        delete_expired(&client, before_unix)
             .await
             .map(|n| n as usize)
             .map_err(|e| StorageError::Backend(e.to_string()))
     }
 
     async fn evict_by_priority(&self, target_bytes: u64) -> Result<usize, StorageError> {
-        evict_lowest_priority(&self.client, target_bytes)
+        let client = self.live_client().await?;
+        evict_lowest_priority(&client, target_bytes)
             .await
             .map(|n| n as usize)
             .map_err(|e| StorageError::Backend(e.to_string()))
     }
 
     async fn usage_bytes(&self) -> Result<u64, StorageError> {
-        usage_bytes(&self.client)
+        let client = self.live_client().await?;
+        usage_bytes(&client)
             .await
             .map_err(|e| StorageError::Backend(e.to_string()))
     }
 
     async fn get_queue(&self, limit: usize) -> Result<Vec<Envelope>, StorageError> {
-        let rows = self
-            .client
+        let client = self.live_client().await?;
+        let rows = client
             .query(
                 "SELECT envelope_cbor, message_id, priority, expires_at FROM messages
                  WHERE status IN ('PENDING_SEND', 'IN_TRANSIT')
@@ -607,5 +749,49 @@ mod tests {
         assert_eq!(parse_eviction_threshold(Some("0.5".into())), 0.5);
         assert_eq!(parse_eviction_threshold(Some("0.1".into())), 0.1);
         assert_eq!(parse_eviction_threshold(Some("0.95".into())), 0.95);
+    }
+}
+
+#[cfg(test)]
+mod tak4_backoff_tests {
+    use super::*;
+
+    #[test]
+    fn backoff_doubles_then_caps_at_thirty_seconds() {
+        // Deterministic progression, no jitter in the way.
+        let mut ms = initial_backoff_ms();
+        for expected in [2_000u64, 4_000, 8_000, 16_000] {
+            ms = doubled_capped(ms);
+            assert_eq!(ms, expected);
+        }
+        assert_eq!(doubled_capped(ms), 30_000);
+        assert_eq!(doubled_capped(30_000), 30_000, "stays capped");
+    }
+
+    #[test]
+    fn jitter_stays_within_twenty_percent_and_never_zero() {
+        for base in [1_000u64, 5_000, 30_000] {
+            let j = apply_jitter(base);
+            let spread = base / 5;
+            assert!(
+                j >= base - spread && j <= base + spread,
+                "base={base} j={j}"
+            );
+            assert!(j > 0);
+        }
+    }
+
+    #[test]
+    fn backoff_sequence_bounded_forever() {
+        let mut ms = initial_backoff_ms();
+        for _ in 0..30 {
+            ms = next_backoff_ms(ms);
+            assert!(
+                (RECONNECT_INITIAL_MS - RECONNECT_INITIAL_MS / 5
+                    ..=RECONNECT_MAX_MS + RECONNECT_MAX_MS / 5)
+                    .contains(&ms),
+                "ms={ms}"
+            );
+        }
     }
 }

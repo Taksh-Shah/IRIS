@@ -17,6 +17,8 @@ async fn store_with_max(bytes: u64) -> PgStorage {
     let store = PgStorage::connect(cfg).await.expect("connect storage");
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
@@ -72,6 +74,8 @@ async fn insert_or_ignore_dedups_at_storage_layer() {
     store.persist(&env).await.expect("persist again"); // INSERT ... ON CONFLICT DO NOTHING
     let count: i64 = store
         .client()
+        .await
+        .expect("client")
         .query_one("SELECT count(*) FROM messages", &[])
         .await
         .expect("count")
@@ -104,6 +108,8 @@ async fn update_status_round_trips() {
         .expect("update");
     let status: String = store
         .client()
+        .await
+        .expect("client")
         .query_one(
             "SELECT status FROM messages WHERE message_id = $1",
             &[&env.message_id.to_string()],
@@ -307,6 +313,8 @@ async fn sealed_rows_are_not_plaintext_and_round_trip() {
         .with_sealer(std::sync::Arc::new(sealer));
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
@@ -323,6 +331,8 @@ async fn sealed_rows_are_not_plaintext_and_round_trip() {
     // 1. The stored blob must not be decodable as CBOR (ciphertext at rest).
     let stored: Vec<u8> = store
         .client()
+        .await
+        .expect("client")
         .query_one(
             "SELECT envelope_cbor FROM messages WHERE message_id = $1",
             &[&env.message_id.to_string()],
@@ -368,6 +378,8 @@ async fn sealed_rows_require_the_right_key() {
         .with_sealer(std::sync::Arc::new(sealer));
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
@@ -407,6 +419,8 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
     let store = fresh_store().await;
     let cols: Vec<String> = store
         .client()
+        .await
+        .expect("client")
         .query(
             "SELECT column_name FROM information_schema.columns
              WHERE table_name = 'messages'",
@@ -427,7 +441,7 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
     );
 
     let idxs: i64 = store
-        .client()
+        .client().await.expect("client")
         .query_one(
             "SELECT count(*) FROM pg_indexes WHERE tablename = 'messages' AND indexname = 'idx_messages_recipient'",
             &[],
@@ -460,6 +474,8 @@ async fn eviction_tie_break_removes_oldest_first() {
     // suffice under the documented oldest-first tie-break.
     let after_old_only: i64 = store
         .client()
+        .await
+        .expect("client")
         .query_one(
             "SELECT COALESCE(SUM(octet_length(envelope_cbor)),0)::bigint FROM messages",
             &[],
@@ -478,6 +494,8 @@ async fn eviction_tie_break_removes_oldest_first() {
 
     let remaining: Vec<String> = store
         .client()
+        .await
+        .expect("client")
         .query("SELECT message_id FROM messages", &[])
         .await
         .expect("remaining")
@@ -514,6 +532,8 @@ async fn undecodable_row_is_quarantined_not_queue_bricking() {
     // row made every get_queue call fail forever (P0 sorts first).
     store
         .client()
+        .await
+        .expect("client")
         .execute(
             "UPDATE messages SET envelope_cbor = decode('deadbeef', 'hex')
              WHERE message_id = $1",
@@ -532,6 +552,8 @@ async fn undecodable_row_is_quarantined_not_queue_bricking() {
 
     let status: String = store
         .client()
+        .await
+        .expect("client")
         .query_one(
             "SELECT status FROM messages WHERE message_id = $1",
             &[&bad.message_id.to_string()],

@@ -54,6 +54,8 @@ pub async fn fresh_store() -> PgStorage {
         .expect("connect storage");
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
