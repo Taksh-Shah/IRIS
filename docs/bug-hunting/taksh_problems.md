@@ -204,7 +204,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ✅ `50d3a9b` |
 | **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ✅ `eac839f` |
 | **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ✅ `6f8eda8` |
-| **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ⬜ |
+| **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ✅ `367b2dc` |
 | **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ⬜ |
 | **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ⬜ |
 | **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ⬜ |
@@ -918,7 +918,7 @@ fn evict_old(&mut self) {
 #### ROUT-9: `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set
 - **Severity:** Low  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. Today (dead field on a dead path). Worth keeping as a **design trap** annotation on the ROUT-4 fix: the obvious wiring is wrong and would break flooding. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-9)  ·  Tier 2  ·  commit `367b2dc`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/flood.rs:60`; `crates/iris-core/src/routing/dedup_cache.rs:30, 75-83`
 - **What:** `recipients_for_flood` excludes any neighbor present in `ForwardedCache::peers_seen`. `peers_seen` is a `HashSet<[u8;32]>` with (a) **no message dimension** — an entry excludes the peer from *every* future flood of *every* message; (b) **no expiry** — `evict_old` (line 62) only touches `ring`/`exact`, never `peers_seen`; (c) **no capacity bound**.
