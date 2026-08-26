@@ -205,7 +205,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ✅ `eac839f` |
 | **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ✅ `6f8eda8` |
 | **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ✅ `367b2dc` |
-| **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ⬜ |
+| **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ✅ `a95ed8d` |
 | **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ⬜ |
 | **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ⬜ |
 | **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound | ⬜ |
@@ -945,7 +945,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-10: The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-10)  ·  Tier 2  ·  commit `a95ed8d`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/dedup_cache.rs:46-51` (fn `is_duplicate`)
 - **What:** A Bloom filter has no false negatives, so `bloom.contains(x)` is `true` for every `x` ever inserted. `is_duplicate` therefore evaluates to `bloom.contains(x) && exact.contains(x)` ≡ `exact.contains(x)`. Since `evict_old` removes from `exact` after 1 h but **never** clears the bloom, the ~351 KB bitmap and its ~10 hash probes per lookup are pure overhead, and the effective dedup window is `EXACT_WINDOW` = 1 hour.
