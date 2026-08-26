@@ -157,6 +157,9 @@ pub mod metric {
     pub const ROUTING_DECISIONS_TOTAL: &str = "iris.routing.decisions_total";
     pub const ROUTING_FLOODS_TOTAL: &str = "iris.routing.floods_total";
     pub const SCF_EVICTIONS_TOTAL: &str = "iris.scf.evictions_total";
+    /// SYS-3: inbound messages dropped because a broadcast channel overran.
+    /// Includes both state-stream and message-stream lag (MG-22 split pending).
+    pub const TRANSPORT_INBOUND_LAGGED: &str = "iris.transport.inbound_lagged_total";
 }
 
 /// Lock-free counter-backed metrics registry.
@@ -231,12 +234,20 @@ impl MetricsRegistry {
     }
 
     /// Point-in-time snapshot of all counters.
+    ///
+    /// Includes the global transport inbound-lag counter (SYS-3) so callers
+    /// see a complete picture without needing a separate read path.
     pub fn snapshot(&self) -> HashMap<&'static str, u64> {
-        self.inner
+        let mut snap: HashMap<&'static str, u64> = self.inner
             .counters
             .iter()
             .map(|(k, v)| (*k, v.load(Ordering::Relaxed)))
-            .collect()
+            .collect();
+        snap.insert(
+            metric::TRANSPORT_INBOUND_LAGGED,
+            crate::transport::inbound_lagged_total(),
+        );
+        snap
     }
 
     /// Reset all counters to zero (call at flush/rotation time).
@@ -295,8 +306,8 @@ mod tests {
         assert_eq!(snap[metric::ROUTING_DECISIONS_TOTAL], 3);
         // Unknown names are silently ignored — default-deny (P3).
         reg.increment("iris.unknown.name");
-        // 19 metrics registered (includes SEC-001 metrics)
-        assert_eq!(reg.snapshot().len(), 19);
+        // 19 registry counters + 1 transport-lag global (SYS-3) = 20
+        assert_eq!(reg.snapshot().len(), 20);
     }
 
     #[test]

@@ -1193,7 +1193,7 @@ impl Transport for SatelliteTransport {
     }
 
     fn state_stream(&self) -> Pin<Box<dyn Stream<Item = TransportStateEvent> + Send>> {
-        crate::transport::broadcast_stream(self.state_tx.subscribe())
+        crate::transport::broadcast_stream(self.state_tx.subscribe(), "satellite.state")
     }
 
     async fn discover_peers(
@@ -1251,7 +1251,7 @@ impl Transport for SatelliteTransport {
     }
 
     fn incoming_messages(&self) -> Pin<Box<dyn Stream<Item = IncomingMessage> + Send>> {
-        crate::transport::broadcast_stream(self.incoming_tx.subscribe())
+        crate::transport::broadcast_stream(self.incoming_tx.subscribe(), "satellite.messages")
     }
 
     fn cost_snapshot(&self) -> TransportCost {

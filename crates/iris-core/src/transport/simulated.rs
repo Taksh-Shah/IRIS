@@ -134,7 +134,7 @@ impl Transport for SimulatedTransport {
         self.state.load()
     }
     fn state_stream(&self) -> Pin<Box<dyn Stream<Item = TransportStateEvent> + Send>> {
-        crate::transport::broadcast_stream(self.state_tx.subscribe())
+        crate::transport::broadcast_stream(self.state_tx.subscribe(), "sim.state")
     }
 
     async fn discover_peers(
@@ -203,7 +203,7 @@ impl Transport for SimulatedTransport {
     }
 
     fn incoming_messages(&self) -> Pin<Box<dyn Stream<Item = IncomingMessage> + Send>> {
-        crate::transport::broadcast_stream(self.incoming_tx.subscribe())
+        crate::transport::broadcast_stream(self.incoming_tx.subscribe(), "sim.messages")
     }
 
     fn cost_snapshot(&self) -> TransportCost {

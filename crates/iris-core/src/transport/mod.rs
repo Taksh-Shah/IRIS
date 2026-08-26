@@ -301,10 +301,15 @@ pub enum RadioConflictGroup {
 /// count — so a burst could drop traffic, including P0 SOS, with no metric, no
 /// log and no retransmit trigger. In a disruption-tolerant mesh that is exactly
 /// the failure that must never be invisible.
+///
+/// `label` is a short `"transport.stream_type"` tag (e.g. `"ble.messages"`)
+/// included in the warn event so lagged state streams are distinguishable from
+/// lagged message streams in logs (SYS-3 / MG-22).
 pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
     rx: tokio::sync::broadcast::Receiver<T>,
+    label: &'static str,
 ) -> Pin<Box<dyn Stream<Item = T> + Send>> {
-    Box::pin(futures_util::stream::unfold(rx, |mut rx| async move {
+    Box::pin(futures_util::stream::unfold(rx, move |mut rx| async move {
         loop {
             match rx.recv().await {
                 Ok(item) => return Some((item, rx)),
@@ -312,6 +317,7 @@ pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
                     INBOUND_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
                     tracing::warn!(
                         event = "transport.inbound_lagged",
+                        transport = label,
                         skipped,
                         "inbound transport buffer overran; messages were dropped"
                     );

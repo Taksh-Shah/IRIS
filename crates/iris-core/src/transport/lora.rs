@@ -1542,7 +1542,7 @@ impl Transport for LoRaTransport {
     }
 
     fn state_stream(&self) -> Pin<Box<dyn Stream<Item = TransportStateEvent> + Send>> {
-        crate::transport::broadcast_stream(self.state_tx.subscribe())
+        crate::transport::broadcast_stream(self.state_tx.subscribe(), "lora.state")
     }
 
     async fn discover_peers(
@@ -1600,7 +1600,7 @@ impl Transport for LoRaTransport {
     }
 
     fn incoming_messages(&self) -> Pin<Box<dyn Stream<Item = IncomingMessage> + Send>> {
-        crate::transport::broadcast_stream(self.incoming_tx.subscribe())
+        crate::transport::broadcast_stream(self.incoming_tx.subscribe(), "lora.messages")
     }
 
     fn cost_snapshot(&self) -> TransportCost {

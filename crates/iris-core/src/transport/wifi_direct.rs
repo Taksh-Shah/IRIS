@@ -511,7 +511,7 @@ impl SimulatedWifiDirectAdapter {
 impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
     fn availability_stream(&self) -> Option<Pin<Box<dyn Stream<Item = bool> + Send + 'static>>> {
         self.available_rx.lock().unwrap_or_else(|p| p.into_inner()).take().map(|rx| {
-            Box::pin(crate::transport::broadcast_stream(rx))
+            Box::pin(crate::transport::broadcast_stream(rx, "wifi_direct.availability"))
                 as Pin<Box<dyn Stream<Item = bool> + Send + 'static>>
         })
     }
@@ -1081,7 +1081,7 @@ impl Transport for WifiDirectTransport {
     }
 
     fn state_stream(&self) -> Pin<Box<dyn Stream<Item = TransportStateEvent> + Send>> {
-        crate::transport::broadcast_stream(self.state_tx.subscribe())
+        crate::transport::broadcast_stream(self.state_tx.subscribe(), "wifi_direct.state")
     }
 
     async fn discover_peers(
@@ -1308,7 +1308,7 @@ impl Transport for WifiDirectTransport {
     }
 
     fn incoming_messages(&self) -> Pin<Box<dyn Stream<Item = IncomingMessage> + Send>> {
-        crate::transport::broadcast_stream(self.incoming_tx.subscribe())
+        crate::transport::broadcast_stream(self.incoming_tx.subscribe(), "wifi_direct.messages")
     }
 
     fn cost_snapshot(&self) -> TransportCost {
