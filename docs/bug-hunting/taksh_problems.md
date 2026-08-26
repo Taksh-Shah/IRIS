@@ -202,7 +202,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist | ✅ `ade3acd` |
 | **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ✅ `1821c48` |
 | **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ✅ `50d3a9b` |
-| **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ⬜ |
+| **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ✅ `eac839f` |
 | **ROUT-8** | Medium | `opportunistic.rs:146-173,` | A `NaN` delivery predictability passes every GTMX+ guard and wins over all honest candidates | ⬜ |
 | **ROUT-9** | Low | `flood.rs:60` | `contains_peer` is a permanent, message-independent flood blacklist backed by an unbounded, never-pruned set | ⬜ |
 | **ROUT-10** | Medium | `dedup_cache.rs:46-51` | The Bloom filter contributes nothing — `bloom AND exact` collapses to `exact`, cutting the dedup window from 24 h/72 h to 1 h | ⬜ |
@@ -855,7 +855,7 @@ fn evict_old(&mut self) {
 #### ROUT-7: GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-7)  ·  Tier 2  ·  commit `eac839f`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/opportunistic.rs:103-104, 164-170, 196-205` (fields `max_dp_seen`, fns `gtmx_advantage`, `decide`)
 - **What:** The anti-oscillation guard is documented (and specified) as per-message state, but neither `gtmx_advantage` nor `decide` receives a message id. The key is `(candidate_peer, destination)`. Once `decide` picks neighbor `B` for destination `D` with DP `p`, `max_dp_seen[(B,D)] = p`; every **subsequent, unrelated** message to `D` finds `p <= seen + eps` and rejects `B`.
