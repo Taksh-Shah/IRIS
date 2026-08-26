@@ -701,15 +701,33 @@ impl Transport for BleTransport {
             .find(|(t, _)| t == "ble")
             .map(|(_, addr)| parse_mac(addr))
             .ok_or(TransportError::PeerNotFound)?;
-        self.set_state(TransportState::Connecting);
+        // BLE-3: only the FIRST connection in flight should move the
+        // transport-wide state to `Connecting`. Doing this unconditionally
+        // meant that dialling peer #4 while peers #1-3 were already
+        // `Connected` and working temporarily downgraded the WHOLE transport
+        // to `Connecting` — a state the manager's scoring (manager.rs
+        // `_ => -1000.0`) treats as "eliminate this transport", so every
+        // other live peer briefly lost all routing eligibility on every new
+        // connect attempt.
+        let had_other_connections = !conns.is_empty();
+        if !had_other_connections {
+            self.set_state(TransportState::Connecting);
+        }
         let connect_result = adapter.connect_gatt(mac).map_err(to_transport_err);
         let handle = match connect_result {
             Ok(h) => h,
             // Restore a usable state on connection failure (BLE-RT-004,
             // RED-0001-13 pattern from internet.rs): never stay stuck
-            // `Connecting` and never bind an entry.
+            // `Connecting` and never bind an entry. Restore to `Connected`
+            // rather than `Available` if other peers are still live — a
+            // failed dial to a new peer must not make the transport look
+            // less capable than it actually is.
             Err(e) => {
-                self.set_state(TransportState::Available);
+                self.set_state(if had_other_connections {
+                    TransportState::Connected
+                } else {
+                    TransportState::Available
+                });
                 return Err(e);
             }
         };
