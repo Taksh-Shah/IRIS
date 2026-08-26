@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — **Tier 4 Wave 1, batch A complete (ox-alpha loop)**: 8/126 fixed — TAK-25 `ee7abdb`, TAK-24 `1cda4a9`, TAK-12 `5960080`, TAK-13 `9f3a526`, TAK-16 `868f42a`, TAK-17 `87c4af9`, TAK-21 `3e22a34`, TAK-22 `ff9e9e4`. Batch sweep: build clean · **726/0/1** (baseline 717 → +9 net-new regression tests, zero failures). All 20 Wave-1 findings drift-audited at HEAD: present as filed. Run journal: [`taksh_fix_log.md`](taksh_fix_log.md).
+**Last updated:** 2026-08-26 — **Tier 4 Wave 1, batches A+B complete (ox-alpha loop)**: 14/126 fixed. Batch B commits: TAK-3 `8d8ead9`, TAK-9 `518b4ab`, TAK-10 `c52f1a5`, TAK-11 `0e1f2d3`, TAK-15 `dff5358`, TAK-4 `f2fc6a7`. Batch sweep: build clean · **734/0/1** (zero regressions; +8 net-new tests this run). PG-gated legs recorded PENDING LIVE-PG in [`taksh_fix_log.md`](taksh_fix_log.md).
 
 **Tier 0 status (unchanged, owned by operator+Claude):** Tier -1 complete. Tier 0 in progress: 10/32 fixed (all pure-Rust findings — GAP-4, GAP-9, GAP-12, BLE-3, BLE-5, BLE-27, BLE-28, BLE-29, BLE-30, FFI-16), 2 blocked (BLE-1, BLE-2 — need a real concurrency/architecture redesign, not rushed), 20 remaining (the Kotlin-touching FFI-1..19 cluster + BLE-4, BLE-9 — no Gradle/kotlinc on this machine, see the PENDING HARDWARE VERIFICATION notes throughout). Every ✅ so far passed `cargo build --workspace --all-targets` + `cargo test --workspace` but has NOT been confirmed on the two connected Android devices — no build toolchain exists on this machine to produce an installable APK.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
@@ -49,9 +49,9 @@ These three results interact rather than simply stack: the parts of this section
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 11 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 118 | 0 | 8 | 0 | 0 | Wave 1 running (ox-alpha loop) — batch A done: TAK-25/24/12/13/16/17/21/22 |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 112 | 0 | 14 | 0 | 0 | Wave 1 running (ox-alpha loop) — batches A+B done: TAK-25/24/12/13/16/17/21/22 + TAK-3/9/10/11/15/4 |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **261** | **0** | **19** | **2** | **0** | |
+| **Total** | | **284** | **255** | **0** | **25** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -7885,7 +7885,7 @@ eviction.rs:65   if n == 0 { break; }   // nothing evictable remains
 
 #### TAK-3: A single undecodable row permanently blocks the entire send queue
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 8d8ead9 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:294-305` (`get_queue`)
 - **What:** `get_queue` loops over rows and returns `Err` for the whole batch as soon as one row fails to unseal or decode. There is no skip, no quarantine, and no delete of the offending row.
@@ -7913,7 +7913,7 @@ let cbor = match self.sealer.unseal(&aad, &bytes) {
 
 #### TAK-4: No reconnection — one dropped PG connection bricks storage for the process lifetime
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit f2fc6a7 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:92-96` (`connect`), `crates/iris-storage/src/gc.rs:20-29` (`spawn_gc`)
 - **What:** The connection driver task logs a warning and exits when the connection dies. `PgStorage` keeps holding the now-dead `Arc<Client>`. There is no reconnect, no health check, and no way for a caller to learn the store is dead other than every query failing.
@@ -8034,7 +8034,7 @@ ranked.sort_by(|a, b| b.delivery_probability.total_cmp(&a.delivery_probability)
 
 #### TAK-9: `u64 → i64` wrapping casts let a peer write negative timestamps into the store
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 518b4ab · 2026-08-26
 - **Confidence:** High
 - **Location:** `crates/iris-storage/src/pg.rs:191-195` (`persist`)
 - **What:** `expires_at`, `timestamp` and `payload_size` are `u64` in the envelope and are cast with `as i64` for the `BIGINT` columns. In Rust `as` between same-width integers reinterprets the bits, so any value above `i64::MAX` becomes negative rather than erroring.
@@ -8059,7 +8059,7 @@ let exp = i64::try_from(expires_at.min(now + MAX_TTL_SECONDS)).map_err(...)?;
 
 #### TAK-10: `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit c52f1a5 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** Written `crates/iris-storage/src/pg.rs:197`; read `crates/iris-storage/src/eviction.rs:59`; declared `crates/iris-storage/src/schema.rs:21`
 - **What:** `persist` always binds the literal `false` for the `is_own_message` column. Repo-wide grep finds no other writer. The eviction `ORDER BY` reads the column, so its tie-break is permanently a no-op.
@@ -8079,7 +8079,7 @@ eviction.rs:8    ///   first, relayed (not own) messages before own.
 
 #### TAK-11: Both partial indexes are unusable by the queries they were created for
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 0e1f2d3 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/schema.rs:24-27` vs `crates/iris-storage/src/eviction.rs:35` and `crates/iris-storage/src/pg.rs:286`
 - **What:** Both indexes carry `WHERE` predicates that the actual queries do not satisfy, so the planner cannot use either one.
@@ -8184,7 +8184,7 @@ seal.rs:32   out.extend_from_slice(&expires_at.to_be_bytes());
 
 #### TAK-15: Enabling sealing makes every pre-existing plaintext row permanently unreadable — no data migration exists
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit dff5358 · 2026-08-26
 - **Confidence:** High
 - **Location:** `crates/iris-storage/src/pg.rs:220-229` (`load`), `crates/iris-storage/src/pg.rs:123-126` (`with_sealer`)
 - **What:** `load` detects "is this row plaintext?" by unsealing and checking whether the output equals the input. That heuristic only works for `NoSealer` (which is the identity function). With a real `StorageKeySealer`, `unseal` on a legacy plaintext row fails the AEAD tag check and returns `Err` — the plaintext branch at pg.rs:221 is never reached, so there is no fallback.

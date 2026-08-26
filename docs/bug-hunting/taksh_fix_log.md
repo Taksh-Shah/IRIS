@@ -53,9 +53,37 @@ TAK-4, TAK-5, TAK-6, TAK-9, TAK-10, TAK-11, TAK-14, TAK-18, TAK-19 (+TAK-20).
 - TAK-8's predictor.rs:90 site is already closed by TAK-22.
 
 ### Next run (batch B)
-TAK-3 (quarantine) → then TAK-15 (declared dependent on TAK-3), plus
+TAK-3 (quarantine) → then TAK-15 (declared dependent), plus
 TAK-4/5/6/9/10/11/14 and the test-infra trio TAK-18/19/20 (TAK-19 pairs with
 TAK-8's remaining sites per its Dependencies field).
+
+---
+
+## Run 2 — 2026-08-26 — Wave 1 batch B
+
+Target findings: TAK-3, TAK-9, TAK-10, TAK-11, TAK-15, TAK-4 (6 fixed —
+run ended early at a natural boundary; TAK-5/6 are each substantial and move
+to Run 3 with fresh review budget). Carried from batch A plan: TAK-14 +
+test-infra trio TAK-18/19/20 also to Run 3.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | TAK-3 | ✅ Fixed · PENDING LIVE-PG | 8d8ead9 | get_queue skip-and-quarantine (status→DELIVERY_FAILED, evictable, out of queue predicate) + `quarantined_rows()` counter; regression test corrupts a P0 row on disk and asserts healthy P1 still drains + repeated drains stay clean. |
+| 2 | TAK-9 | ✅ Fixed · PENDING LIVE-PG | 518b4ab | i64::try_from validation for timestamp/expiry/payload_size (AAD↔column round-trip now provable); v3 idempotent migration adds messages_scalars_nonnegative CHECK. TTL-clamp deliberately excluded → belongs to gated TAK-2. |
+| 3 | TAK-10 | ✅ Fixed · PENDING LIVE-PG | c52f1a5 | PgStorageConfig.node_id (IRIS_NODE_ID hex, parser unit-tested) drives is_own_message — no Section-2 trait change needed; malformed senders stay relayed. |
+| 4 | TAK-11 | ✅ Fixed · PENDING LIVE-PG | 0e1f2d3 | DDL rebuilt unpartialled (expires_at) + (status,priority,created_at); v4 idempotent drop-and-recreate for existing DBs (same-name collision handled). EXPLAIN assertion deferred to live-PG leg. |
+| 5 | TAK-15 | ✅ Fixed · PENDING LIVE-PG | dff5358 | Explicit 1-byte format tags (0x00 plaintext / 0x01 sealed) on all new rows; dispatcher validates candidates by real decode/AEAD success so legacy blobs whose first byte collides with a tag value cannot be misrouted; untagged legacy plaintext+sealed shapes still resolve; migrate_envelope_format() one-shot rewrite; unknown/corrupt shapes fail into TAK-3 quarantine. Dispatcher extracted as free fn; 2 unit tests cover all four stored shapes without a DB. |
+| 6 | TAK-4 | ✅ Fixed · PENDING LIVE-PG | f2fc6a7 | Supervised reconnect: RwLock client slot; inline initial establishment; supervisor probes every 5s, clears slot FIRST (distinct "storage unavailable" error), re-dials with jittered exponential backoff (1s→30s cap, ±20% deterministic jitter), re-applies ALL migrations per connection; is_healthy() round-trip check; backoff split into deterministic+jitter halves with exact unit tests; supervisor waits for empty slot before dialing (no dual-connection window). All methods acquire current client per call; async client() accessor (test call sites updated). |
+
+**Batch B closeout:** full workspace build --all-targets clean; sweep
+**734 passed / 0 failed / 1 ignored** vs 726 after batch A (+8 net-new tests,
+zero regressions).
+
+### Next run (batch C)
+TAK-5 (atomic quota admission + evict-on-refusal), TAK-6 (TLS for non-loopback),
+then test-infra trio TAK-18/19/20 and TAK-14 (AAD expansion — coordinate note:
+touches update_status into read-modify-reseal; STORE_SECURITY_REVIEW.md doc
+update named in Dependencies).
 
 **Commit convention (from TAK-24 onward):** per-finding §6 code commit first
 (stable hash), report/fix-log status flips accumulate and land in one
