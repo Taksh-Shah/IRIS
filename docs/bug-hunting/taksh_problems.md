@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 in progress. 10/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 `2df2c9d`, RF-36 `c22b3b6`, RF-37 RF37_PLACEHOLDER). 1 remains (RF-38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
+**Last updated:** 2026-08-26 — Tier 1 COMPLETE. All 11 fixed (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 `2df2c9d`, RF-36 `c22b3b6`, RF-37 `c9f28f0`, RF-38 RF38_PLACEHOLDER). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup. Next: Tier 4 or further Tier 0 findings.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -44,12 +44,12 @@ These three results interact rather than simply stack: the parts of this section
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain |
-| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 1 | 0 | 10 | 0 | 0 | **IN PROGRESS** — SYS-1/2/3/4, TAK-1, SYS-5-step1, SYS-6, RF-35/36/37 fixed; RF-38 remains |
+| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **259** | **0** | **21** | **2** | **0** | |
+| **Total** | | **284** | **258** | **0** | **22** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -5280,7 +5280,7 @@ let addr = self.peer_relays.lock().await.get(peer).copied()
 #### RF-37: A reader task resurrects a shut-down transport by unconditionally storing `Available` on EOF
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit RF37_PLACEHOLDER  ·  2026-08-26
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit c9f28f0  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:280-325` (fn `spawn_reader`), specifically `317-323`; interacting with `465-471` (fn `shutdown`)
 - **What:** when the read loop exits for **any** reason, it writes `TransportState::Available` into the shared state with no regard for the current state, for other live connections, or for shutdown.
@@ -5317,7 +5317,7 @@ if state.load() == TransportState::Connected && live_connections.fetch_sub(1, Ac
 #### RF-38: There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit RF38_PLACEHOLDER  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:139-148` (`backoff_ms`), `253-278` (`get_connection`), `399-440` (`send`)
 - **What:** `grep -rn "backoff_ms" crates/ --include=*.rs` returns **only** the definition (140) and its four unit tests (505, 513, 523, 700). No attempt counter exists, nothing sleeps between connection attempts, and no code path retries a failed connection. `get_connection` dials once with a 3 s timeout and returns the error.

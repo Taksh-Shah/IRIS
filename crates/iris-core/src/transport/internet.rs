@@ -22,7 +22,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
@@ -213,6 +213,14 @@ pub struct InternetTransport {
     /// Abort handles for active reader tasks, so shutdown() can stop them before
     /// they resurrect the transport by writing Available on EOF (RF-37).
     readers: StdMutex<Vec<tokio::task::AbortHandle>>,
+    /// Consecutive failed dial attempts; drives backoff_ms() in get_connection (RF-38).
+    reconnect_attempts: AtomicU32,
+    /// When the last dial failure occurred; the gate refuses to dial earlier than
+    /// backoff_ms(reconnect_attempts, jitter_seed) after this instant (RF-38).
+    last_attempt: StdMutex<Option<Instant>>,
+    /// Per-instance jitter seed — derived at construction from SystemTime so
+    /// concurrent nodes de-correlate their reconnect storms (RF-38).
+    jitter_seed: u64,
 }
 
 impl InternetTransport {
@@ -237,6 +245,12 @@ impl InternetTransport {
             relay_candidates: relay_endpoints.to_vec(),
             peer_relays: Mutex::new(HashMap::new()),
             readers: StdMutex::new(Vec::new()),
+            reconnect_attempts: AtomicU32::new(0),
+            last_attempt: StdMutex::new(None),
+            jitter_seed: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos() as u64,
         }
     }
 
@@ -268,19 +282,51 @@ impl InternetTransport {
             .await
             .ok_or(TransportError::PeerNotFound)?;
 
+        // RF-38: backoff gate — refuse to dial before the inter-attempt delay.
+        let attempts = self.reconnect_attempts.load(Ordering::Relaxed);
+        if attempts > 0 {
+            if let Ok(guard) = self.last_attempt.lock() {
+                if let Some(t) = *guard {
+                    let delay =
+                        Duration::from_millis(backoff_ms(attempts, self.jitter_seed));
+                    if t.elapsed() < delay {
+                        return Err(TransportError::Busy);
+                    }
+                }
+            }
+        }
+
         let mut pool = self.pool.lock().await;
         let now = Instant::now();
         if let Some(conn) = pool.acquire(now, addr) {
             return Ok(conn);
         }
+        drop(pool);
 
         // Open new connection (timeout 3s per INTERNET.md negotiation budget).
         let stream =
             match tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr)).await {
                 Ok(Ok(s)) => s,
-                Ok(Err(e)) => return Err(TransportError::Io(e.to_string())),
-                Err(_) => return Err(TransportError::ConnectionFailed),
+                Ok(Err(e)) => {
+                    self.reconnect_attempts.fetch_add(1, Ordering::Relaxed);
+                    if let Ok(mut guard) = self.last_attempt.lock() {
+                        *guard = Some(Instant::now());
+                    }
+                    return Err(TransportError::Io(e.to_string()));
+                }
+                Err(_) => {
+                    self.reconnect_attempts.fetch_add(1, Ordering::Relaxed);
+                    if let Ok(mut guard) = self.last_attempt.lock() {
+                        *guard = Some(Instant::now());
+                    }
+                    return Err(TransportError::ConnectionFailed);
+                }
             };
+        // Successful connect — reset the backoff counter.
+        self.reconnect_attempts.store(0, Ordering::Relaxed);
+        if let Ok(mut guard) = self.last_attempt.lock() {
+            *guard = None;
+        }
         stream.set_nodelay(true).ok();
         let (read, write) = stream.into_split();
         // Reader task pushes frames to incoming broadcast; on link loss it
@@ -500,6 +546,10 @@ impl Transport for InternetTransport {
         self.pool.lock().await.connections.clear();
         self.peer_relays.lock().await.clear();
         *self.relay_addr.lock().await = None;
+        self.reconnect_attempts.store(0, Ordering::Relaxed);
+        if let Ok(mut guard) = self.last_attempt.lock() {
+            *guard = None;
+        }
         Ok(())
     }
 }
