@@ -437,3 +437,56 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
         .get(0);
     assert_eq!(idxs, 0, "idx_messages_recipient must be dropped");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn eviction_tie_break_removes_oldest_first() {
+    if !pg_available() {
+        eprintln!("SKIP: IRIS_PG_PASSWORD unset");
+        return;
+    }
+    let _g = LOCK.lock().await;
+    let store = fresh_store().await;
+    let now = unix_now();
+    // Equal priority (P4), equal expiry (now + 3600), both relayed: the only
+    // live tie-break key is created_at. The OLD message carries the big
+    // payload so that a correct oldest-first pass frees enough in ONE delete;
+    // the buggy newest-first order would delete the small new row first and
+    // then be forced to continue into the old one, emptying the store.
+    let old_big = env_for(PEER_BOB, MessagePriority::P4, now - 200, 3800, &[0u8; 4096]);
+    let new_small = env_for(PEER_BOB, MessagePriority::P4, now - 100, 3700, b"fresh");
+    store.persist(&old_big).await.expect("persist old");
+    // Target captured BEFORE the newest row exists: eviction must free at
+    // least that row's footprint, so evicting exactly the oldest row should
+    // suffice under the documented oldest-first tie-break.
+    let after_old_only: i64 = store
+        .client()
+        .query_one(
+            "SELECT COALESCE(SUM(octet_length(envelope_cbor)),0)::bigint FROM messages",
+            &[],
+        )
+        .await
+        .expect("usage sql")
+        .get(0);
+    let target_bytes = after_old_only as u64;
+    store.persist(&new_small).await.expect("persist new");
+    assert_eq!(
+        old_big.timestamp + old_big.ttl_seconds,
+        new_small.timestamp + new_small.ttl_seconds
+    );
+
+    store.evict_by_priority(target_bytes).await.expect("evict");
+
+    let remaining: Vec<String> = store
+        .client()
+        .query("SELECT message_id FROM messages", &[])
+        .await
+        .expect("remaining")
+        .iter()
+        .map(|r| r.get(0))
+        .collect();
+    assert_eq!(
+        remaining,
+        vec![new_small.message_id.to_string()],
+        "oldest row must be evicted first among full ties (created_at ASC)"
+    );
+}

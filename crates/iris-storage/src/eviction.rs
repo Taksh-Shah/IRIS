@@ -56,7 +56,7 @@ pub(crate) async fn evict_lowest_priority(
                  WHERE message_id IN (
                     SELECT message_id FROM messages
                     WHERE priority > 0
-                    ORDER BY priority DESC, is_own_message ASC, expires_at ASC, created_at DESC
+                    ORDER BY priority DESC, is_own_message ASC, expires_at ASC, created_at ASC
                     LIMIT 1
                  )",
                 &[],
