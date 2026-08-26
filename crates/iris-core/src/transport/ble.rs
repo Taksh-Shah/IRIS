@@ -194,6 +194,11 @@ pub trait BleAdapter: Send + Sync + 'static {
 }
 
 /// In-memory BLE adapter for tests and simulation. No hardware involved.
+///
+/// Only available in `#[cfg(test)]` builds or when the `test-support` feature
+/// is enabled. Not for production use — it silently no-ops hardware calls
+/// and is invisible at the type level in release builds (SYS-6).
+#[cfg(any(test, feature = "test-support"))]
 #[derive(Default)]
 pub struct SimulatedBleAdapter {
     events: std::sync::Mutex<Vec<GattWriteEvent>>,
@@ -217,6 +222,7 @@ pub struct SimulatedBleAdapter {
     last_ad_wire: std::sync::Mutex<Option<AdvertisementData>>,
 }
 
+#[cfg(any(test, feature = "test-support"))]
 impl SimulatedBleAdapter {
     pub fn new() -> Self {
         Self::default()
@@ -271,6 +277,7 @@ impl SimulatedBleAdapter {
     }
 }
 
+#[cfg(any(test, feature = "test-support"))]
 impl BleAdapter for SimulatedBleAdapter {
     fn start_scan(&self, _filter: ScanFilter) -> Result<ScanHandle, BleError> {
         Ok(ScanHandle(1))

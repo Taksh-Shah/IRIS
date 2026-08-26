@@ -8,6 +8,10 @@ repository.workspace = true
 
 [features]
 proptest = ["dep:proptest"]
+# Expose in-memory test doubles (SimulatedBleAdapter, StubTransport) in builds
+# that are not #[cfg(test)] — e.g. integration test crates that need them
+# across crate boundaries. Never enable in a production binary (SYS-6).
+test-support = []
 
 [dependencies]
 async-trait.workspace = true

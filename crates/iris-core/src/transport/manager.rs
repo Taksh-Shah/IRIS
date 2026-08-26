@@ -226,6 +226,12 @@ pub fn cost_from_model(
 }
 
 /// A no-op transport that reports given caps (used in manager tests).
+///
+/// Gated behind `#[cfg(any(test, feature = "test-support"))]` (SYS-6):
+/// `send()` returns `Ok` while discarding every message — registering it
+/// in a production `TransportManager` would produce a node that reports
+/// 100% send success while delivering nothing.
+#[cfg(any(test, feature = "test-support"))]
 pub struct StubTransport {
     id: TransportId,
     caps: TransportCapabilities,
@@ -233,6 +239,7 @@ pub struct StubTransport {
     cost: TransportCost,
 }
 
+#[cfg(any(test, feature = "test-support"))]
 impl StubTransport {
     pub fn new(
         id: &str,
@@ -250,6 +257,7 @@ impl StubTransport {
 }
 
 #[async_trait::async_trait]
+#[cfg(any(test, feature = "test-support"))]
 impl Transport for StubTransport {
     fn transport_id(&self) -> &TransportId {
         &self.id
