@@ -79,6 +79,15 @@ impl ForwardedCache {
         self.exact.insert(id);
         self.ring.push_back((id, Instant::now()));
         self.evict_old();
+        // ROUT-15: enforce count-based cap so an attacker minting message ids
+        // at high speed cannot grow exact/ring beyond WINDOW_CAPACITY entries.
+        // The bloom stays (it is fixed-size by construction); exact and ring
+        // must also respect the bound.
+        while self.ring.len() > WINDOW_CAPACITY {
+            if let Some((evicted, _)) = self.ring.pop_front() {
+                self.exact.remove(&evicted);
+            }
+        }
     }
 
     /// Rotate bloom generations when the current one has exceeded 24 h.
@@ -118,6 +127,16 @@ impl ForwardedCache {
     pub fn is_empty(&self) -> bool {
         self.exact.is_empty()
     }
+
+    #[cfg(test)]
+    pub fn ring_len(&self) -> usize {
+        self.ring.len()
+    }
+
+    #[cfg(test)]
+    pub fn exact_len(&self) -> usize {
+        self.exact.len()
+    }
 }
 
 #[cfg(test)]
@@ -152,6 +171,27 @@ mod tests {
         cache.evict_old();
         // Nothing is older than 1 h yet, so all remain.
         assert!(cache.len() >= 10);
+    }
+
+    #[test]
+    fn rout15_exact_and_ring_bounded_by_window_capacity() {
+        // Regression: exact and ring were unbounded within the 1-h time window;
+        // an attacker minting message ids at high speed could exhaust RAM (ROUT-15).
+        let mut cache = ForwardedCache::default();
+        // Insert just past WINDOW_CAPACITY to trigger eviction.
+        for _ in 0..(WINDOW_CAPACITY + 5) {
+            cache.record(MessageId::new_v7());
+        }
+        assert!(
+            cache.ring_len() <= WINDOW_CAPACITY,
+            "ring must be capped at WINDOW_CAPACITY (got {})",
+            cache.ring_len()
+        );
+        assert!(
+            cache.exact_len() <= WINDOW_CAPACITY,
+            "exact must be capped at WINDOW_CAPACITY (got {})",
+            cache.exact_len()
+        );
     }
 
     #[test]
