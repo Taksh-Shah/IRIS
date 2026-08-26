@@ -13,7 +13,10 @@ use iris_core::message_engine::storage::{MessageStorage, StorageError};
 use iris_core::protocol::{codec, Envelope, MessageId};
 
 use crate::eviction::{delete_expired, evict_lowest_priority, usage_bytes};
-use crate::schema::{DDL, MIGRATE_DROP_PLAINTEXT_IDENTITY, MIGRATE_NONNEGATIVE_CONSTRAINT};
+use crate::schema::{
+    DDL, MIGRATE_DROP_PLAINTEXT_IDENTITY, MIGRATE_FIX_PARTIAL_INDEXES,
+    MIGRATE_NONNEGATIVE_CONSTRAINT,
+};
 use crate::seal::{NoSealer, RowSealer};
 
 /// Connection + quota configuration for [`PgStorage`].
@@ -180,6 +183,13 @@ impl PgStorage {
             .batch_execute(MIGRATE_NONNEGATIVE_CONSTRAINT)
             .await
             .map_err(|e| StorageError::Backend(format!("pg migrate v3: {e}")))?;
+        // TAK-11: replace the unusable partial indexes on existing DBs
+        // (fresh databases already get the corrected DDL).
+        store
+            .client
+            .batch_execute(MIGRATE_FIX_PARTIAL_INDEXES)
+            .await
+            .map_err(|e| StorageError::Backend(format!("pg migrate v4: {e}")))?;
         Ok(store)
     }
 
