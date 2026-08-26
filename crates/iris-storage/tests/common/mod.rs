@@ -1,8 +1,13 @@
 //! Shared helpers for PostgreSQL-backed integration tests.
 //!
-//! All DB tests are gated on `IRIS_PG_PASSWORD` being set (the operator-supplied
-//! credential is read from the environment, never committed to source). Tests
-//! are serialized on a global lock so they share one scratch database safely.
+//! All PG-backed tests carry `#[ignore]` (TAK-1) and are skipped by default.
+//! To run them: set `IRIS_PG_PASSWORD` (and optionally `IRIS_PG_HOST`/`_PORT`/
+//! `_USER`/`_DB`) then invoke `cargo test -p iris-storage -- --include-ignored`.
+//! Tests are serialized on a global lock so they share one scratch database.
+//!
+//! Without `#[ignore]`, a missing password would make every test silently pass
+//! (`return;` after the `pg_available()` check), giving a false-green CI signal
+//! while the entire storage safety surface remained unverified — see TAK-1.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 

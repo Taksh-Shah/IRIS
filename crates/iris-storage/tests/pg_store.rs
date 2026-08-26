@@ -30,6 +30,7 @@ fn cfg_db(dbname: &str) -> PgStorageConfig {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn persist_load_roundtrip() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -54,6 +55,7 @@ async fn persist_load_roundtrip() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn insert_or_ignore_dedups_at_storage_layer() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -80,6 +82,7 @@ async fn insert_or_ignore_dedups_at_storage_layer() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn update_status_round_trips() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -115,6 +118,7 @@ async fn update_status_round_trips() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn delete_removes_row() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -129,6 +133,7 @@ async fn delete_removes_row() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn evict_expired_reclaims_only_dead_rows() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -163,6 +168,7 @@ async fn evict_expired_reclaims_only_dead_rows() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn evict_by_priority_never_touches_p0() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -185,6 +191,7 @@ async fn evict_by_priority_never_touches_p0() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn evict_by_priority_removes_lowest_priority_first() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -213,6 +220,7 @@ async fn evict_by_priority_removes_lowest_priority_first() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn usage_bytes_counts_stored_rows() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -229,6 +237,7 @@ async fn usage_bytes_counts_stored_rows() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn get_queue_orders_p0_first_and_filters_terminal() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -258,6 +267,7 @@ async fn get_queue_orders_p0_first_and_filters_terminal() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn quota_rejects_non_p0_but_accepts_p0() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -292,6 +302,7 @@ async fn quota_rejects_non_p0_but_accepts_p0() {
 /// Persist with the storage-key sealer, then prove the stored blob is NOT the
 /// plaintext CBOR envelope and that read paths unseal to the byte-exact original.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn sealed_rows_are_not_plaintext_and_round_trip() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -353,6 +364,7 @@ async fn sealed_rows_are_not_plaintext_and_round_trip() {
 /// A store sealed with the wrong key must fail to read its own rows
 /// (DecryptionFailed), proving tamper/rotation detection.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn sealed_rows_require_the_right_key() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
@@ -398,6 +410,7 @@ async fn sealed_rows_require_the_right_key() {
 /// CRYPTO-001: after connect, no plaintext sender/recipient identity columns
 /// or recipient index remain in the schema (metadata not inferable at rest).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
 async fn plaintext_identity_columns_are_removed_from_schema() {
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
