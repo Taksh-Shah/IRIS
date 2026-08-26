@@ -128,6 +128,41 @@ object FfiCallTimeout {
         }
     }
 
+    /**
+     * [syncCall] variant for callers that must throw [FfiTimeout] on overrun
+     * rather than return a fallback value.
+     *
+     * `onTimeout: T` above is a plain (eagerly evaluated) parameter, not a
+     * lazy supplier - Kotlin evaluates every argument before the enclosing
+     * call runs. `syncCall(onTimeout = throwTimeout())` (where `throwTimeout()
+     * : T = throw FfiTimeout()`) therefore threw immediately, as part of
+     * building syncCall's argument list, before `block` - the actual platform
+     * operation - ever ran. `startScan` and `startAdvertising` used exactly
+     * this pattern: every call to either threw FfiTimeout unconditionally,
+     * meaning BLE scanning and advertising could never succeed on a real
+     * device regardless of whether the underlying platform call would have
+     * worked. Confirmed on a real device: `ble-android.start_advertising`
+     * failed with "transport protocol error: timeout" on the very first
+     * call, immediately (under 2 seconds, nowhere near the 30s budget).
+     *
+     * This variant defers the throw to the actual timeout branch, where it
+     * belongs.
+     */
+    fun <T> syncCallOrThrow(
+        timeoutMs: Long = DEFAULT_TIMEOUT_MS,
+        block: () -> T,
+    ): T {
+        val future = watchdog.submit(Callable { block() })
+        return try {
+            future.get(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (_: TimeoutException) {
+            future.cancel(true)
+            throw FfiTimeout()
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
+    }
+
 }
 
 // ---------------------------------------------------------------------------

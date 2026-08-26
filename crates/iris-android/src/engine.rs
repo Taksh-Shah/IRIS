@@ -181,19 +181,59 @@ impl IrisEngine {
         let manager = self.manager.clone();
         let node_id = self.node_id;
         handle.block_on(async move {
+            // Was `?`-propagated per transport in a loop: the first failure
+            // aborted start_all() entirely, even if it was the LAST transport
+            // tried and the other two had already succeeded. Confirmed on a
+            // real device: BLE started fine, then wifi-aware-0 failed with
+            // "not supported on this device" (no NAN hardware - a normal,
+            // expected condition on many devices, not a bug) and the whole
+            // mesh refused to come up, silently discarding the working BLE
+            // link. Try every transport independently; succeed if at least
+            // one did, so a device missing one radio still gets a mesh.
+            let mut failures = Vec::new();
+            let mut started = Vec::new();
             for id in ["ble-android", "wifi-aware-0", "wifi-direct-0"] {
-                let t = manager
-                    .get(&TransportId::from(id))
+                let result = async {
+                    let t = manager
+                        .get(&TransportId::from(id))
+                        .await
+                        .ok_or_else(|| IrisFfiError::Transport(format!("transport {id} missing")))?;
+                    t.start_advertising(NodeAdvertisement {
+                        peer_id: PeerId::from_bytes(node_id),
+                        public_ip_addr: None,
+                        hostname: None,
+                        tags: vec!["android".into()],
+                    })
                     .await
-                    .ok_or_else(|| IrisFfiError::Transport(format!("transport {id} missing")))?;
-                t.start_advertising(NodeAdvertisement {
-                    peer_id: PeerId::from_bytes(node_id),
-                    public_ip_addr: None,
-                    hostname: None,
-                    tags: vec!["android".into()],
-                })
-                .await
-                .map_err(|e| IrisFfiError::Transport(format!("{id}.start_advertising: {e}")))?;
+                    .map_err(|e| IrisFfiError::Transport(format!("{id}.start_advertising: {e}")))
+                }
+                .await;
+                match result {
+                    Ok(()) => started.push(id),
+                    Err(e) => {
+                        tracing::warn!(
+                            event = "engine.start_transport_failed",
+                            transport = id,
+                            error = %e,
+                            "transport failed to start; trying the others"
+                        );
+                        failures.push(format!("{id}: {e}"));
+                    }
+                }
+            }
+            if started.is_empty() {
+                return Err(IrisFfiError::Transport(format!(
+                    "no transport started: {}",
+                    failures.join("; ")
+                )));
+            }
+            if !failures.is_empty() {
+                tracing::warn!(
+                    event = "engine.start_all_partial",
+                    started = ?started,
+                    failed = ?failures,
+                    "mesh started with a subset of transports"
+                );
             }
             Ok(())
         })

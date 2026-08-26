@@ -256,7 +256,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun startScan(filter: FfiScanFilter): ULong {
-        return FfiCallTimeout.syncCall(onTimeout = throwTimeout()) {
+        // Was `syncCall(onTimeout = throwTimeout())`: throwTimeout() throws
+        // eagerly while Kotlin builds syncCall's argument list, before the
+        // block below - the real scan start - ever runs. Every call to
+        // startScan threw FfiTimeout unconditionally. syncCallOrThrow defers
+        // the throw to where it belongs (AdapterLifecycle.kt).
+        return FfiCallTimeout.syncCallOrThrow {
             // A handle of 0 used to be returned for "no scanner", "throttled"
             // and "timed out". Rust wrapped that as Ok(ScanHandle(0)), so the
             // core believed a scan was live when nothing had started and never
@@ -296,7 +301,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun startAdvertising(data: FfiAdvertisementData): ULong {
-        return FfiCallTimeout.syncCall(onTimeout = throwTimeout()) {
+        // Same defect as startScan above: syncCall(onTimeout = throwTimeout())
+        // threw FfiTimeout unconditionally, before advertising was ever
+        // attempted. Confirmed on a real device (API 34): every call failed
+        // immediately with "transport protocol error: timeout", under 2s,
+        // nowhere near the 30s budget - because the real operation never ran.
+        return FfiCallTimeout.syncCallOrThrow {
             val advertiser = bleManager?.adapter?.bluetoothLeAdvertiser
                 ?: throw AdapterOff()
             ensureGattServer()
@@ -419,13 +429,6 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     // -- platform plumbing -------------------------------------------------
-
-    /**
-     * `syncCall` needs an `onTimeout` value of the op's return type. These ops
-     * have no benign default — a fabricated handle is worse than an error — so
-     * the fallback throws instead.
-     */
-    private fun throwTimeout(): ULong = throw FfiTimeout()
 
     /**
      * Runs a platform call, translating a revoked runtime permission into the

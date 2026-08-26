@@ -1,5 +1,6 @@
 package iriscore.data
 
+import android.util.Log
 import iriscode.FfiInboxListener
 import iriscode.FfiIncomingMessage
 import iriscode.IrisEngine
@@ -55,7 +56,13 @@ class MeshRepository @Inject constructor(
         try {
             engine.startAll()
             _uiState.update { it.copy(status = MeshStatus.RUNNING) }
-        } catch (_: IrisFfiException) {
+        } catch (e: IrisFfiException) {
+            // Was a bare `catch (_: IrisFfiException)` — the actual failure
+            // reason was discarded, so "the mesh won't start" gave no signal
+            // beyond a status flag. There is no Rust-side tracing bridge to
+            // logcat either, so this was the only place this information
+            // could surface at all.
+            Log.w(TAG, "startMesh: engine.startAll() failed", e)
             _uiState.update { it.copy(status = MeshStatus.UNAVAILABLE) }
         }
     }
@@ -148,6 +155,8 @@ class MeshRepository @Inject constructor(
     val pendingRelayCount: Int get() = outbox.size
 
     companion object {
+        private const val TAG = "IrisMeshRepository"
+
         /** A PeerId is a 32-byte key rendered as hex (PeerIdCodec.toHex). */
         const val RECIPIENT_HEX_LENGTH = 64
 
