@@ -220,7 +220,10 @@ class MeshViewModel @Inject constructor(
             "NODE" -> ConsoleEntry.system(
                 title = "NODE",
                 lines = listOf(
-                    "id" to state.nodeIdShort,
+                    // Full hex, not nodeIdShort: this is the one place a user
+                    // can read their own PeerId to hand to a peer for `/to` or
+                    // `@` addressing, and both require the full 64-char id.
+                    "id" to state.nodeIdHex,
                     "identity" to state.identityBackend,
                 ),
                 status = state.status.name,

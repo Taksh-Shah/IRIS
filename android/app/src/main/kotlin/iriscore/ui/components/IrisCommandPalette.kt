@@ -94,10 +94,17 @@ fun IrisCommandPalette(
                         state = listState,
                         modifier = Modifier.heightIn(max = IrisSizing.PaletteMaxHeight),
                     ) {
-                        var lastGroup: CommandGroup? = null
+                        // `commands` is ranked by match quality, not grouped, so
+                        // the same group can recur non-contiguously (e.g.
+                        // SYSTEM, THREAD, SYSTEM) once results are sorted by
+                        // rank. A single `lastGroup` only caught adjacent
+                        // repeats, so a later re-occurrence emitted the same
+                        // "group-$name" key twice and crashed the LazyColumn
+                        // with IllegalArgumentException: Key already used.
+                        val seenGroups = mutableSetOf<CommandGroup>()
                         commands.forEachIndexed { index, command ->
                             val group = command.group
-                            if (group != lastGroup) {
+                            if (seenGroups.add(group)) {
                                 item(key = "group-${group.name}") {
                                     Text(
                                         text = group.label,
@@ -110,7 +117,6 @@ fun IrisCommandPalette(
                                         ),
                                     )
                                 }
-                                lastGroup = group
                             }
                             item(key = command.name) {
                                 CommandRow(
