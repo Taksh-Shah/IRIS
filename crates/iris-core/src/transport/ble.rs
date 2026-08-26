@@ -742,10 +742,27 @@ impl Transport for BleTransport {
         let tid = self.id.clone();
         let peer_id = peer.peer_id;
         let poller = tokio::spawn(async move {
+            // GAP-12: this poller ran a fixed 50ms sleep forever, with no
+            // backoff, per connected peer — 8 peers meant 160 wakeups/sec
+            // indefinitely, including while completely idle, which also
+            // prevents the OS reaching a deep sleep state. Wi-Fi Aware
+            // solved this for its (single, transport-wide) poller with a
+            // fast/idle split keyed on recent activity; mirror that here,
+            // keyed on whether THIS peer has produced a frame recently.
+            const FAST_POLL_MS: u64 = 50;
+            const IDLE_POLL_MS: u64 = 500;
+            const ACTIVE_WINDOW: Duration = Duration::from_secs(2);
             let mut recon = Reassembler::new();
             let mut last_evict = std::time::Instant::now();
+            let mut last_activity = std::time::Instant::now();
             loop {
-                tokio::time::sleep(Duration::from_millis(50)).await;
+                let fast = last_activity.elapsed() < ACTIVE_WINDOW;
+                tokio::time::sleep(Duration::from_millis(if fast {
+                    FAST_POLL_MS
+                } else {
+                    IDLE_POLL_MS
+                }))
+                .await;
                 // Coarse TTL sweep so partial-message slots are reclaimed
                 // (BLE-RT-001: eviction is NOT dead code at runtime).
                 let now = std::time::Instant::now();
@@ -769,6 +786,9 @@ impl Transport for BleTransport {
                 }
                 *writes = foreign;
                 drop(writes);
+                if !mine.is_empty() {
+                    last_activity = std::time::Instant::now();
+                }
                 for w in mine {
                     // Reject frames addressed to another characteristic.
                     if w.char_uuid != IRIS_SERVICE_UUID {
