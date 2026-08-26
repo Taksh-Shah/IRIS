@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
@@ -209,6 +210,9 @@ pub struct InternetTransport {
     /// Per-peer relay binding so send() never falls back to another peer's
     /// relay (RED-0001-01). Populated on connect().
     peer_relays: Mutex<HashMap<PeerId, SocketAddr>>,
+    /// Abort handles for active reader tasks, so shutdown() can stop them before
+    /// they resurrect the transport by writing Available on EOF (RF-37).
+    readers: StdMutex<Vec<tokio::task::AbortHandle>>,
 }
 
 impl InternetTransport {
@@ -232,6 +236,7 @@ impl InternetTransport {
             relay_addr: Mutex::new(None),
             relay_candidates: relay_endpoints.to_vec(),
             peer_relays: Mutex::new(HashMap::new()),
+            readers: StdMutex::new(Vec::new()),
         }
     }
 
@@ -289,7 +294,7 @@ impl InternetTransport {
         let transport_id = self.id.clone();
         let state = self.state.clone();
         let state_tx = self.state_tx.clone();
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             let mut header = [0u8; FRAME_LEN_BYTES];
             loop {
                 // Per-read timeout: a malicious/stalled relay must not pin a
@@ -321,14 +326,22 @@ impl InternetTransport {
                     received_at: Instant::now(),
                 }).ok();
             }
-            // Link lost → leave the zombie Connected state so the manager stops
-            // selecting a dead transport (RED-0001-02).
-            state.store(TransportState::Available);
-            state_tx.send(TransportStateEvent {
-                transport_id,
-                new_state: TransportState::Available,
-            }).ok();
+            // RF-37: only transition to Available on link-loss if the transport
+            // has not already been shut down. An Unavailable state means shutdown()
+            // ran first — writing Available here would resurrect it.
+            if state.load() != TransportState::Unavailable {
+                state.store(TransportState::Available);
+                state_tx.send(TransportStateEvent {
+                    transport_id,
+                    new_state: TransportState::Available,
+                }).ok();
+            }
         });
+        // Store the abort handle so shutdown() can stop readers before they
+        // clobber the Unavailable state (RF-37).
+        if let Ok(mut guards) = self.readers.lock() {
+            guards.push(handle.abort_handle());
+        }
     }
 }
 
@@ -476,7 +489,14 @@ impl Transport for InternetTransport {
     }
 
     async fn shutdown(&self) -> Result<(), TransportError> {
+        // Set Unavailable before aborting readers so the state-guard in
+        // spawn_reader sees Unavailable and skips the Available write (RF-37).
         self.set_state(TransportState::Unavailable);
+        if let Ok(mut guards) = self.readers.lock() {
+            for h in guards.drain(..) {
+                h.abort();
+            }
+        }
         self.pool.lock().await.connections.clear();
         self.peer_relays.lock().await.clear();
         *self.relay_addr.lock().await = None;
