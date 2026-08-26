@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 in progress. 8/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 RF35_PLACEHOLDER). 3 remain (RF-36..38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
+**Last updated:** 2026-08-26 — Tier 1 in progress. 9/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 `2df2c9d`, RF-36 RF36_PLACEHOLDER). 2 remain (RF-37, RF-38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -44,12 +44,12 @@ These three results interact rather than simply stack: the parts of this section
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain |
-| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 3 | 0 | 8 | 0 | 0 | **IN PROGRESS** — SYS-1/2/3/4, TAK-1, SYS-5-step1, SYS-6, RF-35 fixed; RF-36..38 remain |
+| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 2 | 0 | 9 | 0 | 0 | **IN PROGRESS** — SYS-1/2/3/4, TAK-1, SYS-5-step1, SYS-6, RF-35/36 fixed; RF-37/38 remain |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **261** | **0** | **19** | **2** | **0** | |
+| **Total** | | **284** | **260** | **0** | **20** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -5213,7 +5213,7 @@ for f in adapter.incoming().await {
 #### RF-35: No TLS and no relay authentication — the transport is plaintext TCP, contradicting its own module docs and INTERNET.md
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ✅ Fixed (doc correction + known-limitation tracking)  ·  Tier 1  ·  commit RF35_PLACEHOLDER  ·  2026-08-26
+- **Fix status:** ✅ Fixed (doc correction + known-limitation tracking)  ·  Tier 1  ·  commit 2df2c9d  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:1-13` (module doc), `266-277` (fn `get_connection`), `280-325` (fn `spawn_reader`)
 - **What:** the connection is a bare `TcpStream::connect(addr)`. There is no `TlsConnector`, no certificate validation, no relay identity check, and no `rustls`/`native-tls` dependency in the crate. The module header claims otherwise.
@@ -5239,7 +5239,7 @@ for f in adapter.incoming().await {
 #### RF-36: `resolve_relay`'s fallback chain re-opens RED-0001-01 — a send for peer B goes out on peer A's relay
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit RF36_PLACEHOLDER  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:241-250` (fn `resolve_relay`), `399-413` (fn `send`)
 - **What:** RED-0001-01 keyed the pool by relay address and added `peer_relays` so "a message destined for peer A can never be written to peer B's relay" (line 86). But `resolve_relay` falls through to `self.relay_addr` (the **last** relay connected to, by any peer) and then to `relay_candidates[0]`. `send()` constructs a `PeerInfo` with an empty `addresses` vector, so for a peer with no `peer_relays` entry those fallbacks are what actually resolve.

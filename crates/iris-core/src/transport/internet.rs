@@ -408,12 +408,18 @@ impl Transport for InternetTransport {
         peer: &PeerId,
         message: &SerializedMessage,
     ) -> Result<SendReceipt, TransportError> {
-        if self.state.load() != TransportState::Connected {
-            return Err(TransportError::NotConnected);
-        }
+        // RF-36: require an explicit per-peer binding — no fallback to relay_addr
+        // or relay_candidates so a send for peer B can never use peer A's relay.
+        let bound_addr = self
+            .peer_relays
+            .lock()
+            .await
+            .get(peer)
+            .copied()
+            .ok_or(TransportError::NotConnected)?;
         let peer_info = PeerInfo {
             peer_id: *peer,
-            addresses: Vec::new(), // resolved from peer_relays; pool holds the socket
+            addresses: vec![bound_addr], // explicit binding; resolve_relay picks first()
             transport_addresses: Vec::new(),
             last_seen: Some(Instant::now()),
         };
