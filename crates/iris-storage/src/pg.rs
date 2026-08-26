@@ -534,7 +534,6 @@ impl MessageStorage for PgStorage {
             stored.push(crate::seal::envelope_format::SEALED);
         }
         stored.extend_from_slice(&stored_body);
-        let is_p0 = envelope.priority == MessagePriority::P0;
         // TAK-10: real ownership when the node identity is configured — the
         // eviction policy's "relayed before own" tie-break needs a live key.
         // Malformed sender vectors simply stay marked relayed.
@@ -546,37 +545,82 @@ impl MessageStorage for PgStorage {
             _ => false,
         };
 
-        if self.config.max_storage_bytes > 0 {
-            let current = usage_bytes(&client).await.map_err(backend)?;
-            let grow = Self::projected_row_bytes(stored.len() as u64);
-            if current.saturating_add(grow) > self.config.max_storage_bytes && !is_p0 {
-                // Non-P0 write would exceed quota → refuse; P0 always accepted.
-                return Err(StorageError::StorageFull);
-            }
-        }
-
-        client
-            .execute(
-                "INSERT INTO messages
-                   (message_id, priority, status, created_at,
-                    expires_at, hop_count, max_hops, payload_size, envelope_cbor, is_own_message)
-                 VALUES ($1,$2,'PENDING_SEND',$3,$4,$5,$6,$7,$8,$9)
-                 ON CONFLICT (message_id) DO NOTHING",
-                &[
-                    &envelope.message_id.to_string(),
-                    &(envelope.priority as i16),
-                    &created_at,
-                    &expires_at,
-                    &(envelope.hop_count as i16),
-                    &envelope.max_hops.map(|h| h as i16),
-                    &payload_size,
-                    &stored,
-                    &is_own,
-                ],
+        // Duplicate suppression keeps its old semantics (a repeated persist
+        // of the same id is Ok): check first so a 0-row-affected result from
+        // the conditional insert below can only mean quota refusal (or a
+        // benign concurrent duplicate, noted below).
+        let dup: Option<i64> = client
+            .query_opt(
+                "SELECT 1 FROM messages WHERE message_id = $1",
+                &[&envelope.message_id.to_string()],
             )
             .await
-            .map_err(|e| StorageError::Backend(format!("persist: {e}")))?;
-        Ok(())
+            .map_err(|e| StorageError::Backend(format!("persist dedup: {e}")))?
+            .map(|_| 1);
+        if dup.is_some() {
+            return Ok(());
+        }
+
+        let is_p0 = envelope.priority == MessagePriority::P0;
+        let grow = Self::projected_row_bytes(stored.len() as u64);
+
+        // TAK-5: the old read-check-insert sequence was a cross-store TOCTOU
+        // (twenty concurrent writers all observed pre-insert usage and all
+        // admitted) and never reclaimed anything on refusal. The admission
+        // decision now happens ATOMICALLY inside one statement — usage is
+        // summed server-side in the same snapshot that evaluates the guard —
+        // and a refusal triggers exactly one eviction pass + retry before
+        // StorageFull surfaces, instead of failing writes while reclaimable
+        // rows sit idle until the next GC tick.
+        const ADMISSION_SQL: &str = "INSERT INTO messages
+                    (message_id, priority, status, created_at,
+                     expires_at, hop_count, max_hops, payload_size, envelope_cbor, is_own_message)
+                 SELECT $1,$2,'PENDING_SEND',$3,$4,$5,$6,$7,$8,$9
+                 WHERE $10::bool OR (
+                     SELECT COALESCE(SUM(octet_length(envelope_cbor) + $11::bigint), 0)::bigint
+                     FROM messages
+                 ) + $12::bigint <= $13::bigint
+                 ON CONFLICT (message_id) DO NOTHING";
+
+        for attempt in 0..2 {
+            let admitted = client
+                .execute(
+                    ADMISSION_SQL,
+                    &[
+                        &envelope.message_id.to_string(),
+                        &(envelope.priority as i16),
+                        &created_at,
+                        &expires_at,
+                        &(envelope.hop_count as i16),
+                        &envelope.max_hops.map(|h| h as i16),
+                        &payload_size,
+                        &stored,
+                        &is_own,
+                        &is_p0,
+                        &(crate::eviction::ROW_OVERHEAD_BYTES as i64),
+                        &(grow as i64),
+                        &(self.config.max_storage_bytes as i64),
+                    ],
+                )
+                .await
+                .map_err(|e| StorageError::Backend(format!("persist: {e}")))?;
+            if admitted > 0 {
+                return Ok(());
+            }
+            // Refused: try to make room once (P0-only residue will evict
+            // nothing and the second pass returns StorageFull), then retry
+            // the atomic admission against the post-eviction usage.
+            if attempt == 0 && self.config.max_storage_bytes > 0 {
+                let target =
+                    (self.config.max_storage_bytes as f64 * self.config.eviction_threshold) as u64;
+                evict_lowest_priority(&client, target)
+                    .await
+                    .map_err(backend)?;
+                continue;
+            }
+            break;
+        }
+        Err(StorageError::StorageFull)
     }
 
     async fn load(&self, id: &MessageId) -> Result<Option<Envelope>, StorageError> {
