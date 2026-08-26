@@ -383,9 +383,10 @@ impl Simulation {
 
         // SCF carry: land the copy at dst (idempotent via dedup).
         let src_peer = self.nodes[src].peer_id;
-        let _ = self.nodes[dst]
+        self.nodes[dst]
             .scf
-            .buffer_message(new_env.clone(), Some(src_peer));
+            .buffer_message(new_env.clone(), Some(src_peer))
+            .ok();
 
         let is_recipient = msg.envelope.recipient_id.as_slice() == dst_peer.as_bytes();
         if is_recipient {
@@ -571,7 +572,7 @@ impl Simulation {
                     );
                     env.timestamp = self.clock.load(Ordering::Relaxed);
                     let id = env.message_id;
-                    let _ = self.nodes[inj.from].scf.buffer_message(env, None);
+                    self.nodes[inj.from].scf.buffer_message(env, None).ok();
                     self.nodes[inj.from].hops_by_msg.insert(id, 0);
                     injected.push(InjectedMsg {
                         id,

@@ -859,7 +859,7 @@ impl MessageEngine {
             self.storage
                 .update_status(&e.message_id, MessageStatus::Delivered)
                 .await?;
-            let _ = self.delivered_tx.send(e.clone());
+            self.delivered_tx.send(e.clone()).ok();
             self.metrics.delivered.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_DELIVERED_TOTAL);
             tracing::info!(
@@ -1006,10 +1006,10 @@ impl MessageEngine {
     pub async fn acknowledge(&self, id: MessageId) -> bool {
         let acked = self.acks.lock().await.acknowledge(id);
         if acked {
-            let _ = self
-                .storage
+            self.storage
                 .update_status(&id, MessageStatus::Acknowledged)
-                .await;
+                .await
+                .ok();
             // SEC-RT-05: deliverable terminal — release the quota reservation
             // for a locally-originated outbound message (charged at send).
             if let Ok(Some(env)) = self.storage.load(&id).await {
@@ -1065,10 +1065,10 @@ impl MessageEngine {
     /// Reject (fail) a pending message after attempts exhausted.
     pub async fn fail_message(&self, id: MessageId) {
         let _ = self.acks.lock().await.acknowledge(id);
-        let _ = self
-            .storage
+        self.storage
             .update_status(&id, MessageStatus::DeliveryFailed)
-            .await;
+            .await
+            .ok();
         self.metrics.delivery_failed.fetch_add(1, Ordering::Relaxed);
         self.telemetry
             .increment(metric::MESSAGES_DELIVERY_FAILED_TOTAL);
@@ -1160,10 +1160,10 @@ impl MessageEngine {
 
         // TTL at dequeue (acceptance #3).
         if is_expired(item.envelope.timestamp, item.envelope.ttl_seconds, now) {
-            let _ = self
-                .storage
+            self.storage
                 .update_status(&id, MessageStatus::Expired)
-                .await;
+                .await
+                .ok();
             self.metrics.expired.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_EXPIRED_TOTAL);
             tracing::warn!(
@@ -1255,10 +1255,10 @@ impl MessageEngine {
         }
 
         if sent_any {
-            let _ = self
-                .storage
+            self.storage
                 .update_status(&id, MessageStatus::InTransit)
-                .await;
+                .await
+                .ok();
             self.acks
                 .lock()
                 .await
@@ -1298,10 +1298,10 @@ impl MessageEngine {
         let mut it = item;
         it.attempts = attempt;
         it.next_retry = Some(std::time::Instant::now() + policy.timeout_for_attempt(attempt));
-        let _ = self
-            .storage
+        self.storage
             .update_status(&it.envelope.message_id, MessageStatus::PendingSend)
-            .await;
+            .await
+            .ok();
         self.queue.lock().await.push(it);
     }
 
@@ -1340,7 +1340,7 @@ impl MessageEngine {
                     {
                         continue; // acknowledged concurrently
                     }
-                    let _ = this.requeue_for_retry(env).await;
+                    this.requeue_for_retry(env).await.ok();
                 }
                 let failed: Vec<_> = this.acks.lock().await.exhausted();
                 for (id, _attempts) in failed {
@@ -1375,10 +1375,10 @@ impl MessageEngine {
                     .await
                     .drain_expired(|e| is_expired(e.timestamp, e.ttl_seconds, now));
                 for e in expired {
-                    let _ = this
-                        .storage
+                    this.storage
                         .update_status(&e.message_id, MessageStatus::Expired)
-                        .await;
+                        .await
+                        .ok();
                     this.metrics.expired.fetch_add(1, Ordering::Relaxed);
                     this.telemetry.increment(metric::MESSAGES_EXPIRED_TOTAL);
                     tracing::warn!(
@@ -1389,13 +1389,13 @@ impl MessageEngine {
                     );
                 }
                 // Expire + quota in storage.
-                let _ = this.storage.evict_expired(now).await;
+                this.storage.evict_expired(now).await.ok();
                 if let Ok(usage) = this.storage.usage_bytes().await {
                     if usage > this.config.storage_quota_bytes {
-                        let _ = this
-                            .storage
+                        this.storage
                             .evict_by_priority(usage - this.config.storage_quota_bytes)
-                            .await;
+                            .await
+                            .ok();
                     }
                 }
             }

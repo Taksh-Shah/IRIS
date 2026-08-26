@@ -401,7 +401,7 @@ impl SimulatedWifiAwareAdapter {
     /// Pushes to the availability stream so the transport can surface `Degraded`.
     pub fn set_available(&self, available: bool) {
         self.available.store(available, Ordering::Release);
-        let _ = self.available_tx.send(available);
+        self.available_tx.send(available).ok();
     }
 }
 
@@ -667,7 +667,7 @@ impl WifiAwareTransport {
         let old = self.state.load();
         if old != new {
             self.state.store(new);
-            let _ = self.state_tx.send(TransportStateEvent {
+            self.state_tx.send(TransportStateEvent {
                 transport_id: self.id.clone(),
                 new_state: new,
             });
@@ -684,10 +684,10 @@ impl WifiAwareTransport {
     ) {
         if state.load() != new {
             state.store(new);
-            let _ = tx.send(TransportStateEvent {
+            tx.send(TransportStateEvent {
                 transport_id: id.clone(),
                 new_state: new,
-            });
+            }).ok();
         }
     }
 
@@ -703,7 +703,7 @@ impl WifiAwareTransport {
             before != links.len()
         };
         if removed {
-            let _ = adapter.close_ndp(ndp).await;
+            adapter.close_ndp(ndp).await.ok();
             if self.links.lock().unwrap_or_else(|p| p.into_inner()).is_empty() {
                 let next = if adapter.is_available() {
                     TransportState::Available
@@ -1057,7 +1057,7 @@ impl Transport for WifiAwareTransport {
         // unavailable (a pull-only adapter would otherwise be stuck until a
         // follow-up event that never comes).
         if self.state.load() == TransportState::Unavailable || !adapter.is_available() {
-            let _ = adapter.close_ndp(ndp).await;
+            adapter.close_ndp(ndp).await.ok();
             return Err(TransportError::ShuttingDown);
         }
         self.links.lock().unwrap_or_else(|p| p.into_inner()).push(NdpLink {
@@ -1161,9 +1161,9 @@ impl Transport for WifiAwareTransport {
         if let Ok(adapter) = self.adapter().await {
             let ndps: Vec<NdpHandle> = self.links.lock().unwrap_or_else(|p| p.into_inner()).iter().map(|l| l.ndp).collect();
             for ndp in ndps {
-                let _ = adapter.close_ndp(ndp).await;
+                adapter.close_ndp(ndp).await.ok();
             }
-            let _ = adapter.shutdown().await;
+            adapter.shutdown().await.ok();
         }
         self.links.lock().unwrap_or_else(|p| p.into_inner()).clear();
         // NEW-WA-RT-102: latch shutdown so no later ensure_started() can

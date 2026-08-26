@@ -479,7 +479,7 @@ impl BleTransport {
 
     fn set_state(&self, state: TransportState) {
         self.state.store(state);
-        let _ = self.state_tx.send(TransportStateEvent {
+        self.state_tx.send(TransportStateEvent {
             transport_id: self.id.clone(),
             new_state: state,
         });
@@ -928,12 +928,12 @@ impl Transport for BleTransport {
                     }
                     match recon.push(&w.data, std::time::Instant::now()) {
                         Ok(Some(payload)) => {
-                            let _ = incoming.send(IncomingMessage {
+                            incoming.send(IncomingMessage {
                                 peer_id,
                                 transport_id: tid.0.clone(),
                                 payload,
                                 received_at: std::time::Instant::now(),
-                            });
+                            }).ok();
                         }
                         Ok(None) => {} // awaiting more chunks
                         Err(_) => {}   // malformed frame dropped (adversarial-safe)

@@ -74,3 +74,8 @@ harness = false
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(loom)'] }
+
+[lints.clippy]
+# SYS-4: make every intentional error-discard explicit and distinguishable
+# from an accidental one — use `.ok()` or a typed binding instead.
+let_underscore_must_use = "warn"

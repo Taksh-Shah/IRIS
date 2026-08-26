@@ -1294,7 +1294,7 @@ impl LoRaTransport {
 
     fn set_state(&self, state: TransportState) {
         self.state.store(state);
-        let _ = self.state_tx.send(TransportStateEvent {
+        self.state_tx.send(TransportStateEvent {
             transport_id: self.id.clone(),
             new_state: state,
         });
@@ -1325,7 +1325,7 @@ impl LoRaTransport {
     /// Unavailable (`TransportManager::deregister` removes it from selection).
     pub async fn detach_adapter(&self) {
         if let Some(adapter) = self.adapter.write().await.take() {
-            let _ = adapter.close().await;
+            adapter.close().await.ok();
         }
         if self.state.load() >= TransportState::Available {
             self.set_state(TransportState::Unavailable);
@@ -1497,12 +1497,12 @@ impl LoRaTransport {
                     match decoded {
                         Ok((bytes, frame)) => {
                             self.metrics.record_rx(bytes.len());
-                            let _ = self.incoming_tx.send(IncomingMessage {
+                            self.incoming_tx.send(IncomingMessage {
                                 peer_id: PeerId([0u8; 32]),
                                 transport_id: self.id.as_str().to_string(),
                                 payload: frame.payload,
                                 received_at: Instant::now(),
-                            });
+                            }).ok();
                             delivered += 1;
                         }
                         Err(e) => {
@@ -1623,7 +1623,7 @@ impl Transport for LoRaTransport {
         // RT-103: take the adapter out of the slot so a post-shutdown attach
         // can never silently resurrect a closed dongle behind Available state.
         if let Some(adapter) = self.adapter.write().await.take() {
-            let _ = adapter.close().await;
+            adapter.close().await.ok();
         }
         self.set_state(TransportState::Unavailable);
         Ok(())

@@ -90,10 +90,10 @@ impl TransportManager {
         let forward_id = id.clone();
         tokio::spawn(async move {
             while let Some(event) = state_stream.next().await {
-                let _ = tx.send(TopologyEvent::TransportStateChanged {
+                tx.send(TopologyEvent::TransportStateChanged {
                     transport_id: forward_id.clone(),
                     new_state: event.new_state,
-                });
+                }).ok();
             }
         });
 
@@ -109,7 +109,7 @@ impl TransportManager {
     pub async fn deregister(&self, id: &TransportId) -> Result<(), RegistrationError> {
         let mut registry = self.registry.write().await;
         if let Some(transport) = registry.remove(id) {
-            let _ = transport.shutdown().await;
+            transport.shutdown().await.ok();
             Ok(())
         } else {
             Err(RegistrationError::NotFound)

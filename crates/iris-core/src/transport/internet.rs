@@ -230,7 +230,7 @@ impl InternetTransport {
 
     fn set_state(&self, state: TransportState) {
         self.state.store(state);
-        let _ = self.state_tx.send(TransportStateEvent {
+        self.state_tx.send(TransportStateEvent {
             transport_id: self.id.clone(),
             new_state: state,
         });
@@ -304,7 +304,7 @@ impl InternetTransport {
                 if !matches!(body_res, Ok(Ok(_))) {
                     break;
                 }
-                let _ = incoming.send(IncomingMessage {
+                incoming.send(IncomingMessage {
                     // Attributed to the peer this connection was opened for.
                     // The protocol layer MUST re-derive the sender from the
                     // envelope (WP-A codec) — relay metadata is not trust.
@@ -312,15 +312,15 @@ impl InternetTransport {
                     transport_id: transport_id.0.clone(),
                     payload,
                     received_at: Instant::now(),
-                });
+                }).ok();
             }
             // Link lost → leave the zombie Connected state so the manager stops
             // selecting a dead transport (RED-0001-02).
             state.store(TransportState::Available);
-            let _ = state_tx.send(TransportStateEvent {
+            state_tx.send(TransportStateEvent {
                 transport_id,
                 new_state: TransportState::Available,
-            });
+            }).ok();
         });
     }
 }

@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 in progress. 5/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`). 6 remain (SYS-3, SYS-4, RF-35..38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
+**Last updated:** 2026-08-26 — Tier 1 in progress. 7/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 PLACEHOLDER). 4 remain (RF-35..38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -44,12 +44,12 @@ These three results interact rather than simply stack: the parts of this section
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain |
-| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 6 | 0 | 5 | 0 | 0 | **IN PROGRESS** — SYS-1/2, TAK-1, SYS-5-step1, SYS-6 fixed; SYS-3/4, RF-35..38 remain |
+| **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 4 | 0 | 7 | 0 | 0 | **IN PROGRESS** — SYS-1/2/3/4, TAK-1, SYS-5-step1, SYS-6 fixed; RF-35..38 remain |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **264** | **0** | **16** | **2** | **0** | |
+| **Total** | | **284** | **262** | **0** | **18** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -563,7 +563,7 @@ match tokio::time::timeout(CONNECT_TIMEOUT, self.adapter.connect(&addr)).await {
 
 #### SYS-3: The inbound-lag counter — whose own comment says this failure "must never be invisible" — has no reader
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed (step 1)  ·  Tier 1  ·  commit 57f8d85  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/mod.rs:294-332` (`broadcast_stream`, `INBOUND_LAGGED_TOTAL`, `inbound_lagged_total`)
 - **What:** Every transport publishes inbound messages through `broadcast::channel(1024)`. A `broadcast` channel drops the oldest items when a consumer falls behind. The helper correctly detects this and increments a counter — but `inbound_lagged_total()` has **zero callers repo-wide**, so the count is never exported, logged as a metric, alerted on, or used to trigger retransmission.
@@ -596,7 +596,7 @@ pub const TRANSPORT_INBOUND_LAGGED: &str = "iris.transport.inbound_lagged_total"
 
 #### SYS-4: Error-discarding `let _ =` is used 68 times across Section 3, concentrated in the gateway
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 1
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit PLACEHOLDER  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs` and 13 other files — 68 occurrences across Section 3. Distribution: `gateway/mod.rs` 20, `wifiaware.rs` 9, `wifi_direct.rs` 8, `satellite.rs` 8, `lora.rs` 4, `internet.rs` 3, `ble.rs` 3, `opportunistic.rs` 3, `simulated.rs` 2, `manager.rs` 2, `sim/mod.rs` 2, `flood.rs` 2, `pg.rs` 1, `ble_att.rs` 1.
 - **What:** `let _ = expr;` discards a `Result` without inspecting it. Used deliberately it is fine (e.g. a broadcast send with no subscribers legitimately fails). Used reflexively it erases the distinction between "expected no-op" and "the operation failed and the caller needed to know". At 68 sites there is no way to tell which is which by reading, and the per-adapter reviews found concrete cases in each category.

@@ -134,7 +134,7 @@ impl DiscoveryManager {
         quality: LinkQuality,
     ) {
         if let Some(ev) = self.table.upsert(peer, via, quality).await {
-            let _ = self.events.send(ev);
+            self.events.send(ev).ok();
         }
     }
 
@@ -225,7 +225,7 @@ impl DiscoveryManager {
                     }
                 }
                 if let Some(ev) = ev {
-                    let _ = self.events.send(ev);
+                    self.events.send(ev).ok();
                 }
             }
         }
@@ -235,7 +235,7 @@ impl DiscoveryManager {
         }
         // TTL eviction pass.
         for ev in self.table.sweep().await {
-            let _ = self.events.send(ev);
+            self.events.send(ev).ok();
         }
     }
 
@@ -263,8 +263,8 @@ impl DiscoveryManager {
             Err(_) => return,
         };
         for transport in &transports {
-            let _ = Self::try_send(transport, &peer_id, &cap_env).await;
-            let _ = Self::try_send(transport, &peer_id, &bloom_env).await;
+            Self::try_send(transport, &peer_id, &cap_env).await.ok();
+            Self::try_send(transport, &peer_id, &bloom_env).await.ok();
         }
     }
 

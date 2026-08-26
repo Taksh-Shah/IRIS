@@ -105,7 +105,7 @@ impl SimulatedTransport {
 
     fn set_state(&self, state: TransportState) {
         self.state.store(state);
-        let _ = self.state_tx.send(TransportStateEvent {
+        self.state_tx.send(TransportStateEvent {
             transport_id: self.id.clone(),
             new_state: state,
         });
@@ -188,12 +188,12 @@ impl Transport for SimulatedTransport {
         let payload = message.payload.clone();
         tokio::spawn(async move {
             tokio::time::sleep(delay).await;
-            let _ = incoming.send(IncomingMessage {
+            incoming.send(IncomingMessage {
                 peer_id,
                 transport_id,
                 payload,
                 received_at: Instant::now(),
-            });
+            }).ok();
         });
         Ok(SendReceipt {
             peer_id: *peer,

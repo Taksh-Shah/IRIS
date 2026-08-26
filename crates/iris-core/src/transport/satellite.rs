@@ -908,7 +908,7 @@ impl SatelliteTransport {
 
     fn set_state(&self, state: TransportState) {
         self.state.store(state);
-        let _ = self.state_tx.send(TransportStateEvent {
+        self.state_tx.send(TransportStateEvent {
             transport_id: self.id.clone(),
             new_state: state,
         });
@@ -933,11 +933,11 @@ impl SatelliteTransport {
         {
             let mut slot = self.adapter.write().await;
             if self.shutdown_flag.load(Ordering::Acquire) {
-                let _ = adapter.close().await;
+                adapter.close().await.ok();
                 return Err(SatelliteLinkError::Closed);
             }
             if let Some(old) = slot.replace(adapter) {
-                let _ = old.close().await;
+                old.close().await.ok();
             }
         }
         if self.state.load() < TransportState::Available {
@@ -950,7 +950,7 @@ impl SatelliteTransport {
     /// Unavailable (`TransportManager::deregister` removes it from selection).
     pub async fn detach_adapter(&self) {
         if let Some(adapter) = self.adapter.write().await.take() {
-            let _ = adapter.close().await;
+            adapter.close().await.ok();
         }
         if self.state.load() >= TransportState::Available {
             self.set_state(TransportState::Unavailable);
@@ -1149,12 +1149,12 @@ impl SatelliteTransport {
                         self.metrics
                             .bytes_rx()
                             .fetch_add(payload.len() as u64, Ordering::Relaxed);
-                        let _ = self.incoming_tx.send(IncomingMessage {
+                        self.incoming_tx.send(IncomingMessage {
                             peer_id: PeerId([0u8; 32]),
                             transport_id: self.id.as_str().to_string(),
                             payload: frame.envelope,
                             received_at: Instant::now(),
-                        });
+                        }).ok();
                         delivered += 1;
                     }
                     Err(e) => {
@@ -1281,7 +1281,7 @@ impl Transport for SatelliteTransport {
         // RT-103: take the adapter out so post-shutdown attach cannot
         // resurrect a closed device behind Available state.
         if let Some(adapter) = self.adapter.write().await.take() {
-            let _ = adapter.close().await;
+            adapter.close().await.ok();
         }
         self.set_state(TransportState::Unavailable);
         Ok(())

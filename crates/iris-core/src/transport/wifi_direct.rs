@@ -497,7 +497,7 @@ impl SimulatedWifiDirectAdapter {
     /// Pushes to the availability stream so the transport can surface `Degraded`.
     pub fn set_available(&self, available: bool) {
         self.available.store(available, Ordering::Release);
-        let _ = self.available_tx.send(available);
+        self.available_tx.send(available).ok();
     }
 
     /// Simulate a band-restricted GO formation (5 GHz unavailable). `create_group`
@@ -853,7 +853,7 @@ impl WifiDirectTransport {
         let old = self.state.load();
         if old != new {
             self.state.store(new);
-            let _ = self.state_tx.send(TransportStateEvent {
+            self.state_tx.send(TransportStateEvent {
                 transport_id: self.id.clone(),
                 new_state: new,
             });
@@ -868,10 +868,10 @@ impl WifiDirectTransport {
     ) {
         if state.load() != new {
             state.store(new);
-            let _ = tx.send(TransportStateEvent {
+            tx.send(TransportStateEvent {
                 transport_id: id.clone(),
                 new_state: new,
-            });
+            }).ok();
         }
     }
 
@@ -1338,8 +1338,8 @@ impl Transport for WifiDirectTransport {
             handle.abort();
         }
         if let Ok(adapter) = self.adapter().await {
-            let _ = adapter.remove_group().await;
-            let _ = adapter.shutdown().await;
+            adapter.remove_group().await.ok();
+            adapter.shutdown().await.ok();
         }
         self.links.lock().unwrap_or_else(|p| p.into_inner()).clear();
         self.clear_discovery();
