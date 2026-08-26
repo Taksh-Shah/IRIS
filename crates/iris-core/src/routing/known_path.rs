@@ -23,15 +23,31 @@ pub struct RouteEntry {
     pub last_confirmed: Instant,
 }
 
+/// Maximum number of destinations tracked simultaneously (ROUT-13 capacity bound).
+const MAX_ENTRIES: usize = 1_000;
+
 /// Destination → next-hop routing table with 10-minute entry expiry.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RoutingTable {
     entries: HashMap<PeerId, RouteEntry>,
+    expiry: Duration,
+}
+
+impl Default for RoutingTable {
+    fn default() -> Self {
+        RoutingTable {
+            entries: HashMap::new(),
+            expiry: Duration::from_secs(600),
+        }
+    }
 }
 
 impl RoutingTable {
-    pub fn new(_expiry: Duration) -> Self {
-        RoutingTable::default()
+    pub fn new(expiry: Duration) -> Self {
+        RoutingTable {
+            entries: HashMap::new(),
+            expiry,
+        }
     }
 
     /// Best (sole) route for a destination. None if absent.
@@ -40,6 +56,11 @@ impl RoutingTable {
     }
 
     /// Insert or refresh a route. `hop_count` is hops from this node.
+    ///
+    /// ROUT-12: only overwrites an existing entry when the new route is strictly
+    /// better (shorter hop count, or equal hops with better quality) or when the
+    /// entry is refreshed via the same next hop or has expired.
+    /// ROUT-13: evicts the oldest entry when at capacity to bound RAM.
     pub fn upsert(
         &mut self,
         destination: PeerId,
@@ -48,6 +69,27 @@ impl RoutingTable {
         hop_count: u8,
         quality: LinkQuality,
     ) {
+        let now = Instant::now();
+        if let Some(existing) = self.entries.get(&destination) {
+            let expired = now.duration_since(existing.last_confirmed) >= self.expiry;
+            let refresh = existing.next_hop == next_hop;
+            // LinkQuality is ordered Excellent < Good < Fair < Poor (lower = better).
+            let better = hop_count < existing.hop_count
+                || (hop_count == existing.hop_count && quality < existing.quality);
+            if !expired && !refresh && !better {
+                return;
+            }
+        } else if self.entries.len() >= MAX_ENTRIES {
+            // At capacity: evict the entry with the oldest last_confirmed.
+            if let Some(oldest_key) = self
+                .entries
+                .iter()
+                .min_by_key(|(_, e)| e.last_confirmed)
+                .map(|(k, _)| *k)
+            {
+                self.entries.remove(&oldest_key);
+            }
+        }
         self.entries.insert(
             destination,
             RouteEntry {
@@ -56,7 +98,7 @@ impl RoutingTable {
                 transport,
                 hop_count,
                 quality,
-                last_confirmed: Instant::now(),
+                last_confirmed: now,
             },
         );
     }
@@ -73,12 +115,17 @@ impl RoutingTable {
         }
     }
 
-    /// Drop entries not confirmed within `expiry`.
+    /// Drop entries not confirmed within the table's expiry.
     pub fn prune_expired(&mut self, expiry: Duration) {
         // Use elapsed comparison, not a cutoff instant — see SYS-1 /
         // neighbor_table.rs:236 for why Instant::now() - duration panics on boot.
         let now = Instant::now();
         self.entries.retain(|_, e| now.duration_since(e.last_confirmed) < expiry);
+    }
+
+    /// Drop entries not confirmed within the configured expiry.
+    pub fn prune(&mut self) {
+        self.prune_expired(self.expiry);
     }
 
     pub fn len(&self) -> usize {
@@ -177,5 +224,53 @@ mod tests {
         std::thread::sleep(Duration::from_millis(30));
         table.prune_expired(Duration::from_millis(10));
         assert!(table.is_empty());
+    }
+
+    #[test]
+    fn rout12_better_route_replaces_worse() {
+        let mut table = RoutingTable::new(Duration::from_secs(600));
+        // Install a 5-hop route.
+        table.upsert(pid(9), pid(4), "sim".into(), 5, LinkQuality::Poor);
+        // 3-hop route is strictly better — must win.
+        table.upsert(pid(9), pid(5), "sim".into(), 3, LinkQuality::Good);
+        let e = table.best_route(&pid(9)).unwrap();
+        assert_eq!(e.hop_count, 3, "shorter hop route must replace longer");
+        assert_eq!(e.next_hop, pid(5));
+    }
+
+    #[test]
+    fn rout12_worse_route_does_not_replace_better() {
+        let mut table = RoutingTable::new(Duration::from_secs(600));
+        table.upsert(pid(9), pid(4), "sim".into(), 2, LinkQuality::Good);
+        // 9-hop Poor route must not overwrite the 2-hop Good one.
+        table.upsert(pid(9), pid(99), "lora".into(), 9, LinkQuality::Poor);
+        let e = table.best_route(&pid(9)).unwrap();
+        assert_eq!(e.hop_count, 2, "better existing route must survive");
+        assert_eq!(e.next_hop, pid(4));
+    }
+
+    #[test]
+    fn rout12_same_nexthop_is_a_refresh() {
+        let mut table = RoutingTable::new(Duration::from_secs(600));
+        table.upsert(pid(9), pid(4), "sim".into(), 2, LinkQuality::Good);
+        // Same next_hop — refresh is always accepted.
+        table.upsert(pid(9), pid(4), "ble".into(), 5, LinkQuality::Poor);
+        let e = table.best_route(&pid(9)).unwrap();
+        assert_eq!(e.next_hop, pid(4), "same next_hop refresh must be accepted");
+    }
+
+    #[test]
+    fn rout13_capacity_bound_evicts_oldest() {
+        let mut table = RoutingTable::new(Duration::from_secs(600));
+        for i in 0..MAX_ENTRIES {
+            table.upsert(pid(i as u8), pid(1), "sim".into(), 1, LinkQuality::Good);
+        }
+        assert_eq!(table.len(), MAX_ENTRIES);
+        // One more insertion must evict an old entry, not grow past MAX.
+        table.upsert(pid(200), pid(2), "sim".into(), 1, LinkQuality::Good);
+        assert!(
+            table.len() <= MAX_ENTRIES,
+            "table must not exceed MAX_ENTRIES"
+        );
     }
 }

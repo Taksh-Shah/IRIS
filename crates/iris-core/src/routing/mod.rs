@@ -93,6 +93,9 @@ impl ForwardingDecision {
     }
 }
 
+/// How often to opportunistically prune the routing table inside `decide`.
+const PRUNE_INTERVAL: Duration = Duration::from_secs(300); // 5 min
+
 /// Runtime state of the routing engine.
 pub struct RoutingEngine {
     routing_table: RoutingTable,
@@ -103,6 +106,8 @@ pub struct RoutingEngine {
     /// engine is pure L0 (identical behavior to ROUTE-001).
     opportunistic: Option<crate::routing::opportunistic::OpportunisticRouter>,
     telemetry: MetricsRegistry,
+    /// ROUT-11: last time prune() ran; drives opportunistic maintenance.
+    last_pruned: Instant,
 }
 
 impl Default for RoutingEngine {
@@ -114,6 +119,7 @@ impl Default for RoutingEngine {
             contact_log: HashMap::new(),
             opportunistic: None,
             telemetry: MetricsRegistry::new(),
+            last_pruned: Instant::now(),
         }
     }
 }
@@ -201,6 +207,12 @@ impl RoutingEngine {
         already_flooded: Vec<PeerId>,
         neighbor_table: &NeighborTable,
     ) -> ForwardingDecision {
+        // ROUT-11: opportunistic maintenance — prune routing table and contact
+        // log every PRUNE_INTERVAL without requiring a separate background task.
+        if self.last_pruned.elapsed() >= PRUNE_INTERVAL {
+            self.prune();
+            self.last_pruned = Instant::now();
+        }
         let decision = self
             .decide_inner(
                 message_id,
