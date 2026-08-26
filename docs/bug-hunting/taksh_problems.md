@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — **Tier 4 Wave 1 started (ox-alpha loop)**: TAK-25 fixed (commit below), baseline re-verified green at `cd3bb01` (build clean · 717/0/1). All 20 Wave-1 findings drift-audited at HEAD: present as filed. Run journal: [`taksh_fix_log.md`](taksh_fix_log.md).
+**Last updated:** 2026-08-26 — **Tier 4 Wave 1, batch A complete (ox-alpha loop)**: 8/126 fixed — TAK-25 `ee7abdb`, TAK-24 `1cda4a9`, TAK-12 `5960080`, TAK-13 `9f3a526`, TAK-16 `868f42a`, TAK-17 `87c4af9`, TAK-21 `3e22a34`, TAK-22 `ff9e9e4`. Batch sweep: build clean · **726/0/1** (baseline 717 → +9 net-new regression tests, zero failures). All 20 Wave-1 findings drift-audited at HEAD: present as filed. Run journal: [`taksh_fix_log.md`](taksh_fix_log.md).
 
 **Tier 0 status (unchanged, owned by operator+Claude):** Tier -1 complete. Tier 0 in progress: 10/32 fixed (all pure-Rust findings — GAP-4, GAP-9, GAP-12, BLE-3, BLE-5, BLE-27, BLE-28, BLE-29, BLE-30, FFI-16), 2 blocked (BLE-1, BLE-2 — need a real concurrency/architecture redesign, not rushed), 20 remaining (the Kotlin-touching FFI-1..19 cluster + BLE-4, BLE-9 — no Gradle/kotlinc on this machine, see the PENDING HARDWARE VERIFICATION notes throughout). Every ✅ so far passed `cargo build --workspace --all-targets` + `cargo test --workspace` but has NOT been confirmed on the two connected Android devices — no build toolchain exists on this machine to produce an installable APK.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
@@ -49,9 +49,9 @@ These three results interact rather than simply stack: the parts of this section
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 11 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 125 | 0 | 1 | 0 | 0 | Wave 1 running (ox-alpha loop) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 118 | 0 | 8 | 0 | 0 | Wave 1 running (ox-alpha loop) — batch A done: TAK-25/24/12/13/16/17/21/22 |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **268** | **0** | **12** | **2** | **0** | |
+| **Total** | | **284** | **261** | **0** | **19** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -8107,7 +8107,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_priority ON messages (status, priority, 
 
 #### TAK-12: The eviction loop issues two round trips per evicted row and can livelock
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 5960080 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/eviction.rs:44-70` (`evict_lowest_priority`)
 - **What:** The loop re-runs a full-table `SUM()` (`usage_bytes`) and then deletes exactly **one** row (`LIMIT 1`) per iteration, with no iteration cap, no transaction, and no progress deadline.
@@ -8142,7 +8142,7 @@ for _ in 0..MAX_ITERS {
 
 #### TAK-13: GC uses the default `MissedTickBehavior::Burst`, so a slow tick is followed by a stampede
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 9f3a526 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/gc.rs:22-28` (`spawn_gc`)
 - **What:** `tokio::time::interval` defaults to `MissedTickBehavior::Burst`: missed ticks are not dropped, they queue up and fire back-to-back with no delay until the schedule is caught up.
@@ -8205,7 +8205,7 @@ pg.rs:223       return codec::decode(&bytes)
 
 #### TAK-16: `Debug` derives expose the at-rest key and the DB password
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 868f42a · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/seal.rs:60-63` (`StorageKeySealer`), `crates/iris-storage/src/pg.rs:20-32` (`PgStorageConfig`)
 - **What:** `StorageKeySealer` derives `Debug` while holding `key: [u8; 32]`, and the `RowSealer` trait *requires* `Debug` (seal.rs:39), so the derive cannot simply be dropped. `PgStorageConfig` derives `Debug` while holding `pub password: String`.
@@ -8236,7 +8236,7 @@ impl fmt::Debug for StorageKeySealer {
 
 #### TAK-17: The at-rest key is never zeroized
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 87c4af9 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/seal.rs:60-63` (`StorageKeySealer`)
 - **What:** `key: [u8; 32]` is a plain array with no `Zeroize`/`ZeroizeOnDrop`. When the sealer drops, the key stays in freed heap memory.
@@ -8332,7 +8332,7 @@ tokio_behavior.rs:216   stop_driver(driver, stop);      // no assertion follows
 
 #### TAK-21: `FeatureVec` finiteness is enforced only by `debug_assert!`, so NaN reaches the scorer in release builds
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 3e22a34 · 2026-08-26
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/sim/ml/features.rs:28-34` (`FeatureVec::new`)
 - **What:** The finiteness contract is checked with `debug_assert!`, which is compiled out under `--release`. Several documented feature slots are ratios whose denominators can be zero.
@@ -8364,7 +8364,7 @@ pub fn new(features: [f32; 8]) -> Self {
 
 #### TAK-22: `GtPredictor::predict_next` can overflow `u64` on a sparse contact schedule
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit ff9e9e4 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/sim/ml/predictor.rs:103-105` (`predict_next`)
 - **What:** Plain `+` on a `u64` plus an unbounded `f64` rounded and cast. Float-to-integer `as` casts saturate in Rust, so an infinite or very large `period_ms` becomes `u64::MAX`, and the subsequent addition overflows.
@@ -8399,7 +8399,7 @@ ml/mod.rs:11   //!   have* decided (`ShadowDecision`).
 
 #### TAK-24: Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 1cda4a9 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/eviction.rs:59` (`evict_lowest_priority`)
 - **What:** The `ORDER BY` ends with `created_at DESC`. Rows are deleted from the front of this ordering, so among rows tied on priority, ownership and expiry, the **most recently created** row is evicted first.
