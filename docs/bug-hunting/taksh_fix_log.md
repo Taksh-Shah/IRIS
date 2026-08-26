@@ -30,4 +30,9 @@ TAK-4, TAK-5, TAK-6, TAK-9, TAK-10, TAK-11, TAK-14, TAK-18, TAK-19 (+TAK-20).
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | TAK-25 | ✅ Fixed | (this commit) | 2 new unit tests (`threshold_defaults_when_absent_or_invalid`, `threshold_accepts_in_range_values`); iris-storage lib 9/9; clippy 0; fmt clean. Doc: STORAGE.md §Quota now documents `IRIS_EVICTION_THRESHOLD` (named in finding's Dependencies). |
+| 1 | TAK-25 | ✅ Fixed | ee7abdb | 2 new unit tests (`threshold_defaults_when_absent_or_invalid`, `threshold_accepts_in_range_values`); iris-storage lib 9/9; clippy 0; fmt clean. Doc: STORAGE.md §Quota now documents `IRIS_EVICTION_THRESHOLD` (named in finding's Dependencies). |
+
+**Commit convention (from TAK-24 onward):** per-finding §6 code commit first
+(stable hash), report/fix-log status flips accumulate and land in one
+`docs(bug-hunting)` commit at batch end citing the real hashes — this avoids
+the amend fixed-point problem (editing a hash into a commit changes the hash).

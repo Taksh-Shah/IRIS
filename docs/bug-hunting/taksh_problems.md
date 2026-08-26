@@ -8418,7 +8418,7 @@ eviction.rs:59   ORDER BY priority DESC, is_own_message ASC, expires_at ASC, cre
 
 #### TAK-25: `eviction_threshold` is a config field with no way to configure it
 - **Severity:** Low
-- **Fix status:** ✅ Fixed · Tier 4 · commit 1d92015 · 2026-08-26
+- **Fix status:** ✅ Fixed · Tier 4 · commit ee7abdb · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:30-31` (declaration), `crates/iris-storage/src/pg.rs:49` (`from_env`)
 - **What:** `PgStorageConfig` exposes `eviction_threshold` as a tunable, and `from_env()` reads five other settings from the environment — but hardcodes this one to `0.8`. There is no `IRIS_EVICTION_THRESHOLD` variable.
