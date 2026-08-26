@@ -60,9 +60,14 @@ impl ForwardedCache {
 
     /// Ring-buffer cleanup: remove entries older than the exact window.
     fn evict_old(&mut self) {
-        let cutoff = Instant::now() - EXACT_WINDOW;
+        // Compare elapsed time rather than constructing a cutoff instant.
+        // `Instant::now() - duration` panics on Linux/Android when process
+        // uptime is less than the duration (CLOCK_MONOTONIC starts at zero on
+        // boot). The neighbor_table.rs incident comment documents this exact
+        // failure — apply the same pattern here (SYS-1).
+        let now = Instant::now();
         while let Some(front) = self.ring.front() {
-            if front.1 < cutoff {
+            if now.duration_since(front.1) > EXACT_WINDOW {
                 let (id, _) = self.ring.pop_front().unwrap();
                 self.exact.remove(&id);
             } else {

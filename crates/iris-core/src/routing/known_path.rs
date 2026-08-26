@@ -75,8 +75,10 @@ impl RoutingTable {
 
     /// Drop entries not confirmed within `expiry`.
     pub fn prune_expired(&mut self, expiry: Duration) {
-        let cutoff = Instant::now() - expiry;
-        self.entries.retain(|_, e| e.last_confirmed >= cutoff);
+        // Use elapsed comparison, not a cutoff instant — see SYS-1 /
+        // neighbor_table.rs:236 for why Instant::now() - duration panics on boot.
+        let now = Instant::now();
+        self.entries.retain(|_, e| now.duration_since(e.last_confirmed) < expiry);
     }
 
     pub fn len(&self) -> usize {

@@ -298,8 +298,9 @@ impl RoutingEngine {
     pub fn prune(&mut self) {
         let before = self.routing_table.len();
         self.routing_table.prune_expired(self.table_ttl);
-        let cutoff = Instant::now() - Duration::from_secs(3600);
-        self.contact_log.retain(|_, t| *t >= cutoff);
+        // Elapsed comparison — same boot-time panic guard as SYS-1 / neighbor_table.rs.
+        let now = Instant::now();
+        self.contact_log.retain(|_, t| now.duration_since(*t) < Duration::from_secs(3600));
         if before > 0 {
             tracing::debug!(
                 event = event::ROUTE_PRUNED,
