@@ -209,7 +209,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-11** | Low | `routing/mod.rs:298-311` | `RoutingEngine::prune()` is never called — routing table and contact log grow without bound | ✅ `440f610` |
 | **ROUT-12** | Medium | `known_path.rs:43-62` | `RoutingTable::upsert` unconditionally overwrites — any peer can replace a good route with a worse or bogus one | ✅ `440f610` |
 | **ROUT-13** | Medium | `known_path.rs:27-30,` | `RoutingTable` has no capacity bound | ✅ `440f610` |
-| **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned | ⬜ |
+| **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned | ✅ `e60c555` |
 | **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window | ⬜ |
 | **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument | ⬜ |
 | **ROUT-17** | Medium | `flood.rs:42-73` | Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender | ⬜ |
@@ -1045,7 +1045,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-14: `OpportunisticRouter::max_dp_seen` is unbounded and never pruned
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `e60c555`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/opportunistic.rs:104, 198-200`
 - **What:** `max_dp_seen: HashMap<(PeerId, PeerId), f64>` gains an entry for every `(winning_candidate, destination)` pair and has no capacity cap, no TTL, and no removal path anywhere in the file. Key size alone is 64 bytes.
