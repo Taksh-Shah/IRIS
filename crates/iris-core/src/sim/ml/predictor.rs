@@ -76,6 +76,12 @@ impl Default for GtPredictor {
 }
 
 impl GtPredictor {
+    /// Upper bound on a learnable contact period (TAK-22): one year of
+    /// sim-ms. Sparse schedules beyond this are indistinguishable from "no
+    /// periodic contact" for prediction purposes, and an unbounded median can
+    /// otherwise overflow `predict_next`'s addition.
+    pub const MAX_PERIOD_MS: f64 = 365.0 * 24.0 * 3600.0 * 1000.0;
+
     /// Fit the period from the train slice's contact times (sorted asc).
     /// Returns a default predictor when fewer than 2 samples (no period
     /// learnable). Input is defensively sorted (ML-RT-03).
@@ -87,7 +93,7 @@ impl GtPredictor {
         times.sort_unstable();
         let mut intervals: Vec<f64> = times.windows(2).map(|w| (w[1] - w[0]) as f64).collect();
         // Median interval — robust to one-off gaps (vehicle + stations).
-        intervals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        intervals.sort_by(|a, b| a.total_cmp(b));
         let mid = intervals.len() / 2;
         let period = if intervals.len() % 2 == 1 {
             intervals[mid]
@@ -95,13 +101,17 @@ impl GtPredictor {
             (intervals[mid - 1] + intervals[mid]) / 2.0
         };
         GtPredictor {
-            period_ms: period.max(1.0),
+            period_ms: period.clamp(1.0, Self::MAX_PERIOD_MS),
         }
     }
 
     /// Predicted next contact time after `last_contact_ms`.
+    ///
+    /// Total by construction (TAK-22): `period_ms` was clamped at fit time,
+    /// and the add saturates instead of overflowing (`u64` panic in debug /
+    /// silent wrap-to-tiny inversion in release on far-future contacts).
     pub fn predict_next(&self, last_contact_ms: u64) -> u64 {
-        last_contact_ms + self.period_ms.round() as u64
+        last_contact_ms.saturating_add(self.period_ms.round() as u64)
     }
 }
 
@@ -161,5 +171,28 @@ mod tests {
     #[test]
     fn gt_short_schedule_is_default() {
         assert_eq!(GtPredictor::fit(&[100]), GtPredictor::default());
+    }
+
+    /// TAK-22: a sparse schedule with an enormous median interval must clamp
+    /// at fit time, and predict_next must saturate instead of overflowing
+    /// (debug panic / release wrap-inversion).
+    #[test]
+    fn predict_next_saturates_on_far_future_contacts() {
+        let huge = u64::MAX as f64;
+        let g = GtPredictor { period_ms: huge };
+        // Would have been `u64::MAX - 5 + period` overflow before the fix.
+        assert_eq!(g.predict_next(u64::MAX - 5), u64::MAX);
+        assert_eq!(g.predict_next(0), huge.round() as u64);
+
+        // fit-time clamp: a one-off 10-year gap cannot become the period.
+        let mut times: Vec<u64> = (0..10).map(|i| 1000 * i).collect();
+        times.push(times[9] + GtPredictor::MAX_PERIOD_MS as u64 * 10);
+        let fitted = GtPredictor::fit(&times);
+        assert!(
+            fitted.period_ms <= GtPredictor::MAX_PERIOD_MS,
+            "period must be clamped: {}",
+            fitted.period_ms
+        );
+        assert_eq!(fitted.predict_next(u64::MAX), u64::MAX);
     }
 }

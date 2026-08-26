@@ -149,7 +149,13 @@ impl TransportManager {
             })
             .collect();
 
-        // total_cmp never panics and rejects NaN deterministically
+        // MG-3: total_cmp removes the PANIC but still orders NaN above +inf
+        // (IEEE 754 totalOrder), so a poisoned score would sort FIRST and win
+        // single-best selection. Reject every non-finite score outright;
+        // RED-0003-01 hardening is only complete when NaN cannot rank at all.
+        candidates.retain(|c| c.score.is_finite());
+
+        // total_cmp never panics on what survives the finite filter above
         // (RED-0003-01 replaces partial_cmp().unwrap() panic-on-NaN).
         candidates.sort_by(|a, b| b.score.total_cmp(&a.score));
 

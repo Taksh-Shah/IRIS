@@ -105,6 +105,10 @@ Default storage budget: **500 MB** (`IRIS_MAX_STORAGE_BYTES`). A write that
 would exceed quota returns `StorageError::StorageFull` for non-P0 messages;
 **P0 messages are always accepted** (INV-EMERG-001 spirit, INV-ROUTE-003).
 
+The eviction trigger fraction is tunable via `IRIS_EVICTION_THRESHOLD`
+(default **0.8**, clamped to `0.1..=0.95` — out-of-range or unparseable values
+fall back to the default so eviction can never be disabled by misconfiguration).
+
 ### Eviction Policy
 
 Eviction is triggered when usage exceeds `quota * eviction_threshold` (default

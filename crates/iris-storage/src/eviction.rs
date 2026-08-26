@@ -41,13 +41,26 @@ pub(crate) async fn delete_expired(
 
 /// Reclaim the lowest-priority rows until usage falls at/below `target_bytes`.
 /// Returns the number of rows deleted. P0 is exempt (INV-ROUTE-003).
+///
+/// Cost-bounded (TAK-12): each pass deletes up to [`EVICT_BATCH`] rows and the
+/// loop runs at most [`EVICT_MAX_PASSES`] times — a full reclaim costs at most
+/// 64 round-trip pairs instead of one pair per row (the old LIMIT 1 loop was
+/// ~200k round trips to reclaim 100 MB of 1 KB rows). If the cap is exhausted
+/// while still above target, that condition is escalated at ERROR level: it is
+/// either a pathological ingest rate or unevictable rows accumulating (the
+/// TAK-2 class) announcing itself.
 pub(crate) async fn evict_lowest_priority(
     client: &tokio_postgres::Client,
     target_bytes: u64,
 ) -> Result<u64, tokio_postgres::Error> {
+    const EVICT_MAX_PASSES: usize = 64;
+    const EVICT_BATCH: i64 = 256;
+
     let mut deleted = 0u64;
-    loop {
+    let mut reached_target = false;
+    for _ in 0..EVICT_MAX_PASSES {
         if usage_bytes(client).await? <= target_bytes {
+            reached_target = true;
             break;
         }
         let n = client
@@ -56,16 +69,27 @@ pub(crate) async fn evict_lowest_priority(
                  WHERE message_id IN (
                     SELECT message_id FROM messages
                     WHERE priority > 0
-                    ORDER BY priority DESC, is_own_message ASC, expires_at ASC, created_at DESC
-                    LIMIT 1
+                    ORDER BY priority DESC, is_own_message ASC, expires_at ASC, created_at ASC
+                    LIMIT $1
                  )",
-                &[],
+                &[&EVICT_BATCH],
             )
             .await?;
         if n == 0 {
-            break; // nothing evictable remains
+            // Nothing evictable remains (P0-only residue): stop instead of
+            // spinning against an invariant target.
+            break;
         }
         deleted += n as u64;
+    }
+    if !reached_target {
+        // Distinguishable from success by callers via deleted count + this
+        // error-level trace; iris-storage has no metrics registry seam yet.
+        tracing::error!(
+            deleted,
+            target_bytes,
+            "eviction hit its pass cap while still above target - store remains over quota"
+        );
     }
     Ok(deleted)
 }

@@ -25,12 +25,22 @@ pub struct FeatureVec(pub [f32; 8]);
 impl FeatureVec {
     pub const LEN: usize = 8;
 
+    /// Total constructor (TAK-21): non-finite slots are sanitised to `0.0`
+    /// instead of being merely `debug_assert`ed away. Several documented slots
+    /// are ratios whose denominators can be zero or network-influenced
+    /// (`ttl_seconds == 0`, zero-capacity buffers), and in release builds the
+    /// old assert compiled out entirely — letting NaN flow through `score`,
+    /// into the predictor's comparator (see TAK-8), and panic inside
+    /// `sort_by`. Sanitising keeps the vector finite for every input while
+    /// staying deterministic per seed (ML-001 AC-1).
     pub fn new(features: [f32; 8]) -> Self {
-        debug_assert!(
-            features.iter().all(|x| x.is_finite()),
-            "FeatureVec slots must be finite: {features:?}"
-        );
-        FeatureVec(features)
+        let mut f = features;
+        for x in f.iter_mut() {
+            if !x.is_finite() {
+                *x = 0.0;
+            }
+        }
+        FeatureVec(f)
     }
 
     /// Bounded sigmoid-affine score used by the shadow predictor. Pure
@@ -68,5 +78,30 @@ mod tests {
         let w_pos = [0.5; 8];
         let w_neg = [-0.5; 8];
         assert!(f.score(&w_pos, 0.0) > f.score(&w_neg, 0.0));
+    }
+
+    /// TAK-21: NaN/inf inputs (e.g. `ttl_remaining = x / 0`) must sanitise to
+    /// a finite vector and a bounded finite score in ALL build profiles — the
+    /// old `debug_assert!` compiled away exactly where it mattered.
+    #[test]
+    fn non_finite_slots_are_sanitised_not_propagated() {
+        let raw: [f32; 8] = [
+            f32::NAN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            3.0,
+            0.4,
+            120.0,
+            0.8,
+            4.0,
+        ];
+        let f = FeatureVec::new(raw);
+        assert_eq!(f.0[0], 0.0);
+        assert_eq!(f.0[1], 0.0);
+        assert_eq!(f.0[2], 0.0);
+        assert_eq!(f.0[3], 3.0, "finite slots pass through untouched");
+        let s = f.score(&[0.5; 8], 0.1);
+        assert!(s.is_finite(), "score must stay finite: {s}");
+        assert!((0.0..=1.0).contains(&s), "score must stay bounded: {s}");
     }
 }

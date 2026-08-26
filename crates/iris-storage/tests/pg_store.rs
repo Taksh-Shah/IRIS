@@ -17,6 +17,8 @@ async fn store_with_max(bytes: u64) -> PgStorage {
     let store = PgStorage::connect(cfg).await.expect("connect storage");
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
@@ -74,6 +76,8 @@ async fn insert_or_ignore_dedups_at_storage_layer() {
     store.persist(&env).await.expect("persist again"); // INSERT ... ON CONFLICT DO NOTHING
     let count: i64 = store
         .client()
+        .await
+        .expect("client")
         .query_one("SELECT count(*) FROM messages", &[])
         .await
         .expect("count")
@@ -107,6 +111,8 @@ async fn update_status_round_trips() {
         .expect("update");
     let status: String = store
         .client()
+        .await
+        .expect("client")
         .query_one(
             "SELECT status FROM messages WHERE message_id = $1",
             &[&env.message_id.to_string()],
@@ -318,6 +324,8 @@ async fn sealed_rows_are_not_plaintext_and_round_trip() {
         .with_sealer(std::sync::Arc::new(sealer));
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
@@ -334,6 +342,8 @@ async fn sealed_rows_are_not_plaintext_and_round_trip() {
     // 1. The stored blob must not be decodable as CBOR (ciphertext at rest).
     let stored: Vec<u8> = store
         .client()
+        .await
+        .expect("client")
         .query_one(
             "SELECT envelope_cbor FROM messages WHERE message_id = $1",
             &[&env.message_id.to_string()],
@@ -380,6 +390,8 @@ async fn sealed_rows_require_the_right_key() {
         .with_sealer(std::sync::Arc::new(sealer));
     store
         .client()
+        .await
+        .expect("client")
         .execute("TRUNCATE TABLE messages", &[])
         .await
         .expect("truncate");
@@ -420,6 +432,8 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
     let store = fresh_store().await;
     let cols: Vec<String> = store
         .client()
+        .await
+        .expect("client")
         .query(
             "SELECT column_name FROM information_schema.columns
              WHERE table_name = 'messages'",
@@ -440,7 +454,7 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
     );
 
     let idxs: i64 = store
-        .client()
+        .client().await.expect("client")
         .query_one(
             "SELECT count(*) FROM pg_indexes WHERE tablename = 'messages' AND indexname = 'idx_messages_recipient'",
             &[],
@@ -449,4 +463,124 @@ async fn plaintext_identity_columns_are_removed_from_schema() {
         .expect("index")
         .get(0);
     assert_eq!(idxs, 0, "idx_messages_recipient must be dropped");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn eviction_tie_break_removes_oldest_first() {
+    if !pg_available() {
+        eprintln!("SKIP: IRIS_PG_PASSWORD unset");
+        return;
+    }
+    let _g = LOCK.lock().await;
+    let store = fresh_store().await;
+    let now = unix_now();
+    // Equal priority (P4), equal expiry (now + 3600), both relayed: the only
+    // live tie-break key is created_at. The OLD message carries the big
+    // payload so that a correct oldest-first pass frees enough in ONE delete;
+    // the buggy newest-first order would delete the small new row first and
+    // then be forced to continue into the old one, emptying the store.
+    let old_big = env_for(PEER_BOB, MessagePriority::P4, now - 200, 3800, &[0u8; 4096]);
+    let new_small = env_for(PEER_BOB, MessagePriority::P4, now - 100, 3700, b"fresh");
+    store.persist(&old_big).await.expect("persist old");
+    // Target captured BEFORE the newest row exists: eviction must free at
+    // least that row's footprint, so evicting exactly the oldest row should
+    // suffice under the documented oldest-first tie-break.
+    let after_old_only: i64 = store
+        .client()
+        .await
+        .expect("client")
+        .query_one(
+            "SELECT COALESCE(SUM(octet_length(envelope_cbor)),0)::bigint FROM messages",
+            &[],
+        )
+        .await
+        .expect("usage sql")
+        .get(0);
+    let target_bytes = after_old_only as u64;
+    store.persist(&new_small).await.expect("persist new");
+    assert_eq!(
+        old_big.timestamp + old_big.ttl_seconds,
+        new_small.timestamp + new_small.ttl_seconds
+    );
+
+    store.evict_by_priority(target_bytes).await.expect("evict");
+
+    let remaining: Vec<String> = store
+        .client()
+        .await
+        .expect("client")
+        .query("SELECT message_id FROM messages", &[])
+        .await
+        .expect("remaining")
+        .iter()
+        .map(|r| r.get(0))
+        .collect();
+    assert_eq!(
+        remaining,
+        vec![new_small.message_id.to_string()],
+        "oldest row must be evicted first among full ties (created_at ASC)"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn undecodable_row_is_quarantined_not_queue_bricking() {
+    if !pg_available() {
+        eprintln!("SKIP: IRIS_PG_PASSWORD unset");
+        return;
+    }
+    let _g = LOCK.lock().await;
+    let store = fresh_store().await;
+    let good = env_for(
+        PEER_BOB,
+        MessagePriority::P1,
+        unix_now() - 30,
+        3600,
+        b"good",
+    );
+    store.persist(&good).await.expect("persist good");
+    let bad = env_for(PEER_BOB, MessagePriority::P0, unix_now() - 20, 3600, b"bad");
+    store.persist(&bad).await.expect("persist bad");
+
+    // Corrupt the P0 row's payload directly on disk: pre-TAK-3 this single
+    // row made every get_queue call fail forever (P0 sorts first).
+    store
+        .client()
+        .await
+        .expect("client")
+        .execute(
+            "UPDATE messages SET envelope_cbor = decode('deadbeef', 'hex')
+             WHERE message_id = $1",
+            &[&bad.message_id.to_string()],
+        )
+        .await
+        .expect("corrupt row");
+
+    let quarantined_before = store.quarantined_rows();
+    let drained = store
+        .get_queue(10)
+        .await
+        .expect("get_queue must not abort the batch");
+    assert_eq!(drained.len(), 1, "healthy row still drains");
+    assert_eq!(drained[0].message_id, good.message_id);
+
+    let status: String = store
+        .client()
+        .await
+        .expect("client")
+        .query_one(
+            "SELECT status FROM messages WHERE message_id = $1",
+            &[&bad.message_id.to_string()],
+        )
+        .await
+        .expect("row query")
+        .get(0);
+    assert_eq!(
+        status, "DELIVERY_FAILED",
+        "unreadable row leaves the queue predicate"
+    );
+
+    // The queue stays drained on every subsequent call.
+    let again = store.get_queue(10).await.expect("second drain");
+    assert_eq!(again.len(), 1);
+    assert_eq!(store.quarantined_rows() - quarantined_before, 1);
 }

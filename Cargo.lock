@@ -2148,7 +2148,9 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "tokio-postgres",
+ "tokio-test",
  "tracing",
+ "zeroize",
 ]
 
 [[package]]

@@ -5655,7 +5655,7 @@ manager.rs:
 #### MG-3: `total_cmp` does not reject NaN — a NaN score sorts **first** and wins selection
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. Latent; becomes High the moment a platform-supplied `cost_snapshot` lands. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 5852ff2 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:152-160`, `:192`, `:204`
 - **What:** The in-line comment claims `total_cmp` "rejects NaN deterministically". It does not. `f32::total_cmp` implements IEEE-754 totalOrder: `−NaN < −inf < … < +inf < +NaN`. Sorting **descending** therefore places `+NaN` at index 0. `truncate(1)` keeps it. The multipath branch's `score > 0.0` is false for NaN and does drop it — so the protection exists on exactly the branch that doesn't need it.
@@ -7883,7 +7883,7 @@ eviction.rs:65   if n == 0 { break; }   // nothing evictable remains
 
 #### TAK-3: A single undecodable row permanently blocks the entire send queue
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 8d8ead9 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:294-305` (`get_queue`)
 - **What:** `get_queue` loops over rows and returns `Err` for the whole batch as soon as one row fails to unseal or decode. There is no skip, no quarantine, and no delete of the offending row.
@@ -7911,7 +7911,7 @@ let cbor = match self.sealer.unseal(&aad, &bytes) {
 
 #### TAK-4: No reconnection — one dropped PG connection bricks storage for the process lifetime
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit f2fc6a7 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:92-96` (`connect`), `crates/iris-storage/src/gc.rs:20-29` (`spawn_gc`)
 - **What:** The connection driver task logs a warning and exits when the connection dies. `PgStorage` keeps holding the now-dead `Arc<Client>`. There is no reconnect, no health check, and no way for a caller to learn the store is dead other than every query failing.
@@ -7935,7 +7935,7 @@ gc.rs:27    }
 
 #### TAK-5: Quota admission is a cross-store TOCTOU and never triggers eviction
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit f766383 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:172-179` (`persist`)
 - **What:** `persist` reads total usage, then decides, then inserts — three separate round trips with no transaction and no lock. Concurrent writers all observe the same pre-insert usage and all admit. Separately, when the quota is hit the write is simply **refused**; nothing evicts to make room.
@@ -7957,7 +7957,7 @@ pg.rs:181   self.client.execute("INSERT INTO messages ...
 
 #### TAK-6: Database connection uses `NoTls` — password and all message CBOR travel in cleartext
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** 🔒 Blocked · Tier 4 · reason: deferred to Run 4 — introducing rustls + tokio-postgres-rustls + rustls-native-certs is a supply-chain event (new deps, licence/deny review, version-API wrangling) that deserves fresh session budget, not a rushed end-of-run change to the connection path
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:88` (`connect`), also `tests/common/mod.rs:38`
 - **What:** `pg.connect(tokio_postgres::NoTls)` — TLS is not merely optional, it is impossible: the type parameter forecloses it. `host` is configurable to any address via `IRIS_PG_HOST` (pg.rs:37).
@@ -8032,7 +8032,7 @@ ranked.sort_by(|a, b| b.delivery_probability.total_cmp(&a.delivery_probability)
 
 #### TAK-9: `u64 → i64` wrapping casts let a peer write negative timestamps into the store
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 518b4ab · 2026-08-26
 - **Confidence:** High
 - **Location:** `crates/iris-storage/src/pg.rs:191-195` (`persist`)
 - **What:** `expires_at`, `timestamp` and `payload_size` are `u64` in the envelope and are cast with `as i64` for the `BIGINT` columns. In Rust `as` between same-width integers reinterprets the bits, so any value above `i64::MAX` becomes negative rather than erroring.
@@ -8057,7 +8057,7 @@ let exp = i64::try_from(expires_at.min(now + MAX_TTL_SECONDS)).map_err(...)?;
 
 #### TAK-10: `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit c52f1a5 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** Written `crates/iris-storage/src/pg.rs:197`; read `crates/iris-storage/src/eviction.rs:59`; declared `crates/iris-storage/src/schema.rs:21`
 - **What:** `persist` always binds the literal `false` for the `is_own_message` column. Repo-wide grep finds no other writer. The eviction `ORDER BY` reads the column, so its tie-break is permanently a no-op.
@@ -8077,7 +8077,7 @@ eviction.rs:8    ///   first, relayed (not own) messages before own.
 
 #### TAK-11: Both partial indexes are unusable by the queries they were created for
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 0e1f2d3 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/schema.rs:24-27` vs `crates/iris-storage/src/eviction.rs:35` and `crates/iris-storage/src/pg.rs:286`
 - **What:** Both indexes carry `WHERE` predicates that the actual queries do not satisfy, so the planner cannot use either one.
@@ -8105,7 +8105,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_priority ON messages (status, priority, 
 
 #### TAK-12: The eviction loop issues two round trips per evicted row and can livelock
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 5960080 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/eviction.rs:44-70` (`evict_lowest_priority`)
 - **What:** The loop re-runs a full-table `SUM()` (`usage_bytes`) and then deletes exactly **one** row (`LIMIT 1`) per iteration, with no iteration cap, no transaction, and no progress deadline.
@@ -8140,7 +8140,7 @@ for _ in 0..MAX_ITERS {
 
 #### TAK-13: GC uses the default `MissedTickBehavior::Burst`, so a slow tick is followed by a stampede
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 9f3a526 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/gc.rs:22-28` (`spawn_gc`)
 - **What:** `tokio::time::interval` defaults to `MissedTickBehavior::Burst`: missed ticks are not dropped, they queue up and fire back-to-back with no delay until the schedule is caught up.
@@ -8160,7 +8160,7 @@ gc.rs:25        if let Err(e) = store.gc_once(unix_now()).await {
 
 #### TAK-14: The at-rest AAD binds only 3 of 8 metadata columns, contradicting the module's tamper claim
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 92c6110 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/seal.rs:28-34` (`row_aad`), claim at `seal.rs:6-8`
 - **What:** The AAD covers `message_id ‖ priority ‖ expires_at`. The `messages` table also carries `status`, `created_at`, `hop_count`, `max_hops`, `payload_size`, and `is_own_message` — none of which are authenticated. The module doc asserts that *any* out-of-band metadata tamper is detected.
@@ -8182,7 +8182,7 @@ seal.rs:32   out.extend_from_slice(&expires_at.to_be_bytes());
 
 #### TAK-15: Enabling sealing makes every pre-existing plaintext row permanently unreadable — no data migration exists
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit dff5358 · 2026-08-26
 - **Confidence:** High
 - **Location:** `crates/iris-storage/src/pg.rs:220-229` (`load`), `crates/iris-storage/src/pg.rs:123-126` (`with_sealer`)
 - **What:** `load` detects "is this row plaintext?" by unsealing and checking whether the output equals the input. That heuristic only works for `NoSealer` (which is the identity function). With a real `StorageKeySealer`, `unseal` on a legacy plaintext row fails the AEAD tag check and returns `Err` — the plaintext branch at pg.rs:221 is never reached, so there is no fallback.
@@ -8203,7 +8203,7 @@ pg.rs:223       return codec::decode(&bytes)
 
 #### TAK-16: `Debug` derives expose the at-rest key and the DB password
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 868f42a · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/seal.rs:60-63` (`StorageKeySealer`), `crates/iris-storage/src/pg.rs:20-32` (`PgStorageConfig`)
 - **What:** `StorageKeySealer` derives `Debug` while holding `key: [u8; 32]`, and the `RowSealer` trait *requires* `Debug` (seal.rs:39), so the derive cannot simply be dropped. `PgStorageConfig` derives `Debug` while holding `pub password: String`.
@@ -8234,7 +8234,7 @@ impl fmt::Debug for StorageKeySealer {
 
 #### TAK-17: The at-rest key is never zeroized
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 87c4af9 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/seal.rs:60-63` (`StorageKeySealer`)
 - **What:** `key: [u8; 32]` is a plain array with no `Zeroize`/`ZeroizeOnDrop`. When the sealer drops, the key stays in freed heap memory.
@@ -8255,9 +8255,9 @@ seal.rs:63   }
 
 #### TAK-18: The loom concurrency models exercise no Section 3 code at all
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (shape-analog scope; sync-core extraction carried) · Tier 4 · commit c8d237e · 2026-08-26
 - **Confidence:** Certain
-- **Location:** `crates/iris-core/loom/loom_models.rs:38-86` (all three modelled structures), run by `engineering/tools/verify-loom.sh`
+- **Location:** `crates/iris-core/src/loom/loom_models.rs:38-86` (all three modelled structures), run by `engineering/tools/verify-loom.sh`
 - **What:** The section brief lists `verify-loom.sh` as Section 3's concurrency verification. All five loom models are **re-implemented analogs** of Section 2 structures: `HighWaterLeaf` (mirrors `replay.rs`), `atomic_saturating_add` (mirrors `quota.rs`), and `DedupLeaf` (a bare `Mutex<HashSet<u64>>`). None of Section 3's concurrent code — `TransportManager`'s registry, the SCF store, gateway election, or the BLE/Wi-Fi reassembly buffers — is modelled. The file says so itself.
 - **Evidence:**
 ```
@@ -8276,7 +8276,7 @@ loom_models.rs:76   struct DedupLeaf(Mutex<HashSet<u64>>);
 
 #### TAK-19: The test that claims to guard the transport-selection comparator cannot execute a single comparison
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 5852ff2 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/tests/tokio_behavior.rs:140-177` (`transport_manager_register_select_deregister_under_paused_time`)
 - **What:** The test registers exactly **one** transport, then loops 10 times asserting the selection has length 1. Its comment claims it covers the RED-0003-01 `total_cmp` path. Sorting a one-element slice performs zero comparisons, so `manager.rs:154` is never invoked.
@@ -8306,7 +8306,7 @@ assert_eq!(sel.iter().map(|s| s.transport_id.clone()).collect::<Vec<_>>(),
 
 #### TAK-20: Two of the four `tokio_behavior` tests assert nothing about IRIS code
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit efc8e6d · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/tests/tokio_behavior.rs:179-197` and `:199-217`
 - **What:** `engine_background_tasks_advance_with_virtual_time_only` constructs a bare `tokio::time::sleep` and asserts it is pending before an advance and ready after — it tests **tokio's own timer**, not any engine background task, despite the name. `engine_send_abort_clean_when_dropped_under_paused_time` drops the engine and yields once, with no assertion that anything was actually cancelled.
@@ -8330,7 +8330,7 @@ tokio_behavior.rs:216   stop_driver(driver, stop);      // no assertion follows
 
 #### TAK-21: `FeatureVec` finiteness is enforced only by `debug_assert!`, so NaN reaches the scorer in release builds
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 3e22a34 · 2026-08-26
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/sim/ml/features.rs:28-34` (`FeatureVec::new`)
 - **What:** The finiteness contract is checked with `debug_assert!`, which is compiled out under `--release`. Several documented feature slots are ratios whose denominators can be zero.
@@ -8362,7 +8362,7 @@ pub fn new(features: [f32; 8]) -> Self {
 
 #### TAK-22: `GtPredictor::predict_next` can overflow `u64` on a sparse contact schedule
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit ff9e9e4 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/sim/ml/predictor.rs:103-105` (`predict_next`)
 - **What:** Plain `+` on a `u64` plus an unbounded `f64` rounded and cast. Float-to-integer `as` casts saturate in Rust, so an infinite or very large `period_ms` becomes `u64::MAX`, and the subsequent addition overflows.
@@ -8397,7 +8397,7 @@ ml/mod.rs:11   //!   have* decided (`ShadowDecision`).
 
 #### TAK-24: Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 1cda4a9 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/eviction.rs:59` (`evict_lowest_priority`)
 - **What:** The `ORDER BY` ends with `created_at DESC`. Rows are deleted from the front of this ordering, so among rows tied on priority, ownership and expiry, the **most recently created** row is evicted first.
@@ -8416,7 +8416,7 @@ eviction.rs:59   ORDER BY priority DESC, is_own_message ASC, expires_at ASC, cre
 
 #### TAK-25: `eviction_threshold` is a config field with no way to configure it
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit ee7abdb · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:30-31` (declaration), `crates/iris-storage/src/pg.rs:49` (`from_env`)
 - **What:** `PgStorageConfig` exposes `eviction_threshold` as a tunable, and `from_env()` reads five other settings from the environment — but hardcodes this one to `0.8`. There is no `IRIS_EVICTION_THRESHOLD` variable.

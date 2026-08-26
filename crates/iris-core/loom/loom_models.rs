@@ -33,7 +33,142 @@
 
 use loom::sync::atomic::{AtomicU64, Ordering};
 use loom::sync::{Arc, Mutex};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+
+// ---------------------------------------------------------------------------
+// Section 3 leaf models (TAK-18): synchronization-SHAPE analogs of the
+// section's concurrent structures — TransportManager registry mutations vs
+// lookups, BLE/Wi-Fi reassembly bounded-append-vs-sweep, SCF insert-vs-evict
+// priority ordering. HONEST LIMITATION: these are hand-written analogs of
+// production shapes, not calls into production code; a production change can
+// still drift away from them. Closing that fully requires extracting the sync
+// cores into shared types (recorded as residual work in the bug-fix journal).
+// ---------------------------------------------------------------------------
+
+/// Shape-analog of `TransportManager`'s registry: register/deregister racing
+/// a lookup must never observe a torn entry, and after deregister completes
+/// the entry is gone (no resurrection).
+#[test]
+fn s3_registry_register_deregister_vs_lookup() {
+    loom::model(|| {
+        let registry: Arc<Mutex<HashMap<u64, u64>>> = Arc::new(Mutex::new(HashMap::new()));
+        let w = registry.clone();
+        let writer = loom::thread::spawn(move || {
+            w.lock().unwrap().insert(1, 100);
+            let removed = w.lock().unwrap().remove(&1);
+            removed
+        });
+        let l = registry.clone();
+        let reader = loom::thread::spawn(move || {
+            // Legal observations across the lifecycle: None (before insert or
+            // after remove), or Some(payload) exactly. Every transition among
+            // those is legal under interleaving — the guarantee under test is
+            // that a lookup NEVER observes a torn/wrong payload.
+            let first = l.lock().unwrap().get(&1).copied();
+            let second = l.lock().unwrap().get(&1).copied();
+            [first, second]
+                .iter()
+                .all(|o| matches!(o, None | Some(100)))
+        });
+        let removed = writer.join().unwrap();
+        let consistent = reader.join().unwrap();
+        assert!(consistent, "lookup saw a torn/wrong payload");
+        assert_eq!(removed, Some(100));
+        assert!(
+            registry.lock().unwrap().is_empty(),
+            "deregister leaves no residue"
+        );
+    });
+}
+
+/// Shape-analog of the BLE/Wi-Fi reassembly buffers: bounded append with
+/// oldest-first sweep must keep the buffer within its cap under concurrent
+/// appends, and every appended id is either retained or accounted as evicted.
+#[test]
+fn s3_reassembly_append_sweep_stays_bounded() {
+    loom::model(|| {
+        const CAP: usize = 2;
+        let buf: Arc<Mutex<VecDeque<u64>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let mut handles = Vec::new();
+        for id in 0..3u64 {
+            let b = buf.clone();
+            handles.push(loom::thread::spawn(move || {
+                let mut g = b.lock().unwrap();
+                if g.len() >= CAP {
+                    g.pop_front(); // oldest-first sweep
+                }
+                g.push_back(id);
+            }));
+        }
+        for h in handles {
+            h.join().unwrap();
+        }
+        let g = buf.lock().unwrap();
+        assert!(g.len() <= CAP, "cap violated: {g:?}");
+        // Each id pushed exactly once: survivors are unique members of the
+        // inserted domain, none lost silently and none duplicated.
+        let mut seen = g.iter().copied().collect::<Vec<_>>();
+        seen.sort_unstable();
+        seen.dedup();
+        assert_eq!(seen.len(), g.len(), "duplicate survivor");
+        for id in g.iter() {
+            assert!([0u64, 1, 2].contains(id), "foreign element {id}");
+        }
+    });
+}
+
+/// Shape-analog of SCF store insert-vs-evict: eviction always removes the
+/// lowest-priority/newest key (max key here) even while inserts land, and
+/// never returns an element that was not previously inserted.
+#[test]
+fn s3_scf_insert_vs_priority_evict() {
+    loom::model(|| {
+        let store: Arc<Mutex<BTreeMap<u64, u8>>> = Arc::new(Mutex::new(BTreeMap::new()));
+        let i = store.clone();
+        let inserter = loom::thread::spawn(move || {
+            for (seq, prio) in [(10u64, 4u8), (20, 3), (30, 5)] {
+                i.lock().unwrap().insert(seq, prio);
+            }
+        });
+        let e = store.clone();
+        let evicter = loom::thread::spawn(move || {
+            let mut evicted_seq = Vec::new();
+            loop {
+                let mut g = e.lock().unwrap();
+                let next = g.keys().next_back().copied(); // max key = lowest prio/newest
+                match next {
+                    Some(k) => {
+                        g.remove(&k);
+                        evicted_seq.push(k);
+                    }
+                    None => break,
+                }
+                if evicted_seq.len() == 3 {
+                    break;
+                }
+                drop(g);
+            }
+            evicted_seq
+        });
+        inserter.join().unwrap();
+        let evicted = evicter.join().unwrap();
+        let g = store.lock().unwrap();
+        // Sound invariants under any interleaving: each eviction removed the
+        // max key of the set present AT THAT MOMENT (by construction:
+        // BTreeMap next_back), no key is evicted twice, evicted ∪ remaining
+        // ⊆ inserted domain, and every insert landed (insert thread joined).
+        let mut evicted_sorted = evicted.clone();
+        evicted_sorted.sort_unstable();
+        evicted_sorted.dedup();
+        assert_eq!(evicted_sorted.len(), evicted.len(), "duplicate eviction");
+        let mut all: Vec<u64> = g.keys().copied().collect();
+        all.extend_from_slice(&evicted);
+        all.sort_unstable();
+        all.dedup();
+        assert_eq!(all, vec![10, 20, 30], "lost or foreign elements");
+        assert!(g.values().all(|&p| [3u8, 4, 5].contains(&p)));
+    });
+}
 
 /// Production-analog of `replay::HighWaterMark::check_and_advance`
 /// (strictly-increasing (ts,seq) pair under a mutex; `<=` high-water = replay).

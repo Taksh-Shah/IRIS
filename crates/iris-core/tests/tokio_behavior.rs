@@ -176,25 +176,10 @@ async fn transport_manager_register_select_deregister_under_paused_time() {
     stop_driver(driver, stop);
 }
 
-#[tokio::test(start_paused = true)]
-async fn engine_background_tasks_advance_with_virtual_time_only() {
-    // A bare `tokio::time::sleep` is pending until virtual time advances —
-    // the tokio-test facility this suite leans on — proving background poll
-    // loops are timer-driven (no busy-wait, no wall-clock stalls).
-    let mut sleeper = tokio_test::task::spawn(async {
-        tokio::time::sleep(Duration::from_secs(1)).await;
-    });
-    assert!(
-        sleeper.poll().is_pending(),
-        "1s sleep must not complete at t=0"
-    );
-
-    tokio::time::advance(Duration::from_secs(2)).await;
-    assert!(
-        sleeper.poll().is_ready(),
-        "sleep completes once virtual time advances"
-    );
-}
+// TAK-20: `engine_background_tasks_advance_with_virtual_time_only` was
+// DELETED per its finding — it spawned a bare `tokio::time::sleep` and
+// asserted tokio's own timer semantics, observing no IRIS code at all while
+// its name claimed engine coverage. It duplicated tokio's test suite.
 
 #[tokio::test(start_paused = true)]
 async fn engine_send_abort_clean_when_dropped_under_paused_time() {
@@ -206,12 +191,101 @@ async fn engine_send_abort_clean_when_dropped_under_paused_time() {
     let env = sample_envelope([7u8; 32], [8u8; 32], b"drop me");
     engine.send_message(env).await.expect("send");
 
-    // Drive through several delivery/ack horizons, then drop the engine: its
-    // background AbortHandles must cancel without a hang.
+    // Drive through several delivery/ack horizons.
     let (driver, stop) = advance_driver();
     tokio::time::advance(Duration::from_secs(120)).await;
     tokio::time::advance(Duration::from_secs(3600)).await;
+
+    // TAK-20: the old version asserted nothing — it would pass identically if
+    // drop leaked every background task. Cancellation is now OBSERVED via the
+    // runtime's public task metrics: alive-task count must return to its
+    // pre-drop baseline once the engine is dropped and the executor drains.
+    yield_and_settle().await;
+    let before_drop = tokio::runtime::Handle::current()
+        .metrics()
+        .num_alive_tasks();
+
     drop(engine);
-    tokio::task::yield_now().await;
+    for _ in 0..50 {
+        tokio::task::yield_now().await;
+        if tokio::runtime::Handle::current()
+            .metrics()
+            .num_alive_tasks()
+            <= before_drop
+        {
+            break;
+        }
+        // Nudge virtual time so any timer-bound tasks reach their abort points.
+        tokio::time::advance(Duration::from_millis(10)).await;
+    }
+    let after_drop = tokio::runtime::Handle::current()
+        .metrics()
+        .num_alive_tasks();
+    assert!(
+        after_drop <= before_drop,
+        "engine drop leaked background tasks: before={before_drop} after={after_drop}"
+    );
+
     stop_driver(driver, stop);
+}
+
+/// Let the executor run pending tasks until quiescent (bounded spins).
+async fn yield_and_settle() {
+    for _ in 0..20 {
+        tokio::task::yield_now().await;
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn transport_selection_survives_nan_cost_and_ranks_deterministically() {
+    let manager = Arc::new(TransportManager::new());
+    // Healthy transport: normal cost inputs.
+    let healthy = Arc::new(SimulatedTransport::new(
+        "sim-healthy",
+        "Healthy",
+        SimConfig::default(),
+    ));
+    // Adversarial transport: NaN battery cost poisons its score (P4 request
+    // applies the battery penalty). Under the pre-RED-0003-01 comparator this
+    // panicked inside sort_by; under total_cmp it must be eliminated
+    // deterministically, never reorder the survivor, and never hang.
+    let mut poisoned_cfg = SimConfig::default();
+    poisoned_cfg.battery_ma_override = Some(f32::NAN);
+    let poisoned = Arc::new(SimulatedTransport::new("sim-nan", "NaN", poisoned_cfg));
+
+    manager
+        .register(healthy.clone())
+        .await
+        .expect("register healthy");
+    manager
+        .register(poisoned.clone())
+        .await
+        .expect("register nan");
+
+    let req = TransportSelectionRequest {
+        target_peer: Some(iris_core::message::PeerId([9u8; 32])),
+        message_size: 100,
+        priority: MessagePriority::P4,
+        max_latency_ms: Some(1000),
+        prefer_low_cost: false,
+        multipath: false,
+        fragmentable: false,
+    };
+
+    let first = manager.select_transports(&req).await;
+    assert_eq!(
+        first.len(),
+        1,
+        "NaN-scored candidate must be eliminated: {first:?}"
+    );
+    assert_eq!(first[0].transport_id.as_str(), "sim-healthy");
+
+    for _ in 0..10 {
+        let again = manager.select_transports(&req).await;
+        assert_eq!(again.len(), 1);
+        assert_eq!(
+            first[0].transport_id, again[0].transport_id,
+            "selection must be deterministic across repeated calls"
+        );
+    }
 }
