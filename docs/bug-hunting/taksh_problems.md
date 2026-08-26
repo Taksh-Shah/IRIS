@@ -196,10 +196,10 @@ All 284 findings, in report order. Severities are post-verification.
 | **SYS-4** | Medium | `gateway/mod.rs` | Error-discarding `let _ =` is used 68 times across Section 3, concentrated in the gateway | ✅ `5d3199c` |
 | **SYS-5** | High | `{ble,wifiaware,wifi_direct,lora,satellite}.rs` | 113 production `.lock().unwrap()` sites make every radio transport one panic away from permanently dead | ✅ `5b1422c` (step 1) |
 | **SYS-6** | Low | `ble.rs:179-181` | Mock transports that silently report success are `pub` in the production API | ✅ `ec2036d` |
-| **ROUT-1** | Medium | `dedup_cache.rs:62-64` | `ForwardedCache::evict_old` panics on `Instant::now() - 1h` — the exact bug the repo already fixed in `neighbor_table.rs` | ⬜ |
-| **ROUT-2** | Low | `routing/mod.rs:301-302` | `RoutingEngine::prune` panics on `Instant::now() - 3600s` | ⬜ |
-| **ROUT-3** | Low | `known_path.rs:77-80` | `RoutingTable::prune_expired` panics on `Instant::now() - expiry` | ⬜ |
-| **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist | ⬜ |
+| **ROUT-1** | Medium | `dedup_cache.rs:62-64` | `ForwardedCache::evict_old` panics on `Instant::now() - 1h` — the exact bug the repo already fixed in `neighbor_table.rs` | ✅ `4b03ae8` (SYS-1) |
+| **ROUT-2** | Low | `routing/mod.rs:301-302` | `RoutingEngine::prune` panics on `Instant::now() - 3600s` | ✅ `4b03ae8` (SYS-1) |
+| **ROUT-3** | Low | `known_path.rs:77-80` | `RoutingTable::prune_expired` panics on `Instant::now() - expiry` | ✅ `4b03ae8` (SYS-1) |
+| **ROUT-4** | Medium | `routing/mod.rs:99,` | The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist | ✅ `ade3acd` |
 | **ROUT-5** | Medium | `store.rs:31-34` | `routing::store::is_expired` makes far-future-timestamped messages immortal — a re-introduction of a bug the crate already fixed and documented | ⬜ |
 | **ROUT-6** | Medium | `routing/mod.rs:268-269` | Algorithm 4 never checks TTL; `store_or_drop` / `ShouldStore` / `StoreAction` are dead, and `ForwardingDecision::Drop` is unconstructable | ⬜ |
 | **ROUT-7** | Medium | `opportunistic.rs:103-104,` | GTMX+ `max_dp_seen` is keyed per `(candidate, destination)`, not per message — the opportunistic layer works exactly once per neighbor/destination pair, forever | ⬜ |
@@ -698,7 +698,7 @@ Reference docs diffed: `docs/routing/{BASELINE_ROUTING,ROUTING_REQUIREMENTS,ROUT
 #### ROUT-1: `ForwardedCache::evict_old` panics on `Instant::now() - 1h` — the exact bug the repo already fixed in `neighbor_table.rs`
 - **Severity:** Medium  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. Becomes High the moment ROUT-4's wiring lands. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (subsumed by SYS-1)  ·  Tier 2  ·  commit `4b03ae8`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/dedup_cache.rs:62-64` (fn `evict_old`)
 - **What:** `evict_old` builds a cutoff by subtracting a 1-hour `Duration` from `Instant::now()`. `impl Sub<Duration> for Instant` is `checked_sub(...).expect("overflow when subtracting duration from instant")`. On Linux/Android `Instant` is `CLOCK_MONOTONIC`, whose epoch is **system boot**, so `Instant::now()` is smaller than 3600 s for the first hour after boot and the subtraction panics. `evict_old` is called unconditionally from `record()` (line 59), i.e. on **every** message the node forwards.
@@ -735,7 +735,7 @@ fn evict_old(&mut self) {
 #### ROUT-2: `RoutingEngine::prune` panics on `Instant::now() - 3600s`
 - **Severity:** Low  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. Dead code; blocking-High as a precondition of ROUT-11's wiring. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (subsumed by SYS-1)  ·  Tier 2  ·  commit `4b03ae8`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/mod.rs:301-302` (fn `prune`)
 - **What:** Same `Instant` underflow as ROUT-1, with a 1-hour contact-log retention window.
@@ -757,7 +757,7 @@ fn evict_old(&mut self) {
 #### ROUT-3: `RoutingTable::prune_expired` panics on `Instant::now() - expiry`
 - **Severity:** Low  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (subsumed by SYS-1)  ·  Tier 2  ·  commit `4b03ae8`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/known_path.rs:77-80` (fn `prune_expired`)
 - **What:** Same `Instant` underflow; `expiry` is 600 s by default (`mod.rs:110`, `mod.rs:111`), so the panic window is the first 10 minutes after boot.
@@ -780,7 +780,7 @@ fn evict_old(&mut self) {
 #### ROUT-4: The routing dedup cache is never written — Algorithm 3's anti-loop guarantee does not exist
 - **Severity:** Medium  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. (unwired subsystem whose verification docs claim a guarantee it does not implement); Critical once `RoutingEngine` is put on the forwarding path. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (ROUT-4)  ·  Tier 2  ·  commit `ade3acd`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/mod.rs:99, 112, 162-164, 253-261` (struct `RoutingEngine`, fn `decide_inner`)
 - **What:** `RoutingEngine` owns a `ForwardedCache` but exposes only an immutable accessor (`forward_cache(&self)`) and never calls `record`, `record_peer` or `is_duplicate` on it. `decide_inner` passes `&self.forward_cache` into `recipients_for_flood`, which only ever calls `cache.contains_peer(...)` — a set that nothing ever inserts into. Repo-wide grep: `ForwardedCache::record` is called only from `sim/mod.rs:377`, `dedup_cache.rs` tests, and `tests/protocol_conformance.rs:356`. `is_duplicate` is called only from `sim/mod.rs:315` and tests. **Zero production call sites via `RoutingEngine`.**
