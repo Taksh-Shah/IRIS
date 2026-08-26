@@ -33,6 +33,11 @@ pub struct SimConfig {
     pub latency_spread_ms: u64,
     /// Seed for deterministic reproduction.
     pub seed: u64,
+    /// Override for cost_snapshot().estimated_battery_ma (TAK-19): lets
+    /// tests inject adversarial cost inputs - e.g. NaN - to prove the
+    /// manager's comparator stays total and deterministic (RED-0003-01).
+    /// None keeps the fixed default of 3.0 mA.
+    pub battery_ma_override: Option<f32>,
 }
 
 impl Default for SimConfig {
@@ -43,6 +48,7 @@ impl Default for SimConfig {
             latency_base_ms: 10,
             latency_spread_ms: 5,
             seed: 42,
+            battery_ma_override: None,
         }
     }
 }
@@ -208,7 +214,7 @@ impl Transport for SimulatedTransport {
 
     fn cost_snapshot(&self) -> TransportCost {
         TransportCost {
-            estimated_battery_ma: 3.0,
+            estimated_battery_ma: self.config.battery_ma_override.unwrap_or(3.0),
             monetary_cost_per_kb: 0.0,
             bandwidth_available_bps: self.config.bandwidth_bps,
             congestion_level: 0.0,

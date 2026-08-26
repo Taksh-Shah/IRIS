@@ -215,3 +215,43 @@ async fn engine_send_abort_clean_when_dropped_under_paused_time() {
     tokio::task::yield_now().await;
     stop_driver(driver, stop);
 }
+
+#[tokio::test(start_paused = true)]
+async fn transport_selection_survives_nan_cost_and_ranks_deterministically() {
+    let manager = Arc::new(TransportManager::new());
+    // Healthy transport: normal cost inputs.
+    let healthy = Arc::new(SimulatedTransport::new("sim-healthy", "Healthy", SimConfig::default()));
+    // Adversarial transport: NaN battery cost poisons its score (P4 request
+    // applies the battery penalty). Under the pre-RED-0003-01 comparator this
+    // panicked inside sort_by; under total_cmp it must be eliminated
+    // deterministically, never reorder the survivor, and never hang.
+    let mut poisoned_cfg = SimConfig::default();
+    poisoned_cfg.battery_ma_override = Some(f32::NAN);
+    let poisoned = Arc::new(SimulatedTransport::new("sim-nan", "NaN", poisoned_cfg));
+
+    manager.register(healthy.clone()).await.expect("register healthy");
+    manager.register(poisoned.clone()).await.expect("register nan");
+
+    let req = TransportSelectionRequest {
+        target_peer: Some(iris_core::message::PeerId([9u8; 32])),
+        message_size: 100,
+        priority: MessagePriority::P4,
+        max_latency_ms: Some(1000),
+        prefer_low_cost: false,
+        multipath: false,
+        fragmentable: false,
+    };
+
+    let first = manager.select_transports(&req).await;
+    assert_eq!(first.len(), 1, "NaN-scored candidate must be eliminated: {first:?}");
+    assert_eq!(first[0].transport_id.as_str(), "sim-healthy");
+
+    for _ in 0..10 {
+        let again = manager.select_transports(&req).await;
+        assert_eq!(again.len(), 1);
+        assert_eq!(
+            first[0].transport_id, again[0].transport_id,
+            "selection must be deterministic across repeated calls"
+        );
+    }
+}
