@@ -68,6 +68,28 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         /** GATT write characteristic used by the core BLE-001 transport. */
         val IRIS_CHARACTERISTIC_UUID: UUID = UUID.fromString("3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e")
 
+        /**
+         * Beacon framing: the discovery beacon (DiscoveryBeacon::build,
+         * ble_advert.rs — 22 bytes, BEACON_LEN) used to ride Service Data
+         * keyed by [IRIS_SERVICE_UUID]. A 128-bit UUID costs 16 bytes on air;
+         * 16 (UUID) + 22 (beacon) + 2 (AD header) = 40 bytes already exceeds
+         * legacy BLE advertising's 31-byte total budget before the mandatory
+         * Flags AD structure is even counted — startAdvertising() failed
+         * with ADVERTISE_FAILED_DATA_TOO_LARGE (errorCode 1) on every real
+         * device, silently, because AdvertiseCallback.onStartFailure was
+         * `= Unit`. No IRIS beacon has ever actually been broadcast.
+         * Manufacturer Specific Data costs a 2-byte company id instead of a
+         * 16-byte UUID: 2 + 22 + 2 = 26 bytes, comfortably inside the 31-byte
+         * budget on every BLE 4.0+ device (no BLE 5 extended-advertising
+         * hardware required, confirmed absent on one of the two physical
+         * test devices via BluetoothAdapter.isLeExtendedAdvertisingSupported).
+         * 0xFFFF is the Bluetooth SIG's reserved "for testing" company id
+         * (Assigned Numbers) — a real registered company id is needed before
+         * this ships to production, since 0xFFFF is not collision-safe
+         * against other apps/devices using the same reserved id nearby.
+         */
+        const val IRIS_MANUFACTURER_ID = 0xFFFF
+
         /** Adapter-side guard ceiling (Android 8+ throttling); core backoff is authoritative. */
         const val SCAN_RESTART_CEILING = 5
         const val SCAN_WINDOW_MS = 30_000L
@@ -88,7 +110,6 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     // Handle tables (handle -> live platform object).
     private val nextHandle = AtomicLong(1L)
     private val scanHandles = ConcurrentHashMap<Long, BluetoothLeScanner>()
-    private val advertiseHandles = ConcurrentHashMap<Long, BluetoothLeAdvertiser>()
     private val gattHandles = ConcurrentHashMap<Long, BluetoothGatt>()
 
     // Drain buffers (proj-BLE-1 — owned projection of the core drains).
@@ -112,7 +133,15 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         override fun onScanResult(callbackType: Int, result: AndroidScanResult) {
             if (result.rssi < rssiFloor) return
             val device = result.device ?: return
-            val bytes = result.scanRecord?.bytes ?: ByteArray(0)
+            // The IRIS beacon (DiscoveryBeacon::parse) is the bytes advertised
+            // under Manufacturer Specific Data (see startAdvertising's
+            // addManufacturerData) — NOT the raw scan record, and not Service
+            // Data (a 128-bit service UUID doesn't fit the beacon in legacy
+            // advertising's 31-byte budget; see IRIS_MANUFACTURER_ID).
+            // scanRecord.bytes is every AD structure concatenated with TLV
+            // length/type headers, so reading it directly fed DiscoveryBeacon
+            // ::parse() garbage that always failed UnsupportedVersion.
+            val bytes = result.scanRecord?.getManufacturerSpecificData(IRIS_MANUFACTURER_ID) ?: ByteArray(0)
             while (pendingScanResults.size >= MAX_PENDING) pendingScanResults.poll()
             pendingScanResults.add(
                 FfiScanResult(
@@ -121,6 +150,13 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     rssi = result.rssi,
                 ),
             )
+        }
+
+        override fun onScanFailed(errorCode: Int) {
+            // Was unoverridden — the platform's own restart-throttle refusal
+            // (SCAN_FAILED_ALREADY_STARTED et al.) was invisible; the core's
+            // own scan_allowed() backoff had no way to see it either.
+            android.util.Log.w("IrisBle", "startScan failed errorCode=$errorCode")
         }
     }
 
@@ -158,7 +194,22 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         }
 
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+            if (newState == BluetoothGatt.STATE_CONNECTED) {
+                // Android never discovers services on its own; without this call
+                // gatt.services stays empty forever, onServicesDiscovered never
+                // fires, serviceCharacteristics never gets populated, and every
+                // gattWrite() on this connection fails with "characteristic not
+                // yet discovered" — the connection looks live (connect_gatt()
+                // already returned Ok) but can never actually carry a message.
+                // This callback runs off the FFI call stack (async platform
+                // event), so a permission loss here has nowhere typed to go;
+                // swallow it the same way disconnect/close teardown already
+                // does and let the eventual gattWrite failure surface it.
+                try {
+                    gatt.discoverServices()
+                } catch (_: SecurityException) {
+                }
+            } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
                 gattHandles.entries.removeIf { it.value == gatt }
                 serviceCharacteristics.remove(gatt)
                 negotiatedMtu.remove(gatt)
@@ -250,10 +301,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         if (server.addService(service)) gattServer = server
     }
 
-    private val advertiseCallback = object : AdvertiseCallback() {
-        override fun onStartSuccess(settingsInEffect: AdvertiseSettings) = Unit
-        override fun onStartFailure(errorCode: Int) = Unit
-    }
+    private val advertiseHandles = ConcurrentHashMap<Long, Pair<BluetoothLeAdvertiser, AdvertiseCallback>>()
 
     override fun startScan(filter: FfiScanFilter): ULong {
         // Was `syncCall(onTimeout = throwTimeout())`: throwTimeout() throws
@@ -315,22 +363,41 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
                 .setConnectable(!data.nonConnectable)
                 .build()
+            // Manufacturer Specific Data (2-byte company id), not Service Data
+            // (would need the 16-byte IRIS_SERVICE_UUID on air) — see
+            // IRIS_MANUFACTURER_ID for why: the beacon plus a 128-bit UUID
+            // cannot fit legacy advertising's 31-byte budget on any device,
+            // and most real hardware (confirmed on one of the two physical
+            // test devices) has no BLE 5 extended-advertising fallback.
             val adData = AdvertiseData.Builder()
-                .addServiceData(ParcelUuid(IRIS_SERVICE_UUID), data.payload)
+                .addManufacturerData(IRIS_MANUFACTURER_ID, data.payload)
                 .build()
-            if (adData.serviceData.isEmpty()) {
-                throw InvalidArgument("advertisement payload produced no service data")
+            if (adData.manufacturerSpecificData.size() == 0) {
+                throw InvalidArgument("advertisement payload produced no manufacturer data")
             }
-            permitted { advertiser.startAdvertising(settings, adData, advertiseCallback) }
             val handle = nextHandle.getAndIncrement()
-            advertiseHandles[handle] = advertiser
+            val callback = object : AdvertiseCallback() {
+                override fun onStartFailure(errorCode: Int) {
+                    // Was `= Unit` — every legacy-budget overflow (errorCode 1,
+                    // ADVERTISE_FAILED_DATA_TOO_LARGE) failed completely
+                    // silently and looked identical to a successful start.
+                    android.util.Log.w("IrisBle", "startAdvertising failed errorCode=$errorCode")
+                    advertiseHandles.remove(handle)
+                }
+            }
+            advertiseHandles[handle] = advertiser to callback
+            permitted { advertiser.startAdvertising(settings, adData, callback) }
             handle.toULong()
         }
     }
 
     override fun stopAdvertising(handle: ULong) {
         FfiCallTimeout.syncCall(onTimeout = Unit) {
-            quietly { advertiseHandles.remove(handle.toLong())?.stopAdvertising(advertiseCallback) }
+            quietly {
+                advertiseHandles.remove(handle.toLong())?.let { (advertiser, callback) ->
+                    advertiser.stopAdvertising(callback)
+                }
+            }
         }
     }
 

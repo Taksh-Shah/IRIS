@@ -65,6 +65,22 @@ pub const IRIS_SERVICE_UUID: Uuid = Uuid([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 pub const IRIS_IDENTIFY_CHARACTERISTIC: Uuid =
     Uuid([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
+/// IRIS GATT write characteristic — the one actual `AndroidBleTransportAdapter`
+/// (and its iOS counterpart) exposes on the peripheral's GATT server for
+/// inbound message frames. Must byte-match `AndroidBleTransportAdapter
+/// .IRIS_CHARACTERISTIC_UUID` (3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e) exactly:
+/// `send()` below hands this value across the FFI boundary as the literal
+/// UUID the platform adapter searches `gatt.services` for. `send()` used to
+/// pass [`IRIS_SERVICE_UUID`] here instead — a different, never-matching
+/// value — so `resolveCharacteristic` on the Android side always returned
+/// null and every real BLE write failed with "characteristic not yet
+/// discovered", tearing the peer back down via `close_peer` on the very
+/// first send. No message has ever actually reached a GATT characteristic
+/// on real hardware.
+pub const IRIS_WRITE_CHARACTERISTIC: Uuid = Uuid([
+    0x3e, 0x5c, 0x6b, 0x1a, 0x2a, 0x10, 0x4f, 0x6e, 0x9c, 0x31, 0x5f, 0x3e, 0x5a, 0x0b, 0x0c, 0x0e,
+]);
+
 /// Bluetooth device address (48-bit MAC).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BleAddress(pub [u8; 6]);
@@ -816,7 +832,7 @@ impl Transport for BleTransport {
                 }
                 for w in mine {
                     // Reject frames addressed to another characteristic.
-                    if w.char_uuid != IRIS_SERVICE_UUID {
+                    if w.char_uuid != IRIS_WRITE_CHARACTERISTIC {
                         continue;
                     }
                     match recon.push(&w.data, std::time::Instant::now()) {
@@ -870,7 +886,7 @@ impl Transport for BleTransport {
             .segmenter
             .segment_for_mtu(&message.payload, mtu)
             .map_err(|e| TransportError::Protocol(format!("ble: segmentation failed: {e}")))?;
-        let char_uuid = IRIS_SERVICE_UUID; // IRIS control characteristic
+        let char_uuid = IRIS_WRITE_CHARACTERISTIC;
         for frame in &frames {
             if let Err(e) = adapter.gatt_write(handle, char_uuid, frame.clone()) {
                 // Write failure = link is dead: tear the peer down (BLE-RT-005)
@@ -999,7 +1015,7 @@ mod tests {
         // Inject a valid single-chunk frame (header + payload).
         use crate::transport::ble_att::encode_frame;
         let frame = encode_frame(1, 0, 1, b"inbound".len(), b"inbound").unwrap();
-        adapter.inject_write(GattHandle(1), Uuid::from_u128(1), frame);
+        adapter.inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, frame);
         let mut incoming = t.incoming_messages();
         let got = tokio::time::timeout(Duration::from_millis(500), incoming.next()).await;
         let msg = got.expect("must receive injected write").unwrap();
@@ -1036,7 +1052,7 @@ mod tests {
 
         // Remote peer replays the same frames back (in-order) → reassembled.
         for f in frames {
-            adapter.inject_write(GattHandle(1), Uuid::from_u128(1), f);
+            adapter.inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, f);
         }
         let mut incoming = t.incoming_messages();
         let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
@@ -1069,7 +1085,7 @@ mod tests {
 
         // Deliver chunks in reverse order — the reassembler must reorder (AC-4).
         for f in frames.iter().rev() {
-            adapter.inject_write(GattHandle(1), Uuid::from_u128(1), f.clone());
+            adapter.inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, f.clone());
         }
         let mut incoming = t.incoming_messages();
         let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
@@ -1086,8 +1102,8 @@ mod tests {
 
         // A barrage of garbage writes must not panic the poller (AC-6).
         adapter.inject_write(GattHandle(1), Uuid::from_u128(0xDEAD), b"junk".to_vec());
-        adapter.inject_write(GattHandle(1), Uuid::from_u128(1), vec![0u8; 5]); // < header
-        adapter.inject_write(GattHandle(1), Uuid::from_u128(1), vec![0xFF; 64]); // count overflow
+        adapter.inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, vec![0u8; 5]); // < header
+        adapter.inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, vec![0xFF; 64]); // count overflow
         tokio::time::sleep(Duration::from_millis(200)).await;
         // No message arrives; transport still works.
         let small = SerializedMessage {
@@ -1555,7 +1571,7 @@ mod tests {
         for f in frames {
             adapter
                 .inner
-                .inject_write(GattHandle(1), IRIS_SERVICE_UUID, f);
+                .inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, f);
         }
         let mut incoming = t.incoming_messages();
         let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
@@ -1647,7 +1663,7 @@ mod tests {
             // fake: total declared 600, idx 0, count 2
             adapter.inject_write(
                 GattHandle(1),
-                Uuid::from_u128(1),
+                IRIS_WRITE_CHARACTERISTIC,
                 encode_frame(id, 0, 2, 600, &[0u8; 200]).unwrap(),
             );
         }
@@ -1656,7 +1672,7 @@ mod tests {
         // A fresh complete message now flows end-to-end.
         let payload: Vec<u8> = (0..300u32).map(|i| (i % 251) as u8).collect();
         let frame = encode_frame(50_000, 0, 1, payload.len(), &payload).unwrap();
-        adapter.inject_write(GattHandle(1), Uuid::from_u128(1), frame);
+        adapter.inject_write(GattHandle(1), IRIS_WRITE_CHARACTERISTIC, frame);
         let mut incoming = t.incoming_messages();
         let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
         let msg = got.expect("post-eviction message must reassemble").unwrap();
@@ -1765,12 +1781,12 @@ mod tests {
         let (_id, frames) = s.segment(&payload_a).unwrap();
         assert!(frames.len() > 1);
         for f in &frames {
-            adapter.inject_write(ha, Uuid::from_u128(1), f.clone());
+            adapter.inject_write(ha, IRIS_WRITE_CHARACTERISTIC, f.clone());
         }
         // Single-chunk frame for peer B.
         let payload_b = b"b-only".to_vec();
         let fb = encode_frame(1, 0, 1, payload_b.len(), &payload_b).unwrap();
-        adapter.inject_write(hb, Uuid::from_u128(1), fb);
+        adapter.inject_write(hb, IRIS_WRITE_CHARACTERISTIC, fb);
 
         let mut incoming = t.incoming_messages();
         let first = tokio::time::timeout(Duration::from_secs(2), incoming.next())
