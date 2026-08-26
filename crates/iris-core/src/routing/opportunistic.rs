@@ -153,6 +153,10 @@ impl OpportunisticRouter {
         priority: MessagePriority,
         hop_budget: u8,
     ) -> bool {
+        // ROUT-8: NaN/∞ DPs bypass all <= guards (NaN comparisons are always false).
+        if !p_candidate.is_finite() {
+            return false;
+        }
         if p_candidate <= self.pred.config().p_first_threshold {
             return false;
         }
@@ -189,10 +193,12 @@ impl OpportunisticRouter {
     ) -> OpportunisticDecision {
         let mut best: Option<(PeerId, f64)> = None;
         for (nb, p) in candidates {
-            if self.gtmx_advantage(message_id, nb, *p, dest, priority, hop_budget)
-                && best.as_ref().map(|(_, bp)| *p > *bp).unwrap_or(true)
+            // ROUT-8: clamp wire DP to [0,1] before any comparison.
+            let p = p.clamp(0.0_f64, 1.0_f64);
+            if self.gtmx_advantage(message_id, nb, p, dest, priority, hop_budget)
+                && best.as_ref().map(|(_, bp)| p.total_cmp(bp) == std::cmp::Ordering::Greater).unwrap_or(true)
             {
-                best = Some((*nb, *p));
+                best = Some((*nb, p));
             }
         }
         match best {
@@ -354,5 +360,36 @@ mod tests {
         // 4→2→1 (2 handoffs) then wait phase.
         assert_eq!(handed, 2);
         assert!(budget.is_wait_phase());
+    }
+
+    #[test]
+    fn rout8_nan_inf_dp_never_wins() {
+        // Regression: NaN bypasses all <= guards (NaN comparisons are always false).
+        // An attacker advertising NaN would be forwarded to and honest candidates ignored.
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(9);
+        r.on_contact(&pid(8), &[(dest, 0.9)]); // my DP > 0 so gtmx can fire
+        let msg = mid();
+
+        assert!(!r.gtmx_advantage(&msg, &pid(5), f64::NAN, &dest, MessagePriority::P4, 3));
+        assert!(!r.gtmx_advantage(&msg, &pid(5), f64::INFINITY, &dest, MessagePriority::P4, 3));
+        assert!(!r.gtmx_advantage(&msg, &pid(5), f64::NEG_INFINITY, &dest, MessagePriority::P4, 3));
+
+        // NaN/Inf candidate loses to an honest one in decide().
+        let decision = r.decide(
+            &mid(),
+            &dest,
+            &[(pid(2), f64::NAN), (pid(3), 0.95)],
+            MessagePriority::P4,
+            3,
+        );
+        assert_eq!(
+            decision,
+            OpportunisticDecision::ForwardTo {
+                next_hop: pid(3),
+                reason: OpportunisticReason::Prophet,
+            },
+            "honest candidate should win over NaN"
+        );
     }
 }
