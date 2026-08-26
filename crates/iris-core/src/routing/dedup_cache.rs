@@ -27,7 +27,6 @@ pub struct ForwardedCache {
     bloom: BloomFilter,
     exact: HashSet<MessageId>,
     ring: VecDeque<(MessageId, Instant)>,
-    peers_seen: HashSet<[u8; 32]>,
 }
 
 impl Default for ForwardedCache {
@@ -36,7 +35,6 @@ impl Default for ForwardedCache {
             bloom: BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
             exact: HashSet::new(),
             ring: VecDeque::new(),
-            peers_seen: HashSet::new(),
         }
     }
 }
@@ -74,17 +72,6 @@ impl ForwardedCache {
                 break;
             }
         }
-    }
-
-    /// Record that a peer was seen; used to skip needless re-flooding toward
-    /// already-contacted peers (without altering the message-level window).
-    pub fn record_peer(&mut self, peer: [u8; 32]) {
-        self.peers_seen.insert(peer);
-    }
-
-    /// Whether a peer has been contacted recently (flood hint).
-    pub fn contains_peer(&self, peer: &[u8; 32]) -> bool {
-        self.peers_seen.contains(peer)
     }
 
     pub fn len(&self) -> usize {
@@ -132,12 +119,4 @@ mod tests {
         assert!(cache.len() >= 10);
     }
 
-    #[test]
-    fn peers_seen_tracked() {
-        let mut cache = ForwardedCache::default();
-        let peer = [7u8; 32];
-        assert!(!cache.contains_peer(&peer));
-        cache.record_peer(peer);
-        assert!(cache.contains_peer(&peer));
-    }
 }

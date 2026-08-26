@@ -252,9 +252,6 @@ impl RoutingEngine {
         // Algorithm 1: Direct delivery.
         if let Some(decision) = try_direct(recipient, neighbor_table).await {
             self.forward_cache.record(message_id);
-            if let ForwardingDecision::Forward { next_hop, .. } = &decision {
-                self.forward_cache.record_peer(next_hop.0);
-            }
             return decision;
         }
         // Algorithm 2: Known path (validate next-hop reachability).
@@ -262,9 +259,6 @@ impl RoutingEngine {
             try_known_path(recipient, &mut self.routing_table, neighbor_table).await
         {
             self.forward_cache.record(message_id);
-            if let ForwardingDecision::Forward { next_hop, .. } = &decision {
-                self.forward_cache.record_peer(next_hop.0);
-            }
             return decision;
         }
         // Algorithm 2.5 (ROUTE-002): opportunistic DP forward — consulted with
@@ -272,7 +266,6 @@ impl RoutingEngine {
         // [`RoutingEngine::decide_opportunistic`] and short-circuit the flood.
         if let Some(nb) = self.decide_opportunistic(&message_id, recipient, priority, hop_count, &[]) {
             self.forward_cache.record(message_id);
-            self.forward_cache.record_peer(nb.0);
             return ForwardingDecision::Forward {
                 next_hop: nb,
                 algorithm: ForwardingAlgorithm::Opportunistic,
@@ -286,15 +279,11 @@ impl RoutingEngine {
                 sender,
                 &already_flooded,
                 hop_count,
-                &self.forward_cache,
                 &recipient,
             )
             .await;
             if !recipients.is_empty() {
                 self.forward_cache.record(message_id);
-                for r in &recipients {
-                    self.forward_cache.record_peer(r.0);
-                }
                 return ForwardingDecision::Flood { recipients };
             }
         }

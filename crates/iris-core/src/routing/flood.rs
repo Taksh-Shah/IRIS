@@ -10,7 +10,6 @@
 
 use crate::discovery::neighbor_table::NeighborTable;
 use crate::message::{MessagePriority, PeerId};
-use crate::routing::dedup_cache::ForwardedCache;
 use crate::transport::TransportId;
 
 /// Priority-derived flood policy (BASELINE_ROUTING.md §Algorithm 3 default
@@ -44,7 +43,6 @@ pub async fn recipients_for_flood(
     sender: PeerId,
     already_flooded: &[PeerId],
     _hop_count: u8,
-    cache: &ForwardedCache,
     recipient: &PeerId,
 ) -> Vec<PeerId> {
     let mut recipients = Vec::new();
@@ -57,7 +55,6 @@ pub async fn recipients_for_flood(
         if nb.peer_id == sender
             || nb.peer_id == *recipient
             || already_flooded.contains(&nb.peer_id)
-            || cache.contains_peer(nb.peer_id.as_bytes())
         {
             continue;
         }
@@ -117,8 +114,7 @@ mod tests {
     #[tokio::test]
     async fn flood_excludes_sender_and_prior() {
         let t = table_with(&[1, 2, 3, 4]).await;
-        let cache = ForwardedCache::default();
-        let r = recipients_for_flood(&t, pid(1), &[pid(3)], 0, &cache, &pid(99)).await;
+        let r = recipients_for_flood(&t, pid(1), &[pid(3)], 0, &pid(99)).await;
         assert_eq!(r.len(), 2);
         assert!(r.contains(&pid(2)));
         assert!(r.contains(&pid(4)));
@@ -127,8 +123,7 @@ mod tests {
     #[tokio::test]
     async fn flood_includes_excellence_bit() {
         let t = table_with(&[2]).await;
-        let cache = ForwardedCache::default();
-        let r = recipients_for_flood(&t, pid(1), &[], 0, &cache, &pid(99)).await;
+        let r = recipients_for_flood(&t, pid(1), &[], 0, &pid(99)).await;
         assert_eq!(r, vec![pid(2)]);
     }
 
@@ -175,7 +170,6 @@ mod tests {
 
             let source = pid(1);
             let dest = pid(12);
-            let cache = ForwardedCache::default();
 
             // BFS-style flood simulation.
             let mut frontier = vec![source];
@@ -192,7 +186,7 @@ mod tests {
                         reached = true;
                         continue;
                     }
-                    let r = recipients_for_flood(&table, *node, &[], hop, &cache, &dest).await;
+                    let r = recipients_for_flood(&table, *node, &[], hop, &dest).await;
                     for nb in r {
                         if visited.insert(nb) {
                             next.push(nb);
@@ -235,8 +229,7 @@ mod tests {
                 .filter(|i| *i != sender.0[0] % 8)
                 .map(|i| pid(i + 1))
                 .collect();
-            let cache = ForwardedCache::default();
-            let r = recipients_for_flood(&table, sender, &already, 0, &cache, &pid(99)).await;
+            let r = recipients_for_flood(&table, sender, &already, 0, &pid(99)).await;
             assert!(!r.contains(&sender), "no-backtrack violated");
             for a in &already {
                 assert!(!r.contains(a), "re-flood to already-flooded node");
