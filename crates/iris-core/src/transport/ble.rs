@@ -354,7 +354,14 @@ pub struct BleTransport {
     /// Abort handles for the per-peer inbound-poll tasks so shutdown() actually
     /// stops them (RED-0009-02, was an unowned infinite loop leaking a task).
     pollers: std::sync::RwLock<std::collections::HashMap<PeerId, tokio::task::AbortHandle>>,
-    /// Live ATT MTU (negotiate-late; segmenter resizes on `on_mtu_changed`).
+    /// Fragment-header codec only. BLE-5: the doc here used to claim the
+    /// segmenter's own MTU resizes live via `on_mtu_changed` — it never did;
+    /// `on_mtu_changed`/`mtu()` have zero callers outside `ble_att.rs`'s own
+    /// tests. The real per-peer negotiate-late MTU lives in `connections`
+    /// (see its doc above) and `send()` calls `segment_for_mtu(payload, mtu)`
+    /// with that per-connection value directly — this segmenter's internal
+    /// MTU state is never read on the send path. Verified correct behaviour,
+    /// misleading comment; not a functional defect.
     segmenter: AttSegmenter,
     /// Scan restart backoff state (AC-5; >=5 start/stop per 30s ceiling,
     /// RES-0019 R6.2 + G4 Android-17 hardening).
