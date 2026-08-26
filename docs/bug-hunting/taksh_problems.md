@@ -32,7 +32,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 in progress. 7/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 PLACEHOLDER). 4 remain (RF-35..38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
+**Last updated:** 2026-08-26 — Tier 1 in progress. 7/11 fixed this session (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 5d3199c). 4 remain (RF-35..38). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -596,7 +596,7 @@ pub const TRANSPORT_INBOUND_LAGGED: &str = "iris.transport.inbound_lagged_total"
 
 #### SYS-4: Error-discarding `let _ =` is used 68 times across Section 3, concentrated in the gateway
 - **Severity:** Medium
-- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit PLACEHOLDER  ·  2026-08-26
+- **Fix status:** ✅ Fixed  ·  Tier 1  ·  commit 5d3199c  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs` and 13 other files — 68 occurrences across Section 3. Distribution: `gateway/mod.rs` 20, `wifiaware.rs` 9, `wifi_direct.rs` 8, `satellite.rs` 8, `lora.rs` 4, `internet.rs` 3, `ble.rs` 3, `opportunistic.rs` 3, `simulated.rs` 2, `manager.rs` 2, `sim/mod.rs` 2, `flood.rs` 2, `pg.rs` 1, `ble_att.rs` 1.
 - **What:** `let _ = expr;` discards a `Result` without inspecting it. Used deliberately it is fine (e.g. a broadcast send with no subscribers legitimately fails). Used reflexively it erases the distinction between "expected no-op" and "the operation failed and the caller needed to know". At 68 sites there is no way to tell which is which by reading, and the per-adapter reviews found concrete cases in each category.
