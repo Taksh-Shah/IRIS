@@ -415,6 +415,11 @@ const SCAN_WINDOW: std::time::Duration = std::time::Duration::from_secs(30);
 /// Backoff cap (Android 17 hardens throttling; exponential 1s..=30s).
 const SCAN_BACKOFF_MAX_S: u64 = 30;
 
+// SYS-2: deadline constants for radio adapter calls (connect / MTU).
+// A hung connectGatt call blocks the node indefinitely without these.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+const MTU_TIMEOUT: Duration = Duration::from_secs(10);
+
 impl BleTransport {
     pub fn new(adapter: Option<std::sync::Arc<dyn BleAdapter>>) -> Self {
         let (state_tx, _) = broadcast::channel(64);
@@ -796,14 +801,19 @@ impl Transport for BleTransport {
         // scheduled on it — `spawn_blocking` hands it to the blocking pool
         // instead.
         let blocking_adapter = adapter.clone();
-        let connect_result = tokio::task::spawn_blocking(move || blocking_adapter.connect_gatt(mac))
-            .await
-            .unwrap_or_else(|e| {
-                Err(BleError::GattFailure(format!(
-                    "connect_gatt task panicked: {e}"
-                )))
-            })
-            .map_err(to_transport_err);
+        let connect_result = match tokio::time::timeout(
+            CONNECT_TIMEOUT,
+            tokio::task::spawn_blocking(move || blocking_adapter.connect_gatt(mac)),
+        )
+        .await
+        {
+            Ok(join_result) => join_result
+                .unwrap_or_else(|e| {
+                    Err(BleError::GattFailure(format!("connect_gatt task panicked: {e}")))
+                })
+                .map_err(to_transport_err),
+            Err(_elapsed) => Err(TransportError::ConnectionFailed),
+        };
         let handle = match connect_result {
             Ok(h) => h,
             // Restore a usable state on connection failure (BLE-RT-004,
@@ -828,11 +838,15 @@ impl Transport for BleTransport {
         // Also run on the blocking pool: it is the same kind of synchronous
         // platform round trip as connect_gatt above.
         let mtu_adapter = adapter.clone();
-        let negotiated = tokio::task::spawn_blocking(move || {
-            mtu_adapter.set_mtu(handle, crate::transport::ble_att::MTU_NEGOTIATED)
-        })
+        let negotiated = tokio::time::timeout(
+            MTU_TIMEOUT,
+            tokio::task::spawn_blocking(move || {
+                mtu_adapter.set_mtu(handle, crate::transport::ble_att::MTU_NEGOTIATED)
+            }),
+        )
         .await
         .ok()
+        .and_then(|r| r.ok())
         .and_then(Result::ok)
         .unwrap_or(crate::transport::ble_att::MTU_DEFAULT);
         // iOS reports the negotiated ATT *payload* (`maximumWriteValueLength`,

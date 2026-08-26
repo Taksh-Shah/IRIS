@@ -1264,6 +1264,10 @@ pub struct LoRaTransport {
     shutdown_flag: AtomicBool,
 }
 
+// SYS-2: deadline constants for LoRa adapter calls.
+const OPEN_TIMEOUT: Duration = Duration::from_secs(10);
+const TX_TIMEOUT: Duration = Duration::from_secs(30);
+
 impl LoRaTransport {
     pub fn new(id: &str) -> Self {
         Self::with_tracker(id, Arc::new(DutyCycleTracker::new()))
@@ -1307,7 +1311,9 @@ impl LoRaTransport {
         if self.shutdown_flag.load(Ordering::Acquire) {
             return Err(LoRaLinkError::Closed);
         }
-        adapter.open().await?;
+        tokio::time::timeout(OPEN_TIMEOUT, adapter.open())
+            .await
+            .map_err(|_| LoRaLinkError::Io("open timed out".to_string()))??;
         *self.adapter.write().await = Some(adapter);
         if self.state.load() < TransportState::Available {
             self.set_state(TransportState::Available);
@@ -1411,7 +1417,10 @@ impl LoRaTransport {
             return Err(TransportError::Busy);
         }
         let slip = encode_slip(&encoded);
-        if let Err(e) = adapter.tx(&slip).await {
+        let tx_result = tokio::time::timeout(TX_TIMEOUT, adapter.tx(&slip))
+            .await
+            .map_err(|_| LoRaLinkError::Io("tx timed out".to_string()));
+        if let Err(e) = tx_result.and_then(|r| r) {
             // RT-104: the reservation never reached the air — refund it so a
             // flapping dongle cannot incinerate the legal hourly budget.
             self.tracker.refund(msg.priority, airtime);

@@ -868,6 +868,11 @@ pub struct SatelliteTransport {
     confirm_hook: tokio::sync::RwLock<ConfirmHook>,
 }
 
+// SYS-2: deadline constants for satellite adapter calls.
+// Satellite link establishment (Iridium SBD ISU AT commands) can take up to 60s.
+const OPEN_TIMEOUT: Duration = Duration::from_secs(60);
+const TX_TIMEOUT: Duration = Duration::from_secs(90);
+
 impl SatelliteTransport {
     pub fn new(id: &str) -> Self {
         let ledger: Arc<dyn CostLedger> = Arc::new(InMemoryLedger::new());
@@ -919,7 +924,9 @@ impl SatelliteTransport {
         if self.shutdown_flag.load(Ordering::Acquire) {
             return Err(SatelliteLinkError::Closed);
         }
-        adapter.open().await?;
+        tokio::time::timeout(OPEN_TIMEOUT, adapter.open())
+            .await
+            .map_err(|_| SatelliteLinkError::Io("open timed out".to_string()))??;
         // SAT-RT-108: re-check shutdown INSIDE the slot critical section (a
         // racing shutdown must not be resurrected behind Available state) and
         // close+drop any replaced adapter (double-open port-leak fix).
@@ -1066,7 +1073,10 @@ impl SatelliteTransport {
                 return Err(TransportError::Busy);
             }
         }
-        if let Err(e) = adapter.tx(&msg.payload).await {
+        let tx_result = tokio::time::timeout(TX_TIMEOUT, adapter.tx(&msg.payload))
+            .await
+            .map_err(|_| SatelliteLinkError::Io("tx timed out".to_string()));
+        if let Err(e) = tx_result.and_then(|r| r) {
             // RT-104: the payload never reached the air — refund the spend.
             self.guard.refund_tx(admission.token);
             self.metrics.tx_failures().fetch_add(1, Ordering::Relaxed);

@@ -67,6 +67,10 @@ use crate::TransportError;
 
 /// Maximum message bytes carried in one Wi-Fi Direct frame (INTERNET-001 TCP
 /// framing cap, RES-0021 Q7 / WIFI_DIRECT_TRANSPORT_DESIGN.md §2.2).
+// SYS-2: deadline constants for Wi-Fi Direct adapter calls.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+const SEND_TIMEOUT: Duration = Duration::from_secs(10);
+
 const MAX_WIFI_DIRECT_MESSAGE_BYTES: usize = 1024 * 1024;
 
 /// Bounded GO-side connection table (software admission cap, DEC-WD-0006): the
@@ -1189,24 +1193,37 @@ impl Transport for WifiDirectTransport {
             // Try the requested band; band-constrained GO creation fails → AUTO
             // fallback (AC-3, DEC-WD-0005).
             let mut cfg = self.group_config.clone();
-            let go_result = match adapter.create_group(&cfg).await {
+            let go_result = match tokio::time::timeout(
+                CONNECT_TIMEOUT,
+                adapter.create_group(&cfg),
+            )
+            .await
+            .map_err(|_| "group creation timed out".to_string())
+            .and_then(|r| r)
+            {
                 Ok(g) => Ok(g),
                 Err(e) if e.contains("band") => {
                     cfg.band = OperatingBand::Auto;
-                    adapter.create_group(&cfg).await
+                    tokio::time::timeout(CONNECT_TIMEOUT, adapter.create_group(&cfg))
+                        .await
+                        .map_err(|_| "group creation timed out".to_string())
+                        .and_then(|r| r)
                 }
                 Err(e) => Err(e),
             };
             let _ = go_result.map_err(|_| TransportError::ConnectionFailed)?;
-            let _ = adapter
-                .add_client(PeerHandle(handle))
+            let _ = tokio::time::timeout(CONNECT_TIMEOUT, adapter.add_client(PeerHandle(handle)))
                 .await
+                .map_err(|_| TransportError::ConnectionFailed)?
                 .map_err(|_| TransportError::ConnectionFailed)?;
         } else {
-            let _ = adapter
-                .join_group(PeerHandle(handle), &self.group_config)
-                .await
-                .map_err(|_| TransportError::ConnectionFailed)?;
+            let _ = tokio::time::timeout(
+                CONNECT_TIMEOUT,
+                adapter.join_group(PeerHandle(handle), &self.group_config),
+            )
+            .await
+            .map_err(|_| TransportError::ConnectionFailed)?
+            .map_err(|_| TransportError::ConnectionFailed)?;
         }
         // Defense-in-depth: re-check availability/state after group formation.
         if self.state.load() == TransportState::Unavailable || !adapter.is_available() {
@@ -1270,7 +1287,10 @@ impl Transport for WifiDirectTransport {
             .map(|l| l.handle)
             .ok_or(TransportError::NotConnected)?;
         let frame = encode_frame(message)?;
-        match adapter.p2p_send(handle, &frame).await {
+        let send_result = tokio::time::timeout(SEND_TIMEOUT, adapter.p2p_send(handle, &frame))
+            .await
+            .unwrap_or(Err("p2p_send timed out".to_string()));
+        match send_result {
             Ok(()) => {}
             Err(e) => {
                 if is_link_loss_error(&e) {

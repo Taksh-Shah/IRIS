@@ -59,6 +59,10 @@ use crate::TransportError;
 
 /// Maximum message bytes carried in one NDP frame (Wi-Fi 6E AFH datapath is a
 /// dedicated data plane; the platform reassembles frames into one blob).
+// SYS-2: deadline constants for Wi-Fi Aware adapter calls.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+const SEND_TIMEOUT: Duration = Duration::from_secs(10);
+
 const MAX_NAN_MESSAGE_BYTES: usize = 1024 * 1024;
 
 /// Upper bound on simultaneously open NAN Data Paths, matching the Android
@@ -1042,9 +1046,9 @@ impl Transport for WifiAwareTransport {
                 return Err(TransportError::Busy);
             }
         }
-        let ndp = adapter
-            .open_ndp(PeerHandle(handle))
+        let ndp = tokio::time::timeout(CONNECT_TIMEOUT, adapter.open_ndp(PeerHandle(handle)))
             .await
+            .map_err(|_| TransportError::ConnectionFailed)?
             .map_err(|_| TransportError::ConnectionFailed)?;
         // WAW-RT-003: defense-in-depth — if the adapter detached internally
         // while open_ndp awaited, don't register a dead NDP. NEW-WA-RT-103:
@@ -1093,7 +1097,10 @@ impl Transport for WifiAwareTransport {
             .map(|l| l.ndp)
             .ok_or(TransportError::NotConnected)?;
         let frame = encode_frame(message)?;
-        match adapter.ndp_send(ndp, &frame).await {
+        let send_result = tokio::time::timeout(SEND_TIMEOUT, adapter.ndp_send(ndp, &frame))
+            .await
+            .unwrap_or(Err("ndp_send timed out".to_string()));
+        match send_result {
             Ok(()) => {}
             Err(e) => {
                 // NEW-WA-RT-107: only a link-loss error is terminal. The FFI
