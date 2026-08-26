@@ -170,7 +170,14 @@ pub trait WifiAwareAdapter: Send + Sync {
     async fn unpublish(&self) -> Result<(), String>;
 
     /// Drain current discovery matches.
-    async fn matches(&self) -> Vec<PeerDiscovery>;
+    ///
+    /// BLE-30: this and [`incoming_ndp`](Self::incoming_ndp) used to be
+    /// infallible by signature while the FFI beneath them
+    /// (`FfiWifiAwareAdapter::matches`) is fallible — forcing the bridge to
+    /// discard every adapter error as `unwrap_or_default()` ("session died"
+    /// became indistinguishable from "no peers found"). Fallible now so a
+    /// caller can tell the two apart.
+    async fn matches(&self) -> Result<Vec<PeerDiscovery>, String>;
 
     /// Open a NAN Data Path to a peer; returns the NDP handle.
     async fn open_ndp(&self, peer_handle: PeerHandle) -> Result<NdpHandle, String>;
@@ -182,7 +189,9 @@ pub trait WifiAwareAdapter: Send + Sync {
     async fn ndp_send(&self, ndp: NdpHandle, payload: &[u8]) -> Result<(), String>;
 
     /// Drain inbound NDP frames.
-    async fn incoming_ndp(&self) -> Vec<IncomingNdpData>;
+    ///
+    /// BLE-30: fallible for the same reason as [`matches`](Self::matches).
+    async fn incoming_ndp(&self) -> Result<Vec<IncomingNdpData>, String>;
 
     /// Tear down the subsystem (unsubscribe, unpublish, close NDPs, detach).
     async fn shutdown(&self) -> Result<(), String>;
@@ -433,19 +442,20 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
         Ok(())
     }
 
-    async fn matches(&self) -> Vec<PeerDiscovery> {
+    async fn matches(&self) -> Result<Vec<PeerDiscovery>, String> {
         if !self.subscribed.load(Ordering::Acquire) {
-            return Vec::new();
+            return Ok(Vec::new());
         }
         let tag = *self.tag.lock().unwrap();
-        self.coordinator
+        Ok(self
+            .coordinator
             .visible_peers(tag)
             .into_iter()
             .map(|(t, beacon)| PeerDiscovery {
                 peer_handle: PeerHandle(t),
                 service_specific_info: beacon,
             })
-            .collect()
+            .collect())
     }
 
     async fn open_ndp(&self, peer_handle: PeerHandle) -> Result<NdpHandle, String> {
@@ -478,9 +488,10 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
         Ok(())
     }
 
-    async fn incoming_ndp(&self) -> Vec<IncomingNdpData> {
+    async fn incoming_ndp(&self) -> Result<Vec<IncomingNdpData>, String> {
         let tag = *self.tag.lock().unwrap();
-        self.coordinator
+        Ok(self
+            .coordinator
             .drain_outbox(tag)
             .into_iter()
             .map(|(from, payload)| {
@@ -498,7 +509,7 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
                     payload,
                 }
             })
-            .collect()
+            .collect())
     }
 
     async fn shutdown(&self) -> Result<(), String> {
@@ -580,10 +591,24 @@ fn state_is_available(state: &TransportState) -> bool {
     *state >= TransportState::Available
 }
 
-/// NEW-WA-RT-107: classify an adapter `ndp_send` error as terminal link loss.
-/// The FFI contract pins the markers ("ndp_not_open" / "ndp closed" / "ndp
-/// not open") for a dead path; anything else is treated as transient
-/// congestion and must NOT tear the link down (reconnect-storm avoidance).
+/// NEW-WA-RT-107 / BLE-29: classify an adapter `ndp_send` error as terminal
+/// link loss. The original marker set ("not open" / "closed" / "disconnect"
+/// / "reset" / "link lost") was written against `SimulatedWifiAwareAdapter`'s
+/// vocabulary, not the real Android adapter's — the actual
+/// `WifiAwareNetworkSpecifier` failure surfaces as `"NDP terminated"` or
+/// `"NETWORK_LOST"` (per `ConnectivityManager.NetworkCallback.onLost`), and
+/// neither matched, so no link ever got torn down on a real device: every
+/// send returned `Busy` forever and the dead peer stayed `Connected`. Widened
+/// to include the real markers.
+///
+/// This is still substring classification over a string with no format
+/// guarantee, which is structurally unsound at a UniFFI boundary — a typed
+/// `LinkClosed` FFI error variant that the Kotlin adapter constructs directly
+/// (rather than a stringified message) is the correct long-term fix and is
+/// out of scope for a Rust-only pass: it requires the Kotlin adapter to throw
+/// the new type at the right call sites, which cannot be verified without a
+/// Kotlin toolchain. A bare numeric failure code (the third form Android can
+/// produce) is unclassifiable by string matching in principle regardless.
 fn is_link_loss_error(e: &str) -> bool {
     let e = e.to_ascii_lowercase();
     e.contains("not open")
@@ -591,6 +616,9 @@ fn is_link_loss_error(e: &str) -> bool {
         || e.contains("disconnect")
         || e.contains("reset")
         || e.contains("link lost")
+        || e.contains("ndp terminated")
+        || e.contains("network_lost")
+        || e.contains("network lost")
 }
 
 impl fmt::Debug for WifiAwareTransport {
@@ -762,7 +790,16 @@ impl WifiAwareTransport {
                     .await;
                 // Top up the backlog from the adapter, then forward at most
                 // MAX_FRAMES_PER_TICK per tick (NEW-WA-RT-105).
-                backlog.extend(adapter.incoming_ndp().await);
+                // BLE-30: the drain is now fallible — a session-died error is
+                // no longer indistinguishable from "no frames this tick".
+                match adapter.incoming_ndp().await {
+                    Ok(frames) => backlog.extend(frames),
+                    Err(e) => tracing::warn!(
+                        event = "wifiaware.incoming_ndp_failed",
+                        error = %e,
+                        "NDP drain failed for this tick"
+                    ),
+                }
                 for _ in 0..MAX_FRAMES_PER_TICK {
                     let Some(frame) = backlog.pop_front() else {
                         break;
@@ -881,7 +918,12 @@ impl Transport for WifiAwareTransport {
     ) -> Result<Pin<Box<dyn Stream<Item = PeerInfo> + Send>>, TransportError> {
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
-        let matches = adapter.matches().await;
+        // BLE-30: the drain is now fallible — surface an adapter-session
+        // failure as a real error instead of silently reporting zero peers.
+        let matches = adapter
+            .matches()
+            .await
+            .map_err(TransportError::Protocol)?;
         let mut infos: Vec<PeerInfo> = Vec::new();
         for m in matches.iter().take(config.max_peers) {
             let Ok(beacon) = WifiAwareBeacon::parse(&m.service_specific_info) else {
@@ -1443,7 +1485,7 @@ mod tests {
             async fn unpublish(&self) -> Result<(), String> {
                 self.inner.unpublish().await
             }
-            async fn matches(&self) -> Vec<PeerDiscovery> {
+            async fn matches(&self) -> Result<Vec<PeerDiscovery>, String> {
                 self.inner.matches().await
             }
             async fn open_ndp(&self, peer_handle: PeerHandle) -> Result<NdpHandle, String> {
@@ -1458,7 +1500,7 @@ mod tests {
                 }
                 self.inner.ndp_send(ndp, payload).await
             }
-            async fn incoming_ndp(&self) -> Vec<IncomingNdpData> {
+            async fn incoming_ndp(&self) -> Result<Vec<IncomingNdpData>, String> {
                 self.inner.incoming_ndp().await
             }
             async fn shutdown(&self) -> Result<(), String> {

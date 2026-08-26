@@ -13,9 +13,12 @@
 //! buffers: each drain first transfers the FFI `Vec` into the bridge's buffer,
 //! then hands the guard to the transport's poller.
 
+use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use async_trait::async_trait;
+use futures_util::stream::Stream;
 
 use iris_core::transport::ble::{
     AdvHandle, AdvertisementData, BleAdapter, BleAddress, BleError, GattHandle, GattWriteEvent,
@@ -234,6 +237,32 @@ impl BleAdapter for BleBridge {
 // ---------------------------------------------------------------------------
 
 /// Bridges the async `WifiAwareAdapter` trait onto the async FFI projection.
+/// FFI-16 / BLE-28: neither Wi-Fi Aware nor Wi-Fi Direct's Android bridge
+/// overrode `availability_stream()`, so both inherited the trait default of
+/// `None` — the transport's `spawn_avail_watcher` sees no stream and never
+/// spawns anything, so the `Degraded`/recovery state machine never runs on a
+/// real device (state only changes when a send or connect happens to call
+/// `is_available()`). The FFI projection has no push callback for this, but
+/// `is_available()` is a cheap, synchronous, already-working call — poll it
+/// on a ticker and synthesize the stream the transport already knows how to
+/// consume. The consumer no-ops on a repeated value, so no de-duplication is
+/// needed here.
+const AVAILABILITY_POLL_MS: u64 = 500;
+
+fn poll_availability_stream(
+    is_available: impl Fn() -> bool + Send + 'static,
+) -> Pin<Box<dyn Stream<Item = bool> + Send + 'static>> {
+    let interval = tokio::time::interval(Duration::from_millis(AVAILABILITY_POLL_MS));
+    Box::pin(futures_util::stream::unfold(
+        (is_available, interval),
+        |(is_available, mut interval)| async move {
+            interval.tick().await;
+            let available = is_available();
+            Some((available, (is_available, interval)))
+        },
+    ))
+}
+
 pub struct WifiAwareBridge {
     ffi: Arc<dyn FfiWifiAwareAdapter>,
 }
@@ -274,17 +303,18 @@ impl WifiAwareAdapter for WifiAwareBridge {
         self.ffi.unpublish().await.map_err(|e| e.to_string())
     }
 
-    async fn matches(&self) -> Vec<WaPeerDiscovery> {
-        self.ffi
+    async fn matches(&self) -> Result<Vec<WaPeerDiscovery>, String> {
+        Ok(self
+            .ffi
             .matches()
             .await
-            .unwrap_or_default()
+            .map_err(|e| e.to_string())?
             .into_iter()
             .map(|m: FfiPeerDiscovery| WaPeerDiscovery {
                 peer_handle: WaPeerHandle(m.peer_handle),
                 service_specific_info: m.service_specific_info,
             })
-            .collect()
+            .collect())
     }
 
     async fn open_ndp(&self, peer_handle: WaPeerHandle) -> Result<NdpHandle, String> {
@@ -306,11 +336,12 @@ impl WifiAwareAdapter for WifiAwareBridge {
             .map_err(|e| e.to_string())
     }
 
-    async fn incoming_ndp(&self) -> Vec<IncomingNdpData> {
-        self.ffi
+    async fn incoming_ndp(&self) -> Result<Vec<IncomingNdpData>, String> {
+        Ok(self
+            .ffi
             .incoming_ndp()
             .await
-            .unwrap_or_default()
+            .map_err(|e| e.to_string())?
             .into_iter()
             .map(|d: FfiIncomingNdpData| IncomingNdpData {
                 ndp: NdpHandle(d.ndp_handle),
@@ -320,7 +351,7 @@ impl WifiAwareAdapter for WifiAwareBridge {
                     .map(iris_core::message::PeerId::from_bytes),
                 payload: d.payload,
             })
-            .collect()
+            .collect())
     }
 
     async fn shutdown(&self) -> Result<(), String> {
@@ -329,6 +360,11 @@ impl WifiAwareAdapter for WifiAwareBridge {
 
     fn is_available(&self) -> bool {
         self.ffi.is_available()
+    }
+
+    fn availability_stream(&self) -> Option<Pin<Box<dyn Stream<Item = bool> + Send + 'static>>> {
+        let ffi = self.ffi.clone();
+        Some(poll_availability_stream(move || ffi.is_available()))
     }
 }
 
@@ -469,6 +505,11 @@ impl WifiDirectAdapter for WifiDirectBridge {
 
     fn is_available(&self) -> bool {
         self.ffi.is_available()
+    }
+
+    fn availability_stream(&self) -> Option<Pin<Box<dyn Stream<Item = bool> + Send + 'static>>> {
+        let ffi = self.ffi.clone();
+        Some(poll_availability_stream(move || ffi.is_available()))
     }
 }
 

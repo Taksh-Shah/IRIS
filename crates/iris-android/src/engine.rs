@@ -434,6 +434,7 @@ mod tests {
                 .inner
                 .matches()
                 .await
+                .map_err(IrisFfiError::Transport)?
                 .into_iter()
                 .map(|m| FfiPeerDiscovery {
                     peer_handle: m.peer_handle.0,
@@ -466,6 +467,7 @@ mod tests {
                 .inner
                 .incoming_ndp()
                 .await
+                .map_err(IrisFfiError::Transport)?
                 .into_iter()
                 .map(|d| FfiIncomingNdpData {
                     sender: d.sender.map(|s| s.as_bytes().to_vec()),
