@@ -46,9 +46,21 @@ impl PgStorageConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(500 * 1024 * 1024),
-            eviction_threshold: 0.8,
+            eviction_threshold: parse_eviction_threshold(
+                std::env::var("IRIS_EVICTION_THRESHOLD").ok(),
+            ),
         }
     }
+}
+
+/// Parse and range-validate `IRIS_EVICTION_THRESHOLD` (TAK-25). Anything
+/// absent, unparseable, or outside `0.1..=0.95` falls back to the documented
+/// default of `0.8`, so a misconfiguration can never disable eviction
+/// (`>= 1.0`) or trigger it on every write (`<= 0.0`).
+fn parse_eviction_threshold(raw: Option<String>) -> f64 {
+    raw.and_then(|v| v.parse::<f64>().ok())
+        .filter(|v| (0.1..=0.95).contains(v))
+        .unwrap_or(0.8)
 }
 
 /// PostgreSQL message store.
@@ -304,5 +316,28 @@ impl MessageStorage for PgStorage {
             }
         }
         Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn threshold_defaults_when_absent_or_invalid() {
+        assert_eq!(parse_eviction_threshold(None), 0.8);
+        assert_eq!(parse_eviction_threshold(Some("not-a-number".into())), 0.8);
+        // Out-of-range values must fall back, never disable or hyper-trigger.
+        assert_eq!(parse_eviction_threshold(Some("1.5".into())), 0.8);
+        assert_eq!(parse_eviction_threshold(Some("0.0".into())), 0.8);
+        assert_eq!(parse_eviction_threshold(Some("-0.2".into())), 0.8);
+        assert_eq!(parse_eviction_threshold(Some("0.96".into())), 0.8);
+    }
+
+    #[test]
+    fn threshold_accepts_in_range_values() {
+        assert_eq!(parse_eviction_threshold(Some("0.5".into())), 0.5);
+        assert_eq!(parse_eviction_threshold(Some("0.1".into())), 0.1);
+        assert_eq!(parse_eviction_threshold(Some("0.95".into())), 0.95);
     }
 }

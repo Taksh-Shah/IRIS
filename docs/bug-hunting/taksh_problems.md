@@ -32,7 +32,9 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier -1 complete. Tier 0 in progress: 10/32 fixed (all pure-Rust findings — GAP-4, GAP-9, GAP-12, BLE-3, BLE-5, BLE-27, BLE-28, BLE-29, BLE-30, FFI-16), 2 blocked (BLE-1, BLE-2 — need a real concurrency/architecture redesign, not rushed), 20 remaining (the Kotlin-touching FFI-1..19 cluster + BLE-4, BLE-9 — no Gradle/kotlinc on this machine, see the PENDING HARDWARE VERIFICATION notes throughout). Every ✅ so far passed `cargo build --workspace --all-targets` + `cargo test --workspace` (618/618 lib tests, zero regressions across 9 commits) but has NOT been confirmed on the two connected Android devices — no build toolchain exists on this machine to produce an installable APK.
+**Last updated:** 2026-08-26 — **Tier 4 Wave 1 started (ox-alpha loop)**: TAK-25 fixed (commit below), baseline re-verified green at `cd3bb01` (build clean · 717/0/1). All 20 Wave-1 findings drift-audited at HEAD: present as filed. Run journal: [`taksh_fix_log.md`](taksh_fix_log.md).
+
+**Tier 0 status (unchanged, owned by operator+Claude):** Tier -1 complete. Tier 0 in progress: 10/32 fixed (all pure-Rust findings — GAP-4, GAP-9, GAP-12, BLE-3, BLE-5, BLE-27, BLE-28, BLE-29, BLE-30, FFI-16), 2 blocked (BLE-1, BLE-2 — need a real concurrency/architecture redesign, not rushed), 20 remaining (the Kotlin-touching FFI-1..19 cluster + BLE-4, BLE-9 — no Gradle/kotlinc on this machine, see the PENDING HARDWARE VERIFICATION notes throughout). Every ✅ so far passed `cargo build --workspace --all-targets` + `cargo test --workspace` but has NOT been confirmed on the two connected Android devices — no build toolchain exists on this machine to produce an installable APK.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -47,9 +49,9 @@ These three results interact rather than simply stack: the parts of this section
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 11 | 0 | 0 | 0 | 0 | Tier -1 complete |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 125 | 0 | 1 | 0 | 0 | Wave 1 running (ox-alpha loop) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **269** | **0** | **11** | **2** | **0** | |
+| **Total** | | **284** | **268** | **0** | **12** | **2** | **0** | |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -8416,7 +8418,7 @@ eviction.rs:59   ORDER BY priority DESC, is_own_message ASC, expires_at ASC, cre
 
 #### TAK-25: `eviction_threshold` is a config field with no way to configure it
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 1d92015 · 2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-storage/src/pg.rs:30-31` (declaration), `crates/iris-storage/src/pg.rs:49` (`from_env`)
 - **What:** `PgStorageConfig` exposes `eviction_threshold` as a tunable, and `from_env()` reads five other settings from the environment — but hardcodes this one to `0.8`. There is no `IRIS_EVICTION_THRESHOLD` variable.
