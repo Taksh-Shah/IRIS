@@ -16,6 +16,7 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.Security
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
@@ -23,6 +24,30 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+
+/**
+ * Registers the full BouncyCastle provider under the name "BC", used
+ * explicitly (never relied on via provider search order) by every Ed25519
+ * JCA call in [KeystoreEd25519.SoftwareBackend]. Android bundles its own
+ * internal, TLS-only, non-public "BC" provider that does not implement
+ * general-purpose asymmetric crypto for apps and would otherwise register
+ * under the same name - remove it first so `Security.getProvider("BC")`
+ * unambiguously resolves to the real one this app depends on. Idempotent
+ * and safe to call from multiple entry points (JVM unit tests + the real
+ * app); `Security.addProvider` is a no-op if a provider of the same name
+ * is already registered, so a second removal+add would leave a
+ * different-identity object in place - guard with a name check.
+ */
+internal object Ed25519Provider {
+    val NAME: String = BouncyCastleProvider.PROVIDER_NAME
+
+    fun ensureRegistered() {
+        if (Security.getProvider(NAME) is BouncyCastleProvider) return
+        Security.removeProvider(NAME)
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
+}
 
 /**
  * AC-8 — Keystore TEE Ed25519 identity provisioning (D-7, RED-0005-aligned).
@@ -81,8 +106,25 @@ class KeystoreEd25519 internal constructor(
 
         override fun getOrCreateKeyPair(): KeyPair {
             if (!keyStore.containsAlias(alias)) {
+                // Was KeyProperties.KEY_ALGORITHM_EC with no curve specified,
+                // which AndroidKeyStore defaults to NIST P-256 - a completely
+                // different key type than Ed25519. The class doc above always
+                // said "AndroidKeyStore Ed25519 (API 33+)"; the actual call
+                // never requested it. Every downstream consumer (sign()/
+                // verify() below via Signature.getInstance("Ed25519"),
+                // PeerIdCodec.rawPoint() expecting a 32-byte raw point or a
+                // 44-byte Ed25519 SPKI wrapper) assumed genuine Ed25519 and
+                // got a P-256 key instead - rawPoint() then failed loudly on
+                // P-256's 91-byte SPKI encoding rather than silently
+                // misinterpreting it, which is why this surfaced as a crash
+                // rather than a subtly wrong identity.
+                // KeyProperties has no KEY_ALGORITHM_ED25519 constant on this
+                // SDK (checked against the real android-35 platform stub) -
+                // try the raw algorithm name string; AndroidKeyStore-backed
+                // Ed25519 support (where present) is typically exposed this
+                // way ahead of a formal KeyProperties constant.
                 val kpg = KeyPairGenerator.getInstance(
-                    KeyProperties.KEY_ALGORITHM_EC,
+                    "Ed25519",
                     "AndroidKeyStore",
                 )
                 val spec = KeyGenParameterSpec.Builder(
@@ -136,6 +178,14 @@ class KeystoreEd25519 internal constructor(
 
         internal constructor(context: Context) : this(PersistedIdentityStore(context))
 
+        init {
+            // Confirmed on a real API-31 device: Android's default JCA
+            // provider stack does not implement Ed25519 below API 33, so
+            // every call below must name BouncyCastle explicitly rather
+            // than trust provider search order to find it.
+            Ed25519Provider.ensureRegistered()
+        }
+
         override val backendType: BackendType = BackendType.SOFTWARE
 
         private var generated: KeyPair? = null
@@ -148,7 +198,7 @@ class KeystoreEd25519 internal constructor(
         }
 
         private fun generateAndPersist(): KeyPair {
-            val fresh = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+            val fresh = KeyPairGenerator.getInstance("Ed25519", Ed25519Provider.NAME).generateKeyPair()
             if (persisted != null) {
                 persisted.store(fresh)
             }
@@ -156,7 +206,7 @@ class KeystoreEd25519 internal constructor(
         }
 
         override fun sign(privateKey: PrivateKey, data: ByteArray): ByteArray =
-            Signature.getInstance("Ed25519").run {
+            Signature.getInstance("Ed25519", Ed25519Provider.NAME).run {
                 initSign(privateKey)
                 update(data)
                 sign()
@@ -164,7 +214,7 @@ class KeystoreEd25519 internal constructor(
 
         override fun verify(publicKey: PublicKey, data: ByteArray, signature: ByteArray): Boolean =
             try {
-                Signature.getInstance("Ed25519").run {
+                Signature.getInstance("Ed25519", Ed25519Provider.NAME).run {
                     initVerify(publicKey)
                     update(data)
                     verify(signature)
@@ -179,15 +229,28 @@ class KeystoreEd25519 internal constructor(
     /** Runtime pick: API 33+ with a working AndroidKeyStore -> TEE, else software. */
     class AutoBackend(private val context: Context) : KeyBackend {
         private val delegate: KeyBackend by lazy {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && androidKeyStoreAvailable()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && androidKeystoreEd25519Available()) {
                 AndroidKeystoreBackend(context)
             } else {
                 SoftwareBackend(context)
             }
         }
 
-        private fun androidKeyStoreAvailable(): Boolean = try {
+        // The API-33 floor alone does NOT mean AndroidKeyStore can generate an
+        // Ed25519 key. Confirmed on a real API-34 device (Pixel-class,
+        // KeyMint v2): `KeyPairGenerator.getInstance("Ed25519",
+        // "AndroidKeyStore")` throws `NoSuchAlgorithmException: no such
+        // algorithm: Ed25519 for provider AndroidKeyStore` - and
+        // `KeyProperties` doesn't even have an ED25519 constant on this SDK
+        // to name the algorithm the "supported" way. Probe for real support
+        // (which is cheap - constructing a `KeyPairGenerator` doesn't touch
+        // the TEE or generate a key) rather than assuming API level implies
+        // it; the previous unconditional-on-API-level selection produced a
+        // hard crash at first launch on every device that reached this path,
+        // because AndroidKeystoreBackend has no working fallback of its own.
+        private fun androidKeystoreEd25519Available(): Boolean = try {
             KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            KeyPairGenerator.getInstance("Ed25519", "AndroidKeyStore")
             true
         } catch (_: Exception) {
             false
@@ -284,7 +347,14 @@ class KeystoreEd25519 internal constructor(
         }
 
         private fun decodeKeyPair(privatePkcs8: ByteArray, publicX509: ByteArray): KeyPair {
-            val factory = KeyFactory.getInstance("Ed25519")
+            // Explicit BC, same reasoning as SoftwareBackend's init block:
+            // by the time this runs the caller (SoftwareBackend.getOrCreateKeyPair
+            // -> load()) has always already constructed a SoftwareBackend, so
+            // Ed25519Provider is already registered - call it again anyway,
+            // it is a cheap idempotent check, not worth a fragile ordering
+            // assumption between two classes.
+            Ed25519Provider.ensureRegistered()
+            val factory = KeyFactory.getInstance("Ed25519", Ed25519Provider.NAME)
             return KeyPair(
                 factory.generatePublic(X509EncodedKeySpec(publicX509)),
                 factory.generatePrivate(PKCS8EncodedKeySpec(privatePkcs8)),

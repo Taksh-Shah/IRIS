@@ -49,6 +49,10 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // bcprov-jdk18on ships multi-release-jar OSGi metadata that collides
+        // with another dependency's copy of the same path; neither is
+        // needed at runtime (OSGi framework metadata, not code).
+        resources.excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
     }
 
     testOptions {
@@ -114,7 +118,28 @@ dependencies {
     // libiriscode.so (AC-1 cargo-ndk build). The `iriscode` package facade
     // (kotlin/.../iriscode/api.kt) re-exports `uniffi.iriscode` for the
     // adapter + shell source sets (AC-11 FQCN surface).
-    implementation("net.java.dev.jna:jna:5.14.0")
+    // Ed25519 provider for pre-API-33 devices (KeystoreEd25519.SoftwareBackend):
+    // confirmed on a real API-31 device that Android's built-in Conscrypt JCA
+    // provider does not implement Ed25519 below API 33 - `KeyPairGenerator
+    // .getInstance("Ed25519")` throws NoSuchAlgorithmException with no
+    // provider argument, since none of the default-registered providers
+    // support it on that OS version. BouncyCastle is a pure-Java Ed25519
+    // implementation that works on every API level; registered explicitly by
+    // name ("BC") rather than relying on provider search order, since
+    // Android also ships its own stripped internal BC used by the TLS stack
+    // that does not expose full public-key crypto to apps and can otherwise
+    // shadow this one.
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+
+    // @aar (not the plain jar) is required for Android: the default jar
+    // artifact bundles native dispatch libs for darwin/linux/win32 desktop
+    // ABIs only (com/sun/jna/{darwin,linux,win32}-aarch64/...) - no
+    // android-aarch64 at all. The AAR variant is the one that packages
+    // jniLibs/<abi>/libjnidispatch.so for Android ABIs, which AGP then
+    // merges into the APK the normal way. Without @aar this crashes on
+    // first launch on every device: UnsatisfiedLinkError, native library
+    // (com/sun/jna/android-aarch64/libjnidispatch.so) not found.
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
     
     // --- Unit tests (pure JVM leg; also runs AC-5 AdapterLifecycleTest) ---
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
