@@ -800,6 +800,24 @@ impl WifiAwareTransport {
                         "NDP drain failed for this tick"
                     ),
                 }
+                // BLE-27: the per-tick forward budget bounds CPU work but not
+                // memory — a real adapter returning more than
+                // MAX_FRAMES_PER_TICK per tick (unlike the simulator, whose
+                // MAX_DRAIN_PER_CALL is deliberately pinned equal to it) grew
+                // this deque forever. Bound it and drop the oldest frames
+                // once full: a real burst that outpaces the forward budget
+                // means the backlog is already stale, and newest-first is
+                // the more useful frame to keep.
+                const MAX_BACKLOG: usize = 64 * MAX_FRAMES_PER_TICK;
+                if backlog.len() > MAX_BACKLOG {
+                    let drop_count = backlog.len() - MAX_BACKLOG;
+                    backlog.drain(..drop_count);
+                    tracing::warn!(
+                        event = "wifiaware.ndp_backlog_overflow",
+                        dropped = drop_count,
+                        "NDP backlog exceeded bound; oldest frames dropped"
+                    );
+                }
                 for _ in 0..MAX_FRAMES_PER_TICK {
                     let Some(frame) = backlog.pop_front() else {
                         break;
