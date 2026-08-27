@@ -234,7 +234,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             val channel = startGate.ensureStarted()
                 ?: throw TransportFailure("Wi-Fi Direct not initialized")
             val band = if (config.band != FfiOperatingBand.AUTO) config.band else bandHint
-            awaitAction { createGroupWithBand(channel, band, it) }
+            // FFI-9: Rust's band-fallback retry (create_group falling back to
+            // OperatingBand::Auto) keys on the substring "band" appearing in
+            // the failure message. The only message this path could ever
+            // produce was "WifiP2p action failed reason=$reason" — reason is
+            // an int (ERROR/P2P_UNSUPPORTED/BUSY/NO_SERVICE_REQUESTS), never
+            // the word "band" — so the fallback could never fire on a
+            // band-constrained device (regulatory domain, DFS, concurrent
+            // STA on an incompatible channel). Tag this specific call site's
+            // failure with the band that was actually requested.
+            awaitAction(failureContext = "band=$band") { createGroupWithBand(channel, band, it) }
             // AND-RT-103: the group snapshot arrives only via the async
             // CONNECTION_CHANGED broadcast — wait for it, never throw on a
             // momentarily-null snapshot.
@@ -510,7 +519,12 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     private fun currentGroupInfo(channel: WifiP2pManager.Channel): FfiGroupInfo? {
         val group = groupState.snapshot() ?: return null
-        cachedGoAddr = group.owner?.deviceAddress
+        // FFI-10: do NOT overwrite cachedGoAddr with group.owner.deviceAddress
+        // (a MAC) here — onGroupFormed already set it to the real, routable
+        // info.groupOwnerAddress.hostAddress. This function used to run
+        // AFTER onGroupFormed (via createGroup/joinGroup's poll for the
+        // settled snapshot) and clobber the correct IP with the MAC on every
+        // call.
         return FfiGroupInfo(
             groupId = (group.networkName.hashCode() and 0x7fffffff).toLong().toULong(),
             go = peerHandleFor(group.owner?.deviceAddress).toULong(),
@@ -555,6 +569,17 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * both roles agree on.
      */
     private suspend fun onGroupFormed(info: WifiP2pInfo, group: WifiP2pGroup?) {
+        // FFI-10: `info.groupOwnerAddress` (an InetAddress, delivered on this
+        // SAME broadcast) is the real, routable endpoint — cachedGoAddr used
+        // to only ever be set from `WifiP2pGroup.owner.deviceAddress` (a P2P
+        // MAC) in `currentGroupInfo`, so `go_addr()`/`FfiGroupInfo.goAddr`
+        // handed Rust a MAC where the contract (G-WD-2, "adapter-provided,
+        // never hard-coded") promises a dialable address. Today the socket
+        // is dialed from `goAddress` directly here, so this was latent — but
+        // it silently poisons any future consumer, and made the Rust sim
+        // tests (which assert a dotted-quad) unrepresentative of real
+        // device behaviour.
+        cachedGoAddr = info.groupOwnerAddress?.hostAddress
         if (info.isGroupOwner) {
             ensureGroupServer()
         } else {
@@ -662,15 +687,26 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         return handle
     }
 
-    /** Await a WifiP2pManager async action; the per-call timeout is applied by the caller. */
-    private suspend fun awaitAction(launch: (WifiP2pManager.ActionListener) -> Unit) {
+    /**
+     * Await a WifiP2pManager async action; the per-call timeout is applied
+     * by the caller.
+     *
+     * [failureContext] (FFI-9), when non-null, is appended to the failure
+     * message verbatim — e.g. `"band=$band"` for `createGroup`, so Rust's
+     * substring-classified band-fallback retry (which keys on the literal
+     * word "band") has something to actually match against. Most callers
+     * pass none; the generic reason code is otherwise all Rust ever sees.
+     */
+    private suspend fun awaitAction(failureContext: String? = null, launch: (WifiP2pManager.ActionListener) -> Unit) {
         suspendCancellableCoroutine { cont ->
             launch(object : WifiP2pManager.ActionListener {
                 override fun onSuccess() = cont.resume(Unit)
-                override fun onFailure(reason: Int) =
+                override fun onFailure(reason: Int) {
                     // AND-RT-103: typed FFI error — a raw IllegalStateException
                     // becomes UNIFFI_CALL_UNEXPECTED_ERROR and panics the Rust side.
-                    cont.resumeWithException(TransportFailure("WifiP2p action failed reason=$reason"))
+                    val suffix = failureContext?.let { " $it" } ?: ""
+                    cont.resumeWithException(TransportFailure("WifiP2p action failed reason=$reason$suffix"))
+                }
             })
         }
     }
