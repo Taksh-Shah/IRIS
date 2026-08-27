@@ -27,10 +27,16 @@ pub fn store_or_drop(expired: bool) -> ShouldStore {
 /// `message_engine::expiry`. Skew-suspect messages (creation time beyond the
 /// 300-second skew budget) fail closed — see `expiry::is_expired` for rationale.
 ///
+/// ROUT-36: named distinctly from `message_engine::expiry::is_expired` (this
+/// function used to share that name with a different argument order) so a
+/// future `use` swapping one import for the other fails to compile instead
+/// of silently reinterpreting `(now, timestamp, ttl)` as `(created, ttl,
+/// now)`.
+///
 /// # Argument order
 /// Callers pass `(now_unix, timestamp, ttl_seconds)`; this shim re-maps them
 /// to `expiry::is_expired(created_at_unix, ttl_seconds, now_unix)`.
-pub fn is_expired(now_unix: u64, timestamp: u64, ttl_seconds: u64) -> bool {
+pub fn ttl_expired(now_unix: u64, timestamp: u64, ttl_seconds: u64) -> bool {
     crate::message_engine::expiry::is_expired(timestamp, ttl_seconds, now_unix)
 }
 
@@ -62,26 +68,26 @@ mod tests {
     #[test]
     fn ttl_check_arrival_time() {
         // 1 min TTL, message arrived at t=0, now=120 s → expired.
-        assert!(is_expired(120, 0, 60));
+        assert!(ttl_expired(120, 0, 60));
         // still within budget.
-        assert!(!is_expired(59, 0, 60));
+        assert!(!ttl_expired(59, 0, 60));
         // timestamp 100 s in the future (within the 300 s skew budget) → trusted clock,
         // expiry = 200 + 60 = 260, now = 100 → not expired.
-        assert!(!is_expired(100, 200, 60));
+        assert!(!ttl_expired(100, 200, 60));
     }
 
     #[test]
     fn rout5_far_future_timestamp_fails_closed() {
         // Regression: the old `min(timestamp, now)` implementation made a message with
-        // timestamp far in the future immortal — `is_expired` always returned false.
+        // timestamp far in the future immortal — `ttl_expired` always returned false.
         // Now it delegates to message_engine::expiry which treats skew-suspect timestamps
         // (beyond the 300-second budget) as expired (fail-closed).
         assert!(
-            is_expired(100, u64::MAX, 1),
+            ttl_expired(100, u64::MAX, 1),
             "far-future timestamp must be treated as expired (ROUT-5)"
         );
         assert!(
-            is_expired(100, 1_000_000_000, 1),
+            ttl_expired(100, 1_000_000_000, 1),
             "forged timestamp >> skew budget must not grant immortality"
         );
     }

@@ -261,7 +261,7 @@ impl RoutingEngine {
         neighbor_table: &NeighborTable,
     ) -> ForwardingDecision {
         // ROUT-6: TTL gate — do not store or forward expired messages.
-        if crate::routing::store::is_expired(now_unix, timestamp, ttl_seconds) {
+        if crate::routing::store::ttl_expired(now_unix, timestamp, ttl_seconds) {
             return ForwardingDecision::Drop;
         }
         // ROUT-4: dedup gate — drop messages we already forwarded (anti-loop).

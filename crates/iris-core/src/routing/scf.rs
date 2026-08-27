@@ -19,7 +19,7 @@ use crate::observability::event;
 use crate::observability::metric;
 use crate::observability::MetricsRegistry;
 use crate::protocol::{Envelope, MessageId};
-use crate::routing::store::is_expired;
+use crate::routing::store::ttl_expired;
 
 /// Delivery status of a buffered message (STORE_CARRY_FORWARD.md §Message
 /// Lifecycle).
@@ -204,7 +204,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         envelope: Envelope,
         received_from: Option<PeerId>,
     ) -> Result<DeliveryStatus, ScfError> {
-        if is_expired(self.now_unix(), envelope.timestamp, envelope.ttl_seconds) {
+        if ttl_expired(self.now_unix(), envelope.timestamp, envelope.ttl_seconds) {
             return Err(ScfError::Expired);
         }
         let key = StoreKey::from_envelope(&envelope);
@@ -264,7 +264,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
             .filter(|(_, m)| m.forward_attempts < self.config.max_forward_attempts)
             .filter(|(_, m)| {
                 let matches = Self::recipient_is(contact, &m.envelope);
-                let live = !is_expired(
+                let live = !ttl_expired(
                     self.now_unix(),
                     m.envelope.timestamp,
                     m.envelope.ttl_seconds,
@@ -304,7 +304,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         let expired_keys: Vec<StoreKey> = self
             .buffer
             .iter()
-            .filter(|(_, m)| is_expired(now, m.envelope.timestamp, m.envelope.ttl_seconds))
+            .filter(|(_, m)| ttl_expired(now, m.envelope.timestamp, m.envelope.ttl_seconds))
             .map(|(k, _)| *k)
             .collect();
         let mut dropped = Vec::new();
