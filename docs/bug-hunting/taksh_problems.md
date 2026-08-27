@@ -32,14 +32,17 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-27 — **ROUT area of Tier 2 is FULLY COMPLETE** (33 ✅ + 3 🔒 of 36) and **DTN area of Tier 2 is FULLY COMPLETE** (25 ✅ of 25). Eight wakes under the same human sign-off so far (owner: "start from tier 2 problems solving" / "continue with the next batch" x5 / "continue the loop" x2). Full history of every commit, blocked-finding reason and per-finding verification is in [`taksh_fix_log.md`](taksh_fix_log.md) (Runs 4-10); summary here, condensed as the tier grows:
+**Last updated:** 2026-08-27 — **ROUT area of Tier 2 is FULLY COMPLETE** (33 ✅ + 3 🔒 of 36), **DTN area of Tier 2 is FULLY COMPLETE** (25 ✅ of 25), and **MG (gateway) area of Tier 2 is 14/18 fixed** (MG-25..38; MG-39..42 remain). Nine wakes under the same human sign-off so far (owner: "start from tier 2 problems solving" / "continue with the next batch" x5 / "continue the loop" x2 / "complete leftout work in tier 2" x1). Full history of every commit, blocked-finding reason and per-finding verification is in [`taksh_fix_log.md`](taksh_fix_log.md) (Runs 4-13); summary here, condensed as the tier grows:
 - **Wakes 1-3 (ROUT area, now closed):** all 36 ROUT-\* findings resolved — 33 fixed, 3 blocked (ROUT-23: two governing specs conflict with each other; ROUT-24: real fix needs a new wire-protocol feature outside scope; ROUT-26: governing requirement doc is internally inconsistent). Key commits: `4b03ae8`..`07338e5` (see taksh_fix_log.md Runs 4-6 for the full per-finding table).
 - **Wake 4:** opened DTN (Area B, 25 findings). Fixed the 8-finding core storage/eviction cluster (`c0c1007`: DTN-1,2,5,6,7,8,9,10) as one rewrite of `scf.rs`'s `buffer_message`/`evict_until`/`StoreKey`/byte-accounting — several of the individual fixes only compose correctly together (DTN-9's ordering fix is a precondition for DTN-8's O(1) eviction lookup). DTN-7's "P0 unbounded" defect turned out fully closed by DTN-1's reject-on-insert enforcement alone (see DTN-7's own status note).
 - **Wake 5:** fixed DTN-3+DTN-4 together (`b58de3d`) — any live, not-yet-offered message is now a relay candidate for any contact (DTN-4, store-carry-forward's core premise), gated by a new per-peer `offered` set (DTN-3) instead of the old global `forward_attempts` lockout. DTN-4's DP-based selectivity refinement not implemented — blocked by the same gap as ROUT-24 (see DTN-4's status note). Then DTN-11 (`ede33f1`, device-class ceilings now reach `ScfEngine` via a new `with_device_class` builder) and DTN-21/23/24/25 (`357ddb7`: deleted a false-delivery-receipt special case, deterministic priority+probability ranking, a `Result` that could only ever be `Ok`, and a message-count bandwidth limit that ignored message size).
 - **Wake 6:** grepped the entire tree (including `crates/iris-android`, `crates/iris-ios`, and every `.udl`-equivalent `uniffi::setup_scaffolding!` surface) for any FFI/binding exposure of `DeliveryStatus::{Carrying, AwaitingContact, ForwardingInProgress}` or `DropReason` before touching DTN-22 — found zero external references, clearing the way to delete rather than implement. Fixed DTN-22 (`1453620`): deleted those three unreachable `DeliveryStatus` variants, and (discovered as a side-effect of the earlier DTN-5 fix) `Dropped`/`DropReason` too, since `reap_expired` no longer constructs them either — re-derived the fix from current source rather than the original finding text, per the loop's own re-derivation rule. `is_terminal()` now matches only `Delivered`. Then DTN-20 (`959152a`): added `last_forward_attempt` to `StoredMessage` and a new `reap_ack_timeouts` method with exponential backoff (`timeout * 2^attempts`, capped), turning `AckPending` from an absorbing state into one that retries.
 - **Wake 7:** fixed DTN-15/16/18 together (`e516e42`) — all three live in `meet()`'s Eq.1/Eq.3 paths and share one rewrite. DTN-15 (Critical): capacity is now enforced per-insert via a new `evict_worst_unless` helper, called before every new entry in both the direct-contact and transitivity paths, closing a single-packet unbounded-growth vector where one hostile `meet()` slice could insert unlimited DP rows. DTN-18: added an optional `self_id` field with a `with_self_id` builder (kept optional since `RoutingEngine` has zero identity concept — confirmed via grep — and a required param would have cascaded far beyond this file); `meet()` now skips transitivity rows targeting self, `snapshot()` filters self out, and the transitivity write is clamped to the same `1 - delta` bound Eq. 1 already respects. DTN-16: replaced the fake `capped_entries_evict_lowest` test (its `u8` cast meant it only ever inserted 10 of the 4106 peers it claimed to) with a real cap-and-eviction-correctness test using a widened `pid_wide(u32)` helper, plus two new regression tests for DTN-15's own trigger shape (an oversized single-call slice, and non-finite input rejection). All pre-existing prophet tests still pass unchanged. DTN-12/13/14/17/19 (the `age()`/`last_meet` aging cluster — a separable, tightly coupled group with zero non-benchmark production callers today) is deliberately deferred to a future run; see DTN-15/16/18's commit message for the scope note.
 - **Wake 8:** closed out the last DTN cluster, DTN-12/13/14/17/19 (`9b823e0`) — `age()`/`prune()` (RFC 6693 Eq. 2) had zero non-benchmark production callers and were independently broken three ways, invisible only because nothing called them. DTN-12: no scheduler/"routing tick" exists anywhere in this engine (grepped, same gap DTN-4/DTN-20/DTN-24 already hit) — wired `age()` into `meet()` instead, the one real choke point every DP mutation already passes through, so aging now runs on every contact with no new infrastructure. DTN-13: the aging baseline reset to `now` on every call instead of advancing by whole intervals consumed, silently disabling decay entirely at any cadence faster than `aging_interval` — exactly what DTN-12's fix would have hit immediately. DTN-14: one map served two unrelated clocks (Eq. 1's encounter interval and Eq. 2's aging baseline); split into `last_encounter`/`aging_base`, both seeded by `meet()` at write time and only ever advanced by aging from there (a first draft followed the finding's literal "aging_base written only by age()" suggestion, but that made an entry's first-ever aging pass forgive its whole dormant period instead of decaying it once DTN-12 made that the normal case — re-derived against current source instead). DTN-17: clamped the `u64→i32` cast that could wrap negative and inflate a DP to `+inf`. DTN-19: deleted `prune()`'s dead clone-for-a-tautological-assert and duplicated retain. DTN-18 follow-on: gave the self-identity entry an explicit exemption from both decay and threshold-discard, now that aging genuinely runs. Six new/rewritten tests, all passing; full workspace suite green including `ml_experiments.rs`/`sim_scenarios.rs`, which this cluster's own blast-radius note flagged as likely to shift — neither did.
-Full workspace test suite green after every commit across all eight wakes (675 iris-core lib tests as of wake 8, 0 failed). Next: MG-25..42 (Area E gateway), then TAK-2 — the only Tier 2 work left besides the 3 blocked ROUT findings.
+- **Wake 9 (owner: "complete leftout work in tier 2"):** opened Area E (gateway, 18 findings) + TAK-2. Fixed the trust/health/scoring cluster MG-25/26/27/28/29 (`1038a83`) as one "pessimistic-defaults + confidence factor" change, per those findings' own cross-references. MG-26: `prune()` no longer erases Failed/HardFailed health records on withdrawal (bounded by a new `MAX_QUARANTINE_ENTRIES`, since persistence itself opens a growth vector). MG-28: probation now requires `record_success` to clear, never elapsed time alone — chose the simpler of two readings the finding's own two cited specs disagreed on. MG-25/27/29: pessimistic capability defaults, a full-field `sanitize_capability` (re-derives `max_priority` from type, was advertiser-controlled), and a new confidence ramp (0.3 → 1.0 over 5 proven deliveries) applied alongside health in selection. MG-25's cryptographic-verification layer explicitly not implemented (documented) — blocked on the same "no production caller" gap as MG-30.
+  Then MG-30/31/32/33 (`71c2893`): MG-30 scope-limited to an honest module-doc status note — did not wire `GatewayManager` into the composition root, since that activates a new security-sensitive live-routing path spanning the message engine's send/receive decision points, a separate architectural decision from a contained bug fix. MG-31: gateway adopt/withdraw/failure now publish on a new `broadcast::Sender<TopologyEvent>` (mirrors `TransportManager`). MG-32: this node's own uplink is now a selection candidate via an opt-in `with_local_id` builder. MG-33: added `SWITCH_MARGIN`-gated selection hysteresis for the P3+ single-gateway path, so a link-quality flap doesn't fragment a transfer across gateways.
+  Then MG-34..38 (`eb5828e`): wired `hop_count` into scoring (a per-hop multiplicative discount) and deleted the two truly dead fields (`path`, `last_success`) while deliberately keeping two others (`transport_id`, `primary_score`) that have real descriptive/future-API value despite no current internal reader — a judgment call documented per-field, not a blanket "delete everything the finding named." MG-35: capacity eviction now prefers evicting an unproven (zero-success) candidate over an established one, closing the Sybil-flood-evicts-the-real-gateway path the old oldest-confirmed policy left open; `withdraw` takes a real `reason` instead of a hardcoded `"stale"`. MG-36: `self_internet_gateway` uses live bandwidth (capped by the datasheet ceiling) and a documented cost-factor reference rate instead of an unexplained `/10.0`. MG-37: fixed at the root — `PeerId` no longer derives `Debug`, now prints `short()` manually, which closes the privacy leak for every struct that embeds one crate-wide, not just the four gateway types the finding named. MG-38: removed `Clone` from `GatewayManager`/`GatewayHealthMonitor` (a clone would silently fork security-accounting state).
+Full workspace test suite green after every commit across all nine wakes (687 iris-core lib tests as of wake 9, 0 failed). Next: MG-39..42 (the `TransportError` taxonomy cluster — all four findings share one enum and a 17-call-site blast radius, read as one unit), then TAK-2.
 **Toolchain note:** This session's Rust builds/tests ran under `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu` — the MSVC `link.exe` was not resolvable in the environment's PATH (Git Bash's own `link.exe` shadowed it, and PowerShell had no VS Developer Shell active). `iris-desktop` (the Tauri app) cannot link under the GNU toolchain (MSVC-only manifest linker flags) and was excluded from the sweep; it is untouched by any Tier 2 finding in scope.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
@@ -53,11 +56,11 @@ Full workspace test suite green after every commit across all eight wakes (675 i
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 1 | 0 | 30 | 1 | 0 | **NEARLY COMPLETE** — authoritative Tier 0 membership (`taksh_problems_loop.md` line 27): BLE-1/2/3/4/5/9/27/28/29/30, FFI-1..19, GAP-4/9/12. Re-audited 2026-08-27 against every finding's own `Fix status` line (not just this session's work — several were already fixed 2026-08-26 by a prior wake and this table had drifted): BLE-2/3/4/5/27/28 fully fixed; BLE-9/29/30 and GAP-9/12 fixed with a documented, deliberately-deferred partial scope (see each finding's own status line for what's left and why); GAP-4 fully fixed; FFI-1..5/7..19 fixed (FFI-16 pre-session, the rest this session). BLE-1 remains 🔒 Blocked (structural `Arc`-sharing change, its own reviewed pass). **The only genuinely Not-started Tier 0 finding is FFI-6** (Wi-Fi Aware NDP responder — needs a `FramedSocketServer`-based responder, port-based `WifiAwareNetworkSpecifier`, and reordering the publish-before-open_ndp startup sequence; the largest remaining architectural item). Every ✅ in this tier is code-complete + unit-tested but **PENDING HARDWARE VERIFICATION** unless its own line says otherwise — batch verification with two devices is the agreed next step once FFI-6 lands. **Hardware verification pass started 2026-08-27 with two physical devices**: found and fixed **HW-1** (BLE discovery re-arm never stopped the previous scan — see Area C, Critical, ✅ Fixed and VERIFIED live, commit d26dd7b) and **HW-2** (a successfully sent message never appeared anywhere in the UI, no error either — see Area C, High, ✅ Fixed and VERIFIED live, commit eee0c0a). Both are genuinely new defects the static review couldn't have caught: HW-1 only reachable with two real radios running long enough to hit a second discovery re-arm, HW-2 only observable by actually watching the app's own message list update (or not) on a real send. HW-2 was also the reason full end-to-end BLE delivery couldn't be conclusively confirmed earlier in this same pass — the UI gave no signal either way regardless of whether delivery worked. Follow-up with HW-2 fixed: retest end-to-end delivery now that success is actually visible. **Continued 2026-08-27, same pass**: found and fixed **HW-3** (discovery only ever connected a peer once, on first sight — Area C, Critical, ✅ Fixed and VERIFIED live, commit ace6a32), **HW-4** (retry backoff computed but never enforced, then a blocked queue-top item starving everything behind it — two rounds, Area C, Critical, ✅ Fixed and VERIFIED live, commits 7d4d214/695289c), **HW-5** (`BleTransport::send()` addressed by real PeerId while connections were keyed by discovery's candidate PeerId — never matched, the single most impactful fix of the pass — Area C, Critical, ✅ Fixed and VERIFIED live, commit f45eda2), and **HW-6/HW-7** (legacy Android GATT write returned on initiation instead of waiting for the async completion callback, violating Android's one-outstanding-GATT-op-per-link constraint — Area C, Critical, ✅ Fixed, VERIFIED live on one of two BLE-capable devices, third device's re-verification blocked on an unrelated on-device logcat-visibility issue, see HW-6/HW-7's own status line). A third physical device (Samsung Galaxy S24 Ultra, API 36) was added mid-pass specifically to broaden hardware coverage and immediately surfaced **HW-8** (`AndroidKeystoreBackend`'s Ed25519-support probe accepted successful construction as proof of real support; Samsung KeyMint constructs fine but silently generates a P-256 key instead, crashing every launch — Area C, Critical, ✅ Fixed and VERIFIED live, commit pending) — a defect invisible to the first two devices (API 31, API 34) and only reachable by testing on genuinely different hardware, underscoring why this pass expanded past two devices. End-to-end BLE send+receive across all three devices remains the open item, gated on the vivo logcat-visibility blocker noted in HW-6/HW-7. | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
-| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 19 | 0 | 58 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ FULLY COMPLETE** — 25/25 fixed; MG-25..42, TAK-2 not yet started) |
+| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 5 | 0 | 72 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ FULLY COMPLETE** — 25/25 fixed; MG area: 14/18 fixed [MG-25..38]; MG-39..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime | ⬜ |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **192** | **0** | **85** | **4** | **0** | | ⬜ |
+| **Total** | | **284** | **178** | **0** | **99** | **4** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -374,20 +377,20 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths | ⬜ |
 | **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa | ⬜ |
 | **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable | ⬜ |
-| **MG-25** | High | `gateway/mod.rs:672-718` | The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation | ⬜ |
-| **MG-26** | High | `gateway/mod.rs:393-401` | `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle | ⬜ |
-| **MG-27** | Medium | `gateway/mod.rs:745-763` | `sanitize_capability` sanitises only the four float fields — bandwidth, latency, queue depth, `max_priority`, and `gateway_type` are unchecked attacker input | ⬜ |
-| **MG-28** | Medium | `gateway/mod.rs:380-391` | Probation auto-expires to **full** trust with no successful delivery — the recovery rule is inverted | ⬜ |
-| **MG-29** | Medium | `gateway/mod.rs:693-705` | `reconcile` fabricates all-zero quality metrics, so an unmeasured peer scores near-maximum on 70 % of the weight budget | ⬜ |
-| **MG-30** | High | `gateway/mod.rs:407-726` | The entire GW-001 engine is unwired — `GatewayManager` is never constructed outside its own tests | ⬜ |
-| **MG-31** | Medium | `gateway/mod.rs:494-501` | Every `TopologyEvent` the gateway layer produces is discarded | ⬜ |
-| **MG-32** | Medium | `gateway/mod.rs:434-456` | This node's own uplink is never a selection candidate — a gateway node reports "no gateway available" | ⬜ |
-| **MG-33** | Medium | `gateway/mod.rs:597-665` | No hysteresis and no elected-gateway state — the gateway is re-elected from scratch on every message | ⬜ |
-| **MG-34** | Medium | `gateway/mod.rs:142-146` | `hop_count`, `path`, `transport_id`, `last_success`, and `primary_score` are stored and never read | ⬜ |
-| **MG-35** | Medium | `gateway/mod.rs:491-502` | Registry eviction picks oldest-confirmed, drops the withdrawal event, and mislabels the reason | ⬜ |
-| **MG-36** | Low | `gateway/mod.rs:728-743` | `self_internet_gateway` ignores live bandwidth, hardcodes reliability, and can emit NaN | ⬜ |
-| **MG-37** | Low | `gateway/mod.rs:137` | `Debug` derives print full 32-byte `PeerId`s, contradicting the project's own logging privacy rule | ⬜ |
-| **MG-38** | Low | `gateway/mod.rs:408-415` | `GatewayManager: Clone` silently forks the health monitor | ⬜ |
+| **MG-25** | High | `gateway/mod.rs:672-718` | The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation | ✅ `1038a83` |
+| **MG-26** | High | `gateway/mod.rs:393-401` | `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle | ✅ `1038a83` |
+| **MG-27** | Medium | `gateway/mod.rs:745-763` | `sanitize_capability` sanitises only the four float fields — bandwidth, latency, queue depth, `max_priority`, and `gateway_type` are unchecked attacker input | ✅ `1038a83` |
+| **MG-28** | Medium | `gateway/mod.rs:380-391` | Probation auto-expires to **full** trust with no successful delivery — the recovery rule is inverted | ✅ `1038a83` |
+| **MG-29** | Medium | `gateway/mod.rs:693-705` | `reconcile` fabricates all-zero quality metrics, so an unmeasured peer scores near-maximum on 70 % of the weight budget | ✅ `1038a83` |
+| **MG-30** | High | `gateway/mod.rs:407-726` | The entire GW-001 engine is unwired — `GatewayManager` is never constructed outside its own tests | ✅ `71c2893` |
+| **MG-31** | Medium | `gateway/mod.rs:494-501` | Every `TopologyEvent` the gateway layer produces is discarded | ✅ `71c2893` |
+| **MG-32** | Medium | `gateway/mod.rs:434-456` | This node's own uplink is never a selection candidate — a gateway node reports "no gateway available" | ✅ `71c2893` |
+| **MG-33** | Medium | `gateway/mod.rs:597-665` | No hysteresis and no elected-gateway state — the gateway is re-elected from scratch on every message | ✅ `71c2893` |
+| **MG-34** | Medium | `gateway/mod.rs:142-146` | `hop_count`, `path`, `transport_id`, `last_success`, and `primary_score` are stored and never read | ✅ `eb5828e` |
+| **MG-35** | Medium | `gateway/mod.rs:491-502` | Registry eviction picks oldest-confirmed, drops the withdrawal event, and mislabels the reason | ✅ `eb5828e` |
+| **MG-36** | Low | `gateway/mod.rs:728-743` | `self_internet_gateway` ignores live bandwidth, hardcodes reliability, and can emit NaN | ✅ `eb5828e` |
+| **MG-37** | Low | `gateway/mod.rs:137` | `Debug` derives print full 32-byte `PeerId`s, contradicting the project's own logging privacy rule | ✅ `eb5828e` |
+| **MG-38** | Low | `gateway/mod.rs:408-415` | `GatewayManager: Clone` silently forks the health monitor | ✅ `eb5828e` |
 | **MG-39** | Medium | `error.rs:25-26` | `TransportError::Io(String)` discards `ErrorKind` — callers cannot separate retryable from fatal | ⬜ |
 | **MG-40** | Medium | `error.rs:23-24` | `Protocol(String)` is overloaded across framing errors, MTU violations, and policy denials | ⬜ |
 | **MG-41** | Medium | `error.rs:10-12` | `NotSupported` conflates "hardware absent" with "permission denied" — different user remediations | ⬜ |
@@ -6418,7 +6421,7 @@ The only consumers are `lora.rs:2391` and `satellite.rs:1346`, both `assert!` on
 #### MG-25: The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation
 - **Severity:** High  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** PARTIALLY-CORRECT (headline is wrong; the underlying defect is real). Design flaw, latent (**not** Critical; not currently exploitable). Would become Critical on the day the gateway engine is wired *and* `ingest_handshake` is wired without the verification precondition. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `1038a83`  ·  2026-08-27 — scoring-side fix only (pessimistic defaults + confidence factor, shared with MG-27/MG-29, closes the finding's own described trigger path). Layer 1 of the finding's 3-layer fix (Ed25519 signature verification via `identity::trust_store`, wired through `discovery::ingest_handshake`) not implemented — that call chain has zero production callers today (same gap MG-30 documents), so wiring verification through it is a separate, larger cross-module task, not a contained fix to this finding's own Location. See MG-30's status note.
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/gateway/mod.rs:672-718` (fn `reconcile`), trust granted at `:682`; upstream `crates/iris-core/src/discovery/mod.rs:156-171` (fn `ingest_handshake`)
 - **What:** Gateway election trusts a single self-declared string in a neighbour's capability bundle. Tracing every field of an advertisement from parse to trust decision: the *only* input that grants gateway status is `tags.iter().any(|t| t == GATEWAY_TAG)`. There is no cryptographic verification, no liveness probe before election, no reputation gate, and no blacklist consulted at adoption time.
@@ -6474,7 +6477,7 @@ discovery/mod.rs:
 #### MG-26: `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle
 - **Severity:** High  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED (only because of MG-F-30). (latent) — **Critical the moment the gateway engine is wired.** Fix before wiring, not after. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `1038a83`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:393-401` (fn `prune`), called from `:716-717`; withdrawal at `:708-715`
 - **What:** `reconcile` withdraws every gateway not currently tagged-and-LinkedUp, then prunes the health monitor to the surviving set. Pruning deletes `states`, `failure_counters`, and `re_admission_strikes`. On re-advertisement the peer is absent from every map, so `handle_advertisement` takes the `_ => {}` arm, `is_failed` returns false, and `score_factor` returns 1.0. `Failed` and even `HardFailed` are erased.
@@ -6541,7 +6544,7 @@ with an independent LRU cap (e.g. 256 entries, 24 h TTL) so the quarantine stays
 #### MG-27: `sanitize_capability` sanitises only the four float fields — bandwidth, latency, queue depth, `max_priority`, and `gateway_type` are unchecked attacker input
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `1038a83`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:745-763` (fns `sanitize_capability`, `sanitize_f32`), applied at `:476`; scored at `:190-211`
 - **What:** The adoption boundary sanitises `reliability_score`, `cost_factor`, `current_load`, and `duty_cycle_remaining`. It leaves `bandwidth_bps: u64`, `latency_ms: u32`, `queue_depth: u32`, `max_priority: MessagePriority`, and `gateway_type: GatewayType` untouched — all of which are scoring inputs, and one of which is the priority *gate*.
@@ -6596,7 +6599,7 @@ plus a plausibility cross-check against locally observed link RTT, per ROUTING_S
 #### MG-28: Probation auto-expires to **full** trust with no successful delivery — the recovery rule is inverted
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED (the spec citation is overstated). See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `1038a83`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:380-391` (fn `score_factor`), `:341-364` (fn `handle_advertisement`)
 - **What:** A failed gateway that re-advertises enters `Probation` at factor 0.5. After `RECOVERY_WINDOW` (300 s) elapses, `score_factor` returns **1.0** — full trust — while the state remains `Probation`. No successful delivery is required.
@@ -6634,7 +6637,7 @@ Some(GatewayHealthState::Failed) => match self.failed_since.get(gateway) {
 #### MG-29: `reconcile` fabricates all-zero quality metrics, so an unmeasured peer scores near-maximum on 70 % of the weight budget
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. High once wired; fix together with MG-25/MG-27 as one "pessimistic-defaults + confidence factor" change. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `1038a83`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:693-705`; scoring at `:190-211`
 - **What:** The only production path that creates a `GatewayCapability` for a peer builds it from `GatewayCapability::new`, which zeroes `bandwidth_bps`, `latency_ms`, `cost_factor`, `current_load`, and `queue_depth`. Only `reliability_score` is set, from a four-tier link-quality mapping. In `compute_gateway_quality`, **zero is the best possible value** for latency, cost, load, and queue.
@@ -6681,7 +6684,7 @@ and multiply the whole score by a `confidence` factor that starts low and rises 
 #### MG-30: The entire GW-001 engine is unwired — `GatewayManager` is never constructed outside its own tests
 - **Severity:** High
 - **Verdict:** CONFIRMED (as stated). Accurate as filed — a P0 component verified "IMPLEMENTED" that no shipped code path can reach is a High-severity process failure. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `71c2893`  ·  2026-08-27 — scope-limited: did NOT wire `GatewayManager` into the composition root (constructing it in `iris-android/src/engine.rs`, routing `deliver_outbound` through `select`, calling `ingest_handshake` after signature verification from the message-engine receive path). That activates a new, security-sensitive live-routing decision spanning the message engine's send/receive paths — a deliberate, separate architectural/product decision, not a contained code fix, and this finding's own text warns MG-25/26/27/28/29 "go live simultaneously the moment somebody wires the manager in." Those five are fixed and ready for that integration. Did not edit `docs/implementation/GW_VERIFICATION.md` either (outside the loop's file scope, not named in this finding's own Location field) — added an honest "Integration status" note to the module's own doc comment instead, the documentation fix actually within scope.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:407-726`; export at `crates/iris-core/src/lib.rs:36-37`
 - **What:** `GatewayManager` is exported and has zero production instantiations anywhere in the repository. The chain that would feed it is also broken one link upstream.
@@ -6704,7 +6707,7 @@ grep -rn "GatewayManager" --include=*.rs --include=*.kt --include=*.swift --incl
 
 #### MG-31: Every `TopologyEvent` the gateway layer produces is discarded
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `71c2893`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:494-501`, `:705`, `:711-715`, `:562-570`
 - **What:** `adopt_from_neighbor` and `withdraw` both return `Option<TopologyEvent>` so the caller can forward a `GatewayChanged`. Every internal caller drops the return value, and there is no external caller (MG-30).
@@ -6739,7 +6742,7 @@ and failure produces no event at all — `record_ack_timeout` (`:564-566`) retur
 
 #### MG-32: This node's own uplink is never a selection candidate — a gateway node reports "no gateway available"
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `71c2893`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:434-456`, `:619-665` (fn `select_inner`)
 - **What:** `self_capability` is stored, read by `is_gateway()` and `advertised_tags()`, and never considered by `select`. `select_inner` iterates `self.gateways` only — the peer registry.
@@ -6775,7 +6778,7 @@ if let Some(cap) = &self.self_capability {
 
 #### MG-33: No hysteresis and no elected-gateway state — the gateway is re-elected from scratch on every message
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `71c2893`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/gateway/mod.rs:597-665`
 - **What:** `select` is a pure function of the current registry, recomputed per call. There is no sticky "currently elected gateway", no switching threshold, and no notion of an in-flight transfer bound to a gateway.
@@ -6813,7 +6816,7 @@ if let Some(cur) = self.elected {
 
 #### MG-34: `hop_count`, `path`, `transport_id`, `last_success`, and `primary_score` are stored and never read
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `eb5828e`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:142-146`, `:94`, `:243`, `:162`
 - **What:** Five fields are written and never influence any decision. Most consequentially, hop distance does not affect the score at all.
@@ -6836,7 +6839,7 @@ if let Some(cur) = self.elected {
 
 #### MG-35: Registry eviction picks oldest-confirmed, drops the withdrawal event, and mislabels the reason
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `eb5828e`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/gateway/mod.rs:491-502`; `withdraw` at `:541-558`
 - **What:** On overflow the oldest-confirmed candidate is evicted. Three problems: the event is discarded, the log records `reason = "stale"` for what is actually a capacity eviction, and the policy is adversary-friendly — a flood of freshly-confirmed entries evicts the genuinely established gateways.
@@ -6874,7 +6877,7 @@ if let Some(cur) = self.elected {
 
 #### MG-36: `self_internet_gateway` ignores live bandwidth, hardcodes reliability, and can emit NaN
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `eb5828e`  ·  2026-08-27 — live bandwidth, documented cost-factor reference rate, and running the result through `sanitize_capability` are all done. `reliability_score` stays a fixed placeholder (0.9): no ACK-rate EWMA tracker exists anywhere in this crate and this function has no access to delivery history — building one, and wiring it through the also-unwired INTERNET-001 transport layer (MG-30), is a separate, larger addition.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/gateway/mod.rs:728-743`
 - **What:** The bridge from `TransportCost` + `TransportCapabilities` to `GatewayCapability` uses the *static* capability for bandwidth while ignoring the live figure it was handed, pins reliability to a constant, applies an undocumented `/10.0` cost divisor, and does not sanitise — `f32::clamp` returns NaN for a NaN input.
@@ -6906,7 +6909,7 @@ if let Some(cur) = self.elected {
 
 #### MG-37: `Debug` derives print full 32-byte `PeerId`s, contradicting the project's own logging privacy rule
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `eb5828e`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/gateway/mod.rs:137`, `:237`, `:408`, `:150`
 - **What:** `GatewayCandidate`, `GatewayHealthMonitor`, `GatewayManager`, and `GatewaySelection` all `derive(Debug)` and contain `PeerId`s, whose own `Debug` prints the raw 32-byte array. Any `{:?}` on these — including the `panic!("… got {other:?}")` patterns used throughout the tests — emits full node identifiers.
@@ -6943,7 +6946,7 @@ Every `tracing` call in `gateway/mod.rs` correctly uses `%gateway.short()` (`:29
 
 #### MG-38: `GatewayManager: Clone` silently forks the health monitor
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `eb5828e`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/gateway/mod.rs:408-415`, `:237-244`
 - **What:** Both the manager and its embedded health monitor derive `Clone` over plain `HashMap`s. A clone produces a second, independent security-accounting record.

@@ -610,11 +610,203 @@ triggered.
 one commit — under the 8-per-wake-cycle cap. This closes the DTN area of
 Tier 2 entirely: all 25 DTN-\* findings are now fixed.
 
-### Next run (Run 11)
-MG-25..42 (Area E gateway) and TAK-2 are the only Tier 2 work remaining
-besides the 3 already-blocked ROUT findings (ROUT-23, ROUT-24, ROUT-26).
-Read the MG cluster's own membership and any internal coupling notes
-before batching — this session hasn't touched Area E yet, so treat the
-first pass as scoping, same as DTN's Wake 4 opening. Once MG-25..42 and
-TAK-2 are done, Tier 2 is fully closed out except the 3 blocked findings,
-and the loop's run order (per taksh_problems_loop.md) moves to Tier 3/4.
+## Run 11 — 2026-08-27 — MG-25/26/27/28/29 (gateway trust/health/scoring cluster)
+
+Owner said "complete leftout work in tier 2" — a broad continuation of
+the same standing sign-off, covering all remaining Area E (gateway, 18
+findings) plus TAK-2. Read the full current `gateway/mod.rs` (1282 lines
+at the time) before touching anything — the finding text's line-numbered
+evidence snippets were close to current source but not exact.
+
+Planned the remaining 19 findings into ~5 runs respecting the 8-per-wake
+cap, opening with the cluster MG-30's own text calls out explicitly:
+"MG-25/26/27/29 ... will all go live simultaneously the moment somebody
+wires the manager in — fix those first." MG-28 isn't named there but
+lives in the same health-monitor file and composes with the others.
+
+**MG-26** (part of commit `1038a83`): `prune()` deleted `states`/
+`failure_counters`/`re_admission_strikes` for any gateway no longer in
+the known set — a blackhole cleared every strike by dropping off the
+neighbor table for one reconcile cycle and re-advertising, making
+`HardFailed` unreachable against a competent adversary. Fixed: `prune()`
+keeps a Failed/HardFailed record regardless of current known-ness,
+bounded by a new `MAX_QUARANTINE_ENTRIES` (256) — persistence itself
+opens a growth vector (an attacker cycling fresh PeerIds), so the bound
+had to land in the same commit, not as a follow-up.
+
+**MG-28** (same commit): `score_factor` auto-promoted a probation
+gateway to full trust once `RECOVERY_WINDOW` elapsed, no delivery
+required. The finding cites two specs that describe the intended
+recovery rule slightly differently (one implies a `Failed` gateway
+should decay into probation-eligibility purely by elapsed time, via a
+new `failed_since` timer; the other says the window is just "how long
+probation lasts before elapsing to full trust", closer to the existing
+structure). Picked the simpler reading both specs agree on regardless —
+full trust must be earned by a delivery, never granted by time alone —
+over the more elaborate suggested fix, since the finding's own verdict
+already flagged the spec citation as possibly overstated.
+
+**MG-25 + MG-27 + MG-29** (same commit, the cluster's own cross-reference
+— "fix together... as one pessimistic-defaults + confidence-factor
+change"): the only production path building a `GatewayCapability`
+(`reconcile`) left `latency_ms`/`cost_factor`/`current_load` at
+`GatewayCapability::new`'s defaults, and those were the *optimistic*
+extreme for a formula where they're a *reward* — an unmeasured, self-
+tagged attacker gateway scored 0.785, beating a real measured satellite
+gateway. Changed the defaults to pessimistic and extended
+`sanitize_capability` (previously 4 float fields only) to re-derive
+`max_priority` from `gateway_type` unconditionally and clamp
+`bandwidth_bps`/`latency_ms`/`queue_depth`. Added a `confidence_factor`
+(0.3 at zero recorded successes, ramping to 1.0 over 5) applied
+alongside health in `select_inner`. MG-25's cryptographic-verification
+layer (Ed25519 signature check via `identity::trust_store`, wired
+through `discovery::ingest_handshake`) explicitly not implemented — that
+call chain has zero production callers today (confirmed by grep, the
+same gap MG-30 documents), so it's a separate, larger cross-module task,
+not a contained fix. The scoring fix closes MG-25's own described
+trigger path regardless (its trigger scenario explicitly routes through
+MG-29's fabricated defaults).
+
+**Run 11 closeout:** `cargo build -p iris-core --all-targets` clean;
+`cargo test -p iris-core --lib gateway::` — **23/23 pass** (18
+pre-existing + 5 new/rewritten, including a full hand-trace of every
+pre-existing test against the new confidence multiplier before running,
+confirmed against the actual result); `cargo build --workspace --exclude
+iris-desktop --all-targets` clean; `cargo test --workspace --exclude
+iris-desktop` — **679 iris-core lib tests, 0 failed**; `cargo clippy -p
+iris-core --lib --no-deps` — 0 warnings from `gateway/mod.rs`.
+
+**§8 accounting:** 5 findings fixed this run (MG-25, 26, 27, 28, 29) in
+one commit — under the cap.
+
+## Run 12 — 2026-08-27 — MG-31/32/33 (event emission, self as candidate, hysteresis); MG-30 scoped
+
+**MG-31** (commit `71c2893`): `adopt_from_neighbor`/`withdraw` returned
+`Option<TopologyEvent>` for a caller to forward, but the only caller
+(`reconcile`) discards both, and `record_ack_timeout` built no event at
+all on a failure transition. Added a `broadcast::Sender<TopologyEvent>`
+(mirrors `TransportManager::topology_tx`) and a `topology_events()`
+subscribe method; all three mutation points now publish regardless of
+whether their own return value is consumed.
+
+**MG-32:** `self_capability` fed only `is_gateway()`/`advertised_tags()`
+— a node holding the only internet uplink in the neighbourhood reported
+"no gateway available" for its own traffic. Added an optional `local_id`
+via a new `with_local_id` builder (not a required constructor arg — kept
+all 13 existing `GatewayManager::new()` call sites, all tests,
+unaffected) and pushed self onto `select_inner`'s scored candidates when
+both `self_capability` and `local_id` are set, bypassing the health
+monitor and confidence ramp (no ACK-timeout concept for routing to
+yourself; a node always knows its own uplink is real).
+
+**MG-33:** `select` was a stateless pure function recomputed every call
+— the one varying production input (`reliability_score`, from an
+RSSI-tier `LinkQuality` that flips at a boundary) could swap the ranking
+of two similar gateways between calls, fragmenting a multi-part transfer
+across two gateways with no shared session state. Added a `SWITCH_MARGIN`
+(0.10) sticky-election mechanism, scoped to the `Single` (P3+) path only
+— `WithBackup`/`All` have no single incumbent for "stickiness" to mean
+anything for. `select`/`select_at`/`select_inner` become `&mut self` to
+hold a new per-priority `elected: HashMap<MessagePriority, PeerId>`.
+
+**MG-30:** confirmed (again, against current source) that
+`GatewayManager` has zero production callers and `GW_VERIFICATION.md`
+renders a false "IMPLEMENTED" verdict. Did not wire the composition-root
+integration the finding's fix text describes — that activates a new,
+security-sensitive live-routing path spanning the message engine's send/
+receive decision points, not a contained change to this finding's own
+Location. Did not edit `GW_VERIFICATION.md` either — it lives under
+`docs/implementation/`, outside the loop's file scope and not named in
+this finding's own Location field. Added an honest "Integration status"
+note to the module's own doc comment instead.
+
+Introduced 3 `let_underscore_must_use` clippy warnings using
+`let _ = sender.send(...)` for the new broadcast sends; fixed by
+switching to `.send(...).ok()`, matching the idiom `TransportManager`
+already uses elsewhere in this crate — caught by the clippy check before
+committing, not after.
+
+**Run 12 closeout:** `cargo build -p iris-core --all-targets` clean;
+`cargo test -p iris-core --lib gateway::` — **28/28 pass** (23
+pre-existing + 5 new, including hand-computed hysteresis-margin numbers
+verified against the actual test run); `cargo build --workspace
+--exclude iris-desktop --all-targets` clean; `cargo test --workspace
+--exclude iris-desktop` — **684 iris-core lib tests, 0 failed**; `cargo
+clippy -p iris-core --lib --no-deps` — 0 warnings from `gateway/mod.rs`
+after the `.ok()` fix (14 baseline, unchanged).
+
+**§8 accounting:** 4 findings fixed this run (MG-30, 31, 32, 33) in one
+commit — under the cap.
+
+## Run 13 — 2026-08-27 — MG-34/35/36/37/38 (dead fields, eviction policy, self-uplink defaults, PeerId privacy, Clone removal)
+
+**MG-34:** five fields stored, never read for any decision. Wired
+`hop_count` into scoring via a new `HOP_DISCOUNT` (0.85 per hop)
+multiplier applied in `select_inner` (kept outside
+`compute_gateway_quality` itself so that function stays a pure,
+directly-testable mapping of one capability). Deleted `path` (always
+empty, never read anywhere) and its `adopt_from_neighbor` parameter — 21
+call sites updated via a small Node script that bracket-matched each
+call and stripped the trailing `vec![]`/`Vec::new()` argument, verified
+against the diff before running tests. Deleted `last_success`
+(write-only, fully redundant with `success_counts` added in Run 11).
+Kept `transport_id` (a required constructor parameter with real
+descriptive value) and `primary_score` (legitimate public output for
+`select()`'s not-yet-written external caller, per MG-30 — not the same
+class of "dead" as internal write-only bookkeeping) — a per-field
+judgment call, not a blanket delete-everything-named pass.
+
+**MG-35:** capacity eviction picked least-recently-confirmed — the exact
+metric a Sybil flood maximizes for free. Replaced with
+`weakest_gateway_for_eviction`: scores each candidate the way
+`select_inner` would, and prefers evicting any zero-success candidate
+over one with a delivery on record, only reaching into the proven set if
+every current candidate has proven itself. `withdraw` now takes a real
+`reason` instead of a hardcoded `"stale"` that mislabeled capacity
+evictions in the logs too.
+
+**MG-36:** used live `cost.bandwidth_available_bps` (capped by the
+datasheet ceiling) instead of only the static figure, and a named
+`REFERENCE_EXPENSIVE_COST_PER_KB` reference rate instead of an
+undocumented `/10.0` that made this crate's own worked example
+(₹0.50/KB) read as "essentially free". Result now also runs through
+`sanitize_capability`. Did not build a real ACK-rate EWMA for
+`reliability_score` (documented) — no such tracker exists anywhere in
+this crate and this function has no access to delivery history.
+
+**MG-37:** fixed at the root instead of at the 4 named call sites —
+`PeerId` no longer derives `Debug`; a manual impl prints `short()`
+instead, closing the privacy leak for every struct that embeds a
+`PeerId` crate-wide. Grepped for exact-match `{:?}`-format test
+assertions before changing it (none found — the finding's own "cosmetic"
+characterization held up against a real check, not just trusted).
+
+**MG-38:** removed `Clone` from `GatewayManager`/`GatewayHealthMonitor`
+(verified zero existing `.clone()` call sites first) — a clone would
+silently fork `failure_counters`/`re_admission_strikes` into two
+independent security records.
+
+**Run 13 closeout:** `cargo build -p iris-core --all-targets` clean;
+`cargo test -p iris-core --lib gateway::` — **31/31 pass** (28
+pre-existing + 3 new); `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop` —
+**687 iris-core lib tests, 0 failed** (including every existing PeerId
+Debug-format usage crate-wide); `cargo clippy -p iris-core --lib
+--no-deps` — 0 new warnings (14 baseline, unchanged).
+
+**§8 accounting:** 5 findings fixed this run (MG-34, 35, 36, 37, 38) in
+one commit — under the cap. This closes 14 of 18 MG findings; MG-39..42
+remain.
+
+### Next run (Run 14)
+MG-39/40/41/42 as one unit — all four are about the same
+`TransportError` enum in `crates/iris-core/src/error.rs` and the
+findings cross-reference each other directly (MG-42's fix note: "combined
+with MG-39's `Io{kind,msg}`, the derives survive"; MG-40 touches the same
+file). Read the full 17-call-site blast radius (`ble.rs`, `internet.rs`,
+`lora.rs`, `satellite.rs`, `wifi_direct.rs`, `wifiaware.rs` all construct
+`TransportError::Protocol(...)`) before starting — this is the widest
+blast radius of any single Tier 2 fix so far this session, wider than
+DTN-15/16/18's `meet()` rewrite. After MG-39..42: TAK-2 (different
+crate, `iris-storage` — self-contained), then Tier 2 is fully closed out
+except the 3 blocked ROUT findings.
