@@ -1,12 +1,23 @@
 //! Store-Carry-Forward engine — SCF-001 (WP-5).
 //!
 //! Per `docs/routing/STORE_CARRY_FORWARD.md`: when no forwarding path exists,
-//! messages are buffered over the STORE seam (`MessageStorage`), carried while
-//! the node moves, and forwarded when a contact appears. The buffer view is
-//! ordered (priority DESC, expiry ASC) via a `BTreeMap<StoreKey, _>`; delivery
-//! status follows the SCF state machine
-//! (STORED → CARRY → FORWARD_ATTEMPT → ACK_RECEIVED/DELIVERED, or
-//! TTL_EXPIRED → DROPPED).
+//! messages are buffered over the STORE seam (`MessageStorage`) and forwarded
+//! when a contact appears. The buffer view is ordered via a
+//! `BTreeMap<StoreKey, _>` (see `StoreKey`'s `Ord` impl for the exact order).
+//!
+//! DTN-22: the state machine actually implemented is STORED ->
+//! (`AckPending`) -> DELIVERED, or TTL_EXPIRED — and delivery is a *removal*
+//! event (DTN-5: a terminal message is removed from `buffer` immediately,
+//! not retained with a terminal status), not a status a caller ever reads
+//! back. Three additional states the spec describes (`Carrying`,
+//! `AwaitingContact`, `ForwardingInProgress`) needed a mobility/contact-
+//! presence signal no part of this codebase produces, and a `Dropped`
+//! status (for TTL expiry / eviction) was, by the same DTN-5 removal-on-
+//! terminal logic, never actually constructed either — both were deleted
+//! rather than left as decoration that misrepresents implemented behaviour
+//! (the same principle ROUT-34, this tier, applied to dead placeholder
+//! code). TTL expiry and eviction remain fully observable via
+//! `tracing` (`SCF_REAPED_EXPIRED`, `SCF_EVICTED`) at the point of removal.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -23,31 +34,18 @@ use crate::routing::scf_eviction::ScfEvictionPolicy;
 use crate::routing::store::ttl_expired;
 
 /// Delivery status of a buffered message (STORE_CARRY_FORWARD.md §Message
-/// Lifecycle).
+/// Lifecycle) — see the module doc comment (DTN-22) for which of the
+/// spec's states are actually implemented and why.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeliveryStatus {
     Stored,
-    Carrying,
-    AwaitingContact,
-    ForwardingInProgress { to: PeerId },
     AckPending { sent_to: PeerId },
     Delivered { delivered_to: PeerId },
-    Dropped { reason: DropReason },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DropReason {
-    TtlExpired,
-    StorageFull,
-    Evicted,
 }
 
 impl DeliveryStatus {
     pub fn is_terminal(&self) -> bool {
-        matches!(
-            self,
-            DeliveryStatus::Delivered { .. } | DeliveryStatus::Dropped { .. }
-        )
+        matches!(self, DeliveryStatus::Delivered { .. })
     }
 }
 
@@ -691,6 +689,19 @@ mod tests {
             scf.delivery_status(&id),
             "status_for must agree with delivery_status for every contact argument"
         );
+    }
+
+    #[test]
+    fn dtn22_delivery_status_only_terminal_when_delivered() {
+        // DTN-22: DeliveryStatus was pared down to the three states this
+        // module actually produces (Stored, AckPending, Delivered) — the
+        // other four (Carrying, AwaitingContact, ForwardingInProgress,
+        // Dropped) were never constructed anywhere in the crate. Confirms
+        // is_terminal's real, exhaustively-checked semantics: only
+        // Delivered is terminal.
+        assert!(!DeliveryStatus::Stored.is_terminal());
+        assert!(!DeliveryStatus::AckPending { sent_to: pid(9) }.is_terminal());
+        assert!(DeliveryStatus::Delivered { delivered_to: pid(9) }.is_terminal());
     }
 
     #[test]
