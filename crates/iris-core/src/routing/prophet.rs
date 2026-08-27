@@ -106,7 +106,11 @@ impl TimePoint {
 }
 
 /// Directional per-destination delivery predictability.
-#[derive(Debug)]
+///
+/// `Clone` (ROUT-33): benchmarks need a cheap way to snapshot a populated
+/// table and restore it before every timed iteration rather than mutating
+/// one shared instance across the whole run.
+#[derive(Debug, Clone)]
 pub struct DeliveryPredictability {
     config: ProphetConfig,
     dps: HashMap<PeerId, f64>,
