@@ -114,8 +114,32 @@ impl TimePoint {
 pub struct DeliveryPredictability {
     config: ProphetConfig,
     dps: HashMap<PeerId, f64>,
-    /// Last update time per destination (for aging intervals).
-    last_meet: HashMap<PeerId, Duration>,
+    /// DTN-14: time of the last **direct** Eq. 1 contact with this
+    /// destination — feeds only Eq. 1's interval-scaled `P_encounter`.
+    /// Written exclusively by `meet`'s direct-contact branch, for `other`
+    /// only (never for a transitively-derived destination). Kept separate
+    /// from `aging_base` below: the two previously shared one map, and
+    /// `age()` overwriting it on every pass silently pinned every peer's
+    /// encounter interval at "just now", disabling Eq. 1's interval
+    /// scaling entirely once aging ran on any real cadence.
+    last_encounter: HashMap<PeerId, Duration>,
+    /// DTN-13/DTN-14: aging baseline per destination. Seeded by `meet` at
+    /// insertion/update time (direct *and* transitive — both writes), then
+    /// only ever *advanced* by `age_at`, never reset to `now`. That advance
+    /// rule is DTN-13's actual fix: the baseline moves forward by exactly
+    /// the whole intervals consumed, preserving the sub-interval remainder,
+    /// so calling `age()` more often than `aging_interval` no longer
+    /// discards decay progress on every call. `age_at` deliberately does
+    /// NOT originate a baseline out of nothing on an entry's first aging
+    /// pass (an earlier version of this fix tried that split — "meet never
+    /// touches aging_base" — but DTN-12 wires aging to run *inside* `meet`,
+    /// so the realistic production case is "one age pass, a long time after
+    /// insertion"; treating that first pass as k=0 would silently forgive
+    /// an entry's entire dormant period instead of decaying it, which is
+    /// worse than DTN-13's original bug, not a fix for it). Kept as a
+    /// separate map from `last_encounter` regardless — that split is the
+    /// real DTN-14 fix, independent of who seeds the initial value.
+    aging_base: HashMap<PeerId, Duration>,
     now: TimePoint,
     /// DTN-18: this node's own identity, when known. `None` for every
     /// production call site today — `RoutingEngine` itself has no concept
@@ -135,7 +159,8 @@ impl DeliveryPredictability {
         DeliveryPredictability {
             config,
             dps: HashMap::new(),
-            last_meet: HashMap::new(),
+            last_encounter: HashMap::new(),
+            aging_base: HashMap::new(),
             now: TimePoint::Wall(Instant::now()),
             self_id: None,
         }
@@ -184,7 +209,8 @@ impl DeliveryPredictability {
             .map(|(d, p)| (*d, *p))
         {
             self.dps.remove(&lo_dst);
-            self.last_meet.remove(&lo_dst);
+            self.last_encounter.remove(&lo_dst);
+            self.aging_base.remove(&lo_dst);
         }
     }
 
@@ -215,45 +241,94 @@ impl DeliveryPredictability {
 
     /// Apply aging (Eq. 2) then return the number of entries remaining.
     /// Each destination is decayed by `gamma^K` where K is whole aging
-    /// intervals since its last update.
-    ///
-    /// Known gap (carried, not fixed here — `age()`/`prune()` are DTN-12's
-    /// scope, a separate tightly-coupled cluster around this function's
-    /// `last_meet`-baseline handling): the DTN-18 self entry has no
-    /// `last_meet` row when first set (`with_self_id` only touches `dps`),
-    /// so its first `age()` pass computes `k=0` and leaves it unchanged —
-    /// but the rebuild loop below unconditionally records `now` as its new
-    /// `last_meet`, so a *second* `age()` call could decay it. Not
-    /// reachable today (`age()` has zero non-benchmark callers per DTN-12),
-    /// so deferred to that cluster's own fix rather than patched in
-    /// isolation here.
+    /// intervals since its own aging baseline (see `aging_base`'s doc
+    /// comment — not since it was last written, which is a different clock,
+    /// DTN-14).
     pub fn age(&mut self) -> usize {
         let now = self.now.now();
+        self.age_at(now);
+        self.dps.len()
+    }
+
+    /// The actual aging step, also run at the top of every `meet` (DTN-12):
+    /// `meet` is the sole choke point every production DP mutation passes
+    /// through today (confirmed by grep — nothing calls `age`/`prune`
+    /// outside a benchmark), and no "routing tick" scheduler exists
+    /// anywhere in this engine to call `age` from independently (also
+    /// confirmed by grep; building one would be a substantially larger
+    /// architectural addition than this cluster's own Location/Fix fields
+    /// imply). Running aging at contact time — the natural PRoPHET
+    /// processing cadence, since all state in this engine already advances
+    /// on contact events rather than a wall-clock timer — gives Eq. 2 a
+    /// real, always-current caller without inventing new infrastructure.
+    /// `snapshot`/`p_for` deliberately do NOT also self-age (that would
+    /// need `&mut self`, rippling into every read call site for marginal
+    /// benefit): the small staleness this leaves — at most one contact
+    /// round — is normal for a gossip-style protocol that already treats
+    /// contacts as its synchronization point.
+    fn age_at(&mut self, now: Duration) {
         let cfg = self.config;
         let mut aging = Vec::with_capacity(self.dps.len());
         for (dst, p) in &self.dps {
-            let k = self
-                .last_meet
-                .get(dst)
-                .map(|t| floor_intervals(now.saturating_sub(*t), cfg.aging_interval))
+            // DTN-18: P(A,A) is a fixed identity value, not a real
+            // prediction — it must never decay or be discarded by the
+            // threshold check below, however long it sits unmeasured.
+            if Some(*dst) == self.self_id {
+                aging.push((*dst, *p, now));
+                continue;
+            }
+            let old_base = self.aging_base.get(dst).copied();
+            let k = old_base
+                .map(|t| floor_intervals(now.saturating_sub(t), cfg.aging_interval))
                 .unwrap_or(0u64);
+            // DTN-17: `k as i32` truncates/wraps for k > i32::MAX, and
+            // gamma<1 raised to a wrapped-negative exponent is +inf, which
+            // then survives the threshold check below and poisons every
+            // downstream consumer. Clamp before casting, and never trust
+            // the result to be finite even after clamping.
             let aged = if k > 0 {
-                p * cfg.gamma.powi(k as i32)
+                let k32 = k.min(i32::MAX as u64) as i32;
+                let v = p * cfg.gamma.powi(k32);
+                if v.is_finite() {
+                    v.clamp(0.0, 1.0)
+                } else {
+                    0.0
+                }
             } else {
                 *p
             };
             if aged >= cfg.p_first_threshold {
-                aging.push((*dst, aged, now));
+                // DTN-13: advance the baseline by exactly the whole
+                // intervals just consumed (not to `now`) — preserves the
+                // sub-interval remainder so a cadence faster than
+                // `aging_interval` still accumulates toward the next decay
+                // step instead of resetting every single call, which is
+                // what made aging a total no-op once it had a real caller.
+                let new_base = match old_base {
+                    Some(t) if k > 0 => {
+                        t.saturating_add(cfg.aging_interval.saturating_mul(k.min(u32::MAX as u64) as u32))
+                    }
+                    Some(t) => t,
+                    // `meet` seeds aging_base for every entry it writes, so
+                    // this is only reachable in practice for an entry this
+                    // table has literally never had a baseline for — a
+                    // defensive fallback, not the common path.
+                    None => now,
+                };
+                aging.push((*dst, aged, new_base));
             }
         }
         // Rebuild keeping only entries above the discard floor.
         self.dps.clear();
-        self.last_meet.clear();
-        for (dst, aged, at) in aging {
+        self.aging_base.clear();
+        for (dst, aged, base) in aging {
             self.dps.insert(dst, aged);
-            self.last_meet.insert(dst, at);
+            self.aging_base.insert(dst, base);
         }
-        self.dps.len()
+        // A destination that just aged out must not leave a dangling
+        // encounter timestamp behind (Eq. 1 would otherwise compute
+        // `since` against a peer no longer in the table).
+        self.last_encounter.retain(|d, _| self.dps.contains_key(d));
     }
 
     /// Record a direct contact with `other`: Eq. 1 (interval-scaled
@@ -261,6 +336,10 @@ impl DeliveryPredictability {
     /// (MAX form). Returns the set of destinations whose DP changed.
     pub fn meet(&mut self, other: &PeerId, other_predictions: &[(PeerId, f64)]) -> Vec<PeerId> {
         let now = self.now.now();
+        // DTN-12: age the whole table as the first step of every contact —
+        // see `age_at`'s doc comment for why this, not a separate tick, is
+        // this table's real production aging path.
+        self.age_at(now);
         let cfg = self.config;
         let mut protect = vec![*other];
         if let Some(s) = self.self_id {
@@ -273,7 +352,7 @@ impl DeliveryPredictability {
 
         // Eq. 1: direct contact update.
         let since = self
-            .last_meet
+            .last_encounter
             .get(other)
             .map(|t| now.saturating_sub(*t).as_millis() as u64)
             .unwrap_or(u64::MAX); // first encounter → full P_encounter
@@ -288,7 +367,13 @@ impl DeliveryPredictability {
         let mut changed = Vec::new();
         if (p_direct - p_old).abs() > 1e-9 || !self.dps.contains_key(other) {
             self.dps.insert(*other, p_direct);
-            self.last_meet.insert(*other, now);
+            self.last_encounter.insert(*other, now);
+            // DTN-13/14: seed (or refresh) the aging baseline at the
+            // moment of this write. `age_at` only ever *advances* it from
+            // here — see aging_base's doc comment for why the baseline
+            // must originate here rather than on age_at's first
+            // observation.
+            self.aging_base.insert(*other, now);
             changed.push(*other);
         }
 
@@ -338,7 +423,12 @@ impl DeliveryPredictability {
                     self.evict_worst_unless(&protect);
                 }
                 self.dps.insert(*dst, p_t);
-                self.last_meet.insert(*dst, now);
+                // DTN-13/14: seed the aging baseline here too — see the
+                // matching comment on the Eq. 1 write above. A transitively
+                // -derived entry ages from when it was actually computed,
+                // not from whenever a later `age_at` pass happens to first
+                // notice it.
+                self.aging_base.insert(*dst, now);
                 changed.push(*dst);
             }
         }
@@ -369,17 +459,10 @@ impl DeliveryPredictability {
     /// Drop entries below the discard floor (caller decides cadence).
     pub fn prune(&mut self) -> usize {
         let thr = self.config.p_first_threshold;
-        let keep: Vec<(PeerId, f64)> = self
-            .dps
-            .iter()
-            .filter(|(_, p)| **p >= thr)
-            .map(|(d, p)| (*d, *p))
-            .collect();
-        self.dps.retain(|_, p| *p >= thr);
-        self.last_meet.retain(|d, _| self.dps.contains_key(d));
-        // Drop late-aging last_meet for removed entries.
-        self.last_meet.retain(|d, _| self.dps.contains_key(d));
-        debug_assert_eq!(self.dps.len(), keep.len());
+        // DTN-18: exempt the fixed self-identity entry, same as `age_at`.
+        self.dps.retain(|d, p| *p >= thr || Some(*d) == self.self_id);
+        self.last_encounter.retain(|d, _| self.dps.contains_key(d));
+        self.aging_base.retain(|d, _| self.dps.contains_key(d));
         self.dps.len()
     }
 }
@@ -456,6 +539,10 @@ mod tests {
         let b = pid(2);
         p.meet(&b, &[]);
         // First contact: P = (1−0.01)·1.0 = 0.99 (virtual clock at t0).
+        // meet() seeds aging_base[b] = t0 as part of this same call
+        // (DTN-13/14) — the baseline originates at insertion, not on
+        // age_at's first observation, so a single later age() call still
+        // measures the true elapsed time since t0.
         clock.store(1_700_000_001, Ordering::Relaxed); // +1 s → 1 aging interval
         p.age();
         // K=1: 0.99·0.5 = 0.495.
@@ -464,9 +551,202 @@ mod tests {
             "got {}",
             p.p_for(&b)
         );
-        clock.store(1_700_000_003, Ordering::Relaxed); // +3 s → K=3
+        clock.store(1_700_000_003, Ordering::Relaxed); // +2 s more → K=2 from the new baseline
         p.age();
         assert!((p.p_for(&b) - 0.99 * 0.5f64.powi(3)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn dtn13_sub_interval_cadence_ages_identically_to_one_infrequent_call() {
+        // The finding's own scenario: a caller invokes aging far more often
+        // than aging_interval (e.g. once per routing tick against a 30-min
+        // interval). Before DTN-13 this reset the baseline to `now` on
+        // every single call, so k was always 0 and decay never happened no
+        // matter how much real time passed. Prove the final result no
+        // longer depends on how many times age() was called along the way
+        // — only on total elapsed time.
+        let cfg = ProphetConfig {
+            p_encounter_first: 1.0,
+            gamma: 0.5,
+            aging_interval: Duration::from_secs(10),
+            ..Default::default()
+        };
+        let b = pid(2);
+
+        let clock_frequent = Arc::new(AtomicU64::new(1_700_000_000));
+        let mut frequent =
+            DeliveryPredictability::new(cfg).with_virtual_clock(clock_frequent.clone());
+        frequent.meet(&b, &[]);
+        // Tick once per second for 25 seconds (2.5x the aging_interval) —
+        // 25 age() calls, none aligned to the 10 s boundary except by
+        // accumulation.
+        for s in 1..=25u64 {
+            clock_frequent.store(1_700_000_000 + s, Ordering::Relaxed);
+            frequent.age();
+        }
+
+        let clock_once = Arc::new(AtomicU64::new(1_700_000_000));
+        let mut once = DeliveryPredictability::new(cfg).with_virtual_clock(clock_once.clone());
+        once.meet(&b, &[]);
+        clock_once.store(1_700_000_000 + 25, Ordering::Relaxed);
+        once.age();
+
+        assert!(
+            (frequent.p_for(&b) - once.p_for(&b)).abs() < 1e-9,
+            "frequent={} once={} — cadence must not change the result",
+            frequent.p_for(&b),
+            once.p_for(&b)
+        );
+        // Sanity: 25 s over a 10 s interval is K=2 (20 s consumed, 5 s
+        // remainder held for next time) — decay must actually have run,
+        // not just "agree while both being no-ops".
+        assert!(
+            (once.p_for(&b) - 0.99 * 0.5f64.powi(2)).abs() < 1e-9,
+            "got {}",
+            once.p_for(&b)
+        );
+    }
+
+    #[test]
+    fn dtn14_aging_does_not_clobber_the_encounter_interval_clock() {
+        // Before the last_encounter/aging_base split, age() overwrote the
+        // single shared map on every pass, so `since` (Eq. 1's interval
+        // scaling input) was always ~0 regardless of how long it had
+        // actually been since the last direct contact — P_encounter was
+        // permanently pinned at its ceiling.
+        let clock = Arc::new(AtomicU64::new(1_700_000_000));
+        let cfg = ProphetConfig {
+            p_encounter_max: 0.7,
+            aging_interval: Duration::from_secs(100),
+            alpha: 0.5,
+            gamma: 0.9999, // slow decay so the DP survives many ticks below
+            ..Default::default()
+        };
+        let mut p = DeliveryPredictability::new(cfg).with_virtual_clock(clock.clone());
+        let b = pid(2);
+        p.meet(&b, &[]); // establishes dps[b] and last_encounter[b] = t0
+
+        // Simulate 50 aging ticks, 1 s apart, well below aging_interval —
+        // no direct re-contact with b in between.
+        for s in 1..=50u64 {
+            clock.store(1_700_000_000 + s, Ordering::Relaxed);
+            p.age();
+        }
+
+        // Meet b again now, 50 s after the *actual* last direct contact.
+        // since_ms = 50_000 > intvl_ms = 100_000? No — pick a gap that
+        // exceeds the interval so interval-scaling actually kicks in.
+        clock.store(1_700_000_301, Ordering::Relaxed); // 301 s since t0
+        let p_old = p.p_for(&b);
+        p.meet(&b, &[]);
+        let p_new = p.p_for(&b);
+        // Eq. 1 with since_ms(301_000) > intvl_ms(100_000):
+        // p_enc = 0.7 * (100_000/301_000)^0.5 ≈ 0.4035, strictly below the
+        // 0.7 ceiling. If last_encounter had been clobbered by the 50
+        // intervening age() calls, `since` would read ~1000 ms and p_enc
+        // would be pinned at the 0.7 ceiling instead.
+        let bound = 1.0 - p.config().delta;
+        let p_enc_pinned_prediction = p_old + (bound - p_old) * 0.7;
+        assert!(
+            p_new < p_enc_pinned_prediction - 1e-6,
+            "P_encounter must be interval-scaled below the ceiling, not pinned: p_new={p_new} pinned-case={p_enc_pinned_prediction}"
+        );
+    }
+
+    #[test]
+    fn dtn17_large_k_never_produces_a_non_finite_dp() {
+        // Regression for the i32 truncation: a k large enough to wrap
+        // negative through `as i32` used to make gamma.powi(k) evaluate to
+        // +inf, which then passed the `>= p_first_threshold` check and
+        // poisoned the table permanently.
+        let clock = Arc::new(AtomicU64::new(0));
+        let mut p = DeliveryPredictability::new(ProphetConfig {
+            p_encounter_first: 1.0,
+            gamma: 0.999,
+            aging_interval: Duration::from_millis(1),
+            ..Default::default()
+        })
+        .with_virtual_clock(clock.clone());
+        let b = pid(2);
+        p.meet(&b, &[]);
+        // Advance far enough that k = elapsed/interval exceeds i32::MAX
+        // (interval is 1 ms, so ~2.5M seconds clears 2^31 ms).
+        clock.store(3_000_000_000, Ordering::Relaxed);
+        p.age();
+        let v = p.p_for(&b);
+        assert!(v.is_finite(), "DP must never become non-finite, got {v}");
+        assert!((0.0..=1.0).contains(&v), "DP must stay in [0,1], got {v}");
+    }
+
+    #[test]
+    fn dtn12_meet_ages_the_table_as_a_side_effect_without_an_explicit_age_call() {
+        // DTN-12's core claim: age() had zero non-benchmark production
+        // callers, so DPs only ever increased. Prove meet() now ages the
+        // *whole* table on every call, not just the peer being met —
+        // without the test ever calling .age() itself.
+        let clock = Arc::new(AtomicU64::new(1_700_000_000));
+        let cfg = ProphetConfig {
+            p_encounter_first: 1.0,
+            gamma: 0.5,
+            aging_interval: Duration::from_secs(1),
+            ..Default::default()
+        };
+        let mut p = DeliveryPredictability::new(cfg).with_virtual_clock(clock.clone());
+        let x = pid(2);
+        let y = pid(3);
+        p.meet(&x, &[]); // t0: dps[x] = 0.99, aging_base[x] = t0
+        let before = p.p_for(&x);
+        clock.store(1_700_000_003, Ordering::Relaxed); // +3 s → K=3 once aged
+        p.meet(&y, &[]); // a completely unrelated contact — x is never touched by y's own Eq.1/Eq.3
+        let after = p.p_for(&x);
+        assert!(
+            after < before - 1e-9,
+            "meet() must age existing entries as a side effect: before={before} after={after}"
+        );
+        assert!(
+            (after - 0.99 * 0.5f64.powi(3)).abs() < 1e-9,
+            "expected exact K=3 decay, got {after}"
+        );
+    }
+
+    #[test]
+    fn dtn18_self_entry_never_decays_even_after_many_aging_passes() {
+        // age_at now runs on every meet() (DTN-12) — without an explicit
+        // exemption, the self-identity entry (P(A,A), meant to be fixed)
+        // would decay like any other entry once real aging passes ran.
+        let clock = Arc::new(AtomicU64::new(1_700_000_000));
+        let self_id = pid_wide(1);
+        let mut a = DeliveryPredictability::new(ProphetConfig {
+            gamma: 0.5,
+            aging_interval: Duration::from_secs(1),
+            ..Default::default()
+        })
+        .with_virtual_clock(clock.clone())
+        .with_self_id(self_id);
+        let bound = 1.0 - a.config().delta;
+
+        for s in 1..=20u64 {
+            clock.store(1_700_000_000 + s, Ordering::Relaxed);
+            a.meet(&pid(10), &[]); // unrelated contact, drives age_at each time
+        }
+        assert!(
+            (a.p_for(&self_id) - bound).abs() < 1e-9,
+            "self entry must never decay, got {}",
+            a.p_for(&self_id)
+        );
+    }
+
+    #[test]
+    fn dtn19_prune_drops_only_entries_below_threshold() {
+        let mut p = DeliveryPredictability::new(ProphetConfig::default());
+        let keep = pid(2);
+        let drop = pid(3);
+        p.meet(&keep, &[]); // ~0.495, above the 0.1 default threshold
+        p.meet(&pid(9), &[(drop, 0.05)]); // transitivity result well below threshold
+        assert!(p.p_for(&drop) < p.config().p_first_threshold);
+        p.prune();
+        assert!(p.has_entry(&keep), "above-threshold entry must survive prune");
+        assert!(!p.has_entry(&drop), "below-threshold entry must be dropped by prune");
     }
 
     #[test]
@@ -532,12 +812,16 @@ mod tests {
         // Seed one deliberately low-DP entry via transitivity (direct
         // contacts all converge to ~0.495 on first meet, so they tie with
         // each other and would not discriminate "lowest" — this needs a
-        // genuinely different value to prove eviction targets it).
+        // genuinely different value to prove eviction targets it). Must
+        // stay above p_first_threshold (0.1 default): DTN-12 wired age_at
+        // into every meet() call, which now discards anything below
+        // threshold as unrelated cleanup — this test wants capacity-based
+        // eviction to be what removes it, not threshold pruning.
         let filler = pid_wide(1);
         let low_dst = pid_wide(2);
-        p.meet(&filler, &[(low_dst, 0.05)]);
+        p.meet(&filler, &[(low_dst, 0.6)]);
         let low_p = p.p_for(&low_dst);
-        assert!(low_p > 0.0 && low_p < 0.1, "seed value not usably low: {low_p}");
+        assert!(low_p > 0.1 && low_p < 0.3, "seed value not usably low: {low_p}");
 
         // Fill to capacity with normal direct contacts (~0.495 each,
         // comfortably above low_p).
