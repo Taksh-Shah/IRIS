@@ -21,9 +21,28 @@
 //! tags + `NeighborTable`, INTERNET-001 `TransportCost`+state via
 //! [`self_internet_gateway`], and the existing `TopologyEvent::GatewayChanged`
 //! channel.
+//!
+//! **Integration status (MG-30):** this module is feature-complete and
+//! unit-tested, but [`GatewayManager`] has no production caller anywhere in
+//! the tree today — nothing constructs one outside this file's own tests,
+//! and its upstream feed (`discovery::mod::ingest_handshake`, which is what
+//! would populate a neighbor's `capabilities` bundle) has no production
+//! caller either. Wiring this into the composition root (constructing the
+//! manager, calling `reconcile` on a discovery tick, routing
+//! `deliver_outbound`'s off-mesh decision through `select`, and calling
+//! `ingest_handshake` after signature verification) is a deliberate,
+//! separate architectural decision this pass does not make: it would
+//! activate a new, security-sensitive live-routing path (every off-mesh
+//! message potentially funneled through gateway selection) touching the
+//! message engine's send/receive decision points, not a contained change to
+//! this file. MG-25/26/27/28/29 (the trust/health/scoring correctness
+//! defects that would matter *the moment* this is wired) are fixed and
+//! ready for that integration to build on.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+
+use tokio::sync::broadcast;
 
 use crate::discovery::neighbor_table::NeighborTable;
 use crate::message::MessagePriority;
@@ -35,7 +54,8 @@ use crate::transport::TopologyEvent;
 pub const PROBATION_SCORE_FACTOR: f32 = 0.5;
 /// Failure threshold: consecutive ACK timeouts that mark a gateway failed.
 pub const FAILURE_THRESHOLD: u32 = 3;
-/// Window after which a probation gateway may be re-admitted to full score.
+/// Kept for observability (when a gateway entered probation) — MG-28: no
+/// longer gates a return to full score by itself; only `record_success` does.
 pub const RECOVERY_WINDOW: Duration = Duration::from_secs(300);
 /// Upper bound on tracked gateway candidates (eviction of oldest on overflow).
 pub const MAX_GATEWAY_CANDIDATES: usize = 64;
@@ -523,6 +543,22 @@ pub struct GatewayManager {
     /// Capability of *this node's own* uplink, if any (set from the
     /// INTERNET-001/LoRa transport state).
     self_capability: Option<GatewayCapability>,
+    /// MG-32: this node's own identity, needed to make `self_capability` a
+    /// selectable candidate rather than only an advertised fact. Optional
+    /// (via [`GatewayManager::with_local_id`], not a required constructor
+    /// arg) so the 13 existing `new()` call sites — all tests, since this
+    /// engine has zero production callers today (MG-30) — are unaffected.
+    local_id: Option<PeerId>,
+    /// MG-31: gateway adoption/withdrawal/failure events, published here
+    /// instead of only returned to a caller that (today) has nowhere to
+    /// forward them — mirrors `TransportManager::topology_tx`.
+    topology_tx: broadcast::Sender<TopologyEvent>,
+    /// MG-33: the currently-elected single gateway per priority tier (P3+
+    /// only — `WithBackup`/`All` have no single incumbent to be sticky
+    /// about). A challenger must beat the incumbent by `SWITCH_MARGIN`
+    /// before `select` actually switches, so a link-quality flap at a score
+    /// boundary doesn't fragment an in-flight transfer across gateways.
+    elected: HashMap<MessagePriority, PeerId>,
 }
 
 impl Default for GatewayManager {
@@ -533,11 +569,27 @@ impl Default for GatewayManager {
 
 impl GatewayManager {
     pub fn new() -> Self {
+        let (topology_tx, _) = broadcast::channel(256);
         GatewayManager {
             gateways: HashMap::new(),
             health: GatewayHealthMonitor::new(),
             self_capability: None,
+            local_id: None,
+            topology_tx,
+            elected: HashMap::new(),
         }
+    }
+
+    /// MG-32: attach this node's own identity, making `self_capability` (when
+    /// set) a candidate in `select()` rather than only an advertised fact.
+    pub fn with_local_id(mut self, id: PeerId) -> Self {
+        self.local_id = Some(id);
+        self
+    }
+
+    /// MG-31: subscribe to gateway adoption/withdrawal/failure events.
+    pub fn topology_events(&self) -> broadcast::Receiver<TopologyEvent> {
+        self.topology_tx.subscribe()
     }
 
     // --- Detection / self-uplink ---
@@ -637,11 +689,17 @@ impl GatewayManager {
                 reliability = %reliability,
                 "gateway candidate adopted"
             );
-            Some(TopologyEvent::GatewayChanged {
+            let ev = TopologyEvent::GatewayChanged {
                 gateway_id: node_id,
                 gateway_type,
                 available: true,
-            })
+            };
+            // MG-31: publish regardless of whether this call's own return
+            // value is consumed — `reconcile` (the only internal caller
+            // today) discards it, which used to mean the event never went
+            // anywhere at all.
+            self.topology_tx.send(ev.clone()).ok();
+            Some(ev)
         } else {
             None
         }
@@ -658,11 +716,13 @@ impl GatewayManager {
                 reason = "stale",
                 "gateway candidate withdrawn"
             );
-            Some(TopologyEvent::GatewayChanged {
+            let ev = TopologyEvent::GatewayChanged {
                 gateway_id: *node_id,
                 gateway_type: removed.capability.gateway_type.as_str().to_string(),
                 available: false,
-            })
+            };
+            self.topology_tx.send(ev.clone()).ok();
+            Some(ev)
         } else {
             None
         }
@@ -672,8 +732,27 @@ impl GatewayManager {
 
     /// Record a delivery ACK timeout. Returns `true` when the gateway was
     /// newly excluded (caller should re-route and surface the change).
+    ///
+    /// MG-31: also publishes a `GatewayChanged { available: false }` event on
+    /// that transition — previously failure produced no event at all, so a
+    /// gateway going bad was invisible to anything not polling `is_failed`.
     pub fn record_ack_timeout(&mut self, gateway: PeerId) -> bool {
-        self.health.record_ack_timeout(gateway)
+        let newly_excluded = self.health.record_ack_timeout(gateway);
+        if newly_excluded {
+            let gateway_type = self
+                .gateways
+                .get(&gateway)
+                .map(|g| g.capability.gateway_type.as_str().to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            self.topology_tx
+                .send(TopologyEvent::GatewayChanged {
+                    gateway_id: gateway,
+                    gateway_type,
+                    available: false,
+                })
+                .ok();
+        }
+        newly_excluded
     }
 
     pub fn record_success(&mut self, gateway: PeerId) {
@@ -705,11 +784,15 @@ impl GatewayManager {
     /// Deterministic selection for a message priority. Never returns a failed
     /// or probation-expired gateway; with no compatible candidate it returns
     /// `None` (mesh-only fallback — message stays in mesh/SCF, never dropped).
-    pub fn select(&self, msg_priority: MessagePriority) -> GatewaySelection {
+    ///
+    /// `&mut self` (MG-33): a P3+ selection is sticky against a challenger
+    /// that doesn't clearly beat the incumbent, and that incumbent has to
+    /// live somewhere between calls.
+    pub fn select(&mut self, msg_priority: MessagePriority) -> GatewaySelection {
         self.select_at(msg_priority, Instant::now())
     }
 
-    fn select_at(&self, msg_priority: MessagePriority, now: Instant) -> GatewaySelection {
+    fn select_at(&mut self, msg_priority: MessagePriority, now: Instant) -> GatewaySelection {
         let selection = self.select_inner(msg_priority, now);
         let label = match &selection {
             GatewaySelection::None { .. } => "None",
@@ -727,7 +810,14 @@ impl GatewayManager {
         selection
     }
 
-    fn select_inner(&self, msg_priority: MessagePriority, now: Instant) -> GatewaySelection {
+    /// MG-33: a challenger must exceed the current incumbent by this margin
+    /// before `select` actually switches — otherwise a link-quality flap at
+    /// a score boundary re-elects a different gateway on alternating calls,
+    /// fragmenting an in-flight multi-part transfer across two gateways with
+    /// no shared session/NAT state.
+    const SWITCH_MARGIN: f32 = 0.10;
+
+    fn select_inner(&mut self, msg_priority: MessagePriority, now: Instant) -> GatewaySelection {
         let mut scored: Vec<(f32, PeerId)> = self
             .gateways
             .values()
@@ -746,6 +836,19 @@ impl GatewayManager {
             })
             .filter(|(score, _)| score.is_finite() && *score > MIN_QUALITY_FLOOR)
             .collect();
+        // MG-32: this node's own uplink is a candidate too — previously
+        // `self_capability` fed only `is_gateway()`/`advertised_tags()`, so
+        // a node holding the only internet uplink in the neighbourhood
+        // still reported "no gateway available" for its own traffic. Not
+        // subject to the health monitor (there is no ACK-timeout concept
+        // for routing to yourself) or to the confidence ramp (a node always
+        // knows its own uplink is real, unlike an advertised claim).
+        if let (Some(cap), Some(local_id)) = (&self.self_capability, self.local_id) {
+            let q = compute_gateway_quality(cap, msg_priority);
+            if q.is_finite() && q > MIN_QUALITY_FLOOR {
+                scored.push((q, local_id));
+            }
+        }
         // Deterministic total order: score desc, then PeerId asc for ties —
         // HashMap iteration order must never leak into selection (REDTEAM-05).
         scored.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
@@ -774,10 +877,23 @@ impl GatewayManager {
                     }
                 }
             }
-            _ => GatewaySelection::Single {
-                gateway: scored[0].1,
-                score: scored[0].0,
-            },
+            _ => {
+                let mut chosen = scored[0];
+                if let Some(&incumbent) = self.elected.get(&msg_priority) {
+                    if let Some(&incumbent_scored) =
+                        scored.iter().find(|(_, id)| *id == incumbent)
+                    {
+                        if chosen.0 < incumbent_scored.0 + Self::SWITCH_MARGIN {
+                            chosen = incumbent_scored;
+                        }
+                    }
+                }
+                self.elected.insert(msg_priority, chosen.1);
+                GatewaySelection::Single {
+                    gateway: chosen.1,
+                    score: chosen.0,
+                }
+            }
         }
     }
 
@@ -1124,6 +1240,154 @@ mod tests {
     }
 
     #[test]
+    fn mg31_adopt_withdraw_and_failure_all_publish_topology_events() {
+        let mut m = GatewayManager::new();
+        let mut rx = m.topology_events();
+        let g = pid(30);
+        let _ = m.adopt_from_neighbor(
+            g,
+            rich_cap(GatewayType::Internet, 10_000_000, 100, 0.8, 0.1),
+            0,
+            vec![],
+        );
+        match rx.try_recv() {
+            Ok(TopologyEvent::GatewayChanged {
+                gateway_id,
+                available: true,
+                ..
+            }) => assert_eq!(gateway_id, g),
+            other => panic!("expected adopt event, got {other:?}"),
+        }
+        for _ in 0..FAILURE_THRESHOLD {
+            let _ = m.record_ack_timeout(g);
+        }
+        match rx.try_recv() {
+            Ok(TopologyEvent::GatewayChanged {
+                gateway_id,
+                available: false,
+                ..
+            }) => assert_eq!(gateway_id, g),
+            other => panic!("expected failure event, got {other:?}"),
+        }
+        let _ = m.withdraw(&g);
+        match rx.try_recv() {
+            Ok(TopologyEvent::GatewayChanged {
+                gateway_id,
+                available: false,
+                ..
+            }) => assert_eq!(gateway_id, g),
+            other => panic!("expected withdraw event, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mg32_self_uplink_is_a_selection_candidate() {
+        let mut m = GatewayManager::new().with_local_id(pid(1));
+        // No peer gateways at all — only this node's own uplink.
+        m.set_self_capability(Some(rich_cap(
+            GatewayType::Internet,
+            100_000_000,
+            10,
+            0.99,
+            0.0,
+        )));
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => assert_eq!(gateway, pid(1)),
+            other => panic!("self uplink must be selectable, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mg32_without_local_id_self_is_never_a_candidate() {
+        // The opt-in builder must not change behavior for the 13 existing
+        // `new()` call sites that never call `with_local_id`.
+        let mut m = GatewayManager::new();
+        m.set_self_capability(Some(rich_cap(
+            GatewayType::Internet,
+            100_000_000,
+            10,
+            0.99,
+            0.0,
+        )));
+        assert!(matches!(
+            m.select(MessagePriority::P4),
+            GatewaySelection::None { .. }
+        ));
+    }
+
+    #[test]
+    fn mg33_hysteresis_holds_the_incumbent_across_a_small_score_flap() {
+        let mut m = GatewayManager::new();
+        let a = pid(40);
+        let b = pid(41);
+        let _ = m.adopt_from_neighbor(
+            a,
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.90, 0.05),
+            0,
+            vec![],
+        );
+        let _ = m.adopt_from_neighbor(
+            b,
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.85, 0.05),
+            0,
+            vec![],
+        );
+        // a clearly wins first — becomes the incumbent.
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => assert_eq!(gateway, a),
+            other => panic!("expected single, got {other:?}"),
+        }
+        // a's link quality flaps down slightly — just enough that b would
+        // narrowly out-score it, but well within SWITCH_MARGIN.
+        let _ = m.adopt_from_neighbor(
+            a,
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.83, 0.05),
+            0,
+            vec![],
+        );
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => {
+                assert_eq!(gateway, a, "must not switch gateways on a small score flap")
+            }
+            other => panic!("expected single, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mg33_hysteresis_does_not_block_a_real_regression() {
+        // A genuine, well-beyond-the-margin drop must still fail over —
+        // hysteresis dampens noise, it must not paper over a real problem.
+        let mut m = GatewayManager::new();
+        let a = pid(42);
+        let b = pid(43);
+        let _ = m.adopt_from_neighbor(
+            a,
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05),
+            0,
+            vec![],
+        );
+        let _ = m.adopt_from_neighbor(
+            b,
+            rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.05),
+            0,
+            vec![],
+        );
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => assert_eq!(gateway, a),
+            other => panic!("expected single, got {other:?}"),
+        }
+        for _ in 0..FAILURE_THRESHOLD {
+            let _ = m.record_ack_timeout(a);
+        }
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => {
+                assert_eq!(gateway, b, "a real failure must still fail over")
+            }
+            other => panic!("expected single, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn redteam_rogue_readmission_escalates_to_hard_failed() {
         // A blackhole that keeps re-advertising must not loop failed→probation
         // forever: repeated cycles escalate to HardFailed (REDTEAM-01).
@@ -1282,7 +1546,7 @@ mod tests {
 
     #[test]
     fn no_candidates_returns_none_and_mesh_fallback() {
-        let m = GatewayManager::new();
+        let mut m = GatewayManager::new();
         let s = m.select(MessagePriority::P4);
         assert!(matches!(s, GatewaySelection::None { .. }));
         assert!(s.chosen_gateways().is_empty());
