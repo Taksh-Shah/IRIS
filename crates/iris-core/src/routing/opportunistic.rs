@@ -13,7 +13,7 @@
 //! The layer is advisory: [`OpportunisticDecision::NoAdvantage`] falls
 //! through to the L0 engine unchanged (Direct→KnownPath→Flood→Store).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
@@ -107,6 +107,11 @@ pub struct OpportunisticRouter {
     pred: DeliveryPredictability,
     /// (message_id, destination) → highest DP this node has seen for that message.
     max_dp_seen: HashMap<(MessageId, PeerId), f64>,
+    /// ROUT-22: (message_id, peer) pairs this node has already handed a
+    /// spray copy to. Without this, repeated contact with the same peer
+    /// (e.g. a flapping link) burns the whole copy budget on one node,
+    /// defeating spray-and-wait's copy-diversity delivery guarantee.
+    sprayed_to: HashSet<(MessageId, PeerId)>,
 }
 
 impl OpportunisticRouter {
@@ -114,6 +119,7 @@ impl OpportunisticRouter {
         OpportunisticRouter {
             pred: DeliveryPredictability::new(config),
             max_dp_seen: HashMap::new(),
+            sprayed_to: HashSet::new(),
         }
     }
 
@@ -241,24 +247,46 @@ impl OpportunisticRouter {
         self.max_dp_seen.is_empty()
     }
 
-    /// Periodic maintenance: drop the entire `max_dp_seen` map.
+    /// Periodic maintenance: drop the entire `max_dp_seen` and `sprayed_to`
+    /// maps.
     ///
     /// Called by `RoutingEngine::prune()` every PRUNE_INTERVAL (5 min) so
     /// in-flight message entries do not accumulate forever (ROUT-14).
-    /// Losing the map causes at most one extra forward per message per period —
-    /// the monotonicity property resets cleanly at each prune.
+    /// Losing `max_dp_seen` causes at most one extra forward per message per
+    /// period — the monotonicity property resets cleanly at each prune.
+    /// Losing `sprayed_to` (ROUT-22) can cause at most one repeat handoff to
+    /// an already-sprayed peer per period, bounded the same way.
     pub fn prune_dp_seen(&mut self) {
         self.max_dp_seen.clear();
+        self.sprayed_to.clear();
     }
 
     /// Cold-start spray: hand off a binary-spray copy to `contact` when the
     /// node has no DP advantage yet. Mutates the spray budget.
-    pub fn spray(&mut self, contact: &PeerId, budget: &mut SprayBudget) -> OpportunisticDecision {
+    ///
+    /// ROUT-22: returns `NoAdvantage` for a peer this message has already
+    /// been sprayed to — without this, a flapping link (repeated contact
+    /// with the same peer) concentrates every copy on one node instead of
+    /// distributing L copies to L distinct nodes, which is equivalent to
+    /// L=1 and defeats spray-and-wait's delivery guarantee.
+    pub fn spray(
+        &mut self,
+        message_id: &MessageId,
+        contact: &PeerId,
+        budget: &mut SprayBudget,
+    ) -> OpportunisticDecision {
+        let key = (*message_id, *contact);
+        if self.sprayed_to.contains(&key) {
+            return OpportunisticDecision::NoAdvantage;
+        }
         match budget.handoff() {
-            Some(_) => OpportunisticDecision::ForwardTo {
-                next_hop: *contact,
-                reason: OpportunisticReason::Spray,
-            },
+            Some(_) => {
+                self.sprayed_to.insert(key);
+                OpportunisticDecision::ForwardTo {
+                    next_hop: *contact,
+                    reason: OpportunisticReason::Spray,
+                }
+            }
             None => OpportunisticDecision::NoAdvantage,
         }
     }
@@ -381,13 +409,14 @@ mod tests {
     fn spray_handoff_until_budget_exhausted() {
         let mut r = OpportunisticRouter::new(ProphetConfig::default());
         let mut budget = SprayBudget::new(4);
+        let msg = mid();
         let contacts = [pid(2), pid(3), pid(4)];
         let mut handed = 0;
         for c in &contacts {
             if let OpportunisticDecision::ForwardTo {
                 reason: OpportunisticReason::Spray,
                 ..
-            } = r.spray(c, &mut budget)
+            } = r.spray(&msg, c, &mut budget)
             {
                 handed += 1;
             }
@@ -395,6 +424,66 @@ mod tests {
         // 4→2→1 (2 handoffs) then wait phase.
         assert_eq!(handed, 2);
         assert!(budget.is_wait_phase());
+    }
+
+    #[test]
+    fn rout22_spray_does_not_reflood_same_contact() {
+        // Regression: spray() had no memory of prior recipients, so repeated
+        // contact with the same peer (e.g. a flapping link) burned the whole
+        // copy budget on one node instead of distributing L copies to L
+        // distinct nodes (equivalent to L=1).
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let mut budget = SprayBudget::new(8);
+        let msg = mid();
+        let peer = pid(2);
+
+        let first = r.spray(&msg, &peer, &mut budget);
+        assert!(matches!(
+            first,
+            OpportunisticDecision::ForwardTo {
+                reason: OpportunisticReason::Spray,
+                ..
+            }
+        ));
+        assert_eq!(budget.remaining, 4, "first handoff still halves the budget");
+
+        // Same peer contacts again (link flap) — must not receive a second
+        // copy or consume further budget.
+        let second = r.spray(&msg, &peer, &mut budget);
+        assert_eq!(second, OpportunisticDecision::NoAdvantage);
+        assert_eq!(budget.remaining, 4, "budget must be untouched by a repeat contact");
+
+        // A genuinely different peer is unaffected.
+        let other = pid(3);
+        let third = r.spray(&msg, &other, &mut budget);
+        assert!(matches!(
+            third,
+            OpportunisticDecision::ForwardTo {
+                reason: OpportunisticReason::Spray,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn rout22_prune_clears_sprayed_to() {
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let mut budget = SprayBudget::new(8);
+        let msg = mid();
+        let peer = pid(2);
+        r.spray(&msg, &peer, &mut budget);
+        // Without a prune, a repeat is rejected.
+        assert_eq!(r.spray(&msg, &peer, &mut budget), OpportunisticDecision::NoAdvantage);
+        r.prune_dp_seen();
+        // After a prune, the dedup memory is gone and the budget (still 4,
+        // untouched by the rejected repeat) allows another handoff — this
+        // only matters in practice because prune_dp_seen runs on a
+        // 5-minute cadence, long after any single message's real spray
+        // phase completes.
+        assert!(matches!(
+            r.spray(&msg, &peer, &mut budget),
+            OpportunisticDecision::ForwardTo { .. }
+        ));
     }
 
     #[test]
