@@ -50,6 +50,23 @@ data class InboxUiMessage(
                 receivedAtMs = System.currentTimeMillis(),
                 pending = true,
             )
+
+        /**
+         * HW-2: `MeshRepository.send()` only ever added a row on the FAILURE
+         * path (via [pending]) — a successful `engine.sendText()` returned
+         * `true` and nothing else happened. On real hardware this meant a
+         * sent message never appeared in the console at all: no error, no
+         * history entry, indistinguishable from a message that silently
+         * vanished, whether or not the transport actually delivered it.
+         */
+        fun sent(recipientHex: String, payload: String, priority: UByte): InboxUiMessage =
+            InboxUiMessage(
+                uid = nextUid(),
+                senderId = recipientHex,
+                payloadUtf8 = payload,
+                priority = priority,
+                receivedAtMs = System.currentTimeMillis(),
+            )
     }
 }
 

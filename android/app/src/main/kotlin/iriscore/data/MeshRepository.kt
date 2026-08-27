@@ -121,6 +121,17 @@ class MeshRepository @Inject constructor(
         _uiState.update { it.copy(lastError = null) }
         return try {
             engine.sendText(normalized, text, priority)
+            // HW-2: this used to be the whole success path — nothing added
+            // the sent message to _uiState.messages, so it never appeared in
+            // the console at all: no error (this path never throws), no
+            // history entry (nothing appends one), indistinguishable from a
+            // message that silently vanished regardless of whether the
+            // transport actually delivered it. subscribeInbox's listener
+            // only fires for RECEIVED messages (FfiInboxListener), so this
+            // was the only place a locally-sent message could ever surface.
+            _uiState.update {
+                it.copy(messages = (it.messages + InboxUiMessage.sent(normalized, text, priority)).takeLast(MAX_UI_MESSAGES))
+            }
             true
         } catch (_: IrisFfiException) {
             scope.launch {
@@ -128,7 +139,7 @@ class MeshRepository @Inject constructor(
                 _uiState.update {
                     it.copy(
                         relayQueued = outbox.size,
-                        messages = it.messages + InboxUiMessage.pending(normalized, text, priority),
+                        messages = (it.messages + InboxUiMessage.pending(normalized, text, priority)).takeLast(MAX_UI_MESSAGES),
                     )
                 }
             }
