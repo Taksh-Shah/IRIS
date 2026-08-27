@@ -144,9 +144,42 @@ impl PriorityQueue {
     /// dispatched; once `p0_budget` consecutive P0 dispatches have occurred
     /// since the last lower-priority dispatch, one lower-priority message is
     /// force-dequeued (highest priority below P0 first).
-    pub fn dequeue(&mut self) -> Option<QueuedMessage> {
+    ///
+    /// HW-3: `next_retry` (the backoff deadline `requeue_or_fail` computes
+    /// from `RetryPolicy::timeout_for_attempt`) used to be entirely
+    /// decorative — this method popped the heap's top unconditionally,
+    /// regardless of whether that item's backoff had actually elapsed. The
+    /// delivery loop polls every 50ms (`poll_interval`), so a message whose
+    /// first send attempt failed was retried on the very next 50ms tick
+    /// instead of waiting out its intended backoff — burning through the
+    /// whole `max_attempts` budget (as low as 2, for P4-P7 bulk) in a
+    /// fraction of a second. Confirmed live: a message created at
+    /// `msg.created` reached `msg.delivery_failed` ("delivery attempt budget
+    /// exhausted") ~144ms later, despite a live BLE link having been
+    /// confirmed (`discovery.connect_ok`) five seconds earlier — there was
+    /// never a real chance for the transport to become selectable again
+    /// before the attempt budget ran out.
+    ///
+    /// Fix: if the top of the heap isn't due yet, this returns `None` for
+    /// this tick rather than force-dequeuing it — the caller's next
+    /// `poll_interval` tick will check again. This is deliberately simple
+    /// rather than fully general: a not-yet-due top-of-heap item blocks a
+    /// lower-priority-but-due item sitting deeper in the heap until the
+    /// former becomes due. Acceptable for a mesh queue's typical depth and
+    /// churn (RES-0010's own fairness gate already exists to bound
+    /// starvation across priority classes, not backoff windows); a fully
+    /// correct "any due item, in priority order" scan is a larger structural
+    /// change deferred unless this proves insufficient in practice.
+    pub fn dequeue(&mut self, now: Instant) -> Option<QueuedMessage> {
         if self.heap.is_empty() {
             return None;
+        }
+        if let Some(top) = self.heap.peek() {
+            if let Some(deadline) = top.next_retry {
+                if now < deadline {
+                    return None;
+                }
+            }
         }
 
         let budget_hit = self.p0_dispatched_since_gate >= self.p0_budget
@@ -259,15 +292,43 @@ mod tests {
     }
 
     #[test]
+    fn hw3_dequeue_respects_next_retry_backoff() {
+        // HW-3: dequeue() used to pop the heap's top unconditionally,
+        // ignoring `next_retry` entirely — a requeued message was retried on
+        // the very next poll_interval tick instead of waiting out its
+        // computed backoff, burning through max_attempts (as low as 2 for
+        // bulk priorities) in a fraction of a second. Confirmed live: a
+        // message went from `msg.created` to `msg.delivery_failed`
+        // ("delivery attempt budget exhausted") in ~144ms despite a BLE link
+        // having been confirmed live five seconds earlier.
+        let mut q = PriorityQueue::new(60);
+        let mut msg = QueuedMessage::new(env(MessagePriority::P4, 1));
+        let now = Instant::now();
+        msg.next_retry = Some(now + std::time::Duration::from_secs(30));
+        q.push(msg);
+
+        assert!(
+            q.dequeue(now).is_none(),
+            "a message whose backoff hasn't elapsed must not be returned"
+        );
+        assert_eq!(q.len(), 1, "the not-yet-due message must stay in the queue, not be dropped");
+
+        assert!(
+            q.dequeue(now + std::time::Duration::from_secs(31)).is_some(),
+            "once the backoff deadline has passed, the message must dequeue normally"
+        );
+    }
+
+    #[test]
     fn p0_always_on_top() {
         let mut q = PriorityQueue::new(60);
         q.push(QueuedMessage::new(env(MessagePriority::P4, 1)));
         q.push(QueuedMessage::new(env(MessagePriority::P0, 2)));
         q.push(QueuedMessage::new(env(MessagePriority::P1, 3)));
-        assert_eq!(q.dequeue().unwrap().envelope.priority, MessagePriority::P0);
-        assert_eq!(q.dequeue().unwrap().envelope.priority, MessagePriority::P1);
-        assert_eq!(q.dequeue().unwrap().envelope.priority, MessagePriority::P4);
-        assert!(q.dequeue().is_none());
+        assert_eq!(q.dequeue(Instant::now()).unwrap().envelope.priority, MessagePriority::P0);
+        assert_eq!(q.dequeue(Instant::now()).unwrap().envelope.priority, MessagePriority::P1);
+        assert_eq!(q.dequeue(Instant::now()).unwrap().envelope.priority, MessagePriority::P4);
+        assert!(q.dequeue(Instant::now()).is_none());
     }
 
     #[test]
@@ -281,7 +342,7 @@ mod tests {
             q.push(QueuedMessage::new(e));
         }
         let ids: Vec<u8> = (0..3)
-            .map(|_| q.dequeue().unwrap().envelope.message_id.0[0])
+            .map(|_| q.dequeue(Instant::now()).unwrap().envelope.message_id.0[0])
             .collect();
         assert_eq!(ids, vec![1, 2, 3], "FIFO within priority");
     }
@@ -299,7 +360,7 @@ mod tests {
 
         // Budget = 3 → pops: P0, P0, P0, then P5 (fairness), then P0s.
         let mut popped = Vec::new();
-        while let Some(m) = q.dequeue() {
+        while let Some(m) = q.dequeue(Instant::now()) {
             popped.push(m.envelope.priority);
         }
         assert_eq!(
@@ -338,7 +399,7 @@ mod tests {
         }
 
         let mut popped = Vec::new();
-        while let Some(m) = q.dequeue() {
+        while let Some(m) = q.dequeue(Instant::now()) {
             popped.push(m.envelope.priority);
         }
 

@@ -1144,7 +1144,7 @@ impl MessageEngine {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(this.config.poll_interval).await;
-                let Some(item) = this.queue.lock().await.dequeue() else {
+                let Some(item) = this.queue.lock().await.dequeue(std::time::Instant::now()) else {
                     continue;
                 };
                 this.deliver_outbound(item).await;
