@@ -175,8 +175,53 @@ or ROUT-32..36 in the same wake.
 (GNU toolchain) — 0 failed across every suite, after every commit in this
 run. No reverts; three-consecutive-failure escalation (§8) never triggered.
 
-### Next run (Run 5)
-Resume Tier 2 routing area: ROUT-21 through ROUT-25 (opportunistic/spray
-layer — read ROUT-22/23/24/25's `Dependencies` fields together first, they
-reference each other) and ROUT-32 through ROUT-36 (benchmark + dead-code
-findings). Then DTN-1..25, MG-25..42, TAK-2 (untouched this run).
+---
+
+## Run 5 — 2026-08-27 — Tier 2 routing area (ROUT-22..36), continued under the same sign-off
+
+Owner said "continue with the next batch" — same Tier 2 sign-off as Run 4,
+no new gate needed. This run finished every ROUT-\* finding except the
+interdependent ROUT-21/24/25 cluster (deliberately deferred, see below).
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | ROUT-22 | ✅ Fixed | `eba51b6` | Added `sprayed_to: HashSet<(MessageId, PeerId)>` to `OpportunisticRouter`; `spray()` now takes `message_id`, rejects a repeat contact without touching the budget, records on success. Cleared by `prune_dp_seen()` alongside `max_dp_seen`. New tests `rout22_spray_does_not_reflood_same_contact` (fails against pre-fix code — pre-fix a repeat contact got a second copy), `rout22_prune_clears_sprayed_to`. `spray()` had zero production callers before this fix (only its own test; `sim/mod.rs` reimplements spray independently), so the signature change has no production blast radius. Full sweep green. |
+| 2 | ROUT-23 | 🔒 Blocked | — (docs only) | Re-reading both governing specs while investigating the fix found they **disagree with each other**: `OPPORTUNISTIC_ROUTING.md` gives P1=5/P2=3/P3=2; `ROUTE2_DESIGN.md` gives P1=L(8)/P2=L(8)/P3=max(4,…). Only the P4+ ("1, direct-only") row is consistent between the two. There is no single spec to align the code to for P1-P3, and unilaterally picking a value (or inventing a third) risks a real delivery-behavior regression across every P1-P4 sim/production path. This is exactly the "wrong fix is worse than the bug" case the loop's own gate exists for — needs a routing/product owner to reconcile the specs (or affirm the current code and update both docs) before a code fix can be written with confidence. |
+| 3 | ROUT-34 | ✅ Fixed | `f824638` | Deleted `flood.rs::has_live_transport` and `store.rs::_destination_guard` (both `#[allow(dead_code)]`, zero callers). Removed `ForwardingAlgorithm::Flood`/`::Store` and their `algorithm_label` match arms — verified zero construction sites anywhere in the crate for `Forward { algorithm: Flood \| Store }` (those outcomes use `ForwardingDecision`'s own top-level `Flood`/`Store` variants). The `flood.rs` no-op `links` block this finding also named was already gone, subsumed by ROUT-20's rewrite in Run 4. Full sweep green. |
+| 4 | ROUT-32, ROUT-33 | ✅ Fixed (combined — same file, one coherent bench rewrite) | `1e641c9` | Rewrote `benches/routing.rs`. ROUT-32: `opportunistic_decide_50_candidates` now generates a fresh message id per iteration instead of reusing one across the whole run (was hitting `gtmx_advantage`'s per-message `seen` rejection after ~50 iterations, ROUT-7). ROUT-33: added `Clone` to `DeliveryPredictability` so `prophet_meet_32_snapshot` and `prophet_age_1000_k5` (renamed) use `iter_batched` against a fixed 1,000-entry baseline instead of mutating one shared table (fixes the non-stationary-cost and K=0-aging defects in one move); moved the `Vec` clone into the untimed setup phase; added a real `spray_binary_handoff` bench (the header's original, previously-fictional claim) and five new L0-hot-path benches (`try_direct`, `try_known_path`, `recipients_for_flood_10_neighbors`, `forwarded_cache_is_duplicate_miss`, `engine_decide_flood_path`) — the class of bench that would have caught ROUT-20's 175 KB-per-neighbor clone immediately. Verified with `cargo test -p iris-core --bench routing` (criterion's single-pass mode): all 9 benchmarks execute successfully. `cargo clippy --bench routing`: zero warnings originating from the bench file itself. Full sweep green. |
+| 5 | ROUT-35 | ✅ Fixed (subsumed by ROUT-19, no new commit) | `c99633d` (pre-existing, Run 4) | Re-read `mod.rs` at HEAD: the `if hop_count < policy.max_hops { … } else if hop_count >= policy.max_hops { /* empty */ }` pair the finding named no longer exists — ROUT-19's hop-budget-gate rewrite (Run 4) replaced it with a single hoisted early-return gate. No empty branch remains. |
+| 6 | ROUT-36 | ✅ Fixed | `07338e5` | Renamed `routing::store::is_expired` to `ttl_expired` — the same-name/different-argument-order collision with `message_engine::expiry::is_expired` (which stays untouched) can no longer compile silently after an import swap; it now fails to resolve. Updated both call sites (`routing/mod.rs`'s ROUT-6 gate, `scf.rs`'s three calls) and `store.rs`'s own tests. No behavior change. Full sweep green. |
+
+**ROUT-21, ROUT-24, ROUT-25 — not attempted, not reverted.** These three
+are mutually dependent (ROUT-25's fix depends on ROUT-22 [now done] and
+ROUT-24; ROUT-24 needs real neighbor-DP candidates sourced from
+`discovery/handshake.rs`'s `CapabilityBundle`, not yet wired to
+`decide_inner`) and each touches a public API with a wide blast radius:
+ROUT-21 adds a `transport` field to `ForwardingDecision::Forward`/`Flood`
+(re-exported from `lib.rs`, consumed by `tests/obs_telemetry.rs`,
+`sim/mod.rs`, every routing test, and any FFI consumer); ROUT-25 adds an
+`OpportunisticDecision::SprayHandoff` variant (also public, `lib.rs:48`).
+Starting any one of them mid-batch at the §8 cap risked leaving the tree
+in a half-migrated state across a wake boundary. Saved for a dedicated run
+with a full review budget instead.
+
+**§8 accounting:** 6 findings fixed this run (ROUT-22, 34, 32+33 combined,
+35, 36) plus the ROUT-23 triage — under the 8-per-wake-cycle cap, leaving
+headroom deliberately unused rather than starting the ROUT-21/24/25
+cluster with only partial budget left.
+
+**Run 5 closeout:** `cargo build -p iris-core -p iris-storage --all-targets`
+clean; `cargo test --workspace --exclude iris-desktop` (GNU toolchain) — 0
+failed across every suite, after every commit in this run. No reverts;
+three-consecutive-failure escalation (§8) never triggered. **The ROUT area
+of Tier 2 is now complete except ROUT-21/24/25 (deferred) and ROUT-23/26
+(blocked, need owner sign-off).**
+
+### Next run (Run 6)
+ROUT-21, ROUT-24, ROUT-25 as one coherent unit (they share a blast radius
+and a dependency chain — do not split across wakes). Read
+`ROUTE2_DESIGN.md` §97 (candidate sourcing) and `discovery/handshake.rs`'s
+`CapabilityBundle` before starting ROUT-24. After that, the ROUT area is
+fully closed out (short of the two blocked findings) and the run should
+move to DTN-1..25 (Area B, store-carry-forward / PRoPHET) — untouched by
+every run so far.
