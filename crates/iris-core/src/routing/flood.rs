@@ -90,13 +90,6 @@ pub async fn recipients_for_flood(
     recipients
 }
 
-/// Convenience: validate transports of a hop selection (kept for wiring with
-/// the transport layer).
-#[allow(dead_code)]
-fn has_live_transport(_transport: &TransportId) -> bool {
-    true // reachability is enforced by the neighbor table state itself
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

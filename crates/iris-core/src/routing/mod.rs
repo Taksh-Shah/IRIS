@@ -55,8 +55,11 @@ pub enum ForwardingAlgorithm {
     /// ROUTE-002: single-copy forward to the neighbor with the best delivery
     /// predictability (PRoPHET v2, RFC 6693) or a binary spray handoff.
     Opportunistic,
-    Flood,
-    Store,
+    // ROUT-34: `Flood` and `Store` were never removed — `ForwardingDecision`
+    // has its own top-level `Flood { recipients }` and `Store` variants for
+    // those outcomes, so `Forward { algorithm: Flood | Store }` was never
+    // constructible anywhere in the crate (verified: zero construction
+    // sites outside the now-deleted match arms below).
 }
 
 /// Result of running the routing engine on one message.
@@ -83,8 +86,6 @@ impl ForwardingDecision {
                 ForwardingAlgorithm::Direct => "Direct",
                 ForwardingAlgorithm::KnownPath => "KnownPath",
                 ForwardingAlgorithm::Opportunistic => "Opportunistic",
-                ForwardingAlgorithm::Flood => "Flood",
-                ForwardingAlgorithm::Store => "Store",
             },
             ForwardingDecision::Flood { .. } => "Flood",
             ForwardingDecision::Store => "Store",

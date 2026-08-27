@@ -4,8 +4,6 @@
 //! and relies on the store's priority eviction for capacity handling (P0 never
 //! evicted unexpired — INV-ROUTE-003).
 
-use crate::message::PeerId;
-
 /// Outcome of the store decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShouldStore {
@@ -49,13 +47,6 @@ pub fn build_store_action(message_id: crate::protocol::MessageId, expired: bool)
         message_id,
         decision: store_or_drop(expired),
     }
-}
-
-/// Marker for contact-aware routing (feed with DISCO contact events).
-/// Retained so callers can attach the destination the next hop serves.
-#[allow(dead_code)]
-fn _destination_guard(recipient: PeerId) -> PeerId {
-    recipient
 }
 
 #[cfg(test)]
