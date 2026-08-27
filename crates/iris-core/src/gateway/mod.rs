@@ -41,6 +41,22 @@ pub const RECOVERY_WINDOW: Duration = Duration::from_secs(300);
 pub const MAX_GATEWAY_CANDIDATES: usize = 64;
 /// Gateways scoring below this floor are excluded from selection (NaN/empty).
 pub const MIN_QUALITY_FLOOR: f32 = 0.01;
+/// MG-25/27/29: score multiplier for a gateway with zero observed successful
+/// deliveries. An unmeasured, self-asserted gateway (a bare capability tag,
+/// unauthenticated — MG-25) must not score as if fully proven: this is what
+/// let a freshly-adopted attacker gateway win selection outright.
+pub const MIN_CONFIDENCE: f32 = 0.3;
+/// Successful deliveries after which [`GatewayHealthMonitor::confidence_factor`]
+/// saturates at 1.0.
+pub const CONFIDENCE_SATURATION_SAMPLES: u32 = 5;
+/// MG-27: no real network hop is 0 ms; a floor here stops an advertised
+/// `latency_ms: 0` from claiming the maximum latency factor.
+pub const MIN_PLAUSIBLE_LATENCY_MS: u32 = 1;
+/// MG-26: bound on health-monitor entries kept *only* because they are
+/// quarantined (`Failed`/`HardFailed` but no longer a known gateway) — an
+/// attacker cycling through fresh PeerIds must not be able to grow this
+/// bookkeeping without limit now that quarantine survives withdrawal.
+pub const MAX_QUARANTINE_ENTRIES: usize = 256;
 
 /// Capability tag used in DISCO-001 handshake bundles for any gateway.
 pub const GATEWAY_TAG: &str = "gateway";
@@ -115,11 +131,21 @@ impl GatewayCapability {
         GatewayCapability {
             gateway_type,
             transport_id: transport_id.into(),
+            // `bandwidth_bps: 0` and `queue_depth: 0` are already pessimistic
+            // (0 bandwidth scores worst; 0 queue depth only matters once
+            // `current_load` below is no longer maxed-out-optimistic).
             bandwidth_bps: 0,
-            latency_ms: 0,
+            // MG-29: unmeasured must not score as *better* than measured.
+            // `0` here used to make latency/cost/load — 65% of the weight
+            // budget — read as *perfect* for a gateway nobody has ever
+            // actually observed. u32::MAX drives latency_factor to 0 until
+            // this gateway is actually probed.
+            latency_ms: u32::MAX,
             reliability_score: 1.0,
-            cost_factor: 0.0,
-            current_load: 0.0,
+            // 0.5: unknown cost is not the same claim as "free".
+            cost_factor: 0.5,
+            // 0.5: unknown load is not the same claim as "idle".
+            current_load: 0.5,
             queue_depth: 0,
             duty_cycle_remaining: 1.0,
             max_priority: gateway_type.default_max_priority(),
@@ -239,8 +265,18 @@ pub struct GatewayHealthMonitor {
     states: HashMap<PeerId, GatewayHealthState>,
     failure_counters: HashMap<PeerId, u32>,
     re_admission_strikes: HashMap<PeerId, u32>,
+    /// Kept for observability (when a gateway entered probation) — no longer
+    /// consulted by [`GatewayHealthMonitor::score_factor`] (MG-28: elapsed
+    /// time must never by itself restore full trust, only `record_success`
+    /// does).
     probation_until: HashMap<PeerId, Instant>,
     last_success: HashMap<PeerId, Instant>,
+    /// MG-25/27/29: count of successful deliveries ever recorded for this
+    /// gateway, feeding [`GatewayHealthMonitor::confidence_factor`]. Not
+    /// reset by failure — a proven track record should not evaporate on one
+    /// bad delivery (health state already excludes a failed gateway
+    /// independently of this).
+    success_counts: HashMap<PeerId, u32>,
 }
 
 impl Default for GatewayHealthMonitor {
@@ -257,6 +293,7 @@ impl GatewayHealthMonitor {
             re_admission_strikes: HashMap::new(),
             probation_until: HashMap::new(),
             last_success: HashMap::new(),
+            success_counts: HashMap::new(),
         }
     }
 
@@ -330,12 +367,36 @@ impl GatewayHealthMonitor {
         self.states.insert(gateway, GatewayHealthState::Healthy);
         self.probation_until.remove(&gateway);
         self.last_success.insert(gateway, Instant::now());
+        *self.success_counts.entry(gateway).or_insert(0) += 1;
         tracing::debug!(
             event = event::GW_HEALTH_TRANSITION,
             gateway = %gateway.short(),
             to = "Healthy",
             "gateway health restored"
         );
+    }
+
+    /// Count of entries kept only because they are quarantined
+    /// (`Failed`/`HardFailed`, no longer a known gateway) — for metrics and
+    /// tests verifying [`MAX_QUARANTINE_ENTRIES`] holds. O(n) in table size.
+    pub fn quarantine_len(&self) -> usize {
+        self.states
+            .values()
+            .filter(|s| matches!(s, GatewayHealthState::Failed | GatewayHealthState::HardFailed))
+            .count()
+    }
+
+    /// MG-25/27/29: score multiplier that starts at [`MIN_CONFIDENCE`] for a
+    /// gateway with no recorded successful delivery and rises to `1.0` after
+    /// [`CONFIDENCE_SATURATION_SAMPLES`] of them. Applied alongside (not
+    /// instead of) [`GatewayHealthMonitor::score_factor`] — this is about
+    /// *how proven* a gateway is, which is orthogonal to whether it is
+    /// currently healthy.
+    pub fn confidence_factor(&self, gateway: &PeerId) -> f32 {
+        let successes = self.success_counts.get(gateway).copied().unwrap_or(0);
+        let ramp = successes.min(CONFIDENCE_SATURATION_SAMPLES) as f32
+            / CONFIDENCE_SATURATION_SAMPLES as f32;
+        MIN_CONFIDENCE + (1.0 - MIN_CONFIDENCE) * ramp
     }
 
     /// A gateway sent a fresh advertisement. Governs the failed→probation
@@ -377,27 +438,77 @@ impl GatewayHealthMonitor {
         self.states.get(gateway) == Some(&GatewayHealthState::Probation)
     }
 
-    /// Score multiplier: 1.0 healthy (or expired probation), 0.5 in an active
-    /// probation window, 0.0 failed/hard-failed. `now` injectable for tests.
-    pub fn score_factor(&self, gateway: &PeerId, now: Instant) -> f32 {
+    /// Score multiplier: 1.0 healthy, 0.5 in probation, 0.0 failed/hard-failed.
+    ///
+    /// MG-28: probation is discounted *until a successful delivery proves the
+    /// gateway out* — [`GatewayHealthMonitor::record_success`] is the only
+    /// path back to 1.0. Elapsed time alone must never restore full trust
+    /// (the previous behaviour let a re-advertising blackhole sit at a 0.5
+    /// discount for `RECOVERY_WINDOW` and then earn full trust for free,
+    /// having delivered nothing). `now` kept in the signature for API
+    /// stability even though this arm no longer consults it — a caller
+    /// injects it the same way as before.
+    pub fn score_factor(&self, gateway: &PeerId, _now: Instant) -> f32 {
         match self.states.get(gateway) {
             Some(GatewayHealthState::Failed) | Some(GatewayHealthState::HardFailed) => 0.0,
-            Some(GatewayHealthState::Probation) => match self.probation_until.get(gateway) {
-                Some(until) if *until > now => PROBATION_SCORE_FACTOR,
-                _ => 1.0, // window elapsed → full re-admission
-            },
+            Some(GatewayHealthState::Probation) => PROBATION_SCORE_FACTOR,
             _ => 1.0,
         }
     }
 
     /// Drop bookkeeping for gateways no longer known.
+    ///
+    /// MG-26: a `Failed`/`HardFailed` record is a *security* record, not
+    /// memory hygiene — its entire purpose is to outlive the subject's
+    /// presence, so a blackhole cannot clear its strikes by simply dropping
+    /// off the neighbor table for one reconcile cycle and re-advertising.
+    /// Only genuinely-gone entries that were never excluded are dropped;
+    /// quarantined entries are kept (bounded by [`MAX_QUARANTINE_ENTRIES`],
+    /// so an attacker cycling through fresh PeerIds cannot grow this
+    /// bookkeeping without limit).
     pub fn prune(&mut self, known: &[PeerId]) {
-        let known: Vec<PeerId> = known.to_vec();
-        self.states.retain(|id, _| known.contains(id));
-        self.failure_counters.retain(|id, _| known.contains(id));
-        self.re_admission_strikes.retain(|id, _| known.contains(id));
+        self.states.retain(|id, s| {
+            known.contains(id)
+                || matches!(s, GatewayHealthState::Failed | GatewayHealthState::HardFailed)
+        });
+        self.failure_counters
+            .retain(|id, _| self.states.contains_key(id));
+        self.re_admission_strikes
+            .retain(|id, _| self.states.contains_key(id));
         self.probation_until.retain(|id, _| known.contains(id));
         self.last_success.retain(|id, _| known.contains(id));
+        self.success_counts.retain(|id, _| known.contains(id));
+
+        // Bound the quarantine: entries kept only because they are
+        // Failed/HardFailed (not because they're a known gateway).
+        let quarantined: Vec<PeerId> = self
+            .states
+            .keys()
+            .filter(|id| !known.contains(id))
+            .copied()
+            .collect();
+        if quarantined.len() > MAX_QUARANTINE_ENTRIES {
+            let mut excess = quarantined.len() - MAX_QUARANTINE_ENTRIES;
+            // Trim plain `Failed` first (the weaker signal); `HardFailed`
+            // is the stronger record and is only trimmed as a last resort.
+            for tier in [GatewayHealthState::Failed, GatewayHealthState::HardFailed] {
+                if excess == 0 {
+                    break;
+                }
+                let victims: Vec<PeerId> = quarantined
+                    .iter()
+                    .filter(|id| self.states.get(id) == Some(&tier))
+                    .take(excess)
+                    .copied()
+                    .collect();
+                for id in &victims {
+                    self.states.remove(id);
+                    self.failure_counters.remove(id);
+                    self.re_admission_strikes.remove(id);
+                }
+                excess -= victims.len();
+            }
+        }
     }
 }
 
@@ -621,7 +732,13 @@ impl GatewayManager {
             .gateways
             .values()
             .map(|g| {
-                let factor = self.health.score_factor(&g.node_id, now);
+                // MG-25/27/29: health (is it currently trusted?) and
+                // confidence (has it *proven* itself?) are independent axes
+                // — a brand-new, never-failed gateway is `Healthy` (factor
+                // 1.0) but should still be scaled down until it has actually
+                // delivered something.
+                let factor =
+                    self.health.score_factor(&g.node_id, now) * self.health.confidence_factor(&g.node_id);
                 (
                     compute_gateway_quality(&g.capability, msg_priority) * factor,
                     g.node_id,
@@ -742,14 +859,24 @@ pub fn self_internet_gateway(
     cap
 }
 
-/// Clamp/sanitize float fields at the adoption boundary (REDTEAM-04): NaN or
-/// out-of-range values from an untrusted advertisement must not poison the
-/// quality score (which would de-rank a victim gateway) or win selection.
+/// Clamp/sanitize *every* field at the adoption boundary (REDTEAM-04 covered
+/// only the float NaN/inf case; MG-27 extends this to plausibility for the
+/// integer/enum fields too): an untrusted advertisement must not poison the
+/// quality score, win selection on an implausible claim, or bypass the
+/// priority-compatibility gate.
 fn sanitize_capability(mut cap: GatewayCapability) -> GatewayCapability {
     cap.reliability_score = sanitize_f32(cap.reliability_score, 0.6);
-    cap.cost_factor = sanitize_f32(cap.cost_factor, 0.0);
-    cap.current_load = sanitize_f32(cap.current_load, 0.0);
+    cap.cost_factor = sanitize_f32(cap.cost_factor, 0.5);
+    cap.current_load = sanitize_f32(cap.current_load, 0.5);
     cap.duty_cycle_remaining = sanitize_f32(cap.duty_cycle_remaining, 1.0);
+    // MG-27: `max_priority` is a *gate*, not a preference — it must be
+    // derived from the (also-advertised, but at least internally
+    // consistent) gateway type rather than trusted verbatim, or an
+    // advertiser can claim "I serve P7" on a link that structurally cannot.
+    cap.max_priority = cap.gateway_type.default_max_priority();
+    cap.bandwidth_bps = cap.bandwidth_bps.min(MAX_EXPECTED_BPS);
+    cap.latency_ms = cap.latency_ms.max(MIN_PLAUSIBLE_LATENCY_MS);
+    cap.queue_depth = cap.queue_depth.min(1_000);
     cap
 }
 
@@ -770,6 +897,15 @@ mod tests {
     fn pid(id: u8) -> PeerId {
         let mut b = [0u8; 32];
         b[0] = id;
+        PeerId::from_bytes(b)
+    }
+
+    /// Like `pid` but distinct for every value beyond `u8::MAX` — needed to
+    /// exercise `MAX_QUARANTINE_ENTRIES` (256), which `pid`'s single byte
+    /// cannot address without wrapping.
+    fn pid_wide(id: u32) -> PeerId {
+        let mut b = [0u8; 32];
+        b[..4].copy_from_slice(&id.to_le_bytes());
         PeerId::from_bytes(b)
     }
 
@@ -860,7 +996,11 @@ mod tests {
     }
 
     #[test]
-    fn health_probation_expires_to_full_score() {
+    fn mg28_probation_never_auto_expires_to_full_score_without_a_success() {
+        // Inverted from the old (buggy) `health_probation_expires_to_full_score`:
+        // elapsing RECOVERY_WINDOW must NOT by itself restore full trust — a
+        // re-advertising blackhole that has delivered nothing stays
+        // discounted no matter how long it waits.
         let mut h = GatewayHealthMonitor::new();
         let g = pid(10);
         for _ in 0..FAILURE_THRESHOLD {
@@ -869,8 +1009,118 @@ mod tests {
         h.handle_advertisement(g);
         let t0 = Instant::now();
         assert_eq!(h.score_factor(&g, t0), PROBATION_SCORE_FACTOR);
-        let after_window = t0 + RECOVERY_WINDOW + Duration::from_secs(1);
-        assert_eq!(h.score_factor(&g, after_window), 1.0);
+        let long_after_window = t0 + RECOVERY_WINDOW * 100 + Duration::from_secs(1);
+        assert_eq!(
+            h.score_factor(&g, long_after_window),
+            PROBATION_SCORE_FACTOR,
+            "elapsed time alone must never restore full trust"
+        );
+        // Only a genuine successful delivery restores it.
+        h.record_success(g);
+        assert_eq!(h.score_factor(&g, long_after_window), 1.0);
+    }
+
+    #[test]
+    fn mg26_prune_preserves_failure_strikes_across_a_withdrawal_cycle() {
+        // The exact scenario MG-26 describes: fail a gateway out, let it
+        // drop from the known set for one reconcile (prune), then have it
+        // reappear — the old code erased `states`/`failure_counters` on
+        // prune, so this re-admitted as Healthy with zero strikes.
+        let mut h = GatewayHealthMonitor::new();
+        let g = pid(20);
+        for _ in 0..FAILURE_THRESHOLD {
+            let _ = h.record_ack_timeout(g);
+        }
+        assert!(h.is_failed(&g));
+        // Gateway drops off the neighbor table — reconcile prunes with an
+        // empty known set.
+        h.prune(&[]);
+        assert!(
+            h.is_failed(&g),
+            "a Failed record must survive being pruned from the known set"
+        );
+        assert_eq!(h.score_factor(&g, Instant::now()), 0.0);
+        // It re-advertises — re-admitted to probation, not Healthy.
+        h.handle_advertisement(g);
+        assert!(h.is_probation(&g));
+        assert!(!h.is_failed(&g));
+    }
+
+    #[test]
+    fn mg26_quarantine_is_bounded() {
+        // An attacker cycling through fresh PeerIds, each failed out once,
+        // must not grow the health monitor's bookkeeping without limit now
+        // that Failed/HardFailed records survive pruning.
+        let mut h = GatewayHealthMonitor::new();
+        for i in 0..(MAX_QUARANTINE_ENTRIES as u32 + 50) {
+            let g = pid_wide(i);
+            for _ in 0..FAILURE_THRESHOLD {
+                let _ = h.record_ack_timeout(g);
+            }
+            h.prune(&[]);
+        }
+        assert!(
+            h.quarantine_len() <= MAX_QUARANTINE_ENTRIES,
+            "quarantine must stay bounded, got {}",
+            h.quarantine_len()
+        );
+    }
+
+    #[test]
+    fn mg25_mg29_fresh_gateway_does_not_outscore_a_proven_one() {
+        // MG-25's own trigger scenario: an attacker's freshly-adopted,
+        // self-tagged gateway with a strong link but zero delivery history
+        // must not simply win selection outright over an established
+        // gateway with a real (if less flattering) track record.
+        let mut m = GatewayManager::new();
+        let attacker = pid(50);
+        let established = pid(51);
+        // Attacker: excellent link, nothing else measured — the exact shape
+        // reconcile() produces for a bare `gateway` tag.
+        let mut attacker_cap = GatewayCapability::new(GatewayType::Internet, "sim");
+        attacker_cap.reliability_score = 0.95;
+        let _ = m.adopt_from_neighbor(attacker, attacker_cap, 0, vec![]);
+        // Established: modest but real measured capability, with a proven
+        // delivery record.
+        let established_cap = rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.1);
+        let _ = m.adopt_from_neighbor(established, established_cap, 0, vec![]);
+        for _ in 0..CONFIDENCE_SATURATION_SAMPLES {
+            m.record_success(established);
+        }
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => {
+                assert_eq!(
+                    gateway, established,
+                    "an unmeasured, freshly-adopted gateway must not outrank a proven one"
+                );
+            }
+            other => panic!("expected single, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mg27_sanitize_reasserts_priority_gate_and_clamps_plausibility() {
+        // An advertiser cannot claim a priority gate above what its own
+        // gateway_type supports, nor implausible bandwidth/latency/queue
+        // values.
+        let mut cap = GatewayCapability::new(GatewayType::Satellite, "sim");
+        cap.max_priority = MessagePriority::P7; // satellite really serves only P0-P2
+        cap.bandwidth_bps = u64::MAX;
+        cap.latency_ms = 0;
+        cap.queue_depth = u32::MAX;
+        let mut m = GatewayManager::new();
+        let node = pid(60);
+        let _ = m.adopt_from_neighbor(node, cap, 0, vec![]);
+        let stored = &m.gateway(&node).expect("adopted").capability;
+        assert_eq!(
+            stored.max_priority,
+            GatewayType::Satellite.default_max_priority(),
+            "max_priority must be re-derived from gateway_type, not trusted verbatim"
+        );
+        assert!(!stored.serves_priority(MessagePriority::P7));
+        assert_eq!(stored.bandwidth_bps, MAX_EXPECTED_BPS);
+        assert_eq!(stored.latency_ms, MIN_PLAUSIBLE_LATENCY_MS);
+        assert_eq!(stored.queue_depth, 1_000);
     }
 
     #[test]
