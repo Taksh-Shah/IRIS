@@ -48,7 +48,7 @@ Full workspace test suite green after every commit across all six wakes (657 iri
 | Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
-| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 17 | 0 | 14 | 1 | 0 | **IN PROGRESS** — BLE-2/BLE-4/BLE-9/FFI-1/FFI-2/FFI-4/FFI-5/FFI-9/FFI-10/FFI-11/FFI-13/FFI-17/FFI-18/FFI-19 fixed this session (real hardware confirmed connect+write mechanics for BLE-2/BLE-9; all others code-complete + unit-tested, PENDING HARDWARE VERIFICATION — batched per plan); BLE-1 still blocked; remaining: FFI-3/6/7/8/12/14/15 + BLE-9's remaining service_uuid/local_name half | ⬜ |
+| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 16 | 0 | 15 | 1 | 0 | **IN PROGRESS** — BLE-2/BLE-4/BLE-9/FFI-1/FFI-2/FFI-4/FFI-5/FFI-9/FFI-10/FFI-11/FFI-13/FFI-15/FFI-17/FFI-18/FFI-19 fixed this session (real hardware confirmed connect+write mechanics for BLE-2/BLE-9; all others code-complete + unit-tested, PENDING HARDWARE VERIFICATION — batched per plan); BLE-1 still blocked; remaining: FFI-3/6/7/8/12/14 + BLE-9's remaining service_uuid/local_name half | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 29 | 0 | 48 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: 15/25 fixed [DTN-1,2,3,4,5,6,7,8,9,10,11,21,23,24,25]; DTN-12..20, DTN-22 (PRoPHET aging cluster + lifecycle), MG-25..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
@@ -10222,7 +10222,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-15: `startDiscovery` adds an unbounded number of DNS-SD service requests; `stopDiscovery` removes none
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit 5a00f79  ·  2026-08-27  ·  Kotlin retains one `WifiP2pDnsSdServiceRequest`, added at most once per discovery session via a dedicated `serviceRequestGate` (mirrors `dnsSdGate`'s existing pattern); `stopDiscovery` now calls `removeServiceRequest` and resets the gate; `shutdown()` now also calls `clearServiceRequests`. `gradle :app:compileDebugKotlin` clean, `cargo test --workspace` re-run as a sanity check (unaffected, as expected — Kotlin-only fix). **PENDING HARDWARE VERIFICATION** (needs a long-running session to observe discovery no longer degrades after many re-arm cycles).
 - **Confidence:** High
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:1030-1042` (`discovery_should_rearm`), `:1091-1094` (re-arm on every `discover_peers`), `:1112-1120` (`stop_discovery`)
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:189-203`
