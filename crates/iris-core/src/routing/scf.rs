@@ -8,7 +8,7 @@
 //! (STORED → CARRY → FORWARD_ATTEMPT → ACK_RECEIVED/DELIVERED, or
 //! TTL_EXPIRED → DROPPED).
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -130,6 +130,15 @@ pub struct ScfEngine<S> {
     /// O(n) fold over the whole buffer on every call (`evict_until` used to
     /// call it twice per evicted message).
     total_bytes: u64,
+    /// DTN-3: `message_id` -> peers this message has already been offered
+    /// to. Without this, a flapping link (repeated contact events with the
+    /// same peer) re-offers the same message every reconnect, and — because
+    /// the old repeat-limiter was a single global `forward_attempts`
+    /// counter shared across every peer — meeting a handful of *different*
+    /// peers could exhaust that counter and permanently lock the message
+    /// out for everyone. Entries are removed alongside the message itself
+    /// (`remove_entry`), so this cannot outlive what it is about.
+    offered: HashMap<MessageId, HashSet<PeerId>>,
     storage: S,
     max_bytes: u64,
     config: ScfConfig,
@@ -181,6 +190,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
             buffer: BTreeMap::new(),
             index: HashMap::new(),
             total_bytes: 0,
+            offered: HashMap::new(),
             storage,
             max_bytes: config.max_storage_bytes,
             config,
@@ -292,6 +302,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     fn remove_entry(&mut self, key: &StoreKey) -> Option<StoredMessage> {
         let msg = self.buffer.remove(key)?;
         self.index.remove(&msg.envelope.message_id);
+        self.offered.remove(&msg.envelope.message_id); // DTN-3: cannot outlive the message
         self.total_bytes = self
             .total_bytes
             .saturating_sub(Self::approx_bytes(&msg.envelope));
@@ -411,18 +422,35 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     /// toward it, not yet terminal, within TTL and still under the forward
     /// attempt budget.
     pub fn messages_forwardable_to(&self, contact: &PeerId) -> Vec<StoredMessage> {
+        let now = self.now_unix();
         self.buffer
             .iter()
             .filter(|(_, m)| !m.delivery_status.is_terminal())
-            .filter(|(_, m)| m.forward_attempts < self.config.max_forward_attempts)
             .filter(|(_, m)| {
-                let matches = Self::recipient_is(contact, &m.envelope);
-                let live = !ttl_expired(
-                    self.now_unix(),
-                    m.envelope.timestamp,
-                    m.envelope.ttl_seconds,
-                );
-                matches && live
+                // DTN-3: skip a peer this message has already been offered
+                // to (dedup across repeated contact events with the same
+                // peer). Deliberately *not* gated by the old global
+                // `forward_attempts < max_forward_attempts` check any
+                // more — that counter was shared across every peer, so
+                // meeting a handful of different peers could exhaust it
+                // and permanently lock the message out for everyone.
+                // `forward_attempts` is still recorded by `mark_forwarded`
+                // for telemetry/future retry-backoff use (DTN-20).
+                !self
+                    .offered
+                    .get(&m.envelope.message_id)
+                    .is_some_and(|peers| peers.contains(contact))
+            })
+            .filter(|(_, m)| {
+                // DTN-4: any live, not-yet-offered message is a relay
+                // candidate — not only the exact final recipient. The old
+                // exact-match-only filter defeated store-carry-forward's
+                // entire premise (STORE_CARRY_FORWARD.md §Core Concept /
+                // §Vehicle Relay Scenario: a carrier relays messages that
+                // are not addressed to it). Exact-recipient match keeps
+                // its higher-confidence ranking downstream
+                // (scf_contact.rs::delivery_probability's 0.9 vs 0.6).
+                !ttl_expired(now, m.envelope.timestamp, m.envelope.ttl_seconds)
             })
             .map(|(_, m)| m.clone())
             .collect()
@@ -437,6 +465,10 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         acked: bool,
     ) -> Option<DeliveryStatus> {
         let key = *self.index.get(id)?;
+        // DTN-3: record the attempt so a later contact with the same peer
+        // is filtered out of `messages_forwardable_to` instead of being
+        // re-offered every reconnect.
+        self.offered.entry(*id).or_default().insert(to);
         if acked {
             // DTN-5: `Delivered` is terminal (STORE_CARRY_FORWARD.md
             // §Message Lifecycle: ACK_RECEIVED -> DELIVERED -> remove from
@@ -646,20 +678,80 @@ mod tests {
     }
 
     #[test]
-    fn forwardable_to_contact_only() {
+    fn forwardable_to_includes_relay_candidates() {
+        // DTN-4: messages_forwardable_to used to require an exact
+        // recipient match — a carrier meeting anyone other than the exact
+        // final recipient could forward nothing, defeating
+        // store-carry-forward's entire premise (STORE_CARRY_FORWARD.md
+        // §Vehicle Relay Scenario: a volunteer's phone carries messages
+        // addressed to other people). A message addressed to a different
+        // peer is now also a valid relay candidate for any live contact.
         let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
-        scf.buffer_message(env(MessagePriority::P3, b"to-9", 3600), None)
-            .unwrap();
-        scf.buffer_message(env(MessagePriority::P0, b"to-9-p0", 3600), None)
-            .unwrap();
-        // A message addressed to a different peer must not be forwarded to 9.
+        let to_9 = env(MessagePriority::P3, b"to-9", 3600);
+        scf.buffer_message(to_9.clone(), None).unwrap();
+        let to_9_p0 = env(MessagePriority::P0, b"to-9-p0", 3600);
+        scf.buffer_message(to_9_p0.clone(), None).unwrap();
         let mut other = env(MessagePriority::P4, b"to-other", 3600);
         other.recipient_id = pid(8).0.to_vec();
-        scf.buffer_message(other, None).unwrap();
+        scf.buffer_message(other.clone(), None).unwrap();
+
         let fwd = scf.messages_forwardable_to(&pid(9));
-        assert_eq!(fwd.len(), 2);
-        // ordered: P0 first
-        assert_eq!(fwd[0].envelope.priority, MessagePriority::P0);
+        assert_eq!(
+            fwd.len(),
+            3,
+            "a message not addressed to the contact is still a relay candidate"
+        );
+        let ids: std::collections::HashSet<_> =
+            fwd.iter().map(|m| m.envelope.message_id).collect();
+        assert!(ids.contains(&to_9.message_id));
+        assert!(ids.contains(&to_9_p0.message_id));
+        assert!(ids.contains(&other.message_id));
+    }
+
+    #[test]
+    fn dtn3_already_offered_peer_is_skipped_but_others_are_not() {
+        // DTN-3: a peer this message was already offered to (via
+        // mark_forwarded) must not see it again from
+        // messages_forwardable_to — but a *different* peer must still be
+        // offered it. Previously the only repeat-limiter was a global
+        // forward_attempts counter shared across every peer.
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
+        let e = env(MessagePriority::P4, b"hello", 3600);
+        let id = e.message_id;
+        scf.buffer_message(e, None).unwrap();
+
+        assert_eq!(scf.messages_forwardable_to(&pid(9)).len(), 1);
+        scf.mark_forwarded(&id, pid(9), false);
+        // Same peer, reconnecting (a flapping link) — no longer offered.
+        assert_eq!(scf.messages_forwardable_to(&pid(9)).len(), 0);
+        // A different peer has never seen it — still offered.
+        assert_eq!(scf.messages_forwardable_to(&pid(3)).len(), 1);
+    }
+
+    #[test]
+    fn dtn3_meeting_several_peers_does_not_lock_message_out() {
+        // Regression for the finding's own trigger scenario: meeting three
+        // different peers must not exhaust a shared budget and lock the
+        // message out for everyone — each peer gets its own independent
+        // offer.
+        let mut scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_forward_attempts: 3,
+                ..Default::default()
+            },
+        );
+        let e = env(MessagePriority::P4, b"sos", 3600);
+        let id = e.message_id;
+        scf.buffer_message(e, None).unwrap();
+        for peer in [pid(2), pid(3), pid(4)] {
+            assert_eq!(scf.messages_forwardable_to(&peer).len(), 1);
+            scf.mark_forwarded(&id, peer, false);
+        }
+        // A fourth, brand-new peer must still be offered the message even
+        // though forward_attempts (3) has been reached — the old global
+        // counter would have permanently excluded it here.
+        assert_eq!(scf.messages_forwardable_to(&pid(5)).len(), 1);
     }
 
     #[test]
