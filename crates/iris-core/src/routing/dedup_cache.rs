@@ -10,10 +10,31 @@
 //! which dedupes *received* messages at the engine boundary.
 
 use std::collections::{HashSet, VecDeque};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::message_engine::dedup::{BloomFilter, BLOOM_FPR};
 use crate::protocol::MessageId;
+
+/// A point in time: either wall clock or the SIM virtual clock (ROUT-30;
+/// mirrors `prophet.rs`'s `TimePoint`). Entries store elapsed `Duration`
+/// since this clock's reference point rather than raw `Instant`s so a test
+/// can fast-forward past `EXACT_WINDOW`/`BLOOM_WINDOW` deterministically.
+#[derive(Debug, Clone)]
+enum TimePoint {
+    Wall(Instant),
+    Virtual(Arc<AtomicU64>),
+}
+
+impl TimePoint {
+    fn now(&self) -> Duration {
+        match self {
+            TimePoint::Wall(epoch) => epoch.elapsed(),
+            TimePoint::Virtual(clock) => Duration::from_secs(clock.load(Ordering::Relaxed)),
+        }
+    }
+}
 
 /// Exact-set retention window (recent 1 h — confirmer for bloom hits).
 const EXACT_WINDOW: Duration = Duration::from_secs(3600);
@@ -31,25 +52,38 @@ pub struct ForwardedCache {
     bloom_cur: BloomFilter,
     /// Previous bloom generation (BLOOM_WINDOW … 2·BLOOM_WINDOW ago).
     bloom_prev: BloomFilter,
-    /// When `bloom_cur` was started; used to trigger rotation.
-    bloom_rotated_at: Instant,
+    /// When `bloom_cur` was started (elapsed since `clock`'s reference);
+    /// used to trigger rotation.
+    bloom_rotated_at: Duration,
     exact: HashSet<MessageId>,
-    ring: VecDeque<(MessageId, Instant)>,
+    ring: VecDeque<(MessageId, Duration)>,
+    clock: TimePoint,
 }
 
 impl Default for ForwardedCache {
     fn default() -> Self {
+        let clock = TimePoint::Wall(Instant::now());
         ForwardedCache {
             bloom_cur: BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
             bloom_prev: BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
-            bloom_rotated_at: Instant::now(),
+            bloom_rotated_at: clock.now(),
             exact: HashSet::new(),
             ring: VecDeque::new(),
+            clock,
         }
     }
 }
 
 impl ForwardedCache {
+    /// Attach the SIM virtual clock (ROUT-30 / SIM-001 determinism). Must be
+    /// called immediately after construction — resets `bloom_rotated_at` to
+    /// the virtual clock's current reading.
+    pub fn with_virtual_clock(mut self, clock: Arc<AtomicU64>) -> Self {
+        self.clock = TimePoint::Virtual(clock);
+        self.bloom_rotated_at = self.clock.now();
+        self
+    }
+
     /// True if this message id was recorded within the 24-hour window.
     ///
     /// ROUT-10 fix: the bloom is the long window; exact is the 1-hour
@@ -77,7 +111,7 @@ impl ForwardedCache {
         self.rotate_bloom_if_due();
         self.bloom_cur.insert(id.to_bytes());
         self.exact.insert(id);
-        self.ring.push_back((id, Instant::now()));
+        self.ring.push_back((id, self.clock.now()));
         self.evict_old();
         // ROUT-15: enforce count-based cap so an attacker minting message ids
         // at high speed cannot grow exact/ring beyond WINDOW_CAPACITY entries.
@@ -92,26 +126,25 @@ impl ForwardedCache {
 
     /// Rotate bloom generations when the current one has exceeded 24 h.
     fn rotate_bloom_if_due(&mut self) {
-        // Use elapsed() to avoid the boot-time underflow panic (SYS-1).
-        if self.bloom_rotated_at.elapsed() >= BLOOM_WINDOW {
+        // saturating_sub rather than a raw cutoff subtraction to avoid the
+        // boot-time underflow panic pattern (SYS-1).
+        let now = self.clock.now();
+        if now.saturating_sub(self.bloom_rotated_at) >= BLOOM_WINDOW {
             self.bloom_prev = std::mem::replace(
                 &mut self.bloom_cur,
                 BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
             );
-            self.bloom_rotated_at = Instant::now();
+            self.bloom_rotated_at = now;
         }
     }
 
     /// Ring-buffer cleanup: remove entries older than the exact window.
     fn evict_old(&mut self) {
-        // Compare elapsed time rather than constructing a cutoff instant.
-        // `Instant::now() - duration` panics on Linux/Android when process
-        // uptime is less than the duration (CLOCK_MONOTONIC starts at zero on
-        // boot). The neighbor_table.rs incident comment documents this exact
-        // failure — apply the same pattern here (SYS-1).
-        let now = Instant::now();
+        // saturating_sub rather than a raw cutoff subtraction — same
+        // boot-time underflow hazard as SYS-1 (`neighbor_table.rs`).
+        let now = self.clock.now();
         while let Some(front) = self.ring.front() {
-            if now.duration_since(front.1) > EXACT_WINDOW {
+            if now.saturating_sub(front.1) > EXACT_WINDOW {
                 let (id, _) = self.ring.pop_front().unwrap();
                 self.exact.remove(&id);
             } else {
@@ -163,14 +196,29 @@ mod tests {
 
     #[test]
     fn ring_eviction_removes_expired_exact_entries() {
-        let mut cache = ForwardedCache::default();
+        // ROUT-30: the previous version of this test asserted `len() >= 10`
+        // both before and after evict_old() with no time advanced — a cache
+        // that never evicted anything (or that grew) would also pass. This
+        // version uses the virtual clock to advance past EXACT_WINDOW and
+        // asserts the entries are actually gone.
+        let clock = Arc::new(AtomicU64::new(0));
+        let mut cache = ForwardedCache::default().with_virtual_clock(clock.clone());
         for _ in 0..10 {
             cache.record(MessageId::new_v7());
         }
-        assert!(cache.len() >= 10);
+        assert_eq!(cache.len(), 10);
+
+        // Still within the 1h exact window: nothing evicted.
+        clock.store(EXACT_WINDOW.as_secs() - 1, Ordering::Relaxed);
         cache.evict_old();
-        // Nothing is older than 1 h yet, so all remain.
-        assert!(cache.len() >= 10);
+        assert_eq!(cache.len(), 10, "entries within the exact window must remain");
+        assert_eq!(cache.ring_len(), 10);
+
+        // Past the 1h window: every entry evicted.
+        clock.store(EXACT_WINDOW.as_secs() + 1, Ordering::Relaxed);
+        cache.evict_old();
+        assert_eq!(cache.len(), 0, "entries past EXACT_WINDOW must be evicted");
+        assert_eq!(cache.ring_len(), 0);
     }
 
     #[test]
