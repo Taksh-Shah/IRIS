@@ -69,6 +69,18 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         val IRIS_CHARACTERISTIC_UUID: UUID = UUID.fromString("3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e")
 
         /**
+         * HW-6: bounded retry for the legacy (API <33) `writeCharacteristic`
+         * boolean-return path — a `false` return means another GATT
+         * operation was still in flight, not a dead link. A handful of
+         * short retries covers the normal case (the prior operation's
+         * callback fires within a few ms); if it's still refusing after
+         * this many attempts, something IS actually wrong and the caller's
+         * own retry/backoff takes over instead.
+         */
+        private const val GATT_WRITE_RETRY_ATTEMPTS = 5
+        private const val GATT_WRITE_RETRY_DELAY_MS = 40L
+
+        /**
          * Beacon framing: the discovery beacon (DiscoveryBeacon::build,
          * ble_advert.rs — 22 bytes, BEACON_LEN) used to ride Service Data
          * keyed by [IRIS_SERVICE_UUID]. A 128-bit UUID costs 16 bytes on air;
@@ -519,10 +531,32 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 // API 26-32: 3-arg writeCharacteristic overload is API 33+;
                 // set the write type explicitly then use the legacy 2-arg form.
                 characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                if (!gatt.writeCharacteristic(characteristic)) {
-                    // 2-arg form returns Boolean; a false return means the
-                    // platform refused the write — surface as a typed error.
-                    throw GattFailure("gatt write not initiated")
+                // HW-6: a `false` return here is Android's documented signal
+                // for "another GATT operation is already in flight on this
+                // connection" — NOT a dead link. Confirmed live and
+                // reproducible on a real API <33 device: "gatt write not
+                // initiated" on the very first send attempt after a
+                // connection the engine had already confirmed live and
+                // idle. Surfacing this as a hard GattFailure sent it all
+                // the way up to the message engine's OWN retry backoff
+                // (600s initial timeout for P4/bulk, HW-4) — wildly
+                // mismatched with the millisecond-scale transient
+                // contention this actually is. A short bounded retry here,
+                // at the layer that actually knows this is a fast local
+                // condition (not "peer unreachable"), is the standard fix
+                // for this exact Android BLE API behavior.
+                var initiated = false
+                for (attempt in 1..GATT_WRITE_RETRY_ATTEMPTS) {
+                    if (gatt.writeCharacteristic(characteristic)) {
+                        initiated = true
+                        break
+                    }
+                    if (attempt < GATT_WRITE_RETRY_ATTEMPTS) {
+                        Thread.sleep(GATT_WRITE_RETRY_DELAY_MS)
+                    }
+                }
+                if (!initiated) {
+                    throw GattFailure("gatt write not initiated after $GATT_WRITE_RETRY_ATTEMPTS attempts")
                 }
             }
         }
