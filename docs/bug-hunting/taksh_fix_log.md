@@ -217,11 +217,51 @@ three-consecutive-failure escalation (§8) never triggered. **The ROUT area
 of Tier 2 is now complete except ROUT-21/24/25 (deferred) and ROUT-23/26
 (blocked, need owner sign-off).**
 
-### Next run (Run 6)
-ROUT-21, ROUT-24, ROUT-25 as one coherent unit (they share a blast radius
-and a dependency chain — do not split across wakes). Read
-`ROUTE2_DESIGN.md` §97 (candidate sourcing) and `discovery/handshake.rs`'s
-`CapabilityBundle` before starting ROUT-24. After that, the ROUT area is
-fully closed out (short of the two blocked findings) and the run should
-move to DTN-1..25 (Area B, store-carry-forward / PRoPHET) — untouched by
-every run so far.
+---
+
+## Run 6 — 2026-08-27 — ROUT-21/24/25, the last cluster; ROUT area fully closed out
+
+Owner said "continue with the next batch" — same Tier 2 sign-off. Read
+`ROUTE2_DESIGN.md` and `discovery/handshake.rs`'s `CapabilityBundle`
+first, per Run 5's own plan.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | ROUT-21 | ✅ Fixed (combined with ROUT-25 — see below) | `5ffffb0` | `ForwardingDecision::Forward` gained `transport: TransportId`; `Flood`'s `recipients` became `Vec<(PeerId, TransportId)>`. New `NeighborTable::links_to` (single-peer link lookup, no `peer_bloom`/`capabilities` clone) and free fn `best_transport` (picks best-quality live link — confirmed `LinkQuality` is ordered Excellent < Good < Fair < Poor, lower = better, from `known_path.rs::upsert`'s own comment, so this is `min_by_key`). `NeighborSummary` (ROUT-20) extended with `links` so flood's per-recipient selection needs no extra lookups. `try_direct`/`try_known_path`/`recipients_for_flood` now select a transport and fall through if a `LinkedUp` neighbor has no selectable link, rather than returning a decision with nothing to send over. New tests: `rout21_best_transport_picks_best_quality_not_first_or_last`, `rout21_best_transport_none_when_no_links`. |
+| 2 | ROUT-24 | 🔒 Blocked | — (docs only) | Investigating the fix found its premise false: `discovery/handshake.rs::CapabilityBundle` (the finding's proposed DP source) has no DP field at all (verified by reading the struct: `node_id`, `protocol_version`, `transports`, capability tags, bloom params, `timestamp` — nothing else), and `routing/mod.rs::record_contact` hard-codes `other_predictions: &[]` on every call with a comment deferring the real exchange to "SIM/transport wiring" that only `sim/mod.rs`'s own separate simulation code actually implements. A correct fix needs a new wire-protocol feature (a DP field + handshake version bump), which is (a) not named in this finding's own `Location` field, (b) a security-relevant change since peer-supplied DP data would directly steer routing decisions, and (c) belongs to the discovery/handshake owner, not a routing-module wiring fix. Per §8's "outside named scope" rule, blocked rather than invented unilaterally. |
+| 3 | ROUT-25 | ✅ Fixed (combined with ROUT-21 — same `decide_inner` block, both need `transport_to`) | `5ffffb0` | `OpportunisticRouter` gained `spray_budgets: HashMap<MessageId, SprayBudget>` (cleared alongside `max_dp_seen`/`sprayed_to` in `prune_dp_seen`) and a `spray_fallback` method (creates the budget via `l_for_priority` on first use, shares it across repeated calls for the same message, delegates to `spray()` for ROUT-22's dedup). New `DeliveryPredictability::has_entry` distinguishes "truly never seen" from "DP decayed to 0.0" — `p_for(dst) == 0.0` alone can't tell the two apart. Wired a `RoutingEngine::spray_fallback` method into `decide_inner` after the GTMX+ consult: fires only when this node has no DP entry at all for the recipient, picks the best-linked live neighbor (excluding sender/recipient) as the spray contact. Note: `OpportunisticDecision` already had no separate `SprayHandoff` variant to add by the time this ran — `spray()` already returns `ForwardTo{reason: Spray}`, reusing `ForwardTo` with a reason tag; the original finding's evidence predates that. New tests: `rout25_spray_fallback_fires_when_cold_start`, `rout25_spray_fallback_shares_one_budget_across_calls`, `rout25_spray_fallback_declines_when_dp_history_exists` (opportunistic.rs, unit level), `rout25_cold_start_sprays_instead_of_flooding`, `rout25_warm_destination_still_floods` (mod.rs, full `decide()` chain). **Does not depend on ROUT-24** despite the finding's own `Dependencies` field — spray needs a live contact, not that contact's DP, so it shipped with ROUT-24 still blocked. |
+
+**Why ROUT-21 and ROUT-25 are one commit:** both touch the same
+`decide_inner` block (the Algorithm 2.5 step), and `spray_fallback`'s own
+`Forward` decision needs ROUT-21's transport lookup — splitting them would
+have left the tree red partway through. Same precedent as `440f610`
+(ROUT-11/12/13/16) and this tier's own `7d5723d`/`1e641c9`.
+
+**Run 6 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop`
+(GNU toolchain) — **643 iris-core lib tests, 0 failed**, every other
+workspace suite 0 failed. `cargo test -p iris-core --bench routing`
+(criterion single-pass mode) — all 9 benchmarks still execute
+successfully; `ForwardingDecision`'s new shape doesn't change any bench's
+black-boxed usage. `cargo clippy -p iris-core --lib --no-deps` — zero
+warnings from any file touched this run. No reverts; three-consecutive-
+failure escalation (§8) never triggered.
+
+**The ROUT-\* area of Tier 2 (36 findings) is now fully closed out**:
+every finding is either ✅ (33) or 🔒 with a documented, specific reason
+(3: ROUT-23 — two governing specs conflict with each other; ROUT-24 — the
+real fix needs a new security-relevant wire-protocol feature outside this
+area's scope; ROUT-26 — the governing requirement doc is internally
+self-inconsistent). None of the three blocked findings were guessed at;
+all three explicitly need a human/product/security-owner decision.
+
+### Next run (Run 7)
+DTN-1..25 (Area B — store-carry-forward / PRoPHET, `crates/iris-core/src/routing/scf*.rs`,
+`prophet.rs`'s DTN-facing pieces) — untouched by every run so far and next
+in the master index after ROUT. Then MG-25..42 (Area E gateway) and TAK-2.
+Read `docs/bug-hunting/taksh_problems.md` §8 (Area B — DTN: store-carry-
+forward and PRoPHET) in full before starting; DTN findings likely
+interact with `scf_eviction.rs`'s device-class ceiling and `scf_contact.rs`'s
+bandwidth/probability ranking already exercised by this tier's own ROUT-*
+tests, so re-read those two files' current state before assuming the
+report's line numbers still match.
