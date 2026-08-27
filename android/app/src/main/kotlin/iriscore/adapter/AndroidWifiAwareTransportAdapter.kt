@@ -377,7 +377,10 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 FfiPeerDiscovery(
                     peerHandle = handle.toULong(),
                     serviceSpecificInfo = serviceSpecificInfo ?: ByteArray(0),
-                    rssi = 0, // NAN service discovery does not surface rssi on this API level
+                    // FFI-17: rssi was removed from this record — it was
+                    // always hard-coded to 0 here (onServiceDiscovered
+                    // doesn't surface RSSI without a ranging-enabled
+                    // subscribe config) and never read by the bridge.
                 ),
             )
         }

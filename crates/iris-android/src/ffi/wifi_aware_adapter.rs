@@ -25,6 +25,19 @@ pub struct FfiPublishConfig {
 }
 
 /// Owned discovery match (`wifiaware::PeerDiscovery`).
+///
+/// FFI-17: this record used to also carry an `rssi: i32` field that Kotlin
+/// hard-coded to `0` (`onServiceDiscovered` doesn't surface RSSI on this API
+/// level — only `onServiceDiscoveredWithinRange`, which needs a
+/// ranging-enabled subscribe config nothing here sets up) and the bridge
+/// silently dropped on every read (`WifiAwareBridge::matches`, which never
+/// referenced it). Three layers disagreeing about whether RSSI is part of
+/// the contract is worse than not having the field: any future
+/// proximity/ranking logic reaching for it would silently get 0 dBm, read as
+/// the strongest possible signal. Removed rather than half-wired, per the
+/// finding's own recommendation — re-add it properly (with
+/// `setMaxDistanceMm`/`onServiceDiscoveredWithinRange` on the Kotlin side)
+/// if/when ranging is actually implemented.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct FfiPeerDiscovery {
     /// Peer handle owned by the adapter.
@@ -34,8 +47,6 @@ pub struct FfiPeerDiscovery {
     /// transport parses (`WifiAwareBeacon::parse`), so the projection must
     /// carry them — the earlier `service_instance: String` field dropped them.
     pub service_specific_info: Vec<u8>,
-    /// rssi dBm.
-    pub rssi: i32,
 }
 
 /// Owned inbound NDP frame (`wifiaware::IncomingNdpData`).
@@ -131,7 +142,6 @@ pub(crate) mod tests {
             Ok(vec![FfiPeerDiscovery {
                 peer_handle: 3,
                 service_specific_info: vec![0u8; 22],
-                rssi: -70,
             }])
         }
         async fn open_ndp(&self, _p: u64) -> Result<u64, IrisFfiError> {

@@ -480,7 +480,6 @@ mod tests {
                 .map(|m| FfiPeerDiscovery {
                     peer_handle: m.peer_handle.0,
                     service_specific_info: m.service_specific_info,
-                    rssi: 0,
                 })
                 .collect())
         }

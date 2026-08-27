@@ -5953,6 +5953,19 @@ public object FfiConverterTypeFfiIncomingWifiDirectData: FfiConverterRustBuffer<
 
 /**
  * Owned discovery match (`wifiaware::PeerDiscovery`).
+ *
+ * FFI-17: this record used to also carry an `rssi: i32` field that Kotlin
+ * hard-coded to `0` (`onServiceDiscovered` doesn't surface RSSI on this API
+ * level — only `onServiceDiscoveredWithinRange`, which needs a
+ * ranging-enabled subscribe config nothing here sets up) and the bridge
+ * silently dropped on every read (`WifiAwareBridge::matches`, which never
+ * referenced it). Three layers disagreeing about whether RSSI is part of
+ * the contract is worse than not having the field: any future
+ * proximity/ranking logic reaching for it would silently get 0 dBm, read as
+ * the strongest possible signal. Removed rather than half-wired, per the
+ * finding's own recommendation — re-add it properly (with
+ * `setMaxDistanceMm`/`onServiceDiscoveredWithinRange` on the Kotlin side)
+ * if/when ranging is actually implemented.
  */
 data class FfiPeerDiscovery (
     /**
@@ -5967,11 +5980,6 @@ data class FfiPeerDiscovery (
      * carry them — the earlier `service_instance: String` field dropped them.
      */
     var `serviceSpecificInfo`: kotlin.ByteArray
-    , 
-    /**
-     * rssi dBm.
-     */
-    var `rssi`: kotlin.Int
     
 ){
     
@@ -5990,20 +5998,17 @@ public object FfiConverterTypeFfiPeerDiscovery: FfiConverterRustBuffer<FfiPeerDi
         return FfiPeerDiscovery(
             FfiConverterULong.read(buf),
             FfiConverterByteArray.read(buf),
-            FfiConverterInt.read(buf),
         )
     }
 
     override fun allocationSize(value: FfiPeerDiscovery) = (
             FfiConverterULong.allocationSize(value.`peerHandle`) +
-            FfiConverterByteArray.allocationSize(value.`serviceSpecificInfo`) +
-            FfiConverterInt.allocationSize(value.`rssi`)
+            FfiConverterByteArray.allocationSize(value.`serviceSpecificInfo`)
     )
 
     override fun write(value: FfiPeerDiscovery, buf: ByteBuffer) {
             FfiConverterULong.write(value.`peerHandle`, buf)
             FfiConverterByteArray.write(value.`serviceSpecificInfo`, buf)
-            FfiConverterInt.write(value.`rssi`, buf)
     }
 }
 
