@@ -101,12 +101,82 @@ update named in Dependencies).
 **Batch C closeout:** workspace build --all-targets clean; full sweep **0
 failed across all suites**; loom suite 8/8 under `--cfg loom`.
 
-### Next run (Run 4)
-TAK-6 (TLS — fresh budget, supply-chain review). Wave 1 then COMPLETE except
-carried residuals (sync-core extraction; PENDING LIVE-PG promotions). Then
-Wave 3: RF lora/satellite findings per run order 1→3→4→2.
+### Next run (Run 4) — superseded, see Run 4 below
+TAK-6 (TLS — fresh budget, supply-chain review) was the planned next run,
+but the repo owner explicitly redirected the loop to Tier 2 instead (see
+Run 4). TAK-6 and the rest of Wave 1/3 remain open for a future run.
 
 **Commit convention (from TAK-24 onward):** per-finding §6 code commit first
 (stable hash), report/fix-log status flips accumulate and land in one
 `docs(bug-hunting)` commit at batch end citing the real hashes — this avoids
 the amend fixed-point problem (editing a hash into a commit changes the hash).
+
+---
+
+## Run 4 — 2026-08-27 — Tier 2 opened under explicit human sign-off
+
+**Gate:** `taksh_problems_loop.md` §2.3 requires an explicit human go-ahead
+before any Tier 2 commit. The repo owner instructed: *"we will start from
+tier 2 problems solving... Start solving problems mentioned in tier 2."*
+That instruction is the required sign-off. This run only touches the
+**routing area (ROUT-\*)** of Tier 2 — DTN-1..25, MG-25..42 and TAK-2 are
+untouched and remain `⬜`.
+
+**Baseline audit:** before any new work, re-read the Progress Tracker and
+found it stale — ROUT-1 through ROUT-16 were already `✅` from a prior
+session, and **ROUT-17/ROUT-18 were already fixed in git history**
+(commits `9ae05b4`, `4bb4733`, authored outside this loop by another
+contributor working directly on `main`) but the report's status lines
+still said `⬜ Not started`. Re-verified both fixes against current source
+and their regression tests (`rout17_fanout_capped_at_max`,
+`priority_hop_budgets`) before flipping their status — no code change,
+docs-only catch-up.
+
+**Pre-existing red build:** `cargo test --workspace` at the start of this
+run failed one test — `known_path::tests::rout13_capacity_bound_evicts_oldest`
+(`left: 256, right: 1000`) — unrelated to any Tier 2 finding in scope. Root
+cause: the test's `pid(i as u8)` peer-id generator wraps every 256 values
+but was being used to insert 1000 (`MAX_ENTRIES`) rows, so only 256 distinct
+peers were ever created. Fixed first (commit `1b90f02`, `pid_wide(usize)`
+helper) per the loop's "tree must be green after every commit" invariant —
+this was a prerequisite fix, not a Tier 2 finding itself.
+
+**Toolchain:** MSVC `link.exe` was not resolvable from this environment's
+Bash (Git's own `usr/bin/link.exe` shadows it) or from PowerShell (no VS
+Developer Shell active). Worked around by building under the installed GNU
+toolchain (`RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu`), which links
+`iris-core`/`iris-storage`/`iris-android`/`iris-ios` cleanly.
+`iris-desktop` (Tauri, MSVC-only manifest linker flags) does not link
+under GNU and was excluded from every build/test command this run
+(`--workspace --exclude iris-desktop` / `-p iris-core -p iris-storage`);
+no Tier 2 finding in scope touches `iris-desktop`.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| — | rout13 test (prerequisite) | ✅ Fixed | `1b90f02` | `pid_wide(usize)` spreads the index across 8 bytes so all 1000 ids are distinct; `cargo test -p iris-core --lib routing::known_path` 8/8; full workspace sweep 0 failed. |
+| 1 | ROUT-17 | ✅ Fixed (docs catch-up only) | `9ae05b4` (pre-existing) | `rout17_fanout_capped_at_max` passes at HEAD; fix matches finding's own `Fix` field (`MAX_FLOOD_FANOUT` cap). |
+| 2 | ROUT-18 | ✅ Fixed (docs catch-up only) | `4bb4733` (pre-existing) | `priority_hop_budgets` passes at HEAD; `P0_MAX_HOPS = 16` replaces the `u8::MAX` sentinel per the finding's own `Fix` field. |
+| 3 | ROUT-19 | ✅ Fixed | `c99633d` | Hoisted the hop-budget check above KnownPath/Opportunistic/Flood (Direct stays exempt). New test `rout19_known_path_respects_hop_budget` fails against pre-fix code (asserts `Store`, pre-fix returned `Forward{KnownPath}`). Full sweep green. |
+| 4 | ROUT-20 | ✅ Fixed | `ec150a6` | Added `NeighborTable::neighbor_summaries()` (cheap `(peer_id, state)` projection); `recipients_for_flood` no longer clones every neighbor's ~175 KB `peer_bloom`. New test `rout20_neighbor_summaries_match_full_snapshot`. Full sweep green. |
+| 5 | ROUT-21 through ROUT-25 | ⬜ Deferred | — | Larger blast radius (public `ForwardingDecision`/`OpportunisticDecision` API changes touching `sim/mod.rs`, `tests/obs_telemetry.rs`, and each other per their own `Dependencies` fields) — deferred to a future run with its own review budget rather than rushed into this one at the §8 cap. Not attempted, not reverted. |
+| 6 | ROUT-26 | 🔒 Blocked | — (docs only) | The finding's own `Fix` field concludes `REQ-ROUTE-NF-004`'s own numbers are internally inconsistent (64 KB cannot hold 400k ids at <1% FPR) and says to escalate to the requirements owner rather than pick a resolution — three named options, none of which the loop should choose unilaterally. |
+| 7 | ROUT-27 | ✅ Fixed | `8d728e3` | `decide()` now increments `ROUTING_FLOODS_TOTAL` on a `Flood` decision. New test `rout27_flood_decision_increments_floods_total` asserts the counter moves on Flood and stays put on Direct. Full sweep green. |
+| 8 | ROUT-28, ROUT-29 | ✅ Fixed (combined commit — same file, tightly related property-test rewrites, precedent: `440f610` covered ROUT-11/12/13/16) | `7d5723d` | `flood_terminates_no_loops_property` rebuilt on a per-node `NeighborTable` graph (seeded `StdRng`) checked against an independent ground-truth BFS; `flood_no_backtrack_no_reflood_property` rebuilt with an explicit `already` subset and exact-set assertions. Full sweep green. |
+| 9 | ROUT-30 | ✅ Fixed | `1191eff` | `ForwardedCache` gained an injectable clock (`TimePoint`, mirrors `prophet.rs`); `ring_eviction_removes_expired_exact_entries` now advances virtual time past `EXACT_WINDOW` and asserts `len() == 0`, plus a within-window "must not evict early" check. Production default (wall-clock `Instant`) unchanged; public API unchanged, no call-site edits needed. Full sweep green. |
+| 10 | ROUT-31 | ✅ Fixed (subsumed by ROUT-5, no new commit) | `1821c48` (pre-existing) | Re-read `store.rs` at HEAD: `is_expired` is already a thin shim delegating to `message_engine::expiry::is_expired` (the `<=` boundary), and `ttl_check_arrival_time`'s skew-budget assertion is no longer the ROUT-5 immortality bug. `rout5_far_future_timestamp_fails_closed` covers the fail-closed path. No code change needed. ROUT-36 (same-name/different-argument-order hazard) is a distinct, still-open finding. |
+
+**§8 accounting:** 8 findings fixed this run (ROUT-19, 20, 27, 28, 29, 30,
+31, plus the ROUT-26 triage) — at the 8-per-wake-cycle cap once the
+ROUT-17/18 docs-only catch-ups (no code, so not counted against the cap)
+are excluded. Stopping here per §8 rather than continuing into ROUT-21..25
+or ROUT-32..36 in the same wake.
+
+**Run 4 closeout:** `cargo test --workspace --exclude iris-desktop`
+(GNU toolchain) — 0 failed across every suite, after every commit in this
+run. No reverts; three-consecutive-failure escalation (§8) never triggered.
+
+### Next run (Run 5)
+Resume Tier 2 routing area: ROUT-21 through ROUT-25 (opportunistic/spray
+layer — read ROUT-22/23/24/25's `Dependencies` fields together first, they
+reference each other) and ROUT-32 through ROUT-36 (benchmark + dead-code
+findings). Then DTN-1..25, MG-25..42, TAK-2 (untouched this run).

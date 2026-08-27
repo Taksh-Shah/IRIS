@@ -32,7 +32,8 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-26 — Tier 1 COMPLETE. All 11 fixed (SYS-1 `4b03ae8`, TAK-1 `c5325d8`, SYS-5-step1 `5b1422c`, SYS-6 `ec2036d`, SYS-2 `fec08ac`, SYS-3 `57f8d85`, SYS-4 `5d3199c`, RF-35 `2df2c9d`, RF-36 `c22b3b6`, RF-37 `c9f28f0`, RF-38 bc1f2ed). Build verification requires a Rust toolchain — cargo build --workspace on a machine with rustup. Next: Tier 4 or further Tier 0 findings.
+**Last updated:** 2026-08-27 — Tier 2 STARTED under explicit human sign-off (owner instruction: "start from tier 2 problems solving"). Pre-existing state found at session start: ROUT-1 through ROUT-16 already fixed by prior sessions; ROUT-17 (`9ae05b4`) and ROUT-18 (`4bb4733`) were also already fixed in the git history (by a non-loop commit from another contributor) but their doc status had not been flipped — caught up this session with no code change. New this session: ROUT-19 `c99633d`, ROUT-20 `ec150a6`, ROUT-27 `8d728e3`, ROUT-28+ROUT-29 `7d5723d`, ROUT-30 `1191eff` (5 findings fixed, at the §8 8-per-wake-cycle cap once ROUT-31 and the ROUT-26 triage below are included); ROUT-31 verified already resolved as a side effect of ROUT-5's fix (`1821c48`) — marked subsumed, no new commit; ROUT-26 marked 🔒 Blocked (its own *Fix* field concludes the governing requirement doc is internally inconsistent and explicitly says to escalate rather than pick a resolution unilaterally). Also fixed as a prerequisite: `known_path.rs`'s `rout13_capacity_bound_evicts_oldest` test was failing at baseline (pre-existing, unrelated to Tier 2) — a `u8` peer-id generator collided against the 1000-entry cap; fixed in commit `1b90f02` before any Tier 2 work began, per the loop's "tree must be green after every commit" invariant. Full workspace test suite green after every commit this session (`cargo test --workspace --exclude iris-desktop`, GNU toolchain — MSVC linker unavailable in this environment, see note below). Next: ROUT-21 through ROUT-25 (opportunistic/spray layer — larger blast radius, deferred to keep this wake's diff reviewable) and ROUT-32 through ROUT-36, then DTN-1..25, MG-25..42, TAK-2.
+**Toolchain note:** This session's Rust builds/tests ran under `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu` — the MSVC `link.exe` was not resolvable in the environment's PATH (Git Bash's own `link.exe` shadowed it, and PowerShell had no VS Developer Shell active). `iris-desktop` (the Tauri app) cannot link under the GNU toolchain (MSVC-only manifest linker flags) and was excluded from the sweep; it is untouched by any Tier 2 finding in scope.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
 ### Status legend
@@ -45,11 +46,11 @@ These three results interact rather than simply stack: the parts of this section
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
-| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 80 | 0 | 0 | 0 | 0 | **human sign-off required before starting** | ⬜ |
+| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 54 | 0 | 25 | 1 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: 25/36 done, 1 blocked; DTN-1..25, MG-25..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime | ⬜ |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **258** | **0** | **22** | **2** | **0** | | ⬜ |
+| **Total** | | **284** | **232** | **0** | **47** | **3** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -212,21 +213,21 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-14** | Medium | `opportunistic.rs:104,` | `OpportunisticRouter::max_dp_seen` is unbounded and never pruned | ✅ `e60c555` |
 | **ROUT-15** | Medium | `dedup_cache.rs:21-22,` | `WINDOW_CAPACITY` bounds only the Bloom sizing — `exact` and `ring` are unbounded within the window | ✅ `d0ac125` |
 | **ROUT-16** | Medium | `known_path.rs:33-35` | `RoutingTable::new` silently discards its `expiry` argument | ✅ `440f610` (subsumed by ROUT-12/13) |
-| **ROUT-17** | Medium | `flood.rs:42-73` | Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender | ⬜ |
-| **ROUT-18** | Medium | `flood.rs:26-31` | `max_hops_for_priority(P0) = u8::MAX` — "unlimited" is a 255-hop amplification budget on the one class an attacker forges | ⬜ |
-| **ROUT-19** | Medium | `routing/mod.rs:231-249` | Direct and KnownPath bypass the hop budget entirely, contradicting `decide`'s own contract | ⬜ |
-| **ROUT-20** | Medium | `flood.rs:51` | Every flood decision deep-clones every neighbor's ~175 KB Bloom filter | ⬜ |
+| **ROUT-17** | Medium | `flood.rs:42-73` | Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender | ✅ `9ae05b4` |
+| **ROUT-18** | Medium | `flood.rs:26-31` | `max_hops_for_priority(P0) = u8::MAX` — "unlimited" is a 255-hop amplification budget on the one class an attacker forges | ✅ `4bb4733` |
+| **ROUT-19** | Medium | `routing/mod.rs:231-249` | Direct and KnownPath bypass the hop budget entirely, contradicting `decide`'s own contract | ✅ `c99633d` |
+| **ROUT-20** | Medium | `flood.rs:51` | Every flood decision deep-clones every neighbor's ~175 KB Bloom filter | ✅ `ec150a6` |
 | **ROUT-21** | Medium | `routing/mod.rs:62-75` | `ForwardingDecision` carries no transport; neither Direct nor Flood verifies a usable transport exists | ⬜ |
 | **ROUT-22** | Medium | `opportunistic.rs:212-220` | `OpportunisticRouter::spray` has no memory of which contacts already hold a copy | ⬜ |
 | **ROUT-23** | Medium | `opportunistic.rs:25,` | Spray L values contradict both spec tables; `DEFAULT_SPRAY_L = 8` is unreachable | ⬜ |
 | **ROUT-24** | Medium | `routing/mod.rs:241-249` | Algorithm 2.5 is hard-wired to zero candidates — the opportunistic layer can never fire inside `decide` | ⬜ |
 | **ROUT-25** | Medium | `opportunistic.rs:212-220` | `OpportunisticRouter::spray` is never called by the engine — cold-start fallback is unimplemented | ⬜ |
-| **ROUT-26** | Medium | `dedup_cache.rs:22,` | `ForwardedCache`'s Bloom is ~351 KB — 5.5× the mandated 64 KB cap | ⬜ |
-| **ROUT-27** | Low | `routing/mod.rs:209-217` | `iris.routing.floods_total` is registered but never incremented | ⬜ |
-| **ROUT-28** | High | `flood.rs:147-218` | `flood_terminates_no_loops_property` asserts nothing — a tautological "property test" cited as verification evidence | ⬜ |
-| **ROUT-29** | Medium | `flood.rs:220-245` | `flood_no_backtrack_no_reflood_property` builds a nonsensical already-flooded set, making its assertions near-vacuous | ⬜ |
-| **ROUT-30** | Medium | `dedup_cache.rs:116-127` | `ring_eviction_removes_expired_exact_entries` tests no eviction | ⬜ |
-| **ROUT-31** | Medium | `store.rs:33,` | `ttl_check_arrival_time` enshrines the immortality bug, and `>` vs `<=` puts `store::is_expired` one second out of step with `expiry::is_expired` | ⬜ |
+| **ROUT-26** | Medium | `dedup_cache.rs:22,` | `ForwardedCache`'s Bloom is ~351 KB — 5.5× the mandated 64 KB cap | 🔒 needs owner sign-off |
+| **ROUT-27** | Low | `routing/mod.rs:209-217` | `iris.routing.floods_total` is registered but never incremented | ✅ `8d728e3` |
+| **ROUT-28** | High | `flood.rs:147-218` | `flood_terminates_no_loops_property` asserts nothing — a tautological "property test" cited as verification evidence | ✅ `7d5723d` |
+| **ROUT-29** | Medium | `flood.rs:220-245` | `flood_no_backtrack_no_reflood_property` builds a nonsensical already-flooded set, making its assertions near-vacuous | ✅ `7d5723d` |
+| **ROUT-30** | Medium | `dedup_cache.rs:116-127` | `ring_eviction_removes_expired_exact_entries` tests no eviction | ✅ `1191eff` |
+| **ROUT-31** | Medium | `store.rs:33,` | `ttl_check_arrival_time` enshrines the immortality bug, and `>` vs `<=` puts `store::is_expired` one second out of step with `expiry::is_expired` | ✅ (subsumed by ROUT-5, `1821c48`) |
 | **ROUT-32** | Medium | `routing.rs:36-39,` | `opportunistic_decide_50_candidates` benchmarks the degenerate `NoAdvantage` path | ⬜ |
 | **ROUT-33** | Medium | `routing.rs:1-6,` | The routing benchmark measures shared mutated state, times an unrelated `clone`, benchmarks aging with K=0, benches no L0 algorithm, and its header describes a spray bench that does not exist | ⬜ |
 | **ROUT-34** | Low | `flood.rs:53-56,` | Dead placeholder code that reads as load-bearing | ⬜ |
@@ -1117,7 +1118,7 @@ dedup_cache.rs:77	    }
 #### ROUT-17: Flood has no fan-out cap and ignores `hop_count` — free amplification for any sender
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `9ae05b4`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/flood.rs:42-73` (fn `recipients_for_flood`)
 - **What:** The `_hop_count` parameter is prefixed-underscore and completely unused — the recipient set does not narrow as the message travels. There is also no maximum on `recipients.len()`: every LinkedUp neighbor gets a copy. A node with `d` neighbors produces `d−1` copies per hop with no rate limit, no priority-based fan-out reduction, and (per ROUT-4) no dedup.
@@ -1145,7 +1146,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-18: `max_hops_for_priority(P0) = u8::MAX` — "unlimited" is a 255-hop amplification budget on the one class an attacker forges
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `4bb4733`  ·  2026-08-26
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/flood.rs:26-31` (fn `max_hops_for_priority`)
 - **What:** P0 maps to `u8::MAX`, commented "unlimited". Combined with `mod.rs:252` (`hop_count < policy.max_hops`) a P0 message is flooded for up to 255 hops. In a mesh of diameter ~5 that is 250 hops of pure re-amplification.
@@ -1168,7 +1169,7 @@ dedup_cache.rs:77	    }
 
 #### ROUT-19: Direct and KnownPath bypass the hop budget entirely, contradicting `decide`'s own contract
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c99633d`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/mod.rs:231-249` (fn `decide_inner`)
 - **What:** `hop_count` is not consulted until line 252 (the Flood branch). Algorithms 1 and 2 forward regardless of how many hops the message has already taken.
@@ -1199,7 +1200,7 @@ dedup_cache.rs:77	    }
 #### ROUT-20: Every flood decision deep-clones every neighbor's ~175 KB Bloom filter
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. For the routing occurrence; the `gateway/mod.rs:673` occurrence should be split out as its own finding, since gateway code is reachable. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `ec150a6`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/flood.rs:51` (fn `recipients_for_flood`)
 - **What:** `neighbor_table.neighbors().await` is `self.inner.lock().await.values().cloned().collect()` (`neighbor_table.rs:227-229`). `Neighbor` is `#[derive(Clone)]` and holds `peer_bloom: Option<BloomFilter>` (`neighbor_table.rs:49`), and `BloomFilter` is `#[derive(Clone)]` over `bits: Vec<u8>` (`dedup.rs:86-90`). `BloomFilter::default()` is sized `BLOOM_CAPACITY = 100_000` at `BLOOM_FPR = 0.001` → `bloom_bits` ≈ 1,437,760 bits ≈ **175 KB per neighbor**. The routing code needs only `peer_id`, `state` and `links`.
@@ -1350,7 +1351,7 @@ flood.rs:80	}
 
 #### ROUT-26: `ForwardedCache`'s Bloom is ~351 KB — 5.5× the mandated 64 KB cap
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** 🔒 Blocked  ·  Tier 2  ·  reason: the *Fix* field itself concludes `REQ-ROUTE-NF-004`'s own numbers are internally inconsistent (64 KB cannot hold 400k ids at <1% FPR — that needs ~460 KB) and explicitly says "escalate to the requirements owner" rather than pick a resolution unilaterally. Needs a requirements-owner decision among: raise the cap to ~470 KB, lower capacity to ~55,000 ids at 1% FPR (64 KB), or accept a higher FPR. Not picked by the fix loop.  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/routing/dedup_cache.rs:22, 36`
 - **What:** `BloomFilter::new(200_000, 0.001)` → `bloom_bits` (`dedup.rs:34-38`) = `−200000·ln(0.001)/ln(2)²` ≈ 2,875,520 bits = **359,440 bytes ≈ 351 KB**, allocated eagerly in `Default` (so every `RoutingEngine::new()` costs 351 KB up front) — and, per ROUT-10, it contributes nothing to correctness.
@@ -1371,7 +1372,7 @@ flood.rs:80	}
 
 #### ROUT-27: `iris.routing.floods_total` is registered but never incremented
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `8d728e3`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/mod.rs:209-217` (fn `decide`); `crates/iris-core/src/observability/mod.rs:158, 209`
 - **What:** `decide` increments only `ROUTING_DECISIONS_TOTAL`. `ROUTING_FLOODS_TOTAL` is declared and pre-registered in the metrics registry but has no `increment` call anywhere in `crates/` (repo-wide grep returns only the declaration and the registration).
@@ -1392,7 +1393,7 @@ flood.rs:80	}
 #### ROUT-28: `flood_terminates_no_loops_property` asserts nothing — a tautological "property test" cited as verification evidence
 - **Severity:** High
 - **Verdict:** PARTIALLY-CORRECT. Is defensible (a verification document cites this test as PASS evidence for the module's single most important property), but the finding must stop claiming zero coverage of `flood.rs:57`. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `7d5723d`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/flood.rs:147-218` (test `flood_terminates_no_loops_property`)
 - **What:** Three independent defects make the test unable to fail. (1) The "mesh of 12 nodes" is not a graph: `NeighborTable` is the neighbor set of a *single* node, so all 12 `upsert` calls populate one flat table and `rng` is pure noise — every node's neighbor list is identical. (2) `assert!(hop <= max)` is tautological: the loop condition is `hop < max` and `hop` increments once per iteration, so `hop <= max` holds by construction. (3) `assert_eq!(visited.len(), visited.len(), ...)` compares a value with itself. The doc comment's third claim ("the recipient is reached within the priority hop budget") is discarded via `let _ = reached;`.
@@ -1423,7 +1424,7 @@ flood.rs:80	}
 
 #### ROUT-29: `flood_no_backtrack_no_reflood_property` builds a nonsensical already-flooded set, making its assertions near-vacuous
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `7d5723d`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/flood.rs:220-245` (test `flood_no_backtrack_no_reflood_property`)
 - **What:** The `already` set is `(1..=8).filter(|i| *i != sender.0[0] % 8).map(|i| pid(i + 1))` — the filter compares a 1-based index against `sender_id % 8` (which is 0 when the sender is `pid(8)`, so nothing is ever filtered for that case), and the `+1` shifts the result to `pid(2)..=pid(9)`, where `pid(9)` is not in the table at all. Net effect: `already` contains 7–8 of the table's 8 peers, so `recipients_for_flood` returns at most `[pid(1)]` (or nothing when the sender is `pid(1)`). The two assertions then hold trivially against an almost-empty result.
@@ -1446,7 +1447,7 @@ flood.rs:80	}
 
 #### ROUT-30: `ring_eviction_removes_expired_exact_entries` tests no eviction
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `1191eff`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/dedup_cache.rs:116-127`
 - **What:** The test records 10 ids, asserts `len() >= 10`, calls `evict_old()` (with nothing older than 1 h), and asserts `len() >= 10` again. Both assertions use `>=`, so even a cache that *grew* would pass. The comment admits it: *"here we only assert structural integrity."*
@@ -1471,7 +1472,7 @@ flood.rs:80	}
 
 #### ROUT-31: `ttl_check_arrival_time` enshrines the immortality bug, and `>` vs `<=` puts `store::is_expired` one second out of step with `expiry::is_expired`
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed (subsumed by ROUT-5)  ·  Tier 2  ·  commit `1821c48`  ·  verified still current 2026-08-27 — re-read `store.rs` at HEAD: `is_expired` is now a thin shim delegating to `message_engine::expiry::is_expired` (the `<=` boundary), and `ttl_check_arrival_time`'s third assertion now documents skew-budget tolerance (100s future, within 300s budget → not expired) rather than the original unconditional-immortality bug; `rout5_far_future_timestamp_fails_closed` covers the fail-closed case beyond the skew budget. No further code change needed here — see ROUT-36 (still open) for the remaining same-name/different-argument-order hazard between the two functions.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/store.rs:33, 68-76` (fn `is_expired`, test `ttl_check_arrival_time`)
 - **What:** Two problems. (a) The test's third assertion — `assert!(!is_expired(100, 200, 60));` under the comment *"timestamp in the future (skew) never counts against earlier"* — is the ROUT-5 vulnerability written down as intended behaviour, which is why ROUT-5 survived. (b) `store::is_expired` uses `elapsed > ttl_seconds` while `message_engine::expiry::is_expired` uses `expiry <= now_unix` (i.e. `elapsed >= ttl`). The two disagree at exactly `elapsed == ttl_seconds`.
