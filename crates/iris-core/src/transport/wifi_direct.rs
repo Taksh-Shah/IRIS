@@ -1051,6 +1051,27 @@ impl WifiDirectTransport {
                     let payload = frame.payload[start..end].to_vec();
                     // Best-effort sender candidate from the TXT record; the IRIS
                     // envelope layer performs real verification (DEC-WD-0007).
+                    //
+                    // FFI-8: `sender: None` used to be silently indistinguishable
+                    // from "verified as peer zero" — PeerId([0u8; 32]) is a
+                    // specific, valid-looking id every unattributed frame
+                    // collided on, not an "unknown sender" marker. The
+                    // finding's fuller fix (making None a distinguishable
+                    // state the engine treats as pending envelope-level
+                    // identification, rather than either fabricating an id
+                    // OR dropping the frame outright) needs a
+                    // MessageEngine::process_incoming contract change this
+                    // fix does not make — IncomingMessage.peer_id is
+                    // required, not Option, and at least one existing
+                    // integration test exercises delivery through a
+                    // simulated adapter that never sets `sender` at all, so
+                    // dropping here silently regressed real delivery paths
+                    // rather than only closing the collision hole. What
+                    // FFI-1/FFI-3 already fix is the PRIMARY cause of
+                    // sender ever being None in practice on real hardware
+                    // (the two handle namespaces `verifiedCache` needs to
+                    // agree on to resolve a sender at all) — this substitution
+                    // remains a last-resort fallback, not the common case.
                     let peer_id = frame.sender.unwrap_or(PeerId([0u8; 32]));
                     if incoming_tx
                         .send(IncomingMessage {

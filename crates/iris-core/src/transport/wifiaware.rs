@@ -883,6 +883,23 @@ impl WifiAwareTransport {
                     // `frame.ndp` itself). Best-effort only — the IRIS envelope
                     // layer performs real verification (DEC-WA-0007); zero is the
                     // safe never-attacker-controlled fallback (WAW-RT-007).
+                    //
+                    // FFI-8: WAW-RT-007's rationale doesn't address the
+                    // finding's actual complaint — every unattributed frame
+                    // collapses onto the SAME fictitious identity, colliding
+                    // sender attribution/rate-limiting/dedup/routing state.
+                    // The fuller fix (a distinguishable "pending
+                    // identification" state instead of either fabricating
+                    // an id or dropping the frame) needs a
+                    // MessageEngine::process_incoming contract change this
+                    // does not make — IncomingMessage.peer_id is required,
+                    // not Option, and dropping unattributed frames here was
+                    // tried and reverted: it regressed a real integration
+                    // test whose simulated adapter never sets `sender` at
+                    // all. FFI-1/FFI-3's fix (Wi-Fi Direct's equivalent
+                    // handle-namespace unification) already addresses the
+                    // PRIMARY real-hardware cause of `sender` being None —
+                    // this substitution remains a last-resort fallback.
                     let peer_id = frame.sender.unwrap_or(PeerId([0u8; 32]));
                     // NEW-WA-RT-106: count (not silently swallow) frames that
                     // cannot be delivered upstream — a closed receiver or a
