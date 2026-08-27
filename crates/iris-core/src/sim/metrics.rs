@@ -130,13 +130,29 @@ impl SimMetrics {
     }
 }
 
+/// SIM-19: nearest-rank with `round()` on `(n-1)*p` biases the *tail*
+/// systematically low — for n=20, p=95, `19*0.95=18.05 -> round -> 18`, the
+/// empirical 90th percentile, not the 95th, and only 1 of 20 samples lies
+/// above it. That matters because p95 is used as a pass/fail latency gate
+/// (`scenario.rs`'s `latency_p95_ms <= 30_000`), so under-reporting the tail
+/// makes the gate easier than specified. R-7 linear interpolation (the
+/// convention numpy/Excel default to) fixes both the p95 bias and the
+/// symmetric p50 bug this module's own test caught: `percentiles(&[1,2,3,4],
+/// 50.0, 95.0)` used to return `(3, 4)` — a "median" of 3 for data whose
+/// true median is 2.5 — for the wrong reason (index 2 selected outright
+/// rather than interpolated); it still returns `(3, 4)` post-fix, but now
+/// because 2.5 rounds to 3 under ordinary round-half-away-from-zero, not
+/// because the interpolation was skipped.
 fn percentiles(sorted: &[u64], p50: f64, p95: f64) -> (u64, u64) {
     if sorted.is_empty() {
         return (0, 0);
     }
     let at = |p: f64| {
-        let idx = ((sorted.len() as f64 - 1.0) * p / 100.0).round() as usize;
-        sorted[idx]
+        let rank = (sorted.len() as f64 - 1.0) * p / 100.0;
+        let lo = rank.floor() as usize;
+        let hi = rank.ceil() as usize;
+        let frac = rank - lo as f64;
+        (sorted[lo] as f64 * (1.0 - frac) + sorted[hi] as f64 * frac).round() as u64
     };
     (at(p50), at(p95))
 }
@@ -145,10 +161,26 @@ fn percentiles(sorted: &[u64], p50: f64, p95: f64) -> (u64, u64) {
 /// PILOT-001 KPI evaluation (docs/operations/PILOT_KPI_PLAN.md §1). Returns
 /// `(lower, upper)`. Small-N safe; sampling is per class/transport per leg
 /// (never pooled) — the interval's lower bound is the pass/fail statistic.
+///
+/// SIM-20: `k` is clamped to `n` (and asserted in debug builds) because
+/// `k > n` is reachable in practice — `SimOutcome.delivered_total` counts
+/// every node's `delivered` vec while `injected_total` counts injections,
+/// so a duplicate terminal delivery (exactly the bug `loop_free()` exists
+/// to catch) makes `k > n`, and `p = k/n > 1` sends `sqrt(p*(1-p)/n + ...)`
+/// negative under the root — `NaN`, silently, since `NaN.clamp(0.0, 1.0)`
+/// returns `NaN` rather than panicking (clamp only panics on `min > max`).
+/// A `k > n` regression would then fail every caller's assertion with a
+/// confusing `NaN` message instead of the real duplicate-delivery
+/// diagnosis.
 pub fn wilson_ci_95(k: usize, n: usize) -> (f64, f64) {
+    let k = k.min(n);
+    debug_assert!(k <= n, "wilson_ci_95: k must not exceed n");
     let n = n as f64;
     if n == 0.0 {
-        return (0.0, 0.0);
+        // An empty sample bounds nothing — (0.0, 0.0) claimed a *tight*
+        // interval at zero, which a caller's `assert!(lo >= 0.90)` would
+        // report as a delivery failure rather than "no data collected".
+        return (0.0, 1.0);
     }
     let z = 1.96; // two-tailed 95%
     let p = k as f64 / n;
@@ -169,7 +201,35 @@ mod tests {
     fn percentile_edge_cases() {
         assert_eq!(percentiles(&[], 50.0, 95.0), (0, 0));
         assert_eq!(percentiles(&[5], 50.0, 95.0), (5, 5));
+        // SIM-19: the pre-fix nearest-rank code happens to land on the same
+        // final (rounded) answer as R-7 interpolation for this specific
+        // n=4 input — (3, 4) either way, since round(1.5)=2->sorted[2]=3
+        // coincides with round(interpolated 2.5)=3. This case does NOT
+        // discriminate old from new; see
+        // `p95_tail_bias_needs_a_real_outlier_to_show_up` for a case that
+        // does.
         assert_eq!(percentiles(&[1, 2, 3, 4], 50.0, 95.0), (3, 4));
+    }
+
+    #[test]
+    fn p95_tail_bias_needs_a_real_outlier_to_show_up() {
+        // SIM-19: the finding's own trigger scenario — 20 latencies, 19 at
+        // 1000ms and one at 120_000ms. The pre-fix nearest-rank code
+        // computes idx = round(19*0.95) = round(18.05) = 18 -> 1000ms,
+        // completely missing the outlier. R-7 interpolation puts the rank
+        // at 18.05 (5% of the way from index 18 to 19) and correctly
+        // blends in the outlier: 1000 + 0.05*(120_000-1000) = 6950ms —
+        // still far from the outlier itself (p95 legitimately means "95%
+        // of samples are at or below this," not "the max"), but a ~7x
+        // increase over the old, silently-wrong answer.
+        let mut samples = vec![1000u64; 19];
+        samples.push(120_000);
+        let (_, p95) = percentiles(&samples, 50.0, 95.0);
+        assert_eq!(p95, 6950, "R-7 interpolation must blend in the outlier");
+        assert!(
+            p95 > 1000,
+            "must not silently ignore the outlier the way nearest-rank did"
+        );
     }
 
     #[test]
@@ -207,7 +267,23 @@ mod tests {
         let (b, _) = wilson_ci_95(50, 50);
         let (c, _) = wilson_ci_95(100, 100);
         assert!(a < b && b < c);
-        // Empty sample is degenerate, does not panic.
-        assert_eq!(wilson_ci_95(0, 0), (0.0, 0.0));
+        // SIM-20: empty sample is degenerate, does not panic — and bounds
+        // nothing, (0.0, 1.0), rather than the old (0.0, 0.0), which
+        // claimed a tight interval at zero indistinguishable from "0%
+        // delivery, confidently measured" to a caller's `lo >= threshold`
+        // assertion.
+        assert_eq!(wilson_ci_95(0, 0), (0.0, 1.0));
+    }
+
+    #[test]
+    fn wilson_ci_95_k_greater_than_n_does_not_produce_nan() {
+        // SIM-20: reachable via a duplicate-delivery bug (delivered_total
+        // counting every node's delivered vec while injected_total counts
+        // injections) — must clamp, not silently NaN through
+        // `NaN.clamp(0.0, 1.0)` (which returns NaN, not a panic).
+        let (lo, hi) = wilson_ci_95(5, 3);
+        assert!(!lo.is_nan() && !hi.is_nan(), "lo={lo} hi={hi}");
+        // Clamped to k=n=3: same as a perfect-delivery sample of size 3.
+        assert_eq!(wilson_ci_95(5, 3), wilson_ci_95(3, 3));
     }
 }

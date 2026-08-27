@@ -171,6 +171,10 @@ pub struct Simulation {
     blocked_hop_budget: u64,
     blocked_no_advantage: u64,
     blocked_loss: u64,
+    /// SIM-29: relay count *per message* — `relays_total / injected_total`
+    /// is a mean, which cannot catch one message exploding past a
+    /// per-message bound (e.g. binary spray's L) while others stay quiet.
+    relays_by_msg: HashMap<MessageId, u64>,
 }
 
 impl Simulation {
@@ -197,6 +201,7 @@ impl Simulation {
             blocked_hop_budget: 0,
             blocked_no_advantage: 0,
             blocked_loss: 0,
+            relays_by_msg: HashMap::new(),
         }
     }
 
@@ -470,6 +475,7 @@ impl Simulation {
         // Relay: src's copy is AckPending (retryable); the copy rides at dst.
         self.nodes[src].scf.mark_forwarded(&id, dst_peer, false);
         self.nodes[src].relays += 1;
+        *self.relays_by_msg.entry(id).or_insert(0) += 1;
         ForwardResult::Relayed
     }
 
@@ -814,6 +820,7 @@ impl Simulation {
             blocked_hop_budget: self.blocked_hop_budget,
             blocked_no_advantage: self.blocked_no_advantage,
             blocked_loss: self.blocked_loss,
+            relays_by_msg: self.relays_by_msg,
         }
     }
 
@@ -896,6 +903,11 @@ pub struct SimOutcome {
     pub blocked_no_advantage: u64,
     /// SIM-11: forward attempts dropped by the simulated link-loss draw.
     pub blocked_loss: u64,
+    /// SIM-29: relay count per message — the per-message statistic a bound
+    /// like binary spray's L actually constrains; `relays_total /
+    /// injected_total` (a mean) cannot detect one message exceeding L
+    /// while others stay quiet.
+    pub relays_by_msg: HashMap<MessageId, u64>,
 }
 
 impl SimOutcome {

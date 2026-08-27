@@ -102,12 +102,36 @@ fn determinism_same_seed_same_anchor() {
 
 #[test]
 fn loss_reduces_delivery_ratio_monotonically() {
+    // SIM-29: the old `lossy <= zero` non-strict inequality is satisfied
+    // even if `set_loss` has NO effect whatsoever — since `set_loss` is
+    // the sim's only failure knob, this was the one test that could not
+    // detect it being silently broken (e.g. `is_lost()` short-circuiting
+    // to `false`, or the loss draw wired to the wrong RNG stream). Strict
+    // `<` plus a lower bound on the drop closes that gap.
+    //
+    // Loss rate empirically calibrated (not guessed): dense_mesh(6, ·)'s
+    // ~30 contact events for just 4 messages give SCF's retry-until-
+    // delivered semantics enough redundancy that 60% loss shows NO
+    // measurable effect on seed 5 specifically (verified: zero=1.000,
+    // lossy=1.000, an outlier — every other seed tried showed some drop
+    // at 60%, just not reliably above a meaningful threshold). 80% loss
+    // produced a robust, comfortably-above-threshold drop across every
+    // seed sampled (0.2-0.7), so it — not a different seed — is the
+    // minimal change that makes this scenario actually discriminating.
     let zero = run_dense(5).delivery_ratio;
     let mut sim = dense_mesh(6, 5);
     inject_standard(&mut sim, 4, 100, 3600);
-    sim.set_loss(loss(60.0));
+    sim.set_loss(loss(80.0));
     let lossy = SimMetrics::from_outcome(&sim.run()).delivery_ratio;
-    assert!(lossy <= zero, "loss must not improve delivery");
+    assert!(
+        lossy < zero,
+        "80% loss must strictly reduce delivery: zero-loss={zero:.3} lossy={lossy:.3}"
+    );
+    assert!(
+        zero - lossy > 0.05,
+        "80% loss should visibly move the delivery ratio, not just barely: \
+         zero-loss={zero:.3} lossy={lossy:.3}"
+    );
 }
 
 // --- ROUTE-002: L2 opportunistic routing in SIM (WP-8). ---
@@ -183,14 +207,21 @@ fn route2_spray_bounds_overhead_property() {
     let out = sim.run();
     let l = SprayBudget::l_for_priority(MessagePriority::P4, 3) as u64;
     assert!(l >= 1);
-    // AC-4: copies never exceed L per message (binary spray invariant).
-    // relays/injected = handoffs per message — bounded by L (each handoff
-    // carries a halved budget; the total copies alive never exceed L).
-    let handoffs_per_msg = out.relays_total as f64 / out.injected_total.max(1) as f64;
+    // SIM-29: AC-4 is a *per-message* bound ("copies never exceed L per
+    // message") — the old check computed relays_total / injected_total, a
+    // MEAN across all messages, which cannot catch one message exploding
+    // to 10xL while the rest are quiet (a mean of L is trivially satisfied
+    // by e.g. half the messages at 0 relays and half at 2L). Check the max
+    // over the per-message tally instead.
     assert!(
-        handoffs_per_msg <= l as f64,
-        "binary spray must bound handoffs per message <= L ({}): {handoffs_per_msg:.2} ({} relays / {} msgs)",
-        l, out.relays_total, out.injected_total
+        !out.relays_by_msg.is_empty(),
+        "scenario must produce at least one relay to exercise the bound"
+    );
+    let max_relays_for_one_msg = out.relays_by_msg.values().copied().max().unwrap_or(0);
+    assert!(
+        max_relays_for_one_msg <= l,
+        "binary spray must bound relays for EVERY message <= L ({l}): \
+         worst message had {max_relays_for_one_msg} relays"
     );
     assert!(
         out.avg_hop_count <= 3.0,
