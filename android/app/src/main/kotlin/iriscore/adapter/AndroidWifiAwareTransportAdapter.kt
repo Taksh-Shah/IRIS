@@ -21,6 +21,7 @@ import android.net.wifi.aware.WifiAwareSession
 import java.net.Inet6Address
 import iriscode.DeviceNotFound
 import iriscode.NotSupported
+import iriscode.PermissionDenied
 import iriscode.FfiIncomingNdpData
 import iriscode.FfiPeerDiscovery
 import iriscode.FfiPublishConfig
@@ -318,7 +319,13 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 manager.attach(attachCallback, identityListener, null)
             }.getOrElse { e ->
                 pendingAttach = null
-                cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed: ${e.message}"))
+                // FFI-7: attach() throws SecurityException synchronously when
+                // NEARBY_WIFI_DEVICES (API 33+) isn't granted — undeclared,
+                // this used to fall through to a generic TransportFailure
+                // indistinguishable from any other attach failure.
+                cont.resumeWithException(
+                    if (e is SecurityException) PermissionDenied() else TransportFailure("Wi-Fi Aware attach failed: ${e.message}"),
+                )
             }
         }
     }
@@ -343,13 +350,25 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     private suspend fun subscribeOnce(): SubscribeDiscoverySession? {
         val session = attachGate.ensureStarted()
-        session.subscribe(subscribeConfig(), discoveryCallback, null)
+        // FFI-7: subscribe() throws SecurityException synchronously when the
+        // permission grant was revoked after attach() succeeded (it can be
+        // revoked at any time from Settings) — this call had no try/catch at
+        // all, so it would have propagated raw and aborted the Rust call.
+        try {
+            session.subscribe(subscribeConfig(), discoveryCallback, null)
+        } catch (e: SecurityException) {
+            throw PermissionDenied()
+        }
         return null // live resource seeded by onSessionStarted (async)
     }
 
     private suspend fun publishOnce(): PublishDiscoverySession? {
         val session = attachGate.ensureStarted()
-        session.publish(publishConfig(), discoveryCallback, null)
+        try {
+            session.publish(publishConfig(), discoveryCallback, null)
+        } catch (e: SecurityException) {
+            throw PermissionDenied()
+        }
         return null // live resource seeded by onSessionStarted (async)
     }
 

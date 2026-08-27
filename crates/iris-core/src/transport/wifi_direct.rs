@@ -898,6 +898,30 @@ impl WifiDirectTransport {
         }
     }
 
+    /// FFI-7: classify an adapter error string, distinguishing a revoked
+    /// runtime permission from a plain I/O failure. Every discovery-path
+    /// platform call (`discoverServices`, `addServiceRequest`,
+    /// `addLocalService`, `connect`, `createGroup`) throws a synchronous
+    /// `SecurityException` when `NEARBY_WIFI_DEVICES` (API 33+) /
+    /// `ACCESS_FINE_LOCATION` (API <=32) isn't granted; Kotlin's
+    /// `awaitAction` now converts that into `IrisFfiError::PermissionDenied`
+    /// ("permission denied") instead of letting it propagate undeclared.
+    /// Mapped to `TransportError::NotSupported` — same target as BLE's
+    /// `BleError::PermissionDenied` (see `ble.rs`) — so the manager can
+    /// degrade this transport instead of treating a permission gate as a
+    /// retryable I/O blip it will spin on forever. Unlike FFI-13's
+    /// `permanently_unsupported` latch, this does NOT mark the transport
+    /// permanently unsupported — a revoked permission can be re-granted at
+    /// any time (Settings, a fresh runtime prompt), so the next call is
+    /// simply free to try again.
+    fn classify_error(context: &str, e: String) -> TransportError {
+        if e.contains("permission denied") {
+            TransportError::NotSupported
+        } else {
+            TransportError::Io(format!("{context}: {e}"))
+        }
+    }
+
     /// Clone of the injected adapter, or `NotSupported` when none is present.
     async fn adapter(&self) -> Result<Arc<dyn WifiDirectAdapter>, TransportError> {
         self.adapter
@@ -959,7 +983,10 @@ impl WifiDirectTransport {
                 self.permanently_unsupported.store(true, Ordering::SeqCst);
                 TransportError::NotSupported
             } else {
-                TransportError::Io(format!("wifi_direct.start: {e}"))
+                // FFI-7: a revoked permission is not the permanent condition
+                // "not supported" is — deliberately NOT latching
+                // permanently_unsupported here, unlike the branch above.
+                Self::classify_error("wifi_direct.start", e)
             });
         }
         // Generic bring-up (also reached from discover_peers, which has no
@@ -973,7 +1000,7 @@ impl WifiDirectTransport {
         adapter
             .start_dns_sd(Vec::new())
             .await
-            .map_err(|e| TransportError::Io(format!("wifi_direct.dns_sd: {e}")))?;
+            .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
         self.spawn_poller(adapter.clone()).await?;
         if self.state.load() == TransportState::Unavailable {
             let initial = if adapter.is_available() {
@@ -1156,7 +1183,7 @@ impl Transport for WifiDirectTransport {
             adapter
                 .start_discovery()
                 .await
-                .map_err(|e| TransportError::Io(format!("wifi_direct.find: {e}")))?;
+                .map_err(|e| Self::classify_error("wifi_direct.find", e))?;
         }
         let matches = adapter.matches().await;
         let mut infos: Vec<PeerInfo> = Vec::new();
@@ -1197,7 +1224,7 @@ impl Transport for WifiDirectTransport {
         adapter
             .stop_discovery()
             .await
-            .map_err(|e| TransportError::Io(format!("wifi_direct.stop_find: {e}")))?;
+            .map_err(|e| Self::classify_error("wifi_direct.stop_find", e))?;
         self.clear_discovery();
         Ok(())
     }
@@ -1234,7 +1261,7 @@ impl Transport for WifiDirectTransport {
         adapter
             .start_dns_sd(txt_record)
             .await
-            .map_err(|e| TransportError::Io(format!("wifi_direct.dns_sd: {e}")))?;
+            .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
         Ok(())
     }
 
@@ -1243,7 +1270,7 @@ impl Transport for WifiDirectTransport {
         adapter
             .stop_dns_sd()
             .await
-            .map_err(|e| TransportError::Io(format!("wifi_direct.dns_sd: {e}")))?;
+            .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
         Ok(())
     }
 

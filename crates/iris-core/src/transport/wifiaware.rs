@@ -741,6 +741,23 @@ impl WifiAwareTransport {
         }
     }
 
+    /// FFI-7 / FFI-11: classify an adapter error string, distinguishing a
+    /// revoked runtime permission (`attach`/`subscribe`/`publish` all throw
+    /// `SecurityException` synchronously without `NEARBY_WIFI_DEVICES`,
+    /// converted by Kotlin into `IrisFfiError::PermissionDenied` — "permission
+    /// denied" — instead of aborting the call undeclared) from a plain I/O
+    /// failure. Mapped to `TransportError::NotSupported`, same as BLE's
+    /// `BleError::PermissionDenied` and Wi-Fi Direct's equivalent — not
+    /// latched as permanently unsupported, since the permission can be
+    /// re-granted at any time.
+    fn classify_error(context: &str, e: String) -> TransportError {
+        if e.contains("permission denied") {
+            TransportError::NotSupported
+        } else {
+            TransportError::Io(format!("{context}: {e}"))
+        }
+    }
+
     /// Clone of the injected adapter, or `NotSupported` when none is present.
     async fn adapter(&self) -> Result<Arc<dyn WifiAwareAdapter>, TransportError> {
         self.adapter
@@ -766,11 +783,11 @@ impl WifiAwareTransport {
         adapter
             .start()
             .await
-            .map_err(|e| TransportError::Io(format!("wifiaware.start: {e}")))?;
+            .map_err(|e| Self::classify_error("wifiaware.start", e))?;
         adapter
             .subscribe()
             .await
-            .map_err(|e| TransportError::Io(format!("wifiaware.subscribe: {e}")))?;
+            .map_err(|e| Self::classify_error("wifiaware.subscribe", e))?;
         self.spawn_poller(adapter.clone()).await?;
         // WAW-RT-004: at boot the watcher only fires on *transitions*, so an
         // adapter that starts with data scope already down would otherwise be
@@ -998,7 +1015,7 @@ impl Transport for WifiAwareTransport {
         adapter
             .unsubscribe()
             .await
-            .map_err(|e| TransportError::Io(format!("wifiaware.unsubscribe: {e}")))?;
+            .map_err(|e| Self::classify_error("wifiaware.unsubscribe", e))?;
         Ok(())
     }
 
@@ -1036,7 +1053,7 @@ impl Transport for WifiAwareTransport {
                 ..PublishConfig::default()
             })
             .await
-            .map_err(|e| TransportError::Io(format!("wifiaware.publish: {e}")))?;
+            .map_err(|e| Self::classify_error("wifiaware.publish", e))?;
         Ok(())
     }
 
@@ -1045,7 +1062,7 @@ impl Transport for WifiAwareTransport {
         adapter
             .unpublish()
             .await
-            .map_err(|e| TransportError::Io(format!("wifiaware.unpublish: {e}")))?;
+            .map_err(|e| Self::classify_error("wifiaware.unpublish", e))?;
         Ok(())
     }
 

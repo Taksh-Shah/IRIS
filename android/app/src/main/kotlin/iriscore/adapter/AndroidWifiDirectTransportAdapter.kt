@@ -26,6 +26,7 @@ import iriscode.FfiIncomingWifiDirectData
 import iriscode.FfiOperatingBand
 import iriscode.DeviceNotFound
 import iriscode.NotSupported
+import iriscode.PermissionDenied
 import iriscode.FfiWifiDirectAdapter
 import iriscode.TransportFailure
 import iriscore.util.PeerIdCodec
@@ -774,15 +775,28 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      */
     private suspend fun awaitAction(failureContext: String? = null, launch: (WifiP2pManager.ActionListener) -> Unit) {
         suspendCancellableCoroutine { cont ->
-            launch(object : WifiP2pManager.ActionListener {
-                override fun onSuccess() = cont.resume(Unit)
-                override fun onFailure(reason: Int) {
-                    // AND-RT-103: typed FFI error — a raw IllegalStateException
-                    // becomes UNIFFI_CALL_UNEXPECTED_ERROR and panics the Rust side.
-                    val suffix = failureContext?.let { " $it" } ?: ""
-                    cont.resumeWithException(TransportFailure("WifiP2p action failed reason=$reason$suffix"))
-                }
-            })
+            try {
+                launch(object : WifiP2pManager.ActionListener {
+                    override fun onSuccess() = cont.resume(Unit)
+                    override fun onFailure(reason: Int) {
+                        // AND-RT-103: typed FFI error — a raw IllegalStateException
+                        // becomes UNIFFI_CALL_UNEXPECTED_ERROR and panics the Rust side.
+                        val suffix = failureContext?.let { " $it" } ?: ""
+                        cont.resumeWithException(TransportFailure("WifiP2p action failed reason=$reason$suffix"))
+                    }
+                })
+            } catch (e: SecurityException) {
+                // FFI-7: discoverServices/addServiceRequest/addLocalService/
+                // connect/createGroup all throw SecurityException
+                // synchronously, before any listener fires, when
+                // NEARBY_WIFI_DEVICES (API 33+) / ACCESS_FINE_LOCATION
+                // (API <=32) isn't granted. Undeclared, this became
+                // UNIFFI_CALL_UNEXPECTED_ERROR and aborted the Rust call —
+                // the FFI contract already declares PermissionDenied as the
+                // distinguishable outcome; construct it here so Rust can
+                // finally tell "permission denied" from "radio busy".
+                cont.resumeWithException(PermissionDenied())
+            }
         }
     }
 
