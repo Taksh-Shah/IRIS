@@ -48,13 +48,13 @@ Full workspace test suite green after every commit across all six wakes (657 iri
 | Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
-| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 17 | 0 | 13 | 1 | 0 | **IN PROGRESS** — BLE-2/BLE-4/BLE-9 fixed this session (real hardware confirmed connect+write mechanics for BLE-2/BLE-9; BLE-4 needs a 2-peer hardware run to confirm); BLE-1 still blocked; Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-9's remaining service_uuid/local_name half remain | ⬜ |
+| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 15 | 0 | 15 | 1 | 0 | **IN PROGRESS** — BLE-2/BLE-4/BLE-9/FFI-4/FFI-5 fixed this session (real hardware confirmed connect+write mechanics for BLE-2/BLE-9; BLE-4/FFI-4/FFI-5 code-complete + unit-tested, PENDING HARDWARE VERIFICATION); BLE-1 still blocked; Kotlin-touching FFI-1/2/3/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-9's remaining service_uuid/local_name half remain | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 29 | 0 | 48 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: 15/25 fixed [DTN-1,2,3,4,5,6,7,8,9,10,11,21,23,24,25]; DTN-12..20, DTN-22 (PRoPHET aging cluster + lifecycle), MG-25..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime | ⬜ |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **204** | **0** | **73** | **4** | **0** | | ⬜ |
+| **Total** | | **284** | **202** | **0** | **75** | **4** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -9970,7 +9970,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-4: Wi-Fi Aware never advertises the IRIS beacon — `publish()` discards its entire config and sets no `serviceSpecificInfo`
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit b76151d  ·  2026-08-26  ·  Added `service_specific_info: Vec<u8>` to core `PublishConfig` and `FfiPublishConfig`; `start_advertising` now builds the real 22-byte beacon (`WifiAwareBeacon::build`) from the node's actual `peer_id` instead of ignoring `info` and publishing `PublishConfig::default()`. Kotlin's `publish()` now captures the incoming config (the `publishGate` lazy-start lambda takes no args, so the real config has to be readable whenever it eventually fires) and `publishConfig()` calls `setServiceSpecificInfo`/`setTtlSec` instead of building a service-name-only config. Regenerated `kotlin/.../iriscode.kt` via `uniffi-bindgen generate` (AC-2's documented procedure), diffed against the previous committed file before overwriting — only the new field's marshalling changed. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean, native lib rebuilt. **PENDING HARDWARE VERIFICATION** — needs two devices with NAN hardware, which neither of this session's two test phones has.
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifiaware.rs:126-145` (`PublishConfig`), `:925` (`publish(&PublishConfig::default())`), `:884-887` (subscriber parses the beacon), `crates/iris-core/src/transport/wifiaware_beacon.rs:17-25` (22-byte wire format)
 - **Location (native):** `android/app/src/main/kotlin/iriscore/adapter/AndroidWifiAwareTransportAdapter.kt:137-139`, `:306-320`
@@ -9997,7 +9997,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-5: Wi-Fi Direct never advertises the TXT-record beacon either — `addLocalService` is given `emptyMap()`
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit 3a53a2d  ·  2026-08-26  ·  `start_dns_sd(&self)` → `start_dns_sd(&self, txt_record: Vec<u8>)` across the core trait, `FfiWifiDirectAdapter`, and both bridges. `start_advertising` builds the real 22-byte beacon (`WifiDirectTxtRecord::build`) from the node's identity + `go_intent`-derived capabilities (same construction pattern as FFI-4/BLE). Kotlin's `registerDnsSd()` hex-encodes the beacon under one TXT key (`BEACON_TXT_KEY`) instead of registering `emptyMap()`; `encodeTxtRecord` (inbound decode) now decodes that same key back to bytes instead of concatenating the whole map as UTF-8 text. `startDnsSd(txtRecord)` captures the value into a field before triggering the lazy `dnsSdGate`. Regenerated Kotlin bindings, diffed before overwriting. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean, native lib rebuilt. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct_serv.rs:19-27` (22-byte TXT format), `crates/iris-core/src/transport/wifi_direct.rs:1097-1101` (`WifiDirectTxtRecord::parse` gate)
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:382-391`, `:409-420`
