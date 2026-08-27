@@ -808,6 +808,13 @@ pub struct WifiDirectTransport {
     /// Set once `shutdown()` has completed; prevents a racing bring-up from
     /// resurrecting a dead transport.
     shutdown_flag: AtomicBool,
+    /// FFI-13: set once `ensure_started()` learns this device has no Wi-Fi
+    /// Direct hardware at all (adapter.start() returns NotSupported). This is
+    /// a genuinely permanent condition — unlike a transient I/O failure — so
+    /// it's tracked separately from `state` (whose Unavailable variant is
+    /// also the pre-start default and would otherwise be indistinguishable
+    /// from "never tried yet").
+    permanently_unsupported: AtomicBool,
     /// Discovery re-arm window end (app cadence, 30 s); None = not discovering.
     discovery_until: StdMutex<Option<Instant>>,
     /// Inbound frames that could not be delivered upstream (telemetry).
@@ -849,6 +856,7 @@ impl WifiDirectTransport {
             group_config: GroupConfig::default(),
             connect_gate: AsyncMutex::new(()),
             shutdown_flag: AtomicBool::new(false),
+            permanently_unsupported: AtomicBool::new(false),
             discovery_until: StdMutex::new(None),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
         }
@@ -928,10 +936,32 @@ impl WifiDirectTransport {
             return Err(TransportError::ShuttingDown);
         }
         let adapter = self.adapter().await?;
-        adapter
-            .start()
-            .await
-            .map_err(|e| TransportError::Io(format!("wifi_direct.start: {e}")))?;
+        if let Err(e) = adapter.start().await {
+            // FFI-13: a device with no Wi-Fi Direct hardware (or a platform
+            // Channel that failed to initialize) used to report Ok(()) here
+            // — Kotlin's initialize() returned null and SessionGate cached
+            // it as a "successful" start. Now that it throws NotSupported
+            // (IrisFfiError's Display: "not supported on this device"),
+            // treat it as the permanent condition it is: TransportError::
+            // NotSupported drives the transport straight to Unavailable
+            // (see the caller), instead of Io — which every OTHER caller in
+            // this file already treats as retryable and would have kept
+            // this transport polling a subsystem that can never come up.
+            return Err(if e.contains("not supported") {
+                // Permanent: this device cannot ever bring up Wi-Fi Direct.
+                // Flip state here (not just return an error) so the manager
+                // stops selecting/polling a transport that will never
+                // recover, instead of leaving state to whatever it happened
+                // to be before this call. Also latch the dedicated flag so
+                // discover_peers/start_advertising/connect can fail fast on
+                // their NEXT call instead of re-invoking adapter.start().
+                self.set_state(TransportState::Unavailable);
+                self.permanently_unsupported.store(true, Ordering::SeqCst);
+                TransportError::NotSupported
+            } else {
+                TransportError::Io(format!("wifi_direct.start: {e}"))
+            });
+        }
         // Generic bring-up (also reached from discover_peers, which has no
         // NodeAdvertisement to build a real beacon from): register with an
         // empty placeholder just to get the DNS-SD subsystem up. The real
@@ -1111,6 +1141,15 @@ impl Transport for WifiDirectTransport {
         &self,
         config: DiscoveryConfig,
     ) -> Result<Pin<Box<dyn Stream<Item = PeerInfo> + Send>>, TransportError> {
+        // FFI-13: once ensure_started() has permanently marked this device as
+        // lacking Wi-Fi Direct hardware, don't re-attempt adapter.start() on
+        // every discovery call — fail fast instead of repeatedly hitting a
+        // subsystem that can never come up. (Can't key this off
+        // TransportState::Unavailable alone — that's also the pre-start
+        // default, so checking it here would block the very first call.)
+        if self.permanently_unsupported.load(Ordering::SeqCst) {
+            return Err(TransportError::NotSupported);
+        }
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
         if self.discovery_should_rearm() {
@@ -1152,6 +1191,10 @@ impl Transport for WifiDirectTransport {
     }
 
     async fn start_advertising(&self, info: NodeAdvertisement) -> Result<(), TransportError> {
+        // FFI-13: see discover_peers — fail fast once permanently unsupported.
+        if self.permanently_unsupported.load(Ordering::SeqCst) {
+            return Err(TransportError::NotSupported);
+        }
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
         if !adapter.is_available() {

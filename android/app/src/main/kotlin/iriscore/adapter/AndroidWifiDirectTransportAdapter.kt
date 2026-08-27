@@ -123,7 +123,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     @Volatile
     private var groupServer: FramedSocketServer? = null
 
-    private val startGate = SessionGate<WifiP2pManager.Channel?> { initialize() }
+    private val startGate = SessionGate<WifiP2pManager.Channel> { initialize() }
     private val dnsSdGate = SessionGate<Unit> { registerDnsSd() }
 
     /**
@@ -391,11 +391,25 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         }
     }
 
-    private fun initialize(): WifiP2pManager.Channel? {
-        val manager = p2pManager ?: return null
+    /**
+     * FFI-13: this used to return `null` on a device with no Wi-Fi Direct
+     * hardware (`p2pManager == null`) or a failed platform `initialize()`
+     * call, and `SessionGate<Channel?>` happily cached that null as its
+     * "created" value — `start()` then returned normally, `registerDnsSd()`
+     * did `startGate.ensureStarted() ?: return` (a silent success), and the
+     * transport was registered, polled forever, and reported a state
+     * derived from a side channel (`is_available()`) rather than from the
+     * operation that actually failed. `NotSupported` already exists in the
+     * FFI error enum and is the correct answer — throwing it here (instead
+     * of at some later, unrelated call site) is what lets Rust map straight
+     * to a permanent `TransportState::Unavailable` instead of retrying a
+     * subsystem that can never come up.
+     */
+    private fun initialize(): WifiP2pManager.Channel {
+        val manager = p2pManager ?: throw NotSupported()
         val channel = runCatching {
             manager.initialize(appContext, Looper.getMainLooper(), channelListener)
-        }.getOrNull() ?: return null
+        }.getOrNull() ?: throw NotSupported()
         registerStateReceiver()
         availability.setAvailable(true)
         return channel
