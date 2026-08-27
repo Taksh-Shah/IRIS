@@ -416,8 +416,11 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     private val dnsSdServiceListener = WifiP2pManager.DnsSdServiceResponseListener { instanceName, registrationType, srcDevice ->
-        val handle = nextPeerHandle.getAndIncrement()
-        peerDevices[handle] = srcDevice.deviceAddress
+        // FFI-1/FFI-18: allocate through the single allocator so this
+        // handle is the SAME one join_group/add_client, p2p_send, and the
+        // socket data path (attachLink/links/groupRegistry) will all agree
+        // on for this device — see peerHandleFor's doc.
+        val handle = peerHandleFor(srcDevice.deviceAddress)
         val beacon = pendingTxtBeacons.remove(srcDevice.deviceAddress) ?: ByteArray(0)
         // AND-RT-108: remember the candidate beacon identity (DEC-WA-0007) so the
         // inbound drain can attribute frames to a 64-hex PeerId.
@@ -616,9 +619,32 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     /** The platform manager, or a typed error when the device lacks Wi-Fi Direct. */
     private fun p2pManagerOrThrow(): WifiP2pManager = p2pManager ?: throw NotSupported()
 
+    /**
+     * The ONE place a peer handle is ever minted (FFI-1, FFI-18).
+     *
+     * `dnsSdServiceListener` used to mint its own handle directly from
+     * `nextPeerHandle` and write only `peerDevices` (handle -> addr) —
+     * never the reverse index `deviceHandles` (addr -> handle) this
+     * function reads. Every later call to `peerHandleFor` for the SAME
+     * device therefore always missed and allocated a second, different
+     * handle: `join_group`/`add_client` (which read `peerDevices`, keyed by
+     * the discovery handle) worked, but `p2p_send`/`links`/`groupRegistry`
+     * (all keyed by whatever `peerHandleFor` returns) never agreed with it.
+     * No Wi-Fi Direct frame could ever be transmitted, in either
+     * direction, on real hardware.
+     *
+     * `ConcurrentHashMap.getOrPut` (the Kotlin extension) is also NOT
+     * atomic — it is `get` then `put` — and this function is called
+     * concurrently from the broadcast-receiver thread, `callbackScope`
+     * coroutines, and the `FramedSocketServer` accept coroutine (FFI-18).
+     * `computeIfAbsent` closes that race: two racing callers for the same
+     * device now provably get the same handle.
+     */
     private fun peerHandleFor(deviceAddress: String?): Long {
         if (deviceAddress == null) return 0L
-        return deviceHandles.getOrPut(deviceAddress) { nextPeerHandle.getAndIncrement() }
+        val handle = deviceHandles.computeIfAbsent(deviceAddress) { nextPeerHandle.getAndIncrement() }
+        peerDevices[handle] = deviceAddress
+        return handle
     }
 
     /** Await a WifiP2pManager async action; the per-call timeout is applied by the caller. */
