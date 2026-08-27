@@ -40,8 +40,14 @@ impl ScfEvictionPolicy {
         priority != MessagePriority::P0
     }
 
-    /// Compute the maximum bytes a `target_bytes` request may evict without
-    /// touching P0, deferring to the engine's own eviction when needed.
+    /// The eviction rank for a priority class: 0 (P0, never evicted) through
+    /// 7 (P7, evicted first). Higher is worse. This is `StoreKey`'s
+    /// `priority_rank` — the canonical mapping the buffer's ordering (and
+    /// so `evict_until`'s `next_back()` victim lookup) is built on.
+    ///
+    /// DTN-11: the previous doc comment here ("compute the maximum bytes a
+    /// target_bytes request may evict") did not describe what this
+    /// function does or returns.
     pub fn eviction_weight(priority: MessagePriority) -> u8 {
         match priority {
             MessagePriority::P0 => 0,
@@ -57,6 +63,21 @@ impl ScfEvictionPolicy {
 }
 
 impl<S: MessageStorage> ScfEngine<S> {
+    /// DTN-11: apply a device-class storage ceiling
+    /// (STORE_CARRY_FORWARD.md §Storage Capacity), capped at whichever is
+    /// smaller: the class ceiling or the engine's own configured
+    /// `max_storage_bytes`. Without this, `DeviceClass`'s per-platform
+    /// ceilings (200 MB phone .. 50 GB desktop) had no way to reach
+    /// `ScfEngine` at all — grep confirmed zero production callers —
+    /// so every node ran with the flat `ScfConfig::default()` 500 MB
+    /// regardless of platform. Call once, right after `new()` (mirrors
+    /// `with_telemetry`/`with_virtual_clock`).
+    pub fn with_device_class(mut self, class: DeviceClass) -> Self {
+        let ceiling = class.max_bytes().min(self.max_bytes());
+        self.set_max_bytes(ceiling);
+        self
+    }
+
     /// Evict down to the device-class capacity, respecting P0 exemption. The
     /// policy runs lowest-priority (then soonest-expiring) first.
     pub fn evict_to_capacity(&mut self, class: DeviceClass) -> Vec<crate::protocol::MessageId> {
@@ -74,7 +95,7 @@ mod tests {
     use super::*;
     use crate::message_engine::storage::MemoryStorage;
     use crate::protocol::{ContentType, Envelope, MessageId};
-    use crate::routing::scf::ScfConfig;
+    use crate::routing::scf::{ScfConfig, ScfError};
 
     fn pid(id: u8) -> crate::message::PeerId {
         let mut b = [0u8; 32];
@@ -215,5 +236,39 @@ mod tests {
         let evicted = scf.evict_to_capacity(DeviceClass::Phone);
         assert!(!evicted.is_empty());
         assert!(scf.usage() <= DeviceClass::Phone.max_bytes());
+    }
+
+    #[test]
+    fn dtn11_with_device_class_lowers_the_insert_time_ceiling() {
+        // DTN-11: DeviceClass previously had no way to reach ScfEngine at
+        // all — evict_to_capacity was the only entry point, and nothing
+        // called it in production, so every node ran with the flat
+        // ScfConfig::default() 500 MB regardless of platform.
+        // with_device_class must actually lower buffer_message's own
+        // enforced ceiling (DTN-1), not just be available for a manual
+        // evict_to_capacity call.
+        let mut scf = ScfEngine::new(MemoryStorage::new(), Default::default())
+            .with_device_class(DeviceClass::Phone);
+        assert_eq!(scf.max_bytes(), DeviceClass::Phone.max_bytes());
+
+        // A payload comfortably under the 500 MB default but over the 200
+        // MB phone ceiling must now be rejected at insert time.
+        let e = mk(MessagePriority::P4, 250_000_000);
+        assert_eq!(scf.buffer_message(e, None), Err(ScfError::StorageFull));
+    }
+
+    #[test]
+    fn dtn11_with_device_class_never_raises_the_configured_ceiling() {
+        // A device class larger than the engine's own configured budget
+        // must not raise the ceiling above what was explicitly configured.
+        let scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_storage_bytes: 1000,
+                ..Default::default()
+            },
+        )
+        .with_device_class(DeviceClass::Desktop); // 50 GB — far larger than 1000
+        assert_eq!(scf.max_bytes(), 1000);
     }
 }

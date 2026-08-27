@@ -19,6 +19,7 @@ use crate::observability::event;
 use crate::observability::metric;
 use crate::observability::MetricsRegistry;
 use crate::protocol::{Envelope, MessageId};
+use crate::routing::scf_eviction::ScfEvictionPolicy;
 use crate::routing::store::ttl_expired;
 
 /// Delivery status of a buffered message (STORE_CARRY_FORWARD.md §Message
@@ -97,7 +98,13 @@ impl StoreKey {
     /// already be clamped (`buffer_message` does this before calling here).
     fn new(env: &Envelope, stored_at: u64) -> Self {
         StoreKey {
-            priority_rank: env.priority.as_u8(),
+            // DTN-11: sourced from ScfEvictionPolicy::eviction_weight (the
+            // policy module's canonical priority->rank mapping) rather
+            // than re-deriving the same value inline — the two happen to
+            // agree numerically today (both are just the priority's u8),
+            // but this makes the policy module load-bearing instead of
+            // unreachable decoration.
+            priority_rank: ScfEvictionPolicy::eviction_weight(env.priority),
             expiry_unix: stored_at.saturating_add(env.ttl_seconds),
             message_id: env.message_id,
         }
@@ -218,6 +225,13 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
 
     pub fn max_bytes(&self) -> u64 {
         self.max_bytes
+    }
+
+    /// DTN-11: crate-visible so `scf_eviction.rs`'s `with_device_class` can
+    /// apply a device-class ceiling without exposing raw field mutation as
+    /// public API.
+    pub(crate) fn set_max_bytes(&mut self, bytes: u64) {
+        self.max_bytes = bytes;
     }
 
     /// Live OBS-001 telemetry registry (counters since last reset).
@@ -532,8 +546,17 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     pub(crate) fn evict_until(&mut self, target_bytes: u64) -> Vec<MessageId> {
         let mut evicted = Vec::new();
         while self.total_bytes > target_bytes {
+            // DTN-11: gate through ScfEvictionPolicy::is_evictable instead
+            // of an inline `priority_rank > 0` — the policy module's own
+            // P0-exemption rule is now the one actually enforced here.
             let worst = match self.buffer.keys().next_back() {
-                Some(k) if k.priority_rank > 0 => *k,
+                Some(k)
+                    if ScfEvictionPolicy::is_evictable(
+                        MessagePriority::from_u8(k.priority_rank).unwrap_or(MessagePriority::P7),
+                    ) =>
+                {
+                    *k
+                }
                 _ => break, // buffer empty, or only P0 remains — nothing evictable here
             };
             if let Some(msg) = self.remove_entry(&worst) {
