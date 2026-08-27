@@ -405,20 +405,108 @@ exhaustive-match blast-radius check (searching `android/`, `ios/` for
 matches on `DeliveryStatus`) is needed before choosing either path, and
 that check had not been done with wake budget remaining.
 
-### Next run (Run 9)
-DTN-22 first (do the FFI/binding blast-radius check flagged above before
-touching it), then DTN-20 (ack timeout / retry — needs a new
-`last_forward_attempt` field and a sweep function; coordinate with
-DTN-3's new `offered` set since both are per-peer contact-attempt state).
-Then the PRoPHET aging cluster DTN-12 through DTN-19 as one unit (all
-tightly coupled around `prophet.rs`'s `last_meet` dual-clock conflation —
-DTN-13's fix is a precondition for DTN-14's, and DTN-17's `i32` cast fix
-touches the same `age()` function both rewrite; read DTN-14's own
-dependency note before starting). DTN-15 (Critical — the transitivity
-loop bypasses `MAX_DP_ENTRIES` entirely, a single-packet remote OOM) and
-DTN-16 (its own fake test) are in that cluster's scope too and should not
-be separated out despite DTN-15's higher severity — the fix touches the
-same `meet()` function DTN-13/14 also touch. After DTN-12..19: MG-25..42
-(Area E gateway), TAK-2, then Tier 2 is fully closed out except the 5
-blocked findings (ROUT-23, ROUT-24, ROUT-26, plus whatever DTN-22
-resolves to).
+## Run 9 — 2026-08-27 — DTN-22 (FFI check + dead-state deletion), DTN-20 (ack timeout/backoff), DTN-15/16/18 (PRoPHET meet() cap + self-exclusion)
+
+Owner repeated the standing instruction to continue Tier 2 under the same
+sign-off. Per Run 8's plan: DTN-22 first (with the flagged FFI check),
+then DTN-20, then as much of the PRoPHET cluster as fits in budget.
+
+**DTN-22** (commit `1453620`): ran the FFI/binding blast-radius check
+flagged in Run 8 — grepped `crates/iris-android`, `crates/iris-ios`, and
+every UniFFI scaffolding surface (`uniffi::setup_scaffolding!`, no `.udl`
+files exist in this repo) for any reference to `DeliveryStatus::Carrying`,
+`AwaitingContact`, `ForwardingInProgress`, or `DropReason`. Zero matches —
+none of the three unreachable variants cross the FFI boundary, so
+deletion (not implementation) was the correct path. While confirming
+`Dropped`'s own reachability, found it had *also* gone dead — as an
+unintended side effect of Run 7's DTN-5 fix (which removed the
+status-mutation-before-discard `reap_expired` used to do). Re-derived the
+fix from current source rather than the original finding text (per the
+loop's own instruction to do so when source has drifted) and deleted
+`Dropped`/`DropReason` alongside the three named variants. `is_terminal()`
+now matches only `Delivered`; module doc comment rewritten to describe
+the actual (not aspirational) state machine.
+
+**DTN-20** (commit `959152a`): added `last_forward_attempt: Option<u64>`
+to `StoredMessage` (the field DTN-20's own *What* section says the spec
+requires and the impl lacks), set by `mark_forwarded` on every
+non-acked call. Added `reap_ack_timeouts(&mut self, timeout_secs: u64) ->
+Vec<MessageId>` — exponential backoff (`timeout_secs * 2^forward_attempts`,
+capped at `2^16`), resets timed-out entries to `Stored` and clears that
+specific peer from DTN-3's `offered` set so the *same* peer becomes a
+valid retry target again rather than being permanently locked out by its
+own failed attempt. No production caller wired in yet (no periodic sweep
+task exists anywhere in this crate to call it from — confirmed by grep,
+same class of gap as DTN-4/ROUT-24) — the finding's own scope was "close
+the state-machine gap," which this does; wiring a sweep scheduler is a
+separate, larger architectural addition not implied by this finding's
+Location/Fix fields.
+
+**DTN-15, DTN-16, DTN-18** (commit `e516e42`, batched — all three live in
+`meet()`'s Eq.1/Eq.3 paths and the fix is one coherent rewrite): DTN-15
+(Critical) — `meet()` only checked `MAX_DP_ENTRIES` once, at the top of
+the call; the Eq. 3 transitivity loop then inserted one new entry per
+element of the caller-supplied slice with no cap and no re-check, so a
+single hostile `meet()` could grow the table by (slice_len − 1) entries.
+Added `evict_worst_unless(&mut self, protect: &[PeerId])`, called before
+every new insert in both the Eq.1 direct-contact path and the Eq.3 loop —
+capacity is now enforced per-insert, not per-call. The transitivity loop
+is also now bounded to `TOP_N_DP` entries of the incoming slice and
+rejects non-finite (NaN/Infinity) predictions outright. DTN-18 — added an
+optional `self_id: Option<PeerId>` field with a `with_self_id` builder
+(kept optional, matching `with_virtual_clock`/`with_telemetry`: a
+required constructor param would have cascaded into `RoutingEngine`,
+which has zero identity concept today, confirmed by grep). `meet()` now
+excludes `self_id` from the transitivity loop (a neighbor's snapshot
+legitimately contains `P(neighbor, self)`, and writing that into our own
+table let a remote peer inject an arbitrary self-DP value); `snapshot()`
+filters `self_id` out of outbound predictions; the transitivity write is
+now clamped to the same `1 − delta` bound Eq. 1 already respects (closing
+the second, independent path to an out-of-bound value the finding
+flagged). DTN-16 — `capped_entries_evict_lowest` used `pid(i as u8)`
+against a loop bound of `(MAX_DP_ENTRIES + 10) as u8`; the cast truncates
+4106 to 10, so the test only ever inserted 10 of the 4106 peers its own
+name claimed, and its only assertion (`len() <= MAX_DP_ENTRIES`) is
+trivially true even with eviction deleted entirely. Replaced with a
+widened `pid_wide(u32)` helper and a real scenario: seed one deliberately
+low-DP entry via transitivity, fill to capacity with ordinary
+higher-DP direct contacts, push one more peer in, then assert the cap
+holds *exactly* (not `<=`) and that the low-DP entry specifically is the
+one gone. Added two more regression tests: DTN-15's own trigger shape
+(one `meet()` call fed a slice 4x larger than `MAX_DP_ENTRIES`, capacity
+still holds) and non-finite-input rejection. All 7 pre-existing
+`prophet.rs` tests pass unchanged, confirming the opt-in builder pattern
+preserved every existing call site's behavior.
+
+**Deliberately deferred:** DTN-12, 13, 14, 17, 19 — the `age()`/
+`last_meet` aging cluster. Separable from the `meet()`-side fix above
+(different function, different bug family) and `age()` currently has
+zero non-benchmark production callers (confirmed by grep, noted in
+`prophet.rs`'s own doc comment added this run), so the cluster's urgency
+is lower than DTN-15's live single-packet remote-growth path. Held for a
+future run rather than folded in here to keep this commit's diff
+reviewable as one coherent change.
+
+**Run 9 closeout:** `cargo build -p iris-core --all-targets` clean after
+each of the three changes; `cargo build --workspace --exclude
+iris-desktop --all-targets` clean; `cargo test --workspace --exclude
+iris-desktop` (GNU toolchain) — **669 iris-core lib tests, 0 failed**,
+every other workspace suite 0 failed. `cargo clippy -p iris-core --lib
+--no-deps` — zero warnings from any file touched this run (14 pre-existing
+warnings elsewhere, all in `transport/*.rs`, untouched). No reverts;
+three-consecutive-failure escalation (§8) never triggered.
+
+**§8 accounting:** 5 findings fixed this run (DTN-22, 20, 15, 16, 18)
+across three commits — under the 8-per-wake-cycle cap.
+
+### Next run (Run 10)
+The PRoPHET aging cluster DTN-12, 13, 14, 17, 19 as one unit — all
+tightly coupled around `prophet.rs`'s `age()`/`last_meet` dual-clock
+conflation (DTN-13's fix is a precondition for DTN-14's, and DTN-17's
+`i32` cast fix touches the same `age()` function both rewrite; read
+DTN-14's own dependency note before starting). Note `age()`'s doc comment
+(added this run) already documents a known residual gap in the self-entry
+interaction with a from-scratch aging pass — worth resolving as part of
+this cluster's rewrite rather than carrying it forward again. After
+DTN-12..19: MG-25..42 (Area E gateway), TAK-2, then Tier 2 is fully
+closed out except the 3 blocked findings (ROUT-23, ROUT-24, ROUT-26).
