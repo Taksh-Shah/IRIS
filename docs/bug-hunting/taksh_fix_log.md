@@ -798,15 +798,115 @@ Debug-format usage crate-wide); `cargo clippy -p iris-core --lib
 one commit — under the cap. This closes 14 of 18 MG findings; MG-39..42
 remain.
 
-### Next run (Run 14)
-MG-39/40/41/42 as one unit — all four are about the same
-`TransportError` enum in `crates/iris-core/src/error.rs` and the
-findings cross-reference each other directly (MG-42's fix note: "combined
-with MG-39's `Io{kind,msg}`, the derives survive"; MG-40 touches the same
-file). Read the full 17-call-site blast radius (`ble.rs`, `internet.rs`,
-`lora.rs`, `satellite.rs`, `wifi_direct.rs`, `wifiaware.rs` all construct
-`TransportError::Protocol(...)`) before starting — this is the widest
-blast radius of any single Tier 2 fix so far this session, wider than
-DTN-15/16/18's `meet()` rewrite. After MG-39..42: TAK-2 (different
-crate, `iris-storage` — self-contained), then Tier 2 is fully closed out
-except the 3 blocked ROUT findings.
+## Run 14 — 2026-08-27 — MG-39/40/41/42 (TransportError taxonomy) — MG area of Tier 2 fully closed out
+
+All four findings share one enum (`TransportError` in `error.rs`) and
+cross-reference each other directly, so fixed as one unit. Read every
+construction/comparison site across all 6 transport files before
+touching anything (~60 raw grep hits including tests) — the widest
+blast radius of any Tier 2 fix this session, wider than DTN-15/16/18's
+`meet()` rewrite.
+
+**MG-39** (commit `a442d43`): `From<std::io::Error>` stringified
+immediately, discarding `ErrorKind`. `Io(String)` → `Io{kind, msg}`,
+plus a new `is_retryable()` matching the finding's own suggested body
+(`Busy | ConnectionFailed | Io{WouldBlock|TimedOut|Interrupted}`).
+
+**MG-40** (same commit): `Protocol(String)` carried three incompatible
+classes. Split into `Protocol(String)` (narrowed to genuine framing),
+`MessageTooLarge{limit,actual}`, `PolicyDenied(&'static str)`. Every
+`Protocol(...)` construction site across all 6 files re-examined against
+its actual surrounding context (not pattern-matched by string content)
+to classify correctly — e.g. ble.rs's "scan throttled" message read like
+a policy denial by prose but is actually transient (clears on its own
+after a cooldown), so it moved to the pre-existing `Busy` instead of
+either new variant; a defect the finding itself didn't name but its own
+principle covers.
+
+**MG-41** (same commit): `NotSupported` conflated two remediations.
+Split into `HardwareUnavailable`/`PermissionDenied{permission}`.
+Reclassifying every BLE/Wi-Fi Direct/Wi-Fi Aware call site surfaced a
+genuine third case neither variant fits: `BleError::AdapterOff` and both
+Wi-Fi transports' `!adapter.is_available()` checks mean "radio present
+and permitted, but currently switched off" — not hardware-absent, not
+permission-denied. The finding's own fix text already names this exact
+three-way split for the sibling `TransportState` enum
+(`NoHardware`/`PermissionDenied`/`RadioOff`) but only sketched two
+variants for `TransportError` itself. Added `RadioDisabled` rather than
+force a wrong classification into one of the other two or leave the gap.
+
+**MG-42** (same commit): resolved via MG-39's `kind` field alone
+(`ErrorKind` is `Copy + PartialEq + Eq`, so `derive(PartialEq, Eq)`
+survives with zero manual impl). Did not add a `source()` chain
+(`Arc<dyn Error + Send + Sync>` + manual `PartialEq` over
+discriminant+kind only) — the finding's own fix text marks that as an
+explicit, separate "if wanted" option, not the core ask, and giving up
+derived `Eq`/`Hash` is disproportionate to what MG-39/40 already fix.
+
+**Second-order conflation found mid-fix**: `lora.rs` and `satellite.rs`
+each have their own link-error enum (`LoRaLinkError`/`SatelliteLinkError`,
+both `HardwareGated`/`Closed`/`Io(String)`) that every tx/rx/status-probe
+call site uniformly wrapped into `TransportError::Io` regardless of
+which variant — the exact same conflation MG-39 targets, one layer
+down. Left in place, this would have silently defeated the fix for
+these two transports specifically (a `HardwareGated` failure would still
+present as a generic, kind-`Other` `Io` error). Added
+`lora_link_err`/`satellite_link_err` helpers mapping each variant to its
+correct `TransportError` (`HardwareGated`→`HardwareUnavailable`,
+`Closed`→`NotConnected`, `Io`→`Io{kind:Other,..}`) at all 6 call sites
+(3 per file). Two existing tests ("closed link fails the tx" in both
+files) had to be re-verified against the actual simulated adapter's
+`tx()` implementation (confirmed it returns `LoRaLinkError::Closed`/
+`SatelliteLinkError::Closed` on a closed link, not `Io`) before updating
+their assertions from `Io(_)` to `NotConnected`.
+
+**The one behavioral consumer**: `message_engine::deliver_outbound`/
+`requeue_or_fail` — without wiring `is_retryable()` in here, MG-39/40's
+fix would only be a type-system change with zero runtime effect.
+`requeue_or_fail` gained a `retryable: bool` param; `deliver_outbound`
+now tracks whether *every* observed send failure across all ranked
+transports was non-retryable (`saw_failure`/`any_retryable_failure`,
+correctly distinguishing "never attempted a send" from "attempted and
+all failed non-retryably" — the naive `let mut x = true` then
+OR-accumulating retryability is a bug, since `true || anything` never
+changes; had to track a separate "did we see a failure at all" flag).
+Only short-circuits a **bounded** budget (P1-P7) — fails fast instead of
+exhausting the full attempt schedule against a permission gate that
+cannot self-resolve. Deliberately does **not** apply to P0
+(`max_attempts: None`): an initial draft did, which on reflection would
+have made an emergency SOS message give up outright on its very first
+permission-denied attempt — a materially worse outcome for a
+disaster-response product than the wasted-retry-cycles bug MG-39
+describes. Caught this by re-reading the finding's own trigger scenario
+(Android revoking `BLUETOOTH_CONNECT` mid-SOS) against the fix before
+finalizing it, not after.
+
+**Run 14 closeout:** `cargo build -p iris-core --all-targets` clean;
+`cargo build --workspace --exclude iris-desktop --all-targets` clean;
+`cargo test --workspace --exclude iris-desktop` — **691 iris-core lib
+tests, 0 failed** (up from 687 by exactly the 4 new `error.rs` tests) —
+every reclassified call site's own existing test caught any
+misclassification by construction, since a wrong variant would have
+failed that specific assertion; `cargo clippy -p iris-core --lib
+--no-deps` — 0 new warnings (14 baseline, unchanged).
+
+**§8 accounting:** 4 findings fixed this run (MG-39, 40, 41, 42) in one
+commit — under the cap. This closes the MG (gateway/transport) area of
+Tier 2 entirely: all 18 MG-\* findings are now fixed.
+
+### Next run (Run 15)
+TAK-2 — the last remaining Tier 2 finding besides the 3 already-blocked
+ROUT findings (ROUT-23, ROUT-24, ROUT-26). Different crate
+(`crates/iris-storage`), self-contained: a remote P0-priority flood can
+permanently exhaust the store (unbounded, unevictable P0 rows) —
+`pg.rs`'s `persist`/`delete_expired` plus `eviction.rs`'s
+`evict_lowest_priority`. The finding's own fix has three layers: clamp
+expiry on ingest, give P0 its own sub-quota with oldest-relayed-P0
+eviction (protecting only locally-originated P0), and make eviction
+report when it can't reach target instead of silently breaking. Also
+touches `routing/scf_eviction.rs` (the in-memory SCF store) per the
+finding's own note that both layers need the same reasoning to agree —
+check whether this session's earlier DTN-1/DTN-7 fixes to `scf.rs`
+already cover the in-memory side before assuming it needs its own
+change. After TAK-2: Tier 2 is fully closed out except the 3 blocked
+ROUT findings, and the loop's run order moves to Tier 3/4.
