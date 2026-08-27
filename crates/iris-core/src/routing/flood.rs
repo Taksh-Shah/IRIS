@@ -8,7 +8,7 @@
 //! Correctness: hop budget is monotone-decreasing on every hop, so the flood
 //! terminates; dedup ensures each node forwards a given message at most once.
 
-use crate::discovery::neighbor_table::NeighborTable;
+use crate::discovery::neighbor_table::{best_transport, NeighborTable};
 use crate::message::{MessagePriority, PeerId};
 use crate::transport::TransportId;
 
@@ -55,17 +55,24 @@ pub fn max_hops_for_priority(p: MessagePriority) -> FloodPolicy {
 /// storms — a fully-connected K-regular mesh with no cap yields K^hop_count
 /// transmissions per injected message. `hop_count` is available for future
 /// priority-based tapering; the cap applies uniformly for now.
+///
+/// ROUT-21: each recipient carries its own best-quality live transport
+/// (selected via [`best_transport`]) rather than leaving the caller to
+/// re-derive one — a flood's recipients are not all reachable over the same
+/// transport on a multi-transport node. A `LinkedUp` neighbor with no
+/// selectable link is skipped rather than included with nothing to send
+/// over.
 pub async fn recipients_for_flood(
     neighbor_table: &NeighborTable,
     sender: PeerId,
     already_flooded: &[PeerId],
     hop_count: u8,
     recipient: &PeerId,
-) -> Vec<PeerId> {
+) -> Vec<(PeerId, TransportId)> {
     let _ = hop_count; // available for future priority-based taper (ROUT-17 TODO)
     let mut recipients = Vec::new();
-    // ROUT-20: use the cheap (peer_id, state) projection — this loop never
-    // reads `links`, `peer_bloom` or `capabilities`, and cloning the full
+    // ROUT-20: use the cheap projection (peer_id, state, links) — this loop
+    // never reads `peer_bloom` or `capabilities`, and cloning the full
     // `Neighbor` (peer_bloom alone is ~175 KB) here allocated megabytes per
     // flood decision.
     for nb in neighbor_table.neighbor_summaries().await {
@@ -80,10 +87,12 @@ pub async fn recipients_for_flood(
             nb.state,
             crate::discovery::neighbor_table::NeighborState::LinkedUp
         ) {
-            recipients.push(nb.peer_id);
-            // ROUT-17: hard fan-out cap — stop collecting once we hit the limit.
-            if recipients.len() >= MAX_FLOOD_FANOUT {
-                break;
+            if let Some(transport) = best_transport(&nb.links) {
+                recipients.push((nb.peer_id, transport));
+                // ROUT-17: hard fan-out cap — stop collecting once we hit the limit.
+                if recipients.len() >= MAX_FLOOD_FANOUT {
+                    break;
+                }
             }
         }
     }
@@ -144,15 +153,15 @@ mod tests {
         let t = table_with(&[1, 2, 3, 4]).await;
         let r = recipients_for_flood(&t, pid(1), &[pid(3)], 0, &pid(99)).await;
         assert_eq!(r.len(), 2);
-        assert!(r.contains(&pid(2)));
-        assert!(r.contains(&pid(4)));
+        assert!(r.iter().any(|(id, _)| *id == pid(2)));
+        assert!(r.iter().any(|(id, _)| *id == pid(4)));
     }
 
     #[tokio::test]
     async fn flood_includes_excellence_bit() {
         let t = table_with(&[2]).await;
         let r = recipients_for_flood(&t, pid(1), &[], 0, &pid(99)).await;
-        assert_eq!(r, vec![pid(2)]);
+        assert_eq!(r, vec![(pid(2), TransportId::from("sim"))]);
     }
 
     #[tokio::test]
@@ -283,8 +292,8 @@ mod tests {
                     let r = recipients_for_flood(node_table, pid(node), &[], hop, &pid(dest)).await;
                     calls_made += 1;
                     total_transmissions += r.len();
-                    for nb in r {
-                        let nb_id = nb.0[0];
+                    for (nb_peer, _transport) in r {
+                        let nb_id = nb_peer.0[0];
                         if visited.insert(nb_id) {
                             next.push(nb_id);
                             total_frontier_entries += 1;
@@ -335,27 +344,29 @@ mod tests {
 
         // Case 1: a real, partial already-flooded set.
         let already = vec![pid(3), pid(5)];
-        let mut r = recipients_for_flood(&t, sender, &already, 0, &pid(99)).await;
-        r.sort_by_key(|p| p.0[0]);
+        let r = recipients_for_flood(&t, sender, &already, 0, &pid(99)).await;
+        let mut r_ids: Vec<PeerId> = r.iter().map(|(id, _)| *id).collect();
+        r_ids.sort_by_key(|p| p.0[0]);
         let expected: Vec<PeerId> = [2u8, 4, 6, 7, 8].into_iter().map(pid).collect();
         assert_eq!(
-            r, expected,
+            r_ids, expected,
             "must be exactly the non-sender, non-already-flooded peers"
         );
-        assert!(!r.contains(&sender), "no-backtrack violated");
+        assert!(!r_ids.contains(&sender), "no-backtrack violated");
         for a in &already {
-            assert!(!r.contains(a), "re-flood to already-flooded node");
+            assert!(!r_ids.contains(a), "re-flood to already-flooded node");
         }
 
         // Case 2: empty already-flooded set — sender exclusion exercised on
         // its own, every other peer eligible.
-        let mut r2 = recipients_for_flood(&t, sender, &[], 0, &pid(99)).await;
-        r2.sort_by_key(|p| p.0[0]);
+        let r2 = recipients_for_flood(&t, sender, &[], 0, &pid(99)).await;
+        let mut r2_ids: Vec<PeerId> = r2.iter().map(|(id, _)| *id).collect();
+        r2_ids.sort_by_key(|p| p.0[0]);
         let expected2: Vec<PeerId> = (2u8..=8).map(pid).collect();
         assert_eq!(
-            r2, expected2,
+            r2_ids, expected2,
             "with no already-flooded set, every non-sender peer is eligible"
         );
-        assert!(!r2.contains(&sender));
+        assert!(!r2_ids.contains(&sender));
     }
 }

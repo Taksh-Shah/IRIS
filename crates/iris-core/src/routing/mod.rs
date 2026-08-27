@@ -65,13 +65,24 @@ pub enum ForwardingAlgorithm {
 /// Result of running the routing engine on one message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ForwardingDecision {
-    /// Forward to a single next hop (Direct or KnownPath).
+    /// Forward to a single next hop over `transport` (Direct, KnownPath or
+    /// Opportunistic). ROUT-21: `transport` is the best-quality live link to
+    /// `next_hop` at decision time — selecting it here (rather than leaving
+    /// the caller to re-derive or guess it) means a peer reachable only over
+    /// a currently-unusable transport is a caller-visible fact, not silent
+    /// message loss.
     Forward {
         next_hop: PeerId,
+        transport: crate::transport::TransportId,
         algorithm: ForwardingAlgorithm,
     },
-    /// Flood to the listed neighbors (Algorithm 3).
-    Flood { recipients: Vec<PeerId> },
+    /// Flood to the listed neighbors, each over its own best-quality
+    /// transport (Algorithm 3). Per-recipient rather than a single shared
+    /// transport because a flood's recipients are not all reachable over
+    /// the same one on a multi-transport node.
+    Flood {
+        recipients: Vec<(PeerId, crate::transport::TransportId)>,
+    },
     /// Store-carry-forward (Algorithm 4).
     Store,
     /// Discard: expired or no action possible.
@@ -96,6 +107,17 @@ impl ForwardingDecision {
 
 /// How often to opportunistically prune the routing table inside `decide`.
 const PRUNE_INTERVAL: Duration = Duration::from_secs(300); // 5 min
+
+/// ROUT-21: select a live transport to `peer`, or `None` if no selectable
+/// link exists (letting the caller fall through to the next algorithm
+/// rather than returning a decision with nothing to send over).
+async fn transport_to(
+    peer: &PeerId,
+    neighbor_table: &NeighborTable,
+) -> Option<crate::transport::TransportId> {
+    let links = neighbor_table.links_to(peer).await?;
+    crate::discovery::neighbor_table::best_transport(&links)
+}
 
 /// Runtime state of the routing engine.
 pub struct RoutingEngine {
@@ -294,12 +316,38 @@ impl RoutingEngine {
         // Algorithm 2.5 (ROUTE-002): opportunistic DP forward — consulted with
         // zero candidates here; transport wiring may supply neighbor DPs via
         // [`RoutingEngine::decide_opportunistic`] and short-circuit the flood.
+        //
+        // ROUT-24 (blocked — see docs/bug-hunting/taksh_problems.md): a real
+        // fix needs neighbor-supplied DP snapshots for `recipient`, which no
+        // wire protocol in this crate currently carries (`CapabilityBundle`
+        // has no DP field at all) — adding that exchange is a
+        // security-relevant protocol change (peer-supplied data feeding a
+        // routing decision) outside a routing-module wiring fix's scope.
         if let Some(nb) = self.decide_opportunistic(&message_id, recipient, priority, hop_count, &[]) {
-            self.forward_cache.record(message_id);
-            return ForwardingDecision::Forward {
-                next_hop: nb,
-                algorithm: ForwardingAlgorithm::Opportunistic,
-            };
+            if let Some(transport) = transport_to(&nb, neighbor_table).await {
+                self.forward_cache.record(message_id);
+                return ForwardingDecision::Forward {
+                    next_hop: nb,
+                    transport,
+                    algorithm: ForwardingAlgorithm::Opportunistic,
+                };
+            }
+        }
+        // ROUT-25: binary-spray cold-start fallback. Independent of ROUT-24
+        // — it needs a live neighbor to hand a copy to, not that neighbor's
+        // DP, so it works today even with ROUT-24 blocked.
+        if let Some(nb) = self
+            .spray_fallback(&message_id, sender, recipient, priority, policy.max_hops, neighbor_table)
+            .await
+        {
+            if let Some(transport) = transport_to(&nb, neighbor_table).await {
+                self.forward_cache.record(message_id);
+                return ForwardingDecision::Forward {
+                    next_hop: nb,
+                    transport,
+                    algorithm: ForwardingAlgorithm::Opportunistic,
+                };
+            }
         }
         // Algorithm 3: Flood. hop_count < policy.max_hops is already
         // guaranteed by the ROUT-19 gate above.
@@ -345,6 +393,53 @@ impl RoutingEngine {
             } => Some(next_hop),
             crate::routing::opportunistic::OpportunisticDecision::NoAdvantage => None,
         }
+    }
+
+    /// ROUT-25: cold-start fallback, consulted after GTMX+
+    /// (`decide_opportunistic`) finds no advantage. Hands a bounded
+    /// binary-spray copy to the best-linked live neighbor instead of
+    /// falling straight through to unbounded flood — but only when this
+    /// node has no DP history at all for `recipient` (a genuine "never seen
+    /// this destination" cold start, not "GTMX+ lost this round"). Does not
+    /// need ROUT-24's blocked neighbor-DP sourcing: spray only needs *some*
+    /// live contact, not that contact's delivery predictability.
+    pub async fn spray_fallback(
+        &mut self,
+        message_id: &MessageId,
+        sender: PeerId,
+        recipient: PeerId,
+        priority: crate::message::MessagePriority,
+        hop_budget: u8,
+        neighbor_table: &NeighborTable,
+    ) -> Option<PeerId> {
+        if !self.opportunistic.as_ref()?.predictions().has_entry(&recipient) {
+            // Best-linked live neighbor other than the message's sender
+            // (no-backtrack, same policy as Flood) and the recipient itself
+            // (Direct already tried and failed).
+            let contact = neighbor_table
+                .neighbor_summaries()
+                .await
+                .into_iter()
+                .filter(|nb| {
+                    nb.peer_id != sender
+                        && nb.peer_id != recipient
+                        && nb.state == crate::discovery::neighbor_table::NeighborState::LinkedUp
+                        && !nb.links.is_empty()
+                })
+                .min_by_key(|nb| nb.links.iter().map(|l| l.quality).min())
+                .map(|nb| nb.peer_id);
+            if let Some(contact) = contact {
+                let opp = self.opportunistic.as_mut()?;
+                if let crate::routing::opportunistic::OpportunisticDecision::ForwardTo {
+                    next_hop,
+                    ..
+                } = opp.spray_fallback(message_id, &recipient, &contact, priority, hop_budget)
+                {
+                    return Some(next_hop);
+                }
+            }
+        }
+        None
     }
 
     /// Prune expired routing-table entries (10 min) and release stale lists.
@@ -410,6 +505,7 @@ mod tests {
             decision,
             ForwardingDecision::Forward {
                 next_hop: pid(7),
+                transport: TransportId::from("sim"),
                 algorithm: ForwardingAlgorithm::Direct,
             }
         );
@@ -432,6 +528,7 @@ mod tests {
             decision,
             ForwardingDecision::Forward {
                 next_hop: pid(4),
+                transport: TransportId::from("sim"),
                 algorithm: ForwardingAlgorithm::KnownPath,
             }
         );
@@ -471,10 +568,67 @@ mod tests {
             .await;
         if let ForwardingDecision::Flood { recipients } = decision {
             assert_eq!(recipients.len(), 3);
-            assert!(!recipients.contains(&pid(1))); // no-backtrack to sender
+            assert!(!recipients.iter().any(|(id, _)| *id == pid(1))); // no-backtrack to sender
         } else {
             panic!("expected flood");
         }
+    }
+
+    #[tokio::test]
+    async fn rout25_cold_start_sprays_instead_of_flooding() {
+        // ROUT-25: with the opportunistic layer enabled and genuinely no DP
+        // history for the recipient (a fresh router — the default state),
+        // decide() must hand off to the spray fallback (Forward/Opportunistic)
+        // instead of falling straight through to Flood.
+        let mut engine =
+            RoutingEngine::new().with_opportunistic(crate::routing::prophet::ProphetConfig::default());
+        let table = NeighborTable::new(Duration::from_secs(60));
+        for n in [2u8, 3, 4] {
+            table
+                .upsert(&peer_info(n), &TransportId::from("sim"), LinkQuality::Good)
+                .await;
+        }
+        let decision = engine
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .await;
+        assert!(
+            matches!(
+                decision,
+                ForwardingDecision::Forward {
+                    algorithm: ForwardingAlgorithm::Opportunistic,
+                    ..
+                }
+            ),
+            "expected a spray fallback Forward, got {decision:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn rout25_warm_destination_still_floods() {
+        // Counterpart: once this node has real DP history for the recipient
+        // (not cold-start), spray_fallback must decline and the chain falls
+        // through to Flood as before ROUT-25 — spraying every warm message
+        // would defeat GTMX+'s point.
+        let mut engine =
+            RoutingEngine::new().with_opportunistic(crate::routing::prophet::ProphetConfig::default());
+        engine
+            .opportunistic_mut()
+            .unwrap()
+            .predictions_mut()
+            .meet(&pid(99), &[]);
+        let table = NeighborTable::new(Duration::from_secs(60));
+        for n in [2u8, 3, 4] {
+            table
+                .upsert(&peer_info(n), &TransportId::from("sim"), LinkQuality::Good)
+                .await;
+        }
+        let decision = engine
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .await;
+        assert!(
+            matches!(decision, ForwardingDecision::Flood { .. }),
+            "expected Flood once DP history exists, got {decision:?}"
+        );
     }
 
     #[tokio::test]
@@ -580,6 +734,7 @@ mod tests {
             decision,
             ForwardingDecision::Forward {
                 next_hop: pid(42),
+                transport: TransportId::from("sim"),
                 algorithm: ForwardingAlgorithm::Direct,
             }
         );

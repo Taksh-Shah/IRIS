@@ -50,12 +50,24 @@ pub struct Neighbor {
     pub peer_bloom: Option<BloomFilter>,
 }
 
-/// Cheap `(peer_id, state)` projection of a [`Neighbor`] — see
-/// [`NeighborTable::neighbor_summaries`] (ROUT-20).
-#[derive(Debug, Clone, Copy)]
+/// Cheap projection of a [`Neighbor`] — see [`NeighborTable::neighbor_summaries`]
+/// (ROUT-20). Carries `links` (needed for ROUT-21 transport selection) but
+/// never `peer_bloom` or `capabilities`, the two fields that made cloning a
+/// full `Neighbor` expensive.
+#[derive(Debug, Clone)]
 pub struct NeighborSummary {
     pub peer_id: PeerId,
     pub state: NeighborState,
+    pub links: Vec<LinkRecord>,
+}
+
+/// Pick the best-quality live link's transport (ROUT-21).
+///
+/// `LinkQuality` is ordered `Excellent < Good < Fair < Poor` (lower =
+/// better, see `routing::known_path::RoutingTable::upsert`'s established
+/// convention), so the best link is the minimum, not the maximum.
+pub fn best_transport(links: &[LinkRecord]) -> Option<TransportId> {
+    links.iter().min_by_key(|l| l.quality).map(|l| l.transport.clone())
 }
 
 impl Neighbor {
@@ -210,6 +222,14 @@ impl NeighborTable {
         Some(nb.links.iter().map(|l| l.transport.clone()).collect())
     }
 
+    /// Live links to `peer` with quality preserved (ROUT-21) — cheaper than
+    /// `get()` for a single-peer transport-selection lookup since it never
+    /// clones `peer_bloom`/`capabilities`.
+    pub async fn links_to(&self, peer_id: &PeerId) -> Option<Vec<LinkRecord>> {
+        let map = self.inner.lock().await;
+        map.get(peer_id).map(|n| n.links.clone())
+    }
+
     pub async fn get(&self, peer_id: &PeerId) -> Option<Neighbor> {
         self.inner.lock().await.get(peer_id).cloned()
     }
@@ -249,6 +269,7 @@ impl NeighborTable {
             .map(|n| NeighborSummary {
                 peer_id: n.peer_id,
                 state: n.state,
+                links: n.links.clone(),
             })
             .collect()
     }
@@ -338,6 +359,33 @@ mod tests {
                 .expect("summary must contain every full-snapshot peer");
             assert_eq!(s.state, nb.state);
         }
+    }
+
+    #[tokio::test]
+    async fn rout21_best_transport_picks_best_quality_not_first_or_last() {
+        // LinkQuality is ordered Excellent < Good < Fair < Poor (lower =
+        // better). Insert a middling link first, then a better one and a
+        // worse one, so picking "first" or "last" would both give the wrong
+        // answer — only picking by actual quality is correct.
+        let t = NeighborTable::new(Duration::from_secs(60));
+        t.upsert(&peer(1), &TransportId::from("mid"), LinkQuality::Good)
+            .await;
+        t.upsert(&peer(1), &TransportId::from("worst"), LinkQuality::Poor)
+            .await;
+        t.upsert(&peer(1), &TransportId::from("best"), LinkQuality::Excellent)
+            .await;
+        let links = t.links_to(&peer(1).peer_id).await.expect("peer must exist");
+        assert_eq!(links.len(), 3, "all three transports must be recorded");
+        assert_eq!(
+            best_transport(&links),
+            Some(TransportId::from("best")),
+            "must select the Excellent-quality link regardless of insertion order"
+        );
+    }
+
+    #[tokio::test]
+    async fn rout21_best_transport_none_when_no_links() {
+        assert_eq!(best_transport(&[]), None);
     }
 
     #[tokio::test]

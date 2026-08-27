@@ -112,6 +112,11 @@ pub struct OpportunisticRouter {
     /// (e.g. a flapping link) burns the whole copy budget on one node,
     /// defeating spray-and-wait's copy-diversity delivery guarantee.
     sprayed_to: HashSet<(MessageId, PeerId)>,
+    /// ROUT-25: per-message binary-spray budget for the cold-start fallback
+    /// (`spray_fallback`). Lives on the router (not passed in by the
+    /// caller) so repeated fallback calls for the same message share one
+    /// shrinking budget instead of each getting a fresh L.
+    spray_budgets: HashMap<MessageId, SprayBudget>,
 }
 
 impl OpportunisticRouter {
@@ -120,6 +125,7 @@ impl OpportunisticRouter {
             pred: DeliveryPredictability::new(config),
             max_dp_seen: HashMap::new(),
             sprayed_to: HashSet::new(),
+            spray_budgets: HashMap::new(),
         }
     }
 
@@ -247,18 +253,23 @@ impl OpportunisticRouter {
         self.max_dp_seen.is_empty()
     }
 
-    /// Periodic maintenance: drop the entire `max_dp_seen` and `sprayed_to`
-    /// maps.
+    /// Periodic maintenance: drop the entire `max_dp_seen`, `sprayed_to` and
+    /// `spray_budgets` maps.
     ///
     /// Called by `RoutingEngine::prune()` every PRUNE_INTERVAL (5 min) so
     /// in-flight message entries do not accumulate forever (ROUT-14).
     /// Losing `max_dp_seen` causes at most one extra forward per message per
     /// period — the monotonicity property resets cleanly at each prune.
     /// Losing `sprayed_to` (ROUT-22) can cause at most one repeat handoff to
-    /// an already-sprayed peer per period, bounded the same way.
+    /// an already-sprayed peer per period, bounded the same way. Losing
+    /// `spray_budgets` (ROUT-25) resets an in-flight message's cold-start
+    /// copy count to a fresh L on the next fallback call — at most one
+    /// extra spray-and-wait cycle's worth of overhead per period, same
+    /// bounded-blast-radius trade-off the other two maps already make.
     pub fn prune_dp_seen(&mut self) {
         self.max_dp_seen.clear();
         self.sprayed_to.clear();
+        self.spray_budgets.clear();
     }
 
     /// Cold-start spray: hand off a binary-spray copy to `contact` when the
@@ -289,6 +300,45 @@ impl OpportunisticRouter {
             }
             None => OpportunisticDecision::NoAdvantage,
         }
+    }
+
+    /// ROUT-25: cold-start fallback. Consulted by the engine when GTMX+
+    /// (`decide`) finds no DP advantage *and* this node has no DP history at
+    /// all for `dest` (`!predictions().has_entry(dest)` — truly cold, not
+    /// just "history decayed to 0.0"). Without this, a fresh node with an
+    /// unknown destination falls straight through every message to
+    /// unbounded flood, which is exactly the "bounded overhead" behaviour
+    /// spray-and-wait exists to avoid (ROUTE2_DESIGN.md: *"When the routing
+    /// table has no useful history, L2 falls back to L0 binary
+    /// spray-and-wait"*).
+    ///
+    /// Owns a per-message `SprayBudget`, created with `l_for_priority` on
+    /// first use and shared across every fallback call for that message, so
+    /// repeated cold-start contacts for the same message spray from one
+    /// shrinking L rather than each getting a fresh one. Delegates to
+    /// `spray()` (ROUT-22's repeat-contact dedup applies here too).
+    pub fn spray_fallback(
+        &mut self,
+        message_id: &MessageId,
+        dest: &PeerId,
+        contact: &PeerId,
+        priority: MessagePriority,
+        hop_budget: u8,
+    ) -> OpportunisticDecision {
+        if self.pred.has_entry(dest) {
+            // Not truly cold-start — GTMX+ has a real basis to compare
+            // against (even if it just lost this round); let flood/store
+            // handle it rather than spraying an unbounded number of
+            // messages that do have DP history.
+            return OpportunisticDecision::NoAdvantage;
+        }
+        let mut budget = *self
+            .spray_budgets
+            .entry(*message_id)
+            .or_insert_with(|| SprayBudget::new(SprayBudget::l_for_priority(priority, hop_budget)));
+        let decision = self.spray(message_id, contact, &mut budget);
+        self.spray_budgets.insert(*message_id, budget);
+        decision
     }
 }
 
@@ -484,6 +534,61 @@ mod tests {
             r.spray(&msg, &peer, &mut budget),
             OpportunisticDecision::ForwardTo { .. }
         ));
+    }
+
+    #[test]
+    fn rout25_spray_fallback_fires_when_cold_start() {
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(9);
+        let msg = mid();
+        let contact = pid(2);
+
+        // Genuinely cold: no DP entry for dest at all.
+        assert!(!r.predictions().has_entry(&dest));
+        let decision = r.spray_fallback(&msg, &dest, &contact, MessagePriority::P4, 3);
+        assert_eq!(
+            decision,
+            OpportunisticDecision::ForwardTo {
+                next_hop: contact,
+                reason: OpportunisticReason::Spray,
+            }
+        );
+    }
+
+    #[test]
+    fn rout25_spray_fallback_shares_one_budget_across_calls() {
+        // l_for_priority(P1, hop_budget=5) = min(DEFAULT_SPRAY_L=8, 5) = 5
+        // (ROUT-23, still open, means the hop budget clamps L here).
+        // SprayBudget::new(5).handoff() sequence: 5->3 (give 2), 3->2
+        // (give 1), 2->1 (give 1), then wait phase (remaining<=1) — three
+        // successful handoffs to three distinct contacts, then the fourth
+        // distinct contact must get NoAdvantage. This only holds if the
+        // budget is genuinely shared/shrinking across fallback calls for
+        // the same message, not reset fresh on each call.
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(9);
+        let msg = mid();
+
+        let first = r.spray_fallback(&msg, &dest, &pid(2), MessagePriority::P1, 5);
+        assert!(matches!(first, OpportunisticDecision::ForwardTo { .. }));
+        let second = r.spray_fallback(&msg, &dest, &pid(3), MessagePriority::P1, 5);
+        assert!(matches!(second, OpportunisticDecision::ForwardTo { .. }));
+        let third = r.spray_fallback(&msg, &dest, &pid(4), MessagePriority::P1, 5);
+        assert!(matches!(third, OpportunisticDecision::ForwardTo { .. }));
+        let fourth = r.spray_fallback(&msg, &dest, &pid(5), MessagePriority::P1, 5);
+        assert_eq!(fourth, OpportunisticDecision::NoAdvantage);
+    }
+
+    #[test]
+    fn rout25_spray_fallback_declines_when_dp_history_exists() {
+        // Not cold-start: this node has a real (if weak) DP entry for dest.
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(9);
+        r.on_contact(&pid(8), &[(dest, 0.9)]);
+        assert!(r.predictions().has_entry(&dest));
+
+        let decision = r.spray_fallback(&mid(), &dest, &pid(2), MessagePriority::P4, 3);
+        assert_eq!(decision, OpportunisticDecision::NoAdvantage);
     }
 
     #[test]

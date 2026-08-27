@@ -144,6 +144,14 @@ impl DeliveryPredictability {
         self.dps.get(dst).copied().unwrap_or(0.0)
     }
 
+    /// Whether this node has ever recorded a DP entry for `dst` — distinct
+    /// from `p_for(dst) == 0.0`, which is also the default for an entry that
+    /// genuinely decayed/aged out to zero. ROUT-25's spray fallback needs
+    /// "truly no history" (cold start), not "history says 0.0".
+    pub fn has_entry(&self, dst: &PeerId) -> bool {
+        self.dps.contains_key(dst)
+    }
+
     pub fn len(&self) -> usize {
         self.dps.len()
     }

@@ -149,8 +149,21 @@ pub async fn try_known_path(
         routing_table.invalidate(&recipient, &entry.next_hop);
         return None;
     }
+    // ROUT-21: select a live transport to the next hop. A `LinkedUp`
+    // neighbor with (for whatever reason) no usable links is treated the
+    // same as "not up" — invalidate and miss, rather than returning a
+    // decision with nothing to send over.
+    let links = neighbor_table.links_to(&entry.next_hop).await?;
+    let transport = match crate::discovery::neighbor_table::best_transport(&links) {
+        Some(t) => t,
+        None => {
+            routing_table.invalidate(&recipient, &entry.next_hop);
+            return None;
+        }
+    };
     Some(ForwardingDecision::Forward {
         next_hop: entry.next_hop,
+        transport,
         algorithm: ForwardingAlgorithm::KnownPath,
     })
 }
