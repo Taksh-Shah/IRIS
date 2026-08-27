@@ -324,26 +324,101 @@ never triggered.
 same mechanism — at the 8-per-wake-cycle cap. Stopping here rather than
 starting DTN-3/4/11 with no budget left in this wake.
 
-### Next run (Run 8)
-DTN-4 (Critical — `messages_forwardable_to` requires an exact recipient
-match, so multi-hop store-carry-forward relaying is currently impossible;
-this is store-carry-forward's *entire premise* not working) and DTN-3
-(no per-peer "already offered" record — repeated contact events re-offer
-the same message and a global, not per-peer, `forward_attempts` counter
-can permanently lock a message out after meeting just three different
-peers). These two are tightly related (DTN-4's fix threads a DP/oracle
-into `messages_forwardable_to`; DTN-3's fix touches the same function's
-filter chain) and share `scf_contact.rs` blast radius — read
-`ROUTE2_DESIGN.md`/`OPPORTUNISTIC_ROUTING.md`'s relay-candidate sections
-and re-check whether `RoutingEngine`'s `OpportunisticRouter`
-(`predictions()`/`p_for`) is reachable from `ScfEngine` before starting
-DTN-4 (it currently is not — `ScfEngine` has no reference to it). DTN-11
-(`ScfEvictionPolicy` unwired) is a good small follow-on once DTN-3/4 land,
-since it's now straightforward to wire against this run's rewritten
-`evict_until`. After that: the PRoPHET aging cluster DTN-12..19 (all
-tightly coupled around `last_meet`'s dual-clock conflation — read as one
-unit, per DTN-14's own dependency note), then DTN-20..22 (lifecycle
-correctness — DTN-21 in particular is a one-line, zero-blast-radius,
-high-value fix: delete `status_for`'s false "proximity means delivered"
-special case), then DTN-23..25 (scf_contact.rs ranking/bandwidth). Then
-MG-25..42, TAK-2.
+---
+
+## Run 8 — 2026-08-27 — DTN-3/4 (relay premise), DTN-11 (eviction policy wiring), DTN-21/23/24/25 (lifecycle + contact ranking)
+
+Owner said "continue with the next batch" — same Tier 2 sign-off. Per
+Run 7's plan: DTN-4 (Critical) and DTN-3 first, as one coherent unit.
+
+**DTN-3 + DTN-4** (commit `b58de3d`): re-read both against current source
+(`scf.rs`'s `messages_forwardable_to`, `scf_contact.rs`'s `on_new_contact`)
+— both still present exactly as described. Investigating DTN-4's suggested
+`oracle.is_better_carrier` fix found the same gap as ROUT-24 (this tier,
+earlier): no wire protocol exchanges a live contact's own DP, so "is
+contact better than me" cannot be computed. Chose the achievable core fix
+instead: any live, not-yet-offered message is now a relay candidate for
+any contact (not only the exact recipient) — DTN-4's actual "zero
+messages delivered" defect — gated by DTN-3's new
+`offered: HashMap<MessageId, HashSet<PeerId>>` (recorded by
+`mark_forwarded`, cleared by `remove_entry`) instead of the old global
+`forward_attempts` counter that could lock a message out after meeting
+just three different peers. `recipient_is` became dead code once both its
+call sites were gone (removed at DTN-21, below) and was deleted then, not
+here — it still had one caller (`status_for`) at this point. Test fallout:
+`forwardable_to_contact_only` renamed
+`forwardable_to_includes_relay_candidates` (its own old name described
+the bug). New tests: `dtn3_already_offered_peer_is_skipped_but_others_are_not`,
+`dtn3_meeting_several_peers_does_not_lock_message_out` (the finding's own
+trigger scenario). `sim/mod.rs` doesn't call either function (confirmed
+by grep) — zero simulation blast radius, confirmed by the full sweep.
+
+**DTN-11** (commit `ede33f1`): added `ScfEngine::with_device_class`
+(mirrors `with_telemetry`/`with_virtual_clock`) instead of changing
+`ScfEngine::new`'s signature as the finding's *Fix* field suggested — the
+constructor has real production callers (`sim/mod.rs`, `routing/mod.rs`)
+and a builder achieves the same reachability without breaking them.
+Needed a new crate-visible `set_max_bytes` (scf.rs) since `max_bytes` is
+private and `scf_eviction.rs` is a sibling module. `StoreKey::new` and
+`evict_until` now route through `ScfEvictionPolicy::eviction_weight`/
+`is_evictable` instead of re-deriving the same values inline — same
+numeric result, so every existing test passed unchanged; two new tests
+(`dtn11_with_device_class_lowers_the_insert_time_ceiling`,
+`dtn11_with_device_class_never_raises_the_configured_ceiling`) prove the
+new builder actually reachable, not just present.
+
+**DTN-21, DTN-23, DTN-24, DTN-25** (commit `357ddb7`, four independent
+findings batched for review convenience): DTN-21 deleted `status_for`'s
+"proximity means Delivered" fabrication (exactly the one-line,
+zero-blast-radius fix flagged in Run 7's plan) — and, as a consequence,
+`recipient_is` lost its last caller and was deleted too. DTN-23 gave
+`ForwardCandidate` its own `priority_rank` (read at construction, not
+re-derived via a fallible by-id lookup with an `unwrap_or(7)`
+silent-demote) and replaced two separate sorts with one deterministic
+comparator; incidentally this is now a *real* test of mixed probabilities
+since DTN-4 made relay candidates (0.6) coexist with exact matches (0.9).
+DTN-24 gave `enqueue_forward` a real `Result` (`ScfError::NotFound` on a
+reaped/evicted candidate) instead of an unconditional `Ok(())`; zero
+callers today, confirmed by grep, so free to fix now. DTN-25 gave
+`ForwardCandidate` an `approx_bytes` field and made `on_new_contact`'s
+budget parameter bytes (renamed `bandwidth_limit_bytes: Option<u64>`)
+instead of a raw message count — needed `ScfEngine::approx_bytes` made
+`pub(crate)`. Only one test call site used the old count semantics
+(updated with explicit byte math in a comment); the one production-path
+caller (`routing/mod.rs`) always passes `None`.
+
+**Run 8 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop`
+(GNU toolchain) — **657 iris-core lib tests, 0 failed**, every other
+workspace suite 0 failed. `cargo clippy -p iris-core --lib --no-deps` —
+zero warnings from any file touched this run. No reverts;
+three-consecutive-failure escalation (§8) never triggered.
+
+**§8 accounting:** 7 findings fixed this run (DTN-3, 4, 11, 21, 23, 24,
+25) across three commits — one short of the 8-per-wake-cycle cap.
+DTN-22 was considered as the 8th but deliberately deferred: its fix
+requires either implementing missing `DeliveryStatus` state transitions
+(no mobility/carry signal exists anywhere in this codebase to drive them)
+or deleting the unreachable variants, and the finding's own text flags
+that the enum "reaches the Kotlin/Swift/TS layers" — an FFI/binding
+exhaustive-match blast-radius check (searching `android/`, `ios/` for
+matches on `DeliveryStatus`) is needed before choosing either path, and
+that check had not been done with wake budget remaining.
+
+### Next run (Run 9)
+DTN-22 first (do the FFI/binding blast-radius check flagged above before
+touching it), then DTN-20 (ack timeout / retry — needs a new
+`last_forward_attempt` field and a sweep function; coordinate with
+DTN-3's new `offered` set since both are per-peer contact-attempt state).
+Then the PRoPHET aging cluster DTN-12 through DTN-19 as one unit (all
+tightly coupled around `prophet.rs`'s `last_meet` dual-clock conflation —
+DTN-13's fix is a precondition for DTN-14's, and DTN-17's `i32` cast fix
+touches the same `age()` function both rewrite; read DTN-14's own
+dependency note before starting). DTN-15 (Critical — the transitivity
+loop bypasses `MAX_DP_ENTRIES` entirely, a single-packet remote OOM) and
+DTN-16 (its own fake test) are in that cluster's scope too and should not
+be separated out despite DTN-15's higher severity — the fix touches the
+same `meet()` function DTN-13/14 also touch. After DTN-12..19: MG-25..42
+(Area E gateway), TAK-2, then Tier 2 is fully closed out except the 5
+blocked findings (ROUT-23, ROUT-24, ROUT-26, plus whatever DTN-22
+resolves to).

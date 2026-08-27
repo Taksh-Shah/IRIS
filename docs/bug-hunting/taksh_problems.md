@@ -32,12 +32,11 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-27 — **ROUT area of Tier 2 is FULLY COMPLETE** (33 ✅ + 3 🔒 of 36) and **DTN's core storage/eviction cluster (8 of 25 DTN findings) is now fixed** (commit `c0c1007`: DTN-1, 2, 5, 6, 7, 8, 9, 10). Across four wakes under the same human sign-off (owner instruction: "start from tier 2 problems solving" / "continue with the next batch" x3):
-- Wake 1: caught up stale docs for ROUT-1..18 (already fixed before this session, including two — ROUT-17 `9ae05b4`, ROUT-18 `4bb4733` — fixed by a non-loop commit from another contributor with no doc flip); fixed ROUT-19 `c99633d`, ROUT-20 `ec150a6`, ROUT-27 `8d728e3`, ROUT-28+ROUT-29 `7d5723d`, ROUT-30 `1191eff`; verified ROUT-31 already resolved as a side effect of ROUT-5 (`1821c48`, subsumed, no new commit); blocked ROUT-26 (governing requirement doc `REQ-ROUTE-NF-004` is internally self-inconsistent — its *Fix* field itself says to escalate rather than pick a resolution). Also fixed a pre-existing baseline test failure unrelated to any Tier 2 finding (`known_path.rs`'s `rout13_capacity_bound_evicts_oldest`, commit `1b90f02`) before starting, per the loop's "tree must be green after every commit" invariant.
-- Wake 2: fixed ROUT-22 `eba51b6` (spray dedup memory); blocked ROUT-23 (re-reading both governing specs this wake found they **disagree with each other** for P1-P3, not just with the code — no single spec to align to without a routing/product owner reconciling them first); fixed ROUT-34 `f824638` (dead placeholder deletion), ROUT-32+ROUT-33 `1e641c9` (benchmark rewrite — 9 benches, 5 of them new L0-hot-path coverage), ROUT-36 `07338e5` (renamed the colliding `is_expired`); verified ROUT-35 already subsumed by ROUT-19's own hop-budget-gate rewrite (no new commit).
-- Wake 3: fixed ROUT-21 and ROUT-25 together (commit `5ffffb0`) — `ForwardingDecision` now carries a selected `transport` (Forward) / per-recipient transports (Flood), via a new `NeighborTable::links_to` + `best_transport` (picks the best-quality live link; `LinkQuality` is ordered Excellent < Good < Fair < Poor, lower = better, per the existing `known_path.rs` convention) — and `OpportunisticRouter` gained a per-message spray budget + `spray_fallback`, wired into `decide_inner` as a cold-start step. Blocked ROUT-24: investigating its fix found the premise false — `CapabilityBundle` (the finding's proposed DP source) carries no DP field at all, and no wire protocol in the crate exchanges neighbor DP snapshots in production (only `sim/mod.rs`'s own separate code does); a real fix needs a new, security-relevant wire-protocol feature outside a routing-module fix's scope, not a wiring gap. ROUT-25 turned out **not** to depend on ROUT-24 despite the stated Dependencies (spray only needs a live contact, not that contact's DP), so it shipped anyway.
-- Wake 4: opened the DTN area (Area B — store-carry-forward/PRoPHET, 25 findings). Fixed the 8-finding core storage/eviction cluster (DTN-1, 2, 5, 6, 7, 8, 9, 10) as one coherent rewrite of `scf.rs`'s `buffer_message`/`evict_until`/`StoreKey`/byte-accounting — chosen as one batch because several of the individual fixes only compose correctly together (DTN-9's ordering fix is what makes DTN-8's O(1) eviction lookup correct). `buffer_message` now actually enforces `max_bytes` and a new `max_messages` count cap, rejecting when eviction cannot free enough room; a replayed `MessageId` replaces its existing entry instead of duplicating it; `Delivered` messages are removed immediately instead of leaking forever; `ttl_seconds` is clamped and `expiry_unix` is arrival-time-based instead of trusting the sender's claim; eviction victim lookup is O(log n) via a corrected `StoreKey::Ord` instead of an O(n) scan; byte accounting now covers `auth_cert_chain`/`routing_hints`/`encryption_hdr`, not just the payload. DTN-7's "P0 unbounded" defect turned out to be fully closed by DTN-1's reject-on-insert enforcement alone — the finding's suggested P0 sub-quota refinement was deliberately not implemented (see DTN-7's own status note for why). DTN-3, DTN-4, DTN-11 through DTN-25 (17 findings: forwarding-candidate selection, PRoPHET aging, PRoPHET capacity/DoS, eviction-policy wiring, status/lifecycle correctness) remain — deliberately saved for dedicated future runs since they are large, semi-independent sub-clusters in their own right (see taksh_fix_log.md Run 7 for the planned grouping).
-Full workspace test suite green after every commit across all four wakes (648 iris-core lib tests as of wake 4, 0 failed). Next: DTN-4 (Critical — exact-recipient-match-only forwarding defeats multi-hop SCF entirely) and DTN-3 (per-peer offered record), the highest-value remaining DTN cluster. Then DTN-11..25, MG-25..42, TAK-2.
+**Last updated:** 2026-08-27 — **ROUT area of Tier 2 is FULLY COMPLETE** (33 ✅ + 3 🔒 of 36) and **DTN is 15/25 fixed** (DTN-1,2,3,4,5,6,7,8,9,10,11,21,23,24,25). Six wakes under the same human sign-off so far (owner: "start from tier 2 problems solving" / "continue with the next batch" x5). Full history of every commit, blocked-finding reason and per-finding verification is in [`taksh_fix_log.md`](taksh_fix_log.md) (Runs 4-8); summary here, condensed as the tier grows:
+- **Wakes 1-3 (ROUT area, now closed):** all 36 ROUT-\* findings resolved — 33 fixed, 3 blocked (ROUT-23: two governing specs conflict with each other; ROUT-24: real fix needs a new wire-protocol feature outside scope; ROUT-26: governing requirement doc is internally inconsistent). Key commits: `4b03ae8`..`07338e5` (see taksh_fix_log.md Runs 4-6 for the full per-finding table).
+- **Wake 4:** opened DTN (Area B, 25 findings). Fixed the 8-finding core storage/eviction cluster (`c0c1007`: DTN-1,2,5,6,7,8,9,10) as one rewrite of `scf.rs`'s `buffer_message`/`evict_until`/`StoreKey`/byte-accounting — several of the individual fixes only compose correctly together (DTN-9's ordering fix is a precondition for DTN-8's O(1) eviction lookup). DTN-7's "P0 unbounded" defect turned out fully closed by DTN-1's reject-on-insert enforcement alone (see DTN-7's own status note).
+- **Wake 5:** fixed DTN-3+DTN-4 together (`b58de3d`) — any live, not-yet-offered message is now a relay candidate for any contact (DTN-4, store-carry-forward's core premise), gated by a new per-peer `offered` set (DTN-3) instead of the old global `forward_attempts` lockout. DTN-4's DP-based selectivity refinement not implemented — blocked by the same gap as ROUT-24 (see DTN-4's status note). Then DTN-11 (`ede33f1`, device-class ceilings now reach `ScfEngine` via a new `with_device_class` builder) and DTN-21/23/24/25 (`357ddb7`: deleted a false-delivery-receipt special case, deterministic priority+probability ranking, a `Result` that could only ever be `Ok`, and a message-count bandwidth limit that ignored message size).
+Full workspace test suite green after every commit across all six wakes (657 iris-core lib tests as of wake 5, 0 failed). Next: DTN-12 through DTN-19 (PRoPHET aging — 8 tightly coupled findings, read as one unit per DTN-14's own dependency note) and DTN-20/22 (lifecycle correctness — DTN-22 needs an FFI/binding blast-radius check before choosing implement-vs-delete for the unreachable `DeliveryStatus` variants). Then MG-25..42, TAK-2.
 **Toolchain note:** This session's Rust builds/tests ran under `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu` — the MSVC `link.exe` was not resolvable in the environment's PATH (Git Bash's own `link.exe` shadowed it, and PowerShell had no VS Developer Shell active). `iris-desktop` (the Tauri app) cannot link under the GNU toolchain (MSVC-only manifest linker flags) and was excluded from the sweep; it is untouched by any Tier 2 finding in scope.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
@@ -51,11 +50,11 @@ Full workspace test suite green after every commit across all four wakes (648 ir
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
-| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 36 | 0 | 41 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: 8/25 fixed [DTN-1,2,5,6,7,8,9,10 — the core storage/eviction cluster]; DTN-3,4,11..25, MG-25..42, TAK-2 not yet started) |
+| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 29 | 0 | 48 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: 15/25 fixed [DTN-1,2,3,4,5,6,7,8,9,10,11,21,23,24,25]; DTN-12..20, DTN-22 (PRoPHET aging cluster + lifecycle), MG-25..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime | ⬜ |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **214** | **0** | **63** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **207** | **0** | **70** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -240,15 +239,15 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-36** | Low | `store.rs:31` | Two functions named `is_expired` in one crate with swapped argument orders and opposite skew semantics | ✅ `07338e5` |
 | **DTN-1** | Critical | `scf.rs:199-226` | SCF store is completely unbounded — `buffer_message` never enforces `max_bytes` and eviction is never called in production | ✅ `c0c1007` |
 | **DTN-2** | High | `scf.rs:56-71` | No message-COUNT bound and no duplicate suppression — the same `MessageId` can occupy unlimited slots | ✅ `c0c1007` |
-| **DTN-3** | High | `scf_contact.rs:64-97` | No per-peer "already offered" record — the same message is re-offered to the same peer on every contact event | ⬜ |
-| **DTN-4** | Critical | `scf.rs:257-276` | `messages_forwardable_to` requires an EXACT recipient match — multi-hop store-carry-forward relaying is impossible | ⬜ |
+| **DTN-3** | High | `scf_contact.rs:64-97` | No per-peer "already offered" record — the same message is re-offered to the same peer on every contact event | ✅ `b58de3d` |
+| **DTN-4** | Critical | `scf.rs:257-276` | `messages_forwardable_to` requires an EXACT recipient match — multi-hop store-carry-forward relaying is impossible | ✅ `b58de3d` |
 | **DTN-5** | High | `scf.rs:278-299` | Delivered / Dropped messages are never removed from the buffer — terminal entries leak forever | ✅ `c0c1007` |
 | **DTN-6** | High | `scf.rs:63-70` | `expiry_unix` and the TTL check trust an attacker-controlled `timestamp`/`ttl_seconds` — messages can be made unexpirable and eviction-proof | ✅ `c0c1007` |
 | **DTN-7** | High | `scf.rs:337-366` | `evict_until` silently gives up when only P0 remains — a P0/SOS flood is an unbounded, uncapped memory sink | ✅ `c0c1007` |
 | **DTN-8** | Medium | `scf.rs:170-175` | `evict_until` recomputes `usage()` (an O(n) fold) twice per evicted message — quadratic blowup under pressure | ✅ `c0c1007` |
 | **DTN-9** | Medium | `scf.rs:53-61` | The `BTreeMap` key ordering does not match the eviction order the spec and doc comments claim | ✅ `c0c1007` |
 | **DTN-10** | Medium | `scf.rs:187-189` | `approx_bytes` counts only the payload — attacker-controlled envelope fields (cert chain, routing hints, encryption header) are invisible to capacity accounting | ✅ `c0c1007` |
-| **DTN-11** | Medium | `scf_eviction.rs:32-70` | `ScfEvictionPolicy` is entirely unwired decoration — `is_evictable`/`eviction_weight` never called, `evict_to_capacity`/`DeviceClass` have no production caller | ⬜ |
+| **DTN-11** | Medium | `scf_eviction.rs:32-70` | `ScfEvictionPolicy` is entirely unwired decoration — `is_evictable`/`eviction_weight` never called, `evict_to_capacity`/`DeviceClass` have no production caller | ✅ `ede33f1` |
 | **DTN-12** | High | `prophet.rs:151-181` | PRoPHET aging is never executed in production — `age()` and `prune()` have no non-benchmark callers, so DPs only ever increase | ⬜ |
 | **DTN-13** | High | `prophet.rs:154-181` | `age()` resets `last_meet` to *now* for every entry — calling it more often than `aging_interval` means aging never happens at all | ⬜ |
 | **DTN-14** | Medium | `prophet.rs:176-179` | `age()` also clobbers the Eq. 1 encounter-interval clock, permanently pinning `P_encounter` at its ceiling | ⬜ |
@@ -258,11 +257,11 @@ All 284 findings, in report order. Severities are post-verification.
 | **DTN-18** | High | `prophet.rs:224-237` | No DP value is ever clamped to `[0, 1]`, and no self-exclusion exists — a peer can make this node believe it is the best carrier for itself | ⬜ |
 | **DTN-19** | Low | `prophet.rs:258-273` | `prune()` allocates a full clone of the table only to feed a `debug_assert`, and runs the same `retain` twice | ⬜ |
 | **DTN-20** | High | `scf.rs:73-81` | No retry, no backoff, no ack timeout — `AckPending` is an absorbing state and `StoredMessage` lacks the `last_forward_attempt` field the spec requires | ⬜ |
-| **DTN-21** | Medium | `scf.rs:228-246` | `status_for` fabricates a `Delivered` status for a message that has not been delivered | ⬜ |
+| **DTN-21** | Medium | `scf.rs:228-246` | `status_for` fabricates a `Delivered` status for a message that has not been delivered | ✅ `357ddb7` |
 | **DTN-22** | Medium | `scf.rs:24-35` | Three of the seven `DeliveryStatus` states are never constructed — the SCF state machine is only half implemented | ⬜ |
-| **DTN-23** | Medium | `scf_contact.rs:64-101` | `on_new_contact` ranking is O(n²), and its `unwrap_or(7)` fallback silently demotes any message it cannot find | ⬜ |
-| **DTN-24** | Medium | `scf_contact.rs:107-115` | `enqueue_forward` discards the only failure signal it has and unconditionally returns `Ok(())` | ⬜ |
-| **DTN-25** | Medium | `scf_contact.rs:64-97` | `bandwidth_limit` is counted in **messages**, so a contact window is budgeted without reference to message size | ⬜ |
+| **DTN-23** | Medium | `scf_contact.rs:64-101` | `on_new_contact` ranking is O(n²), and its `unwrap_or(7)` fallback silently demotes any message it cannot find | ✅ `357ddb7` |
+| **DTN-24** | Medium | `scf_contact.rs:107-115` | `enqueue_forward` discards the only failure signal it has and unconditionally returns `Ok(())` | ✅ `357ddb7` |
+| **DTN-25** | Medium | `scf_contact.rs:64-97` | `bandwidth_limit` is counted in **messages**, so a contact window is budgeted without reference to message size | ✅ `357ddb7` |
 | **BLE-1** | High | `ble.rs:157-178` | `BleAdapter` has no disconnect callback — a vanished peer stays `Connected` forever | ⬜ |
 | **BLE-2** | High | `ble.rs:686-806` | `connect()` holds a `std::sync::Mutex` across blocking FFI calls inside an async fn | ⬜ |
 | **BLE-3** | High | `ble.rs:704` | A per-peer connect flips a transport-global state, evicting the whole transport from routing | ⬜ |
@@ -1707,7 +1706,7 @@ if self.usage().saturating_add(need) > self.max_bytes {
 
 #### DTN-3: No per-peer "already offered" record — the same message is re-offered to the same peer on every contact event
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `b58de3d`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/routing/scf_contact.rs:64-97` (fn `on_new_contact`), `scf.rs:257-274` (`messages_forwardable_to`)
 - **What:** `on_new_contact` re-derives the full candidate list from the buffer on every contact event. `ScfEngine` holds no `(message_id, peer)` "offered/sent" set. The only limiter is the **global** `forward_attempts < max_forward_attempts` counter (scf.rs:264), which is not per-peer.
@@ -1730,7 +1729,7 @@ if self.usage().saturating_add(need) > self.max_bytes {
 
 #### DTN-4: `messages_forwardable_to` requires an EXACT recipient match — multi-hop store-carry-forward relaying is impossible
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `b58de3d`  ·  2026-08-27  ·  scope note: fixed together with DTN-3 (its per-peer dedup is what makes opening relay eligibility to every live contact safe). Any live, not-yet-offered message is now a relay candidate for any contact — the module's core premise (relay actually happens) now works. The *Fix* field's suggested `oracle.is_better_carrier` DP-based selectivity was **not** implemented: it is blocked by the same gap as ROUT-24 (this tier, earlier) — no wire protocol in this crate exchanges a live contact's own delivery-predictability data, so "is contact a better carrier than me" cannot be computed from data that exists. Exact-recipient match keeps its higher-confidence ranking (0.9 vs 0.6) so the module isn't blind to the distinction, just not yet DP-optimized.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:257-276` (fn `messages_forwardable_to`)
 - **What:** The doc comment promises "those addressed to it **or relayable toward it**". The code keeps only messages whose `recipient_id` equals the contact.
@@ -1888,7 +1887,7 @@ scf.rs:349	                        .then_with(|| b.expiry_unix.cmp(&a.expiry_uni
 
 #### DTN-11: `ScfEvictionPolicy` is entirely unwired decoration — `is_evictable`/`eviction_weight` never called, `evict_to_capacity`/`DeviceClass` have no production caller
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `ede33f1`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf_eviction.rs:32-70`
 - **What:** `ScfEvictionPolicy` is a unit struct with two associated functions nothing invokes. The actual P0 exemption is a hard-coded `k.priority_rank > 0` inside `scf.rs:345`. `evict_to_capacity` and `DeviceClass::max_bytes` are dead outside this file's own tests.
@@ -2150,7 +2149,7 @@ let aged = if aged.is_finite() { aged.clamp(0.0, 1.0) } else { 0.0 };
 
 #### DTN-21: `status_for` fabricates a `Delivered` status for a message that has not been delivered
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `357ddb7`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:228-246` (fn `status_for`)
 - **What:** When the queried `contact` happens to be the envelope's recipient, `status_for` returns `DeliveryStatus::Delivered { delivered_to }` — purely because the peer is in range. It performs no forward, receives no ack, and does not mutate the stored status.
@@ -2198,7 +2197,7 @@ let aged = if aged.is_finite() { aged.clamp(0.0, 1.0) } else { 0.0 };
 
 #### DTN-23: `on_new_contact` ranking is O(n²), and its `unwrap_or(7)` fallback silently demotes any message it cannot find
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `357ddb7`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf_contact.rs:64-101` (fn `on_new_contact`, fn `message_priority`)
 - **What:** The final ranking key is computed by `message_priority`, which calls `ScfEngine::priority_rank_of` — a linear `.iter().find()` over the whole buffer (scf.rs:163-168). `sort_by_key` invokes it O(n log n) times, so ranking n candidates costs O(n² log n) buffer traversals. When the lookup fails it returns `7` (lowest priority).
@@ -2225,7 +2224,7 @@ let aged = if aged.is_finite() { aged.clamp(0.0, 1.0) } else { 0.0 };
 
 #### DTN-24: `enqueue_forward` discards the only failure signal it has and unconditionally returns `Ok(())`
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `357ddb7`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf_contact.rs:107-115` (fn `enqueue_forward`)
 - **What:** The function calls `mark_forwarded`, which returns `Option<DeliveryStatus>` — `None` when the message is not in the buffer — and drops it, then returns `Ok(())`. It also never touches a transport: despite the name, nothing is enqueued.
@@ -2250,7 +2249,7 @@ let aged = if aged.is_finite() { aged.clamp(0.0, 1.0) } else { 0.0 };
 
 #### DTN-25: `bandwidth_limit` is counted in **messages**, so a contact window is budgeted without reference to message size
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `357ddb7`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/routing/scf_contact.rs:64-97` (fn `on_new_contact`), `scf_contact.rs:19` (`ContactOutcome::deferred`)
 - **What:** `bandwidth_limit: Option<usize>` is applied as `ranked.truncate(limit)` — a count of messages. Neither `approx_bytes`, `payload.len()`, the link's throughput, nor the predicted contact duration is consulted.
