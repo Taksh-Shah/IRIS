@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
@@ -80,6 +81,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         private const val GATT_WRITE_RETRY_ATTEMPTS = 5
         private const val GATT_WRITE_RETRY_DELAY_MS = 40L
 
+        // HW-7: how long gattWrite() blocks waiting for the async
+        // onCharacteristicWrite completion callback before giving up.
+        // Generous relative to normal BLE write latency (single-digit to
+        // low-double-digit ms) so it only trips on a genuinely stuck link.
+        private const val GATT_WRITE_TIMEOUT_MS = 5000L
+
         /**
          * Beacon framing: the discovery beacon (DiscoveryBeacon::build,
          * ble_advert.rs — 22 bytes, BEACON_LEN) used to ride Service Data
@@ -138,6 +145,28 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     private val negotiatedMtu = ConcurrentHashMap<BluetoothGatt, Int>()
     private val gattWriteFailures = ConcurrentHashMap<BluetoothGatt, Int>()
 
+    /**
+     * HW-7: Android permits only one outstanding GATT operation per
+     * connection — nothing queues this for you (confirmed against
+     * bitchat-android's own BluetoothPacketBroadcaster, which serializes
+     * writes with exactly this pattern: a per-link in-flight flag cleared
+     * only by the completion callback, never a blind retry). `gattWrite()`
+     * used to return as soon as `writeCharacteristic()` was *initiated*
+     * (the synchronous call returning success), not once it actually
+     * *completed* (`onCharacteristicWrite`, asynchronous) — so the very
+     * next GATT touch on the same connection (the next fragment of the
+     * same message, MTU renegotiation, anything) could race a write the
+     * controller hadn't finished yet, and Android correctly refused it.
+     * HW-6's bounded retry papered over the symptom without addressing
+     * this; confirmed live it wasn't sufficient on its own. One pending
+     * completion future per live `BluetoothGatt`, resolved from
+     * `onCharacteristicWrite`, makes `gattWrite()` block until the write
+     * is genuinely done — mirrors `connectionReady`'s existing pattern
+     * for `connectGatt`/service discovery below.
+     */
+    private val writeCompletion =
+        ConcurrentHashMap<BluetoothGatt, java.util.concurrent.CompletableFuture<Unit>>()
+
     // Scan-restart throttle (adapter side; 30-s rolling window).
     private val scanStartTimes = ConcurrentSkipListSet<Long>()
 
@@ -188,6 +217,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 gattWriteFailures.remove(gatt)
             } else {
                 gattWriteFailures[gatt] = status
+            }
+            // HW-7: this is what gattWrite()'s writeCompletion future is
+            // actually waiting on — resolving it here is what makes the
+            // write genuinely synchronous-and-complete from the caller's
+            // perspective, not just "initiated."
+            val pending = writeCompletion.remove(gatt)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                pending?.complete(Unit)
+            } else {
+                pending?.completeExceptionally(GattFailure("gatt write failed status=$status"))
             }
         }
 
@@ -510,7 +549,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     }
 
     override fun gattWrite(handle: ULong, charUuid: String, data: ByteArray) {
-        FfiCallTimeout.syncCall(onTimeout = Unit) {
+        FfiCallTimeout.syncCallOrThrow(timeoutMs = GATT_WRITE_TIMEOUT_MS + 1000L) {
             android.util.Log.d("IrisBleDiag", "gattWrite ENTER handle=$handle len=${data.size} known=${gattHandles.keys}")
             val gatt = gattHandles[handle.toLong()]
                 ?: throw GattFailure("unknown gatt connection")
@@ -521,43 +560,59 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             gattWriteFailures[gatt]?.let { status ->
                 throw GattFailure("previous gatt write failed status=$status")
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                gatt.writeCharacteristic(
-                    characteristic,
-                    data,
-                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-                )
-            } else {
-                // API 26-32: 3-arg writeCharacteristic overload is API 33+;
-                // set the write type explicitly then use the legacy 2-arg form.
-                characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                // HW-6: a `false` return here is Android's documented signal
-                // for "another GATT operation is already in flight on this
-                // connection" — NOT a dead link. Confirmed live and
-                // reproducible on a real API <33 device: "gatt write not
-                // initiated" on the very first send attempt after a
-                // connection the engine had already confirmed live and
-                // idle. Surfacing this as a hard GattFailure sent it all
-                // the way up to the message engine's OWN retry backoff
-                // (600s initial timeout for P4/bulk, HW-4) — wildly
-                // mismatched with the millisecond-scale transient
-                // contention this actually is. A short bounded retry here,
-                // at the layer that actually knows this is a fast local
-                // condition (not "peer unreachable"), is the standard fix
-                // for this exact Android BLE API behavior.
-                var initiated = false
-                for (attempt in 1..GATT_WRITE_RETRY_ATTEMPTS) {
-                    if (gatt.writeCharacteristic(characteristic)) {
-                        initiated = true
-                        break
-                    }
-                    if (attempt < GATT_WRITE_RETRY_ATTEMPTS) {
-                        Thread.sleep(GATT_WRITE_RETRY_DELAY_MS)
-                    }
+
+            // HW-7: Android permits only one outstanding GATT operation per
+            // connection (confirmed against bitchat-android's own write
+            // serialization). Register the completion future BEFORE issuing
+            // the write, so a callback that fires unusually fast can never
+            // race ahead of us installing the listener.
+            val completion = java.util.concurrent.CompletableFuture<Unit>()
+            writeCompletion[gatt] = completion
+
+            // HW-6's bounded retry (kept, narrowed): a synchronous `false`/
+            // non-success return from the *initiating* call is Android's
+            // documented signal for "another GATT operation already in
+            // flight on this connection" — a fast, local, millisecond-scale
+            // condition, not "peer unreachable". Retrying the initiation a
+            // few times here is still correct; what HW-6 got wrong was
+            // stopping at "initiated" instead of waiting for the async
+            // onCharacteristicWrite completion below.
+            var initiated = false
+            for (attempt in 1..GATT_WRITE_RETRY_ATTEMPTS) {
+                initiated = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    gatt.writeCharacteristic(
+                        characteristic,
+                        data,
+                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
+                    ) == BluetoothStatusCodes.SUCCESS
+                } else {
+                    // API 26-32: 3-arg writeCharacteristic overload is API 33+;
+                    // set the write type explicitly then use the legacy 2-arg form.
+                    characteristic.value = data
+                    characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    gatt.writeCharacteristic(characteristic)
                 }
-                if (!initiated) {
-                    throw GattFailure("gatt write not initiated after $GATT_WRITE_RETRY_ATTEMPTS attempts")
+                if (initiated) break
+                if (attempt < GATT_WRITE_RETRY_ATTEMPTS) {
+                    Thread.sleep(GATT_WRITE_RETRY_DELAY_MS)
                 }
+            }
+            if (!initiated) {
+                writeCompletion.remove(gatt)
+                throw GattFailure("gatt write not initiated after $GATT_WRITE_RETRY_ATTEMPTS attempts")
+            }
+
+            // Block until onCharacteristicWrite actually fires — this is the
+            // HW-7 fix itself. Without this wait, the caller (and the next
+            // fragment/MTU-negotiation touching this same connection) could
+            // race a write the controller hadn't finished yet.
+            try {
+                completion.get(GATT_WRITE_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            } catch (e: java.util.concurrent.TimeoutException) {
+                writeCompletion.remove(gatt)
+                throw GattFailure("gatt write initiated but onCharacteristicWrite never fired within ${GATT_WRITE_TIMEOUT_MS}ms")
+            } catch (e: java.util.concurrent.ExecutionException) {
+                throw (e.cause as? Exception) ?: GattFailure("gatt write completion failed: ${e.cause}")
             }
         }
     }
