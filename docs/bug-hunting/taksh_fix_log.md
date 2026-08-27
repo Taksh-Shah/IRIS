@@ -894,19 +894,135 @@ failed that specific assertion; `cargo clippy -p iris-core --lib
 commit — under the cap. This closes the MG (gateway/transport) area of
 Tier 2 entirely: all 18 MG-\* findings are now fixed.
 
-### Next run (Run 15)
-TAK-2 — the last remaining Tier 2 finding besides the 3 already-blocked
-ROUT findings (ROUT-23, ROUT-24, ROUT-26). Different crate
-(`crates/iris-storage`), self-contained: a remote P0-priority flood can
-permanently exhaust the store (unbounded, unevictable P0 rows) —
-`pg.rs`'s `persist`/`delete_expired` plus `eviction.rs`'s
-`evict_lowest_priority`. The finding's own fix has three layers: clamp
-expiry on ingest, give P0 its own sub-quota with oldest-relayed-P0
-eviction (protecting only locally-originated P0), and make eviction
-report when it can't reach target instead of silently breaking. Also
-touches `routing/scf_eviction.rs` (the in-memory SCF store) per the
-finding's own note that both layers need the same reasoning to agree —
-check whether this session's earlier DTN-1/DTN-7 fixes to `scf.rs`
-already cover the in-memory side before assuming it needs its own
-change. After TAK-2: Tier 2 is fully closed out except the 3 blocked
-ROUT findings, and the loop's run order moves to Tier 3/4.
+## Run 15 — 2026-08-27 — TAK-2 (storage exhaustion DoS) — Tier 2 fully closed out
+
+Owner said "continue" (resuming after a usage-limit reset) — same
+standing sign-off. Per Run 14's plan: TAK-2, the last remaining Tier 2
+finding, in `crates/iris-storage` — a crate this session hadn't touched
+before, so read `pg.rs`/`eviction.rs` in full against the finding's
+evidence before writing anything, same discipline as every prior wake.
+
+**Source had drifted more than any other finding this session.** Two
+separate, already-landed fixes changed the shape of the exact code the
+finding's evidence snippet quotes: TAK-5 replaced the read-check-insert
+sequence (`current.saturating_add(grow) > max_storage_bytes && !is_p0`)
+with a single atomic SQL statement — a cross-store TOCTOU fix, unrelated
+to TAK-2 on its face. TAK-12 added batched, cost-bounded eviction with
+error-level logging when a pass exhausts its cap while still over
+target — which, read closely, already implements this finding's own
+third fix layer ("make eviction report when it can't reach target
+instead of silently breaking"); its own doc comment even names "the
+TAK-2 class" of failure by name. Neither fix touched the actual
+*admission bypass* — it survived, just re-expressed as `$10::bool OR
+(...)` in the new atomic SQL, where `$10` is bound to `is_p0`. Same bug,
+new shape. Would have been very easy to miss by pattern-matching the
+finding's own line numbers instead of reading current source end to end.
+
+**Layer 1** (commit `08d3534`): clamped `ttl_seconds` to `MAX_TTL_SECS`
+before computing `expires_at`. Reused (made `pub`) the exact constant
+this session's own earlier DTN-6 fix added to the in-memory SCF store
+(`iris_core::routing::scf::MAX_TTL_SECS`) rather than defining an
+independent one — the finding's own dependency note requires both
+storage layers to agree, and a second constant is free to drift from
+the first the moment either changes. Did NOT also add the finding's
+suggested "reject an already-expired `expires_at` at ingest": doing so
+would have broken `evict_expired_reclaims_only_dead_rows`, this crate's
+own existing test, which deliberately persists an already-expired
+message specifically to prove GC reclaims it. Recognized this as a real
+conflict, not a test to route around — an already-expired row is the
+*opposite* of TAK-2's actual attack (immortal, never-reclaimable); it's
+reclaimed by the very next GC pass regardless, so skipping this half of
+the finding's suggestion costs nothing.
+
+**Layer 2:** narrowed the admission bypass from `is_p0` to `is_own &&
+is_p0` — INV-ROUTE-003 protects this node's own emergency traffic, not
+an unauthenticated peer's unverified priority claim.
+
+**Layer 3:** widened `evict_lowest_priority`'s WHERE clause from
+`priority > 0` to `NOT (priority = 0 AND is_own_message)`, using the
+`is_own_message` column that already existed in the schema — a relayed
+P0 row is now the last thing evicted (after every other priority, via
+the pre-existing `ORDER BY priority DESC`), never this node's own P0.
+
+**Test fallout:** `evict_by_priority_never_touches_p0` — named
+explicitly in the finding's own dependency note as needing this — was
+renamed and rewritten with an explicit `node_id` so it can actually
+distinguish own from relayed (the old version, with no `node_id`
+configured, couldn't tell them apart at all). `quota_rejects_non_p0_but_accepts_p0`
+— not named by the finding, found by grepping for every P0/quota test
+in the file — had an assertion ("P0 always accepted", citing
+`STORAGE.md`'s pre-fix invariant by name) that directly encoded the
+vulnerability being fixed; renamed and rewritten to prove the corrected
+three-way split (non-P0 over quota refused; relayed P0 over quota also
+refused — the actual regression test; own P0 still always accepted).
+Correcting a test's assertion to match intentionally-changed,
+security-relevant behavior is a genuine behavioral update, not the
+"delete a test to make it pass" the loop's own rules forbid. Added a
+third test, `evict_by_priority_reclaims_relayed_p0_as_a_last_resort`,
+proving a store with nothing left but relayed P0 can still reclaim
+space at all — the finding's own core described attack. Added `env_from`
+(explicit sender) alongside `env_for` to the shared test helpers, needed
+to construct both own and relayed messages against one store config;
+deleted `store_with_max`, left orphaned by the rewrite.
+
+**Scope decisions, documented not silently dropped:**
+- `docs/implementation/STORAGE.md` still states the pre-fix invariant
+  verbatim ("P0 messages are always accepted... never evicted unless
+  expired") — now stale. Not edited: the finding's own dependency note
+  says changing INV-ROUTE-003 "needs sign-off from Section 2 (message
+  engine)", a human decision this loop cannot make alone, and the file
+  sits outside the loop's file scope regardless.
+- `routing/scf_eviction.rs` (the in-memory SCF store) — checked per the
+  finding's own "requires the same reasoning" note. Initially assumed
+  (incorrectly, before actually reading the file) that DTN-1's earlier
+  admission-enforcement rewrite made it already consistent "in the same
+  way" as this fix. On reading it: `ScfEvictionPolicy::is_evictable`
+  exempts P0 *unconditionally*, own or relayed alike — no ownership
+  concept exists in that policy at all. It does NOT share TAK-2's actual
+  bug: `buffer_message` enforces its byte budget on every insert with no
+  P0 admission bypass, so growth stays bounded regardless of priority
+  mix (a new P0 message is simply refused once nothing is evictable,
+  never admitted unconditionally the way PG's old code did). But it has
+  a different, narrower gap: a relayed-P0 flood could in principle
+  starve out this node's own SOS traffic specifically, since nothing
+  distinguishes them for eviction purposes. Not part of TAK-2 and not
+  required to close it — flagged as a separate task (`task_612cf9ed`)
+  rather than folded in speculatively or silently ignored.
+
+**Run 15 closeout:** `cargo build -p iris-storage --all-targets` clean;
+`cargo build -p iris-core --all-targets` clean (the `MAX_TTL_SECS`
+visibility change); `cargo test --workspace --exclude iris-desktop` —
+**691 iris-core lib tests, 0 failed**; iris-storage's ignored-test count
+rose from 13 to 14, matching exactly the one net-new test (the other two
+were renames, not additions); `cargo test -p iris-core --lib
+routing::scf::` — 16/16 pass; `cargo clippy -p iris-storage --all-targets
+--no-deps` / `cargo clippy -p iris-core --lib --no-deps` — 0 new
+warnings either crate. All of `iris-storage`'s substantive coverage
+requires a live PostgreSQL instance and is `#[ignore]`d (TAK-1) with
+none available in this environment — verified by full-crate compilation
+(catches every type/logic error in the rewritten tests) and by
+hand-tracing each scenario's expected SQL predicate outcome against the
+actual admission/eviction queries, documented as a real limitation
+rather than glossed over as equivalent to an end-to-end run.
+
+**§8 accounting:** 1 finding fixed this run (TAK-2) in one commit — well
+under the cap. **This closes Tier 2 entirely**: 80 findings, 77 fixed,
+3 blocked (ROUT-23, ROUT-24, ROUT-26 — all on conflicting/inconsistent
+governing specs, a human decision, not a code gap that could be closed
+by more autonomous work).
+
+### Next run (Run 16)
+Tier 2 is fully closed out. Per the loop's own run order
+(`taksh_problems_loop.md`), the next tiers are Tier 3 (evidence-base
+fixes — simulator fidelity, ML leakage, 32 findings, SIM-\* area) and
+Tier 4 (remaining Medium/Low, mechanical, batched by area, 126
+findings) — neither has Tier 2's human-sign-off gate, so either can
+start without further owner confirmation beyond the standing "continue"
+instruction. Tier 3's own findings (SIM-1 through at least SIM-3, read
+during TAK-2's research when a grep of the file surfaced them) look
+tightly coupled — SIM-1's fix (seed message ids from the sim's own RNG
+instead of `MessageId::new_v7()`'s wall-clock+random construction) is a
+precondition for SIM-2/SIM-3 meaning anything, similar to how DTN-13 was
+a precondition for DTN-14 earlier this session. Scope the full SIM-\*
+membership before batching, same as every tier-opening wake this session
+has done.
