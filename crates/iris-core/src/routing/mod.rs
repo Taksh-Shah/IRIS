@@ -261,10 +261,21 @@ impl RoutingEngine {
         if self.forward_cache.is_duplicate(&message_id) {
             return ForwardingDecision::Drop;
         }
-        // Algorithm 1: Direct delivery.
+        // Algorithm 1: Direct delivery. Exempt from the hop-budget gate below:
+        // delivering straight to the final recipient consumes no further hop,
+        // so it may legitimately fire even at hop_count == max_hops.
         if let Some(decision) = try_direct(recipient, neighbor_table).await {
             self.forward_cache.record(message_id);
             return decision;
+        }
+        // ROUT-19: hop-budget gate. Every algorithm below this point forwards
+        // the message onward (KnownPath, Opportunistic, Flood) and must not
+        // exceed the priority's hop ceiling — previously only Flood checked
+        // this, so a stale KnownPath route (e.g. a two-node routing loop set
+        // up per ROUT-12) could relay forever with no budget enforcement.
+        let policy = max_hops_for_priority(priority);
+        if hop_count >= policy.max_hops {
+            return ForwardingDecision::Store;
         }
         // Algorithm 2: Known path (validate next-hop reachability).
         if let Some(decision) =
@@ -283,9 +294,9 @@ impl RoutingEngine {
                 algorithm: ForwardingAlgorithm::Opportunistic,
             };
         }
-        // Algorithm 3: Flood, if within hop budget.
-        let policy = max_hops_for_priority(priority);
-        if hop_count < policy.max_hops {
+        // Algorithm 3: Flood. hop_count < policy.max_hops is already
+        // guaranteed by the ROUT-19 gate above.
+        {
             let recipients = recipients_for_flood(
                 neighbor_table,
                 sender,
@@ -417,6 +428,26 @@ mod tests {
                 algorithm: ForwardingAlgorithm::KnownPath,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn rout19_known_path_respects_hop_budget() {
+        // Same route as known_path_before_flood, but the message has already
+        // exhausted its priority's hop budget (P4 => 3). Previously only the
+        // Flood branch checked hop_count, so a stale/looping KnownPath route
+        // would relay forever; it must now fall through to Store.
+        let mut engine = RoutingEngine::new();
+        engine
+            .routing_table
+            .upsert(pid(9), pid(4), "sim".into(), 2, LinkQuality::Good);
+        let table = NeighborTable::new(Duration::from_secs(60));
+        table
+            .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
+            .await;
+        let decision = engine
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(9), 3, MessagePriority::P4, vec![], &table)
+            .await;
+        assert_eq!(decision, ForwardingDecision::Store);
     }
 
     #[tokio::test]
