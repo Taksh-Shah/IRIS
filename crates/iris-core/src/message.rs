@@ -82,9 +82,14 @@ impl proptest::arbitrary::Arbitrary for MessagePriority {
 
 /// A node identifier: 32-byte BLAKE3 hash of the node's Ed25519 public key
 /// (per `docs/protocol/ADDRESSING.md` and ADR-0002).
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
+///
+/// `Debug` is implemented manually (below), not derived — MG-37: a derived
+/// `Debug` prints the full 32-byte array, which is exactly the form privacy
+/// rule P2 (OBS_DESIGN.md) says must never appear in a log, panic message,
+/// or exported telemetry. Every `tracing!` call site already goes through
+/// `short()`; the derive was the one hole a stray `{:?}`/`dbg!`/`panic!`
+/// could fall through.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct PeerId(pub [u8; 32]);
 
 impl PeerId {
@@ -115,6 +120,15 @@ impl fmt::Display for PeerId {
             write!(f, "{byte:02x}")?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Debug for PeerId {
+    /// MG-37: truncated to `short()`'s 8-byte prefix, never the full id —
+    /// see the struct's own doc comment. The full value stays reachable via
+    /// `Display`/`as_bytes()` for anywhere that genuinely needs it.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PeerId({})", self.short())
     }
 }
 

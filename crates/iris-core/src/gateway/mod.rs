@@ -72,6 +72,12 @@ pub const CONFIDENCE_SATURATION_SAMPLES: u32 = 5;
 /// MG-27: no real network hop is 0 ms; a floor here stops an advertised
 /// `latency_ms: 0` from claiming the maximum latency factor.
 pub const MIN_PLAUSIBLE_LATENCY_MS: u32 = 1;
+/// MG-34: multiplicative score penalty per hop distance (a direct neighbor
+/// is hop 0, `HOP_DISCOUNT^0 = 1.0`; each additional hop compounds). Applied
+/// in `select_inner`, not inside [`compute_gateway_quality`] — the score
+/// function stays a pure function of one capability, testable and callable
+/// without a full `GatewayCandidate`.
+pub const HOP_DISCOUNT: f32 = 0.85;
 /// MG-26: bound on health-monitor entries kept *only* because they are
 /// quarantined (`Failed`/`HardFailed` but no longer a known gateway) — an
 /// attacker cycling through fresh PeerIds must not be able to grow this
@@ -184,10 +190,11 @@ impl GatewayCapability {
 pub struct GatewayCandidate {
     pub node_id: PeerId,
     pub capability: GatewayCapability,
-    /// Hop distance: 0 = direct neighbor advertisement.
+    /// Hop distance: 0 = direct neighbor advertisement. Scored in
+    /// `select_inner` via a per-hop discount (MG-34) — always 0 today since
+    /// multi-hop propagation is deferred (GATEWAY_DESIGN.md:33-34), but
+    /// correct by construction once it lands.
     pub hop_count: u8,
-    /// Intermediate hops to reach the gateway via mesh (empty when direct).
-    pub path: Vec<PeerId>,
     pub discovered_at: Instant,
     pub last_confirmed: Instant,
 }
@@ -280,7 +287,15 @@ pub enum GatewayHealthState {
 /// connectivity-based, so a connected gateway that drops messages is removed
 /// from consideration (GATEWAY_ARCHITECTURE.md §Gateway Quality Tracking, §
 /// Failure Handling).
-#[derive(Debug, Clone)]
+///
+/// Deliberately **not** `Clone` (MG-38): `failure_counters`/
+/// `re_admission_strikes` are accumulating adversary evidence — a deep copy
+/// would let strikes recorded on one instance go invisible to another,
+/// silently defeating `HARD_FAIL_STRIKES` escalation for whichever clone a
+/// caller happens to hold. Share via `Arc<RwLock<GatewayManager>>` (matching
+/// `TransportManager`, which is deliberately not `Clone` either) instead of
+/// cloning.
+#[derive(Debug)]
 pub struct GatewayHealthMonitor {
     states: HashMap<PeerId, GatewayHealthState>,
     failure_counters: HashMap<PeerId, u32>,
@@ -290,7 +305,6 @@ pub struct GatewayHealthMonitor {
     /// time must never by itself restore full trust, only `record_success`
     /// does).
     probation_until: HashMap<PeerId, Instant>,
-    last_success: HashMap<PeerId, Instant>,
     /// MG-25/27/29: count of successful deliveries ever recorded for this
     /// gateway, feeding [`GatewayHealthMonitor::confidence_factor`]. Not
     /// reset by failure — a proven track record should not evaporate on one
@@ -312,7 +326,6 @@ impl GatewayHealthMonitor {
             failure_counters: HashMap::new(),
             re_admission_strikes: HashMap::new(),
             probation_until: HashMap::new(),
-            last_success: HashMap::new(),
             success_counts: HashMap::new(),
         }
     }
@@ -386,7 +399,6 @@ impl GatewayHealthMonitor {
         self.re_admission_strikes.insert(gateway, 0);
         self.states.insert(gateway, GatewayHealthState::Healthy);
         self.probation_until.remove(&gateway);
-        self.last_success.insert(gateway, Instant::now());
         *self.success_counts.entry(gateway).or_insert(0) += 1;
         tracing::debug!(
             event = event::GW_HEALTH_TRANSITION,
@@ -496,7 +508,6 @@ impl GatewayHealthMonitor {
         self.re_admission_strikes
             .retain(|id, _| self.states.contains_key(id));
         self.probation_until.retain(|id, _| known.contains(id));
-        self.last_success.retain(|id, _| known.contains(id));
         self.success_counts.retain(|id, _| known.contains(id));
 
         // Bound the quarantine: entries kept only because they are
@@ -536,7 +547,10 @@ impl GatewayHealthMonitor {
 pub const HARD_FAIL_STRIKES: u32 = 2;
 
 /// The gateway discovery + selection engine (GW-001).
-#[derive(Debug, Clone)]
+///
+/// Deliberately **not** `Clone` (MG-38, same reasoning as the embedded
+/// [`GatewayHealthMonitor`]) — share via `Arc<RwLock<GatewayManager>>`.
+#[derive(Debug)]
 pub struct GatewayManager {
     gateways: HashMap<PeerId, GatewayCandidate>,
     health: GatewayHealthMonitor,
@@ -630,7 +644,6 @@ impl GatewayManager {
         node_id: PeerId,
         capability: GatewayCapability,
         hop_count: u8,
-        path: Vec<PeerId>,
     ) -> Option<TopologyEvent> {
         let now = Instant::now();
         let gateway_type = capability.gateway_type.as_str().to_string();
@@ -652,15 +665,13 @@ impl GatewayManager {
             None => (None, 0),
         };
         if !is_known && self.gateways.len() >= MAX_GATEWAY_CANDIDATES {
-            // Registry full with a genuinely new candidate: evict the oldest
-            // confirmed gateway to stay bounded (REDTEAM-02).
-            if let Some(oldest) = self
-                .gateways
-                .values()
-                .min_by_key(|g| g.last_confirmed)
-                .map(|g| g.node_id)
-            {
-                self.withdraw(&oldest);
+            // MG-35: evict the weakest candidate, not the least-recently
+            // confirmed — recency is exactly the metric a Sybil flood
+            // maximizes for free (every fresh advertisement stamps
+            // `last_confirmed: now`), so "oldest-confirmed" eviction let an
+            // attacker's flood evict genuinely-established gateways.
+            if let Some(victim) = self.weakest_gateway_for_eviction() {
+                self.withdraw(&victim, "evicted: registry at capacity");
             }
         }
         // Preserve first-seen across refreshes.
@@ -676,7 +687,6 @@ impl GatewayManager {
                 node_id,
                 capability,
                 hop_count,
-                path,
                 discovered_at,
                 last_confirmed: now,
             },
@@ -705,15 +715,51 @@ impl GatewayManager {
         }
     }
 
-    /// Withdraw a gateway (peer lost, capability removed, or this node's own
-    /// uplink dropped). Returns the `GatewayChanged { available: false }` event.
-    pub fn withdraw(&mut self, node_id: &PeerId) -> Option<TopologyEvent> {
+    /// MG-35: pick the weakest current candidate to make room for a new one
+    /// — lowest `quality × health × confidence`, at a representative P4
+    /// priority (eviction is a capacity decision, not a per-message one).
+    /// Prefers evicting a candidate with **zero recorded successes** over
+    /// any that has actually proven a delivery, so a flood of fresh
+    /// advertisements cannot evict an established gateway merely by
+    /// out-numbering it; only reaches into the proven set if every current
+    /// candidate has proven itself. Deterministic tie-break by `PeerId`
+    /// (REDTEAM-05 — never let `HashMap` iteration order leak).
+    fn weakest_gateway_for_eviction(&self) -> Option<PeerId> {
+        let now = Instant::now();
+        let score = |g: &GatewayCandidate| -> f32 {
+            let factor =
+                self.health.score_factor(&g.node_id, now) * self.health.confidence_factor(&g.node_id);
+            let hop_discount = HOP_DISCOUNT.powi(g.hop_count as i32);
+            compute_gateway_quality(&g.capability, MessagePriority::P4) * factor * hop_discount
+        };
+        let unproven: Vec<&GatewayCandidate> = self
+            .gateways
+            .values()
+            .filter(|g| self.health.confidence_factor(&g.node_id) <= MIN_CONFIDENCE)
+            .collect();
+        let pool: Vec<&GatewayCandidate> = if unproven.is_empty() {
+            self.gateways.values().collect()
+        } else {
+            unproven
+        };
+        pool.into_iter()
+            .min_by(|a, b| score(a).total_cmp(&score(b)).then_with(|| a.node_id.cmp(&b.node_id)))
+            .map(|g| g.node_id)
+    }
+
+    /// Withdraw a gateway (peer lost, capability removed, capacity eviction,
+    /// or this node's own uplink dropped). Returns the
+    /// `GatewayChanged { available: false }` event. `reason` (MG-35) is
+    /// logged verbatim — previously every withdrawal was mislabeled
+    /// `"stale"`, including capacity evictions, making them
+    /// indistinguishable from ordinary staleness in the logs.
+    pub fn withdraw(&mut self, node_id: &PeerId, reason: &'static str) -> Option<TopologyEvent> {
         if let Some(removed) = self.gateways.remove(node_id) {
             tracing::info!(
                 event = event::GW_WITHDRAWN,
                 gateway = %node_id.short(),
                 gateway_type = %removed.capability.gateway_type.as_str(),
-                reason = "stale",
+                reason = %reason,
                 "gateway candidate withdrawn"
             );
             let ev = TopologyEvent::GatewayChanged {
@@ -829,8 +875,14 @@ impl GatewayManager {
                 // delivered something.
                 let factor =
                     self.health.score_factor(&g.node_id, now) * self.health.confidence_factor(&g.node_id);
+                // MG-34: hop distance previously had no effect on score at
+                // all — always 0 today (multi-hop propagation is deferred),
+                // but wiring the discount in now means a 2-hop gateway
+                // won't silently tie a direct neighbor once multi-hop
+                // lands. `HOP_DISCOUNT.powi(1)` ≈ 15% off per hop.
+                let hop_discount = HOP_DISCOUNT.powi(g.hop_count as i32);
                 (
-                    compute_gateway_quality(&g.capability, msg_priority) * factor,
+                    compute_gateway_quality(&g.capability, msg_priority) * factor * hop_discount,
                     g.node_id,
                 )
             })
@@ -935,7 +987,7 @@ impl GatewayManager {
                     Some(crate::message::LinkQuality::Fair) => 0.6,
                     Some(crate::message::LinkQuality::Poor) | None => 0.4,
                 };
-                let _ = self.adopt_from_neighbor(nb.peer_id, cap, 0, Vec::new());
+                let _ = self.adopt_from_neighbor(nb.peer_id, cap, 0);
             }
         }
         // Diff-based withdrawal: any registered gateway that is no longer a
@@ -943,7 +995,7 @@ impl GatewayManager {
         let known: Vec<PeerId> = self.gateways.keys().copied().collect();
         for node_id in known {
             if !current.contains(&node_id) {
-                self.withdraw(&node_id);
+                self.withdraw(&node_id, "stale");
             }
         }
         let known: Vec<PeerId> = self.gateways.keys().copied().collect();
@@ -958,6 +1010,14 @@ impl GatewayManager {
     }
 }
 
+/// MG-36: reference monetary cost (currency units per KB) treated as
+/// maximally expensive for `cost_factor` normalization. A judgment call,
+/// not a measured figure — chosen so this crate's own worked-example
+/// metered-cellular rate (₹0.50/KB, see `self_internet_gateway_from_transport_cost`)
+/// lands mid-scale rather than reading as "essentially free" the way the
+/// previous bare `/10.0` divisor did (`0.5/10.0 = 0.05`).
+pub const REFERENCE_EXPENSIVE_COST_PER_KB: f32 = 1.0;
+
 /// Build the self-uplink capability for an Internet transport that has just
 /// become connected. Called by the transport/manager layer on
 /// `TransportState::Connected` (INTERNET-001).
@@ -967,12 +1027,26 @@ pub fn self_internet_gateway(
     caps: &crate::transport::TransportCapabilities,
 ) -> GatewayCapability {
     let mut cap = GatewayCapability::new(GatewayType::Internet, transport_id);
-    cap.bandwidth_bps = caps.typical_throughput_bps;
+    // MG-36: use the transport's *live* available bandwidth (capped by the
+    // datasheet ceiling) — the previous code took only the static
+    // `typical_throughput_bps`, ignoring the live figure it was handed.
+    cap.bandwidth_bps = cost.bandwidth_available_bps.min(caps.typical_throughput_bps);
     cap.latency_ms = caps.typical_latency_ms;
-    cap.cost_factor = ((cost.monetary_cost_per_kb / 10.0) as f32).clamp(0.0, 1.0);
+    cap.cost_factor =
+        (cost.monetary_cost_per_kb as f32 / REFERENCE_EXPENSIVE_COST_PER_KB).clamp(0.0, 1.0);
     cap.current_load = cost.congestion_level.clamp(0.0, 1.0);
+    // MG-36: no ACK-rate EWMA exists anywhere in this crate to feed a real
+    // reliability estimate — this function is a pure mapping of one-shot
+    // `cost`/`caps` snapshots, with no access to delivery history. Building
+    // that tracker (and wiring it through the also-unwired INTERNET-001
+    // transport layer — MG-30) is a separate, larger addition; kept as a
+    // fixed placeholder, same value as before.
     cap.reliability_score = 0.9;
-    cap
+    // MG-36: run through the same plausibility/NaN sanitizer applied to
+    // peer advertisements — harmless for a real transport's own figures,
+    // and stops a `congestion_level: NaN` (MG-3's threat) from producing a
+    // non-finite quality score for our own uplink too.
+    sanitize_capability(cap)
 }
 
 /// Clamp/sanitize *every* field at the adoption boundary (REDTEAM-04 covered
@@ -1195,11 +1269,11 @@ mod tests {
         // reconcile() produces for a bare `gateway` tag.
         let mut attacker_cap = GatewayCapability::new(GatewayType::Internet, "sim");
         attacker_cap.reliability_score = 0.95;
-        let _ = m.adopt_from_neighbor(attacker, attacker_cap, 0, vec![]);
+        let _ = m.adopt_from_neighbor(attacker, attacker_cap, 0);
         // Established: modest but real measured capability, with a proven
         // delivery record.
         let established_cap = rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.1);
-        let _ = m.adopt_from_neighbor(established, established_cap, 0, vec![]);
+        let _ = m.adopt_from_neighbor(established, established_cap, 0);
         for _ in 0..CONFIDENCE_SATURATION_SAMPLES {
             m.record_success(established);
         }
@@ -1226,7 +1300,7 @@ mod tests {
         cap.queue_depth = u32::MAX;
         let mut m = GatewayManager::new();
         let node = pid(60);
-        let _ = m.adopt_from_neighbor(node, cap, 0, vec![]);
+        let _ = m.adopt_from_neighbor(node, cap, 0);
         let stored = &m.gateway(&node).expect("adopted").capability;
         assert_eq!(
             stored.max_priority,
@@ -1248,7 +1322,6 @@ mod tests {
             g,
             rich_cap(GatewayType::Internet, 10_000_000, 100, 0.8, 0.1),
             0,
-            vec![],
         );
         match rx.try_recv() {
             Ok(TopologyEvent::GatewayChanged {
@@ -1269,7 +1342,7 @@ mod tests {
             }) => assert_eq!(gateway_id, g),
             other => panic!("expected failure event, got {other:?}"),
         }
-        let _ = m.withdraw(&g);
+        let _ = m.withdraw(&g, "test");
         match rx.try_recv() {
             Ok(TopologyEvent::GatewayChanged {
                 gateway_id,
@@ -1324,13 +1397,11 @@ mod tests {
             a,
             rich_cap(GatewayType::Internet, 50_000_000, 40, 0.90, 0.05),
             0,
-            vec![],
         );
         let _ = m.adopt_from_neighbor(
             b,
             rich_cap(GatewayType::Internet, 50_000_000, 40, 0.85, 0.05),
             0,
-            vec![],
         );
         // a clearly wins first — becomes the incumbent.
         match m.select(MessagePriority::P4) {
@@ -1343,7 +1414,6 @@ mod tests {
             a,
             rich_cap(GatewayType::Internet, 50_000_000, 40, 0.83, 0.05),
             0,
-            vec![],
         );
         match m.select(MessagePriority::P4) {
             GatewaySelection::Single { gateway, .. } => {
@@ -1364,13 +1434,11 @@ mod tests {
             a,
             rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05),
             0,
-            vec![],
         );
         let _ = m.adopt_from_neighbor(
             b,
             rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.05),
             0,
-            vec![],
         );
         match m.select(MessagePriority::P4) {
             GatewaySelection::Single { gateway, .. } => assert_eq!(gateway, a),
@@ -1385,6 +1453,62 @@ mod tests {
             }
             other => panic!("expected single, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn mg34_hop_count_penalizes_the_score() {
+        let mut m = GatewayManager::new();
+        let direct = pid(70);
+        let two_hops = pid(71);
+        // Identical capability, differing only in hop distance.
+        let _ = m.adopt_from_neighbor(
+            direct,
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.85, 0.05),
+            0,
+        );
+        let _ = m.adopt_from_neighbor(
+            two_hops,
+            rich_cap(GatewayType::Internet, 50_000_000, 40, 0.85, 0.05),
+            2,
+        );
+        match m.select(MessagePriority::P4) {
+            GatewaySelection::Single { gateway, .. } => assert_eq!(
+                gateway, direct,
+                "a closer gateway must win over an identical-capability farther one"
+            ),
+            other => panic!("expected single, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn mg35_capacity_eviction_prefers_unproven_over_established() {
+        // The exact scenario MG-35 describes: a flood of fresh (unproven)
+        // candidates must not be able to evict a genuinely-established
+        // gateway just by out-numbering it at the capacity bound.
+        let mut m = GatewayManager::new();
+        for i in 0..MAX_GATEWAY_CANDIDATES as u32 {
+            let _ = m.adopt_from_neighbor(
+                pid_wide(i),
+                rich_cap(GatewayType::Internet, 10_000_000, 100, 0.5, 0.1),
+                0,
+            );
+        }
+        let established = pid_wide(0);
+        m.record_success(established);
+        assert_eq!(m.len(), MAX_GATEWAY_CANDIDATES);
+
+        // Registry is full; one more (also unproven) candidate arrives.
+        let newcomer = pid_wide(MAX_GATEWAY_CANDIDATES as u32 + 1);
+        let _ = m.adopt_from_neighbor(
+            newcomer,
+            rich_cap(GatewayType::Internet, 10_000_000, 100, 0.5, 0.1),
+            0,
+        );
+        assert_eq!(m.len(), MAX_GATEWAY_CANDIDATES, "registry must stay bounded");
+        assert!(
+            m.gateway(&established).is_some(),
+            "a proven gateway must not be evicted while unproven candidates exist"
+        );
     }
 
     #[test]
@@ -1445,7 +1569,7 @@ mod tests {
         let mut cap = rich_cap(GatewayType::Internet, 50_000_000, 40, f32::NAN, f32::NAN);
         cap.reliability_score = f32::NAN;
         cap.current_load = f32::INFINITY;
-        let _ = m.adopt_from_neighbor(pid(5), cap, 0, vec![]);
+        let _ = m.adopt_from_neighbor(pid(5), cap, 0);
         let s = m.select(MessagePriority::P4);
         // Still selected (sanitized), with a finite positive score.
         match s {
@@ -1466,8 +1590,8 @@ mod tests {
         let b = pid(2);
         let cap_a = rich_cap(GatewayType::Internet, 10_000_000, 100, 0.8, 0.1);
         let cap_b = rich_cap(GatewayType::Internet, 10_000_000, 100, 0.8, 0.1);
-        let _ = m.adopt_from_neighbor(a, cap_a, 0, vec![]);
-        let _ = m.adopt_from_neighbor(b, cap_b, 0, vec![]);
+        let _ = m.adopt_from_neighbor(a, cap_a, 0);
+        let _ = m.adopt_from_neighbor(b, cap_b, 0);
         for _ in 0..10 {
             match m.select(MessagePriority::P4) {
                 GatewaySelection::Single { gateway, .. } => {
@@ -1486,7 +1610,6 @@ mod tests {
                 pid(i),
                 rich_cap(GatewayType::Internet, 10_000_000, 100, 0.8, 0.1),
                 0,
-                vec![],
             );
         }
         assert!(
@@ -1502,19 +1625,16 @@ mod tests {
             pid(1),
             rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05),
             0,
-            vec![],
         );
         let _ = m.adopt_from_neighbor(
             pid(2),
             rich_cap(GatewayType::Lora, 1_000_000, 1000, 0.9, 0.0),
             0,
-            vec![],
         );
         let _ = m.adopt_from_neighbor(
             pid(3),
             rich_cap(GatewayType::Internet, 10_000_000, 100, 0.7, 0.1),
             0,
-            vec![],
         );
 
         // P4 → single best (pid 1: fastest + most reliable).
@@ -1559,7 +1679,6 @@ mod tests {
             pid(1),
             rich_cap(GatewayType::Lora, 1_000_000, 500, 0.9, 0.0),
             0,
-            vec![],
         );
         // P7 not served by LoRa → None (no internet gateway).
         assert!(matches!(
@@ -1575,13 +1694,11 @@ mod tests {
             pid(1),
             rich_cap(GatewayType::Internet, 50_000_000, 40, 0.95, 0.05),
             0,
-            vec![],
         );
         let _ = m.adopt_from_neighbor(
             pid(2),
             rich_cap(GatewayType::Internet, 20_000_000, 80, 0.85, 0.05),
             0,
-            vec![],
         );
         // P4 initially picks pid(1).
         assert!(
@@ -1612,10 +1729,9 @@ mod tests {
             pid(4),
             rich_cap(GatewayType::Internet, 10_000_000, 50, 0.9, 0.0),
             0,
-            vec![],
         );
         assert_eq!(m.len(), 1);
-        let ev = m.withdraw(&pid(4)).expect("event");
+        let ev = m.withdraw(&pid(4), "test").expect("event");
         assert!(matches!(
             ev,
             TopologyEvent::GatewayChanged {
@@ -1673,7 +1789,57 @@ mod tests {
         assert_eq!(cap.gateway_type, GatewayType::Internet);
         assert_eq!(cap.bandwidth_bps, 100_000_000);
         assert!(cap.serves_priority(MessagePriority::P7));
-        assert!(cap.cost_factor > 0.0);
+        // MG-36: ₹0.50/KB must read as noticeably expensive, not as
+        // "essentially free" (the old `/10.0` divisor gave 0.05 here).
+        assert!(
+            cap.cost_factor > 0.3,
+            "got {} — a real per-KB charge must not look nearly free",
+            cap.cost_factor
+        );
+    }
+
+    #[test]
+    fn mg36_uses_live_bandwidth_capped_by_the_datasheet_ceiling() {
+        use crate::transport::{TransportCapabilities, TransportCost, TransportCostClass};
+        let caps = TransportCapabilities {
+            max_message_size: 1 << 20,
+            supports_broadcast: false,
+            supports_unicast: true,
+            supports_multicast: false,
+            range_m_min: 0,
+            range_m_max: 0,
+            range_m_typical: 0,
+            typical_throughput_bps: 100_000_000, // datasheet ceiling
+            typical_latency_ms: 50,
+            requires_infrastructure: true,
+            supports_background_android: true,
+            supports_background_ios: true,
+            requires_special_hardware: false,
+            cost_class: TransportCostClass::Metered,
+            regulatory_band: None,
+        };
+        // Live figure well below the datasheet ceiling — a congested link.
+        let congested = TransportCost {
+            estimated_battery_ma: 50.0,
+            monetary_cost_per_kb: 0.1,
+            bandwidth_available_bps: 5_000_000,
+            congestion_level: 0.8,
+        };
+        let cap = self_internet_gateway("internet-0", congested, &caps);
+        assert_eq!(
+            cap.bandwidth_bps, 5_000_000,
+            "must reflect the live available bandwidth, not the static datasheet figure"
+        );
+
+        // Live figure *above* the datasheet ceiling — must still be capped.
+        let implausible = TransportCost {
+            estimated_battery_ma: 50.0,
+            monetary_cost_per_kb: 0.1,
+            bandwidth_available_bps: 1_000_000_000,
+            congestion_level: 0.1,
+        };
+        let cap2 = self_internet_gateway("internet-0", implausible, &caps);
+        assert_eq!(cap2.bandwidth_bps, 100_000_000, "must be capped at the datasheet ceiling");
     }
 
     // --- M7 integration: DISCO-001 capability tags reconcile into GW-001 ---
