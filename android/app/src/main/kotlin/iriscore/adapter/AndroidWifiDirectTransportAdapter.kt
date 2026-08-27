@@ -127,6 +127,26 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val dnsSdGate = SessionGate<Unit> { registerDnsSd() }
 
     /**
+     * FFI-15: `startDiscovery` used to build a brand-new
+     * `WifiP2pDnsSdServiceRequest` and `addServiceRequest` it on every call,
+     * with nothing ever calling `removeServiceRequest`/`clearServiceRequests`.
+     * `WifiP2pManager` keeps a per-channel list of service requests and
+     * re-issues all of them on each `discoverServices` — accumulating
+     * duplicates multiplies over-the-air probe traffic and, past the
+     * framework's internal limit, makes `addServiceRequest` fail (surfacing
+     * to Rust as a plain `TransportError::Io` that kills discovery for good).
+     * One request, retained and added once via its own gate, fixes this the
+     * same way `dnsSdGate` already avoids re-registering the local service.
+     */
+    private val serviceRequest: WifiP2pDnsSdServiceRequest by lazy {
+        WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_SERVICE_TYPE)
+    }
+    private val serviceRequestGate = SessionGate<Unit> {
+        val channel = startGate.ensureStarted()
+        awaitAction { p2pManagerOrThrow().addServiceRequest(channel, serviceRequest, it) }
+    }
+
+    /**
      * FFI-5: `startDnsSd()` used to take no arguments — `dnsSdGate`'s lambda
      * captures none, and `registerDnsSd()` registered with `emptyMap()`.
      * `dnsSdGate.ensureStarted()` is lazy, so the real beacon has to be
@@ -207,17 +227,29 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     override suspend fun startDiscovery() {
         FfiCallTimeout.suspendCall {
-            val channel = startGate.ensureStarted() ?: return@suspendCall
-            val request = WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_SERVICE_TYPE)
-            awaitAction { p2pManagerOrThrow().addServiceRequest(channel, request, it) }
+            val channel = startGate.ensureStarted()
+            // FFI-15: registers the one retained service request at most
+            // once per discovery session instead of accumulating a new one
+            // on every call.
+            serviceRequestGate.ensureStarted()
             awaitAction { p2pManagerOrThrow().discoverServices(channel, it) }
         }
     }
 
     override suspend fun stopDiscovery() {
         FfiCallTimeout.suspendCall {
-            val channel = startGate.ensureStarted() ?: return@suspendCall
+            val channel = startGate.ensureStarted()
             awaitAction { p2pManagerOrThrow().stopPeerDiscovery(channel, it) }
+            // FFI-15: undo the addServiceRequest from startDiscovery so the
+            // next startDiscovery's serviceRequestGate.ensureStarted() call
+            // re-adds cleanly rather than silently no-oping on a request the
+            // platform no longer has registered.
+            if (serviceRequestGate.isStarted()) {
+                runCatching {
+                    awaitAction { p2pManagerOrThrow().removeServiceRequest(channel, serviceRequest, it) }
+                }
+                serviceRequestGate.reset()
+            }
         }
     }
 
@@ -365,9 +397,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             val channel = startGate.ensureStarted()
             if (channel != null) {
                 runCatching { awaitAction { p2pManagerOrThrow().clearLocalServices(channel, it) } }
+                // FFI-15: mirror clearLocalServices — drop every accumulated
+                // service request too, not just the local advertisement.
+                runCatching { awaitAction { p2pManagerOrThrow().clearServiceRequests(channel, it) } }
                 runCatching { awaitAction { p2pManagerOrThrow().removeGroup(channel, it) } }
             }
             dnsSdGate.reset()
+            serviceRequestGate.reset()
             closeDataPath()
             groupState.clear()
             cachedGoAddr = null
