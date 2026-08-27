@@ -117,6 +117,13 @@ pub struct StoredMessage {
     pub forward_attempts: u32,
     pub received_from: Option<PeerId>,
     pub delivery_status: DeliveryStatus,
+    /// DTN-20: when the most recent forward attempt was made (unix secs).
+    /// `AckPending` was previously an absorbing state — nothing ever timed
+    /// it out, so once `mark_forwarded(id, peer, false)` records `peer` in
+    /// `offered` (DTN-3), that specific peer could never be retried again
+    /// even if the ack frame was simply lost. Feeds
+    /// `reap_ack_timeouts`'s backoff.
+    pub last_forward_attempt: Option<u64>,
 }
 
 /// The SCF buffer view over any `MessageStorage` seam. The BTreeMap holds the
@@ -394,6 +401,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
             forward_attempts: 0,
             received_from,
             delivery_status: DeliveryStatus::Stored,
+            last_forward_attempt: None,
         };
         self.index.insert(message_id, key);
         self.total_bytes += need;
@@ -489,11 +497,53 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
             msg.delivery_status = DeliveryStatus::Delivered { delivered_to: to };
             Some(msg.delivery_status)
         } else {
+            let now = self.now_unix(); // DTN-20: feeds reap_ack_timeouts's backoff
             let msg = self.buffer.get_mut(&key)?;
             msg.forward_attempts += 1;
+            msg.last_forward_attempt = Some(now);
             msg.delivery_status = DeliveryStatus::AckPending { sent_to: to };
             Some(msg.delivery_status.clone())
         }
+    }
+
+    /// DTN-20: `AckPending` was previously an absorbing state — nothing
+    /// ever timed it out, so a single lost ack frame (not a rejection, just
+    /// a dropped packet on a lossy link) permanently excluded that peer
+    /// from receiving the message again, since `mark_forwarded` had already
+    /// recorded them in `offered` (DTN-3). Returns a message to `Stored`
+    /// once it has been `AckPending` for longer than an exponentially
+    /// backed-off timeout (scaled by `forward_attempts`, so a repeatedly
+    /// unresponsive peer is retried less eagerly each time) — and, crucially,
+    /// clears *that one peer* from `offered` so a retry with them specifically
+    /// becomes possible again. Does not increment `forward_attempts` itself
+    /// (only an actual `mark_forwarded` call does that); does not touch
+    /// `offered` entries for any other peer. Not on an active timer today —
+    /// no part of this crate schedules a production SCF tick yet (the same
+    /// wiring gap `reap_expired`, DTN-1, was found in) — but is fully
+    /// unit-tested and ready to be called from one.
+    pub fn reap_ack_timeouts(&mut self, timeout_secs: u64) -> Vec<MessageId> {
+        let now = self.now_unix();
+        let mut to_reset: Vec<(StoreKey, MessageId, PeerId)> = Vec::new();
+        for (key, msg) in self.buffer.iter() {
+            if let DeliveryStatus::AckPending { sent_to } = &msg.delivery_status {
+                let since = msg.last_forward_attempt.unwrap_or(msg.stored_at);
+                let backoff = timeout_secs.saturating_mul(1u64 << msg.forward_attempts.min(16));
+                if now.saturating_sub(since) >= backoff {
+                    to_reset.push((*key, msg.envelope.message_id, *sent_to));
+                }
+            }
+        }
+        let mut reset = Vec::with_capacity(to_reset.len());
+        for (key, id, peer) in to_reset {
+            if let Some(msg) = self.buffer.get_mut(&key) {
+                msg.delivery_status = DeliveryStatus::Stored;
+            }
+            if let Some(peers) = self.offered.get_mut(&id) {
+                peers.remove(&peer);
+            }
+            reset.push(id);
+        }
+        reset
     }
 
     /// Expire-and-drop sweep. Returns ids dropped for TTL expiry.
@@ -837,6 +887,73 @@ mod tests {
         assert_eq!(dropped.len(), 1);
         assert_eq!(dropped[0], old_id);
         assert_eq!(scf.len(), 1);
+    }
+
+    #[test]
+    fn dtn20_ack_timeout_returns_message_to_stored_and_allows_retry_with_same_peer() {
+        let clock = Arc::new(AtomicU64::new(1_000));
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default())
+            .with_virtual_clock(clock.clone());
+        let mut e = env(MessagePriority::P4, b"retry-me", 3600);
+        e.timestamp = 1_000; // align with the virtual clock's start
+        let id = e.message_id;
+        scf.buffer_message(e, None).unwrap();
+        let peer = pid(9);
+
+        scf.mark_forwarded(&id, peer, false);
+        assert_eq!(
+            scf.delivery_status(&id),
+            Some(DeliveryStatus::AckPending { sent_to: peer })
+        );
+        // DTN-3: already offered to `peer` — excluded until the timeout.
+        assert!(scf.messages_forwardable_to(&peer).is_empty());
+
+        // Not yet past the timeout: no-op.
+        clock.store(1_050, Ordering::Relaxed);
+        assert!(scf.reap_ack_timeouts(100).is_empty());
+        assert_eq!(
+            scf.delivery_status(&id),
+            Some(DeliveryStatus::AckPending { sent_to: peer })
+        );
+
+        // Past the timeout: back to Stored, and retryable with the same peer.
+        clock.store(1_200, Ordering::Relaxed);
+        let reset = scf.reap_ack_timeouts(100);
+        assert_eq!(reset, vec![id]);
+        assert_eq!(scf.delivery_status(&id), Some(DeliveryStatus::Stored));
+        assert_eq!(scf.messages_forwardable_to(&peer).len(), 1);
+    }
+
+    #[test]
+    fn dtn20_ack_timeout_backoff_grows_with_attempts() {
+        let clock = Arc::new(AtomicU64::new(0));
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default())
+            .with_virtual_clock(clock.clone());
+        let mut e = env(MessagePriority::P4, b"backoff", 3600);
+        e.timestamp = 0; // align with the virtual clock's start
+        let id = e.message_id;
+        scf.buffer_message(e, None).unwrap();
+        let peer = pid(9);
+
+        // First attempt (forward_attempts -> 1): backoff = 100 * 2^1 = 200.
+        scf.mark_forwarded(&id, peer, false);
+        clock.store(150, Ordering::Relaxed);
+        assert!(
+            scf.reap_ack_timeouts(100).is_empty(),
+            "150s must not clear a 200s backoff"
+        );
+        clock.store(250, Ordering::Relaxed);
+        assert_eq!(scf.reap_ack_timeouts(100), vec![id]);
+
+        // Second attempt (forward_attempts -> 2): backoff = 100 * 2^2 = 400.
+        scf.mark_forwarded(&id, peer, false);
+        clock.store(250 + 350, Ordering::Relaxed);
+        assert!(
+            scf.reap_ack_timeouts(100).is_empty(),
+            "350s must not clear a 400s backoff after a second failed attempt"
+        );
+        clock.store(250 + 450, Ordering::Relaxed);
+        assert_eq!(scf.reap_ack_timeouts(100), vec![id]);
     }
 
     #[test]
