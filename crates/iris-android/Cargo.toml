@@ -18,7 +18,16 @@ serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 uniffi = "=0.31.2"
+
+# HW-3 debugging: forwards `tracing` events to Android logcat. Links against
+# the NDK's liblog, which only exists on an actual Android target — gated to
+# that target so `cargo build --workspace` on a Windows/Linux/macOS host (the
+# common dev-loop path, distinct from the `cargo ndk` cross-build that
+# produces the shipped .so) keeps working unmodified.
+[target.'cfg(target_os = "android")'.dependencies]
+paranoid-android = "0.2"
 
 [build-dependencies]
 uniffi_bindgen = "=0.31.2"

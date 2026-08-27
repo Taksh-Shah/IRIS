@@ -12,6 +12,7 @@ uniffi::setup_scaffolding!();
 pub mod bridge;
 pub mod engine;
 pub mod ffi;
+pub mod logging;
 
 pub use engine::{FfiInboxListener, FfiIncomingMessage, IrisEngine};
 pub use ffi::ble_adapter::{

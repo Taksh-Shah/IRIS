@@ -195,32 +195,75 @@ impl DiscoveryManager {
             };
             let mut stream = match transport.discover_peers(scan_cfg).await {
                 Ok(s) => s,
-                Err(_) => continue,
+                Err(e) => {
+                    // HW-3: this used to be a silent `continue` — a transport
+                    // that fails to even START a discovery pass (e.g.
+                    // NotSupported, or the FFI-13-style permanent-unsupported
+                    // fast path) left no trace anywhere. Every ~30s
+                    // scan_interval cycle that hit this went completely dark.
+                    tracing::debug!(
+                        event = "discovery.discover_peers_failed",
+                        transport = %transport.transport_id(),
+                        error = %e,
+                        "discover_peers() failed for this pass; skipping this transport this round"
+                    );
+                    continue;
+                }
             };
+            let mut seen_this_pass = 0usize;
             while let Some(peer) = futures_util::StreamExt::next(&mut stream).await {
+                seen_this_pass += 1;
                 let ev = self
                     .table
                     .upsert(&peer, transport.transport_id(), LinkQuality::Good)
                     .await;
                 if matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })) {
                     new_peers.push(peer.peer_id);
-                    // GAP-7: nothing else in the engine ever calls
-                    // `Transport::connect()` — deliver_outbound goes straight
-                    // to `send()`, which every live transport rejects with
-                    // `NotConnected` until a link exists. Establish the link
-                    // here, on first contact, so it exists before the first
-                    // send is attempted. Idempotent on every transport that
-                    // has been checked (BLE/Wi-Fi Aware/Wi-Fi Direct reuse an
-                    // existing link; a failure here just means the peer
-                    // wasn't reachable this round — discovery will retry it
-                    // on the next scan).
-                    if let Err(e) = transport.connect(&peer).await {
+                }
+                // HW-3 (root cause of BLE messages never being delivered):
+                // this call used to be gated on `PeerDiscovered` alone — i.e.
+                // only the FIRST time a peer was ever seen. discover_peers()
+                // re-yields every currently-visible peer on EVERY scan pass
+                // (this is not a one-shot "new peer" stream), but a peer
+                // already in the table produces no event (or PeerUpdated),
+                // so the gate silently skipped `connect()` on every
+                // subsequent pass — forever, for the life of the process.
+                // The original comment's own promise ("discovery will retry
+                // it on the next scan") was false for this exact reason: a
+                // FAILED first connect never got a genuine retry (the peer
+                // stays "known", so the gate never re-opens), and a
+                // connect() that SUCCEEDED once but later silently dropped
+                // (observed live: BLE GATT links cycling every ~30s in
+                // `dumpsys bluetooth_manager`, ESTABLISH failures with
+                // status=62) was never re-established either — nothing else
+                // in the engine calls `connect()` at all. `Transport::
+                // connect()` is documented and tested as idempotent/cheap
+                // when a live link already exists (BLE's own AC-9: "one GATT
+                // connection per peer", fast-path early return before
+                // touching the radio) — so attempting it unconditionally
+                // every scan pass, for every peer currently visible, is the
+                // correct fix, not a regression risk: a healthy link no-ops
+                // through the fast path, and a dead one gets a genuine retry
+                // every scan_interval (30s default) instead of never.
+                let connect_started = std::time::Instant::now();
+                match transport.connect(&peer).await {
+                    Ok(_) => {
+                        tracing::debug!(
+                            event = "discovery.connect_ok",
+                            peer = %peer.peer_id,
+                            transport = %transport.transport_id(),
+                            elapsed_ms = connect_started.elapsed().as_millis() as u64,
+                            "link to known peer confirmed live (idempotent no-op if already connected)"
+                        );
+                    }
+                    Err(e) => {
                         tracing::warn!(
                             event = "discovery.connect_failed",
                             peer = %peer.peer_id,
                             transport = %transport.transport_id(),
                             error = %e,
-                            "failed to establish link with newly discovered peer"
+                            elapsed_ms = connect_started.elapsed().as_millis() as u64,
+                            "failed to establish/confirm link with peer this scan pass — will retry next pass"
                         );
                     }
                 }
@@ -228,6 +271,12 @@ impl DiscoveryManager {
                     self.events.send(ev).ok();
                 }
             }
+            tracing::debug!(
+                event = "discovery.scan_pass_complete",
+                transport = %transport.transport_id(),
+                peers_seen = seen_this_pass,
+                "discovery pass complete for this transport"
+            );
         }
         // First-contact handshake for peers never seen before.
         for peer_id in new_peers {
@@ -235,6 +284,13 @@ impl DiscoveryManager {
         }
         // TTL eviction pass.
         for ev in self.table.sweep().await {
+            if let TopologyEvent::PeerLost { peer_id, .. } = &ev {
+                tracing::info!(
+                    event = "discovery.peer_lost",
+                    peer = %peer_id,
+                    "peer evicted from neighbor table (TTL expired)"
+                );
+            }
             self.events.send(ev).ok();
         }
     }
@@ -434,6 +490,129 @@ mod tests {
             .await;
         assert!(matches!(ev, Some(TopologyEvent::PeerLost { .. })));
         assert!(!m.neighbors().is_up(&peer.peer_id).await);
+    }
+
+    /// HW-3 regression fixture: forwards every `Transport` method to an inner
+    /// `SimulatedTransport` EXCEPT `discover_peers` (the real one always
+    /// returns an empty stream — nothing to seed it with — so this yields a
+    /// fixed injected peer on every call, matching real `discover_peers()`
+    /// semantics: it re-yields every currently-visible peer on every scan
+    /// pass, not just new ones) and `connect` (counted, so the test can
+    /// observe how many times `scan_once()` actually attempted it).
+    struct CountingConnectTransport {
+        inner: crate::transport::simulated::SimulatedTransport,
+        connect_calls: std::sync::atomic::AtomicUsize,
+        seeded_peer: PeerInfo,
+    }
+
+    #[async_trait::async_trait]
+    impl Transport for CountingConnectTransport {
+        fn transport_id(&self) -> &TransportId {
+            self.inner.transport_id()
+        }
+        fn display_name(&self) -> &str {
+            self.inner.display_name()
+        }
+        fn capabilities(&self) -> &crate::transport::TransportCapabilities {
+            self.inner.capabilities()
+        }
+        fn state(&self) -> crate::transport::TransportState {
+            self.inner.state()
+        }
+        fn state_stream(
+            &self,
+        ) -> std::pin::Pin<Box<dyn futures_util::Stream<Item = crate::transport::TransportStateEvent> + Send>>
+        {
+            self.inner.state_stream()
+        }
+        async fn discover_peers(
+            &self,
+            _config: ScanConfig,
+        ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = PeerInfo> + Send>>, TransportError>
+        {
+            Ok(Box::pin(futures_util::stream::iter(vec![
+                self.seeded_peer.clone()
+            ])))
+        }
+        async fn stop_discovery(&self) -> Result<(), TransportError> {
+            self.inner.stop_discovery().await
+        }
+        async fn start_advertising(
+            &self,
+            info: crate::message::NodeAdvertisement,
+        ) -> Result<(), TransportError> {
+            self.inner.start_advertising(info).await
+        }
+        async fn stop_advertising(&self) -> Result<(), TransportError> {
+            self.inner.stop_advertising().await
+        }
+        async fn connect(
+            &self,
+            peer: &PeerInfo,
+        ) -> Result<crate::message::TransportLink, TransportError> {
+            self.connect_calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.inner.connect(peer).await
+        }
+        async fn send(
+            &self,
+            peer: &PeerId,
+            message: &SerializedMessage,
+        ) -> Result<crate::message::SendReceipt, TransportError> {
+            self.inner.send(peer, message).await
+        }
+        fn incoming_messages(
+            &self,
+        ) -> std::pin::Pin<Box<dyn futures_util::Stream<Item = crate::message::IncomingMessage> + Send>>
+        {
+            self.inner.incoming_messages()
+        }
+        fn cost_snapshot(&self) -> crate::transport::TransportCost {
+            self.inner.cost_snapshot()
+        }
+        fn set_send_priority_hint(&self, priority: MessagePriority) {
+            self.inner.set_send_priority_hint(priority)
+        }
+        async fn shutdown(&self) -> Result<(), TransportError> {
+            self.inner.shutdown().await
+        }
+    }
+
+    #[tokio::test]
+    async fn hw3_scan_reconnects_an_already_known_peer_every_pass() {
+        // HW-3: found on real hardware — scan_once() used to gate connect()
+        // behind `PeerDiscovered` alone, so a peer seen once (first scan)
+        // never got a SECOND connect() attempt on any later scan pass, even
+        // though discover_peers() re-yields it every pass. A link that
+        // dropped after the first connect — confirmed live via real BLE GATT
+        // cycling — was never re-established: nothing else in the engine
+        // ever calls connect(). This test proves the peer gets a fresh
+        // connect() attempt on the SECOND scan pass too, not just the first.
+        let m = manager(5);
+        let sim = crate::transport::simulated::SimulatedTransport::new(
+            "sim-hw3",
+            "Sim HW-3",
+            SimConfig::default(),
+        );
+        let t = Arc::new(CountingConnectTransport {
+            inner: sim,
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(9),
+        });
+        m.register_transport(t.clone()).await;
+
+        m.scan_once().await;
+        let after_first = t.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(after_first, 1, "first scan pass must connect the newly discovered peer");
+
+        m.scan_once().await;
+        let after_second = t.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(
+            after_second, 2,
+            "second scan pass of an ALREADY-KNOWN peer must still attempt connect() \
+             (idempotent no-op if still linked, a genuine retry if the link dropped) — \
+             this is the exact fix for HW-3"
+        );
     }
 
     #[tokio::test]

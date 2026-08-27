@@ -86,6 +86,11 @@ impl IrisEngine {
         direct: Arc<dyn FfiWifiDirectAdapter>,
         node_id: Vec<u8>,
     ) -> Result<Arc<Self>, IrisFfiError> {
+        // HW-3: install the logcat bridge before anything else can emit a
+        // tracing event worth seeing — every transport/discovery/message-
+        // engine construction below this line is exactly the kind of
+        // startup activity that was previously invisible.
+        crate::logging::init();
         let node_id: [u8; 32] = node_id
             .try_into()
             .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
