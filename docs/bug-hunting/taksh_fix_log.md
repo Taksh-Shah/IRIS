@@ -1185,13 +1185,161 @@ warnings, present before this session's work began).
 SIM-4) in one commit — under the cap. Tier 3: 4 of 32 done, 28 remaining
 across Wakes 13-18 per the plan above.
 
-### Next run (Run 17)
-Wake 13: SIM-5, SIM-6, SIM-11, SIM-17, SIM-18, SIM-31 — the dead/
-fabricated sim metrics cluster (eviction never wired into the sim loop,
-peak-storage tracking measures final not peak usage, `ForwardResult` is
-computed and discarded so nothing counts blocked/sinked forwards, the
-ROUTE-002 overhead claim has no assertion anywhere, its zero-delivery
-sentinel reads as the best possible value, and the dead `overhead()`/
-`avg_latency_ms`/etc. API cluster SIM-31 names should either get wired
-into the new SIM-17 assertion or be deleted). Read all six findings'
-current source fresh before implementing, same discipline as this run.
+## Run 17 — 2026-08-27 — Wake 13: dead/fabricated sim metrics cluster (SIM-5/6/11/17/18/31)
+
+Owner said "continue" (standing instruction, same session). Per Run 16's
+plan: Wake 13, the dead/fabricated sim metrics cluster.
+
+**SIM-5 — source drift discovered mid-fix.** The finding's evidence says
+the sim "never calls `ScfEngine::evict_to_fit` or `reap_expired`, so no
+storage pressure or TTL reaping is ever applied." Read `buffer_message`
+in full before implementing (same discipline as every fix this session)
+and found this is only half true now: `buffer_message` already calls
+`self.evict_until(target)` internally whenever an insert would exceed
+`max_bytes` — DTN-1, a *different*, already-landed finding from this
+session's earlier Tier 2 pass, put that enforcement there. So storage
+pressure genuinely IS handled; it just doesn't show up in
+`evictions_total`, because `buffer_message`'s
+`Result<DeliveryStatus, ScfError>` doesn't surface what it evicted as a
+side effect. Considered changing `buffer_message`'s signature to return
+evicted ids — checked every caller first (`grep -rn "\.buffer_message("`
+across the whole tree) and found ~30 call sites across
+`routing/scf.rs`, `scf_contact.rs`, `scf_eviction.rs`, and
+`obs_telemetry.rs`, all but the sim's own two being test code with
+`.unwrap()` on the current return type. Changing a signature that
+widely used, purely to fix a sim-local bookkeeping gap, is disproportionate
+— instead diffed `ScfEngine::len()` before/after each of the sim's two
+`buffer_message` call sites (injection, relay-landing), accounting for
+the admitted entry so a capacity eviction isn't miscounted as a net
+occupancy change. The TTL-reaping half of the finding WAS fully missing
+— `reap_expired()` had zero callers anywhere in `sim/`, confirmed fresh
+— so a message that outlived its TTL while sitting un-relayed in a
+buffer stayed there forever, still occupying space, still forwardable.
+Added a `reap_expired()` call for every node at every timeline tick.
+Regression test `ttl_expiry_is_reaped_and_counted` (1-second TTL, no
+other tick until 5 virtual seconds later) proves the reaping half
+directly; the capacity-eviction diff logic is exercised by every
+existing test's buffer traffic (correctly computing 0 when nothing is
+evicted) but has no dedicated test — reaching the 500MB default
+`max_storage_bytes` needs either a new sim config knob (not something
+this finding asks for) or an impractically large test.
+
+**SIM-6.** `peak_storage_bytes` was computed once, from final node
+state, after `run()` returned — the finding's own diagnosis, confirmed
+by reading `metrics.rs`. Added a real running peak to `Simulation`,
+sampled every timeline tick — not just contact ticks as the finding's
+literal fix text suggests, because an injection can itself create a
+momentary spike before the next contact relays the message away, which
+a contact-only sample would miss (re-derived from reasoning about the
+actual event model, not the finding's literal text). Regression test
+`peak_storage_bytes_captures_transient_high_not_final_state` is built
+to prove exactly this distinction: final usage across every node is
+provably 0 (a delivered message is removed from both buffers, DTN-5),
+while the peak sampled mid-run is provably nonzero — a case the OLD
+computation could not have passed.
+
+**SIM-11.** `ForwardResult` already distinguished four blocked reasons
+internally; `run()`'s two forwarding loops threw the result away on
+every call. Split `Blocked` into `BlockedBacktrack`/`BlockedHopBudget`/
+`BlockedNoAdvantage`/`BlockedLoss` (the finding's own suggested split)
+plus a fifth, `BlockedMalformed`, for a defensive branch (malformed
+32-byte recipient check) that's unreachable in every current sim code
+path and deliberately not one of the four tallied counters — mapping it
+into one of the four real categories would have made the tally lie
+about why a forward was actually blocked, which is the entire point of
+this fix. Added a `tally` helper and four `u64` counters, exposed on
+`SimOutcome`. Deleted `route2_debug_undelivered` (the `#[ignore]`d
+eprintln debug test this fix makes obsolete) and its only caller
+`run_ferry_inspect`, per the finding's own explicit instruction —
+required removing the now-unused `MessageId` import from
+`sim_scenarios.rs` too. Regression test
+`blocked_reasons_are_tallied_and_exposed` constructs a 5-node P4 chain
+one hop longer than the 3-hop budget (`routing/flood.rs`) and checks
+`blocked_hop_budget` directly, traced by hand through `forward_to`'s
+hop-count logic before writing it to confirm the 4th hop is exactly
+where the budget bites.
+
+**SIM-18 before SIM-17** (order matters, per SIM-18's own note that an
+overhead assertion landing before its sentinel is fixed would let a
+catastrophic-failure run "silently satisfy" the new check). Changed the
+zero-delivery `overhead_ratio` sentinel from `0.0` (the *best* possible
+value) to `f64::INFINITY` — composes directly with a `<` comparison via
+ordinary float ordering, chosen over `Option<f64>` (the finding's other
+suggested option) specifically because SIM-17's new assertion can then
+compare both sides without unwrapping.
+
+**SIM-17.** Added the overhead assertion
+`route2_opportunistic_matches_delivery_with_lower_overhead`'s own name
+and doc comment already promised. Ran it before deciding anything else
+— per the finding's own "if it fails, that failure is the finding"
+instruction, this was not going to be loosened to pass. It passed on
+the first run: L2 genuinely does lower overhead vs L0 in this scenario.
+The GTMX+ mechanism works; it simply had zero executable proof of that
+until this run.
+
+**SIM-31.** Re-verified every named item's "dead" status fresh via grep
+before touching anything, rather than trusting the finding's evidence —
+source drift has been a recurring theme this session (TAK-2, SIM-5
+above) and a method could easily have gained a caller since the finding
+was written. Confirmed `shadow_enabled`, `loss_rate`,
+`injections_public`, `avg_latency_ms` still have zero readers anywhere
+in `crates/`; deleted all four. `SimMetrics::overhead()` — the fifth
+item — is no longer dead: SIM-17 gave it its first real caller in this
+same run, so it was kept. `peak_storage_bytes` — the sixth item, listed
+as "wrong anyway, SIM-6" — was kept as a struct field rather than
+deleted: `SimMetrics` is documented as a "full metrics snapshot for one
+simulation run," and its sibling fields (`latency_p50_ms`,
+`evictions_total`) aren't universally read by every test either; a
+snapshot struct legitimately carries fields not every caller consumes.
+SIM-6 making the value correct is what this finding's own cross-
+reference to SIM-6 actually asks for, not deletion.
+
+**Flagged, not chased: `ScfEngine` may have zero production callers.**
+While reading `buffer_message`'s callers for SIM-5 (see above), grepped
+`message_engine/mod.rs` for `ScfEngine`/`.scf.`/`buffer_message` and got
+zero matches. A wider grep across `crates/iris-core/src/`,
+`crates/iris-android/src/`, `crates/iris-ios/src/` found `ScfEngine`
+referenced outside `routing/scf*.rs` (its definition) and `sim/` (the
+simulator) in exactly two places: a `pub use` re-export in
+`routing/mod.rs`, and one `#[cfg(test)]` function in the same file that
+manually constructs a `ScfEngine` to prove the store-carry-forward
+concept works — not something reachable from a real message-send call.
+If this holds up, it means the entire store-carry-forward layer this
+session spent 25 fixes hardening (DTN-1 through DTN-25, Tier 2) may not
+be wired into the actual production message path at all, and
+offline/partition delivery might not work on a real device despite the
+simulator reporting near-100% delivery in partition-carry scenarios.
+This is well outside a Tier 3 sim-metrics wake's scope and far too
+large a claim to act on from a grep alone — flagged via `spawn_task`
+(`task_fb33727f`) for dedicated investigation rather than either chased
+mid-wake or silently dropped.
+
+**Run 17 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop` —
+**696 iris-core lib tests, 0 failed** (+3 from this wake's three new
+regression tests); `cargo test -p iris-core --test sim_scenarios --test
+ml_experiments` — 16/16 pass (`sim_scenarios.rs` drops from 9 tests
+including 1 ignored to 8, all passing, reflecting
+`route2_debug_undelivered`'s deletion); `cargo clippy -p iris-core --lib
+--no-deps` — 14 warnings, all pre-existing and unrelated (diffed against
+Wake 12's clippy output to confirm no new ones, same set:
+`transport::state_tx` unused-Result sites, `routing::decide`'s
+too-many-arguments, etc.).
+
+**§8 accounting:** 6 findings fixed this run (SIM-5, SIM-6, SIM-11,
+SIM-17, SIM-18, SIM-31) in one commit — at the cap. Tier 3: 10 of 32
+done, 22 remaining across Wakes 14-18 per the Run 16 plan.
+
+### Next run (Run 18)
+Wake 14: SIM-19, SIM-20, SIM-29 — the statistics/test-strength cluster
+(percentile index rounds instead of interpolating, biasing p95 low at
+exactly the sample sizes the pilot plan uses; `wilson_ci_95` produces a
+silent `NaN` when `k > n`, reachable via a duplicate-delivery bug;
+`loss_reduces_delivery_ratio_monotonically`'s non-strict `<=` passes
+even with the loss mechanism fully disabled, and
+`route2_spray_bounds_overhead_property` checks a mean instead of a
+per-message max so it can't catch one message exploding past the spray
+bound). All three are `sim/metrics.rs`/`tests/sim_scenarios.rs`
+correctness-of-the-check-itself bugs, same character as this run's
+SIM-17/18. Read current source fresh before implementing, same
+discipline as every run.
