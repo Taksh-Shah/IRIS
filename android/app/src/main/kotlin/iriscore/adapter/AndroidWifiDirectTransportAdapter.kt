@@ -91,6 +91,17 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
         /** Bounded dial timeout for the GO socket; never blocks the callback scope. */
         private const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
+
+        /**
+         * FFI-3: bounded read timeout for the GO's blocking handshake-frame
+         * read — bigger than a healthy LAN round trip needs, small enough
+         * that a client that never sends its handshake can't tie up an
+         * accept-loop slot indefinitely.
+         */
+        private const val HANDSHAKE_TIMEOUT_MS = 5_000
+
+        /** MAC address strings are ~17 bytes; generous ceiling against a hostile length prefix. */
+        private const val MAX_HANDSHAKE_BYTES = 64
     }
 
     private val appContext: Context = context.applicationContext
@@ -202,6 +213,15 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             .toString(16)
             .padStart(24, '0')
 
+    /**
+     * FFI-3: this node's own P2P device address (MAC), needed for the
+     * in-band handshake in [connectToGroupOwner] — a client must tell the
+     * GO who it is over the socket, since the GO cannot derive it from the
+     * accepted connection alone (see [ensureGroupServer]'s doc).
+     */
+    @Volatile
+    private var myDeviceAddress: String? = null
+
     private val p2pStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -211,6 +231,12 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                         WifiP2pManager.WIFI_P2P_STATE_DISABLED,
                     )
                     availability.setAvailable(state == WifiP2pManager.WIFI_P2P_STATE_ENABLED)
+                }
+                WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
+                    val device = intent.getParcelableExtra<android.net.wifi.p2p.WifiP2pDevice>(
+                        WifiP2pManager.EXTRA_WIFI_P2P_DEVICE,
+                    )
+                    device?.deviceAddress?.let { myDeviceAddress = it }
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     val group = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)
@@ -493,6 +519,8 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         val filter = IntentFilter().apply {
             addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
+            // FFI-3: source of myDeviceAddress for the client-side handshake.
+            addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
         }
         // API 34+ REQUIRES an export flag; without it registerReceiver throws
         // SecurityException, which runCatching swallowed. The adapter then never
@@ -683,7 +711,22 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         }
     }
 
-    /** GO side: accept client links until the group is torn down. */
+    /**
+     * GO side: accept client links until the group is torn down.
+     *
+     * FFI-3: an accepted socket identifies its peer only by IP — Wi-Fi
+     * Direct exposes no IP->MAC mapping to the app — but `WifiDirectAdapter
+     * ::p2p_send(peer: PeerHandle)` takes the *discovery* handle, which is
+     * always MAC-keyed (`peerHandleFor`, the ONE allocator, FFI-1/FFI-18).
+     * Keying the accepted link by IP through that same allocator minted a
+     * SECOND, disjoint handle for the same physical device — the GO could
+     * never resolve a discovery handle to its live link. Fixed with an
+     * in-band handshake: the dialing client sends its own P2P device
+     * address as the very first frame on the socket (see
+     * [connectToGroupOwner]); the GO reads it here before building the
+     * normal framed link, and resolves the SAME MAC-keyed handle discovery
+     * already uses.
+     */
     private fun ensureGroupServer() {
         if (groupServer != null) return
         // SO_REUSEADDR before bind: after a group teardown the fixed GO port
@@ -700,12 +743,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             return
         }
         groupServer = FramedSocketServer(server, callbackScope) { socket ->
-            // An accepted socket identifies its peer only by IP — Wi-Fi Direct
-            // exposes no IP->MAC mapping to the app. The handle is therefore
-            // keyed by remote address, and the peer's real identity is resolved
-            // from the envelope above the transport (DEC-WA-0007), never from
-            // this handle.
-            val handle = peerHandleFor(socket.inetAddress?.hostAddress)
+            // Bounded blocking read for the handshake frame — a slow or
+            // malicious client must not be able to stall the accept loop
+            // (which this callback runs on) indefinitely. A timeout or
+            // malformed handshake throws, which FramedSocketServer's own
+            // try/catch around this callback already handles (releases the
+            // concurrent-link slot, closes the socket).
+            socket.soTimeout = HANDSHAKE_TIMEOUT_MS
+            val clientMac = readHandshakeFrame(socket)
+            socket.soTimeout = 0
+            val handle = peerHandleFor(clientMac)
             callbackScope.launch { attachLink(handle, socket) }
         }
     }
@@ -713,6 +760,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     /** Client side: dial the group owner, retrying is left to the next group event. */
     private suspend fun connectToGroupOwner(address: InetAddress, handle: Long) {
         if (links.get(handle) != null) return
+        // FFI-3: the GO cannot identify an accepted socket's peer by MAC on
+        // its own — tell it who we are as the first thing on the wire, in
+        // the same MAC-string form discovery already keys peerHandleFor by.
+        val myMac = awaitMyDeviceAddress() ?: return
         val socket = withContext(Dispatchers.IO) {
             runCatching {
                 Socket().apply {
@@ -720,10 +771,56 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                         InetSocketAddress(address, FramedSocketServer.WIFI_DIRECT_GO_PORT),
                         SOCKET_CONNECT_TIMEOUT_MS,
                     )
+                    writeHandshakeFrame(this, myMac)
                 }
             }.getOrNull()
         } ?: return
         attachLink(handle, socket)
+    }
+
+    /**
+     * Polls briefly for [myDeviceAddress] — populated by the
+     * `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast, which normally fires
+     * well before any group forms, but isn't guaranteed to have landed yet
+     * the very first time a group is joined.
+     */
+    private suspend fun awaitMyDeviceAddress(): String? {
+        val deadline = SystemClock.elapsedRealtime() + GROUP_INFO_SETTLE_MS
+        while (SystemClock.elapsedRealtime() < deadline) {
+            myDeviceAddress?.let { return it }
+            delay(GROUP_INFO_POLL_MS)
+        }
+        return myDeviceAddress
+    }
+
+    /**
+     * FFI-3 handshake wire format: a length-prefixed ASCII MAC address
+     * string, using the SAME 4-byte-big-endian-length framing as
+     * [FrameCodec] but written/read directly on the socket's raw streams
+     * (never `.buffered()`) — a buffered wrapper here would read ahead past
+     * the handshake bytes into the first real frame, which
+     * [FramedSocketLink]'s own separate buffered reader (built afterward)
+     * would then never see. Reading/writing exactly the handshake's bytes
+     * on the unbuffered stream leaves the stream positioned precisely at
+     * the start of normal framed traffic.
+     */
+    private fun writeHandshakeFrame(socket: Socket, mac: String) {
+        val bytes = mac.toByteArray(Charsets.US_ASCII)
+        val out = java.io.DataOutputStream(socket.getOutputStream())
+        out.writeInt(bytes.size)
+        out.write(bytes)
+        out.flush()
+    }
+
+    private fun readHandshakeFrame(socket: Socket): String {
+        val input = java.io.DataInputStream(socket.getInputStream())
+        val length = input.readInt()
+        if (length <= 0 || length > MAX_HANDSHAKE_BYTES) {
+            throw java.io.IOException("handshake length $length out of range")
+        }
+        val bytes = ByteArray(length)
+        input.readFully(bytes)
+        return String(bytes, Charsets.US_ASCII)
     }
 
     /**
