@@ -123,8 +123,21 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     @Volatile
     private var groupServer: FramedSocketServer? = null
 
-    private val startGate = SessionGate<WifiP2pManager.Channel> { initialize() }
-    private val dnsSdGate = SessionGate<Unit> { registerDnsSd() }
+    private val startGate = SessionGate<WifiP2pManager.Channel>(create = { initialize() })
+    // FFI-12: stopDnsSd() used to be nothing but dnsSdGate.reset() — the
+    // local DNS-SD advertisement was never actually withdrawn
+    // (removeLocalService was never called anywhere in this file), so the
+    // device kept advertising IRIS presence after Rust believed
+    // stop_advertising had withdrawn it. The gate now carries the
+    // WifiP2pDnsSdServiceInfo it registered (previously discarded
+    // immediately after addLocalService) so its dispose hook can remove it.
+    private val dnsSdGate = SessionGate<WifiP2pDnsSdServiceInfo>(
+        create = { registerDnsSd() },
+        dispose = { info ->
+            val channel = startGate.ensureStarted()
+            awaitAction { p2pManagerOrThrow().removeLocalService(channel, info, it) }
+        },
+    )
 
     /**
      * FFI-15: `startDiscovery` used to build a brand-new
@@ -141,10 +154,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val serviceRequest: WifiP2pDnsSdServiceRequest by lazy {
         WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_SERVICE_TYPE)
     }
-    private val serviceRequestGate = SessionGate<Unit> {
+    private val serviceRequestGate = SessionGate<Unit>(create = {
         val channel = startGate.ensureStarted()
         awaitAction { p2pManagerOrThrow().addServiceRequest(channel, serviceRequest, it) }
-    }
+    })
 
     /**
      * FFI-5: `startDnsSd()` used to take no arguments — `dnsSdGate`'s lambda
@@ -472,8 +485,8 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         if (!registered) availability.setAvailable(false)
     }
 
-    private suspend fun registerDnsSd() {
-        val channel = startGate.ensureStarted() ?: return
+    private suspend fun registerDnsSd(): WifiP2pDnsSdServiceInfo {
+        val channel = startGate.ensureStarted()
         // FFI-5: the 22-byte IRIS beacon (WifiDirectTxtRecord::build) is
         // binary, but DNS-SD TXT record values are text — hex-encode it
         // under one well-known key. `dnsSdTxtRecordListener` below decodes
@@ -487,6 +500,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         )
         awaitAction { p2pManagerOrThrow().addLocalService(channel, serviceInfo, it) }
         p2pManagerOrThrow().setDnsSdResponseListeners(channel, dnsSdServiceListener, dnsSdTxtRecordListener)
+        // FFI-12: retained (not discarded) so dnsSdGate's dispose hook can
+        // removeLocalService with the exact object addLocalService was given.
+        return serviceInfo
     }
 
     private val dnsSdServiceListener = WifiP2pManager.DnsSdServiceResponseListener { instanceName, _registrationType, srcDevice ->

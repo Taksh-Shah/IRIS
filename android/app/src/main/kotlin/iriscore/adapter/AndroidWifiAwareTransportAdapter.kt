@@ -105,9 +105,24 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
 
     // AND-RT-104: attach() awaits the platform `onAttached` session; the gate
     // caches it so `ensureStarted` never re-attaches.
-    private val attachGate = SessionGate<WifiAwareSession> { attach() }
-    private val subscribeGate = SessionGate<SubscribeDiscoverySession?> { subscribeOnce() }
-    private val publishGate = SessionGate<PublishDiscoverySession?> { publishOnce() }
+    // FFI-12: reset()/shutdown() used to only null these gates' cached
+    // reference — the platform DiscoverySession/WifiAwareSession was never
+    // closed, so NAN discovery/publish and the cluster attach kept running
+    // after Rust believed stop_discovery/shutdown had quieted the radio.
+    // dispose closures make reset()/invalidate() actually tear the platform
+    // object down.
+    private val attachGate = SessionGate<WifiAwareSession>(
+        create = { attach() },
+        dispose = { it.close() },
+    )
+    private val subscribeGate = SessionGate<SubscribeDiscoverySession?>(
+        create = { subscribeOnce() },
+        dispose = { it?.close() },
+    )
+    private val publishGate = SessionGate<PublishDiscoverySession?>(
+        create = { publishOnce() },
+        dispose = { it?.close() },
+    )
 
     /**
      * FFI-4: `publish()` used to ignore its `config` argument entirely —

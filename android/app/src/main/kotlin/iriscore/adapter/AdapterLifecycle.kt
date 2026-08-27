@@ -187,7 +187,27 @@ object FfiCallTimeout {
  *
  * The gate is generic over the created session/handle type.
  */
-class SessionGate<T>(private val create: suspend () -> T) {
+/**
+ * FFI-12: [reset] and [invalidate] used to be pure memoisation — they nulled
+ * [live] and nothing else. Every caller that used `reset()` as if it were
+ * teardown (`unsubscribe`/`unpublish`/`stopDnsSd`) left the platform session
+ * running: an unclosed `DiscoverySession`/`WifiAwareSession` keeps NAN
+ * discovery running and the cluster attached, an unremoved local service
+ * keeps advertising. Rust's contract for these calls is explicit —
+ * "Withdraw the DNS-SD service advertisement" — so the mismatch is a real
+ * defect: continuous battery drain with no user-visible activity, and the
+ * device keeps advertising IRIS presence after the user believed the mesh
+ * had stopped. [dispose] is invoked, under the same mutex [reset] and
+ * [invalidate] already take, on whatever resource was live — best-effort
+ * (a `Throwable` from a platform `close()` is swallowed, matching how
+ * `shutdown()` call sites already wrap platform teardown in `runCatching`)
+ * so a session that's already dead server-side can't block clearing the
+ * gate's own state.
+ */
+class SessionGate<T>(
+    private val create: suspend () -> T,
+    private val dispose: suspend (T) -> Unit = {},
+) {
 
     private val mutex = Mutex()
     private var live: T? = null
@@ -211,11 +231,16 @@ class SessionGate<T>(private val create: suspend () -> T) {
         created
     }
 
-    /** Drops the live resource; `true` if one was running (used by shutdown paths). */
+    /** Drops the live resource, disposing it; `true` if one was running (used by shutdown paths). */
     suspend fun reset(): Boolean = mutex.withLock {
-        val hadLive = live != null
+        val previous = live
         live = null
-        hadLive
+        if (previous != null) {
+            runCatching { dispose(previous) }
+            true
+        } else {
+            false
+        }
     }
 
     /**
@@ -238,12 +263,20 @@ class SessionGate<T>(private val create: suspend () -> T) {
      * Invalidates the live resource under the SAME mutex as [ensureStarted]
      * (AND-RT-105) — a racing re-create is serialized, so a stale create cannot
      * resurrect an invalidated resource. Suspend; platform callbacks (e.g.
-     * channel lost) dispatch through a coroutine scope.
+     * channel lost) dispatch through a coroutine scope. Disposes the
+     * outgoing resource like [reset] — a channel-lost callback means the
+     * platform object is dead anyway, so disposal here is belt-and-braces,
+     * not the primary path.
      */
     suspend fun invalidate(): Boolean = mutex.withLock {
-        val hadLive = live != null
+        val previous = live
         live = null
-        hadLive
+        if (previous != null) {
+            runCatching { dispose(previous) }
+            true
+        } else {
+            false
+        }
     }
 }
 
