@@ -276,7 +276,10 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     /// are actually present.
     const FIXED_OVERHEAD_BYTES: u64 = 192;
 
-    fn approx_bytes(env: &Envelope) -> u64 {
+    /// `pub(crate)`: DTN-25's bandwidth-aware ranking (`scf_contact.rs`)
+    /// needs the same per-message byte estimate this module uses for
+    /// capacity accounting.
+    pub(crate) fn approx_bytes(env: &Envelope) -> u64 {
         let mut n = Self::FIXED_OVERHEAD_BYTES
             + env.sender_id.len() as u64
             + env.recipient_id.len() as u64
@@ -408,28 +411,22 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
 
     /// Determine the SCF status for one buffered message given current
     /// connectivity to `contact` (None = no contacts).
+    /// DTN-21: this used to fabricate `Delivered` whenever `contact`
+    /// happened to be the envelope's recipient — purely because the peer
+    /// was in range, before any forward was attempted or ack received.
+    /// `Delivered` is a terminal state STORE_CARRY_FORWARD.md defines as
+    /// reached only via `ACK_RECEIVED`; returning it on mere proximity
+    /// meant any caller trusting this for a UI receipt, a delivery metric,
+    /// or a decision to stop carrying acted on a delivery that had not
+    /// happened — a false positive a life-safety application cannot
+    /// afford. `contact` is retained in the signature for API
+    /// compatibility (this function had zero callers at the time of this
+    /// fix) but no longer special-cased.
     pub fn status_for(&self, id: &MessageId, contact: Option<&PeerId>) -> Option<DeliveryStatus> {
+        let _ = contact;
         let key = self.index.get(id)?;
         let msg = self.buffer.get(key)?;
-        match contact {
-            // The recipient is in range: the message is about to be delivered.
-            Some(peer) if Self::recipient_is(peer, &msg.envelope) => {
-                Some(DeliveryStatus::Delivered {
-                    delivered_to: *peer,
-                })
-            }
-            Some(_) => Some(msg.delivery_status.clone()),
-            None => Some(msg.delivery_status.clone()),
-        }
-    }
-
-    fn recipient_is(contact: &PeerId, envelope: &Envelope) -> bool {
-        envelope
-            .recipient_id
-            .as_slice()
-            .try_into()
-            .map(|b: [u8; 32]| PeerId(b) == *contact)
-            .unwrap_or(false)
+        Some(msg.delivery_status.clone())
     }
 
     /// Messages forwardable to a contact: those addressed to it or relayable
@@ -603,6 +600,10 @@ pub enum ScfError {
     /// DTN-1: the buffer is at `max_bytes`/`max_messages` capacity and
     /// eviction could not free enough room for the incoming message.
     StorageFull,
+    /// DTN-24: `mark_forwarded`/`enqueue_forward` was asked to act on a
+    /// message id no longer in the buffer (e.g. reaped or evicted between
+    /// candidate selection and the actual forward attempt).
+    NotFound,
 }
 
 impl std::fmt::Display for ScfError {
@@ -610,6 +611,7 @@ impl std::fmt::Display for ScfError {
         match self {
             ScfError::Expired => write!(f, "scf: message expired"),
             ScfError::StorageFull => write!(f, "scf: storage full"),
+            ScfError::NotFound => write!(f, "scf: message not found"),
         }
     }
 }
@@ -663,6 +665,32 @@ mod tests {
             routing_hints: None,
             auth_cert_chain: None,
         }
+    }
+
+    #[test]
+    fn dtn21_status_for_never_fabricates_delivered_on_proximity() {
+        // Regression: status_for used to return Delivered whenever
+        // `contact` happened to equal the envelope's recipient — purely
+        // because the peer was in range, before any forward was attempted
+        // or ack received. A message that is merely Stored (or
+        // AckPending) must report that real status regardless of `contact`.
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
+        let e = env(MessagePriority::P4, b"sos", 3600);
+        let id = e.message_id;
+        let recipient = pid(9); // env()'s recipient_id is pid(9)
+        scf.buffer_message(e, None).unwrap();
+
+        assert_eq!(scf.status_for(&id, None), Some(DeliveryStatus::Stored));
+        assert_eq!(
+            scf.status_for(&id, Some(&recipient)),
+            Some(DeliveryStatus::Stored),
+            "the recipient merely being in range must not fabricate Delivered"
+        );
+        assert_eq!(
+            scf.status_for(&id, Some(&recipient)),
+            scf.delivery_status(&id),
+            "status_for must agree with delivery_status for every contact argument"
+        );
     }
 
     #[test]
