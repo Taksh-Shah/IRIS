@@ -906,29 +906,35 @@ impl WifiDirectTransport {
     /// `ACCESS_FINE_LOCATION` (API <=32) isn't granted; Kotlin's
     /// `awaitAction` now converts that into `IrisFfiError::PermissionDenied`
     /// ("permission denied") instead of letting it propagate undeclared.
-    /// Mapped to `TransportError::NotSupported` — same target as BLE's
-    /// `BleError::PermissionDenied` (see `ble.rs`) — so the manager can
-    /// degrade this transport instead of treating a permission gate as a
-    /// retryable I/O blip it will spin on forever. Unlike FFI-13's
+    /// MG-41: mapped to `TransportError::PermissionDenied` — same target as
+    /// BLE's `BleError::PermissionDenied` (see `ble.rs`) — so the manager
+    /// can surface an actionable prompt instead of treating a permission
+    /// gate as a retryable I/O blip it will spin on forever. Unlike FFI-13's
     /// `permanently_unsupported` latch, this does NOT mark the transport
     /// permanently unsupported — a revoked permission can be re-granted at
     /// any time (Settings, a fresh runtime prompt), so the next call is
     /// simply free to try again.
     fn classify_error(context: &str, e: String) -> TransportError {
         if e.contains("permission denied") {
-            TransportError::NotSupported
+            TransportError::PermissionDenied {
+                permission: "wifi_direct",
+            }
         } else {
-            TransportError::Io(format!("{context}: {e}"))
+            TransportError::Io {
+                kind: std::io::ErrorKind::Other,
+                msg: format!("{context}: {e}"),
+            }
         }
     }
 
-    /// Clone of the injected adapter, or `NotSupported` when none is present.
+    /// Clone of the injected adapter, or `HardwareUnavailable` when none is
+    /// present.
     async fn adapter(&self) -> Result<Arc<dyn WifiDirectAdapter>, TransportError> {
         self.adapter
             .lock()
             .await
             .clone()
-            .ok_or(TransportError::NotSupported)
+            .ok_or(TransportError::HardwareUnavailable)
     }
 
     /// Remove a link + drop out of `Connected` when it was the last active link.
@@ -964,13 +970,14 @@ impl WifiDirectTransport {
             // FFI-13: a device with no Wi-Fi Direct hardware (or a platform
             // Channel that failed to initialize) used to report Ok(()) here
             // — Kotlin's initialize() returned null and SessionGate cached
-            // it as a "successful" start. Now that it throws NotSupported
+            // it as a "successful" start. Now that it throws "not supported"
             // (IrisFfiError's Display: "not supported on this device"),
             // treat it as the permanent condition it is: TransportError::
-            // NotSupported drives the transport straight to Unavailable
-            // (see the caller), instead of Io — which every OTHER caller in
-            // this file already treats as retryable and would have kept
-            // this transport polling a subsystem that can never come up.
+            // HardwareUnavailable drives the transport straight to
+            // Unavailable (see the caller), instead of Io — which every
+            // OTHER caller in this file already treats as retryable and
+            // would have kept this transport polling a subsystem that can
+            // never come up.
             return Err(if e.contains("not supported") {
                 // Permanent: this device cannot ever bring up Wi-Fi Direct.
                 // Flip state here (not just return an error) so the manager
@@ -981,7 +988,7 @@ impl WifiDirectTransport {
                 // their NEXT call instead of re-invoking adapter.start().
                 self.set_state(TransportState::Unavailable);
                 self.permanently_unsupported.store(true, Ordering::SeqCst);
-                TransportError::NotSupported
+                TransportError::HardwareUnavailable
             } else {
                 // FFI-7: a revoked permission is not the permanent condition
                 // "not supported" is — deliberately NOT latching
@@ -1196,7 +1203,7 @@ impl Transport for WifiDirectTransport {
         // TransportState::Unavailable alone — that's also the pre-start
         // default, so checking it here would block the very first call.)
         if self.permanently_unsupported.load(Ordering::SeqCst) {
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::HardwareUnavailable);
         }
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
@@ -1253,12 +1260,15 @@ impl Transport for WifiDirectTransport {
     async fn start_advertising(&self, info: NodeAdvertisement) -> Result<(), TransportError> {
         // FFI-13: see discover_peers — fail fast once permanently unsupported.
         if self.permanently_unsupported.load(Ordering::SeqCst) {
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::HardwareUnavailable);
         }
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
         if !adapter.is_available() {
-            return Err(TransportError::NotSupported);
+            // MG-41: the adapter exists (we're holding it) but currently
+            // reports itself unable to operate — closer to "radio off" than
+            // to "no hardware at all".
+            return Err(TransportError::RadioDisabled);
         }
         // FFI-5: build the real 22-byte TXT-record beacon from the node's
         // actual identity — same construction BLE/Wi-Fi Aware's
@@ -1297,7 +1307,12 @@ impl Transport for WifiDirectTransport {
 
     async fn connect(&self, peer: &PeerInfo) -> Result<TransportLink, TransportError> {
         if self.state.load() == TransportState::Unavailable {
-            return Err(TransportError::NotSupported);
+            // MG-41: `TransportState::Unavailable` itself doesn't yet
+            // distinguish hardware-absent from permission/radio-off (that
+            // split is out of this fix's scope — see error.rs's module
+            // doc); `HardwareUnavailable` is the closest available meaning
+            // for "not usable" without finer-grained state to draw on.
+            return Err(TransportError::HardwareUnavailable);
         }
         let adapter = self.adapter().await?;
         let handle = peer
@@ -1313,7 +1328,10 @@ impl Transport for WifiDirectTransport {
             return Err(TransportError::ShuttingDown);
         }
         if !adapter.is_available() {
-            return Err(TransportError::NotSupported);
+            // MG-41: the adapter exists (we're holding it) but currently
+            // reports itself unable to operate — closer to "radio off" than
+            // to "no hardware at all".
+            return Err(TransportError::RadioDisabled);
         }
         {
             let links = self.links.lock().unwrap_or_else(|p| p.into_inner());
@@ -1407,9 +1425,12 @@ impl Transport for WifiDirectTransport {
         message: &SerializedMessage,
     ) -> Result<SendReceipt, TransportError> {
         if message.payload.len() > MAX_WIFI_DIRECT_MESSAGE_BYTES {
-            return Err(TransportError::Protocol(
-                "message exceeds Wi-Fi Direct frame size".into(),
-            ));
+            // MG-40: resolvable by fragmenting upstream and retrying on
+            // this same transport — not a framing/decode failure.
+            return Err(TransportError::MessageTooLarge {
+                limit: MAX_WIFI_DIRECT_MESSAGE_BYTES,
+                actual: message.payload.len(),
+            });
         }
         if message.payload.is_empty() {
             // RT-007: a zero-length frame is dropped inbound (INTERNET-001
@@ -1433,10 +1454,10 @@ impl Transport for WifiDirectTransport {
             for h in handles {
                 self.teardown_link(&adapter, h).await;
             }
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::RadioDisabled);
         }
         if self.state.load() == TransportState::Unavailable {
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::HardwareUnavailable);
         }
         let handle = self
             .links
@@ -1988,7 +2009,7 @@ mod tests {
         a.set_available(false);
         assert!(matches!(
             ta.send(&peer.peer_id, &sample_message(b"x")).await,
-            Err(TransportError::NotSupported)
+            Err(TransportError::RadioDisabled)
         ));
         assert!(ta.links.lock().unwrap_or_else(|p| p.into_inner()).is_empty(), "links torn down");
         assert_eq!(ta.state(), TransportState::Degraded);

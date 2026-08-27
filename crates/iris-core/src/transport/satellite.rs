@@ -572,6 +572,22 @@ impl std::fmt::Display for SatelliteLinkError {
 
 impl std::error::Error for SatelliteLinkError {}
 
+/// MG-39/MG-41: mirrors `lora.rs`'s `lora_link_err` — every call site used
+/// to wrap *any* `SatelliteLinkError` variant into `TransportError::Io(String)`
+/// uniformly, collapsing "hardware gated" (permanent), "link closed" (needs
+/// a fresh connect), and a genuine I/O failure (may be transient) into one
+/// opaque string.
+fn satellite_link_err(context: &str, e: SatelliteLinkError) -> TransportError {
+    match e {
+        SatelliteLinkError::HardwareGated => TransportError::HardwareUnavailable,
+        SatelliteLinkError::Closed => TransportError::NotConnected,
+        SatelliteLinkError::Io(msg) => TransportError::Io {
+            kind: std::io::ErrorKind::Other,
+            msg: format!("{context}: {msg}"),
+        },
+    }
+}
+
 /// The seam between the IRIS core and an external satellite modem/hotspot
 /// (`open/close/tx/rx/status`) — abstracts AT-serial SBD modems so the Rust
 /// core never depends on a module-family API (BleAdapter/LoRaLinkAdapter
@@ -976,19 +992,20 @@ impl SatelliteTransport {
     /// never carry and bounds depth via the shared backlog cap.
     pub fn enqueue_backlog(&self, msg: SerializedMessage) -> Result<(), TransportError> {
         if msg.payload.len() > MAX_SBD_MO_BYTES {
-            return Err(TransportError::Protocol(format!(
-                "payload {} B exceeds satellite {}-B MO capacity",
-                msg.payload.len(),
-                MAX_SBD_MO_BYTES
-            )));
+            // MG-40: resolvable by fragmenting upstream and retrying on
+            // this same transport — not a framing/decode failure.
+            return Err(TransportError::MessageTooLarge {
+                limit: MAX_SBD_MO_BYTES,
+                actual: msg.payload.len(),
+            });
         }
         if !matches!(
             msg.priority,
             MessagePriority::P0 | MessagePriority::P1 | MessagePriority::P2
         ) {
-            return Err(TransportError::Protocol(String::from(
-                "satellite carries P0-P2 only",
-            )));
+            // MG-40: permanent for this transport — the caller must
+            // re-select, never retry here.
+            return Err(TransportError::PolicyDenied("satellite carries P0-P2 only"));
         }
         if !self.backlog.push(msg.priority, msg) {
             return Err(TransportError::Busy);
@@ -1012,23 +1029,26 @@ impl SatelliteTransport {
         let Some(adapter) = adapter else {
             return Err(TransportError::NotConnected);
         };
-        // AC-5: eligibility hard gate — P3+ can never ride satellite.
+        // AC-5: eligibility hard gate — P3+ can never ride satellite. This
+        // is MG-1's livelock mechanism (MG-40): the old `Protocol` variant
+        // gave the engine no way to tell "permanently ineligible, re-select"
+        // from a transient framing glitch, so it retried on the same
+        // permanently-ineligible transport until the budget exhausted.
         if !matches!(
             msg.priority,
             MessagePriority::P0 | MessagePriority::P1 | MessagePriority::P2
         ) {
-            return Err(TransportError::Protocol(String::from(
+            return Err(TransportError::PolicyDenied(
                 "satellite carries P0-P2 emergency traffic only",
-            )));
+            ));
         }
         // SAT-RT-105: gate on the MT budget — mesh-relayed traffic rides the
         // 270-B return leg. MO 340 remains available for gateway egress only.
         if msg.payload.len() > MAX_SBD_MT_BYTES {
-            return Err(TransportError::Protocol(format!(
-                "payload {} B exceeds satellite {}-B MT relay budget (fragment upstream)",
-                msg.payload.len(),
-                MAX_SBD_MT_BYTES
-            )));
+            return Err(TransportError::MessageTooLarge {
+                limit: MAX_SBD_MT_BYTES,
+                actual: msg.payload.len(),
+            });
         }
         SbdFrame::new_mo(&msg.payload).map_err(|e| TransportError::Protocol(e.to_string()))?;
         let admission = match self.guard.admit_tx(msg.priority) {
@@ -1081,7 +1101,7 @@ impl SatelliteTransport {
             self.guard.refund_tx(admission.token);
             self.metrics.tx_failures().fetch_add(1, Ordering::Relaxed);
             tracing::debug!(target: "iris.transport.satellite", "tx failed after guard admission; budget refunded");
-            return Err(TransportError::Io(format!("satellite link tx: {e}")));
+            return Err(satellite_link_err("satellite link tx", e));
         }
         self.metrics.packets_tx().fetch_add(1, Ordering::Relaxed);
         self.metrics
@@ -1167,7 +1187,7 @@ impl SatelliteTransport {
                     }
                 },
                 Ok(None) => break,
-                Err(e) => return Err(TransportError::Io(format!("satellite link rx: {e}"))),
+                Err(e) => return Err(satellite_link_err("satellite link rx", e)),
             }
         }
         Ok(delivered)
@@ -1226,7 +1246,7 @@ impl Transport for SatelliteTransport {
         adapter
             .status()
             .await
-            .map_err(|e| TransportError::Io(format!("satellite status probe: {e}")))?;
+            .map_err(|e| satellite_link_err("satellite status probe", e))?;
         // SAT-RT-108: re-verify the adapter still exists after the probe (a
         // racing detach must not leave a transient Connected-without-link).
         if self.adapter.read().await.is_none() {
@@ -1560,7 +1580,7 @@ mod tests {
                 .send(&PeerId([2u8; 32]), &msg(p, 40))
                 .await
                 .expect_err("P3+ can never ride satellite");
-            assert!(matches!(err, TransportError::Protocol(_)));
+            assert!(matches!(err, TransportError::PolicyDenied(_)));
         }
         // Backlog enqueues are gated identically.
         assert!(t.enqueue_backlog(msg(MessagePriority::P5, 40)).is_err());
@@ -1575,7 +1595,7 @@ mod tests {
             .send(&PeerId([3u8; 32]), &msg(MessagePriority::P0, 271))
             .await
             .expect_err(">270 B cannot ride the MT relay leg");
-        assert!(matches!(err, TransportError::Protocol(_)));
+        assert!(matches!(err, TransportError::MessageTooLarge { .. }));
     }
 
     #[tokio::test]
@@ -1643,7 +1663,9 @@ mod tests {
             .send(&PeerId([5u8; 32]), &msg(MessagePriority::P1, 40))
             .await
             .expect_err("closed link fails the tx");
-        assert!(matches!(err, TransportError::Io(_)));
+        // MG-39/41: a closed link is distinguishable from a genuine I/O
+        // failure now — `SatelliteLinkError::Closed` maps to `NotConnected`.
+        assert!(matches!(err, TransportError::NotConnected));
         let m = t.metrics_snapshot();
         assert_eq!(m.tx_failures, 1);
         assert_eq!(m.packets_tx, 0);

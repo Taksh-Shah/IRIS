@@ -1220,7 +1220,7 @@ impl MessageEngine {
                 attempt = item.attempts,
                 "select_transports() returned no candidates for this peer — requeuing"
             );
-            self.requeue_or_fail(item).await;
+            self.requeue_or_fail(item, true).await;
             return;
         }
 
@@ -1237,7 +1237,7 @@ impl MessageEngine {
         let to_send = match self.serialize_for_transport(&item.envelope, max_mtu).await {
             Ok(v) => v,
             Err(_) => {
-                self.requeue_or_fail(item).await;
+                self.requeue_or_fail(item, true).await;
                 return;
             }
         };
@@ -1249,6 +1249,15 @@ impl MessageEngine {
         // last error per transport so the requeue/fail path below can say
         // WHY, instead of nothing.
         let mut last_error: Option<(crate::TransportId, crate::TransportError)> = None;
+        // MG-39: track whether *every* observed send failure was
+        // non-retryable — feeds `requeue_or_fail`'s bounded-budget
+        // short-circuit below. `saw_failure` stays false if `ranked` was
+        // non-empty but every entry vanished from `manager.get()` (no
+        // actual send was attempted), so that edge case defaults to
+        // retryable rather than being mistaken for a unanimous
+        // non-retryable failure.
+        let mut saw_failure = false;
+        let mut any_retryable_failure = false;
         for r in &ranked {
             let Some(t) = self.manager.get(&r.transport_id).await else {
                 tracing::debug!(
@@ -1283,6 +1292,10 @@ impl MessageEngine {
                             error = %e,
                             "transport.send() failed for this fragment"
                         );
+                        saw_failure = true;
+                        if e.is_retryable() {
+                            any_retryable_failure = true;
+                        }
                         last_error = Some((r.transport_id.clone(), e));
                     }
                 }
@@ -1324,15 +1337,34 @@ impl MessageEngine {
                 last_error = last_error.as_ref().map(|(t, e)| format!("{t}: {e}")),
                 "every ranked transport rejected the send — requeuing"
             );
-            self.requeue_or_fail(item).await;
+            // MG-39: only short-circuit a *bounded* retry budget, and only
+            // when every failure we actually observed was non-retryable —
+            // see requeue_or_fail's own doc comment for why P0 is exempt.
+            let retryable = !saw_failure || any_retryable_failure;
+            self.requeue_or_fail(item, retryable).await;
         }
     }
 
-    async fn requeue_or_fail(&self, item: QueuedMessage) {
+    /// `retryable` (MG-39): whether the failure that triggered this call
+    /// could plausibly resolve itself on a later attempt. `deliver_outbound`
+    /// passes `false` when every ranked transport that actually attempted a
+    /// send failed with a non-retryable `TransportError` (e.g.
+    /// `PermissionDenied`, `PolicyDenied`, `HardwareUnavailable`) — those
+    /// conditions do not clear on their own, so exhausting a *finite*
+    /// attempt budget against one only delays a decided outcome. Only
+    /// tightens a **bounded** budget (P1-P7): `max_attempts: None` (P0/
+    /// emergency traffic) keeps retrying regardless of `retryable`,
+    /// unchanged from this function's previous behavior — an SOS message
+    /// must never be abandoned outright just because the last attempt hit
+    /// a permission gate that could be granted moments later; that would be
+    /// a worse outcome than the wasted retry cycles this finding flags. The
+    /// other two call sites (no transport selected; serialize failed) pass
+    /// `true` — neither has a `TransportError` to consult.
+    async fn requeue_or_fail(&self, item: QueuedMessage, retryable: bool) {
         let policy = crate::message_engine::ack::retry_policy(item.envelope.priority);
         let attempt = item.attempts + 1;
         let budget_ok = match policy.max_attempts {
-            Some(max) => attempt <= max,
+            Some(max) => retryable && attempt <= max,
             None => true,
         };
         if !budget_ok {

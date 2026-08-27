@@ -778,6 +778,24 @@ impl std::fmt::Display for LoRaLinkError {
 
 impl std::error::Error for LoRaLinkError {}
 
+/// MG-39/MG-41: every call site used to wrap *any* `LoRaLinkError` variant
+/// into `TransportError::Io(String)` uniformly — collapsing "hardware
+/// gated" (permanent, don't retry), "link closed" (needs a fresh connect),
+/// and a genuine I/O failure (may be transient) into one opaque string,
+/// defeating the retry-vs-abandon distinction those fixes exist to enable.
+/// `context` is prefixed onto the message for the existing "lora link tx/
+/// rx/status probe" call-site labels.
+fn lora_link_err(context: &str, e: LoRaLinkError) -> TransportError {
+    match e {
+        LoRaLinkError::HardwareGated => TransportError::HardwareUnavailable,
+        LoRaLinkError::Closed => TransportError::NotConnected,
+        LoRaLinkError::Io(msg) => TransportError::Io {
+            kind: std::io::ErrorKind::Other,
+            msg: format!("{context}: {msg}"),
+        },
+    }
+}
+
 /// The seam between the IRIS core and an external LoRa module's firmware
 /// (`open/close/tx/rx/status`) — abstracts AT-serial (E22 UART) vs SPI-native
 /// (SX1262 HAT) so the Rust core never depends on a module-family API
@@ -1356,11 +1374,12 @@ impl LoRaTransport {
     /// constrained devices.
     pub fn enqueue_backlog(&self, msg: SerializedMessage) -> Result<(), TransportError> {
         if msg.payload.len() > MAX_PAYLOAD_BYTES {
-            return Err(TransportError::Protocol(format!(
-                "payload {} B exceeds LoRa {}-B frame capacity (fragment upstream)",
-                msg.payload.len(),
-                MAX_PAYLOAD_BYTES
-            )));
+            // MG-40: resolvable by fragmenting upstream and retrying on
+            // this same transport — not a framing/decode failure.
+            return Err(TransportError::MessageTooLarge {
+                limit: MAX_PAYLOAD_BYTES,
+                actual: msg.payload.len(),
+            });
         }
         if !self.backlog.push(msg.priority, msg) {
             return Err(TransportError::Busy);
@@ -1385,11 +1404,10 @@ impl LoRaTransport {
             return Err(TransportError::NotConnected);
         };
         if msg.payload.len() > MAX_PAYLOAD_BYTES {
-            return Err(TransportError::Protocol(format!(
-                "payload {} B exceeds LoRa {}-B frame capacity (fragment upstream)",
-                msg.payload.len(),
-                MAX_PAYLOAD_BYTES
-            )));
+            return Err(TransportError::MessageTooLarge {
+                limit: MAX_PAYLOAD_BYTES,
+                actual: msg.payload.len(),
+            });
         }
         let frame = LoRaFrame {
             priority: msg.priority,
@@ -1426,7 +1444,7 @@ impl LoRaTransport {
             self.tracker.refund(msg.priority, airtime);
             self.metrics.record_tx_failure();
             tracing::debug!(target: "iris.transport.lora", "tx failed after duty reservation; budget refunded");
-            return Err(TransportError::Io(format!("lora link tx: {e}")));
+            return Err(lora_link_err("lora link tx", e));
         }
         self.metrics.record_tx(encoded.len(), airtime);
         tracing::debug!(
@@ -1516,7 +1534,7 @@ impl LoRaTransport {
                     }
                 }
                 Ok(None) => break,
-                Err(e) => return Err(TransportError::Io(format!("lora link rx: {e}"))),
+                Err(e) => return Err(lora_link_err("lora link rx", e)),
             }
         }
         Ok(delivered)
@@ -1579,7 +1597,7 @@ impl Transport for LoRaTransport {
         adapter
             .status()
             .await
-            .map_err(|e| TransportError::Io(format!("lora link status probe: {e}")))?;
+            .map_err(|e| lora_link_err("lora link status probe", e))?;
         self.set_state(TransportState::Connected);
         Ok(TransportLink {
             peer_id: peer.peer_id,
@@ -2180,7 +2198,9 @@ mod tests {
             .send(&peer, &msg(MessagePriority::P4, 237))
             .await
             .expect_err("closed link fails the tx");
-        assert!(matches!(err, TransportError::Io(_)));
+        // MG-39/41: a closed link is distinguishable from a genuine I/O
+        // failure now — `LoRaLinkError::Closed` maps to `NotConnected`.
+        assert!(matches!(err, TransportError::NotConnected));
         let m = t.metrics_snapshot();
         assert_eq!(m.tx_failures, 1);
         assert_eq!(m.packets_tx, 0);
@@ -2257,7 +2277,7 @@ mod tests {
             .send(&PeerId([3u8; 32]), &msg(MessagePriority::P4, 256))
             .await
             .expect_err(">255 B cannot ride one LoRa frame");
-        assert!(matches!(err, TransportError::Protocol(_)));
+        assert!(matches!(err, TransportError::MessageTooLarge { .. }));
     }
 
     #[tokio::test]

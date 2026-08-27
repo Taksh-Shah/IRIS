@@ -746,25 +746,31 @@ impl WifiAwareTransport {
     /// `SecurityException` synchronously without `NEARBY_WIFI_DEVICES`,
     /// converted by Kotlin into `IrisFfiError::PermissionDenied` — "permission
     /// denied" — instead of aborting the call undeclared) from a plain I/O
-    /// failure. Mapped to `TransportError::NotSupported`, same as BLE's
-    /// `BleError::PermissionDenied` and Wi-Fi Direct's equivalent — not
-    /// latched as permanently unsupported, since the permission can be
+    /// failure. MG-41: mapped to `TransportError::PermissionDenied`, same as
+    /// BLE's `BleError::PermissionDenied` and Wi-Fi Direct's equivalent —
+    /// not latched as permanently unsupported, since the permission can be
     /// re-granted at any time.
     fn classify_error(context: &str, e: String) -> TransportError {
         if e.contains("permission denied") {
-            TransportError::NotSupported
+            TransportError::PermissionDenied {
+                permission: "wifi_aware",
+            }
         } else {
-            TransportError::Io(format!("{context}: {e}"))
+            TransportError::Io {
+                kind: std::io::ErrorKind::Other,
+                msg: format!("{context}: {e}"),
+            }
         }
     }
 
-    /// Clone of the injected adapter, or `NotSupported` when none is present.
+    /// Clone of the injected adapter, or `HardwareUnavailable` when none is
+    /// present.
     async fn adapter(&self) -> Result<Arc<dyn WifiAwareAdapter>, TransportError> {
         self.adapter
             .lock()
             .await
             .clone()
-            .ok_or(TransportError::NotSupported)
+            .ok_or(TransportError::HardwareUnavailable)
     }
 
     /// One-shot bring-up: attach + subscribe, then spawn the NDP poller + the
@@ -1043,7 +1049,7 @@ impl Transport for WifiAwareTransport {
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
         if !adapter.is_available() {
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::RadioDisabled);
         }
         // FFI-4: this used to ignore `info` entirely and publish
         // `PublishConfig::default()` — no `service_specific_info`, so no
@@ -1085,7 +1091,7 @@ impl Transport for WifiAwareTransport {
 
     async fn connect(&self, peer: &PeerInfo) -> Result<TransportLink, TransportError> {
         if self.state.load() == TransportState::Unavailable {
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::HardwareUnavailable);
         }
         let adapter = self.adapter().await?;
         let handle = peer
@@ -1108,10 +1114,11 @@ impl Transport for WifiAwareTransport {
         }
         // NEW-WA-RT-102: gate connect on data-scope availability, matching the
         // start_advertising guard. While Degraded (display-off unicast scope),
-        // open_ndp would only fail anyway — return clean NotSupported instead
-        // of ConnectionFailed, and never enter Connected with no data scope.
+        // open_ndp would only fail anyway — return a clean RadioDisabled
+        // instead of ConnectionFailed, and never enter Connected with no
+        // data scope.
         if !adapter.is_available() {
-            return Err(TransportError::NotSupported);
+            return Err(TransportError::RadioDisabled);
         }
         {
             let links = self.links.lock().unwrap_or_else(|p| p.into_inner());
@@ -1162,13 +1169,19 @@ impl Transport for WifiAwareTransport {
         if message.payload.len() > MAX_NAN_MESSAGE_BYTES {
             // WAW-RT-004: bound *before* the shared encoder's assert, so an
             // oversized message is a clean error, never a panic (RES-0020 R8).
-            return Err(TransportError::Protocol(
-                "message exceeds NDP frame size".into(),
-            ));
+            // MG-40: resolvable by fragmenting upstream and retrying on this
+            // same transport — not a framing/decode failure.
+            return Err(TransportError::MessageTooLarge {
+                limit: MAX_NAN_MESSAGE_BYTES,
+                actual: message.payload.len(),
+            });
         }
         let adapter = self.adapter().await?;
-        if !adapter.is_available() || self.state.load() == TransportState::Unavailable {
-            return Err(TransportError::NotSupported);
+        if !adapter.is_available() {
+            return Err(TransportError::RadioDisabled);
+        }
+        if self.state.load() == TransportState::Unavailable {
+            return Err(TransportError::HardwareUnavailable);
         }
         let ndp = self
             .links
@@ -1384,7 +1397,7 @@ mod tests {
                 tags: vec![],
             })
             .await,
-            Err(TransportError::NotSupported)
+            Err(TransportError::RadioDisabled)
         ));
 
         // Discovery-only stays up: A can still start a scan (mesh survival).
@@ -1713,8 +1726,8 @@ mod tests {
         // data scope is already down (WAW-RT-004).
         assert_eq!(ta.state(), TransportState::Degraded);
         assert!(
-            matches!(ta.connect(&peer).await, Err(TransportError::NotSupported)),
-            "connect while data scope down → NotSupported (NEW-WA-RT-102)"
+            matches!(ta.connect(&peer).await, Err(TransportError::RadioDisabled)),
+            "connect while data scope down → RadioDisabled (NEW-WA-RT-102)"
         );
         assert_eq!(ta.state(), TransportState::Degraded, "never Connected");
     }

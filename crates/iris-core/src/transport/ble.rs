@@ -550,7 +550,7 @@ impl BleTransport {
             .lock()
             .unwrap()
             .clone()
-            .ok_or(TransportError::NotSupported)
+            .ok_or(TransportError::HardwareUnavailable)
     }
 
     /// HW-5: `self.connections` is keyed by the discovery-time candidate
@@ -664,9 +664,11 @@ impl Transport for BleTransport {
     ) -> Result<Pin<Box<dyn Stream<Item = PeerInfo> + Send>>, TransportError> {
         let adapter = self.adapter()?;
         if !self.scan_allowed() {
-            return Err(TransportError::Protocol(
-                "ble: scan throttled (start/stop burst within 30s)".to_string(),
-            ));
+            // MG-40: throttling is transient (this same transport will
+            // accept a scan again once the cooldown passes) — it is
+            // neither a framing failure nor a permanent policy denial, so
+            // it belongs with `Busy`, not `Protocol`.
+            return Err(TransportError::Busy);
         }
         let filter = if self.ios_leg {
             // iOS background contract requires a service-UUID-filtered scan
@@ -1093,10 +1095,21 @@ impl Transport for BleTransport {
         // Segment the payload into ATT frames sized to THIS peer's negotiated
         // MTU (AC-2 + BLE-RT-003). A late high-MTU peer must never inflate
         // frames destined to a low-MTU peer.
-        let (_msg_id, frames) = self
-            .segmenter
-            .segment_for_mtu(&message.payload, mtu)
-            .map_err(|e| TransportError::Protocol(format!("ble: segmentation failed: {e}")))?;
+        let (_msg_id, frames) = self.segmenter.segment_for_mtu(&message.payload, mtu).map_err(|e| {
+            // MG-40: a payload/chunk-count overflow is resolvable by
+            // fragmenting upstream and retrying — a genuine framing bug
+            // (TooShort/BadChunkIndex/Truncated/TooManyPartials) is not.
+            match e {
+                crate::transport::ble_att::FrameError::MessageTooLarge
+                | crate::transport::ble_att::FrameError::ChunkCountTooLarge => {
+                    TransportError::MessageTooLarge {
+                        limit: MAX_MESSAGE_BYTES,
+                        actual: message.payload.len(),
+                    }
+                }
+                other => TransportError::Protocol(format!("ble: segmentation failed: {other}")),
+            }
+        })?;
         let char_uuid = IRIS_WRITE_CHARACTERISTIC;
         for frame in &frames {
             if let Err(e) = adapter.gatt_write(handle, char_uuid, frame.clone()) {
@@ -1161,8 +1174,15 @@ impl Transport for BleTransport {
 
 fn to_transport_err(e: BleError) -> TransportError {
     match e {
-        BleError::NotSupported => TransportError::NotSupported,
-        BleError::PermissionDenied | BleError::AdapterOff => TransportError::NotSupported,
+        // MG-41: these three used to collapse into one `NotSupported` —
+        // "no adapter", "no permission", and "adapter present but off" have
+        // three different user remediations (hide the feature / prompt an
+        // in-app permission dialog / point at system Bluetooth settings).
+        BleError::NotSupported => TransportError::HardwareUnavailable,
+        BleError::PermissionDenied => TransportError::PermissionDenied {
+            permission: "bluetooth",
+        },
+        BleError::AdapterOff => TransportError::RadioDisabled,
         BleError::DeviceNotFound => TransportError::PeerNotFound,
         BleError::GattFailure(m) => TransportError::Protocol(m),
     }
@@ -1193,11 +1213,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn no_adapter_returns_not_supported() {
+    async fn no_adapter_returns_hardware_unavailable() {
         let t = BleTransport::new(None);
         let peer = peer_with_mac(PeerId([1u8; 32]), "AA:BB:CC:DD:EE:FF");
         let err = t.connect(&peer).await.unwrap_err();
-        assert_eq!(err, TransportError::NotSupported);
+        assert_eq!(err, TransportError::HardwareUnavailable);
     }
 
     #[tokio::test]
@@ -1414,7 +1434,7 @@ mod tests {
         }
         let err = t.discover_peers(DiscoveryConfig::default()).await;
         assert!(
-            matches!(err, Err(TransportError::Protocol(msg)) if msg.contains("throttled")),
+            matches!(err, Err(TransportError::Busy)),
             "burst beyond {} starts within 30s must be refused (AC-5)",
             SCAN_CEILING
         );
@@ -2106,7 +2126,7 @@ mod tests {
         let t = BleTransport::new(Some(adapter.clone()));
         let peer = peer_with_mac(PeerId([0x50; 32]), "AA:BB:CC:DD:EE:FF");
         let err = t.connect(&peer).await.unwrap_err();
-        assert_ne!(err, TransportError::NotSupported);
+        assert_ne!(err, TransportError::HardwareUnavailable);
         assert_eq!(
             t.state(),
             TransportState::Available,

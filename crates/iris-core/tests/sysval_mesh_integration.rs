@@ -228,6 +228,6 @@ async fn p0_multipath_includes_satellite_emergency_only() {
             .send(&PeerId([11u8; 32]), &envelope(prio, 40))
             .await
             .expect_err("P3+ can never ride satellite");
-        assert!(matches!(err, iris_core::TransportError::Protocol(_)));
+        assert!(matches!(err, iris_core::TransportError::PolicyDenied(_)));
     }
 }

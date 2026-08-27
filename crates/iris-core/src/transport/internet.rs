@@ -167,9 +167,12 @@ pub fn backoff_ms(attempt: u32, seed: u64) -> u64 {
 pub fn encode_frame(message: &SerializedMessage) -> Result<Vec<u8>, TransportError> {
     let len = message.payload.len();
     if len > MAX_FRAME_BYTES {
-        return Err(TransportError::Protocol(format!(
-            "frame of {len} bytes exceeds the {MAX_FRAME_BYTES}-byte maximum"
-        )));
+        // MG-40: this is resolvable by fragmenting upstream and retrying on
+        // this same transport — not a framing/decode failure.
+        return Err(TransportError::MessageTooLarge {
+            limit: MAX_FRAME_BYTES,
+            actual: len,
+        });
     }
     let mut frame = Vec::with_capacity(FRAME_LEN_BYTES + len);
     frame.extend_from_slice(&(len as u32).to_le_bytes());
@@ -312,7 +315,7 @@ impl InternetTransport {
                     if let Ok(mut guard) = self.last_attempt.lock() {
                         *guard = Some(Instant::now());
                     }
-                    return Err(TransportError::Io(e.to_string()));
+                    return Err(e.into());
                 }
                 Err(_) => {
                     self.reconnect_attempts.fetch_add(1, Ordering::Relaxed);
@@ -499,7 +502,7 @@ impl Transport for InternetTransport {
             .ok_or(TransportError::PeerNotFound)?;
         if let Err(e) = write_res {
             self.set_state(TransportState::Degraded);
-            return Err(TransportError::Io(e.to_string()));
+            return Err(e.into());
         }
         let now = Instant::now();
         let mut pool = self.pool.lock().await;
@@ -696,7 +699,7 @@ mod tests {
         let msg = sample_message(&vec![0u8; MAX_FRAME_BYTES + 1], MessagePriority::P0);
         assert!(matches!(
             encode_frame(&msg),
-            Err(TransportError::Protocol(_))
+            Err(TransportError::MessageTooLarge { .. })
         ));
     }
 
