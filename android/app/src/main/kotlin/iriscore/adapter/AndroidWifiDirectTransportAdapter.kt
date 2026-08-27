@@ -28,6 +28,7 @@ import iriscode.DeviceNotFound
 import iriscode.NotSupported
 import iriscode.FfiWifiDirectAdapter
 import iriscode.TransportFailure
+import iriscore.util.PeerIdCodec
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicLong
@@ -74,6 +75,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         /** DNS-SD service type (Bonjour) — RES-0021 Q4. */
         const val DNS_SD_SERVICE_TYPE = "_iris._tcp"
 
+        /**
+         * TXT-record key the 22-byte IRIS beacon (hex-encoded) is published
+         * under (FFI-5). DNS-SD TXT values are text; hex is the binary-safe
+         * encoding both `registerDnsSd` and `encodeTxtRecord` agree on.
+         */
+        const val BEACON_TXT_KEY = "b"
+
         /** Bounded settle window for the async CONNECTION_CHANGED group snapshot. */
         private const val GROUP_INFO_SETTLE_MS = 5_000L
 
@@ -117,6 +125,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     private val startGate = SessionGate<WifiP2pManager.Channel?> { initialize() }
     private val dnsSdGate = SessionGate<Unit> { registerDnsSd() }
+
+    /**
+     * FFI-5: `startDnsSd()` used to take no arguments — `dnsSdGate`'s lambda
+     * captures none, and `registerDnsSd()` registered with `emptyMap()`.
+     * `dnsSdGate.ensureStarted()` is lazy, so the real beacon has to be
+     * captured here when `startDnsSd()` runs and read back whenever the
+     * gate's suspend lambda finally fires.
+     */
+    @Volatile
+    private var pendingOwnBeacon: ByteArray = ByteArray(0)
 
     private val nextPeerHandle = AtomicLong(1L)
     private val deviceHandles = ConcurrentHashMap<String, Long>()
@@ -178,7 +196,8 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         FfiCallTimeout.suspendCall { startGate.ensureStarted() }
     }
 
-    override suspend fun startDnsSd() {
+    override suspend fun startDnsSd(txtRecord: ByteArray) {
+        pendingOwnBeacon = txtRecord
         FfiCallTimeout.suspendCall { dnsSdGate.ensureStarted() }
     }
 
@@ -381,10 +400,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     private suspend fun registerDnsSd() {
         val channel = startGate.ensureStarted() ?: return
+        // FFI-5: the 22-byte IRIS beacon (WifiDirectTxtRecord::build) is
+        // binary, but DNS-SD TXT record values are text — hex-encode it
+        // under one well-known key. `dnsSdTxtRecordListener` below decodes
+        // the same key back to bytes on the inbound side; without either
+        // half, WifiDirectTxtRecord::parse rejects every peer's record and
+        // discovery yields zero peers, permanently.
         val serviceInfo = WifiP2pDnsSdServiceInfo.newInstance(
             "iris",
             DNS_SD_SERVICE_TYPE,
-            emptyMap(),
+            mapOf(BEACON_TXT_KEY to PeerIdCodec.toHex(pendingOwnBeacon)),
         )
         awaitAction { p2pManagerOrThrow().addLocalService(channel, serviceInfo, it) }
         p2pManagerOrThrow().setDnsSdResponseListeners(channel, dnsSdServiceListener, dnsSdTxtRecordListener)
@@ -410,14 +435,15 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         pendingTxtBeacons[srcDevice.deviceAddress] = encodeTxtRecord(txtRecordMap)
     }
 
-    /** Best-effort binary reconstruction of the TXT record (device-leg exactness at AC-6). */
-    private fun encodeTxtRecord(map: Map<String, String>): ByteArray {
-        val sb = StringBuilder()
-        for ((k, v) in map) {
-            sb.append(k).append('=').append(v).append('\u0000')
-        }
-        return sb.toString().toByteArray(Charsets.UTF_8)
-    }
+    /**
+     * FFI-5: decode the hex-encoded beacon `registerDnsSd` publishes under
+     * [BEACON_TXT_KEY]. This used to concatenate the whole map as UTF-8
+     * "k=v" text — never the 22-byte binary beacon
+     * `WifiDirectTxtRecord::parse` requires, so every peer's record failed
+     * to parse regardless of what the advertiser side did.
+     */
+    private fun encodeTxtRecord(map: Map<String, String>): ByteArray =
+        map[BEACON_TXT_KEY]?.let { PeerIdCodec.fromHex(it) } ?: ByteArray(0)
 
     /**
      * Group formation carrying the band hint.

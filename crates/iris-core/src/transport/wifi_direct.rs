@@ -185,8 +185,18 @@ pub trait WifiDirectAdapter: Send + Sync {
     /// Power on the Wi-Fi Direct subsystem. Idempotent.
     async fn start(&self) -> Result<(), String>;
 
-    /// Register the DNS-SD (Bonjour) service advertisement (`addLocalService`).
-    async fn start_dns_sd(&self) -> Result<(), String>;
+    /// Register the DNS-SD (Bonjour) service advertisement
+    /// (`addLocalService`), carrying `txt_record` (`WifiDirectTxtRecord
+    /// ::build`, 22 bytes) as the TXT-record value (FFI-5).
+    ///
+    /// This used to take no arguments at all: `registerDnsSd()` on the
+    /// Kotlin side registered the DNS-SD service with an empty TXT map, and
+    /// `dnsSdTxtRecordListener` reconstructed a peer's TXT record as a
+    /// UTF-8 "k=v" concatenation — neither is the 22-byte binary beacon
+    /// `WifiDirectTxtRecord::parse` requires, so every peer's TXT record
+    /// failed to parse and Wi-Fi Direct discovery yielded zero peers,
+    /// permanently, independent of FFI-1/2/3.
+    async fn start_dns_sd(&self, txt_record: Vec<u8>) -> Result<(), String>;
 
     /// Withdraw the DNS-SD service advertisement. Idempotent.
     async fn stop_dns_sd(&self) -> Result<(), String>;
@@ -520,7 +530,12 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         Ok(())
     }
 
-    async fn start_dns_sd(&self) -> Result<(), String> {
+    async fn start_dns_sd(&self, _txt_record: Vec<u8>) -> Result<(), String> {
+        // The simulator builds its own synthetic TXT bytes from an internal
+        // tag (`txt_bytes`, `register()` below) for round-trip discovery
+        // tests — it never had a real platform TXT map to be wrong about,
+        // so FFI-5 doesn't reproduce here. The real callers (Android bridge)
+        // are what actually forward `txt_record` on to the platform.
         if !self.available.load(Ordering::Acquire) {
             return Err("wifi_direct_unavailable".to_string());
         }
@@ -917,8 +932,16 @@ impl WifiDirectTransport {
             .start()
             .await
             .map_err(|e| TransportError::Io(format!("wifi_direct.start: {e}")))?;
+        // Generic bring-up (also reached from discover_peers, which has no
+        // NodeAdvertisement to build a real beacon from): register with an
+        // empty placeholder just to get the DNS-SD subsystem up. The real
+        // beacon is registered by start_advertising's own start_dns_sd call
+        // immediately after, once the node's actual identity is known —
+        // this only matters for the placeholder ever being visible in the
+        // narrow window between the two calls, which is what discovery
+        // would already be filtering as an unparseable record anyway.
         adapter
-            .start_dns_sd()
+            .start_dns_sd(Vec::new())
             .await
             .map_err(|e| TransportError::Io(format!("wifi_direct.dns_sd: {e}")))?;
         self.spawn_poller(adapter.clone()).await?;
@@ -1128,14 +1151,33 @@ impl Transport for WifiDirectTransport {
         Ok(())
     }
 
-    async fn start_advertising(&self, _info: NodeAdvertisement) -> Result<(), TransportError> {
+    async fn start_advertising(&self, info: NodeAdvertisement) -> Result<(), TransportError> {
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
         if !adapter.is_available() {
             return Err(TransportError::NotSupported);
         }
+        // FFI-5: build the real 22-byte TXT-record beacon from the node's
+        // actual identity — same construction BLE/Wi-Fi Aware's
+        // start_advertising already do — instead of calling start_dns_sd()
+        // with nothing at all for Kotlin to advertise.
+        let mut caps = WifiDirectCapBits::empty();
+        caps.set(WifiDirectCapBits::CLIENT_CAPABLE);
+        if self.group_config.go_intent >= GO_INTENT_BALANCED {
+            caps.set(WifiDirectCapBits::GROUP_OWNER_CAPABLE);
+        }
+        let peer_short = crate::identity::peer_id::peer_short(&info.peer_id.0);
+        let txt_record = WifiDirectTxtRecord::build(
+            caps,
+            peer_short,
+            (std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+                / 60) as u16,
+        );
         adapter
-            .start_dns_sd()
+            .start_dns_sd(txt_record)
             .await
             .map_err(|e| TransportError::Io(format!("wifi_direct.dns_sd: {e}")))?;
         Ok(())

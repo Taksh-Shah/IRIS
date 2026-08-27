@@ -68,8 +68,12 @@ pub trait FfiWifiDirectAdapter: Send + Sync + 'static {
     /// Power on the Wi-Fi Direct subsystem. Idempotent.
     async fn start(&self) -> Result<(), IrisFfiError>;
 
-    /// Register the DNS-SD (Bonjour) service advertisement (`addLocalService`).
-    async fn start_dns_sd(&self) -> Result<(), IrisFfiError>;
+    /// Register the DNS-SD (Bonjour) service advertisement
+    /// (`addLocalService`), carrying `txt_record` (the 22-byte IRIS beacon,
+    /// `WifiDirectTxtRecord::build`) as the TXT-record value (FFI-5). This
+    /// used to take no arguments — Kotlin registered with an empty TXT
+    /// map, so no beacon was ever advertised.
+    async fn start_dns_sd(&self, txt_record: Vec<u8>) -> Result<(), IrisFfiError>;
 
     /// Withdraw the DNS-SD service advertisement. Idempotent.
     async fn stop_dns_sd(&self) -> Result<(), IrisFfiError>;
@@ -133,7 +137,7 @@ pub(crate) mod tests {
         async fn start(&self) -> Result<(), IrisFfiError> {
             Ok(())
         }
-        async fn start_dns_sd(&self) -> Result<(), IrisFfiError> {
+        async fn start_dns_sd(&self, _txt_record: Vec<u8>) -> Result<(), IrisFfiError> {
             Ok(())
         }
         async fn stop_dns_sd(&self) -> Result<(), IrisFfiError> {

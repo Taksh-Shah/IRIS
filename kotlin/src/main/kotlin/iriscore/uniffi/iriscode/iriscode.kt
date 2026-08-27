@@ -693,7 +693,7 @@ internal interface UniffiCallbackInterfaceFfiWifiDirectAdapterMethod0 : com.sun.
     fun callback(`uniffiHandle`: Long,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,)
 }
 internal interface UniffiCallbackInterfaceFfiWifiDirectAdapterMethod1 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,)
+    fun callback(`uniffiHandle`: Long,`txtRecord`: RustBuffer.ByValue,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,)
 }
 internal interface UniffiCallbackInterfaceFfiWifiDirectAdapterMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,)
@@ -1149,7 +1149,7 @@ external fun uniffi_iriscode_fn_init_callback_vtable_ffiwifidirectadapter(`vtabl
 ): Unit
 external fun uniffi_iriscode_fn_method_ffiwifidirectadapter_start(`ptr`: Long,
 ): Long
-external fun uniffi_iriscode_fn_method_ffiwifidirectadapter_start_dns_sd(`ptr`: Long,
+external fun uniffi_iriscode_fn_method_ffiwifidirectadapter_start_dns_sd(`ptr`: Long,`txtRecord`: RustBuffer.ByValue,
 ): Long
 external fun uniffi_iriscode_fn_method_ffiwifidirectadapter_stop_dns_sd(`ptr`: Long,
 ): Long
@@ -1387,7 +1387,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffiwifidirectadapter_start() != 17867) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffiwifidirectadapter_start_dns_sd() != 7457) {
+    if (lib.uniffi_iriscode_checksum_method_ffiwifidirectadapter_start_dns_sd() != 62363) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_ffiwifidirectadapter_stop_dns_sd() != 8464) {
@@ -3956,9 +3956,13 @@ public interface FfiWifiDirectAdapter {
     suspend fun `start`()
     
     /**
-     * Register the DNS-SD (Bonjour) service advertisement (`addLocalService`).
+     * Register the DNS-SD (Bonjour) service advertisement
+     * (`addLocalService`), carrying `txt_record` (the 22-byte IRIS beacon,
+     * `WifiDirectTxtRecord::build`) as the TXT-record value (FFI-5). This
+     * used to take no arguments — Kotlin registered with an empty TXT
+     * map, so no beacon was ever advertised.
      */
-    suspend fun `startDnsSd`()
+    suspend fun `startDnsSd`(`txtRecord`: kotlin.ByteArray)
     
     /**
      * Withdraw the DNS-SD service advertisement. Idempotent.
@@ -4167,16 +4171,20 @@ open class FfiWifiDirectAdapterImpl: Disposable, AutoCloseable, FfiWifiDirectAda
 
     
     /**
-     * Register the DNS-SD (Bonjour) service advertisement (`addLocalService`).
+     * Register the DNS-SD (Bonjour) service advertisement
+     * (`addLocalService`), carrying `txt_record` (the 22-byte IRIS beacon,
+     * `WifiDirectTxtRecord::build`) as the TXT-record value (FFI-5). This
+     * used to take no arguments — Kotlin registered with an empty TXT
+     * map, so no beacon was ever advertised.
      */
     @Throws(IrisFfiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-    override suspend fun `startDnsSd`() {
+    override suspend fun `startDnsSd`(`txtRecord`: kotlin.ByteArray) {
         return uniffiRustCallAsync(
         callWithHandle { uniffiHandle ->
             UniffiLib.uniffi_iriscode_fn_method_ffiwifidirectadapter_start_dns_sd(
                 uniffiHandle,
-                
+                FfiConverterByteArray.lower(`txtRecord`),
             )
         },
         { future, callback, continuation -> UniffiLib.ffi_iriscode_rust_future_poll_void(future, callback, continuation) },
@@ -4591,10 +4599,11 @@ internal object uniffiCallbackInterfaceFfiWifiDirectAdapter {
         }
     }
     internal object `startDnsSd`: UniffiCallbackInterfaceFfiWifiDirectAdapterMethod1 {
-        override fun callback(`uniffiHandle`: Long,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,) {
+        override fun callback(`uniffiHandle`: Long,`txtRecord`: RustBuffer.ByValue,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,) {
             val uniffiObj = FfiConverterTypeFfiWifiDirectAdapter.handleMap.get(uniffiHandle)
             val makeCall = suspend { ->
                 uniffiObj.`startDnsSd`(
+                    FfiConverterByteArray.lift(`txtRecord`),
                 )
             }
             val uniffiHandleSuccess = { _: Unit ->

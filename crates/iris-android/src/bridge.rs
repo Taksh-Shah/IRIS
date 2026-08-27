@@ -429,8 +429,11 @@ impl WifiDirectAdapter for WifiDirectBridge {
         self.ffi.start().await.map_err(|e| e.to_string())
     }
 
-    async fn start_dns_sd(&self) -> Result<(), String> {
-        self.ffi.start_dns_sd().await.map_err(|e| e.to_string())
+    async fn start_dns_sd(&self, txt_record: Vec<u8>) -> Result<(), String> {
+        self.ffi
+            .start_dns_sd(txt_record)
+            .await
+            .map_err(|e| e.to_string())
     }
 
     async fn stop_dns_sd(&self) -> Result<(), String> {
