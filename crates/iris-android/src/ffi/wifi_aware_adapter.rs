@@ -17,6 +17,11 @@ pub struct FfiPublishConfig {
     pub instance_id: i16,
     pub cached: bool,
     pub ttl_s: u16,
+    /// The IRIS discovery beacon bytes (`WifiAwareBeacon::build`, 22 bytes)
+    /// to publish as NAN `service_specific_info` (FFI-4). This field didn't
+    /// exist before — Kotlin's `publish()` had nothing to read even if it
+    /// had bothered to, so no beacon was ever put on the air.
+    pub service_specific_info: Vec<u8>,
 }
 
 /// Owned discovery match (`wifiaware::PeerDiscovery`).

@@ -107,6 +107,18 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private val subscribeGate = SessionGate<SubscribeDiscoverySession?> { subscribeOnce() }
     private val publishGate = SessionGate<PublishDiscoverySession?> { publishOnce() }
 
+    /**
+     * FFI-4: `publish()` used to ignore its `config` argument entirely —
+     * `publishGate`'s lambda takes no arguments, and `publishConfig()` built
+     * a bare `setServiceName`-only config with no beacon bytes, no TTL, no
+     * match filter. `publishGate.ensureStarted()` is lazy (only actually
+     * calls `publishOnce()` the first time), so the real config has to be
+     * captured here when `publish()` runs and read back when the gate
+     * finally fires.
+     */
+    @Volatile
+    private var pendingPublishConfig: FfiPublishConfig? = null
+
     /** Lifts non-suspend platform callbacks into suspend [SessionGate] calls. */
     private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -135,6 +147,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     }
 
     override suspend fun publish(config: FfiPublishConfig) {
+        pendingPublishConfig = config
         FfiCallTimeout.suspendCall { publishGate.ensureStarted() }
     }
 
@@ -314,10 +327,22 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             .setServiceName(IRIS_SERVICE_NAME)
             .build()
 
-    private fun publishConfig(): PublishConfig =
-        PublishConfig.Builder()
-            .setServiceName(IRIS_SERVICE_NAME)
-            .build()
+    private fun publishConfig(): PublishConfig {
+        val config = pendingPublishConfig
+        val builder = PublishConfig.Builder().setServiceName(IRIS_SERVICE_NAME)
+        if (config != null) {
+            // FFI-4: this is the IRIS discovery beacon (WifiAwareBeacon::build,
+            // 22 bytes) — without it, WifiAwareBeacon::parse on every peer
+            // rejects our zero-length service_specific_info and discovery
+            // yields zero peers, permanently, regardless of anything else
+            // being correct.
+            builder.setServiceSpecificInfo(config.serviceSpecificInfo)
+            if (config.ttlS > 0u) {
+                builder.setTtlSec(config.ttlS.toInt())
+            }
+        }
+        return builder.build()
+    }
 
     private val discoveryCallback = object : DiscoverySessionCallback() {
         override fun onServiceDiscovered(

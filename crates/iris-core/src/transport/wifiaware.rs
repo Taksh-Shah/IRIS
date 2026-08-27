@@ -137,6 +137,17 @@ pub struct PublishConfig {
     /// Publishing stays cached across display-off (availability churn §3.5).
     pub cached: bool,
     pub ttl_s: u16,
+    /// The IRIS discovery beacon (`WifiAwareBeacon::build`, 22 bytes) to
+    /// publish as NAN `service_specific_info`. FFI-4: this field didn't
+    /// exist at all — `start_advertising` called `publish(&PublishConfig
+    /// ::default())`, ignoring the `NodeAdvertisement` it was given, and
+    /// Kotlin's own `publish()` never read its config argument either
+    /// (`FfiPublishConfig` had no field to carry the beacon bytes even if
+    /// it had). No beacon was ever put on the air, so `WifiAwareBeacon
+    /// ::parse` rejected every peer's `service_specific_info` as
+    /// zero-length and Wi-Fi Aware discovery yielded zero peers,
+    /// permanently, on real hardware.
+    pub service_specific_info: Vec<u8>,
 }
 
 impl Default for PublishConfig {
@@ -146,6 +157,7 @@ impl Default for PublishConfig {
             instance_id: -1,
             cached: true,
             ttl_s: 60,
+            service_specific_info: Vec::new(),
         }
     }
 }
@@ -976,7 +988,7 @@ impl Transport for WifiAwareTransport {
         Ok(())
     }
 
-    async fn start_advertising(&self, _info: NodeAdvertisement) -> Result<(), TransportError> {
+    async fn start_advertising(&self, info: NodeAdvertisement) -> Result<(), TransportError> {
         // NEW-WA-RT-104: attach + subscribe before publishing. Publishing on a
         // not-yet-attached adapter violates the Android create
         // (attach → subscribe/publish) ordering and can silently no-op.
@@ -985,8 +997,30 @@ impl Transport for WifiAwareTransport {
         if !adapter.is_available() {
             return Err(TransportError::NotSupported);
         }
+        // FFI-4: this used to ignore `info` entirely and publish
+        // `PublishConfig::default()` — no `service_specific_info`, so no
+        // IRIS beacon was ever put on the air and every peer's
+        // `WifiAwareBeacon::parse` on the discovery side rejected the
+        // resulting zero-length bytes. Build the same 22-byte beacon BLE's
+        // `start_advertising` builds, from the real node identity.
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::NDP_UNICAST);
+        caps.set(CapabilityBits::PUBLISH_BROADCAST);
+        let peer_short = crate::identity::peer_id::peer_short(&info.peer_id.0);
+        let beacon = WifiAwareBeacon::build(
+            caps,
+            peer_short,
+            (std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs()
+                / 60) as u16,
+        );
         adapter
-            .publish(&PublishConfig::default())
+            .publish(&PublishConfig {
+                service_specific_info: beacon,
+                ..PublishConfig::default()
+            })
             .await
             .map_err(|e| TransportError::Io(format!("wifiaware.publish: {e}")))?;
         Ok(())

@@ -6014,6 +6014,14 @@ data class FfiPublishConfig (
     var `cached`: kotlin.Boolean
     , 
     var `ttlS`: kotlin.UShort
+    , 
+    /**
+     * The IRIS discovery beacon bytes (`WifiAwareBeacon::build`, 22 bytes)
+     * to publish as NAN `service_specific_info` (FFI-4). This field didn't
+     * exist before — Kotlin's `publish()` had nothing to read even if it
+     * had bothered to, so no beacon was ever put on the air.
+     */
+    var `serviceSpecificInfo`: kotlin.ByteArray
     
 ){
     
@@ -6034,6 +6042,7 @@ public object FfiConverterTypeFfiPublishConfig: FfiConverterRustBuffer<FfiPublis
             FfiConverterShort.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterUShort.read(buf),
+            FfiConverterByteArray.read(buf),
         )
     }
 
@@ -6041,7 +6050,8 @@ public object FfiConverterTypeFfiPublishConfig: FfiConverterRustBuffer<FfiPublis
             FfiConverterString.allocationSize(value.`serviceName`) +
             FfiConverterShort.allocationSize(value.`instanceId`) +
             FfiConverterBoolean.allocationSize(value.`cached`) +
-            FfiConverterUShort.allocationSize(value.`ttlS`)
+            FfiConverterUShort.allocationSize(value.`ttlS`) +
+            FfiConverterByteArray.allocationSize(value.`serviceSpecificInfo`)
     )
 
     override fun write(value: FfiPublishConfig, buf: ByteBuffer) {
@@ -6049,6 +6059,7 @@ public object FfiConverterTypeFfiPublishConfig: FfiConverterRustBuffer<FfiPublis
             FfiConverterShort.write(value.`instanceId`, buf)
             FfiConverterBoolean.write(value.`cached`, buf)
             FfiConverterUShort.write(value.`ttlS`, buf)
+            FfiConverterByteArray.write(value.`serviceSpecificInfo`, buf)
     }
 }
 

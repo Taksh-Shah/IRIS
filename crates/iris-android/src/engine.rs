@@ -459,6 +459,7 @@ mod tests {
                     instance_id: c.instance_id,
                     cached: c.cached,
                     ttl_s: c.ttl_s,
+                    service_specific_info: c.service_specific_info,
                 })
                 .await
                 .map_err(IrisFfiError::Transport)

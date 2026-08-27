@@ -333,6 +333,7 @@ impl WifiAwareAdapter for WifiAwareBridge {
                 instance_id: config.instance_id,
                 cached: config.cached,
                 ttl_s: config.ttl_s,
+                service_specific_info: config.service_specific_info.clone(),
             })
             .await
             .map_err(|e| e.to_string())
