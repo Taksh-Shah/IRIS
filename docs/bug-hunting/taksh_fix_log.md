@@ -499,14 +499,122 @@ three-consecutive-failure escalation (§8) never triggered.
 **§8 accounting:** 5 findings fixed this run (DTN-22, 20, 15, 16, 18)
 across three commits — under the 8-per-wake-cycle cap.
 
-### Next run (Run 10)
-The PRoPHET aging cluster DTN-12, 13, 14, 17, 19 as one unit — all
-tightly coupled around `prophet.rs`'s `age()`/`last_meet` dual-clock
-conflation (DTN-13's fix is a precondition for DTN-14's, and DTN-17's
-`i32` cast fix touches the same `age()` function both rewrite; read
-DTN-14's own dependency note before starting). Note `age()`'s doc comment
-(added this run) already documents a known residual gap in the self-entry
-interaction with a from-scratch aging pass — worth resolving as part of
-this cluster's rewrite rather than carrying it forward again. After
-DTN-12..19: MG-25..42 (Area E gateway), TAK-2, then Tier 2 is fully
-closed out except the 3 blocked findings (ROUT-23, ROUT-24, ROUT-26).
+## Run 10 — 2026-08-27 — DTN-12/13/14/17/19 (PRoPHET aging cluster) — DTN area of Tier 2 fully closed out
+
+Owner said "continue" — same standing Tier 2 sign-off. Per Run 9's plan:
+the PRoPHET aging cluster as one unit, the last DTN work remaining.
+
+Read all five findings against current `prophet.rs` before writing any
+code (the file had changed substantially since these were reported —
+DTN-15/16/18's commit added `self_id`, `evict_worst_unless`, and a
+per-insert eviction path inside `meet()` that this cluster's fix now
+also has to interact with).
+
+**DTN-12** (commit `9b823e0`): confirmed via grep that `age()`/`prune()`
+still have zero non-production callers (one benchmark each) and that no
+"routing tick" or scheduler abstraction exists anywhere in `crates/` —
+the finding's own suggested fix ("call age() from the routing tick")
+assumes infrastructure that was never built, the same gap DTN-4, DTN-20,
+and DTN-24 already hit this session. Wired `age()`'s logic into `meet()`
+instead, via a shared private `age_at(now)` helper both call — `meet()`
+is the one function every production DP mutation already passes through
+(`opportunistic.rs::on_contact` and `routing/mod.rs::record_contact`'s
+direct `predictions_mut().meet()` call both funnel through it), so this
+gives Eq. 2 a real caller on every contact without adding a scheduler.
+
+**DTN-13** (same commit): the old `age()` reset its baseline to `now` on
+every call regardless of whether a whole interval had elapsed, discarding
+the sub-interval remainder — so any cadence faster than `aging_interval`
+(guaranteed by DTN-12's fix, since `meet()` can fire far more often than
+the 30-minute default) made decay a permanent no-op, silently
+reintroducing DTN-12's own bug immediately after fixing it. Fixed by
+advancing the baseline by exactly the whole intervals consumed
+(`t + interval·k`) instead of resetting it. New test
+`dtn13_sub_interval_cadence_ages_identically_to_one_infrequent_call`
+proves 25 one-second ticks and one 25-second gap now converge to the
+identical final DP.
+
+**DTN-14** (same commit): `last_meet` served two unrelated clocks — Eq.
+1's "time since last direct contact" and Eq. 2's aging baseline — so
+`age()` overwriting it on every pass silently pinned every peer's
+encounter-interval scaling at its ceiling. Split into `last_encounter`
+(meet's direct-contact branch only) and `aging_base`. Here the finding's
+own suggested split ("aging_base written only by age()") turned out
+wrong once actually traced through: an entry's first-ever aging pass
+would always read `k=0` with no prior baseline, and since DTN-12 makes
+that first pass typically happen a long time after insertion (aging now
+runs lazily, at whatever contact happens to come next), the entry would
+get a free pass for its entire dormant period instead of decaying —
+worse than the original bug, not a fix. Verified this by hand-tracing a
+"25 frequent ticks vs. one infrequent age() call after the same elapsed
+time" scenario before writing any test, confirmed the two diverged under
+the literal suggested split, and re-derived the correct design: `meet()`
+seeds `aging_base` at insertion/update time (both the direct and
+transitive write paths), and `age_at` only ever *advances* it. New test
+`dtn14_aging_does_not_clobber_the_encounter_interval_clock` (50
+intervening aging ticks, then a real re-contact 301s later, asserts
+`P_encounter` is still interval-scaled below its ceiling, not pinned).
+
+**DTN-17** (same commit): clamped the `k as i32` cast (wraps negative for
+`k > i32::MAX`, and `gamma < 1` raised to a wrapped-negative power is
+`+inf`) and guarded the result — a non-finite or out-of-range outcome is
+discarded to `0.0` rather than trusted. New test
+`dtn17_large_k_never_produces_a_non_finite_dp`.
+
+**DTN-19** (same commit): deleted `prune()`'s dead `Vec` clone (fed only
+a tautological `debug_assert` using the same predicate as the retain
+beside it) and the verbatim-duplicated `last_meet.retain` call. `prune()`
+is now one retain per map. New test
+`dtn19_prune_drops_only_entries_below_threshold`.
+
+**DTN-18 follow-on** (same commit, not a separately numbered finding):
+`age_at` now genuinely runs on every contact, so the self-identity entry
+(fixed at `1 - delta` by `with_self_id`) needed an explicit exemption
+from both decay and threshold-discard in `age_at`, and from discard in
+`prune` — otherwise DTN-18's own "P(A,A)=1" invariant would quietly stop
+holding the moment aging became real. New test
+`dtn18_self_entry_never_decays_even_after_many_aging_passes` (20 aging
+passes via unrelated contacts, self entry unchanged). This also retired
+the "known gap" doc comment DTN-15/16/18's commit had left on `age()` —
+it described exactly this interaction; no longer a gap now that it's
+handled.
+
+**Test fallout from DTN-12 alone:** wiring `age_at` into every `meet()`
+call means anything below `p_first_threshold` (0.1 default) is now
+discarded as unrelated cleanup on the very next `meet()` call, regardless
+of decay — this is `age()`'s pre-existing, always-there discard
+behavior, just newly reachable. `capped_entries_evict_lowest` (DTN-16,
+previous commit)'s seed value (0.05, chosen before this run's work
+existed) fell below that floor and would have been removed by threshold-
+discard before the test's own capacity-eviction assertion could run —
+numerically still passing but for the wrong reason. Raised to 0.6 (yields
+~0.267, comfortably above threshold, still below the ~0.495 direct-
+contact fill values) so the test again exercises what its own comments
+claim. The pre-existing `aging_decays_by_gamma_per_interval` needed no
+change at all — it already matches the meet-seeds-the-baseline design.
+
+**Run 10 closeout:** `cargo build -p iris-core --all-targets` clean;
+`cargo test -p iris-core --lib routing::prophet` — **17/17 pass** (11
+pre-existing + 6 new); `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop`
+(GNU toolchain) — **675 iris-core lib tests, 0 failed** (up from 669 by
+exactly the 6 new tests), every other workspace suite 0 failed —
+including `tests/ml_experiments.rs` and `tests/sim_scenarios.rs`, which
+DTN-12's own blast-radius note flagged as likely to shift once aging
+actually ran; neither did. `cargo clippy -p iris-core --lib --no-deps` —
+zero warnings from `prophet.rs` (14 pre-existing warnings elsewhere,
+untouched). No reverts; three-consecutive-failure escalation (§8) never
+triggered.
+
+**§8 accounting:** 5 findings fixed this run (DTN-12, 13, 14, 17, 19) in
+one commit — under the 8-per-wake-cycle cap. This closes the DTN area of
+Tier 2 entirely: all 25 DTN-\* findings are now fixed.
+
+### Next run (Run 11)
+MG-25..42 (Area E gateway) and TAK-2 are the only Tier 2 work remaining
+besides the 3 already-blocked ROUT findings (ROUT-23, ROUT-24, ROUT-26).
+Read the MG cluster's own membership and any internal coupling notes
+before batching — this session hasn't touched Area E yet, so treat the
+first pass as scoping, same as DTN's Wake 4 opening. Once MG-25..42 and
+TAK-2 are done, Tier 2 is fully closed out except the 3 blocked findings,
+and the loop's run order (per taksh_problems_loop.md) moves to Tier 3/4.
