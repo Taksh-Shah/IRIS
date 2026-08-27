@@ -553,6 +553,23 @@ impl BleTransport {
             .ok_or(TransportError::NotSupported)
     }
 
+    /// HW-5: `self.connections` is keyed by the discovery-time candidate
+    /// `PeerId` (`DiscoveryBeacon::candidate_peer_id()`:
+    /// `[SHA-256(real_pubkey)[..16], 0u8; 16]` — see that method's own doc
+    /// comment, "candidate hint," DEC-BLE-0006), not the real identity a
+    /// caller addresses `send()` by. `peer_short` is a pure function of the
+    /// real pubkey, so this independently re-derives what `connections`'
+    /// key for `real_peer` would be, without needing any live mapping
+    /// table. Kept as a single source of truth so `send()`'s fallback
+    /// lookup and any future caller stay in sync with
+    /// `DiscoveryBeacon::candidate_peer_id()`'s exact byte layout.
+    fn candidate_key_for(real_peer: &PeerId) -> PeerId {
+        let short = crate::identity::peer_id::peer_short(&real_peer.0);
+        let mut id = [0u8; 32];
+        id[..16].copy_from_slice(&short);
+        PeerId(id)
+    }
+
     /// Tear down a peer's GATT link (BLE-RT-005): remove the connection entry,
     /// abort its poller, and disconnect the GATT handle so a dead link cannot
     /// be re-selected by the manager. `send` calls this on write failure;
@@ -1038,11 +1055,39 @@ impl Transport for BleTransport {
         message: &SerializedMessage,
     ) -> Result<SendReceipt, TransportError> {
         let adapter = self.adapter()?;
+        // HW-5: `self.connections` is keyed by whatever `PeerId` `connect()`
+        // was called with — and discovery calls `connect()` with the
+        // BEACON'S candidate id (`DiscoveryBeacon::candidate_peer_id()`:
+        // SHA-256(real pubkey)[..16], zero-padded to 32 bytes — "candidate
+        // hint," never the verified full identity, DEC-BLE-0006). But
+        // `deliver_outbound` addresses `send()` by the envelope's real
+        // recipient `PeerId` — the actual 64-hex identity a user/relay
+        // specifies (`/to <peer-id>`), which is NEVER equal to the
+        // zero-padded candidate form. `connections.get(peer)` therefore
+        // missed on every real send — confirmed live: `transport: not
+        // connected to peer`, despite `discovery.connect_ok` having fired
+        // repeatedly for the very same physical link seconds earlier.
+        // `peer_short()` is a pure function of the real pubkey (no live
+        // state needed), so the candidate form for ANY real PeerId can be
+        // independently re-derived here — try the exact key first (the
+        // common case once/if a verified real-identity mapping exists), and
+        // fall back to the derived candidate key, which is what's actually
+        // in the map today.
+        let resolved_key = {
+            let connections = self.connections.lock().unwrap();
+            if connections.contains_key(peer) {
+                Some(*peer)
+            } else {
+                let candidate = Self::candidate_key_for(peer);
+                connections.contains_key(&candidate).then_some(candidate)
+            }
+        };
+        let resolved_key = resolved_key.ok_or(TransportError::NotConnected)?;
         let (handle, mtu) = self
             .connections
             .lock()
             .unwrap()
-            .get(peer)
+            .get(&resolved_key)
             .copied()
             .ok_or(TransportError::NotConnected)?;
         // Segment the payload into ATT frames sized to THIS peer's negotiated
@@ -1057,8 +1102,10 @@ impl Transport for BleTransport {
             if let Err(e) = adapter.gatt_write(handle, char_uuid, frame.clone()) {
                 // Write failure = link is dead: tear the peer down (BLE-RT-005)
                 // rather than leaving a zombie `Connected` entry the manager
-                // keeps selecting.
-                self.close_peer(peer, adapter.clone(), Some(&e));
+                // keeps selecting. Must close by `resolved_key` (whichever
+                // form is actually in `connections`), not the caller's
+                // `peer` — HW-5: those two can legitimately differ.
+                self.close_peer(&resolved_key, adapter.clone(), Some(&e));
                 return Err(to_transport_err(e));
             }
         }
@@ -1308,6 +1355,54 @@ mod tests {
         // must match the advertised short (candidate-level hint, not a trust
         // boundary — DEC-BLE-0006).
         assert_eq!(&got.peer_id.0[..16], &short);
+    }
+
+    #[tokio::test]
+    async fn hw5_send_by_real_peer_id_reaches_a_connection_keyed_by_candidate_id() {
+        // HW-5: found on real hardware — `connections` is keyed by whatever
+        // PeerId `connect()` was called with, and discovery calls connect()
+        // with the beacon's CANDIDATE id (see discover_beacon_maps_to_peer
+        // _exactly above: candidate_peer_id() zero-pads a 16-byte SHA-256
+        // short hash, never the real 32-byte identity). But
+        // deliver_outbound addresses send() by the envelope's REAL
+        // recipient PeerId — what a user actually specifies (`/to
+        // <peer-id>`) — which is never equal to that zero-padded candidate
+        // form. Confirmed live: `transport: not connected to peer` on
+        // every real send, despite `discovery.connect_ok` firing
+        // repeatedly for the same physical link seconds earlier.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let real_peer_id = PeerId([0x0F; 32]);
+        let short = crate::identity::peer_id::peer_short(&real_peer_id.0);
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
+        let beacon = DiscoveryBeacon::build(caps, short, 0);
+        adapter.inject_scan_result(BleAddress([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]), beacon, -60);
+
+        let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let discovered = tokio::time::timeout(Duration::from_secs(1), stream.next())
+            .await
+            .unwrap()
+            .unwrap();
+        // Sanity: discovery really does hand back the candidate form, not
+        // the real id — this is the precondition the bug depended on.
+        assert_ne!(discovered.peer_id, real_peer_id);
+
+        t.connect(&discovered).await.unwrap();
+
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([9u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"hello".to_vec(),
+        };
+        // The actual bug: addressing by the REAL peer id (what
+        // deliver_outbound does) used to fail with NotConnected even though
+        // a live connection exists for this exact physical peer, just
+        // stored under its candidate key.
+        assert!(
+            t.send(&real_peer_id, &msg).await.is_ok(),
+            "send() must resolve the real PeerId to the connection stored under its derived candidate key"
+        );
     }
 
     #[tokio::test]
