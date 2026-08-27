@@ -1206,7 +1206,20 @@ impl MessageEngine {
         };
         let ranked = self.manager.select_transports(&req).await;
         if ranked.is_empty() {
-            // No transport available right now → retry later (P0 never dropped).
+            // HW-4: this was completely silent — the single most likely
+            // reason a message never leaves this function, and previously
+            // indistinguishable (from logcat) from every other requeue
+            // cause. `dest` is None for a broadcast; Some for an addressed
+            // send (the common UI case) — log which, since a missing `dest`
+            // vs. a real "no transport ranked this peer" are different bugs.
+            tracing::warn!(
+                event = "msg.no_transport_selected",
+                message_id = %id.short(),
+                priority = priority.as_u8(),
+                dest = ?dest.map(|p| p.short()),
+                attempt = item.attempts,
+                "select_transports() returned no candidates for this peer — requeuing"
+            );
             self.requeue_or_fail(item).await;
             return;
         }
@@ -1230,8 +1243,20 @@ impl MessageEngine {
         };
 
         let mut sent_any = false;
+        // HW-4: `t.send(...).is_ok()` discarded the Err entirely — the
+        // single most likely reason a message with a live, ranked transport
+        // still never went out was invisible by construction. Keep the
+        // last error per transport so the requeue/fail path below can say
+        // WHY, instead of nothing.
+        let mut last_error: Option<(crate::TransportId, crate::TransportError)> = None;
         for r in &ranked {
             let Some(t) = self.manager.get(&r.transport_id).await else {
+                tracing::debug!(
+                    event = "msg.transport_vanished",
+                    message_id = %id.short(),
+                    transport = %r.transport_id,
+                    "select_transports() ranked a transport that manager.get() no longer has"
+                );
                 continue;
             };
             t.set_send_priority_hint(priority);
@@ -1248,8 +1273,18 @@ impl MessageEngine {
                     priority,
                     payload,
                 };
-                if t.send(&target, &sm).await.is_ok() {
-                    sent_any = true;
+                match t.send(&target, &sm).await {
+                    Ok(_) => sent_any = true,
+                    Err(e) => {
+                        tracing::debug!(
+                            event = "msg.transport_send_failed",
+                            message_id = %id.short(),
+                            transport = %r.transport_id,
+                            error = %e,
+                            "transport.send() failed for this fragment"
+                        );
+                        last_error = Some((r.transport_id.clone(), e));
+                    }
                 }
             }
         }
@@ -1272,6 +1307,23 @@ impl MessageEngine {
                 "message handed to transport"
             );
         } else {
+            // HW-4: every ranked transport's send() failed for every
+            // fragment, and this branch used to say nothing at all — the
+            // exact silent gap this session's message-delivery
+            // investigation kept running into. `ranked` was non-empty (the
+            // `msg.no_transport_selected` branch above didn't fire), so this
+            // is specifically "we picked a transport but it refused the
+            // send" — a different failure mode than "no transport was
+            // selectable" and worth telling apart.
+            tracing::warn!(
+                event = "msg.all_sends_failed",
+                message_id = %id.short(),
+                priority = priority.as_u8(),
+                attempt = item.attempts,
+                ranked_transports = ranked.len(),
+                last_error = last_error.as_ref().map(|(t, e)| format!("{t}: {e}")),
+                "every ranked transport rejected the send — requeuing"
+            );
             self.requeue_or_fail(item).await;
         }
     }
