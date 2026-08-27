@@ -1011,18 +1011,187 @@ under the cap. **This closes Tier 2 entirely**: 80 findings, 77 fixed,
 governing specs, a human decision, not a code gap that could be closed
 by more autonomous work).
 
-### Next run (Run 16)
-Tier 2 is fully closed out. Per the loop's own run order
-(`taksh_problems_loop.md`), the next tiers are Tier 3 (evidence-base
-fixes — simulator fidelity, ML leakage, 32 findings, SIM-\* area) and
-Tier 4 (remaining Medium/Low, mechanical, batched by area, 126
-findings) — neither has Tier 2's human-sign-off gate, so either can
-start without further owner confirmation beyond the standing "continue"
-instruction. Tier 3's own findings (SIM-1 through at least SIM-3, read
-during TAK-2's research when a grep of the file surfaced them) look
-tightly coupled — SIM-1's fix (seed message ids from the sim's own RNG
-instead of `MessageId::new_v7()`'s wall-clock+random construction) is a
-precondition for SIM-2/SIM-3 meaning anything, similar to how DTN-13 was
-a precondition for DTN-14 earlier this session. Scope the full SIM-\*
-membership before batching, same as every tier-opening wake this session
-has done.
+## Run 16 — 2026-08-27 — Tier 3 opens: full 32-finding scope + Wake 12 (SIM-1/2/3/4)
+
+Owner said "okay , start with tier 3" — explicit, direct instruction to
+open the next tier. Per `taksh_problems_loop.md`'s own stated run order
+("0 → 1 → 4 → 3", reasoning: fixing simulator fidelity reshapes what
+"passing tests" means for everything reviewed against it, so doing that
+last avoids re-basing expectations twice) Tier 3 was not next in the
+loop's preferred sequence — Tier 4 was. Surfaced this to the owner as a
+one-line heads-up, not a blocker, since the instruction was explicit and
+direct; proceeded with Tier 3 as asked.
+
+**Full scope read before any code changes** (same discipline as every
+tier-opening wake this session: DTN's 8-finding core cluster, MG's
+25..42 membership, both scoped in full before batching). Read all 32
+SIM-\* findings (SIM-1 through SIM-32) in complete detail — What,
+Evidence, Why wrong, Root cause, Trigger, Impact, Fix, Dependencies —
+before writing a single line. Tier 3 turned out structurally different
+from Tier 2: Tier 2's findings were mostly localized (if occasionally
+cross-file) correctness/security bugs. Tier 3 has two Critical findings,
+SIM-7 (the sim never calls production `RoutingEngine::decide` — it
+hand-rolls its own forwarding cascade and only borrows leaf primitives)
+and SIM-8 (the sim models no transport layer at all — no latency,
+bandwidth, MTU, loss asymmetry, reordering, duplication), whose own
+literal fix text asks for cross-cutting rewrites of shared production
+routing code (`routing/mod.rs`'s decision authority; a new
+transport-fidelity model), not contained bug fixes — closer in kind to
+MG-30's gateway-wiring decision than to a typical finding. SIM-9
+explicitly depends on SIM-8 ("enforce the SIM-8 byte budget across the
+window").
+
+**Batching plan, by coupling** (not by finding number — matches how
+DTN/MG were grouped):
+- **Wake 12 (this run):** SIM-1, SIM-2, SIM-3, SIM-4 — determinism/clock
+  cluster. All four bear on whether "same seed -> same result" holds,
+  which every later wake's own tests lean on implicitly.
+- **Wake 13:** SIM-5, SIM-6, SIM-11, SIM-17, SIM-18, SIM-31 — dead/
+  fabricated sim metrics (eviction never wired, peak tracking wrong,
+  forwarding outcomes discarded, overhead never asserted). Grouped
+  because SIM-17/18/31 explicitly cross-reference each other (wire
+  `overhead()` into an assertion or delete it; fix its zero-delivery
+  sentinel first or the new assertion is meaningless), and SIM-5/6/11
+  are the same "claimed-but-wrong/unwired metric" pattern one level up.
+- **Wake 14:** SIM-19, SIM-20, SIM-29 — statistics/test-strength bugs
+  (percentile rounding bias, Wilson CI silent NaN, two property tests
+  that pass with their own mechanism disabled).
+- **Wake 15:** SIM-10, SIM-12, SIM-30, SIM-32 — sim-internal mechanics,
+  each contained to `sim/mod.rs` + one sibling file (real-time dedup
+  cache, event-ordering tiebreak, unbounded per-node state, a
+  self-addressable injection helper).
+- **Wake 16:** SIM-13, SIM-14, SIM-15, SIM-16, SIM-27, SIM-28 — the ML
+  leakage/test-integrity cluster, all in `sim/ml/` +
+  `tests/ml_experiments.rs`. SIM-14 explicitly "compounds SIM-13; fixing
+  SIM-13 alone does not remove this."
+- **Wake 17:** SIM-21 through SIM-26 — production **observability**
+  module (`observability/mod.rs`) doc/code/privacy mismatches. Not
+  simulator code at all despite the SIM-\* numbering; grouped separately
+  because it's a different subsystem.
+- **Wake 18 (last):** SIM-7, SIM-8, SIM-9 — saved for last deliberately,
+  mirroring the loop's own 4-before-3 reasoning one level down: fixing
+  these changes what every other Tier 3 scenario's baseline means, and
+  SIM-7 in particular touches shared production routing code with real
+  blast radius. Will need an explicit, documented scope decision when
+  reached, not a wholesale literal implementation — same pattern as
+  MG-30.
+
+**Wake 12 fix: SIM-1, SIM-2, SIM-3, SIM-4 (`fdfe6fb`).**
+
+SIM-1 (Critical): `build_envelope` minted message ids via
+`MessageId::new_v7()` — wall clock + random bits, uncontrollable by
+seed. `StoreKey::Ord` (routing/scf.rs) ties on `message_id` whenever
+`priority_rank`/`expiry_unix` coincide, which is the common case within
+one sim run (shared priority, second-quantized expiry per SIM-4) — so
+the seed did not actually control forward order despite the module doc's
+"same seed -> same result anchor" claim. Fixed by minting ids from the
+sim's own seeded `ChaCha8Rng` (`rand::Rng::gen::<[u8;16]>()` via
+`MessageId::from_bytes`); `build_envelope` now takes `&mut self` (single
+call site, inside `run()`, no conflicting borrow). Added
+`message_ids_are_seeded_not_wall_clock`, a direct, narrow regression test
+independent of the broader anchor-based coverage below.
+
+SIM-2 (High): `result_anchor` was `format!("sim-{seed}-d{delivered}-i{injected}")`
+— `injected_total` is fixed by the scenario and `delivered_total`
+saturates at 100% in most scenarios, so two runs taking completely
+different routes could share an anchor, making "determinism" tests
+near-tautological (exactly SIM-2's own characterization). Fixed by
+folding a digest of the full per-delivery trace `(message_id,
+delivering_node, at_ms, hops)` — collected from `SimNode::delivered` +
+`hops_by_msg` (no new field needed; hops_by_msg is frozen for a node
+once that node's copy is delivered, since any later forward attempt to
+the same node for the same id hits the earlier "already delivered"
+Sinked guard before reaching the hops_by_msg write), sorted for
+collection-order independence — plus `relays_total` and the latency
+vector, hashed with `DefaultHasher` (fixed-key SipHash: stable across
+runs of the same binary, unlike `HashMap`'s randomly-seeded
+`RandomState` — not used for any security property, just a cheap
+deterministic fingerprint). New format:
+`sim-{seed}-d{delivered}-i{injected}-t{hash:016x}`. This is also what
+makes SIM-1 independently verifiable: an unfixed SIM-1 combined with
+this trace-hash anchor would make the existing `same_seed_same_result_anchor`
+test fail (different wall-clock ids each run -> different trace hash) —
+so that pre-existing test now doubles as SIM-1 regression coverage for
+free, and did in fact pass post-fix.
+
+SIM-3 (Medium): `ac5_ten_seeds_reproducible_both_regimes` asserted 20
+distinct anchor strings across 10 seeds x 2 regimes, but the anchor
+format embeds the seed verbatim (`sim-{seed}-...`), so 20 distinct
+(seed, regime) pairs are guaranteed 20 distinct strings regardless of
+simulator behavior — SIM-3's own diagnosis, confirmed by reading the
+test. Fixed by stripping the known `sim-{seed}-` prefix before
+comparing, so the assertion is actually over SIM-2's behavioral
+signature. Calibrated the threshold empirically rather than guessing:
+ran the test with the strictest possible bound (`== 20`) first — it
+passed, meaning the simulator is genuinely fully seed-sensitive across
+both regimes with the current fixes in place — then relaxed to `>= 18`
+so one vanishingly-unlikely coincidental digest collision in the future
+doesn't flake the suite, while staying far above what a seed-blind
+regression would produce (2-4 distinct values, not 18+).
+
+SIM-4 (High): `advance_to` truncates the virtual clock to whole seconds,
+so sub-second-spaced events (vehicle_relay's +300ms backbone links,
+periodic_ferry's step_ms/2 offsets) produce zero clock movement,
+degenerating `shadow_features`'s age_s/ttl_frac (FeatureVec slots 5/6)
+to ~0 for any decision inside the same virtual second. **Scoped narrower
+than the finding's literal suggestion** ("give ScfEngine/OpportunisticRouter
+a millisecond clock"): grepped every `with_virtual_clock` call site
+before deciding, and found the shared `Arc<AtomicU64>` clock feeds FOUR
+separate production modules — `ScfEngine` (scf.rs), `ForwardedCache`
+(dedup_cache.rs — the exact type SIM-10, Wake 15, is about), PRoPHET's
+`DeliveryPredictability` (prophet.rs), and `OpportunisticRouter`
+(opportunistic.rs) — all of which treat the atomic as Unix seconds in
+BOTH their virtual-clock and real (`SystemTime::now`) paths
+(`dedup_cache.rs` does `Duration::from_secs(clock.load(...))`;
+`prophet.rs` does `.saturating_mul(1000)` to derive millis from it).
+Changing that unit is a cross-cutting change to shared production
+routing infrastructure, not a sim-local bug fix — out of scope for this
+wake, documented inline at `advance_to` as a deliberate decision rather
+than silently skipped. Instead added `SimNode::buffered_at_ms` (mirrors
+the existing `hops_by_msg` per-message map, written at the same two
+sites: injection and relay-landing) so `shadow_features` computes age
+from the sim's own millisecond-precise `now_ms`, independent of the
+shared clock's granularity — fixes the concrete, testable symptom
+(feature degeneracy) without touching the shared contract.
+`StoreKey.expiry_unix`/TTL ordering intentionally stays whole-second,
+matching production's actual `ttl_seconds: u64` wire granularity — there
+is no real sub-second TTL requirement to satisfy, so this residual gap
+isn't a gap relative to what production needs. Added
+`shadow_feature_age_has_subsecond_precision`, constructed so the two
+event timestamps (100ms, 900ms) provably read age_s=0.0 under the old
+code (both floor-divide to the same whole second) while the fix reads
+the true 0.8s gap — a test that discriminates old-vs-new behavior by
+construction, not just a value-in-range check.
+
+**Note left for Wake 15 (SIM-30):** `buffered_at_ms` is a third
+per-message `HashMap` on `SimNode` alongside `hops_by_msg`/`spray`, all
+three currently unpruned. SIM-30's fix (prune on terminal delivery) needs
+to cover this new map too, not just the two the finding names.
+
+**Run 16 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop` —
+**693 iris-core lib tests, 0 failed** (+2 from Wake 12: the two new
+targeted regression tests; net across the crate, since no tests were
+removed); `cargo test -p iris-core --test sim_scenarios --test
+ml_experiments` — 16/16 pass (1 pre-existing `#[ignore]`d debug helper,
+unaffected), including all 5 anchor-equality tests unmodified in
+assertion intent (a stronger anchor is still equal across two runs of
+the same seed) and `ac5_ten_seeds_reproducible_both_regimes` with its
+rewritten uniqueness check; `cargo clippy -p iris-core --lib --no-deps`
+clean (only pre-existing, unrelated `transport::state_tx` unused-Result
+warnings, present before this session's work began).
+
+**§8 accounting:** 4 findings fixed this run (SIM-1, SIM-2, SIM-3,
+SIM-4) in one commit — under the cap. Tier 3: 4 of 32 done, 28 remaining
+across Wakes 13-18 per the plan above.
+
+### Next run (Run 17)
+Wake 13: SIM-5, SIM-6, SIM-11, SIM-17, SIM-18, SIM-31 — the dead/
+fabricated sim metrics cluster (eviction never wired into the sim loop,
+peak-storage tracking measures final not peak usage, `ForwardResult` is
+computed and discarded so nothing counts blocked/sinked forwards, the
+ROUTE-002 overhead claim has no assertion anywhere, its zero-delivery
+sentinel reads as the best possible value, and the dead `overhead()`/
+`avg_latency_ms`/etc. API cluster SIM-31 names should either get wired
+into the new SIM-17 assertion or be deleted). Read all six findings'
+current source fresh before implementing, same discipline as this run.
