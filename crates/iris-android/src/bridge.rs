@@ -156,24 +156,27 @@ impl BleAdapter for BleBridge {
         // The IRIS beacon rides in `service_data` (see BleTransport
         // `start_advertising`).
         //
-        // This used to hardcode `non_connectable: true`, citing DEC-BLE-0006
-        // — but that decision is "the beacon's peer_short is a candidate
-        // hint, never a trust boundary" (ble_advert.rs, BLE_001_VERIFICATION
-        // .md AC-7), which says nothing about radio-level connectability. A
-        // non-connectable advertisement (ADV_NONCONN_IND) is a Bluetooth
-        // Core Spec constraint, not an Android quirk: no central can EVER
-        // open a GATT connection to it, full stop — Android's
-        // BluetoothGatt.connectGatt() call is accepted but
-        // onConnectionStateChange simply never fires, no error, no timeout
-        // signal, nothing. Every peer this app has ever advertised to has
-        // been architecturally unreachable: `BleTransport::connect()` and
-        // `send()` require a live GATT connection for every message, so
-        // this one hardcoded flag alone was sufficient to make message
-        // delivery impossible regardless of any other fix.
+        // BLE-9: `connectable` used to not exist on the core type at all —
+        // this bridge hardcoded `non_connectable: true` on every call,
+        // citing DEC-BLE-0006 ("the beacon's peer_short is a candidate
+        // hint, never a trust boundary", ble_advert.rs /
+        // BLE_001_VERIFICATION.md AC-7), which says nothing about
+        // radio-level connectability. A non-connectable advertisement
+        // (ADV_NONCONN_IND) is a Bluetooth Core Spec constraint, not an
+        // Android quirk: no central can EVER open a GATT connection to
+        // one, full stop — Android's BluetoothGatt.connectGatt() call is
+        // accepted but onConnectionStateChange simply never fires, no
+        // error, no timeout signal, nothing. Every peer this app has ever
+        // advertised to was architecturally unreachable:
+        // `BleTransport::connect()` and `send()` require a live GATT
+        // connection for every message, so this one hardcoded flag alone
+        // was sufficient to make message delivery impossible regardless
+        // of any other fix (confirmed live on two physical Android
+        // devices). Now forwarded from the core caller's real intent.
         self.ffi
             .start_advertising(FfiAdvertisementData {
                 payload: data.service_data,
-                non_connectable: false,
+                non_connectable: !data.connectable,
             })
             .map(AdvHandle)
             .map_err(ffi_err_to_ble)

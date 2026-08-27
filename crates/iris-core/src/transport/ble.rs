@@ -93,11 +93,26 @@ pub struct ScanFilter {
 }
 
 /// Advertisement payload builder input.
+///
+/// `connectable` used to not exist here at all (BLE-9): the Android bridge
+/// hardcoded `non_connectable: true` on every call because the core type
+/// gave it nothing else to forward. A non-connectable advertisement
+/// (`ADV_NONCONN_IND`) is a Bluetooth Core Spec constraint, not a platform
+/// quirk — no central can ever open a GATT connection to one, so
+/// `BleTransport::connect()` -> `connect_gatt()` was architecturally
+/// unreachable regardless of anything else being correct. `send()` requires
+/// a live GATT connection for every message, so this one field was
+/// sufficient by itself to make delivery impossible on real hardware in
+/// both directions (confirmed live on two physical Android devices).
 #[derive(Debug, Clone, Default)]
 pub struct AdvertisementData {
     pub local_name: Option<String>,
     pub service_uuid: Option<Uuid>,
     pub service_data: Vec<u8>,
+    /// True unless a future beacon-only broadcast mode is added — every
+    /// live call site advertises connectably today, matching that
+    /// `connect()`/`send()` both require it.
+    pub connectable: bool,
 }
 
 /// Opaque handles.
@@ -716,6 +731,11 @@ impl Transport for BleTransport {
                 local_name: info.hostname,
                 service_uuid: Some(IRIS_SERVICE_UUID),
                 service_data: beacon,
+                // BLE-9: every live call site needs a connectable
+                // advertisement — connect()/send() both require a GATT
+                // connection, which a non-connectable advert can never
+                // accept.
+                connectable: true,
             })
             .map_err(to_transport_err)?;
         *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
@@ -2305,6 +2325,7 @@ mod tests {
             local_name: Some("iris-peer".to_string()),
             service_uuid: Some(IRIS_SERVICE_UUID),
             service_data: beacon.clone(),
+            connectable: true,
         })
         .unwrap();
         // iOS leg probes the peer's identify characteristic directly.
@@ -2326,6 +2347,7 @@ mod tests {
                 local_name: Some("iris-peer".to_string()),
                 service_uuid: Some(IRIS_SERVICE_UUID),
                 service_data: beacon.clone(),
+                connectable: true,
             })
             .unwrap();
         let h2 = peer_ios.connect_gatt(BleAddress([0xC6; 6])).unwrap();

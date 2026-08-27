@@ -131,10 +131,20 @@ impl BleAdapter for BleBridge {
         // serves it from IRIS_IDENTIFY_CHARACTERISTIC instead — the payload is
         // still passed so the Swift side can program the GATT server
         // (connect-to-identify, DEC-BLE-002-0002).
+        // BLE-9 (Android leg, iris-android/src/bridge.rs): the equivalent
+        // hardcode there was a real, confirmed-live bug — a non-connectable
+        // advertisement can never be GATT-connected to, full stop. iOS's
+        // CBPeripheralManager.startAdvertising(_:) has no public
+        // non-connectable option at all (every CoreBluetooth peripheral
+        // advertisement is connectable), so this flag is inert on the
+        // Swift side today regardless of its value here — but forward the
+        // core caller's real intent rather than a second independent
+        // hardcode, so a future Swift-side change that does read it
+        // doesn't inherit the same defect.
         self.ffi
             .start_advertising(FfiAdvertisementData {
                 payload: data.service_data,
-                non_connectable: true,
+                non_connectable: !data.connectable,
             })
             .map(AdvHandle)
             .map_err(ffi_err_to_ble)
