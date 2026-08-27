@@ -64,12 +64,11 @@ pub async fn recipients_for_flood(
 ) -> Vec<PeerId> {
     let _ = hop_count; // available for future priority-based taper (ROUT-17 TODO)
     let mut recipients = Vec::new();
-    for neighbor in neighbor_table.neighbors().await {
-        let nb = neighbor;
-        if !nb.links.is_empty() {
-            // Only neighbors with a live link qualify.
-            let _ = &nb.links;
-        }
+    // ROUT-20: use the cheap (peer_id, state) projection — this loop never
+    // reads `links`, `peer_bloom` or `capabilities`, and cloning the full
+    // `Neighbor` (peer_bloom alone is ~175 KB) here allocated megabytes per
+    // flood decision.
+    for nb in neighbor_table.neighbor_summaries().await {
         if nb.peer_id == sender
             || nb.peer_id == *recipient
             || already_flooded.contains(&nb.peer_id)

@@ -50,6 +50,14 @@ pub struct Neighbor {
     pub peer_bloom: Option<BloomFilter>,
 }
 
+/// Cheap `(peer_id, state)` projection of a [`Neighbor`] — see
+/// [`NeighborTable::neighbor_summaries`] (ROUT-20).
+#[derive(Debug, Clone, Copy)]
+pub struct NeighborSummary {
+    pub peer_id: PeerId,
+    pub state: NeighborState,
+}
+
 impl Neighbor {
     fn new(peer: &PeerInfo) -> Self {
         Neighbor {
@@ -228,6 +236,23 @@ impl NeighborTable {
         self.inner.lock().await.values().cloned().collect()
     }
 
+    /// Lightweight snapshot for the routing hot path (ROUT-20): `peer_id` and
+    /// `state` only, cloned while holding the lock. `Neighbor` also carries
+    /// `peer_bloom` (~175 KB, `#[derive(Clone)]` `BloomFilter`) and
+    /// `capabilities`, which flood-recipient selection never reads — cloning
+    /// the full struct there allocated and copied megabytes per decision.
+    pub async fn neighbor_summaries(&self) -> Vec<NeighborSummary> {
+        self.inner
+            .lock()
+            .await
+            .values()
+            .map(|n| NeighborSummary {
+                peer_id: n.peer_id,
+                state: n.state,
+            })
+            .collect()
+    }
+
     /// Purge neighbors idle for longer than the table TTL. Returns a
     /// `PeerLost` event per eviction (LinkedDown-only now; hard eviction).
     pub async fn sweep(&self) -> Vec<TopologyEvent> {
@@ -294,6 +319,25 @@ mod tests {
         assert!(matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })));
         assert_eq!(t.len().await, 1);
         assert!(t.is_up(&peer(1).peer_id).await);
+    }
+
+    #[tokio::test]
+    async fn rout20_neighbor_summaries_match_full_snapshot() {
+        let t = NeighborTable::new(Duration::from_secs(60));
+        t.upsert(&peer(1), &TransportId::from("sim-a"), LinkQuality::Good)
+            .await;
+        t.upsert(&peer(2), &TransportId::from("sim-b"), LinkQuality::Good)
+            .await;
+        let full = t.neighbors().await;
+        let summaries = t.neighbor_summaries().await;
+        assert_eq!(summaries.len(), full.len());
+        for nb in &full {
+            let s = summaries
+                .iter()
+                .find(|s| s.peer_id == nb.peer_id)
+                .expect("summary must contain every full-snapshot peer");
+            assert_eq!(s.state, nb.state);
+        }
     }
 
     #[tokio::test]
