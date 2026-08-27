@@ -127,12 +127,26 @@ pub struct SimLoss {
 }
 
 /// Result of one forward attempt during a contact.
+///
+/// SIM-11: `Blocked` used to be one variant covering four unrelated causes
+/// (anti-loop backtrack, hop budget, link loss, L2 withholding) — the sim
+/// computed this distinction and then discarded it at every call site, so a
+/// low delivery ratio had no diagnosis beyond an `#[ignore]`d eprintln debug
+/// test. Split so `run()` can tally *why* forwards were blocked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ForwardResult {
     Delivered,
     Relayed,
-    Blocked, // anti-loop, budget, loss, or no contact target
-    Sinked,  // dst already holds the message
+    BlockedBacktrack,   // no-backtrack: dst is where this copy came from
+    BlockedHopBudget,   // hop budget for this priority is exhausted
+    BlockedNoAdvantage, // L2 (GTMX+/spray) declined: no DP advantage, no spray budget
+    BlockedLoss,        // link loss draw
+    /// Malformed `recipient_id` (not 32 bytes) — defensive only; every sim
+    /// code path builds `recipient_id` from a 32-byte `PeerId`, so this is
+    /// unreachable in practice and deliberately not one of the four tallied
+    /// counters `run()` exposes on `SimOutcome`.
+    BlockedMalformed,
+    Sinked, // dst already holds (or already delivered) this id
 }
 
 /// A discrete-event simulation over the virtual clock.
@@ -150,6 +164,13 @@ pub struct Simulation {
     /// ML-001 L3 shadow observer (default None → zero cost, runs byte-identical
     /// to ROUTE-002; see ML-001 AC-2).
     shadow: Option<ShadowRecorder>,
+    /// SIM-11: why forwards were blocked — previously computed by
+    /// `forward_to` and discarded at every call site, so a low delivery
+    /// ratio had no diagnosis beyond an `#[ignore]`d eprintln debug test.
+    blocked_backtrack: u64,
+    blocked_hop_budget: u64,
+    blocked_no_advantage: u64,
+    blocked_loss: u64,
 }
 
 impl Simulation {
@@ -172,6 +193,10 @@ impl Simulation {
             now_ms: 0,
             opportunistic_enabled: false,
             shadow: None,
+            blocked_backtrack: 0,
+            blocked_hop_budget: 0,
+            blocked_no_advantage: 0,
+            blocked_loss: 0,
         }
     }
 
@@ -182,10 +207,6 @@ impl Simulation {
     pub fn with_shadow(&mut self, recorder: ShadowRecorder) -> &mut Self {
         self.shadow = Some(recorder);
         self
-    }
-
-    pub fn shadow_enabled(&self) -> bool {
-        self.shadow.is_some()
     }
 
     /// Enable the ROUTE-002 L2 opportunistic layer on every node (PRoPHET v2
@@ -210,11 +231,6 @@ impl Simulation {
         self
     }
 
-    /// Loss reference for a forward (kept close to SimConfig semantics).
-    pub fn loss_rate(&self) -> f32 {
-        self.loss.rate
-    }
-
     pub fn nodes(&self) -> &[SimNode] {
         &self.nodes
     }
@@ -235,11 +251,6 @@ impl Simulation {
     pub fn inject(&mut self, injection: Injection) -> &mut Self {
         self.injections.push(injection);
         self
-    }
-
-    /// Read access to scheduled injections (debug/location tracing).
-    pub fn injections_public(&self) -> &[Injection] {
-        &self.injections
     }
 
     /// Read access to scheduled contacts (ML-001 GT timing evaluation needs
@@ -269,6 +280,24 @@ impl Simulation {
         }
         let r: f32 = rand::Rng::gen_range(&mut self.rng, 0.0..1.0);
         r < self.loss.rate
+    }
+
+    /// SIM-11: tally why a forward was blocked. `Delivered`/`Relayed` are
+    /// already counted via `SimOutcome::delivered_total`/`relays_total`;
+    /// `Sinked` (dst already had it) and `BlockedMalformed` (unreachable in
+    /// practice — see the variant's doc comment) are not part of the four
+    /// counters the finding asks for.
+    fn tally(&mut self, r: ForwardResult) {
+        match r {
+            ForwardResult::BlockedBacktrack => self.blocked_backtrack += 1,
+            ForwardResult::BlockedHopBudget => self.blocked_hop_budget += 1,
+            ForwardResult::BlockedNoAdvantage => self.blocked_no_advantage += 1,
+            ForwardResult::BlockedLoss => self.blocked_loss += 1,
+            ForwardResult::BlockedMalformed
+            | ForwardResult::Delivered
+            | ForwardResult::Relayed
+            | ForwardResult::Sinked => {}
+        }
     }
 
     /// ML-001 L3 shadow feature vector for one candidate relay decision:
@@ -336,7 +365,7 @@ impl Simulation {
         }
         // No-backtrack: never hand back to the node it came from.
         if msg.received_from == Some(dst_peer) {
-            return ForwardResult::Blocked;
+            return ForwardResult::BlockedBacktrack;
         }
         // Anti-loop: dst has already seen/forwarded this id.
         if self.nodes[dst].forwarded.is_duplicate(&id) {
@@ -357,7 +386,7 @@ impl Simulation {
         let budget = max_hops_for_priority(msg.envelope.priority).max_hops;
         let hops = self.nodes[src].hops_by_msg.get(&id).copied().unwrap_or(0);
         if hops >= budget {
-            return ForwardResult::Blocked;
+            return ForwardResult::BlockedHopBudget;
         }
 
         // ROUTE-002 L2: exchange DP snapshots on contact, then consult GTMX+
@@ -369,7 +398,7 @@ impl Simulation {
             if recipient.len() == 32 {
                 rb.copy_from_slice(recipient);
             } else {
-                return ForwardResult::Blocked;
+                return ForwardResult::BlockedMalformed;
             }
             let recipient_peer = PeerId(rb);
 
@@ -398,13 +427,13 @@ impl Simulation {
 
             if !decide_forward {
                 // No DP advantage, no spray budget → stay with L0/SCF.
-                return ForwardResult::Blocked;
+                return ForwardResult::BlockedNoAdvantage;
             }
         }
 
         // Link loss is deterministic per (seed, attempt order).
         if self.is_lost() {
-            return ForwardResult::Blocked;
+            return ForwardResult::BlockedLoss;
         }
 
         // Record dedup at dst before the copy lands (anti-loop).
@@ -418,10 +447,16 @@ impl Simulation {
 
         // SCF carry: land the copy at dst (idempotent via dedup).
         let src_peer = self.nodes[src].peer_id;
-        self.nodes[dst]
+        // SIM-5: see the injection call site's comment — same before/after
+        // length diff to attribute `buffer_message`'s internal capacity
+        // eviction (DTN-1) to `evictions` without changing its signature.
+        let before = self.nodes[dst].scf.len();
+        let admitted = self.nodes[dst]
             .scf
             .buffer_message(new_env.clone(), Some(src_peer))
-            .ok();
+            .is_ok();
+        let after = self.nodes[dst].scf.len();
+        self.nodes[dst].evictions += (before + admitted as usize).saturating_sub(after) as u64;
 
         let is_recipient = msg.envelope.recipient_id.as_slice() == dst_peer.as_bytes();
         if is_recipient {
@@ -581,6 +616,12 @@ impl Simulation {
         let mut injected: Vec<InjectedMsg> = Vec::new();
         let mut evictions_total: u64 = 0;
         let mut max_hops_seen: u8 = 0;
+        // SIM-6: a running high-water mark, sampled every tick (not just
+        // "after the run") — the old computation scanned `out.nodes` once
+        // at the very end, which is the *final* usage, not a peak; a
+        // partition that buffers everything then heals right before the
+        // run ends would report near-empty storage despite a real spike.
+        let mut peak_storage_bytes: u64 = 0;
 
         // Injections are consumed in schedule order (a cursor into a
         // time-sorted copy — a *find* on at_ms would collapse same-timestamp
@@ -591,6 +632,15 @@ impl Simulation {
 
         for (sim_ms, kind) in &timeline {
             self.advance_to(*sim_ms);
+            // SIM-5: proactively reap TTL-expired messages every tick.
+            // Nothing else does this — `buffer_message`'s own TTL check
+            // (DTN-6) only rejects an already-expired message at ADMISSION
+            // time; it does not remove an existing buffered message that
+            // expires while sitting there un-relayed.
+            for n in &mut self.nodes {
+                let reaped = n.scf.reap_expired();
+                n.evictions += reaped.len() as u64;
+            }
             match *kind {
                 1 => {
                     // Injection.
@@ -608,7 +658,19 @@ impl Simulation {
                     );
                     env.timestamp = self.clock.load(Ordering::Relaxed);
                     let id = env.message_id;
-                    self.nodes[inj.from].scf.buffer_message(env, None).ok();
+                    // SIM-5: `buffer_message` already enforces the byte
+                    // ceiling internally (DTN-1's `evict_until` call on
+                    // over-admission) — it just doesn't surface what got
+                    // evicted. Diff buffer length before/after rather than
+                    // changing `buffer_message`'s signature (used by ~30
+                    // production/test call sites outside this crate's sim);
+                    // `admitted` accounts for the new entry so a capacity
+                    // eviction isn't miscounted as net occupancy change.
+                    let before = self.nodes[inj.from].scf.len();
+                    let admitted = self.nodes[inj.from].scf.buffer_message(env, None).is_ok();
+                    let after = self.nodes[inj.from].scf.len();
+                    self.nodes[inj.from].evictions +=
+                        (before + admitted as usize).saturating_sub(after) as u64;
                     self.nodes[inj.from].hops_by_msg.insert(id, 0);
                     self.nodes[inj.from].buffered_at_ms.insert(id, *sim_ms);
                     injected.push(InjectedMsg {
@@ -638,18 +700,23 @@ impl Simulation {
                         let a_msgs: Vec<_> = self.nodes[a].scf.ordered_buffered();
                         let b_msgs: Vec<_> = self.nodes[b].scf.ordered_buffered();
                         for m in &a_msgs {
-                            self.forward_to(a, b, m);
+                            let r = self.forward_to(a, b, m);
+                            self.tally(r);
                         }
                         for m in &b_msgs {
-                            self.forward_to(b, a, m);
+                            let r = self.forward_to(b, a, m);
+                            self.tally(r);
                         }
-                    }
-                    for n in &self.nodes {
-                        max_hops_seen =
-                            max_hops_seen.max(*n.hops_by_msg.values().max().unwrap_or(&0));
                     }
                 }
                 _ => {}
+            }
+            // Sampled every tick (not just contact ticks): an injection can
+            // itself create a momentary high-water mark before the next
+            // contact relays it away, which a contact-only sample would miss.
+            for n in &self.nodes {
+                max_hops_seen = max_hops_seen.max(*n.hops_by_msg.values().max().unwrap_or(&0));
+                peak_storage_bytes = peak_storage_bytes.max(n.scf.usage_bytes());
             }
         }
 
@@ -731,6 +798,7 @@ impl Simulation {
             latencies,
             evictions_total,
             max_hops_seen,
+            peak_storage_bytes,
             nodes: self.nodes,
             seed: self.seed,
             relays_total,
@@ -742,6 +810,10 @@ impl Simulation {
             injected_ids: injected.iter().map(|i| i.id).collect(),
             injected_at: injected.iter().map(|i| i.at_ms).collect(),
             shadow_samples: self.shadow.map(|s| s.samples).unwrap_or_default(),
+            blocked_backtrack: self.blocked_backtrack,
+            blocked_hop_budget: self.blocked_hop_budget,
+            blocked_no_advantage: self.blocked_no_advantage,
+            blocked_loss: self.blocked_loss,
         }
     }
 
@@ -799,6 +871,9 @@ pub struct SimOutcome {
     pub latencies: Vec<u64>,
     pub evictions_total: u64,
     pub max_hops_seen: u8,
+    /// SIM-6: true running high-water mark across the whole run, sampled
+    /// every tick — not the final usage at the moment `run()` returned.
+    pub peak_storage_bytes: u64,
     pub nodes: Vec<SimNode>,
     pub seed: u64,
     /// ROUTE-002: total relay transmissions (overhead baseline).
@@ -812,6 +887,15 @@ pub struct SimOutcome {
     /// ML-001 L3 shadow decisions recorded during the run (empty when no
     /// shadow observer attached).
     pub shadow_samples: Vec<ShadowDecision>,
+    /// SIM-11: forward attempts blocked by the no-backtrack rule.
+    pub blocked_backtrack: u64,
+    /// SIM-11: forward attempts blocked by the priority's hop budget.
+    pub blocked_hop_budget: u64,
+    /// SIM-11: forward attempts the L2 layer declined (no DP advantage,
+    /// no spray budget) — stayed with L0/SCF instead.
+    pub blocked_no_advantage: u64,
+    /// SIM-11: forward attempts dropped by the simulated link-loss draw.
+    pub blocked_loss: u64,
 }
 
 impl SimOutcome {
@@ -820,14 +904,6 @@ impl SimOutcome {
             .get(&prio)
             .map(|(d, i)| if *i == 0 { 0.0 } else { *d as f64 / *i as f64 })
             .unwrap_or(0.0)
-    }
-
-    pub fn avg_latency_ms(&self) -> f64 {
-        if self.latencies.is_empty() {
-            0.0
-        } else {
-            self.latencies.iter().sum::<u64>() as f64 / self.latencies.len() as f64
-        }
     }
 
     /// No-loop evidence: every delivered message is delivered exactly once
@@ -1072,6 +1148,123 @@ mod tests {
         assert_eq!(
             out.injected_total, 5,
             "all 5 same-ms injections must be created"
+        );
+    }
+
+    #[test]
+    fn ttl_expiry_is_reaped_and_counted() {
+        // SIM-5: nothing in the sim ever called `reap_expired` — a message
+        // that outlived its TTL while sitting un-relayed in a buffer just
+        // stayed there forever, still occupying space, still forwardable,
+        // and `evictions_total` read 0 no matter how many messages expired.
+        let mut sim = Simulation::new(2, 1);
+        sim.inject(Injection::new(
+            0,
+            0,
+            node_id(1),
+            MessagePriority::P4,
+            b"x",
+            1, // 1-second TTL
+        ));
+        // No other tick until well past the TTL (virtual clock is seconds:
+        // 5000ms = epoch+5s, vs. the message's epoch+0s + 1s expiry).
+        sim.add_contact(ContactEvent {
+            at_ms: 5000,
+            a: 0,
+            b: 1,
+        });
+        let out = sim.run();
+        assert_eq!(
+            out.delivered_total, 0,
+            "expired message must never be delivered"
+        );
+        assert!(
+            out.evictions_total >= 1,
+            "TTL expiry must be reaped and counted, got {}",
+            out.evictions_total
+        );
+    }
+
+    #[test]
+    fn peak_storage_bytes_captures_transient_high_not_final_state() {
+        // SIM-6: the old computation scanned `nodes` once at the very end
+        // of `run()` — the *final* usage, which for a message that gets
+        // delivered (and removed, DTN-5) before the run ends reads back
+        // near zero even though the buffer genuinely held it moments
+        // earlier. Distinguishing test: peak must be nonzero even though
+        // final usage across every node is exactly zero.
+        let mut sim = Simulation::new(2, 1);
+        sim.inject(Injection::new(
+            0,
+            0,
+            node_id(1),
+            MessagePriority::P4,
+            b"hello world",
+            3600,
+        ));
+        sim.add_contact(ContactEvent {
+            at_ms: 1000,
+            a: 0,
+            b: 1,
+        });
+        let out = sim.run();
+        assert_eq!(out.delivered_total, 1);
+        let final_usage: u64 = out.nodes.iter().map(|n| n.scf.usage_bytes()).sum();
+        assert_eq!(
+            final_usage, 0,
+            "delivered message must be removed from both buffers (DTN-5)"
+        );
+        assert!(
+            out.peak_storage_bytes > 0,
+            "peak must capture the transient buffered state, got 0"
+        );
+    }
+
+    #[test]
+    fn blocked_reasons_are_tallied_and_exposed() {
+        // SIM-11: `forward_to` already distinguished *why* a forward was
+        // blocked; every call site discarded it, so a low delivery ratio
+        // had no diagnosis beyond an `#[ignore]`d eprintln debug test. A
+        // P4 chain one hop longer than its 3-hop budget (routing/flood.rs)
+        // must now show up as `blocked_hop_budget`, not just silence.
+        let mut sim = Simulation::new(5, 1);
+        sim.inject(Injection::new(
+            0,
+            0,
+            node_id(4),
+            MessagePriority::P4,
+            b"x",
+            3600,
+        ));
+        sim.add_contact(ContactEvent {
+            at_ms: 1000,
+            a: 0,
+            b: 1,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 2000,
+            a: 1,
+            b: 2,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 3000,
+            a: 2,
+            b: 3,
+        });
+        sim.add_contact(ContactEvent {
+            at_ms: 4000,
+            a: 3,
+            b: 4,
+        });
+        let out = sim.run();
+        assert_eq!(
+            out.delivered_total, 0,
+            "the 4th hop exceeds P4's 3-hop budget"
+        );
+        assert!(
+            out.blocked_hop_budget >= 1,
+            "hop-budget exhaustion must be tallied, got {}",
+            out.blocked_hop_budget
         );
     }
 }

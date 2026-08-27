@@ -3,7 +3,6 @@
 //! delivery ratio + no-loop evidence, and same-seed determinism.
 
 use iris_core::message::MessagePriority;
-use iris_core::protocol::MessageId;
 use iris_core::routing::ProphetConfig;
 use iris_core::sim::metrics::SimMetrics;
 use iris_core::sim::scenario::{
@@ -122,55 +121,6 @@ fn run_ferry(seed: u64, opportunistic: bool) -> SimMetrics {
     SimMetrics::from_outcome(&sim.run())
 }
 
-fn run_ferry_inspect(seed: u64, opportunistic: bool) -> (usize, usize) {
-    let mut sim = community_ferry(4, 4, 1, 2500, seed);
-    inject_standard(&mut sim, 2, 100, 7200);
-    if opportunistic {
-        sim.with_opportunistic(ProphetConfig::default());
-    }
-    let out = sim.run();
-    let ok: Vec<MessageId> = out
-        .nodes
-        .iter()
-        .flat_map(|n| n.delivered.iter().map(|(id, _)| *id))
-        .collect();
-    eprintln!(
-        "=== run L2={} delivered={} injected={} ===",
-        if opportunistic { "ON" } else { "OFF" },
-        out.delivered_total,
-        out.injected_total
-    );
-    // injected_ids in TIME order: t=100 (k=0) for all 9 srcs first, then t=150 (k=1).
-    // idx i: k = i/9, s = i%9, dst = (s+1+k)%9
-    let mut missing = 0;
-    for (i, m) in out.injected_ids.iter().enumerate() {
-        if !ok.contains(m) {
-            missing += 1;
-            let k = i / 9;
-            let s = i % 9;
-            eprintln!(
-                "  MISSING idx={i} inject_t={} src={s} dst={}",
-                out.injected_at[i],
-                (s + 1 + k) % 9
-            );
-        }
-    }
-    eprintln!(
-        "L2={} delivered={} injected={}",
-        if opportunistic { "ON" } else { "OFF" },
-        out.delivered_total,
-        out.injected_total
-    );
-    (out.injected_total, missing)
-}
-#[test]
-#[ignore]
-fn route2_debug_undelivered() {
-    let (i0, m0) = run_ferry_inspect(7, false);
-    let (i1, m1) = run_ferry_inspect(7, true);
-    eprintln!("L0 injected={i0} missing={m0} | L2 injected={i1} missing={m1}");
-}
-
 #[test]
 fn route2_opportunistic_matches_delivery_with_lower_overhead() {
     // Sparse community + ferry mobility. L2 (DP + spray) must not reduce
@@ -188,6 +138,18 @@ fn route2_opportunistic_matches_delivery_with_lower_overhead() {
         l2.delivery_ratio > 0.5,
         "ferry scenario must deliver: {}",
         l2.one_line()
+    );
+    // SIM-17: the test's own name and doc comment promise this — "should
+    // lower the overhead ratio" — but until now nothing anywhere read
+    // `overhead_ratio`/`overhead()` at all, so ROUTE-002's entire value
+    // proposition (GTMX+ selectivity vs epidemic flooding) had zero
+    // executable coverage. If this fails, that failure IS the finding —
+    // not a threshold to loosen until it passes.
+    assert!(
+        l2.overhead() < base.overhead(),
+        "L2 must lower overhead vs L0: L0={:.3} L2={:.3}",
+        base.overhead(),
+        l2.overhead()
     );
 }
 

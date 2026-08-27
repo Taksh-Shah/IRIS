@@ -64,13 +64,16 @@ impl SimMetrics {
         lat.sort_unstable();
         let (p50, p95) = percentiles(&lat, 50.0, 95.0);
 
-        let mut peak_storage_bytes = 0u64;
-        let mut evictions_total = 0u64;
-        for n in &out.nodes {
-            let used = n.scf.usage_bytes();
-            peak_storage_bytes = peak_storage_bytes.max(used);
-            evictions_total += n.evictions;
-        }
+        // SIM-6: `out.peak_storage_bytes` is the true running high-water
+        // mark, sampled every tick during the run — recomputing it here
+        // from `out.nodes` would only see *final* usage (the bug this
+        // finding describes: a partition that buffers everything then
+        // heals right before the run ends reports near-empty storage).
+        let peak_storage_bytes = out.peak_storage_bytes;
+        // Already summed once in `run()`; re-summing `n.evictions` here was
+        // a redundant duplicate of the same computation, harmless but
+        // pointless now that this block is being touched anyway.
+        let evictions_total = out.evictions_total;
 
         SimMetrics {
             injected_total: out.injected_total,
@@ -82,8 +85,15 @@ impl SimMetrics {
             peak_storage_bytes,
             evictions_total,
             max_hops_seen: out.max_hops_seen,
+            // SIM-18: 0.0 is the *best* possible overhead — using it as the
+            // zero-delivery sentinel made a catastrophic-failure run (many
+            // relays, nothing delivered) indistinguishable from a perfect
+            // one. Lower is better, so the undefined case must be
+            // pessimistic: `INFINITY` composes correctly with a direct
+            // `<` comparison (SIM-17) without requiring callers to unwrap
+            // an `Option` first, and any finite overhead sorts below it.
             overhead_ratio: if out.delivered_total == 0 {
-                0.0
+                f64::INFINITY
             } else {
                 out.relays_total as f64 / out.delivered_total as f64
             },
