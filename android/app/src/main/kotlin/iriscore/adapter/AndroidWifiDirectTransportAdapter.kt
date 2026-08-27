@@ -453,7 +453,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         p2pManagerOrThrow().setDnsSdResponseListeners(channel, dnsSdServiceListener, dnsSdTxtRecordListener)
     }
 
-    private val dnsSdServiceListener = WifiP2pManager.DnsSdServiceResponseListener { instanceName, registrationType, srcDevice ->
+    private val dnsSdServiceListener = WifiP2pManager.DnsSdServiceResponseListener { instanceName, _registrationType, srcDevice ->
         // FFI-1/FFI-18: allocate through the single allocator so this
         // handle is the SAME one join_group/add_client, p2p_send, and the
         // socket data path (attachLink/links/groupRegistry) will all agree
@@ -463,10 +463,19 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // AND-RT-108: remember the candidate beacon identity (DEC-WA-0007) so the
         // inbound drain can attribute frames to a 64-hex PeerId.
         beaconCandidatePeerIdHex(beacon)?.let { verifiedCache.rememberVerified(handle, it) }
+        // FFI-19: `registrationType` is whatever the platform's DNS-SD
+        // responder echoes back (observed to carry a trailing ".local."
+        // suffix and other framework-version-dependent quirks) — not the
+        // fixed value Rust's WIFI_DIRECT_SERVICE_NAME expects to compare
+        // against. This listener only fires for responses to the request
+        // WE registered under DNS_SD_SERVICE_TYPE (see start_dns_sd /
+        // WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_SERVICE_TYPE)
+        // above), so report that known-good constant instead of the raw
+        // platform echo.
         discoveredMatches.add(
             FfiDirectPeerDiscovery(
                 peerHandle = handle.toULong(),
-                serviceName = registrationType,
+                serviceName = DNS_SD_SERVICE_TYPE,
                 txtRecord = beacon,
             ),
         )

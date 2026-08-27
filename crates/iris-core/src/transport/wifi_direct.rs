@@ -1160,7 +1160,19 @@ impl Transport for WifiDirectTransport {
         }
         let matches = adapter.matches().await;
         let mut infos: Vec<PeerInfo> = Vec::new();
-        for m in matches.iter().take(config.max_peers) {
+        for m in matches
+            .iter()
+            // FFI-19: m.service_name was never validated — any DNS-SD
+            // advertiser on `_iris._tcp` (or, before this fix, anything the
+            // platform happened to hand back) was accepted into
+            // discoveredMatches; a foreign responder was only ever excluded
+            // by the accident of its TXT record failing to parse next. This
+            // is the only filter that separates IRIS peers from unrelated
+            // DNS-SD advertisers on the same channel, so enforce it before
+            // `max_peers` gets spent on entries that will never match.
+            .filter(|m| m.service_name == WIFI_DIRECT_SERVICE_NAME)
+            .take(config.max_peers)
+        {
             let Ok(txt) = WifiDirectTxtRecord::parse(&m.txt_record) else {
                 continue;
             };

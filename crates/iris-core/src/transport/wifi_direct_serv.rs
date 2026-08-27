@@ -31,7 +31,16 @@ use crate::message::PeerId;
 
 /// Wi-Fi Direct DNS-SD (Bonjour) p2p service name IRIS advertises/matches.
 /// Android DNS-SD filters on this service type; TXT record carries the beacon.
-pub const WIFI_DIRECT_SERVICE_NAME: &str = "com.iris.mesh.v1";
+///
+/// FFI-19: this used to be `"com.iris.mesh.v1"` — a value that existed only
+/// in Rust and crossed the seam to nothing. Kotlin's `WifiP2pDnsSdServiceInfo`
+/// was always registered under `DNS_SD_SERVICE_TYPE = "_iris._tcp"` (the
+/// actual on-the-wire DNS-SD service type), matching this module's own FFI
+/// doc comment (`wifi_direct_adapter.rs`'s `must equal _iris._tcp`) but not
+/// this constant. Changed to match what is actually transmitted, rather than
+/// the reverse — DNS-SD service types have their own `_service._proto` naming
+/// convention that `"com.iris.mesh.v1"` doesn't follow anyway.
+pub const WIFI_DIRECT_SERVICE_NAME: &str = "_iris._tcp";
 /// TXT-record wire length in bytes.
 pub const WIFI_DIRECT_TXT_LEN: usize = 22;
 /// Current TXT-record version.
@@ -207,8 +216,10 @@ mod tests {
     #[test]
     fn service_name_is_fixed() {
         // AC-2: the DNS-SD service name is constant (used as the p2p service
-        // filter); TXT record rides the fixed service.
-        assert_eq!(WIFI_DIRECT_SERVICE_NAME, "com.iris.mesh.v1");
+        // filter); TXT record rides the fixed service. FFI-19: this must
+        // match Kotlin's DNS_SD_SERVICE_TYPE exactly — it's what actually
+        // crosses the seam now, not an independently-chosen Rust value.
+        assert_eq!(WIFI_DIRECT_SERVICE_NAME, "_iris._tcp");
     }
 
     #[test]

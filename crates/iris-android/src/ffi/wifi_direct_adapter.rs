@@ -44,7 +44,10 @@ pub struct FfiGroupInfo {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct FfiDirectPeerDiscovery {
     pub peer_handle: u64,
-    /// Matched p2p service name (must equal `_iris._tcp`).
+    /// Matched p2p service name (must equal
+    /// `iris_core::transport::wifi_direct_serv::WIFI_DIRECT_SERVICE_NAME`,
+    /// currently `"_iris._tcp"` — FFI-19: `discover_peers` now enforces
+    /// this rather than accepting any value).
     pub service_name: String,
     /// TXT-record value bytes (the IRIS beacon, 22-byte prefix).
     pub txt_record: Vec<u8>,

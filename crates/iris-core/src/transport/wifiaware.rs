@@ -130,6 +130,17 @@ pub struct IncomingNdpData {
 pub struct PublishConfig {
     /// Cluster identity `nan_service` string (INFRA.md naming; carrier
     /// allow-list decides the exact value per market).
+    ///
+    /// FFI-19: this field is never read by Kotlin's `publishConfig()` —
+    /// both `publish()` and `subscribe()` hard-code `IRIS_SERVICE_NAME =
+    /// "com.iris.mesh.v1"` directly rather than threading this value
+    /// through. Unlike Wi-Fi Direct's DNS-SD (where a foreign advertiser's
+    /// response is silently accepted unless Rust validates it), NAN's own
+    /// publish/subscribe match is service-name-filtered by the OS stack
+    /// itself — a subscriber with a different service name simply never
+    /// discovers this publisher, so leaving this unwired doesn't create
+    /// Wi-Fi Direct's cross-advertiser leak. The default below is kept in
+    /// sync with Kotlin's constant so the two don't silently drift again.
     pub service_name: String,
     /// Matched-instance visibility: `-1` = every IRIS neighbor; else the
     /// 4-octet service instance id.
@@ -153,7 +164,10 @@ pub struct PublishConfig {
 impl Default for PublishConfig {
     fn default() -> Self {
         PublishConfig {
-            service_name: "IRIS".to_string(),
+            // FFI-19: was "IRIS" — a value that existed only here and never
+            // crossed the seam. Aligned to Kotlin's actual, functioning
+            // IRIS_SERVICE_NAME constant.
+            service_name: "com.iris.mesh.v1".to_string(),
             instance_id: -1,
             cached: true,
             ttl_s: 60,
