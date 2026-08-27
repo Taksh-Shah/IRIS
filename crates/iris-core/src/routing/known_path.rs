@@ -167,6 +167,14 @@ mod tests {
         PeerId::from_bytes(b)
     }
 
+    /// Like `pid` but distinct for every value in `0..MAX_ENTRIES` (`pid`'s
+    /// single byte wraps every 256 and collides for capacity-bound tests).
+    fn pid_wide(id: usize) -> PeerId {
+        let mut b = [0u8; 32];
+        b[..8].copy_from_slice(&(id as u64).to_le_bytes());
+        PeerId::from_bytes(b)
+    }
+
     fn peer_info(id: u8) -> PeerInfo {
         PeerInfo {
             peer_id: pid(id),
@@ -263,11 +271,11 @@ mod tests {
     fn rout13_capacity_bound_evicts_oldest() {
         let mut table = RoutingTable::new(Duration::from_secs(600));
         for i in 0..MAX_ENTRIES {
-            table.upsert(pid(i as u8), pid(1), "sim".into(), 1, LinkQuality::Good);
+            table.upsert(pid_wide(i), pid(1), "sim".into(), 1, LinkQuality::Good);
         }
         assert_eq!(table.len(), MAX_ENTRIES);
         // One more insertion must evict an old entry, not grow past MAX.
-        table.upsert(pid(200), pid(2), "sim".into(), 1, LinkQuality::Good);
+        table.upsert(pid_wide(MAX_ENTRIES + 1), pid(2), "sim".into(), 1, LinkQuality::Good);
         assert!(
             table.len() <= MAX_ENTRIES,
             "table must not exceed MAX_ENTRIES"
