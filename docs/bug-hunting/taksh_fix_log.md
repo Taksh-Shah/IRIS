@@ -255,13 +255,95 @@ area's scope; ROUT-26 — the governing requirement doc is internally
 self-inconsistent). None of the three blocked findings were guessed at;
 all three explicitly need a human/product/security-owner decision.
 
-### Next run (Run 7)
-DTN-1..25 (Area B — store-carry-forward / PRoPHET, `crates/iris-core/src/routing/scf*.rs`,
-`prophet.rs`'s DTN-facing pieces) — untouched by every run so far and next
-in the master index after ROUT. Then MG-25..42 (Area E gateway) and TAK-2.
-Read `docs/bug-hunting/taksh_problems.md` §8 (Area B — DTN: store-carry-
-forward and PRoPHET) in full before starting; DTN findings likely
-interact with `scf_eviction.rs`'s device-class ceiling and `scf_contact.rs`'s
-bandwidth/probability ranking already exercised by this tier's own ROUT-*
-tests, so re-read those two files' current state before assuming the
-report's line numbers still match.
+---
+
+## Run 7 — 2026-08-27 — DTN area opened; core scf.rs storage/eviction cluster (8 findings)
+
+Owner said "continue with the next batch" — same Tier 2 sign-off. Read
+§8 (Area B — DTN) in full per Run 6's plan: 25 findings across
+`scf.rs` (12), `scf_contact.rs` (4), `scf_eviction.rs` (1), `prophet.rs` (8).
+Re-read every cited line against current source before starting — the
+report's line numbers had drifted slightly but the described defects were
+all still present and unfixed.
+
+**Batch selection:** DTN-1, 2, 5, 6, 7, 8, 9, 10 — all seven scf.rs
+findings that touch the SAME core mechanism (`buffer_message` /
+`evict_until` / `StoreKey` / byte accounting), fixed as one rewrite rather
+than piecemeal. This was a deliberate choice, not just convenience:
+DTN-9's ordering fix is a *precondition* for DTN-8's O(1) eviction lookup
+to be correct (a naive `next_back()` without first fixing `StoreKey`'s
+`Ord` would silently invert the expiry tie-break), and DTN-1/DTN-7 turned
+out to share one enforcement mechanism entirely (see DTN-7's row). Left
+for future runs: DTN-3, DTN-4, DTN-11 (semi-independent — see "Next run"
+below) and the PRoPHET aging/capacity cluster DTN-12..19, plus the
+lifecycle-correctness cluster DTN-20..22 and the scf_contact.rs cluster
+DTN-23..25.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | DTN-1 | ✅ Fixed | `c0c1007` | `buffer_message` now compares `total_bytes + need` against `max_bytes` on every insert, calls `evict_until` if over, and returns `ScfError::StorageFull` if that still isn't enough. New test `dtn1_capacity_rejects_when_full` (P0 fills the budget, a second message with nothing evictable is rejected). |
+| 2 | DTN-2 | ✅ Fixed | `c0c1007` | Added `index: HashMap<MessageId, StoreKey>`; `buffer_message` replaces an existing entry for a replayed id instead of duplicating it; `ScfConfig::max_messages` (default 100_000) caps entry count independent of bytes. New tests `dtn2_replayed_message_id_replaces_not_duplicates`, `dtn2_max_messages_cap_rejects_beyond_count`. All by-id accessors (`priority_rank_of`, `status_for`, `mark_forwarded`, `delivery_status`) now route through the index — O(1) instead of O(n) `.iter().find()`. |
+| 3 | DTN-5 | ✅ Fixed | `c0c1007` | `mark_forwarded(.., acked=true)` now removes the entry via a new `remove_entry` helper (shared with `buffer_message`'s replace path, `reap_expired`, `evict_until`) after reporting the terminal status by value. Fallout fixed, not weakened: `buffer_and_lifecycle_status` (scf.rs), the M6 integration test (`routing/mod.rs`), and — the one with real behavioral risk — `sim/mod.rs`'s `forward_to` dedup check at line ~319, which used to read `scf.delivery_status(&id).is_some()` to detect "dst already carries/delivered this message"; since a delivered entry no longer exists to query, that check now also consults `self.nodes[dst].delivered` (the sim's own permanent delivery record), or a later contact could re-deliver and double-count the same message. `relay_marks_relay_node_carry_state` updated to assert `None` post-delivery instead of `Some(Delivered)`. |
+| 4 | DTN-6 | ✅ Fixed | `c0c1007` | `ttl_seconds` clamped to `MAX_TTL_SECS` (30 days) in-place at buffer time; `StoreKey::new` derives `expiry_unix` from `stored_at` (locally observed) instead of the claimed `envelope.timestamp`. New test `dtn6_ttl_seconds_is_clamped`. Note: the far-future-*timestamp* half of this finding's attack was already closed by ROUT-5 (`message_engine::expiry::is_expired`'s skew-suspect fail-closed handling, this same session, commit `1821c48`) — this fix closes the remaining unclamped-`ttl_seconds` half and the arrival-time-basis half. |
+| 5 | DTN-6 | (see row 4 — one commit) | — | — |
+| 6 | DTN-7 | ✅ Fixed (scope-narrowed, see report note) | `c0c1007` | Closed by DTN-1's reject-on-insert enforcement alone: `evict_until` still exempts P0, but `buffer_message`'s post-eviction capacity re-check now rejects *any* message (P0 included) once nothing evictable remains and the ceiling would still be exceeded — `usage()` can no longer climb past `max_bytes` under a P0-only flood. The *Fix* field's secondary "give P0 its own 25% sub-quota with oldest-first internal eviction" was deliberately not implemented — not required to close the unbounded-growth defect, and would need new config surface + an undefined-in-the-report internal ordering. Documented as a scope note on the finding itself, not silently dropped. |
+| 7 | DTN-8 | ✅ Fixed | `c0c1007` | `usage()` now reads an incrementally-maintained `total_bytes: u64` field (O(1)) instead of folding the whole buffer; `evict_until`'s victim lookup is `buffer.keys().next_back()` (O(log n)) instead of an O(n) `max_by` scan — evicting m of n messages is now O(m log n), not O(m*n). Depends on DTN-9's `Ord` fix landing first (same commit) for `next_back()` to pick the correct victim. |
+| 8 | DTN-9 | ✅ Fixed | `c0c1007` | `StoreKey` no longer derives `Ord`; hand-written impl: `priority_rank` ASC, `expiry_unix` DESC within a band, `message_id` tertiary — so `next_back()` yields exactly the worst eviction candidate (highest priority_rank, then soonest-expiring), matching what the old independently-correct `max_by` comparator computed. `ordered_buffered`'s doc comment corrected to describe the real (now internally consistent) order — no caller depends on a specific forward order today (`scf_contact.rs` re-sorts from scratch), so no behavioral fix was needed there, only the comment. `store_key_ordering_priority_then_expiry` updated: `c.cmp(&a)` flips from `Less` to `Greater` under the corrected semantics. |
+| — | DTN-9 | (see row 8 — one commit) | — | — |
+| 9 | DTN-10 | ✅ Fixed | `c0c1007` | `approx_bytes` now sums every heap-allocated field (`sender_id`, `recipient_id`, `payload`, `signature`, `encryption_hdr`, `routing_hints`' variable parts, `auth_cert_chain`) instead of a flat `payload.len() + 256`. `FIXED_OVERHEAD_BYTES = 192` chosen deliberately so a 32-byte sender/recipient id with no optional fields (every existing test envelope's shape) accounts identically to the old formula (192+32+32=256) — zero recalibration needed for any test not exercising the new fields. New test `dtn10_approx_bytes_counts_cert_chain_and_hints` (a 10 KB cert chain must move accounted bytes by at least 10 KB). |
+
+**Test/call-site fallout, all fixed not weakened (per §8's "never delete a
+test to make it pass" — these are genuine behavior-contract changes, not
+dodges):** `scf.rs`'s `buffer_and_lifecycle_status`,
+`store_key_ordering_priority_then_expiry`; `scf_eviction.rs`'s
+`p7_evicted_before_p1`, `p0_never_evicted_under_pressure`,
+`eviction_ordered_lowest_priority_then_soonest_expiry` (all three
+previously relied on `buffer_message` admitting messages unconditionally
+as test *setup*, then triggering eviction via a separate later call — now
+given real budget headroom for every insert to succeed, with an explicit
+`evict_until` target reproducing the original eviction scenario);
+`routing/mod.rs`'s M6 integration test; `sim/mod.rs` (dedup check +
+`relay_marks_relay_node_carry_state`, see DTN-5's row);
+`tests/obs_telemetry.rs`'s SCF eviction-telemetry test (needed budget
+headroom for the message to be admitted before the later forced
+eviction — a `max_storage_bytes: 0` config is no longer a valid way to
+force "admitted-but-over-budget" now that insertion is enforced).
+
+**Run 7 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop`
+(GNU toolchain) — **648 iris-core lib tests, 0 failed**, every other
+workspace suite 0 failed (including `sim`/`ml_experiments`/`sim_scenarios`,
+which were the ones most likely to be sensitive to the SCF behavior
+changes — all green with no anchor-value updates needed).
+`cargo clippy -p iris-core --lib --no-deps` — zero warnings from any file
+touched this run. No reverts; three-consecutive-failure escalation (§8)
+never triggered.
+
+**§8 accounting:** 8 findings fixed this run (DTN-1, 2, 5, 6, 7, 8, 9,
+10), landed in one commit because they are one coherent rewrite of the
+same mechanism — at the 8-per-wake-cycle cap. Stopping here rather than
+starting DTN-3/4/11 with no budget left in this wake.
+
+### Next run (Run 8)
+DTN-4 (Critical — `messages_forwardable_to` requires an exact recipient
+match, so multi-hop store-carry-forward relaying is currently impossible;
+this is store-carry-forward's *entire premise* not working) and DTN-3
+(no per-peer "already offered" record — repeated contact events re-offer
+the same message and a global, not per-peer, `forward_attempts` counter
+can permanently lock a message out after meeting just three different
+peers). These two are tightly related (DTN-4's fix threads a DP/oracle
+into `messages_forwardable_to`; DTN-3's fix touches the same function's
+filter chain) and share `scf_contact.rs` blast radius — read
+`ROUTE2_DESIGN.md`/`OPPORTUNISTIC_ROUTING.md`'s relay-candidate sections
+and re-check whether `RoutingEngine`'s `OpportunisticRouter`
+(`predictions()`/`p_for`) is reachable from `ScfEngine` before starting
+DTN-4 (it currently is not — `ScfEngine` has no reference to it). DTN-11
+(`ScfEvictionPolicy` unwired) is a good small follow-on once DTN-3/4 land,
+since it's now straightforward to wire against this run's rewritten
+`evict_until`. After that: the PRoPHET aging cluster DTN-12..19 (all
+tightly coupled around `last_meet`'s dual-clock conflation — read as one
+unit, per DTN-14's own dependency note), then DTN-20..22 (lifecycle
+correctness — DTN-21 in particular is a one-line, zero-blast-radius,
+high-value fix: delete `status_for`'s false "proximity means delivered"
+special case), then DTN-23..25 (scf_contact.rs ranking/bandwidth). Then
+MG-25..42, TAK-2.

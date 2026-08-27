@@ -32,11 +32,12 @@ These three results interact rather than simply stack: the parts of this section
 
 **This section is rewritten by the fix loop after every finding and every tier.** It is the fast answer to "what's done, what's left." Individual findings carry their own `Fix status` line (added just under **Severity**) for in-place detail; this table is the roll-up. The fix loop itself, its tier logic, its per-finding protocol, and its safety gates are specified in full in [`taksh_problems_loop.md`](taksh_problems_loop.md) — this table and that file are kept in sync by the same process.
 
-**Last updated:** 2026-08-27 — **ROUT area of Tier 2 is now FULLY COMPLETE**: every one of the 36 ROUT-\* findings is either ✅ Fixed (33) or 🔒 Blocked with a documented, non-arbitrary reason (3: ROUT-23, ROUT-24, ROUT-26 — all three need a human/product/security-owner decision the loop should not make unilaterally, per the "wrong fix is worse than the bug" principle §2.3 exists for). Across three wakes under the same human sign-off (owner instruction: "start from tier 2 problems solving" / "continue with the next batch" x2):
+**Last updated:** 2026-08-27 — **ROUT area of Tier 2 is FULLY COMPLETE** (33 ✅ + 3 🔒 of 36) and **DTN's core storage/eviction cluster (8 of 25 DTN findings) is now fixed** (commit `c0c1007`: DTN-1, 2, 5, 6, 7, 8, 9, 10). Across four wakes under the same human sign-off (owner instruction: "start from tier 2 problems solving" / "continue with the next batch" x3):
 - Wake 1: caught up stale docs for ROUT-1..18 (already fixed before this session, including two — ROUT-17 `9ae05b4`, ROUT-18 `4bb4733` — fixed by a non-loop commit from another contributor with no doc flip); fixed ROUT-19 `c99633d`, ROUT-20 `ec150a6`, ROUT-27 `8d728e3`, ROUT-28+ROUT-29 `7d5723d`, ROUT-30 `1191eff`; verified ROUT-31 already resolved as a side effect of ROUT-5 (`1821c48`, subsumed, no new commit); blocked ROUT-26 (governing requirement doc `REQ-ROUTE-NF-004` is internally self-inconsistent — its *Fix* field itself says to escalate rather than pick a resolution). Also fixed a pre-existing baseline test failure unrelated to any Tier 2 finding (`known_path.rs`'s `rout13_capacity_bound_evicts_oldest`, commit `1b90f02`) before starting, per the loop's "tree must be green after every commit" invariant.
 - Wake 2: fixed ROUT-22 `eba51b6` (spray dedup memory); blocked ROUT-23 (re-reading both governing specs this wake found they **disagree with each other** for P1-P3, not just with the code — no single spec to align to without a routing/product owner reconciling them first); fixed ROUT-34 `f824638` (dead placeholder deletion), ROUT-32+ROUT-33 `1e641c9` (benchmark rewrite — 9 benches, 5 of them new L0-hot-path coverage), ROUT-36 `07338e5` (renamed the colliding `is_expired`); verified ROUT-35 already subsumed by ROUT-19's own hop-budget-gate rewrite (no new commit).
 - Wake 3: fixed ROUT-21 and ROUT-25 together (commit `5ffffb0`) — `ForwardingDecision` now carries a selected `transport` (Forward) / per-recipient transports (Flood), via a new `NeighborTable::links_to` + `best_transport` (picks the best-quality live link; `LinkQuality` is ordered Excellent < Good < Fair < Poor, lower = better, per the existing `known_path.rs` convention) — and `OpportunisticRouter` gained a per-message spray budget + `spray_fallback`, wired into `decide_inner` as a cold-start step. Blocked ROUT-24: investigating its fix found the premise false — `CapabilityBundle` (the finding's proposed DP source) carries no DP field at all, and no wire protocol in the crate exchanges neighbor DP snapshots in production (only `sim/mod.rs`'s own separate code does); a real fix needs a new, security-relevant wire-protocol feature outside a routing-module fix's scope, not a wiring gap. ROUT-25 turned out **not** to depend on ROUT-24 despite the stated Dependencies (spray only needs a live contact, not that contact's DP), so it shipped anyway.
-Full workspace test suite green after every commit across all three wakes (643 iris-core lib tests as of wake 3, 0 failed). Next: DTN-1..25 (Area B — store-carry-forward / PRoPHET), untouched by every run so far. MG-25..42 and TAK-2 remain after that.
+- Wake 4: opened the DTN area (Area B — store-carry-forward/PRoPHET, 25 findings). Fixed the 8-finding core storage/eviction cluster (DTN-1, 2, 5, 6, 7, 8, 9, 10) as one coherent rewrite of `scf.rs`'s `buffer_message`/`evict_until`/`StoreKey`/byte-accounting — chosen as one batch because several of the individual fixes only compose correctly together (DTN-9's ordering fix is what makes DTN-8's O(1) eviction lookup correct). `buffer_message` now actually enforces `max_bytes` and a new `max_messages` count cap, rejecting when eviction cannot free enough room; a replayed `MessageId` replaces its existing entry instead of duplicating it; `Delivered` messages are removed immediately instead of leaking forever; `ttl_seconds` is clamped and `expiry_unix` is arrival-time-based instead of trusting the sender's claim; eviction victim lookup is O(log n) via a corrected `StoreKey::Ord` instead of an O(n) scan; byte accounting now covers `auth_cert_chain`/`routing_hints`/`encryption_hdr`, not just the payload. DTN-7's "P0 unbounded" defect turned out to be fully closed by DTN-1's reject-on-insert enforcement alone — the finding's suggested P0 sub-quota refinement was deliberately not implemented (see DTN-7's own status note for why). DTN-3, DTN-4, DTN-11 through DTN-25 (17 findings: forwarding-candidate selection, PRoPHET aging, PRoPHET capacity/DoS, eviction-policy wiring, status/lifecycle correctness) remain — deliberately saved for dedicated future runs since they are large, semi-independent sub-clusters in their own right (see taksh_fix_log.md Run 7 for the planned grouping).
+Full workspace test suite green after every commit across all four wakes (648 iris-core lib tests as of wake 4, 0 failed). Next: DTN-4 (Critical — exact-recipient-match-only forwarding defeats multi-hop SCF entirely) and DTN-3 (per-peer offered record), the highest-value remaining DTN cluster. Then DTN-11..25, MG-25..42, TAK-2.
 **Toolchain note:** This session's Rust builds/tests ran under `RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-gnu` — the MSVC `link.exe` was not resolvable in the environment's PATH (Git Bash's own `link.exe` shadowed it, and PowerShell had no VS Developer Shell active). `iris-desktop` (the Tauri app) cannot link under the GNU toolchain (MSVC-only manifest linker flags) and was excluded from the sweep; it is untouched by any Tier 2 finding in scope.
 **Total actionable findings:** 282 (284 scanned, minus 2 `Informational` verified-clean results that need no fix: TAK-23, GAP-14)
 
@@ -50,11 +51,11 @@ Full workspace test suite green after every commit across all three wakes (643 i
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
 | **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 20 | 0 | 10 | 2 | 0 | **IN PROGRESS** — pure-Rust findings done, Kotlin-touching FFI-1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-4/BLE-9 remain | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
-| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 44 | 0 | 33 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — every one of 36 findings is either ✅ (33) or 🔒 with a documented reason (3: ROUT-23, ROUT-24, ROUT-26); DTN-1..25, MG-25..42, TAK-2 not yet started) |
+| **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 36 | 0 | 41 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: 8/25 fixed [DTN-1,2,5,6,7,8,9,10 — the core storage/eviction cluster]; DTN-3,4,11..25, MG-25..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
 | **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 126 | 0 | 0 | 0 | 0 | none — can run anytime | ⬜ |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **222** | **0** | **55** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **214** | **0** | **63** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -237,16 +238,16 @@ All 284 findings, in report order. Severities are post-verification.
 | **ROUT-34** | Low | `flood.rs:53-56,` | Dead placeholder code that reads as load-bearing | ✅ `f824638` |
 | **ROUT-35** | Low | `routing/mod.rs:265-267` | Empty tautological `else if` branch in the decision chain | ✅ (subsumed by ROUT-19, `c99633d`) |
 | **ROUT-36** | Low | `store.rs:31` | Two functions named `is_expired` in one crate with swapped argument orders and opposite skew semantics | ✅ `07338e5` |
-| **DTN-1** | Critical | `scf.rs:199-226` | SCF store is completely unbounded — `buffer_message` never enforces `max_bytes` and eviction is never called in production | ⬜ |
-| **DTN-2** | High | `scf.rs:56-71` | No message-COUNT bound and no duplicate suppression — the same `MessageId` can occupy unlimited slots | ⬜ |
+| **DTN-1** | Critical | `scf.rs:199-226` | SCF store is completely unbounded — `buffer_message` never enforces `max_bytes` and eviction is never called in production | ✅ `c0c1007` |
+| **DTN-2** | High | `scf.rs:56-71` | No message-COUNT bound and no duplicate suppression — the same `MessageId` can occupy unlimited slots | ✅ `c0c1007` |
 | **DTN-3** | High | `scf_contact.rs:64-97` | No per-peer "already offered" record — the same message is re-offered to the same peer on every contact event | ⬜ |
 | **DTN-4** | Critical | `scf.rs:257-276` | `messages_forwardable_to` requires an EXACT recipient match — multi-hop store-carry-forward relaying is impossible | ⬜ |
-| **DTN-5** | High | `scf.rs:278-299` | Delivered / Dropped messages are never removed from the buffer — terminal entries leak forever | ⬜ |
-| **DTN-6** | High | `scf.rs:63-70` | `expiry_unix` and the TTL check trust an attacker-controlled `timestamp`/`ttl_seconds` — messages can be made unexpirable and eviction-proof | ⬜ |
-| **DTN-7** | High | `scf.rs:337-366` | `evict_until` silently gives up when only P0 remains — a P0/SOS flood is an unbounded, uncapped memory sink | ⬜ |
-| **DTN-8** | Medium | `scf.rs:170-175` | `evict_until` recomputes `usage()` (an O(n) fold) twice per evicted message — quadratic blowup under pressure | ⬜ |
-| **DTN-9** | Medium | `scf.rs:53-61` | The `BTreeMap` key ordering does not match the eviction order the spec and doc comments claim | ⬜ |
-| **DTN-10** | Medium | `scf.rs:187-189` | `approx_bytes` counts only the payload — attacker-controlled envelope fields (cert chain, routing hints, encryption header) are invisible to capacity accounting | ⬜ |
+| **DTN-5** | High | `scf.rs:278-299` | Delivered / Dropped messages are never removed from the buffer — terminal entries leak forever | ✅ `c0c1007` |
+| **DTN-6** | High | `scf.rs:63-70` | `expiry_unix` and the TTL check trust an attacker-controlled `timestamp`/`ttl_seconds` — messages can be made unexpirable and eviction-proof | ✅ `c0c1007` |
+| **DTN-7** | High | `scf.rs:337-366` | `evict_until` silently gives up when only P0 remains — a P0/SOS flood is an unbounded, uncapped memory sink | ✅ `c0c1007` |
+| **DTN-8** | Medium | `scf.rs:170-175` | `evict_until` recomputes `usage()` (an O(n) fold) twice per evicted message — quadratic blowup under pressure | ✅ `c0c1007` |
+| **DTN-9** | Medium | `scf.rs:53-61` | The `BTreeMap` key ordering does not match the eviction order the spec and doc comments claim | ✅ `c0c1007` |
+| **DTN-10** | Medium | `scf.rs:187-189` | `approx_bytes` counts only the payload — attacker-controlled envelope fields (cert chain, routing hints, encryption header) are invisible to capacity accounting | ✅ `c0c1007` |
 | **DTN-11** | Medium | `scf_eviction.rs:32-70` | `ScfEvictionPolicy` is entirely unwired decoration — `is_evictable`/`eviction_weight` never called, `evict_to_capacity`/`DeviceClass` have no production caller | ⬜ |
 | **DTN-12** | High | `prophet.rs:151-181` | PRoPHET aging is never executed in production — `age()` and `prune()` have no non-benchmark callers, so DPs only ever increase | ⬜ |
 | **DTN-13** | High | `prophet.rs:154-181` | `age()` resets `last_meet` to *now* for every entry — calling it more often than `aging_interval` means aging never happens at all | ⬜ |
@@ -1648,7 +1649,7 @@ Scope: `crates/iris-core/src/routing/{prophet,scf,scf_contact,scf_eviction}.rs`
 
 #### DTN-1: SCF store is completely unbounded — `buffer_message` never enforces `max_bytes` and eviction is never called in production
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:199-226` (fn `buffer_message`); callers proven by grep
 - **What:** `buffer_message` checks TTL only. It never compares `self.usage()` against `self.max_bytes`, never calls `evict_to_fit`/`evict_until`, and never returns a "storage full" error. `DropReason::StorageFull` (scf.rs:40) is never constructed.
@@ -1682,7 +1683,7 @@ if self.usage().saturating_add(need) > self.max_bytes {
 
 #### DTN-2: No message-COUNT bound and no duplicate suppression — the same `MessageId` can occupy unlimited slots
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:56-71` (`StoreKey`), `scf.rs:210-218` (fn `buffer_message`)
 - **What:** The buffer is keyed by `StoreKey { priority_rank, expiry_unix, message_id }`. `buffer_message` performs no lookup by `MessageId`. Two envelopes with the same `message_id` but a different `priority` or `timestamp`/`ttl_seconds` produce different `StoreKey`s and therefore two distinct buffer entries.
@@ -1753,7 +1754,7 @@ if self.usage().saturating_add(need) > self.max_bytes {
 
 #### DTN-5: Delivered / Dropped messages are never removed from the buffer — terminal entries leak forever
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:278-299` (fn `mark_forwarded`), `scf.rs:44-51`
 - **What:** `mark_forwarded(.., acked = true)` sets `DeliveryStatus::Delivered` in place. Nothing removes the entry. The only removal paths are `reap_expired` (TTL; no production caller, DTN-1) and `evict_until` (no production caller, DTN-1).
@@ -1776,7 +1777,7 @@ if self.usage().saturating_add(need) > self.max_bytes {
 
 #### DTN-6: `expiry_unix` and the TTL check trust an attacker-controlled `timestamp`/`ttl_seconds` — messages can be made unexpirable and eviction-proof
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:63-70` (`StoreKey::from_envelope`), `crates/iris-core/src/routing/store.rs:31-34` (fn `is_expired`), `scf.rs:337-351` (`evict_until` ordering)
 - **What:** `is_expired` clamps the lifetime start to `timestamp.min(now_unix)` — a *future* timestamp is treated as "arrived now", so the message survives until `ttl_seconds` elapses from now. `ttl_seconds` is never clamped. Simultaneously `StoreKey::expiry_unix = timestamp + ttl_seconds` is taken at face value, and `evict_until` treats a *later* `expiry_unix` as safer.
@@ -1798,7 +1799,7 @@ scf.rs:349	                        .then_with(|| b.expiry_unix.cmp(&a.expiry_uni
 
 #### DTN-7: `evict_until` silently gives up when only P0 remains — a P0/SOS flood is an unbounded, uncapped memory sink
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27  ·  scope note: fixed via DTN-1's reject-on-insert enforcement (buffer_message rejects any message, P0 included, once evict_until has nothing left it may evict and the ceiling would still be exceeded) — this alone bounds usage() at max_bytes regardless of priority mix, which is the finding's core "unbounded" defect. The *Fix* field's secondary suggestion (a dedicated 25%-of-max_bytes P0 sub-quota with its own oldest-first eviction) was deliberately **not** implemented: it is a refinement for P0-vs-other-traffic fairness, not required to close the unbounded-growth defect, and would have needed new config surface + a P0-internal eviction ordering (by `stored_at`, distinct from the existing expiry-based comparator) without a clear specified default. Left as a possible follow-up, not a gap in this fix.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:337-366` (fn `evict_until`)
 - **What:** The loop filters `k.priority_rank > 0` (P0 exempt). When every remaining message is P0, `max_by` yields `None` and the loop `break`s, leaving usage arbitrarily above `target_bytes` and returning a short/empty eviction list. No caller is told the target was not met.
@@ -1818,7 +1819,7 @@ scf.rs:349	                        .then_with(|| b.expiry_unix.cmp(&a.expiry_uni
 
 #### DTN-8: `evict_until` recomputes `usage()` (an O(n) fold) twice per evicted message — quadratic blowup under pressure
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:170-175` (fn `usage`), `scf.rs:339,346-351,359`
 - **What:** `usage()` sums `approx_bytes` over the whole `BTreeMap` on every call. `evict_until` calls it in the `while` condition *and* again inside the `tracing::warn!` field list, and separately rescans the map with `max_by` for each victim. Evicting `m` of `n` costs O(m·n).
@@ -1843,7 +1844,7 @@ scf.rs:349	                        .then_with(|| b.expiry_unix.cmp(&a.expiry_uni
 
 #### DTN-9: The `BTreeMap` key ordering does not match the eviction order the spec and doc comments claim
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/routing/scf.rs:53-61` (`StoreKey`), `scf.rs:368-372` (`ordered_buffered`), `scf.rs:337-351`
 - **What:** `StoreKey` derives `Ord` as (`priority_rank` ASC, `expiry_unix` ASC, `message_id`). scf.rs:5-6 and 368-369 describe the map as "priority DESC, expiry ASC", and the spec's eviction takes `keys().next_back()` as "lowest priority, soonest expiry". With this `Ord`, `next_back()` is lowest priority, **LATEST** expiry — the opposite tie-break. `evict_until` therefore cannot use map order at all and falls back to a full `max_by` scan with a hand-inverted comparator (scf.rs:346-350).
@@ -1868,7 +1869,7 @@ scf.rs:349	                        .then_with(|| b.expiry_unix.cmp(&a.expiry_uni
 
 #### DTN-10: `approx_bytes` counts only the payload — attacker-controlled envelope fields (cert chain, routing hints, encryption header) are invisible to capacity accounting
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 2
+- **Fix status:** ✅ Fixed  ·  Tier 2  ·  commit `c0c1007`  ·  2026-08-27
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/routing/scf.rs:187-189` (fn `approx_bytes`)
 - **What:** Accounting is `payload.len() + 256`, a flat constant for everything else. `Envelope` also carries `payload_ref`, `signature`, `encryption_hdr`, `routing_hints`, `auth_cert_chain` (see `crates/iris-core/src/protocol/envelope.rs` and the literal at `scf_eviction.rs:102-107`) — all heap-allocated, none counted.
