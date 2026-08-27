@@ -160,26 +160,51 @@ impl PriorityQueue {
     /// never a real chance for the transport to become selectable again
     /// before the attempt budget ran out.
     ///
-    /// Fix: if the top of the heap isn't due yet, this returns `None` for
-    /// this tick rather than force-dequeuing it — the caller's next
-    /// `poll_interval` tick will check again. This is deliberately simple
-    /// rather than fully general: a not-yet-due top-of-heap item blocks a
-    /// lower-priority-but-due item sitting deeper in the heap until the
-    /// former becomes due. Acceptable for a mesh queue's typical depth and
-    /// churn (RES-0010's own fairness gate already exists to bound
-    /// starvation across priority classes, not backoff windows); a fully
-    /// correct "any due item, in priority order" scan is a larger structural
-    /// change deferred unless this proves insufficient in practice.
+    /// Fix, first attempt: if the top of the heap wasn't due yet, return
+    /// `None` for this tick rather than force-dequeuing it. Proven
+    /// insufficient in practice within the same session: a message whose
+    /// first attempt fails gets requeued with a long backoff (P4's initial
+    /// timeout is 600s) but keeps its ORIGINAL `created_at` — so it still
+    /// sorts ahead of every later P4 message in the FIFO tiebreak. That
+    /// blocked-but-undue item then sat at the top of the heap and silently
+    /// starved every message behind it for the rest of its backoff window,
+    /// confirmed live: a second message sent immediately after the first
+    /// one failed produced no `deliver_outbound` trace at all for 26+
+    /// seconds, though the connection was confirmed live throughout.
+    ///
+    /// Real fix: when the top isn't due, scan for the best DUE item instead
+    /// of giving up. `BinaryHeap` has no cheap "remove this specific
+    /// element" — drain-filter-rebuild is O(n), which is fine at this
+    /// queue's realistic depth (a mesh node's outbound backlog, not a
+    /// datacenter queue) and is the same pattern the fairness-gate branch
+    /// below already uses for the same reason.
     pub fn dequeue(&mut self, now: Instant) -> Option<QueuedMessage> {
         if self.heap.is_empty() {
             return None;
         }
-        if let Some(top) = self.heap.peek() {
-            if let Some(deadline) = top.next_retry {
-                if now < deadline {
-                    return None;
-                }
-            }
+        let top_due = self
+            .heap
+            .peek()
+            .map(|top| top.next_retry.map(|d| now >= d).unwrap_or(true))
+            .unwrap_or(false);
+        if !top_due {
+            let all: Vec<QueuedMessage> = self.heap.drain().collect();
+            let (due, not_due): (Vec<_>, Vec<_>) = all.into_iter().partition(|m| {
+                m.next_retry.map(|d| now >= d).unwrap_or(true)
+            });
+            self.heap.extend(not_due);
+            let Some(best) = due.into_iter().max() else {
+                return None;
+            };
+            // `best` bypasses the fairness-gate bookkeeping below (it was
+            // never a normal top-of-heap pop) — deliberately: the gate
+            // exists to bound cross-priority starvation during a SUSTAINED
+            // P0 stream, not to arbitrate the rare case of digging past a
+            // backed-off item. Not updating the gate counters here is
+            // conservative (it can only delay a fairness admission, never
+            // skip one) and avoids the gate's own bookkeeping disagreeing
+            // with which priority was "really" dispatched this tick.
+            return Some(best);
         }
 
         let budget_hit = self.p0_dispatched_since_gate >= self.p0_budget
@@ -289,6 +314,35 @@ mod tests {
         };
         m.message_id = MessageId::from_bytes([seq; 16]);
         m
+    }
+
+    #[test]
+    fn hw4_dequeue_scans_past_a_blocked_top_for_a_due_item() {
+        // HW-4 (second half): the first fix for this made dequeue() return
+        // None whenever the TOP of the heap wasn't due — but a requeued
+        // message keeps its ORIGINAL created_at, so a failed P4 send (600s
+        // initial backoff) still sorts ahead of every later P4 message in
+        // the FIFO tiebreak. That not-yet-due item then silently starved
+        // everything behind it for its whole backoff window. Confirmed
+        // live: a second message sent right after the first one failed
+        // produced no delivery-loop trace at all for 26+ seconds, despite a
+        // confirmed-live connection throughout.
+        let mut q = PriorityQueue::new(60);
+        let now = Instant::now();
+
+        let mut blocked = QueuedMessage::new(env(MessagePriority::P4, 1));
+        blocked.next_retry = Some(now + std::time::Duration::from_secs(600));
+        q.push(blocked);
+
+        // A later, same-priority message that IS due — must not be starved
+        // by the blocked one sitting ahead of it in FIFO order.
+        let due = QueuedMessage::new(env(MessagePriority::P4, 2));
+        let due_id = due.envelope.message_id;
+        q.push(due);
+
+        let got = q.dequeue(now).expect("the due message must be found past the blocked top");
+        assert_eq!(got.envelope.message_id, due_id);
+        assert_eq!(q.len(), 1, "the blocked message must stay queued, not be dropped or returned");
     }
 
     #[test]
