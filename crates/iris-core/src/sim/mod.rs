@@ -315,8 +315,15 @@ impl Simulation {
         if self.nodes[dst].forwarded.is_duplicate(&id) {
             return ForwardResult::Sinked;
         }
-        // dst already carries this message (dedup at the buffer).
-        if self.nodes[dst].scf.delivery_status(&id).is_some() {
+        // dst already carries this message, or has already been delivered
+        // it in an earlier round (DTN-5: a delivered message is removed
+        // from the SCF buffer immediately, so `delivery_status` alone can
+        // no longer tell "never seen" apart from "already delivered and
+        // cleaned up" — `delivered` is the sim's own permanent record,
+        // unaffected by SCF buffer retention).
+        if self.nodes[dst].scf.delivery_status(&id).is_some()
+            || self.nodes[dst].delivered.iter().any(|(mid, _)| *mid == id)
+        {
             return ForwardResult::Sinked;
         }
         // Hop budget (ROUTE-001 flood policy reused).
@@ -786,7 +793,6 @@ pub fn sim_peer(i: usize) -> PeerId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::routing::scf::DeliveryStatus;
 
     #[test]
     fn scaffold_constructs_and_runs() {
@@ -839,17 +845,15 @@ mod tests {
         ));
         let out = sim.run();
         // The relay node (1) no longer holds the delivered copy; the message
-        // is terminal at node 2.
+        // is terminal at node 2. `delivered` (the sim's own permanent
+        // record) confirms the delivery happened; the SCF buffer entry
+        // itself is gone (DTN-5: a delivered message is removed
+        // immediately rather than retained forever).
         assert!(out.nodes[2].delivered.len() == 1);
         let st = out.nodes[2]
             .scf
             .delivery_status(&out.nodes[2].delivered[0].0);
-        assert_eq!(
-            st,
-            Some(DeliveryStatus::Delivered {
-                delivered_to: out.nodes[2].peer_id
-            })
-        );
+        assert_eq!(st, None);
     }
 
     #[test]

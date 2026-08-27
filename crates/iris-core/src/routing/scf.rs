@@ -8,7 +8,7 @@
 //! (STORED → CARRY → FORWARD_ATTEMPT → ACK_RECEIVED/DELIVERED, or
 //! TTL_EXPIRED → DROPPED).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -50,21 +50,55 @@ impl DeliveryStatus {
     }
 }
 
-/// Ordering key for the SCF buffer: higher priority first (lower rank), then
-/// sooner-expiring first — so both forward and eviction iterate in the order
-/// the design requires.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// Ordering key for the SCF buffer.
+///
+/// DTN-9: `Ord` is implemented by hand (not derived) so that ascending
+/// `BTreeMap` iteration (`.values()`, `ordered_buffered()`) yields
+/// priority-rank ASC / soonest-expiry-last order, and — the property
+/// `evict_until` actually depends on — descending iteration
+/// (`.keys().next_back()`) yields exactly the worst eviction candidate:
+/// highest `priority_rank` (least urgent class) first, then, within that
+/// class, the *soonest-expiring* entry (STORE_CARRY_FORWARD.md §Eviction
+/// Policy). A plain `#[derive(Ord)]` on `(priority_rank, expiry_unix)`
+/// cannot do both at once — reversing a composite ascending order reverses
+/// every field uniformly, but "worst" here needs `expiry_unix` reversed
+/// relative to `priority_rank`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StoreKey {
     pub priority_rank: u8, // 0 = P0, 7 = P7
-    pub expiry_unix: u64,  // sooner expiry = smaller
+    pub expiry_unix: u64,
     pub message_id: MessageId,
 }
 
+impl PartialOrd for StoreKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for StoreKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.priority_rank
+            .cmp(&other.priority_rank)
+            .then_with(|| other.expiry_unix.cmp(&self.expiry_unix))
+            .then_with(|| self.message_id.cmp(&other.message_id))
+    }
+}
+
 impl StoreKey {
-    pub fn from_envelope(env: &Envelope) -> Self {
+    /// `stored_at` is this node's own clock reading at buffering time.
+    ///
+    /// DTN-6: `expiry_unix` must be derived from locally observed arrival,
+    /// not the sender's claimed `timestamp` — otherwise a forged
+    /// far-future `timestamp` (or an unclamped `ttl_seconds`) lets a
+    /// message claim to expire arbitrarily late, so the eviction
+    /// comparator above always ranks it "not yet worth evicting" ahead of
+    /// honest, soon-expiring traffic. `env.ttl_seconds` is expected to
+    /// already be clamped (`buffer_message` does this before calling here).
+    fn new(env: &Envelope, stored_at: u64) -> Self {
         StoreKey {
             priority_rank: env.priority.as_u8(),
-            expiry_unix: env.timestamp.saturating_add(env.ttl_seconds),
+            expiry_unix: stored_at.saturating_add(env.ttl_seconds),
             message_id: env.message_id,
         }
     }
@@ -85,6 +119,17 @@ pub struct StoredMessage {
 #[derive(Debug)]
 pub struct ScfEngine<S> {
     buffer: BTreeMap<StoreKey, StoredMessage>,
+    /// DTN-2: `MessageId` -> its current `StoreKey`, so by-id accessors
+    /// (`priority_rank_of`, `status_for`, `mark_forwarded`,
+    /// `delivery_status`) are O(1) instead of an O(n) `.iter().find()`
+    /// scan — and, more importantly, `buffer_message` can detect a
+    /// replayed `MessageId` and replace its existing entry instead of
+    /// inserting a second one with a different `StoreKey`.
+    index: HashMap<MessageId, StoreKey>,
+    /// DTN-8: incrementally maintained, so `usage()` is O(1) instead of an
+    /// O(n) fold over the whole buffer on every call (`evict_until` used to
+    /// call it twice per evicted message).
+    total_bytes: u64,
     storage: S,
     max_bytes: u64,
     config: ScfConfig,
@@ -104,6 +149,11 @@ pub struct ScfConfig {
     pub clock_skew_budget_secs: u64,
     /// Max forward attempts before a message returns to Carrying.
     pub max_forward_attempts: u32,
+    /// DTN-2: hard cap on distinct buffered messages, independent of byte
+    /// accounting — bounds a duplicate-id/tiny-payload amplification
+    /// attack (many entries, each cheap in accounted bytes) that a pure
+    /// byte ceiling does not.
+    pub max_messages: usize,
 }
 
 impl Default for ScfConfig {
@@ -112,14 +162,25 @@ impl Default for ScfConfig {
             max_storage_bytes: 500 * 1024 * 1024,
             clock_skew_budget_secs: 300,
             max_forward_attempts: 3,
+            max_messages: 100_000,
         }
     }
 }
+
+/// DTN-6: upper bound on a message's claimed TTL, regardless of what the
+/// sender requests. Without this, `ttl_seconds = u64::MAX` makes a message
+/// immortal (its computed expiry saturates to `u64::MAX`, so it can never
+/// TTL-expire) even though the far-future-*timestamp* half of this attack
+/// is separately closed by `message_engine::expiry::is_expired`'s
+/// skew-suspect handling (ROUT-5).
+const MAX_TTL_SECS: u64 = 30 * 24 * 3600; // 30 days
 
 impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     pub fn new(storage: S, config: ScfConfig) -> Self {
         ScfEngine {
             buffer: BTreeMap::new(),
+            index: HashMap::new(),
+            total_bytes: 0,
             storage,
             max_bytes: config.max_storage_bytes,
             config,
@@ -161,17 +222,12 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
 
     /// Priority eviction rank of a buffered message (0 = P0).
     pub fn priority_rank_of(&self, id: &MessageId) -> Option<u8> {
-        self.buffer
-            .iter()
-            .find(|(_, m)| m.envelope.message_id == *id)
-            .map(|(k, _)| k.priority_rank)
+        self.index.get(id).map(|k| k.priority_rank)
     }
 
+    /// DTN-8: O(1) — see `total_bytes`.
     pub(crate) fn usage(&self) -> u64 {
-        self.buffer
-            .values()
-            .map(|m| Self::approx_bytes(&m.envelope))
-            .sum()
+        self.total_bytes
     }
 
     pub fn now_unix(&self) -> u64 {
@@ -184,8 +240,62 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         }
     }
 
+    /// DTN-10: accounts every heap-allocated field, not just the payload —
+    /// `auth_cert_chain`, `routing_hints` and `encryption_hdr` were
+    /// previously invisible to capacity accounting, so a node could be
+    /// resident far beyond `max_bytes` while `usage()` reported it as
+    /// healthy. `FIXED_OVERHEAD_BYTES` (192) is chosen so that a 32-byte
+    /// `sender_id`/`recipient_id` with no optional fields — the shape of
+    /// every existing test envelope — accounts identically to the old
+    /// `payload.len() + 256` formula (192 + 32 + 32 = 256): this only
+    /// *increases* the accounted size when the previously-invisible fields
+    /// are actually present.
+    const FIXED_OVERHEAD_BYTES: u64 = 192;
+
     fn approx_bytes(env: &Envelope) -> u64 {
-        env.payload.len() as u64 + 256
+        let mut n = Self::FIXED_OVERHEAD_BYTES
+            + env.sender_id.len() as u64
+            + env.recipient_id.len() as u64
+            + env.payload.len() as u64;
+        if env.signature.is_some() {
+            n += 64;
+        }
+        if env.encryption_hdr.is_some() {
+            n += 32 + 12 + 4; // ephemeral_pubkey + nonce + key_id (worst case)
+        }
+        if let Some(hints) = &env.routing_hints {
+            n += hints
+                .last_known_region
+                .as_ref()
+                .map(|s| s.len() as u64)
+                .unwrap_or(0);
+            if hints.gateway_seen_via.is_some() {
+                n += 32;
+            }
+            n += hints
+                .preferred_relays
+                .as_ref()
+                .map(|v| (v.len() * 32) as u64)
+                .unwrap_or(0);
+        }
+        if let Some(chain) = &env.auth_cert_chain {
+            n += chain.iter().map(|c| c.len() as u64).sum::<u64>();
+        }
+        n
+    }
+
+    /// Remove one entry by key: updates the index and the incremental byte
+    /// total together, so they can never drift apart. The single place
+    /// every removal path (`buffer_message`'s replace, `mark_forwarded`'s
+    /// delivered-removal (DTN-5), `reap_expired`, `evict_until`) goes
+    /// through.
+    fn remove_entry(&mut self, key: &StoreKey) -> Option<StoredMessage> {
+        let msg = self.buffer.remove(key)?;
+        self.index.remove(&msg.envelope.message_id);
+        self.total_bytes = self
+            .total_bytes
+            .saturating_sub(Self::approx_bytes(&msg.envelope));
+        Some(msg)
     }
 
     pub fn len(&self) -> usize {
@@ -201,20 +311,66 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     /// separately via `evict_to_fit`). P0 is always accepted.
     pub fn buffer_message(
         &mut self,
-        envelope: Envelope,
+        mut envelope: Envelope,
         received_from: Option<PeerId>,
     ) -> Result<DeliveryStatus, ScfError> {
-        if ttl_expired(self.now_unix(), envelope.timestamp, envelope.ttl_seconds) {
+        let now = self.now_unix();
+        // DTN-6: clamp the claimed TTL in place so every downstream reader
+        // of `envelope.ttl_seconds` (this function, `messages_forwardable_to`,
+        // `reap_expired`) sees the clamped value automatically. An
+        // unclamped `ttl_seconds = u64::MAX` would make `StoreKey::new`'s
+        // `expiry_unix` saturate to `u64::MAX` below — immortal under both
+        // the TTL sweep and eviction ranking. (The complementary
+        // far-future-*timestamp* attack is already closed by
+        // `message_engine::expiry::is_expired`'s skew-suspect handling,
+        // ROUT-5 — `ttl_expired` below still fails closed on that.)
+        envelope.ttl_seconds = envelope.ttl_seconds.min(MAX_TTL_SECS);
+        if ttl_expired(now, envelope.timestamp, envelope.ttl_seconds) {
             return Err(ScfError::Expired);
         }
-        let key = StoreKey::from_envelope(&envelope);
+
+        let message_id = envelope.message_id;
+        // DTN-2: a replayed MessageId (possibly with a bumped ttl_seconds
+        // to dodge the identical-key case) replaces its existing entry
+        // rather than adding a second, independently-tracked one.
+        if let Some(old_key) = self.index.get(&message_id).copied() {
+            self.remove_entry(&old_key);
+        }
+
+        let need = Self::approx_bytes(&envelope);
+
+        // DTN-1: actually enforce the byte ceiling — previously
+        // `buffer_message` checked TTL only and never compared usage
+        // against `max_bytes`, so the buffer grew without bound.
+        if self.total_bytes.saturating_add(need) > self.max_bytes {
+            let target = self.max_bytes.saturating_sub(need.min(self.max_bytes));
+            self.evict_until(target);
+            if self.total_bytes.saturating_add(need) > self.max_bytes {
+                // DTN-7: this reject path is reached even when the buffer
+                // holds only P0 (evict_until has nothing left it may
+                // touch) — so a P0-only flood is now bounded at
+                // `max_bytes` instead of growing until OOM, without
+                // needing a separate P0 sub-quota: the incoming message is
+                // simply refused once the ceiling is genuinely full.
+                return Err(ScfError::StorageFull);
+            }
+        }
+        // DTN-2: message-COUNT cap, independent of byte accounting — bounds
+        // a many-tiny-messages amplification a byte ceiling alone would not.
+        if self.buffer.len() >= self.config.max_messages {
+            return Err(ScfError::StorageFull);
+        }
+
+        let key = StoreKey::new(&envelope, now);
         let stored = StoredMessage {
             envelope,
-            stored_at: self.now_unix(),
+            stored_at: now,
             forward_attempts: 0,
             received_from,
             delivery_status: DeliveryStatus::Stored,
         };
+        self.index.insert(message_id, key);
+        self.total_bytes += need;
         self.buffer.insert(key, stored);
         tracing::debug!(
             event = event::SCF_BUFFERED,
@@ -228,11 +384,8 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     /// Determine the SCF status for one buffered message given current
     /// connectivity to `contact` (None = no contacts).
     pub fn status_for(&self, id: &MessageId, contact: Option<&PeerId>) -> Option<DeliveryStatus> {
-        let msg = self
-            .buffer
-            .iter()
-            .find(|(_, m)| m.envelope.message_id == *id)
-            .map(|(_, m)| m)?;
+        let key = self.index.get(id)?;
+        let msg = self.buffer.get(key)?;
         match contact {
             // The recipient is in range: the message is about to be delivered.
             Some(peer) if Self::recipient_is(peer, &msg.envelope) => {
@@ -283,19 +436,23 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         to: PeerId,
         acked: bool,
     ) -> Option<DeliveryStatus> {
-        let key = self
-            .buffer
-            .iter()
-            .find(|(_, m)| m.envelope.message_id == *id)
-            .map(|(k, _)| *k)?;
-        let msg = self.buffer.get_mut(&key)?;
-        msg.forward_attempts += 1;
-        msg.delivery_status = if acked {
-            DeliveryStatus::Delivered { delivered_to: to }
+        let key = *self.index.get(id)?;
+        if acked {
+            // DTN-5: `Delivered` is terminal (STORE_CARRY_FORWARD.md
+            // §Message Lifecycle: ACK_RECEIVED -> DELIVERED -> remove from
+            // store) — previously the entry was left in place forever,
+            // still counted by `usage()`, the primary OOM vector on an
+            // otherwise-healthy (non-partitioned) node.
+            let mut msg = self.remove_entry(&key)?;
+            msg.forward_attempts += 1;
+            msg.delivery_status = DeliveryStatus::Delivered { delivered_to: to };
+            Some(msg.delivery_status)
         } else {
-            DeliveryStatus::AckPending { sent_to: to }
-        };
-        Some(msg.delivery_status.clone())
+            let msg = self.buffer.get_mut(&key)?;
+            msg.forward_attempts += 1;
+            msg.delivery_status = DeliveryStatus::AckPending { sent_to: to };
+            Some(msg.delivery_status.clone())
+        }
     }
 
     /// Expire-and-drop sweep. Returns ids dropped for TTL expiry.
@@ -309,10 +466,7 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
             .collect();
         let mut dropped = Vec::new();
         for k in expired_keys {
-            if let Some(mut msg) = self.buffer.remove(&k) {
-                msg.delivery_status = DeliveryStatus::Dropped {
-                    reason: DropReason::TtlExpired,
-                };
+            if let Some(msg) = self.remove_entry(&k) {
                 tracing::debug!(
                     event = event::SCF_REAPED_EXPIRED,
                     message_id = %msg.envelope.message_id.short(),
@@ -332,31 +486,31 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     }
 
     /// Evict lowest-priority (then soonest-expiring) messages until usage is at
-    /// most `target_bytes`. **P0 is never evicted** (INV-ROUTE-003). Returns
-    /// evicted message ids.
+    /// most `target_bytes`. **P0 is never evicted by this function**
+    /// (INV-ROUTE-003) — `buffer_message` is what actually bounds a P0-only
+    /// flood (DTN-7), by rejecting new P0 messages once nothing here is
+    /// left to evict. Returns evicted message ids.
+    ///
+    /// DTN-8/DTN-9: the worst candidate is now found via
+    /// `.keys().next_back()` on `StoreKey`'s hand-written `Ord` (an O(log n)
+    /// BTreeMap lookup) instead of an O(n) `max_by` scan repeated per
+    /// evicted message; `usage()` is an O(1) field read (`total_bytes`)
+    /// instead of an O(n) fold. Evicting m of n messages was O(m*n); it is
+    /// now O(m log n).
     pub(crate) fn evict_until(&mut self, target_bytes: u64) -> Vec<MessageId> {
         let mut evicted = Vec::new();
-        while self.usage() > target_bytes {
-            // Worst eviction candidate: highest priority_rank (>0), then
-            // soonest expiry_unix (STORE_CARRY_FORWARD.md §Eviction Policy).
-            let worst = self
-                .buffer
-                .iter()
-                .filter(|(k, _)| k.priority_rank > 0) // P0 exempt
-                .max_by(|(a, _), (b, _)| {
-                    a.priority_rank
-                        .cmp(&b.priority_rank)
-                        .then_with(|| b.expiry_unix.cmp(&a.expiry_unix)) // sooner expiry = worse
-                })
-                .map(|(k, _)| *k);
-            let Some(k) = worst else { break };
-            if let Some(msg) = self.buffer.remove(&k) {
+        while self.total_bytes > target_bytes {
+            let worst = match self.buffer.keys().next_back() {
+                Some(k) if k.priority_rank > 0 => *k,
+                _ => break, // buffer empty, or only P0 remains — nothing evictable here
+            };
+            if let Some(msg) = self.remove_entry(&worst) {
                 self.telemetry.increment(metric::SCF_EVICTIONS_TOTAL);
                 tracing::warn!(
                     event = event::SCF_EVICTED,
                     message_id = %msg.envelope.message_id.short(),
-                    priority = k.priority_rank,
-                    usage_bytes = self.usage(),
+                    priority = worst.priority_rank,
+                    usage_bytes = self.total_bytes,
                     "message evicted from SCF buffer (RFC 9171 code 4)"
                 );
                 evicted.push(msg.envelope.message_id);
@@ -365,30 +519,42 @@ impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
         evicted
     }
 
-    /// All buffered messages ordered (priority DESC, expiry ASC) — the
-    /// forward order the contact handler uses.
+    /// All buffered messages, ascending `StoreKey` order: priority_rank ASC
+    /// (P0 first), then within a priority band, soonest-expiry LAST.
+    ///
+    /// DTN-9: the previous doc comment claimed "priority DESC, expiry ASC"
+    /// — neither was true of the derived `Ord` it described (which was
+    /// priority ASC, and — because `next_back()` is what `evict_until`
+    /// needs to be correct, see `StoreKey`'s `Ord` impl — the expiry
+    /// component had to be reversed relative to a naive ascending reading).
+    /// This does not currently have a caller that depends on a specific
+    /// forward order (`scf_contact.rs` re-sorts its candidates from
+    /// scratch), so no behavioural fix is needed here, only an accurate
+    /// comment.
     pub fn ordered_buffered(&self) -> Vec<StoredMessage> {
         self.buffer.values().cloned().collect()
     }
 
     /// Delivery status of one message id.
     pub fn delivery_status(&self, id: &MessageId) -> Option<DeliveryStatus> {
-        self.buffer
-            .iter()
-            .find(|(_, m)| m.envelope.message_id == *id)
-            .map(|(_, m)| m.delivery_status.clone())
+        let key = self.index.get(id)?;
+        self.buffer.get(key).map(|m| m.delivery_status.clone())
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ScfError {
     Expired,
+    /// DTN-1: the buffer is at `max_bytes`/`max_messages` capacity and
+    /// eviction could not free enough room for the incoming message.
+    StorageFull,
 }
 
 impl std::fmt::Display for ScfError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ScfError::Expired => write!(f, "scf: message expired"),
+            ScfError::StorageFull => write!(f, "scf: storage full"),
         }
     }
 }
@@ -454,14 +620,20 @@ mod tests {
             DeliveryStatus::Stored
         );
         assert_eq!(scf.len(), 1);
-        scf.mark_forwarded(&id, pid(9), true);
+        let status = scf.mark_forwarded(&id, pid(9), true);
+        // DTN-5: mark_forwarded still reports the terminal status by value...
         assert_eq!(
-            scf.delivery_status(&id),
+            status,
             Some(DeliveryStatus::Delivered {
                 delivered_to: pid(9)
             })
         );
-        assert!(scf.delivery_status(&id).unwrap().is_terminal());
+        assert!(status.unwrap().is_terminal());
+        // ...but the entry itself is removed immediately (STORE_CARRY_FORWARD.md
+        // §Message Lifecycle: DELIVERED -> remove from store) rather than
+        // retained forever, still counted by usage().
+        assert_eq!(scf.delivery_status(&id), None);
+        assert_eq!(scf.len(), 0);
     }
 
     #[test]
@@ -515,6 +687,12 @@ mod tests {
 
     #[test]
     fn store_key_ordering_priority_then_expiry() {
+        // DTN-9: priority_rank is still ascending (P0 sorts first — a < b),
+        // but expiry_unix is now DESCENDING within a priority band, so that
+        // `.keys().next_back()` (evict_until's O(1) victim lookup) lands on
+        // the soonest-expiring entry — the worst eviction candidate. c
+        // (expiry=50, sooner) must therefore sort GREATER than a
+        // (expiry=100), the opposite of plain ascending expiry.
         use std::cmp::Ordering;
         let a = StoreKey {
             priority_rank: 0,
@@ -532,6 +710,98 @@ mod tests {
             message_id: MessageId::new_v7(),
         };
         assert_eq!(a.cmp(&b), Ordering::Less);
-        assert_eq!(c.cmp(&a), Ordering::Less);
+        assert_eq!(c.cmp(&a), Ordering::Greater);
+    }
+
+    #[test]
+    fn dtn1_capacity_rejects_when_full() {
+        // DTN-1: buffer_message must actually enforce max_bytes — previously
+        // it checked TTL only and accepted messages unconditionally.
+        let mut scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_storage_bytes: 300,
+                ..Default::default()
+            },
+        );
+        scf.buffer_message(env(MessagePriority::P0, b"first", 3600), None)
+            .unwrap();
+        // P0 is never evicted (INV-ROUTE-003), so a second message that
+        // does not fit in the remaining headroom must be rejected outright
+        // — this is also DTN-7's bound: it stops a P0-heavy buffer from
+        // accepting unlimited further traffic once genuinely full.
+        let result = scf.buffer_message(env(MessagePriority::P4, b"second-msg", 3600), None);
+        assert_eq!(result, Err(ScfError::StorageFull));
+        assert_eq!(scf.len(), 1);
+    }
+
+    #[test]
+    fn dtn2_replayed_message_id_replaces_not_duplicates() {
+        // DTN-2: the same MessageId buffered twice (e.g. a peer replaying an
+        // envelope with a bumped ttl_seconds) must replace the existing
+        // entry, not create a second independently-tracked one.
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
+        let mut e = env(MessagePriority::P4, b"payload", 3600);
+        let id = e.message_id;
+        scf.buffer_message(e.clone(), None).unwrap();
+        assert_eq!(scf.len(), 1);
+        e.ttl_seconds = 7200; // same id, different ttl — a naive re-key would double-insert
+        scf.buffer_message(e, None).unwrap();
+        assert_eq!(scf.len(), 1, "replay must replace, not duplicate");
+        assert_eq!(scf.priority_rank_of(&id), Some(MessagePriority::P4.as_u8()));
+    }
+
+    #[test]
+    fn dtn2_max_messages_cap_rejects_beyond_count() {
+        // DTN-2: a message-count cap independent of byte accounting — many
+        // tiny messages must not be able to bypass a byte ceiling.
+        let mut scf = ScfEngine::new(
+            MemoryStorage::new(),
+            ScfConfig {
+                max_messages: 2,
+                ..Default::default()
+            },
+        );
+        scf.buffer_message(env(MessagePriority::P4, b"a", 3600), None)
+            .unwrap();
+        scf.buffer_message(env(MessagePriority::P4, b"b", 3600), None)
+            .unwrap();
+        let result = scf.buffer_message(env(MessagePriority::P4, b"c", 3600), None);
+        assert_eq!(result, Err(ScfError::StorageFull));
+        assert_eq!(scf.len(), 2);
+    }
+
+    #[test]
+    fn dtn6_ttl_seconds_is_clamped() {
+        // DTN-6: an absurd ttl_seconds (e.g. u64::MAX) must not make a
+        // message immortal — it is clamped to MAX_TTL_SECS before StoreKey
+        // construction and storage, so eviction ranking and reap_expired
+        // both see a bounded value.
+        let mut scf = ScfEngine::new(MemoryStorage::new(), ScfConfig::default());
+        let e = env(MessagePriority::P4, b"forever?", u64::MAX);
+        let id = e.message_id;
+        scf.buffer_message(e, None).unwrap();
+        let key = scf.index[&id];
+        assert!(
+            key.expiry_unix < u64::MAX / 2,
+            "expiry_unix must be bounded by MAX_TTL_SECS, not u64::MAX-scale (got {})",
+            key.expiry_unix
+        );
+    }
+
+    #[test]
+    fn dtn10_approx_bytes_counts_cert_chain_and_hints() {
+        // DTN-10: the old formula (payload.len() + 256) made an
+        // attacker-controlled auth_cert_chain or routing_hints invisible to
+        // capacity accounting.
+        let base = env(MessagePriority::P4, b"x", 3600);
+        let bare = ScfEngine::<MemoryStorage>::approx_bytes(&base);
+        let mut with_chain = base.clone();
+        with_chain.auth_cert_chain = Some(vec![vec![0u8; 10_000]]);
+        let inflated = ScfEngine::<MemoryStorage>::approx_bytes(&with_chain);
+        assert!(
+            inflated >= bare + 10_000,
+            "a 10 KB cert chain must be reflected in accounted bytes (bare={bare}, inflated={inflated})"
+        );
     }
 }

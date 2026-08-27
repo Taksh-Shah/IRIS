@@ -115,10 +115,16 @@ mod tests {
 
     #[test]
     fn p7_evicted_before_p1() {
+        // DTN-1: buffer_message now enforces max_bytes on every insert, so
+        // the budget here must have headroom for both messages to actually
+        // land (previously they were admitted unconditionally regardless of
+        // budget, and eviction was only ever tested via a later, separate
+        // evict_to_fit(0) call — that call now needs an explicit target
+        // instead of relying on max_bytes having already been exceeded).
         let mut scf = ScfEngine::new(
             MemoryStorage::new(),
             ScfConfig {
-                max_storage_bytes: 2048,
+                max_storage_bytes: 4096,
                 ..Default::default()
             },
         );
@@ -127,7 +133,7 @@ mod tests {
         scf.buffer_message(p1.clone(), None).unwrap();
         scf.buffer_message(p7.clone(), None).unwrap();
         assert_eq!(scf.len(), 2);
-        let evicted = scf.evict_to_fit(0);
+        let evicted = scf.evict_until(1500);
         assert_eq!(evicted, vec![p7.message_id]);
         assert!(scf.delivery_status(&p1.message_id).is_some());
         assert!(scf.delivery_status(&p7.message_id).is_none());
@@ -135,31 +141,44 @@ mod tests {
 
     #[test]
     fn p0_never_evicted_under_pressure() {
+        // DTN-1/DTN-7: with insert-time enforcement, P0 survives eviction
+        // pressure from P7 traffic filling every byte around it — this now
+        // exercises the *real* admission path (each buffer_message call
+        // evicts P7 to make room for the next), not just the eviction
+        // policy in isolation.
         let mut scf = ScfEngine::new(
             MemoryStorage::new(),
             ScfConfig {
-                max_storage_bytes: 5000,
+                max_storage_bytes: 10_000,
                 ..Default::default()
             },
         );
         let p0 = mk(MessagePriority::P0, 4000);
         scf.buffer_message(p0.clone(), None).unwrap();
+        // Fills exactly to the ceiling (4000 + 4*1500 = 10_000).
         for _ in 0..4 {
             scf.buffer_message(mk(MessagePriority::P7, 1500), None)
                 .unwrap();
         }
-        let evicted = scf.evict_to_fit(0);
-        // P0 must survive no matter how much pressure.
-        assert!(scf.delivery_status(&p0.message_id).is_some());
-        assert!(!evicted.contains(&p0.message_id));
+        // One more P7 must still be admitted by evicting an existing P7 —
+        // P0 must never be touched even though it is the single largest
+        // entry and eviction pressure is constant.
+        scf.buffer_message(mk(MessagePriority::P7, 500), None)
+            .unwrap();
+        assert!(
+            scf.delivery_status(&p0.message_id).is_some(),
+            "P0 must survive eviction pressure no matter how full the buffer gets"
+        );
     }
 
     #[test]
     fn eviction_ordered_lowest_priority_then_soonest_expiry() {
+        // See p7_evicted_before_p1: headroom for all three inserts, then an
+        // explicit evict_until target reproduces the original scenario.
         let mut scf = ScfEngine::new(
             MemoryStorage::new(),
             ScfConfig {
-                max_storage_bytes: 2600,
+                max_storage_bytes: 4096,
                 ..Default::default()
             },
         );
@@ -173,9 +192,9 @@ mod tests {
         // A higher-priority P2 must stay regardless.
         scf.buffer_message(mk(MessagePriority::P2, 300), None)
             .unwrap();
-        // Usage ~3668 B > 2600 target; one eviction gets us under. The soonest
-        // expiring P4 is the worst candidate.
-        let evicted = scf.evict_to_fit(0);
+        // Usage 2900 B; shrinking to 1600 forces exactly one eviction. The
+        // soonest-expiring P4 is the worst candidate.
+        let evicted = scf.evict_until(1600);
         assert_eq!(evicted, vec![soon.message_id]);
         let remaining = scf.ordered_buffered();
         assert!(scf.delivery_status(&later.message_id).is_some());

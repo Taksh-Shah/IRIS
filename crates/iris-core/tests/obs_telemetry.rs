@@ -110,17 +110,21 @@ async fn shared_registry_accumulates_across_routing_and_scf() {
     let _ = table;
 
     // SCF: buffer then evict under pressure -> evictions counter.
+    // DTN-1: buffer_message now enforces max_storage_bytes on every insert,
+    // so a 0-byte budget would reject the message outright rather than
+    // buffering it for a later eviction call — give it real headroom so
+    // the message lands, then force eviction via evict_to_fit.
     let mut scf = ScfEngine::new(
         MemoryStorage::new(),
         ScfConfig {
-            max_storage_bytes: 0,
+            max_storage_bytes: 10_000,
             ..Default::default()
         },
     )
     .with_telemetry(reg.clone());
     // A P1 (rank 1) message; P0 is exempt, P1 evictable.
     let env = envelope_for(CAROL, MessagePriority::P1, b"evict me");
-    let _ = scf.buffer_message(env, None);
+    scf.buffer_message(env, None).unwrap();
     let evicted = scf.evict_to_fit(1_000_000);
     assert!(!evicted.is_empty(), "P1 must be evicted under pressure");
 

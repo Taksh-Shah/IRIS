@@ -837,13 +837,16 @@ mod tests {
 
         // 5. Forward and confirm terminal delivery state.
         let fwd: Vec<ForwardCandidate> = outcome.ranked;
-        scf.mark_forwarded(&fwd[0].message_id, contact, true);
+        let status = scf.mark_forwarded(&fwd[0].message_id, contact, true);
         assert_eq!(
-            scf.delivery_status(&env.message_id),
+            status,
             Some(crate::routing::scf::DeliveryStatus::Delivered {
                 delivered_to: contact
             })
         );
+        // DTN-5: a delivered message is removed from the buffer immediately
+        // rather than retained forever.
+        assert_eq!(scf.delivery_status(&env.message_id), None);
 
         // P0 never evicted under pressure (INV-ROUTE-003 via eviction policy).
         let p0 = envelope_for(bob, crate::message::MessagePriority::P0, b"priority");
