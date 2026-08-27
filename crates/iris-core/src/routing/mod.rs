@@ -229,6 +229,12 @@ impl RoutingEngine {
             .await;
         let algorithm = decision.algorithm_label();
         self.telemetry.increment(metric::ROUTING_DECISIONS_TOTAL);
+        // ROUT-27: floods_total was registered but never incremented, so a
+        // dashboard/alert built on it always read 0 — including during an
+        // active flood storm.
+        if matches!(decision, ForwardingDecision::Flood { .. }) {
+            self.telemetry.increment(metric::ROUTING_FLOODS_TOTAL);
+        }
         tracing::debug!(
             event = event::ROUTE_DECISION,
             dest = %recipient.short(),
@@ -468,6 +474,37 @@ mod tests {
         } else {
             panic!("expected flood");
         }
+    }
+
+    #[tokio::test]
+    async fn rout27_flood_decision_increments_floods_total() {
+        let reg = MetricsRegistry::new();
+        let mut engine = RoutingEngine::new().with_telemetry(reg.clone());
+        let table = NeighborTable::new(Duration::from_secs(60));
+        for n in [2u8, 3, 4] {
+            table
+                .upsert(&peer_info(n), &TransportId::from("sim"), LinkQuality::Good)
+                .await;
+        }
+        let decision = engine
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .await;
+        assert!(matches!(decision, ForwardingDecision::Flood { .. }));
+        let snap = reg.snapshot();
+        assert_eq!(snap[metric::ROUTING_FLOODS_TOTAL], 1, "flood decision must count");
+        assert_eq!(snap[metric::ROUTING_DECISIONS_TOTAL], 1);
+
+        // A non-flood decision (Direct) must not touch the floods counter.
+        let table2 = NeighborTable::new(Duration::from_secs(60));
+        table2
+            .upsert(&peer_info(7), &TransportId::from("sim"), LinkQuality::Excellent)
+            .await;
+        let direct = engine
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(7), 0, MessagePriority::P4, vec![], &table2)
+            .await;
+        assert!(matches!(direct, ForwardingDecision::Forward { .. }));
+        let snap2 = reg.snapshot();
+        assert_eq!(snap2[metric::ROUTING_FLOODS_TOTAL], 1, "direct decision must not increment floods");
     }
 
     #[tokio::test]
