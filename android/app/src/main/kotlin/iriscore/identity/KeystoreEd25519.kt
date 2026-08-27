@@ -243,17 +243,50 @@ class KeystoreEd25519 internal constructor(
         // algorithm: Ed25519 for provider AndroidKeyStore` - and
         // `KeyProperties` doesn't even have an ED25519 constant on this SDK
         // to name the algorithm the "supported" way. Probe for real support
-        // (which is cheap - constructing a `KeyPairGenerator` doesn't touch
-        // the TEE or generate a key) rather than assuming API level implies
-        // it; the previous unconditional-on-API-level selection produced a
-        // hard crash at first launch on every device that reached this path,
-        // because AndroidKeystoreBackend has no working fallback of its own.
+        // rather than assuming API level implies it; the previous
+        // unconditional-on-API-level selection produced a hard crash at
+        // first launch on every device that reached this path, because
+        // AndroidKeystoreBackend has no working fallback of its own.
+        //
+        // HW-8: constructibility alone is NOT proof of real support either.
+        // Confirmed on a real Samsung Galaxy S24 Ultra (One UI 8 / API 36,
+        // KeyMint): `KeyPairGenerator.getInstance("Ed25519",
+        // "AndroidKeyStore")` and `initialize()` both succeed without
+        // throwing, so the old "does construction throw" probe reported
+        // Ed25519 as available - but the TEE silently generates a NIST
+        // P-256 key instead (Samsung KeyMint apparently accepts "Ed25519"
+        // as a spec-builder algorithm *name* without actually honoring it).
+        // That reached `PeerIdCodec.rawPoint()` as a hard crash at every
+        // launch: "IllegalStateException: unexpected point encoding size
+        // 91" (91 bytes is P-256's X.509 SPKI DER size, not Ed25519's 32/44).
+        // The only way to catch this is to actually generate a key and
+        // inspect what came back, so the probe now does exactly that under
+        // a disposable alias, deleted immediately after either way.
         private fun androidKeystoreEd25519Available(): Boolean = try {
-            KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            KeyPairGenerator.getInstance("Ed25519", "AndroidKeyStore")
-            true
+            val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            try {
+                val kpg = KeyPairGenerator.getInstance("Ed25519", "AndroidKeyStore")
+                val spec = KeyGenParameterSpec.Builder(
+                    PROBE_ALIAS,
+                    KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY,
+                ).build()
+                kpg.initialize(spec)
+                val probeKey = kpg.generateKeyPair().public.encoded
+                probeKey.size == 32 || probeKey.size == 44
+            } finally {
+                // Best-effort cleanup — a leaked probe alias is inert (never
+                // read by anything) but should not linger in the keystore.
+                try {
+                    keyStore.deleteEntry(PROBE_ALIAS)
+                } catch (_: Exception) {
+                }
+            }
         } catch (_: Exception) {
             false
+        }
+
+        companion object {
+            private const val PROBE_ALIAS = "iris_ed25519_probe_v1"
         }
 
         override val backendType: BackendType get() = delegate.backendType
