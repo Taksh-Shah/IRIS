@@ -194,7 +194,12 @@ impl Default for ScfConfig {
 /// TTL-expire) even though the far-future-*timestamp* half of this attack
 /// is separately closed by `message_engine::expiry::is_expired`'s
 /// skew-suspect handling (ROUT-5).
-const MAX_TTL_SECS: u64 = 30 * 24 * 3600; // 30 days
+///
+/// `pub` (TAK-2): the persistent `iris-storage` PG store needs the exact
+/// same clamp on ingest — the finding's own text requires "the same
+/// reasoning" in both layers so they agree, and a second, independently
+/// chosen constant would be free to drift from this one.
+pub const MAX_TTL_SECS: u64 = 30 * 24 * 3600; // 30 days
 
 impl<S: crate::message_engine::storage::MessageStorage> ScfEngine<S> {
     pub fn new(storage: S, config: ScfConfig) -> Self {

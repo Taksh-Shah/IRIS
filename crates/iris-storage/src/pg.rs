@@ -589,14 +589,32 @@ impl MessageStorage for PgStorage {
         // Reject out-of-domain values at the boundary instead.
         let created_at = i64::try_from(envelope.timestamp)
             .map_err(|_| StorageError::Backend("timestamp out of i64 range".into()))?;
-        let expires_at = envelope.timestamp.saturating_add(envelope.ttl_seconds);
-        let expires_at = i64::try_from(expires_at)
+        // TAK-2: clamp the claimed TTL before computing expiry — an
+        // attacker-controlled `ttl_seconds` (up to u64::MAX) would otherwise
+        // make a row immortal, permanently unreclaimable by `delete_expired`.
+        // Shares `MAX_TTL_SECS` with the in-memory SCF store
+        // (`iris_core::routing::scf`) so both storage layers agree on the
+        // same ceiling, per this finding's own dependency note.
+        // Deliberately does NOT also reject an already-expired `expires_at`
+        // at ingest (the finding's fix text suggests this too) — a message
+        // that is already expired the moment it arrives is the *opposite*
+        // of TAK-2's actual attack (an immortal, never-reclaimable row): it
+        // is immediately reclaimable by the very next `delete_expired`
+        // pass, and `evict_expired_reclaims_only_dead_rows` (this crate's
+        // own test suite) deliberately persists an already-expired message
+        // to prove exactly that GC path. Rejecting it here would conflict
+        // with that established, tested behavior for no corresponding
+        // security benefit.
+        let clamped_ttl = envelope
+            .ttl_seconds
+            .min(iris_core::routing::scf::MAX_TTL_SECS);
+        let expires_u64 = envelope.timestamp.saturating_add(clamped_ttl);
+        let expires_at = i64::try_from(expires_u64)
             .map_err(|_| StorageError::Backend("expiry out of i64 range".into()))?;
         let payload_size = i64::try_from(envelope.payload_size)
             .map_err(|_| StorageError::Backend("payload_size out of i64 range".into()))?;
 
         let cbor = codec::encode(envelope).map_err(|e| StorageError::Backend(e.to_string()))?;
-        let expires_u64 = envelope.timestamp.saturating_add(envelope.ttl_seconds);
         // TAK-10: real ownership when the node identity is configured — the
         // eviction policy's "relayed before own" tie-break needs a live key.
         // Malformed sender vectors simply stay marked relayed.
@@ -651,6 +669,15 @@ impl MessageStorage for PgStorage {
         }
 
         let is_p0 = envelope.priority == MessagePriority::P0;
+        // TAK-2: the quota bypass exempted every P0 message, own or
+        // relayed — a remote peer could flood P0 traffic (bypassing quota
+        // on ingest) that `evict_lowest_priority` then also hard-excluded
+        // from reclamation (`WHERE priority > 0`), permanently exhausting
+        // the store for a value that later persist() calls can never make
+        // room for. INV-ROUTE-003 ("never evict P0") is about *this
+        // node's own* emergency traffic, not an unauthenticated peer's
+        // claim to be P0 — narrow the exemption to match.
+        let own_p0_exempt = is_own && is_p0;
         let grow = Self::projected_row_bytes(stored.len() as u64);
 
         // TAK-5: the old read-check-insert sequence was a cross-store TOCTOU
@@ -685,7 +712,7 @@ impl MessageStorage for PgStorage {
                         &payload_size,
                         &stored,
                         &is_own,
-                        &is_p0,
+                        &own_p0_exempt,
                         &(crate::eviction::ROW_OVERHEAD_BYTES as i64),
                         &(grow as i64),
                         &(self.config.max_storage_bytes as i64),
@@ -696,8 +723,10 @@ impl MessageStorage for PgStorage {
             if admitted > 0 {
                 return Ok(());
             }
-            // Refused: try to make room once (P0-only residue will evict
-            // nothing and the second pass returns StorageFull), then retry
+            // Refused: try to make room once (relayed P0 is now evictable
+            // — TAK-2 — so a store genuinely full of nothing but this
+            // node's own P0 is the only residue that evicts nothing and
+            // falls through to StorageFull on the second pass), then retry
             // the atomic admission against the post-eviction usage.
             if attempt == 0 && self.config.max_storage_bytes > 0 {
                 let target =

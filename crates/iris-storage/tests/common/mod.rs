@@ -81,10 +81,24 @@ pub fn env_for(
     ttl: u64,
     payload: &[u8],
 ) -> Envelope {
+    env_from([0xAA; 32], recipient, priority, ts, ttl, payload)
+}
+
+/// Like [`env_for`] but with an explicit sender (TAK-2): needed to construct
+/// both a locally-originated and a relayed message against the same store
+/// config, to distinguish `is_own_message` in eviction/quota tests.
+pub fn env_from(
+    sender: [u8; 32],
+    recipient: [u8; 32],
+    priority: MessagePriority,
+    ts: u64,
+    ttl: u64,
+    payload: &[u8],
+) -> Envelope {
     Envelope {
         version: iris_core::protocol::PROTOCOL_VERSION,
         message_id: MessageId::new_v7(),
-        sender_id: vec![0xAA; 32],
+        sender_id: sender.to_vec(),
         recipient_id: recipient.to_vec(),
         priority,
         ttl_seconds: ttl,

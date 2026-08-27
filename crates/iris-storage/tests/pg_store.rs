@@ -10,21 +10,6 @@ use iris_storage::{MessageStorage, PgStorage, PgStorageConfig, StorageKeySealer}
 
 const PEER_BOB: [u8; 32] = [0xBB; 32];
 
-async fn store_with_max(bytes: u64) -> PgStorage {
-    ensure_db().await;
-    let mut cfg = cfg_db(TEST_DB);
-    cfg.max_storage_bytes = bytes;
-    let store = PgStorage::connect(cfg).await.expect("connect storage");
-    store
-        .client()
-        .await
-        .expect("client")
-        .execute("TRUNCATE TABLE messages", &[])
-        .await
-        .expect("truncate");
-    store
-}
-
 fn cfg_db(dbname: &str) -> PgStorageConfig {
     let mut c = PgStorageConfig::from_env();
     c.dbname = dbname.to_string();
@@ -175,25 +160,105 @@ async fn evict_expired_reclaims_only_dead_rows() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
-async fn evict_by_priority_never_touches_p0() {
+async fn evict_by_priority_never_touches_own_p0() {
+    // TAK-2: INV-ROUTE-003 protects this node's own P0, not an
+    // unauthenticated peer's unverified claim to be P0 — distinguish the
+    // two via node_id, unlike the pre-TAK-2 version of this test which
+    // (with no node_id configured) could not tell them apart at all.
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
         return;
     }
     let _g = LOCK.lock().await;
-    let store = fresh_store().await;
+    const SELF_ID: [u8; 32] = [0xAA; 32];
+    ensure_db().await;
+    let mut cfg = cfg_db(TEST_DB);
+    cfg.node_id = Some(SELF_ID);
+    let store = PgStorage::connect(cfg).await.expect("connect storage");
+    store
+        .client()
+        .await
+        .expect("client")
+        .execute("TRUNCATE TABLE messages", &[])
+        .await
+        .expect("truncate");
     let now = unix_now();
-    let p0 = env_for(PEER_BOB, MessagePriority::P0, now - 30, 3600, b"sos");
+    let own_p0 = env_from(SELF_ID, PEER_BOB, MessagePriority::P0, now - 30, 3600, b"sos");
     let p7 = env_for(PEER_BOB, MessagePriority::P7, now - 30, 3600, b"video");
-    store.persist(&p0).await.expect("persist p0");
+    store.persist(&own_p0).await.expect("persist own p0");
     store.persist(&p7).await.expect("persist p7");
     let evicted = store.evict_by_priority(0).await.expect("evict"); // target 0 → hard pressure
     assert_eq!(evicted, 1, "only the P7 is evicted");
     assert!(
-        store.load(&p0.message_id).await.expect("load").is_some(),
-        "INV-ROUTE-003: P0 never evicted"
+        store.load(&own_p0.message_id).await.expect("load").is_some(),
+        "INV-ROUTE-003: this node's own P0 is never evicted"
     );
     assert!(store.load(&p7.message_id).await.expect("load").is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
+async fn evict_by_priority_reclaims_relayed_p0_as_a_last_resort() {
+    // TAK-2's core regression: a store with nothing left but relayed
+    // (not locally-originated) P0 rows must still be able to reclaim
+    // space — the pre-fix behaviour hard-excluded ALL P0 from eviction
+    // regardless of origin (`WHERE priority > 0` matched zero rows here),
+    // so a remote P0 flood could exhaust the store permanently, with no
+    // way back short of manual DB surgery. Two rows (not one) so this
+    // also proves eviction doesn't stop at "found something", but
+    // actually clears everything reclaimable in the batch.
+    if !pg_available() {
+        eprintln!("SKIP: IRIS_PG_PASSWORD unset");
+        return;
+    }
+    let _g = LOCK.lock().await;
+    const SELF_ID: [u8; 32] = [0xAA; 32];
+    const ATTACKER: [u8; 32] = [0xEE; 32];
+    ensure_db().await;
+    let mut cfg = cfg_db(TEST_DB);
+    cfg.node_id = Some(SELF_ID);
+    let store = PgStorage::connect(cfg).await.expect("connect storage");
+    store
+        .client()
+        .await
+        .expect("client")
+        .execute("TRUNCATE TABLE messages", &[])
+        .await
+        .expect("truncate");
+    let now = unix_now();
+    let relayed_p0_a = env_from(ATTACKER, PEER_BOB, MessagePriority::P0, now - 60, 3600, b"sos-flood-a");
+    let relayed_p0_b = env_from(ATTACKER, PEER_BOB, MessagePriority::P0, now - 10, 3600, b"sos-flood-b");
+    store
+        .persist(&relayed_p0_a)
+        .await
+        .expect("persist relayed p0 a");
+    store
+        .persist(&relayed_p0_b)
+        .await
+        .expect("persist relayed p0 b");
+    let usage_before = store.usage_bytes().await.expect("usage before");
+    assert!(usage_before > 0);
+
+    let evicted = store.evict_by_priority(0).await.expect("evict"); // target 0 → hard pressure
+    assert_eq!(
+        evicted, 2,
+        "both relayed P0 rows must be reclaimable — nothing else exists to evict instead"
+    );
+    let usage_after = store.usage_bytes().await.expect("usage after");
+    assert!(
+        usage_after < usage_before,
+        "store usage must actually drop, not silently stay pinned at capacity"
+    );
+    assert!(store
+        .load(&relayed_p0_a.message_id)
+        .await
+        .expect("load")
+        .is_none());
+    assert!(store
+        .load(&relayed_p0_b.message_id)
+        .await
+        .expect("load")
+        .is_none());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -274,15 +339,41 @@ async fn get_queue_orders_p0_first_and_filters_terminal() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "requires IRIS_PG_PASSWORD; set it and run with -- --include-ignored"]
-async fn quota_rejects_non_p0_but_accepts_p0() {
+async fn quota_rejects_non_p0_and_relayed_p0_but_accepts_own_p0() {
+    // TAK-2: the pre-fix behavior this test used to assert — "P0 always
+    // accepted" regardless of origin — was the vulnerability. An
+    // unauthenticated peer's bare priority *claim* bypassed quota
+    // unconditionally, and `evict_lowest_priority` also hard-excluded all
+    // P0 from reclamation, so a remote P0 flood (bare messages, huge TTL)
+    // could exhaust the store permanently. The corrected invariant is
+    // narrower: only *this node's own* P0 is exempt from quota — INV-
+    // ROUTE-003/INV-EMERG-001 protect this node's emergency traffic, not
+    // an unverified claim relayed from elsewhere. Relayed P0 is subject
+    // to the same quota as anything else (though the existing
+    // evict-then-retry path in `persist` still usually lets it displace
+    // lower-priority traffic — this test's quota is sized so nothing
+    // lower-priority exists to displace, isolating the exemption itself).
     if !pg_available() {
         eprintln!("SKIP: IRIS_PG_PASSWORD unset");
         return;
     }
     let _g = LOCK.lock().await;
-    // Tiny quota that one message exceeds.
-    let store = store_with_max(128).await;
+    const SELF_ID: [u8; 32] = [0xAA; 32];
+    const ATTACKER: [u8; 32] = [0xEE; 32];
+    ensure_db().await;
+    let mut cfg = cfg_db(TEST_DB);
+    cfg.max_storage_bytes = 128; // tiny quota that one message exceeds
+    cfg.node_id = Some(SELF_ID);
+    let store = PgStorage::connect(cfg).await.expect("connect storage");
+    store
+        .client()
+        .await
+        .expect("client")
+        .execute("TRUNCATE TABLE messages", &[])
+        .await
+        .expect("truncate");
     let now = unix_now();
+
     let normal = env_for(
         PEER_BOB,
         MessagePriority::P4,
@@ -290,16 +381,30 @@ async fn quota_rejects_non_p0_but_accepts_p0() {
         3600,
         &vec![0x42; 512],
     );
-    let res = store.persist(&normal).await;
     assert_eq!(
-        res,
+        store.persist(&normal).await,
         Err(StorageError::StorageFull),
         "non-P0 over quota refused"
     );
-    let sos = env_for(PEER_BOB, MessagePriority::P0, now - 30, 3600, b"sos-small");
+
+    let relayed_sos = env_from(
+        ATTACKER,
+        PEER_BOB,
+        MessagePriority::P0,
+        now - 30,
+        3600,
+        &vec![0x43; 512],
+    );
+    assert_eq!(
+        store.persist(&relayed_sos).await,
+        Err(StorageError::StorageFull),
+        "TAK-2: a relayed P0 claim must not bypass quota — that was the DoS"
+    );
+
+    let own_sos = env_from(SELF_ID, PEER_BOB, MessagePriority::P0, now - 30, 3600, b"sos-small");
     assert!(
-        store.persist(&sos).await.is_ok(),
-        "P0 always accepted (INV-EMERG-001 spirit)"
+        store.persist(&own_sos).await.is_ok(),
+        "this node's own P0 is still always accepted"
     );
 }
 

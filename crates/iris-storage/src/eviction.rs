@@ -1,8 +1,13 @@
 //! Priority-aware eviction queries (STORAGE.md §Storage Quota and Eviction).
 //!
 //! Invariants enforced here:
-//! - **P0 is never evicted while unexpired** (INV-ROUTE-003): `priority > 0`
-//!   in every `evict_lowest_priority` statement.
+//! - **This node's own P0 is never evicted while unexpired** (INV-ROUTE-003).
+//!   TAK-2: the invariant is about *this node's own* emergency traffic, not
+//!   an unauthenticated peer's unverified claim to be P0 — a *relayed* P0
+//!   row is evictable (last, after every other priority), matching
+//!   `pg.rs::persist`'s admission bypass, which is narrowed the same way.
+//!   Without this, a remote P0 flood is both unlimited on ingest and
+//!   permanently unreclaimable, exhausting the store for good.
 //! - Expired rows are always reclaimed first regardless of priority.
 //! - Lower priority evicted before higher; among equal priority, soonest expiry
 //!   first, relayed (not own) messages before own.
@@ -40,7 +45,9 @@ pub(crate) async fn delete_expired(
 }
 
 /// Reclaim the lowest-priority rows until usage falls at/below `target_bytes`.
-/// Returns the number of rows deleted. P0 is exempt (INV-ROUTE-003).
+/// Returns the number of rows deleted. This node's own P0 is exempt
+/// (INV-ROUTE-003); a relayed P0 row is evictable, last, after every other
+/// priority (TAK-2).
 ///
 /// Cost-bounded (TAK-12): each pass deletes up to [`EVICT_BATCH`] rows and the
 /// loop runs at most [`EVICT_MAX_PASSES`] times — a full reclaim costs at most
@@ -68,7 +75,7 @@ pub(crate) async fn evict_lowest_priority(
                 "DELETE FROM messages
                  WHERE message_id IN (
                     SELECT message_id FROM messages
-                    WHERE priority > 0
+                    WHERE NOT (priority = 0 AND is_own_message)
                     ORDER BY priority DESC, is_own_message ASC, expires_at ASC, created_at ASC
                     LIMIT $1
                  )",
@@ -76,7 +83,7 @@ pub(crate) async fn evict_lowest_priority(
             )
             .await?;
         if n == 0 {
-            // Nothing evictable remains (P0-only residue): stop instead of
+            // Nothing evictable remains (own-P0-only residue): stop instead of
             // spinning against an invariant target.
             break;
         }
