@@ -312,8 +312,23 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             val handle = peer.toLong()
             val link = links.get(handle)
             if (link != null && link.send(payload)) return@suspendCall
-            // No socket yet (group still forming, or the link just dropped):
-            // hold the frame in the bounded outbox and flush it on connect.
+            // FFI-2: this used to always fall through to the outbox and
+            // return normally, whether the group was still forming (the
+            // legitimate "not yet" case) or the peer's link had already
+            // died (a real link-loss event). Rust's entire send-failure
+            // taxonomy (is_link_loss_error -> teardown_link vs
+            // TransportError::Busy) was dead code against this adapter: a
+            // dead group member was retried forever, and Rust recorded a
+            // SendReceipt for every dropped frame. groupRegistry.accepts()
+            // (opened() on join, closed() on removal) is the same signal
+            // already used to prune the inbound drain (RT-109) — use it
+            // here too to tell "not a member yet" from "was a member, link
+            // is gone".
+            if (groupRegistry.accepts(handle)) {
+                throw TransportFailure("link closed")
+            }
+            // No socket yet and never was one (group still forming): hold
+            // the frame in the bounded outbox and flush it on connect.
             outbox.enqueue(handle, payload)
         }
     }

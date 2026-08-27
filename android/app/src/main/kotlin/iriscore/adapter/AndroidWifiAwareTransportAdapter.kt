@@ -88,6 +88,8 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     private val availability = RadioStateTracker()
     private val ndpRegistry = NdpRegistry()
     private val verifiedCache = VerifiedPeerCache()
+    /** FFI-11: handles that reached `onAvailable` at least once — see `ndpSend`. */
+    private val ndpEverOpened = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
 
     /** Frames queued for an NDP whose socket is not up yet; flushed on connect. */
     private val outbox = RingBufferOutbox<ByteArray>()
@@ -193,6 +195,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
     override suspend fun closeNdp(ndpHandle: ULong) {
         FfiCallTimeout.suspendCall {
             ndpRegistry.closed(ndpHandle.toLong())
+            ndpEverOpened.remove(ndpHandle.toLong())
             ndpSpecifiers.remove(ndpHandle.toLong())
             links.remove(ndpHandle.toLong())
             // AND-RT-109: closed NDPs must not retain frames.
@@ -210,6 +213,19 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             // AND-RT-110: only enqueue once the NDP network is genuinely available.
             val handle = ndpHandle.toLong()
             if (!ndpRegistry.accepts(handle)) {
+                // FFI-11: "never opened" (still connecting — legitimately
+                // transient, Rust should retry as Busy) and "was open, now
+                // lost" (a real, permanent link death — Rust must
+                // teardown_link) used to throw the exact same message.
+                // Rust's is_link_loss_error only matches "closed" /
+                // "disconnect" / "reset" / "link lost" / "not in group" —
+                // none is a substring of "NDP network not yet available",
+                // so a dead NDP was classified as transient congestion
+                // forever and retried against a link that would never
+                // recover.
+                if (ndpEverOpened.contains(handle)) {
+                    throw TransportFailure("ndp closed")
+                }
                 throw TransportFailure("NDP network not yet available")
             }
             val link = links.get(handle)
@@ -404,6 +420,10 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 // AND-RT-110: an NDP handle is only enqueue-able once its network
                 // is genuinely available.
                 ndpRegistry.opened(ndpHandle)
+                // FFI-11: remember this handle was genuinely opened at
+                // least once, so a later onLost can be told apart from a
+                // handle that never came up in the first place.
+                ndpEverOpened.add(ndpHandle)
             }
 
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
