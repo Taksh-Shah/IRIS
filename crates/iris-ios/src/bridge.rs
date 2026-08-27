@@ -191,9 +191,15 @@ impl BleAdapter for BleBridge {
         self.ffi.set_mtu(handle.0, mtu).map_err(ffi_err_to_ble)
     }
 
-    fn incoming_gatt_writes(&self) -> MutexGuard<'_, Vec<GattWriteEvent>> {
+    fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+        // BLE-4 (Android leg, iris-android/src/bridge.rs): the equivalent
+        // clear()-and-refill here had the identical defect — a one-shot FFI
+        // drain masquerading as the persistent, shared buffer the core's
+        // per-peer pollers write foreign frames back into. Fixed the same
+        // way: never clear(), only append what's newly queued, then hand
+        // back just this handle's frames and leave everyone else's in the
+        // buffer for their own poller.
         let mut buf = self.writes.lock().unwrap();
-        buf.clear();
         buf.extend(
             self.ffi
                 .incoming_gatt_writes()
@@ -204,7 +210,16 @@ impl BleAdapter for BleBridge {
                     data: e.data,
                 }),
         );
-        buf
+        let mut mine = Vec::new();
+        buf.retain(|w| {
+            if w.handle == handle {
+                mine.push(w.clone());
+                false
+            } else {
+                true
+            }
+        });
+        mine
     }
 
     fn scan_results(&self) -> MutexGuard<'_, Vec<ScanResult>> {

@@ -203,7 +203,25 @@ pub trait BleAdapter: Send + Sync + 'static {
     /// `IRIS_IDENTIFY_CHARACTERISTIC` (DEC-BLE-002-0002).
     fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError>;
     fn set_mtu(&self, handle: GattHandle, mtu: u16) -> Result<u16, BleError>;
-    fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>>;
+    /// Drain inbound GATT writes addressed to `handle` only (BLE-4).
+    ///
+    /// This used to be `incoming_gatt_writes(&self) -> MutexGuard<'_,
+    /// Vec<GattWriteEvent>>` — a persistent, shared buffer callers were
+    /// trusted to partition themselves, writing foreign-peer frames *back*
+    /// for another poller to collect later. `SimulatedBleAdapter`'s buffer
+    /// really is durable across calls, so every test built on that
+    /// contract passed — but both real platform bridges implement the same
+    /// signature by `clear()`-ing their buffer and refilling it from a
+    /// one-shot FFI drain every call, silently destroying any frames
+    /// written back for a sibling poller. With ≥2 concurrent GATT peers on
+    /// real hardware, roughly half of each peer's inbound frames were lost
+    /// and every multi-chunk message to the loser stalled and TTL-expired
+    /// 30s later — invisible in CI, which only ever exercises the
+    /// simulator. Handle-scoped draining removes the shared-buffer
+    /// write-back contract entirely: each poller only ever asks for (and
+    /// the adapter only ever returns) its own connection's frames, so there
+    /// is nothing left for a real bridge to destroy.
+    fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent>;
     /// Scan results delivered since last drain (real impl: callbacks).
     fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>>;
 }
@@ -366,8 +384,12 @@ impl BleAdapter for SimulatedBleAdapter {
     fn set_mtu(&self, _handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
         Ok(mtu)
     }
-    fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-        self.events.lock().unwrap_or_else(|p| p.into_inner())
+    fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+        let mut events = self.events.lock().unwrap_or_else(|p| p.into_inner());
+        let (mine, foreign): (Vec<_>, Vec<_>) =
+            events.drain(..).partition(|w| w.handle == handle);
+        *events = foreign;
+        mine
     }
     fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
         self.scan_results.lock().unwrap_or_else(|p| p.into_inner())
@@ -922,22 +944,11 @@ impl Transport for BleTransport {
                     recon.evict_stale(REASSEMBLY_TTL, now);
                     last_evict = now;
                 }
-                let mut writes = adapter.incoming_gatt_writes();
-                // Partition the shared queue IN PLACE: take frames addressed to
-                // this poller's own connection and leave every other peer's
-                // frames for their poller (BLE-RT-016). Draining+filtering
-                // would silently drop foreign frames.
-                let mut mine: Vec<GattWriteEvent> = Vec::new();
-                let mut foreign: Vec<GattWriteEvent> = Vec::with_capacity(writes.len());
-                for w in writes.drain(..) {
-                    if w.handle == handle {
-                        mine.push(w);
-                    } else {
-                        foreign.push(w);
-                    }
-                }
-                *writes = foreign;
-                drop(writes);
+                // BLE-4: handle-scoped drain — the adapter itself now owns
+                // partitioning frames by connection (see `drain_gatt_writes`
+                // doc), so there is no shared buffer here for a real bridge
+                // to clear out from under a sibling poller (BLE-RT-016).
+                let mine = adapter.drain_gatt_writes(handle);
                 if !mine.is_empty() {
                     last_activity = std::time::Instant::now();
                 }
@@ -1357,8 +1368,8 @@ mod tests {
         fn set_mtu(&self, handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(handle, mtu)
         }
-        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-            self.inner.incoming_gatt_writes()
+        fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+            self.inner.drain_gatt_writes(handle)
         }
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
@@ -1476,8 +1487,8 @@ mod tests {
         fn set_mtu(&self, _h: GattHandle, _m: u16) -> Result<u16, BleError> {
             Ok(self.reported)
         }
-        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-            self.inner.incoming_gatt_writes()
+        fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+            self.inner.drain_gatt_writes(handle)
         }
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
@@ -2077,8 +2088,8 @@ mod tests {
                 MTU_NEGOTIATED
             })
         }
-        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-            self.inner.incoming_gatt_writes()
+        fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+            self.inner.drain_gatt_writes(handle)
         }
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
@@ -2125,8 +2136,8 @@ mod tests {
         fn set_mtu(&self, h: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(h, mtu)
         }
-        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-            self.inner.incoming_gatt_writes()
+        fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+            self.inner.drain_gatt_writes(handle)
         }
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
@@ -2201,8 +2212,8 @@ mod tests {
         fn set_mtu(&self, h: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(h, mtu)
         }
-        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-            self.inner.incoming_gatt_writes()
+        fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+            self.inner.drain_gatt_writes(handle)
         }
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()
@@ -2242,8 +2253,8 @@ mod tests {
         fn set_mtu(&self, h: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(h, mtu)
         }
-        fn incoming_gatt_writes(&self) -> std::sync::MutexGuard<'_, Vec<GattWriteEvent>> {
-            self.inner.incoming_gatt_writes()
+        fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+            self.inner.drain_gatt_writes(handle)
         }
         fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>> {
             self.inner.scan_results()

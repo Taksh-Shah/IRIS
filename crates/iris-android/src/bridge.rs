@@ -9,9 +9,13 @@
 //! - `WifiAwareBridge`  → `iris_core::transport::wifiaware::WifiAwareAdapter` (async)
 //! - `WifiDirectBridge` → `iris_core::transport::wifi_direct::WifiDirectAdapter` (async)
 //!
-//! The two `MutexGuard`-returning BLE drains (proj-BLE-1) become internal
-//! buffers: each drain first transfers the FFI `Vec` into the bridge's buffer,
-//! then hands the guard to the transport's poller.
+//! `scan_results` (proj-BLE-1) stays a `MutexGuard`-returning internal
+//! buffer: each drain first transfers the FFI `Vec` into the bridge's buffer,
+//! then hands the guard to the transport's poller. `incoming_gatt_writes`
+//! (BLE-4) is handle-scoped instead — see `BleBridge::drain_gatt_writes` —
+//! because a `MutexGuard` to a buffer this bridge clear()-and-refilled every
+//! call silently destroyed frames a sibling peer's poller hadn't collected
+//! yet.
 
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -221,9 +225,18 @@ impl BleAdapter for BleBridge {
         self.ffi.set_mtu(handle.0, mtu).map_err(ffi_err_to_ble)
     }
 
-    fn incoming_gatt_writes(&self) -> MutexGuard<'_, Vec<GattWriteEvent>> {
+    fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
+        // BLE-4: `self.writes` used to be `clear()`-ed and refilled on every
+        // call — a one-shot FFI drain masquerading as a persistent, shared
+        // buffer the core's per-peer pollers partition themselves. With ≥2
+        // concurrent peers, whichever poller called in first destroyed
+        // every OTHER peer's frames the moment it refilled the buffer; the
+        // "foreign" frames the core wrote back for a sibling poller never
+        // survived to be read. Fixed to a real shared demultiplexer: pull
+        // in whatever the FFI side has queued since last call (append, no
+        // longer clear), then hand back only this handle's frames, leaving
+        // every other peer's frames in the buffer for their own poller.
         let mut buf = self.writes.lock().unwrap();
-        buf.clear();
         buf.extend(
             self.ffi
                 .incoming_gatt_writes()
@@ -234,7 +247,16 @@ impl BleAdapter for BleBridge {
                     data: e.data,
                 }),
         );
-        buf
+        let mut mine = Vec::new();
+        buf.retain(|w| {
+            if w.handle == handle {
+                mine.push(w.clone());
+                false
+            } else {
+                true
+            }
+        });
+        mine
     }
 
     fn scan_results(&self) -> MutexGuard<'_, Vec<ScanResult>> {
@@ -536,5 +558,110 @@ fn group_info_from_ffi(g: FfiGroupInfo) -> GroupInfo {
         go: WdPeerHandle(g.go),
         go_addr: g.go_addr,
         clients: g.clients.into_iter().map(WdPeerHandle).collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::ble_adapter::{FfiBleAdapter, FfiGattWriteEvent, FfiScanResult};
+    use std::sync::Mutex as StdMutex;
+
+    /// A fake `FfiBleAdapter` whose `incoming_gatt_writes()` behaves like the
+    /// real Kotlin side: a one-shot drain of whatever has arrived since the
+    /// last call (returns it once, then empty), simulating writes from
+    /// TWO different peer connections interleaved in one underlying queue —
+    /// exactly the scenario BLE-4 describes (A0, B0, A1, B1 all landing in
+    /// one Kotlin-side buffer before either poller has drained anything).
+    struct FakeFfi {
+        pending: StdMutex<Vec<FfiGattWriteEvent>>,
+    }
+
+    impl FfiBleAdapter for FakeFfi {
+        fn start_scan(&self, _f: FfiScanFilter) -> Result<u64, IrisFfiError> {
+            Ok(1)
+        }
+        fn stop_scan(&self, _h: u64) {}
+        fn start_advertising(&self, _d: FfiAdvertisementData) -> Result<u64, IrisFfiError> {
+            Ok(1)
+        }
+        fn stop_advertising(&self, _h: u64) {}
+        fn connect_gatt(&self, _a: String) -> Result<u64, IrisFfiError> {
+            Ok(1)
+        }
+        fn disconnect_gatt(&self, _h: u64) {}
+        fn gatt_write(&self, _h: u64, _c: String, _d: Vec<u8>) -> Result<(), IrisFfiError> {
+            Ok(())
+        }
+        fn set_mtu(&self, _h: u64, mtu: u16) -> Result<u16, IrisFfiError> {
+            Ok(mtu)
+        }
+        fn incoming_gatt_writes(&self) -> Vec<FfiGattWriteEvent> {
+            std::mem::take(&mut self.pending.lock().unwrap())
+        }
+        fn scan_results(&self) -> Vec<FfiScanResult> {
+            Vec::new()
+        }
+    }
+
+    fn hex32(byte: u8) -> String {
+        // IRIS_WRITE_CHARACTERISTIC-shaped hex string, content irrelevant to
+        // this test beyond round-tripping through hex_to_uuid.
+        std::iter::repeat(format!("{byte:02x}")).take(16).collect()
+    }
+
+    /// BLE-4 regression, at the bridge level (the finding's own "add a
+    /// bridge-level version of it" ask): two peers' frames arrive
+    /// interleaved in the underlying FFI queue. Poller A draining its own
+    /// handle must not destroy poller B's still-undrained frames — the
+    /// defect this bridge used to have via `clear()`-and-refill.
+    #[test]
+    fn ble4_draining_one_handle_does_not_destroy_another_peers_frames() {
+        let ffi: Arc<dyn FfiBleAdapter> = Arc::new(FakeFfi {
+            pending: StdMutex::new(vec![
+                FfiGattWriteEvent {
+                    handle: 1,
+                    char_uuid: hex32(0xA0),
+                    data: b"A0".to_vec(),
+                },
+                FfiGattWriteEvent {
+                    handle: 2,
+                    char_uuid: hex32(0xB0),
+                    data: b"B0".to_vec(),
+                },
+                FfiGattWriteEvent {
+                    handle: 1,
+                    char_uuid: hex32(0xA1),
+                    data: b"A1".to_vec(),
+                },
+                FfiGattWriteEvent {
+                    handle: 2,
+                    char_uuid: hex32(0xB1),
+                    data: b"B1".to_vec(),
+                },
+            ]),
+        });
+        let bridge = BleBridge::new(ffi);
+
+        // Poller A drains first — this used to be the exact moment a
+        // clear()-and-refill bridge destroyed B0/B1 before B's poller ever
+        // ran.
+        let a_frames = bridge.drain_gatt_writes(GattHandle(1));
+        assert_eq!(a_frames.len(), 2, "peer A must see exactly its own 2 frames");
+        assert!(a_frames.iter().all(|w| w.data == b"A0" || w.data == b"A1"));
+
+        // Peer B's frames must still be there when its poller finally runs.
+        let b_frames = bridge.drain_gatt_writes(GattHandle(2));
+        assert_eq!(
+            b_frames.len(),
+            2,
+            "peer B's frames must survive peer A draining first (BLE-4)"
+        );
+        assert!(b_frames.iter().all(|w| w.data == b"B0" || w.data == b"B1"));
+
+        // Both buffers empty now; a third drain of either handle is empty,
+        // not a re-delivery of already-consumed frames.
+        assert!(bridge.drain_gatt_writes(GattHandle(1)).is_empty());
+        assert!(bridge.drain_gatt_writes(GattHandle(2)).is_empty());
     }
 }
