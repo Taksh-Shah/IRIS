@@ -1,4 +1,4 @@
-﻿# Section 3 — Routing, Transport & Storage: Deep Bug-Hunt Report
+# Section 3 — Routing, Transport & Storage: Deep Bug-Hunt Report
 
 **Owner:** Taksh Shah
 **Section:** 3 — Routing, Transport & Storage (`docs/testing/CODE_REVIEW_SECTIONS.md`)
@@ -48,7 +48,7 @@ Full workspace test suite green after every commit across all six wakes (657 iri
 | Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **-1** | Nothing downstream can be observed until this lands | 1 | 0 | 0 | 1 | 0 | 0 | ✅ COMPLETE (commit d32c4cc) |
-| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 15 | 0 | 15 | 1 | 0 | **IN PROGRESS** — BLE-2/BLE-4/BLE-9/FFI-4/FFI-5 fixed this session (real hardware confirmed connect+write mechanics for BLE-2/BLE-9; BLE-4/FFI-4/FFI-5 code-complete + unit-tested, PENDING HARDWARE VERIFICATION); BLE-1 still blocked; Kotlin-touching FFI-1/2/3/6/7/8/9/10/11/12/13/14/15/17/18/19 + BLE-9's remaining service_uuid/local_name half remain | ⬜ |
+| **0** | Data path on real hardware (FFI seam: BLE, Wi-Fi Direct/Aware) | 32 | 19 | 0 | 12 | 1 | 0 | **IN PROGRESS** — BLE-2/BLE-4/BLE-9/FFI-1/FFI-2/FFI-4/FFI-5/FFI-9/FFI-10/FFI-11/FFI-13/FFI-18 fixed this session (real hardware confirmed connect+write mechanics for BLE-2/BLE-9; all others code-complete + unit-tested, PENDING HARDWARE VERIFICATION — batched per plan); BLE-1 still blocked; remaining: FFI-3/6/7/8/12/14/15/17/19 + BLE-9's remaining service_uuid/local_name half | ⬜ |
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 29 | 0 | 48 | 3 | 0 | **✅ human sign-off received 2026-08-27 — IN PROGRESS** (ROUT area: **✅ FULLY COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: 15/25 fixed [DTN-1,2,3,4,5,6,7,8,9,10,11,21,23,24,25]; DTN-12..20, DTN-22 (PRoPHET aging cluster + lifecycle), MG-25..42, TAK-2 not yet started) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 32 | 0 | 0 | 0 | 0 | Tier -1 complete | ⬜ |
@@ -9894,7 +9894,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-1: Wi-Fi Direct peer handles are allocated from two independent namespaces — every `p2p_send` misses its link
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit f01135b  ·  2026-08-27  ·  Unified `peerHandleFor(deviceAddress)` into a single atomic allocator (`deviceHandles.computeIfAbsent`) shared by discovery and the data path, replacing the separate `nextPeerHandle.getAndIncrement()` call site in `dnsSdServiceListener` that produced a second, disagreeing namespace. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:1095-1112` (discovery handle -> `transport_addresses`), `:1153-1159` (handle parsed back), `:1273` (`adapter.p2p_send(handle, ..)`)
 - **Location (native):** `android/app/src/main/kotlin/iriscore/adapter/AndroidWifiDirectTransportAdapter.kt:393-407` (discovery handle), `:593-596` (`peerHandleFor`), `:291-300` (`p2pSend`), `:518`/`:544` (link handle)
@@ -9932,7 +9932,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-2: `p2pSend` reports success for a frame that was only queued — `is_link_loss_error` can never fire
 - **Severity:** Critical
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit ef5c5a2  ·  2026-08-27  ·  `p2pSend` now checks `groupRegistry.accepts(handle)` and throws `TransportFailure("link closed")` before falling through to `outbox.enqueue`, so `is_link_loss_error`'s existing "closed" substring match finally has something to match. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:1049-1058`, `:1273-1284`
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:291-300`
@@ -10088,7 +10088,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-9: The band-fallback path in `create_group` can never fire — Kotlin's error string contains no "band"
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit c47c8a0  ·  2026-08-27  ·  Shared `awaitAction` helper gained an optional `failureContext` param; `createGroup`'s call site now passes `failureContext = "band=$band"`, so the thrown `TransportFailure` message actually contains "band" and the existing Rust `e.contains("band")` matcher can fire. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:1192-1199`
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:213-224`, `:437-465`, `:603-607`
@@ -10112,7 +10112,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-10: `go_addr` returns the GO's MAC address where Rust expects a routable endpoint address
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit c47c8a0  ·  2026-08-27  ·  `onGroupFormed` now caches `info.groupOwnerAddress?.hostAddress` unconditionally as the first line (both GO and client roles), and `currentGroupInfo` no longer overwrites that cached value with `group.owner?.deviceAddress` (a MAC). `go_addr()` now returns a routable endpoint for both roles instead of a MAC for the GO. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:92-96` (doc: "GO-supplied endpoint address ... `192.168.49.1`"), `:160`, `:588`/`:622`/`:637`/`:673` (sim returns `GO_STATIC_ADDR`); `crates/iris-android/src/ffi/wifi_direct_adapter.rs:39-40`
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:467-476`, `:497-502`, `:513-519`
@@ -10130,7 +10130,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-11: Wi-Fi Aware link loss is reported as `"NDP network not yet available"` — a string no Rust matcher accepts
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit ef5c5a2  ·  2026-08-27  ·  Added an `ndpEverOpened` concurrent set, populated in the `NetworkCallback.onAvailable` handler and cleared in `closeNdp`; `ndpSend` now distinguishes "never opened" (`"NDP network not yet available"`, unchanged) from "was open, now lost" (`TransportFailure("ndp closed")`, new), matching the same Rust substring matcher FFI-2 relies on. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifiaware.rs:587-594`, `:1035-1050`
 - **Location (native):** `AndroidWifiAwareTransportAdapter.kt:195-208`, `:396-399`
@@ -10172,7 +10172,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-13: `start()` and `startDnsSd()` return success on a device that has no Wi-Fi Direct
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit da7fb6e  ·  2026-08-27  ·  Kotlin: `initialize()` throws `NotSupported()` instead of returning null; `startGate`'s type parameter changed from `Channel?` to `Channel` (non-nullable) to match. Rust: `ensure_started()` maps `IrisFfiError::NotSupported`'s Display string to `TransportError::NotSupported` and flips `TransportState::Unavailable`; a dedicated `permanently_unsupported` `AtomicBool` (kept separate from `state`, since `Unavailable` is also the pre-start default) lets `discover_peers`/`start_advertising` fail fast on subsequent calls instead of re-invoking `adapter.start()` forever; `connect()` already had an equivalent `TransportState::Unavailable` check that now stays permanently true once the flag latches. `cargo build --workspace --all-targets` clean, `cargo test --workspace` 657 passed/0 failed, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION** — no "no Wi-Fi Direct hardware" device was available to test against directly.
 - **Confidence:** Certain
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:906-931` (`ensure_started` treats `Ok(())` as "subsystem up")
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:177-187`, `:351-359`, `:382-391`
@@ -10289,7 +10289,7 @@ Scope: Rust transport contracts vs. the actual Kotlin/Swift implementations. BLE
 
 #### FFI-18: `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 0
+- **Fix status:** ✅ Fixed  ·  Tier 0  ·  commit f01135b  ·  2026-08-27  ·  Subsumed by FFI-1's fix: `peerHandleFor` now goes through `deviceHandles.computeIfAbsent` (atomic) instead of Kotlin's non-atomic `getOrPut` extension on `ConcurrentHashMap`. `cargo test --workspace` green, `gradle :app:compileDebugKotlin` clean. **PENDING HARDWARE VERIFICATION.**
 - **Confidence:** High
 - **Location (Rust):** `crates/iris-core/src/transport/wifi_direct.rs:1273` (a single stable handle per peer is assumed)
 - **Location (native):** `AndroidWifiDirectTransportAdapter.kt:593-596`, callers at `:518`, `:544`, `:617-618`, `:472-474`, `:499`
