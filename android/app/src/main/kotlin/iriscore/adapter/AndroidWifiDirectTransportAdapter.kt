@@ -293,7 +293,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // AND-RT-103: the group snapshot arrives only via the async
             // CONNECTION_CHANGED broadcast — wait for it, never throw on a
             // momentarily-null snapshot.
-            awaitCurrentGroupInfo(channel) ?: degradedGroupInfo()
+            // FFI-14: this used to fall back to degradedGroupInfo() — a
+            // fabricated GroupInfo (groupId=0, empty clients, go derived from
+            // a possibly-null cachedGoAddr) presented as a successful result
+            // when the CONNECTION_CHANGED broadcast never arrived within the
+            // settle window. Rust's connect() then registered a live link and
+            // set Connected on the strength of a call that couldn't fail.
+            // The settle window not producing a real snapshot means the
+            // group genuinely never formed — that's a real, reportable
+            // failure, not a degraded-but-ok result.
+            awaitCurrentGroupInfo(channel) ?: throw TransportFailure("group not formed")
         }
     }
 
@@ -305,14 +314,29 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 ?: throw DeviceNotFound()
             val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
             awaitAction { p2pManagerOrThrow().connect(channel, wifiConfig, it) }
-            awaitCurrentGroupInfo(channel) ?: degradedGroupInfo()
+            // FFI-14: this used to fall back to degradedGroupInfo() — a
+            // fabricated GroupInfo (groupId=0, empty clients, go derived from
+            // a possibly-null cachedGoAddr) presented as a successful result
+            // when the CONNECTION_CHANGED broadcast never arrived within the
+            // settle window. Rust's connect() then registered a live link and
+            // set Connected on the strength of a call that couldn't fail.
+            // The settle window not producing a real snapshot means the
+            // group genuinely never formed — that's a real, reportable
+            // failure, not a degraded-but-ok result.
+            awaitCurrentGroupInfo(channel) ?: throw TransportFailure("group not formed")
         }
     }
 
     override suspend fun addClient(client: ULong) {
         FfiCallTimeout.suspendCall {
-            val channel = startGate.ensureStarted() ?: return@suspendCall
-            val address = peerDevices[client.toLong()] ?: return@suspendCall
+            val channel = startGate.ensureStarted()
+            // FFI-14: this used to `return@suspendCall` for an unknown peer —
+            // a silent success indistinguishable from a real invitation.
+            // Rust's connect() then registered a link and set Connected on
+            // the strength of a call that couldn't fail. addClient's own
+            // contract (ffi/wifi_direct_adapter.rs: "GO invites a discovered
+            // peer") makes an unknown handle a real, reportable error.
+            val address = peerDevices[client.toLong()] ?: throw DeviceNotFound()
             val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
             awaitAction { p2pManagerOrThrow().connect(channel, wifiConfig, it) } // invitation (p2p_invite)
         }
@@ -627,13 +651,8 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         return null
     }
 
-    /** Null-safe degraded result — never throws on a momentarily-null snapshot. */
-    private fun degradedGroupInfo(): FfiGroupInfo = FfiGroupInfo(
-        groupId = 0u,
-        go = peerHandleFor(cachedGoAddr).toULong(),
-        goAddr = cachedGoAddr,
-        clients = emptyList(),
-    )
+    // FFI-14: degradedGroupInfo() removed — see the throw TransportFailure
+    // call sites above that replaced it.
 
     // -- data path ---------------------------------------------------------
 

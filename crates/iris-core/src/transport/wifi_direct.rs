@@ -1335,19 +1335,34 @@ impl Transport for WifiDirectTransport {
                 }
                 Err(e) => Err(e),
             };
-            let _ = go_result.map_err(|_| TransportError::ConnectionFailed)?;
+            // FFI-14: this used to discard go_result's GroupInfo entirely
+            // (`let _ = ...`) — Kotlin's degradedGroupInfo() fallback (now
+            // removed) meant a synthetic groupId=0/empty-clients result
+            // looked identical to a real group here. Now that Kotlin throws
+            // instead of fabricating, group_id == 0 can't legitimately
+            // happen — checked anyway as defense-in-depth, since this is the
+            // only evidence standing between a real group and the Connected
+            // state this function is about to claim.
+            let group = go_result.map_err(|_| TransportError::ConnectionFailed)?;
+            if group.group_id == 0 {
+                return Err(TransportError::ConnectionFailed);
+            }
             let _ = tokio::time::timeout(CONNECT_TIMEOUT, adapter.add_client(PeerHandle(handle)))
                 .await
                 .map_err(|_| TransportError::ConnectionFailed)?
                 .map_err(|_| TransportError::ConnectionFailed)?;
         } else {
-            let _ = tokio::time::timeout(
+            // FFI-14: same discard as the GO branch above, same fix.
+            let group = tokio::time::timeout(
                 CONNECT_TIMEOUT,
                 adapter.join_group(PeerHandle(handle), &self.group_config),
             )
             .await
             .map_err(|_| TransportError::ConnectionFailed)?
             .map_err(|_| TransportError::ConnectionFailed)?;
+            if group.group_id == 0 {
+                return Err(TransportError::ConnectionFailed);
+            }
         }
         // Defense-in-depth: re-check availability/state after group formation.
         if self.state.load() == TransportState::Unavailable || !adapter.is_available() {
