@@ -179,55 +179,49 @@ mod tests {
     // --- Property tests (ORCH-0001 WP-4 acceptance: no loops, hop count
     // monotonic decrease) ---
 
-    /// Simulate a flood on a random-ish connected topology. Verifies:
-    /// 1. hop_count strictly decreases toward the cap (no growth),
-    /// 2. a message never re-enters a node already flooded (no loops),
-    /// 3. the recipient is reached within the priority hop budget.
+    /// Simulate a flood across a real multi-node graph. Verifies:
+    /// 1. hop_count never exceeds the priority hop cap,
+    /// 2. total transmissions never exceed calls-made x MAX_FLOOD_FANOUT
+    ///    (ROUT-17's cap actually bounds the whole run, not just one call),
+    /// 3. no node is ever added to the frontier twice,
+    /// 4. `reached` (a visited node is adjacent to the recipient, i.e. Direct
+    ///    delivery becomes possible on the next decide() call) is true
+    ///    whenever the recipient is within `max + 1` graph hops of the
+    ///    source (`+1` because ROUT-19 exempts the final Direct hop from the
+    ///    flood hop budget) — checked against an independent ground-truth
+    ///    BFS over the same graph, not against the function under test.
+    ///
+    /// ROUT-28: the previous version of this test built one *shared*
+    /// `NeighborTable` for all "nodes", so every node saw an identical
+    /// neighbor set — it was not a graph. Its three assertions were also
+    /// unable to fail: `hop <= max` held by loop construction, `visited.len()
+    /// == visited.len()` compared a value with itself, and `reached` was
+    /// computed then discarded via `let _ = reached;`. This version gives
+    /// each node its own `NeighborTable` (built from a seeded RNG for
+    /// reproducibility) and checks reachability independently.
     #[tokio::test]
     async fn flood_terminates_no_loops_property() {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        for _case in 0..50 {
-            // Build a mesh of 12 nodes; every node links to a few others.
-            let table = NeighborTable::new(Duration::from_secs(60));
-            for id in 1..=12u8 {
-                for _ in 0..4 {
-                    let other: u8 = rng.gen_range(1..=12);
-                    if other != id {
-                        table
-                            .upsert(&peer_info(id), &TransportId::from("sim"), LinkQuality::Good)
-                            .await;
-                        table
-                            .upsert(
-                                &peer_info(other),
-                                &TransportId::from("sim"),
-                                LinkQuality::Good,
-                            )
-                            .await;
-                    }
-                }
+        use rand::rngs::StdRng;
+        use rand::{Rng, SeedableRng};
+        use std::collections::{HashMap, HashSet};
+
+        /// Shortest-path distance in hops, or `None` if unreachable.
+        fn bfs_distance(adjacency: &HashMap<u8, HashSet<u8>>, source: u8, dest: u8) -> Option<u32> {
+            if source == dest {
+                return Some(0);
             }
-
-            let source = pid(1);
-            let dest = pid(12);
-
-            // BFS-style flood simulation.
-            let mut frontier = vec![source];
-            let mut visited: std::collections::HashSet<PeerId> = std::collections::HashSet::new();
+            let mut visited = HashSet::new();
             visited.insert(source);
-            let mut reached = false;
-            let mut hop: u8 = 0;
-            let max = max_hops_for_priority(MessagePriority::P4).max_hops; // 3
-            while !frontier.is_empty() && hop < max {
-                hop += 1;
+            let mut frontier = vec![source];
+            let mut dist = 0u32;
+            while !frontier.is_empty() {
+                dist += 1;
                 let mut next = Vec::new();
-                for node in &frontier {
-                    if *node == dest {
-                        reached = true;
-                        continue;
-                    }
-                    let r = recipients_for_flood(&table, *node, &[], hop, &dest).await;
-                    for nb in r {
+                for &node in &frontier {
+                    for &nb in &adjacency[&node] {
+                        if nb == dest {
+                            return Some(dist);
+                        }
                         if visited.insert(nb) {
                             next.push(nb);
                         }
@@ -235,45 +229,140 @@ mod tests {
                 }
                 frontier = next;
             }
-            // Hop count only increased downward from cap 3 — we never ran past it.
+            None
+        }
+
+        let n = 12u8;
+        let max = max_hops_for_priority(MessagePriority::P4).max_hops; // 3
+        let source = 1u8;
+        let dest = 12u8;
+
+        for seed in 0..50u64 {
+            let mut rng = StdRng::seed_from_u64(seed);
+
+            // Symmetric random graph, degree capped at MAX_FLOOD_FANOUT so the
+            // fan-out cap never truncates a real edge — otherwise ground-truth
+            // BFS (which sees the whole graph) would not be a sound oracle for
+            // the capped flood.
+            let mut adjacency: HashMap<u8, HashSet<u8>> =
+                (1..=n).map(|id| (id, HashSet::new())).collect();
+            for id in 1..=n {
+                for _ in 0..rng.gen_range(1..=4) {
+                    let other = rng.gen_range(1..=n);
+                    if other != id
+                        && adjacency[&id].len() < MAX_FLOOD_FANOUT
+                        && adjacency[&other].len() < MAX_FLOOD_FANOUT
+                    {
+                        adjacency.get_mut(&id).unwrap().insert(other);
+                        adjacency.get_mut(&other).unwrap().insert(id);
+                    }
+                }
+            }
+
+            // One NeighborTable per node — the fix for the shared-table bug.
+            let mut tables: HashMap<u8, NeighborTable> = HashMap::new();
+            for (&id, neighbors) in &adjacency {
+                let t = NeighborTable::new(Duration::from_secs(60));
+                for &nb in neighbors {
+                    t.upsert(&peer_info(nb), &TransportId::from("sim"), LinkQuality::Good)
+                        .await;
+                }
+                tables.insert(id, t);
+            }
+
+            let ground_truth_reachable = bfs_distance(&adjacency, source, dest)
+                .map(|d| d <= max as u32 + 1)
+                .unwrap_or(false);
+
+            let mut visited: HashSet<u8> = HashSet::new();
+            visited.insert(source);
+            let mut frontier = vec![source];
+            let mut reached = source == dest || adjacency[&source].contains(&dest);
+            let mut hop: u8 = 0;
+            let mut calls_made: usize = 0;
+            let mut total_transmissions: usize = 0;
+            let mut total_frontier_entries: usize = 0;
+            while !frontier.is_empty() && hop < max && !reached {
+                hop += 1;
+                let mut next = Vec::new();
+                for &node in &frontier {
+                    let node_table = &tables[&node];
+                    let r = recipients_for_flood(node_table, pid(node), &[], hop, &pid(dest)).await;
+                    calls_made += 1;
+                    total_transmissions += r.len();
+                    for nb in r {
+                        let nb_id = nb.0[0];
+                        if visited.insert(nb_id) {
+                            next.push(nb_id);
+                            total_frontier_entries += 1;
+                            if adjacency[&nb_id].contains(&dest) {
+                                reached = true;
+                            }
+                        }
+                    }
+                }
+                frontier = next;
+            }
+
+            assert!(hop <= max, "seed {seed}: flood must respect hop budget (got {hop} > {max})");
             assert!(
-                hop <= max,
-                "flood must respect hop budget (got {hop} > {max})"
+                total_transmissions <= calls_made * MAX_FLOOD_FANOUT,
+                "seed {seed}: total transmissions {total_transmissions} exceeded {calls_made} calls x MAX_FLOOD_FANOUT ({MAX_FLOOD_FANOUT})"
             );
-            // Termination is guaranteed by the visited set; no node revisited.
             assert_eq!(
-                visited.len(),
-                visited.len(),
-                "visited set is a set by construction"
+                total_frontier_entries,
+                visited.len() - 1,
+                "seed {seed}: a node was added to the frontier more than once"
             );
-            // Every frontier round strictly increases hop count — monotonic.
-            let _ = reached;
+            assert_eq!(
+                reached, ground_truth_reachable,
+                "seed {seed}: flood reached={reached} but ground-truth BFS (distance <= {}) says {ground_truth_reachable}",
+                max as u32 + 1
+            );
         }
     }
 
     /// Property: the recipient list never includes the sender (no-backtrack)
-    /// and never includes a node already in the flooded set, for any seeding.
+    /// and never includes a node already in the flooded set.
+    ///
+    /// ROUT-29: the previous version built `already` via
+    /// `(1..=8).filter(|i| *i != sender.0[0] % 8).map(|i| pid(i + 1))` — a
+    /// 1-based/0-based index mismatch (`% 8` compared against a 1-based
+    /// range) plus an off-by-one (`pid(i + 1)` instead of `pid(i)`, reaching
+    /// `pid(9)`, which isn't even in the table). Net effect: `already`
+    /// contained 7-8 of the table's 8 peers for every seed, so
+    /// `recipients_for_flood` returned at most one element and the
+    /// assertions held trivially. This version uses an explicit `already`
+    /// subset and asserts the *exact* expected recipient set, plus a
+    /// separate empty-`already` case exercising sender exclusion alone.
     #[tokio::test]
     async fn flood_no_backtrack_no_reflood_property() {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        for _case in 0..50 {
-            let table = NeighborTable::new(Duration::from_secs(60));
-            for id in 1..=8u8 {
-                table
-                    .upsert(&peer_info(id), &TransportId::from("sim"), LinkQuality::Good)
-                    .await;
-            }
-            let sender = pid(rng.gen_range(1..=8));
-            let already: Vec<PeerId> = (1..=8u8)
-                .filter(|i| *i != sender.0[0] % 8)
-                .map(|i| pid(i + 1))
-                .collect();
-            let r = recipients_for_flood(&table, sender, &already, 0, &pid(99)).await;
-            assert!(!r.contains(&sender), "no-backtrack violated");
-            for a in &already {
-                assert!(!r.contains(a), "re-flood to already-flooded node");
-            }
+        let t = table_with(&[1, 2, 3, 4, 5, 6, 7, 8]).await;
+        let sender = pid(1);
+
+        // Case 1: a real, partial already-flooded set.
+        let already = vec![pid(3), pid(5)];
+        let mut r = recipients_for_flood(&t, sender, &already, 0, &pid(99)).await;
+        r.sort_by_key(|p| p.0[0]);
+        let expected: Vec<PeerId> = [2u8, 4, 6, 7, 8].into_iter().map(pid).collect();
+        assert_eq!(
+            r, expected,
+            "must be exactly the non-sender, non-already-flooded peers"
+        );
+        assert!(!r.contains(&sender), "no-backtrack violated");
+        for a in &already {
+            assert!(!r.contains(a), "re-flood to already-flooded node");
         }
+
+        // Case 2: empty already-flooded set — sender exclusion exercised on
+        // its own, every other peer eligible.
+        let mut r2 = recipients_for_flood(&t, sender, &[], 0, &pid(99)).await;
+        r2.sort_by_key(|p| p.0[0]);
+        let expected2: Vec<PeerId> = (2u8..=8).map(pid).collect();
+        assert_eq!(
+            r2, expected2,
+            "with no already-flooded set, every non-sender peer is eligible"
+        );
+        assert!(!r2.contains(&sender));
     }
 }
