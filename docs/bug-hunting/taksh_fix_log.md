@@ -1330,16 +1330,93 @@ too-many-arguments, etc.).
 SIM-17, SIM-18, SIM-31) in one commit — at the cap. Tier 3: 10 of 32
 done, 22 remaining across Wakes 14-18 per the Run 16 plan.
 
-### Next run (Run 18)
-Wake 14: SIM-19, SIM-20, SIM-29 — the statistics/test-strength cluster
-(percentile index rounds instead of interpolating, biasing p95 low at
-exactly the sample sizes the pilot plan uses; `wilson_ci_95` produces a
-silent `NaN` when `k > n`, reachable via a duplicate-delivery bug;
-`loss_reduces_delivery_ratio_monotonically`'s non-strict `<=` passes
-even with the loss mechanism fully disabled, and
-`route2_spray_bounds_overhead_property` checks a mean instead of a
-per-message max so it can't catch one message exploding past the spray
-bound). All three are `sim/metrics.rs`/`tests/sim_scenarios.rs`
-correctness-of-the-check-itself bugs, same character as this run's
-SIM-17/18. Read current source fresh before implementing, same
-discipline as every run.
+## Run 18 — 2026-08-27 — Wake 14: statistics/test-strength cluster (SIM-19/20/29)
+
+Owner said "continue" (standing instruction, same session). Per Run 17's
+plan: Wake 14, the statistics/test-strength cluster — three cases where
+the *check itself* was wrong, not just what it checked.
+
+**SIM-19.** Replaced `percentiles`' nearest-rank index (`round((n-1)*p/100)`)
+with R-7 linear interpolation, exactly matching the finding's own fix
+code. Before touching the existing `percentile_edge_cases` test (whose
+`[1,2,3,4] -> (3,4)` assertion the finding suggests changing to
+`(2,4)`), verified by hand which value the new formula actually
+produces: rank=1.5 for p50 interpolates to 2.5, and `2.5_f64.round()`
+in Rust is round-half-away-from-zero (verified with a two-line rustc
+smoke test, not assumed) — giving 3, not 2. Ran the *unmodified*
+existing test against the new implementation and it passed unchanged:
+old nearest-rank and new interpolation coincide at this specific n=4
+input by construction (`round(1.5)=2` picks the same `sorted[2]=3` that
+`round(interpolate(1.5))=round(2.5)=3` lands on), so this edge case
+cannot discriminate old from new and the finding's suggested `(2,4)`
+does not match either implementation's actual output. Added a second,
+discriminating test from the finding's own trigger scenario (19
+samples at 1000ms, one outlier at 120000ms) — hand-computed the R-7
+p95 as 6950ms and confirmed it by running the test, which is very
+different from the finding's own stated "~113000ms" for the same
+input; used the verified value, not the finding's stated one, and
+noted the discrepancy rather than silently "fixing" the test to match
+an unverified number.
+
+**SIM-20.** Clamped `k = k.min(n)` in `wilson_ci_95` plus a
+`debug_assert!`; changed the `n == 0` return from `(0.0, 0.0)` to
+`(0.0, 1.0)` per the finding's own reasoning (a tight interval at zero
+reads as "confidently measured 0% delivery" to a `lo >= threshold`
+caller, when the truth is "no data"). Updated the one existing test
+that asserted the old degenerate value; added a direct
+`k > n` regression test.
+
+**SIM-29(a) — the strict-inequality fix surfaced a real calibration
+gap, not a code bug.** Changing `loss_reduces_delivery_ratio_monotonically`
+from `<=` to `<` immediately failed: at the original 60% loss rate,
+`dense_mesh(6, 5)` showed *zero* measured effect (delivery ratio 1.000
+both with and without loss). Traced this to `dense_mesh`'s own
+structure — ~30 contact events (every pair of 6 nodes, twice) for just
+4 injected messages — combined with SCF's retry-until-delivered
+semantics: a message only needs to survive its loss draw once across
+dozens of relay attempts, so 60% per-attempt loss gets absorbed almost
+entirely by redundancy. Rather than guess a replacement seed or rate,
+wrote a temporary example binary (`crates/iris-core/examples/loss_probe.rs`,
+deleted after use — never committed) that swept 10 seeds x 5 loss
+rates and printed the actual delivery-ratio drop for each combination.
+Seed 5 at 60% was a genuine outlier (every other sampled seed showed
+*some* drop at 60%, just inconsistently above a meaningful threshold);
+80% produced a robust 0.2-0.7 drop across every seed sampled. Raised
+the rate to 80% (keeping the original seed 5 — the minimal change),
+which is what the committed test now uses.
+
+**SIM-29(b).** `route2_spray_bounds_overhead_property` computed
+`relays_total / injected_total`, a mean, to check a *per-message* bound
+(AC-4: "copies never exceed L per message"). Added `relays_by_msg:
+HashMap<MessageId, u64>` to `Simulation`/`SimOutcome`, populated at the
+one site `relays` is incremented (`forward_to`'s `Relayed` branch, next
+to the existing per-node `relays` counter), and switched the assertion
+to `.values().max()`. Unlike (a), this one passed immediately with no
+calibration issue — binary spray's per-message bound genuinely holds;
+the mean-based check had just never been strong enough to prove it.
+
+**Run 18 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop` —
+**698 iris-core lib tests, 0 failed** (+2 from this wake); `cargo test
+-p iris-core --test sim_scenarios --test ml_experiments` — 16/16 pass;
+`cargo clippy -p iris-core --lib --no-deps` — same 14 pre-existing
+warnings as Wake 13 (confirmed by exact count, none in `sim/`).
+
+**§8 accounting:** 3 findings fixed this run (SIM-19, SIM-20, SIM-29)
+in one commit — well under the cap. Tier 3: 13 of 32 done, 19
+remaining across Wakes 15-18 per the Run 16 plan.
+
+### Next run (Run 19)
+Wake 15: SIM-10, SIM-12, SIM-30, SIM-32 — sim-internal mechanics, each
+contained to `sim/mod.rs` plus at most one sibling file. SIM-10:
+`ForwardedCache` ages on `Instant::now()` (real time) instead of the
+virtual clock, so the sim's anti-loop cache never expires within a run
+— `loop_free()` is guaranteed by construction, not actually proven.
+SIM-12: contacts sort before injections at the same timestamp, so a
+message injected at time T misses the contact at time T. SIM-30:
+`hops_by_msg`/`spray` (and now `buffered_at_ms`, added this session's
+Wake 12 — noted at the time as needing the same treatment) grow
+unboundedly, never pruned on terminal delivery. SIM-32:
+`inject_standard` can address a message to its own sender when
+`k == n-1`, producing a permanently undeliverable message. Read all
+four findings' current source fresh before implementing.
