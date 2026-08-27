@@ -253,6 +253,13 @@ pub struct SimulatedBleAdapter {
     /// Advertisement data as actually transmitted on the wire (iOS: service
     /// data dropped at the FFI boundary, exactly like CoreBluetooth).
     last_ad_wire: std::sync::Mutex<Option<AdvertisementData>>,
+    /// HW-1: distinct handle per `start_scan` call (was hardcoded to
+    /// `ScanHandle(1)` always, which couldn't distinguish call N from call
+    /// N+1 — exactly the ambiguity that let the real bug through unit tests).
+    next_scan_handle: std::sync::atomic::AtomicU64,
+    /// HW-1: every handle `stop_scan` was called with, in order — lets a
+    /// test assert a re-arm stops the PREVIOUS scan before starting a new one.
+    scan_stop_calls: std::sync::Mutex<Vec<ScanHandle>>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -308,14 +315,30 @@ impl SimulatedBleAdapter {
     pub fn assigned_handles(&self) -> std::sync::MutexGuard<'_, Vec<GattHandle>> {
         self.handles.lock().unwrap_or_else(|p| p.into_inner())
     }
+    /// HW-1: every handle `stop_scan` was called with, in order.
+    pub fn scan_stop_calls(&self) -> Vec<ScanHandle> {
+        self.scan_stop_calls.lock().unwrap_or_else(|p| p.into_inner()).clone()
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
 impl BleAdapter for SimulatedBleAdapter {
     fn start_scan(&self, _filter: ScanFilter) -> Result<ScanHandle, BleError> {
-        Ok(ScanHandle(1))
+        // HW-1: was hardcoded ScanHandle(1) for every call — indistinguishable
+        // from a re-arm reusing the same handle, which is exactly what let
+        // the double-start-without-stop bug through every existing test.
+        let id = self
+            .next_scan_handle
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1;
+        Ok(ScanHandle(id))
     }
-    fn stop_scan(&self, _handle: ScanHandle) {}
+    fn stop_scan(&self, handle: ScanHandle) {
+        self.scan_stop_calls
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(handle);
+    }
     fn start_advertising(&self, data: AdvertisementData) -> Result<AdvHandle, BleError> {
         *self.last_ad_raw.lock().unwrap_or_else(|p| p.into_inner()) = Some(data.clone());
         // A real adapter that advertises an IRIS discovery beacon serves the
@@ -639,8 +662,29 @@ impl Transport for BleTransport {
         } else {
             ScanFilter::default()
         };
-        let handle = adapter.start_scan(filter).map_err(to_transport_err)?;
-        *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
+        // HW-1 (found on real hardware, 2026-08-27): every discovery pass
+        // called start_scan() again without first stopping the PREVIOUS
+        // scan — unlike start_advertising just below, which already learned
+        // this lesson (BLE-RT-011: "must stop any prior advertisement
+        // first"). Android's BluetoothLeScanner.startScan() called twice
+        // with the same callback object doesn't throw synchronously; it
+        // returns normally (so Kotlin minted a new handle and reported
+        // success to Rust) and THEN asynchronously fires
+        // ScanCallback.onScanFailed(SCAN_FAILED_ALREADY_STARTED) — a
+        // "returns Ok but actually failed" defect, invisible without a
+        // real device. Confirmed live: two phones running this exact
+        // session's build showed one successful startScan on launch, then
+        // `IrisBle: startScan failed errorCode=1` repeating on every
+        // ~30s re-arm forever after, on the device whose discovery loop
+        // fired a second pass before this fix.
+        {
+            let mut scan_handle = self.scan_handle.lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(prior) = *scan_handle {
+                adapter.stop_scan(prior);
+            }
+            let handle = adapter.start_scan(filter).map_err(to_transport_err)?;
+            *scan_handle = Some(handle);
+        }
         // Drain scan results produced by the adapter (real impl: Android
         // BluetoothLeScanner callbacks; simulated: inject_scan_result). Advert
         // floods are bounded BEFORE materializing the Vec (BLE-RT-C007) — the
@@ -1278,6 +1322,35 @@ mod tests {
             matches!(err, Err(TransportError::Protocol(msg)) if msg.contains("throttled")),
             "burst beyond {} starts within 30s must be refused (AC-5)",
             SCAN_CEILING
+        );
+    }
+
+    #[tokio::test]
+    async fn hw1_rearming_discovery_stops_the_previous_scan_first() {
+        // HW-1: found on real hardware — a second discover_peers() call
+        // used to call adapter.start_scan() again without ever stopping
+        // the FIRST scan. On a real BluetoothLeScanner this produces
+        // SCAN_FAILED_ALREADY_STARTED forever after (confirmed live on
+        // two physical devices this session); the simulated adapter
+        // couldn't have caught it before because start_scan() always
+        // returned the SAME hardcoded ScanHandle(1) — indistinguishable
+        // from a genuine re-arm.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+
+        let _first = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        assert!(
+            adapter.scan_stop_calls().is_empty(),
+            "the very first scan has nothing prior to stop"
+        );
+
+        let _second = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let stops = adapter.scan_stop_calls();
+        assert_eq!(
+            stops,
+            vec![ScanHandle(1)],
+            "re-arming discovery must stop_scan the FIRST call's handle \
+             before starting a new one — exactly once, with the prior handle"
         );
     }
 
