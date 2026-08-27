@@ -12,6 +12,7 @@
 //! utilization, eviction counts, and no-loop evidence.
 
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -43,6 +44,13 @@ pub struct SimNode {
     pub scf: ScfEngine<MemoryStorage>,
     pub forwarded: ForwardedCache,
     pub hops_by_msg: HashMap<MessageId, u8>,
+    /// Sim-ms this node first buffered each message (SIM-4): the shared
+    /// virtual clock (`Simulation::clock`) is whole-seconds because it also
+    /// feeds `ScfEngine`/`ForwardedCache`/`DeliveryPredictability`, all of
+    /// which are shared with production and treat it as Unix seconds — this
+    /// per-node map gives `shadow_features`'s age/TTL-fraction computation
+    /// sub-second precision without changing that shared contract.
+    pub buffered_at_ms: HashMap<MessageId, u64>,
     pub delivered: Vec<(MessageId, u64)>, // (id, delivery sim-ms)
     pub evictions: u64,
     pub storage_max_bytes: u64,
@@ -62,6 +70,7 @@ impl SimNode {
                 .with_virtual_clock(clock),
             forwarded: ForwardedCache::default(),
             hops_by_msg: HashMap::new(),
+            buffered_at_ms: HashMap::new(),
             delivered: Vec::new(),
             evictions: 0,
             storage_max_bytes: ScfConfig::default().max_storage_bytes,
@@ -239,6 +248,15 @@ impl Simulation {
         &self.contacts
     }
 
+    /// SIM-4 scope note: `self.clock` truncates to whole seconds here by
+    /// design, not oversight — it is the same `Arc<AtomicU64>` handed to
+    /// `ScfEngine`/`ForwardedCache`/`DeliveryPredictability` via
+    /// `with_virtual_clock`, and all three (plus their production,
+    /// non-virtual code paths) treat that atomic as Unix seconds. Giving it
+    /// millisecond resolution is a cross-cutting change to those shared,
+    /// production routing modules, not a sim-local fix, so it is out of
+    /// scope here. `self.now_ms` (below) stays millisecond-precise for the
+    /// sim's own bookkeeping (`SimNode::buffered_at_ms`, event ordering).
     fn advance_to(&mut self, sim_ms: u64) {
         self.now_ms = sim_ms;
         self.clock
@@ -282,8 +300,17 @@ impl Simulation {
         let hops = self.nodes[src].hops_by_msg.get(&id).copied().unwrap_or(0) as f32;
         let cap = self.nodes[dst].storage_max_bytes.max(1) as f32;
         let buf_occ = (self.nodes[dst].scf.usage_bytes() as f32 / cap).clamp(0.0, 1.0);
-        let now_s = self.clock.load(Ordering::Relaxed);
-        let age_s = now_s.saturating_sub(msg.envelope.timestamp) as f32;
+        // SIM-4: sub-second age from the sim's own ms-precision bookkeeping
+        // rather than the shared whole-second clock — see `advance_to`.
+        // Falls back to the (degenerate) whole-second age if this message
+        // somehow reached shadow_features without a buffered_at_ms entry.
+        let age_s = match self.nodes[src].buffered_at_ms.get(&id) {
+            Some(buffered_ms) => self.now_ms.saturating_sub(*buffered_ms) as f32 / 1000.0,
+            None => {
+                let now_s = self.clock.load(Ordering::Relaxed);
+                now_s.saturating_sub(msg.envelope.timestamp) as f32
+            }
+        };
         let ttl = msg.envelope.ttl_seconds.max(1) as f32;
         let ttl_frac = (1.0 - age_s / ttl).clamp(0.0, 1.0);
         let prio_rank = msg.envelope.priority.as_u8() as f32;
@@ -387,6 +414,7 @@ impl Simulation {
         let new_hops = hops + 1;
         new_env.hop_count = new_hops;
         self.nodes[dst].hops_by_msg.insert(id, new_hops);
+        self.nodes[dst].buffered_at_ms.insert(id, self.now_ms);
 
         // SCF carry: land the copy at dst (idempotent via dedup).
         let src_peer = self.nodes[src].peer_id;
@@ -582,6 +610,7 @@ impl Simulation {
                     let id = env.message_id;
                     self.nodes[inj.from].scf.buffer_message(env, None).ok();
                     self.nodes[inj.from].hops_by_msg.insert(id, 0);
+                    self.nodes[inj.from].buffered_at_ms.insert(id, *sim_ms);
                     injected.push(InjectedMsg {
                         id,
                         priority: inj.priority,
@@ -668,6 +697,32 @@ impl Simulation {
             delivered_total as f64 / injected_total as f64
         };
 
+        // SIM-2: `result_anchor` used to be `seed` + two counts, both of
+        // which can stay identical across runs that took completely
+        // different routes (injected_total is fixed by the scenario;
+        // delivered_total saturates at 100% in most scenarios) — making
+        // "same seed -> same anchor" near-tautological and unable to catch
+        // a routing regression. Fold the full per-delivery trace
+        // (message_id, delivering node, at_ms, hops), relays_total and the
+        // latency vector into a digest so the anchor actually fingerprints
+        // *how* the run happened, not just how many messages arrived.
+        let mut delivery_trace: Vec<(MessageId, usize, u64, u8)> = Vec::new();
+        for (idx, n) in self.nodes.iter().enumerate() {
+            for (id, at) in &n.delivered {
+                let hops = n.hops_by_msg.get(id).copied().unwrap_or(0);
+                delivery_trace.push((*id, idx, *at, hops));
+            }
+        }
+        // Sorted (not push-order) so the digest depends only on which
+        // deliveries happened, not on the iteration order used to collect
+        // them here.
+        delivery_trace.sort_unstable();
+        let mut trace_hasher = std::collections::hash_map::DefaultHasher::new();
+        delivery_trace.hash(&mut trace_hasher);
+        relays_total.hash(&mut trace_hasher);
+        latencies.hash(&mut trace_hasher);
+        let trace_digest = trace_hasher.finish();
+
         SimOutcome {
             injected_total,
             delivered_total,
@@ -680,7 +735,10 @@ impl Simulation {
             seed: self.seed,
             relays_total,
             avg_hop_count,
-            result_anchor: format!("sim-{}-d{}-i{}", self.seed, delivered_total, injected_total),
+            result_anchor: format!(
+                "sim-{}-d{}-i{}-t{:016x}",
+                self.seed, delivered_total, injected_total, trace_digest
+            ),
             injected_ids: injected.iter().map(|i| i.id).collect(),
             injected_at: injected.iter().map(|i| i.at_ms).collect(),
             shadow_samples: self.shadow.map(|s| s.samples).unwrap_or_default(),
@@ -688,16 +746,24 @@ impl Simulation {
     }
 
     fn build_envelope(
-        &self,
+        &mut self,
         from: usize,
         to: PeerId,
         priority: MessagePriority,
         payload: &[u8],
         ttl_seconds: u64,
     ) -> Envelope {
+        // SIM-1: mint the id from the sim's own seeded RNG, not
+        // `MessageId::new_v7()` (wall clock + random bits) — the seed must
+        // control everything the forward order depends on, and `StoreKey`
+        // ties on `message_id` whenever priority/expiry coincide (the
+        // common case within one sim run), so an unseeded id silently
+        // reintroduces non-determinism the "same seed -> same result
+        // anchor" acceptance criterion promises does not exist.
+        let id_bytes: [u8; 16] = rand::Rng::gen(&mut self.rng);
         Envelope {
             version: crate::protocol::PROTOCOL_VERSION,
-            message_id: MessageId::new_v7(),
+            message_id: MessageId::from_bytes(id_bytes),
             sender_id: self.nodes[from].peer_id.0.to_vec(),
             recipient_id: to.0.to_vec(),
             priority,
@@ -854,6 +920,74 @@ mod tests {
             .scf
             .delivery_status(&out.nodes[2].delivered[0].0);
         assert_eq!(st, None);
+    }
+
+    #[test]
+    fn message_ids_are_seeded_not_wall_clock() {
+        // SIM-1: two fresh sims with the same seed must mint identical
+        // message ids for equivalent injections — proving ids come from
+        // the seeded RNG, not `MessageId::new_v7()` (wall clock + random
+        // bits, uncontrollable by seed and thus different on every call
+        // regardless of seed).
+        let ids_for = |seed: u64| -> Vec<MessageId> {
+            let mut sim = Simulation::new(2, seed);
+            for i in 0..5 {
+                sim.inject(Injection::new(
+                    i * 100,
+                    0,
+                    node_id(1),
+                    MessagePriority::P4,
+                    b"x",
+                    3600,
+                ));
+            }
+            sim.run().injected_ids
+        };
+        let a = ids_for(42);
+        let b = ids_for(42);
+        assert_eq!(a.len(), 5);
+        assert_eq!(a, b, "same seed must mint identical message ids");
+        assert_ne!(
+            a,
+            ids_for(43),
+            "different seeds must mint different message ids"
+        );
+    }
+
+    #[test]
+    fn shadow_feature_age_has_subsecond_precision() {
+        // SIM-4: 100ms and 900ms both floor-divide to the same whole virtual
+        // second (epoch+0s), which is exactly what made the old age_s
+        // (derived from the shared whole-second clock) read 0.0 for any
+        // pair of events under a second apart — degenerating FeatureVec
+        // slot 5 for scenarios like vehicle_relay's +300ms links. With
+        // ms-precision bookkeeping the age must reflect the true 0.8s gap.
+        let mut sim = Simulation::new(2, 1);
+        sim.with_opportunistic(ProphetConfig::default());
+        sim.with_shadow(ShadowRecorder::new());
+        sim.inject(Injection::new(
+            100,
+            0,
+            node_id(1),
+            MessagePriority::P4,
+            b"x",
+            3600,
+        ));
+        sim.add_contact(ContactEvent {
+            at_ms: 900,
+            a: 0,
+            b: 1,
+        });
+        let out = sim.run();
+        assert!(
+            !out.shadow_samples.is_empty(),
+            "contact must produce a shadow decision"
+        );
+        let age = out.shadow_samples[0].features.as_slice()[5];
+        assert!(
+            (age - 0.8).abs() < 0.01,
+            "age_s should reflect the true 0.8s gap with ms precision, got {age}"
+        );
     }
 
     #[test]

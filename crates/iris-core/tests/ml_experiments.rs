@@ -220,15 +220,43 @@ fn ac5_ten_seeds_reproducible_both_regimes() {
     }
     assert_eq!(periodic_anchors.len(), 10);
     assert_eq!(random_anchors.len(), 10);
-    // Distinct seeds must produce distinct anchors (no seed collision).
-    let mut uniq = periodic_anchors.clone();
-    uniq.extend(random_anchors.iter().cloned());
+    // SIM-3: the anchor format is `sim-{seed}-...`, so comparing full
+    // anchor strings for "distinctness" is comparing strings that embed
+    // the very thing (the seed) being varied — 20 distinct seed/regime
+    // pairs are guaranteed 20 distinct strings no matter what the
+    // simulator does. Strip the seed prefix so this actually asserts the
+    // simulator *behaved* differently (SIM-2's trace digest + counts),
+    // not just that it was asked to.
+    let strip_seed = |anchor: &str, seed: u64| -> String {
+        anchor
+            .strip_prefix(&format!("sim-{seed}-"))
+            .unwrap_or(anchor)
+            .to_string()
+    };
+    let mut uniq: Vec<String> = periodic_anchors
+        .iter()
+        .enumerate()
+        .map(|(i, a)| strip_seed(a, i as u64))
+        .collect();
+    uniq.extend(
+        random_anchors
+            .iter()
+            .enumerate()
+            .map(|(i, a)| strip_seed(a, i as u64)),
+    );
     uniq.sort();
     uniq.dedup();
-    assert_eq!(
+    // Empirically 20/20 distinct once the seed prefix is stripped (each
+    // seed genuinely perturbs message ids, loss draws and spray choices).
+    // Require 18+ rather than a hard 20 so one coincidental digest
+    // collision — vanishingly unlikely, not impossible — doesn't flake
+    // this test; a seed-blind simulator would produce far fewer than 18.
+    assert!(
+        uniq.len() >= 18,
+        "expected nearly all 20 (seed, regime) runs to show distinct \
+         behavior once the seed prefix is stripped, got only {} distinct: {:?}",
         uniq.len(),
-        20,
-        "10 seeds x 2 regimes must give 20 distinct anchors"
+        uniq
     );
 }
 
