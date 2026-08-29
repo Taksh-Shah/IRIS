@@ -194,6 +194,17 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val peerDevices = ConcurrentHashMap<Long, String>() // handle -> P2P device address
     private val discoveredMatches = ConcurrentLinkedQueue<FfiDirectPeerDiscovery>()
     private val pendingTxtBeacons = ConcurrentHashMap<String, ByteArray>()
+    // HW-14: `DnsSdServiceResponseListener`/`DnsSdTxtRecordListener` firing
+    // order for the SAME discovered response is not guaranteed — confirmed
+    // live: the service listener fired with a real device address while
+    // the TXT record listener never fired at all in the same window, so
+    // `pendingTxtBeacons` was empty when the service listener looked it up
+    // and every peer was silently dropped as an unparseable empty record.
+    // Tracks device addresses the service listener has already seen but
+    // had no TXT data for yet, so the TXT listener (whichever order it
+    // actually arrives in) can finish the job instead of the discovery
+    // being lost.
+    private val pendingServiceOnly = ConcurrentHashMap<String, Unit>()
 
     private val groupState = GroupState()
 
@@ -643,8 +654,44 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // handle is the SAME one join_group/add_client, p2p_send, and the
         // socket data path (attachLink/links/groupRegistry) will all agree
         // on for this device — see peerHandleFor's doc.
-        val handle = peerHandleFor(srcDevice.deviceAddress)
-        val beacon = pendingTxtBeacons.remove(srcDevice.deviceAddress) ?: ByteArray(0)
+        val address = srcDevice.deviceAddress
+        val beacon = pendingTxtBeacons.remove(address)
+        if (beacon == null) {
+            // HW-14: TXT record hasn't arrived yet (order not guaranteed) —
+            // mark this address so dnsSdTxtRecordListener can finish the
+            // job once it does, instead of losing the discovery.
+            pendingServiceOnly[address] = Unit
+        } else {
+            publishDiscoveredMatch(address, beacon)
+        }
+    }
+
+    private val dnsSdTxtRecordListener = WifiP2pManager.DnsSdTxtRecordListener { fullDomainName, txtRecordMap, srcDevice ->
+        android.util.Log.d(
+            "IrisWifiDirectDiag",
+            "dnsSdTxtRecordListener FIRED fullDomainName=$fullDomainName txtRecordMap=$txtRecordMap device=${srcDevice.deviceAddress}",
+        )
+        val address = srcDevice.deviceAddress
+        val beacon = encodeTxtRecord(txtRecordMap)
+        // HW-14: if the service listener already fired for this address
+        // (and found nothing to pair it with), finish the discovery now —
+        // this is very likely the common order in practice, given the
+        // service listener firing alone (with no TXT listener ever
+        // following) is exactly what was observed live.
+        if (pendingServiceOnly.remove(address) != null) {
+            publishDiscoveredMatch(address, beacon)
+        } else {
+            pendingTxtBeacons[address] = beacon
+        }
+    }
+
+    /**
+     * HW-14: the single place a fully-paired (service + TXT record)
+     * discovery becomes a Rust-visible `FfiDirectPeerDiscovery`, reachable
+     * from either listener depending on which one completes the pair.
+     */
+    private fun publishDiscoveredMatch(address: String, beacon: ByteArray) {
+        val handle = peerHandleFor(address)
         // AND-RT-108: remember the candidate beacon identity (DEC-WA-0007) so the
         // inbound drain can attribute frames to a 64-hex PeerId.
         beaconCandidatePeerIdHex(beacon)?.let { verifiedCache.rememberVerified(handle, it) }
@@ -664,14 +711,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 txtRecord = beacon,
             ),
         )
-    }
-
-    private val dnsSdTxtRecordListener = WifiP2pManager.DnsSdTxtRecordListener { fullDomainName, txtRecordMap, srcDevice ->
-        android.util.Log.d(
-            "IrisWifiDirectDiag",
-            "dnsSdTxtRecordListener FIRED fullDomainName=$fullDomainName txtRecordMap=$txtRecordMap device=${srcDevice.deviceAddress}",
-        )
-        pendingTxtBeacons[srcDevice.deviceAddress] = encodeTxtRecord(txtRecordMap)
     }
 
     /**
