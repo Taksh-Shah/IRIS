@@ -27,6 +27,7 @@ use crate::routing::flood::max_hops_for_priority;
 use crate::routing::opportunistic::{OpportunisticDecision, OpportunisticRouter, SprayBudget};
 use crate::routing::prophet::ProphetConfig;
 use crate::routing::scf::{ScfConfig, ScfEngine};
+use crate::routing::RoutingEngine;
 use crate::sim::ml::{FeatureVec, ShadowDecision, ShadowRecorder};
 
 pub mod metrics;
@@ -38,7 +39,6 @@ pub mod scenario;
 const VIRTUAL_EPOCH_SECS: u64 = 1_700_000_000;
 
 /// One simulated node: a peer carrying an SCF buffer plus its anti-loop cache.
-#[derive(Debug)]
 pub struct SimNode {
     pub peer_id: PeerId,
     pub scf: ScfEngine<MemoryStorage>,
@@ -60,6 +60,29 @@ pub struct SimNode {
     pub spray: HashMap<MessageId, SprayBudget>,
     /// Relays performed for delivery-ratio/overhead accounting.
     pub relays: u64,
+    /// SIM-7: production routing engine for this node. Wired with the same
+    /// opportunistic config as `opp` so `decide_sim` can be called by tests
+    /// and future wiring without duplicating the cascade.
+    ///
+    /// `forward_to` does NOT yet delegate to `engine.decide_sim` because the
+    /// sim's broadcast-to-all-contacts model shares one `engine.forward_cache`
+    /// across simultaneous contacts — the dedup gate would block all but the
+    /// first contact at a given timestamp. Full wiring requires the sim to
+    /// switch to a unicast-per-contact routing model (SIM-7 scope note).
+    #[allow(dead_code)]
+    pub engine: RoutingEngine,
+}
+
+impl std::fmt::Debug for SimNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SimNode")
+            .field("peer_id", &self.peer_id)
+            .field("delivered", &self.delivered)
+            .field("evictions", &self.evictions)
+            .field("relays", &self.relays)
+            .field("engine", &"<RoutingEngine>")
+            .finish_non_exhaustive()
+    }
 }
 
 impl SimNode {
@@ -82,6 +105,7 @@ impl SimNode {
             opp: None,
             spray: HashMap::new(),
             relays: 0,
+            engine: RoutingEngine::new(),
         }
     }
 }
@@ -236,6 +260,11 @@ impl Simulation {
                 n.opp =
                     Some(OpportunisticRouter::new(config).with_virtual_clock(self.clock.clone()));
             }
+            // SIM-7: also enable the production RoutingEngine so decide_sim
+            // exercises Algorithm 2.5 through the same opportunistic router
+            // config, keeping the two code paths in sync.
+            let engine = std::mem::take(&mut n.engine);
+            n.engine = engine.with_opportunistic(config);
         }
         self.opportunistic_enabled = true;
         self

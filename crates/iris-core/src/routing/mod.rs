@@ -442,6 +442,84 @@ impl RoutingEngine {
         None
     }
 
+    /// Synchronous routing decision for the discrete-event simulator (SIM-7).
+    ///
+    /// Runs the same Algorithms 1–4 chain as [`decide_inner`] but without async
+    /// transport resolution. `contact` is the single peer reachable at this
+    /// discrete-event contact; `candidates` is the pre-exchanged list of
+    /// `(neighbor, their_DP_for_recipient)` for Algorithm 2.5 (ROUTE-002).
+    /// Transport is always `"sim"` — the sim has no real link layer.
+    ///
+    /// Called by `Simulation::forward_to`; the async `decide` wrapper remains
+    /// the production `MessageEngine` path.
+    pub fn decide_sim(
+        &mut self,
+        message_id: MessageId,
+        now_unix: u64,
+        timestamp: u64,
+        ttl_seconds: u64,
+        sender: PeerId,
+        recipient: PeerId,
+        hop_count: u8,
+        priority: crate::message::MessagePriority,
+        contact: PeerId,
+        candidates: &[(PeerId, f64)],
+    ) -> ForwardingDecision {
+        let sim_transport = crate::transport::TransportId::from("sim");
+        // TTL gate (same as decide_inner Algorithm 0).
+        if crate::routing::store::ttl_expired(now_unix, timestamp, ttl_seconds) {
+            return ForwardingDecision::Drop;
+        }
+        // Dedup gate: have we (src) already forwarded this message?
+        if self.forward_cache.is_duplicate(&message_id) {
+            return ForwardingDecision::Drop;
+        }
+        // Algorithm 1: Direct — contact is the final recipient.
+        if contact == recipient {
+            self.forward_cache.record(message_id);
+            self.telemetry.increment(metric::ROUTING_DECISIONS_TOTAL);
+            return ForwardingDecision::Forward {
+                next_hop: recipient,
+                transport: sim_transport,
+                algorithm: ForwardingAlgorithm::Direct,
+            };
+        }
+        // Hop-budget gate (ROUT-19 equivalent).
+        let policy = max_hops_for_priority(priority);
+        if hop_count >= policy.max_hops {
+            self.telemetry.increment(metric::ROUTING_DECISIONS_TOTAL);
+            return ForwardingDecision::Store;
+        }
+        // Algorithm 2 (KnownPath): no routing table in the sim — skip.
+        // Algorithm 2.5 (ROUTE-002 opportunistic): uses pre-exchanged DP.
+        if let Some(nb) =
+            self.decide_opportunistic(&message_id, recipient, priority, hop_count, candidates)
+        {
+            if nb == contact {
+                self.forward_cache.record(message_id);
+                self.telemetry.increment(metric::ROUTING_DECISIONS_TOTAL);
+                return ForwardingDecision::Forward {
+                    next_hop: contact,
+                    transport: sim_transport,
+                    algorithm: ForwardingAlgorithm::Opportunistic,
+                };
+            }
+        }
+        // Algorithm 3: Flood — single neighbor is the contact (no-backtrack
+        // against `sender` enforced by the caller's `received_from` check).
+        if contact != sender {
+            self.forward_cache.record(message_id);
+            self.telemetry.increment(metric::ROUTING_DECISIONS_TOTAL);
+            self.telemetry.increment(metric::ROUTING_FLOODS_TOTAL);
+            return ForwardingDecision::Flood {
+                recipients: vec![(contact, sim_transport)],
+            };
+        }
+        // Algorithm 4: Store.
+        self.telemetry.increment(metric::ROUTING_DECISIONS_TOTAL);
+        ForwardingDecision::Store
+    }
+
     /// Prune expired routing-table entries (10 min) and release stale lists.
     pub fn prune(&mut self) {
         let before = self.routing_table.len();
