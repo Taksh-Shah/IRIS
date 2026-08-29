@@ -3,15 +3,32 @@
      ic_launcher.xml, transparent background, single-color white (the
      platform tints/silhouettes notification icons to white regardless of
      the color specified here, but a real white avoids any fallback tinting
-     showing a wrong shape on OEM skins that don't fully silhouette). -->
+     showing a wrong shape on OEM skins that don't fully silhouette).
+
+     HW-19: the mark's own path only fills ~50% of the 1024 viewport (its
+     bounding box is roughly [257,776]x[251,775], centered near (516,513))
+     — fine for the launcher icon where surrounding chrome/padding is
+     expected, but at a real 24dp status-bar size that reads as a small,
+     hard-to-recognize blob next to other apps' notification icons, which
+     fill their viewport much more fully. Scaling the path itself (rather
+     than shrinking the stroke) around its own center keeps the same open-
+     ellipse proportions while bringing it close to the ~80-85% fill other
+     status-bar glyphs use; the stroke thickness scales with the group so
+     the line stays visually consistent with the enlarged mark. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="1024"
     android:viewportHeight="1024">
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="64"
-        android:strokeLineCap="round"
-        android:pathData="M424.443,271.439C481.722,250.591 544.559,250.865 601.653,272.212C658.748,293.559 706.352,334.577 735.903,387.889C765.454,441.2 775.013,503.307 762.861,563.038C750.709,622.768 717.642,676.203 669.61,713.73C621.577,751.257 561.73,770.414 500.834,767.755C439.938,765.096 381.988,740.796 337.409,699.226C292.83,657.655 264.546,601.542 257.646,540.979C250.746,480.417 265.682,419.38 299.767,368.846" />
+    <group
+        android:pivotX="516"
+        android:pivotY="513"
+        android:scaleX="1.45"
+        android:scaleY="1.45">
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="64"
+            android:strokeLineCap="round"
+            android:pathData="M424.443,271.439C481.722,250.591 544.559,250.865 601.653,272.212C658.748,293.559 706.352,334.577 735.903,387.889C765.454,441.2 775.013,503.307 762.861,563.038C750.709,622.768 717.642,676.203 669.61,713.73C621.577,751.257 561.73,770.414 500.834,767.755C439.938,765.096 381.988,740.796 337.409,699.226C292.83,657.655 264.546,601.542 257.646,540.979C250.746,480.417 265.682,419.38 299.767,368.846" />
+    </group>
 </vector>
