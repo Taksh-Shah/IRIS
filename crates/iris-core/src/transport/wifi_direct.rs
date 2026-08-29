@@ -1321,6 +1321,17 @@ impl Transport for WifiDirectTransport {
             let Ok(txt) = WifiDirectTxtRecord::parse(&m.txt_record) else {
                 continue;
             };
+            // RF-34: advisory staleness — skip beacons older than ~60 minutes.
+            // freshness==0 is the "no freshness info" sentinel (builders that
+            // don't set it default to 0); the wrap-aware subtraction is
+            // identical to the BLE-22 / Wi-Fi Aware freshness check.
+            if txt.freshness_minutes != 0 {
+                let age_min = crate::transport::freshness_minutes_now()
+                    .wrapping_sub(txt.freshness_minutes);
+                if age_min > 60 {
+                    continue;
+                }
+            }
             let peer_id = txt.candidate_peer_id();
             if let Some(filter) = config.filter.as_ref() {
                 if !filter.contains(&peer_id) {
