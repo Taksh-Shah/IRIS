@@ -11,9 +11,10 @@
 //! against any `Transport` implementation (`SimulatedTransport`,
 //! `InternetTransport`) — see `DiscoveryManager::scan_once`.
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tokio::sync::broadcast;
 use tokio::sync::RwLock;
@@ -88,7 +89,34 @@ pub struct DiscoveryManager {
     transports: RwLock<Vec<Arc<dyn Transport>>>,
     mode: AtomicU8,
     task: tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    // HW-18: per-(transport, peer) exponential backoff after repeated
+    // connect() failures. Without this, a peer that keeps failing to
+    // connect (e.g. Wi-Fi Direct with an active home-AP STA connection on
+    // single-radio hardware, where every connect() attempt makes Android's
+    // own WifiP2pService show a real STA-vs-P2P radio-conflict dialog —
+    // "Turn off Sharing?" on Samsung builds) gets re-attempted every single
+    // scan pass forever, which on that hardware re-surfaces the OS prompt
+    // just as often. This cannot make the underlying radio conflict go
+    // away (that's a genuine platform limitation, not a bug — see HW-18's
+    // own doc), but it turns "every scan pass" into "increasingly rare"
+    // after the first couple of failures, which is the only thing in this
+    // codebase's control.
+    connect_backoff: tokio::sync::Mutex<HashMap<(TransportId, PeerId), ConnectBackoff>>,
 }
+
+/// HW-18: backoff state for one (transport, peer) pair. `next_attempt` gates
+/// whether `scan_once` bothers calling `connect()` at all this pass;
+/// `failures` drives the doubling.
+struct ConnectBackoff {
+    next_attempt: Instant,
+    failures: u32,
+}
+
+/// First retry stays at the normal scan cadence (no perceptible behavior
+/// change on a single transient failure); only a second consecutive failure
+/// starts backing off, doubling up to `CONNECT_BACKOFF_MAX`.
+const CONNECT_BACKOFF_BASE: Duration = Duration::from_secs(30);
+const CONNECT_BACKOFF_MAX: Duration = Duration::from_secs(300);
 
 impl DiscoveryManager {
     pub fn new(node_id: PeerId, config: DiscoveryConfig) -> Self {
@@ -100,6 +128,7 @@ impl DiscoveryManager {
             transports: RwLock::new(Vec::new()),
             mode: AtomicU8::new(DiscoveryMode::Passive as u8),
             task: tokio::sync::Mutex::new(None),
+            connect_backoff: tokio::sync::Mutex::new(HashMap::new()),
             config,
         }
     }
@@ -245,9 +274,23 @@ impl DiscoveryManager {
                 // correct fix, not a regression risk: a healthy link no-ops
                 // through the fast path, and a dead one gets a genuine retry
                 // every scan_interval (30s default) instead of never.
+                let backoff_key = (transport.transport_id().clone(), peer.peer_id);
+                if let Some(state) = self.connect_backoff.lock().await.get(&backoff_key) {
+                    if Instant::now() < state.next_attempt {
+                        tracing::debug!(
+                            event = "discovery.connect_backoff_skip",
+                            peer = %peer.peer_id,
+                            transport = %transport.transport_id(),
+                            failures = state.failures,
+                            "skipping connect() this pass — backing off after repeated failures"
+                        );
+                        continue;
+                    }
+                }
                 let connect_started = std::time::Instant::now();
                 match transport.connect(&peer).await {
                     Ok(_) => {
+                        self.connect_backoff.lock().await.remove(&backoff_key);
                         tracing::debug!(
                             event = "discovery.connect_ok",
                             peer = %peer.peer_id,
@@ -257,6 +300,28 @@ impl DiscoveryManager {
                         );
                     }
                     Err(e) => {
+                        let mut backoff = self.connect_backoff.lock().await;
+                        let failures = backoff.get(&backoff_key).map_or(0, |s| s.failures) + 1;
+                        // First failure keeps the normal scan cadence (no
+                        // perceptible change from a single transient miss);
+                        // only the SECOND consecutive failure starts
+                        // doubling, so a peer that connects fine most of
+                        // the time never sees backoff at all.
+                        if failures >= 2 {
+                            let delay = CONNECT_BACKOFF_BASE
+                                .saturating_mul(1 << (failures - 2).min(4))
+                                .min(CONNECT_BACKOFF_MAX);
+                            backoff.insert(
+                                backoff_key.clone(),
+                                ConnectBackoff { next_attempt: Instant::now() + delay, failures },
+                            );
+                        } else {
+                            backoff.insert(
+                                backoff_key.clone(),
+                                ConnectBackoff { next_attempt: Instant::now(), failures },
+                            );
+                        }
+                        drop(backoff);
                         tracing::warn!(
                             event = "discovery.connect_failed",
                             peer = %peer.peer_id,

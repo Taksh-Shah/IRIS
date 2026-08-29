@@ -956,6 +956,27 @@ impl WifiDirectTransport {
             .ok_or(TransportError::HardwareUnavailable)
     }
 
+    /// HW-17: `self.links` is keyed by whatever `PeerId` `connect()` was
+    /// called with — and discovery hands `connect()` the TXT record's
+    /// candidate id (`WifiDirectTxtRecord::candidate_peer_id()`:
+    /// `peer_short(real_pubkey)`, zero-padded to 32 bytes — "candidate
+    /// hint," never the verified full identity, mirrors BLE's HW-5 /
+    /// DEC-BLE-0006). But `send()` is addressed by the envelope's real
+    /// recipient `PeerId`, which is never equal to the zero-padded
+    /// candidate form — `links.iter().find(|l| l.peer_id == *peer)` missed
+    /// on every real send, confirmed live: `transport: not connected to
+    /// peer` immediately after `discovery.connect_ok` fired for the same
+    /// physical link. `peer_short()` is a pure function of the real
+    /// pubkey, so the candidate form for any real `PeerId` can be
+    /// independently re-derived here — same scheme, same fix shape as
+    /// `ble.rs`'s `candidate_key_for`.
+    fn candidate_key_for(real_peer: &PeerId) -> PeerId {
+        let short = crate::identity::peer_id::peer_short(&real_peer.0);
+        let mut id = [0u8; 32];
+        id[..16].copy_from_slice(&short);
+        PeerId(id)
+    }
+
     /// Remove a link + drop out of `Connected` when it was the last active link.
     /// The drop lands on `Degraded` (not `Available`) when the data scope is
     /// down, so a transport whose last link dies mid-outage never lies
@@ -1269,6 +1290,25 @@ impl Transport for WifiDirectTransport {
                     continue;
                 }
             }
+            // HW-18: `adapter.matches()` can legitimately hand back more than
+            // one entry for the same candidate peer_id in a single pass —
+            // the DNS-SD service listener and the TXT record listener
+            // (kept as a secondary/redundant path since HW-16 made the TXT
+            // listener publish directly) can each independently register a
+            // match for the same beacon. Without a dedup, `connect()` was
+            // called twice per peer per scan_once() (visible live as two
+            // `discovery.connect_failed` for the identical peer ~4s apart)
+            // — and on hardware where connect() triggers the OS's STA-vs-P2P
+            // radio-conflict prompt (confirmed via AOSP's WifiP2pService
+            // dialog strings: `wifi_p2p_dialog_title`/`wifi_p2p_turnon_message`,
+            // shown when a P2P connect is attempted while STA is bound to an
+            // AP — the exact situation here, all three test devices joined
+            // to a home AP), each duplicate connect() attempt re-triggers
+            // that OS prompt, which is what made it reappear every few
+            // seconds instead of once per real retry interval.
+            if infos.iter().any(|existing| existing.peer_id == peer_id) {
+                continue;
+            }
             infos.push(PeerInfo {
                 peer_id,
                 addresses: Vec::new(),
@@ -1382,6 +1422,41 @@ impl Transport for WifiDirectTransport {
                 return Err(TransportError::Busy);
             }
         }
+        // HW-20: the in-memory reuse check above only catches a link THIS
+        // process already negotiated. It misses the case confirmed live —
+        // researched against WifiP2pManager's own documented `connect()`
+        // contract ("if the current device is part of an existing P2P
+        // group... an invitation is sent" rather than fresh negotiation) —
+        // where the OS already formed and holds a live group with this
+        // exact peer (e.g. this node lost a prior GO/GC race and was made
+        // the client by the platform's own negotiation), but this
+        // process's `self.links` was never populated because ITS OWN
+        // `create_group()`/`join_group()` call never got to return `Ok`.
+        // Every subsequent scan pass then re-attempted group formation from
+        // scratch against a peer the OS considers already connected —
+        // observed live as a permanent `connect_failed` loop on the client
+        // side of a group that `dumpsys wifip2p` showed as genuinely
+        // `groupFormed: true`/`CONNECTED`. Consulting the adapter's live
+        // `group_info()` before negotiating and short-circuiting when this
+        // peer is already the GO or a listed client closes that gap without
+        // touching the negotiation path at all for the genuinely-new-peer
+        // case.
+        if let Some(info) = adapter.group_info().await {
+            let already_grouped =
+                info.go.0 == handle || info.clients.iter().any(|c| c.0 == handle);
+            if already_grouped {
+                self.links.lock().unwrap_or_else(|p| p.into_inner()).push(WifiDirectLink {
+                    handle: PeerHandle(handle),
+                    peer_id: peer.peer_id,
+                });
+                self.set_state(TransportState::Connected);
+                return Ok(TransportLink {
+                    peer_id: peer.peer_id,
+                    transport_id: self.id.to_string(),
+                    established_at: Instant::now(),
+                });
+            }
+        }
         // Group formation: GO-biased config forms/keeps a persistent GO and
         // invites the peer (p2p_invite); otherwise join the peer's group (GC).
         if self.group_config.go_intent >= GO_INTENT_BALANCED {
@@ -1491,14 +1566,22 @@ impl Transport for WifiDirectTransport {
         if self.state.load() == TransportState::Unavailable {
             return Err(TransportError::HardwareUnavailable);
         }
-        let handle = self
-            .links
-            .lock()
-            .unwrap()
-            .iter()
-            .find(|l| l.peer_id == *peer)
-            .map(|l| l.handle)
-            .ok_or(TransportError::NotConnected)?;
+        // HW-17: try the exact real key first (the common case once/if a
+        // verified real-identity mapping exists), falling back to the
+        // discovery-derived candidate key, which is what's actually in
+        // `links` today — see `candidate_key_for`'s doc comment.
+        let handle = {
+            let links = self.links.lock().unwrap();
+            links
+                .iter()
+                .find(|l| l.peer_id == *peer)
+                .or_else(|| {
+                    let candidate = Self::candidate_key_for(peer);
+                    links.iter().find(|l| l.peer_id == candidate)
+                })
+                .map(|l| l.handle)
+                .ok_or(TransportError::NotConnected)?
+        };
         let frame = encode_frame(message)?;
         let send_result = tokio::time::timeout(SEND_TIMEOUT, adapter.p2p_send(handle, &frame))
             .await
