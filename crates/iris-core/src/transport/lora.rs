@@ -1439,10 +1439,25 @@ impl LoRaMetrics {
 
 // ==== 7. Backlog queue (REQ-ROUTE-C-003 / D-5, DEC-LORA-0003) ====
 
+/// RF-13: per-class backlog TTL. P0/SOS is kept short — it should trigger a
+/// P0-switch, not sit queued for an hour. Higher classes get proportionally
+/// longer windows since they tolerate delay.
+fn backlog_ttl(priority: MessagePriority) -> Duration {
+    match priority {
+        MessagePriority::P0 => Duration::from_secs(300),    // 5 min
+        MessagePriority::P1 => Duration::from_secs(1_800),  // 30 min
+        MessagePriority::P2 => Duration::from_secs(3_600),  // 60 min
+        MessagePriority::P3 => Duration::from_secs(14_400), // 4 h
+        _                   => Duration::from_secs(43_200), // 12 h (P4+)
+    }
+}
+
 /// One held send: its priority plus the payload waiting for budget recovery.
+/// RF-13: `enqueued_at` drives per-class TTL sweeps in push/pop.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BacklogEntry<T> {
     pub priority: MessagePriority,
+    pub enqueued_at: Instant,
     pub item: T,
 }
 
@@ -1468,14 +1483,26 @@ impl<T> BacklogQueue<T> {
     }
 
     /// Insert keeping ascending-priority order (P0 first), FIFO within class.
-    /// Returns false when at capacity (RT-106 memory bound).
+    /// RF-13: (a) sweeps expired entries before checking capacity; (b) on cap,
+    /// evicts the lowest-priority entry if the incoming has strictly higher
+    /// priority (priority inversion guard). Returns false only when at capacity
+    /// AND the lowest entry is not lower-priority than the incoming one.
     pub fn push(&self, priority: MessagePriority, item: T) -> bool {
         let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
+        let now = Instant::now();
+        // RF-13a: sweep stale entries so a full queue of expired traffic
+        // cannot block a fresh P0 enqueue.
+        g.retain(|e| now.duration_since(e.enqueued_at) < backlog_ttl(e.priority));
         if g.len() >= MAX_BACKLOG_ENTRIES {
-            return false;
+            // RF-13b: evict the lowest-priority entry when the incoming is
+            // strictly more urgent — prevents priority inversion at the cap.
+            match g.last() {
+                Some(lowest) if lowest.priority > priority => { g.pop(); }
+                _ => return false,
+            }
         }
         let pos = g.partition_point(|e| e.priority <= priority);
-        g.insert(pos, BacklogEntry { priority, item });
+        g.insert(pos, BacklogEntry { priority, enqueued_at: now, item });
         true
     }
 
@@ -1485,13 +1512,18 @@ impl<T> BacklogQueue<T> {
     /// drop held traffic. May temporarily exceed [`MAX_BACKLOG_ENTRIES`].
     pub fn push_deferred(&self, priority: MessagePriority, item: T) {
         let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
+        let now = Instant::now();
         let pos = g.partition_point(|e| e.priority <= priority);
-        g.insert(pos, BacklogEntry { priority, item });
+        g.insert(pos, BacklogEntry { priority, enqueued_at: now, item });
     }
 
-    /// Pop the highest-priority entry (front of the sorted vec).
+    /// Pop the highest-priority non-expired entry (front of the sorted vec).
+    /// RF-13: sweeps all expired entries before returning so callers never
+    /// receive a stale payload.
     pub fn pop_highest(&self) -> Option<BacklogEntry<T>> {
         let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
+        let now = Instant::now();
+        g.retain(|e| now.duration_since(e.enqueued_at) < backlog_ttl(e.priority));
         if g.is_empty() {
             None
         } else {
@@ -2657,6 +2689,31 @@ mod tests {
         }
         assert_eq!(drained, MAX_BACKLOG_ENTRIES + 1);
     }
+
+    #[test]
+    fn rf13_p0_evicts_lowest_priority_when_queue_is_full() {
+        let q: BacklogQueue<u8> = BacklogQueue::new();
+        // Fill the queue with P4 entries.
+        for i in 0..MAX_BACKLOG_ENTRIES {
+            assert!(q.push(MessagePriority::P4, (i % 251) as u8 + 1));
+        }
+        assert_eq!(q.len(), MAX_BACKLOG_ENTRIES);
+        // A P0 (higher urgency) push must succeed by evicting one P4.
+        assert!(q.push(MessagePriority::P0, 0), "P0 must evict lowest-priority P4");
+        assert_eq!(q.len(), MAX_BACKLOG_ENTRIES, "length unchanged: one evicted, one added");
+        // The front must be our P0 entry.
+        let top = q.pop_highest().expect("queue non-empty");
+        assert_eq!(top.priority, MessagePriority::P0, "P0 is highest-priority");
+        assert_eq!(top.item, 0u8);
+        // A same-priority push at cap must still be refused (no eviction when
+        // incoming priority is not strictly higher).
+        let q2: BacklogQueue<u8> = BacklogQueue::new();
+        for i in 0..MAX_BACKLOG_ENTRIES {
+            assert!(q2.push(MessagePriority::P4, (i % 251) as u8 + 1));
+        }
+        assert!(!q2.push(MessagePriority::P4, 99), "same-priority push still refused at cap");
+    }
+
     #[test]
     fn backlog_drains_in_priority_order_fifo_within_class() {
         let q: BacklogQueue<u8> = BacklogQueue::new();
