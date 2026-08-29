@@ -994,6 +994,14 @@ impl Transport for BleTransport {
                         r.address.0[5]
                     ),
                 ));
+                let candidate_id = beacon.candidate_peer_id();
+                // BLE-19: honour DiscoveryConfig::filter — only emit peers the
+                // caller asked for (None = all, mirroring wifiaware.rs:891-895).
+                if let Some(filter) = config.filter.as_ref() {
+                    if !filter.contains(&candidate_id) {
+                        return None;
+                    }
+                }
                 // HW-9: record this address's candidate id so the
                 // accept-poller (a connection WE did not dial, so its
                 // GATT-server callback only ever sees a MAC, never a beacon)
@@ -1003,9 +1011,9 @@ impl Transport for BleTransport {
                 self.known_addresses
                     .lock()
                     .unwrap_or_else(|p| p.into_inner())
-                    .insert(r.address, beacon.candidate_peer_id());
+                    .insert(r.address, candidate_id);
                 Some(PeerInfo {
-                    peer_id: beacon.candidate_peer_id(),
+                    peer_id: candidate_id,
                     addresses: Vec::new(),
                     transport_addresses: addresses,
                     last_seen: Some(std::time::Instant::now()),
@@ -1016,7 +1024,10 @@ impl Transport for BleTransport {
     }
 
     async fn stop_discovery(&self) -> Result<(), TransportError> {
-        if let Some(h) = *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) {
+        // BLE-15: clear the slot so start_discovery doesn't stop a handle the
+        // OS has already released on the next re-arm.
+        let h = self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()).take();
+        if let Some(h) = h {
             self.adapter()?.stop_scan(h);
         }
         Ok(())
@@ -1027,7 +1038,10 @@ impl Transport for BleTransport {
         // Re-announcement (e.g. after identity/key rotation) must stop any prior
         // advertisement first so Android's max ~4 advertising-set budget is not
         // leaked and the radio doesn't keep a stale set alive (BLE-RT-011).
-        if let Some(prior) = *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) {
+        // BLE-15: take() clears the slot immediately after the stop, so a
+        // subsequent failure of start_advertising does not leave a stale handle.
+        let prior = self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()).take();
+        if let Some(prior) = prior {
             adapter.stop_advertising(prior);
         }
         // Build the IRIS discovery beacon (22-byte, candidate-level, never a
@@ -1069,7 +1083,10 @@ impl Transport for BleTransport {
     }
 
     async fn stop_advertising(&self) -> Result<(), TransportError> {
-        if let Some(h) = *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) {
+        // BLE-15: take() clears the slot before the FFI call so a subsequent
+        // start_advertising does not attempt to stop an already-released handle.
+        let h = self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()).take();
+        if let Some(h) = h {
             self.adapter()?.stop_advertising(h);
         }
         Ok(())

@@ -293,11 +293,11 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-12** | Medium | `ble.rs:888-895` | `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported` | ✅ (MG-41) |
 | **BLE-13** | Medium | `ble.rs:560-564` | `.drain(..).take(n)` silently destroys every scan result past `max_peers` | ✅ |
 | **BLE-14** | Medium | `ble.rs:583-605` | Blocking GATT connect/read/disconnect inside a synchronous closure in an async fn, with no timeout | ⬜ |
-| **BLE-15** | Medium | `ble.rs:637-679` | Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind | ⬜ |
+| **BLE-15** | Medium | `ble.rs:637-679` | Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind | ✅ |
 | **BLE-16** | Medium | `ble.rs:779-785` | BLE inbound drops are invisible; Wi-Fi Aware counts the same event | ✅ |
 | **BLE-17** | Medium | `ble.rs:477-512` | Scan backoff escalates permanently and is never reset by a successful scan | ✅ |
-| **BLE-18** | Medium | `ble.rs:828` | The service UUID is used as the data characteristic UUID | ⬜ |
-| **BLE-19** | Medium | `ble.rs:533-627` | BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout` | ⬜ |
+| **BLE-18** | Medium | `ble.rs:828` | The service UUID is used as the data characteristic UUID | ✅ (prior session) |
+| **BLE-19** | Medium | `ble.rs:533-627` | BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout` | ✅ (filter fixed; timeout deferred) |
 | **BLE-20** | Low | `ble_advert.rs:58-60` | `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects | ⬜ |
 | **BLE-21** | Low | `ble_advert.rs:151-152` | `MAX_ADVERT_BYTES` is unwired — `DiscoveryBeacon::parse` has no upper bound | ⬜ |
 | **BLE-22** | Low | `ble_advert.rs:92-93` | Beacon `freshness_minutes` and `capabilities` are parsed and then thrown away | ⬜ |
@@ -3080,7 +3080,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-15: Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:637-679` (`start_advertising`, `stop_advertising`), `:630-635` (`stop_discovery`)
 - **What:** `stop_advertising`/`stop_discovery` call the adapter but never set the handle slot back to
@@ -3207,7 +3207,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-18: The service UUID is used as the data characteristic UUID
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (prior session)  ·  Tier 4  — `IRIS_WRITE_CHARACTERISTIC` constant added; used in send and poller filter
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:828` (send), `:774` (poller filter)
 - **What:** Both directions of the data path use `IRIS_SERVICE_UUID` where a characteristic UUID
@@ -3244,7 +3244,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-19: BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout`
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Partial  ·  Tier 4  — `config.filter` now applied post-beacon; timeout support deferred
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:533-627`; contrast `crates/iris-core/src/transport/wifiaware.rs:891-895`
 - **What:** Only `config.max_peers` is read. `config.filter` and `config.timeout` are never touched.
