@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 38 | 0 | 87 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-22/38/39/40 + MG-23 + RF-3/17/24/34 done; 87/126 done, 38 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 35 | 0 | 90 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-22/38/39/40 + MG-23 + RF-3/9/12/13/17/24/34 done; 90/126 done, 35 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **38** | **0** | **238** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **35** | **0** | **241** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -331,11 +331,11 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-6** | Medium | `lora.rs:264-293` | The monotonic guard is anchored to `Instant`, so device suspend silently redefines "one hour" | ⬜ |
 | **RF-7** | Medium | `lora.rs:516-524` | No maximum per-transmission on-time — a single P0 frame is a 9.02 s continuous emission | ✅ `77236b2` |
 | **RF-8** | Medium | `lora.rs:74-84` | Pinned centre frequency 866.000 MHz is not in the documented IN865 channel plan, and duty is tracked globally rather than per sub-band | ⬜ |
-| **RF-9** | Medium | `lora.rs:1476-1512` | `poll_inbound` has an unbounded receive loop — a hostile in-range transmitter livelocks the poller | ⬜ |
+| **RF-9** | Medium | `lora.rs:1476-1512` | `poll_inbound` has an unbounded receive loop — a hostile in-range transmitter livelocks the poller | ✅ `6ee3f6b` |
 | **RF-10** | Medium | `lora.rs:151-159` | Spec says "P4+ never transmitted over LoRa"; the code gives P3–P7 a 5 % airtime share and the tests exercise it | ✅ `a405ec8` |
 | **RF-11** | Medium | `lora.rs:1562-1580` | LoRa (and satellite) never leave `Connected` on link failure and never report `Degraded`; `LinkStatus` telemetry is fetched and discarded | ⬜ |
-| **RF-12** | Medium | `lora.rs:1441-1461` | `drain_backlog` swallows every error class identically (LoRa and satellite) | ⬜ |
-| **RF-13** | Medium | `lora.rs:1153-1219` | The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held | ⬜ |
+| **RF-12** | Medium | `lora.rs:1441-1461` | `drain_backlog` swallows every error class identically (LoRa and satellite) | ✅ `6ee3f6b` |
+| **RF-13** | Medium | `lora.rs:1153-1219` | The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held | ✅ `2074518` |
 | **RF-14** | Low | `lora.rs:571-575` | LDRO condition omits SF12/BW250 — airtime is *under*-counted for that profile | ✅ `a405ec8` |
 | **RF-15** | Low | `lora.rs:1010-1077` | The whole link-budget model is unwired, and its distance clamp makes far links look reachable | ⬜ |
 | **RF-16** | Low | `lora.rs:373-389` | `DutyCycleTracker::refund` is a public de-billing API on a tracker documented as having "no runtime override" | ✅ `a405ec8` |
@@ -4747,7 +4747,7 @@ let effective_bucket_remaining = if contended { bucket_remaining } else { global
 
 #### RF-9: `poll_inbound` has an unbounded receive loop — a hostile in-range transmitter livelocks the poller
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `6ee3f6b`  ·  2026-08-29  ·  bounded `poll_inbound` loop to `MAX_FRAMES_PER_POLL = 8`, mirroring `wifi_direct::MAX_FRAMES_PER_TICK`; continuous LoRa emitter previously livelocked the poller task indefinitely
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/lora.rs:1476-1512` (fn `poll_inbound`)
 - **What:** the drain loop runs until `rx()` returns `Ok(None)` or an error. There is no per-call frame budget. Every peer transport in the codebase that faces an open medium *does* have one (`wifi_direct.rs:84` `MAX_FRAMES_PER_TICK = 8`).
@@ -4824,7 +4824,7 @@ if msg.priority > MessagePriority::P3 {
 
 #### RF-12: `drain_backlog` swallows every error class identically (LoRa and satellite)
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `6ee3f6b`  ·  2026-08-29  ·  classified errors: `ShuttingDown`/`NotConnected` → re-queue and break; `Protocol`/`PolicyDenied`/`MessageTooLarge` → drop with `backlog_protocol_drops` counter; transient errors defer as before
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:1441-1461`; identical code at `satellite.rs:1094-1115`
 - **What:** `Err(_) => deferred.push(entry)` discards the error. Duty/spend refusal, `ShuttingDown`, `NotConnected`, `Protocol` (permanently undeliverable) and `Io` are all treated as "try again later", and the function returns only the successes — the caller cannot distinguish "budget short" from "the dongle is gone" from "this message can never be sent".
@@ -4849,7 +4849,7 @@ if msg.priority > MessagePriority::P3 {
 
 #### RF-13: The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `2074518`  ·  2026-08-29  ·  added `enqueued_at: Instant` to `BacklogEntry`; `push` sweeps expired entries via per-class TTL (P0=5min, P1=30min, P2=60min, P3=4h, P4+=12h) and evicts lowest-priority tail when at cap and incoming is strictly higher priority; `pop_highest` also sweeps; added `rf13_p0_evicts_lowest_priority_when_queue_is_full` regression test
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:1153-1219` (`BacklogEntry` / `BacklogQueue::push`), `1351-1363` (`enqueue_backlog`); shared by `satellite.rs:970-990` via `use super::lora::BacklogQueue`
 - **What:** `BacklogEntry<T>` stores only `{ priority, item }` — no enqueue timestamp, no deadline. Nothing ever ages an entry out. And `push` refuses at the cap regardless of the incoming priority, so a queue full of low-priority traffic rejects a P0.
