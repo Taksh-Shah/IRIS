@@ -1102,11 +1102,24 @@ impl WifiDirectTransport {
                         break;
                     };
                     let Some(len) = frame_payload_len(&frame.payload) else {
-                        continue; // truncated/oversized header; drop.
+                        // RF-29: log malformed/oversized header drops.
+                        tracing::warn!(
+                            transport = %transport_id,
+                            raw_len = frame.payload.len(),
+                            "inbound Wi-Fi Direct frame: truncated/oversized header; dropped"
+                        );
+                        continue;
                     };
                     let start = 4; // u32 LE length prefix (internet frame header)
                     let end = start + len;
                     if len == 0 || end > frame.payload.len() {
+                        // RF-29: log zero-length / frame-overrun drops.
+                        tracing::warn!(
+                            transport = %transport_id,
+                            declared_len = len,
+                            raw_len = frame.payload.len(),
+                            "inbound Wi-Fi Direct frame: zero-length or overrun; dropped"
+                        );
                         continue;
                     }
                     let payload = frame.payload[start..end].to_vec();
@@ -1143,7 +1156,15 @@ impl WifiDirectTransport {
                         })
                         .is_err()
                     {
-                        dropped_inbound.fetch_add(1, Ordering::Relaxed);
+                        // RF-31: make the first drop observable via tracing so
+                        // the counter has at least one reader path.
+                        let n = dropped_inbound.fetch_add(1, Ordering::Relaxed) + 1;
+                        if n == 1 {
+                            tracing::warn!(
+                                transport = %transport_id,
+                                "first inbound frame dropped: no subscriber yet"
+                            );
+                        }
                     }
                 }
             }
@@ -1151,6 +1172,11 @@ impl WifiDirectTransport {
         .abort_handle();
         *poller = Some(handle);
         Ok(())
+    }
+
+    /// Total inbound frames dropped because no subscriber existed at delivery time.
+    pub fn dropped_inbound(&self) -> u64 {
+        self.dropped_inbound.load(Ordering::Relaxed)
     }
 
     /// Spawn (once) the task that mirrors availability churn into transport
