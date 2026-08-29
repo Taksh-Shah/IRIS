@@ -1659,10 +1659,6 @@ impl Transport for WifiDirectTransport {
         }
     }
 
-    fn set_send_priority_hint(&self, _priority: MessagePriority) {
-        // Scaffold: no duty-cycle / power tuning yet (WIFI_DIRECT.md §Battery).
-    }
-
     async fn shutdown(&self) -> Result<(), TransportError> {
         let _gate = self.connect_gate.lock().await;
         if let Some(handle) = self.poller.lock().await.take() {

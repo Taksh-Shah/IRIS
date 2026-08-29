@@ -411,7 +411,12 @@ pub trait Transport: Send + Sync + 'static {
     fn cost_snapshot(&self) -> TransportCost;
 
     /// Hint about the priority of the next send (may adjust power settings).
-    fn set_send_priority_hint(&self, priority: MessagePriority);
+    ///
+    /// LoRa and Internet wire this into a stored priority field; all other
+    /// transports fall through to this default no-op until TX-power tuning is
+    /// implemented (MG-23).
+    #[allow(unused_variables)]
+    fn set_send_priority_hint(&self, priority: MessagePriority) {}
 
     /// Graceful shutdown.
     async fn shutdown(&self) -> Result<(), TransportError>;

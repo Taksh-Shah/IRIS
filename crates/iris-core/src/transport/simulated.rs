@@ -238,8 +238,6 @@ impl Transport for SimulatedTransport {
         }
     }
 
-    fn set_send_priority_hint(&self, _priority: MessagePriority) {}
-
     async fn shutdown(&self) -> Result<(), TransportError> {
         self.set_state(TransportState::Unavailable);
         Ok(())

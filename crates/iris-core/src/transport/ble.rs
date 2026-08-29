@@ -1454,10 +1454,6 @@ impl Transport for BleTransport {
         }
     }
 
-    fn set_send_priority_hint(&self, _priority: MessagePriority) {
-        // Could lower tx power for non-emergency; deferred to real impl.
-    }
-
     async fn shutdown(&self) -> Result<(), TransportError> {
         // Abort all per-peer pollers (RED-0009-02).
         for (_, p) in self.pollers.write().unwrap_or_else(|p| p.into_inner()).drain() {

@@ -1286,10 +1286,6 @@ impl Transport for WifiAwareTransport {
         }
     }
 
-    fn set_send_priority_hint(&self, _priority: MessagePriority) {
-        // Scaffold: no duty-cycle / power tuning yet (WIFI_AWARE.md §Power).
-    }
-
     async fn shutdown(&self) -> Result<(), TransportError> {
         // WAW-RT-001: serialize against a connect() that may be mid-open, so
         // the teardown never races the link registration below. Also serialized

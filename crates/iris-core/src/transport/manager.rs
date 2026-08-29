@@ -415,7 +415,6 @@ impl Transport for StubTransport {
     fn cost_snapshot(&self) -> TransportCost {
         self.cost.clone()
     }
-    fn set_send_priority_hint(&self, _priority: MessagePriority) {}
     async fn shutdown(&self) -> Result<(), TransportError> {
         Ok(())
     }
