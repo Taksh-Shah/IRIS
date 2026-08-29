@@ -38,6 +38,9 @@ pub struct SimConfig {
     /// manager's comparator stays total and deterministic (RED-0003-01).
     /// None keeps the fixed default of 3.0 mA.
     pub battery_ma_override: Option<f32>,
+    /// Maximum payload bytes `send()` accepts (RF-43). None defaults to 64 KiB.
+    /// Set to e.g. 237 to simulate a LoRa-like MTU, or 185 for BLE.
+    pub max_message_size: Option<usize>,
 }
 
 impl Default for SimConfig {
@@ -49,6 +52,7 @@ impl Default for SimConfig {
             latency_spread_ms: 5,
             seed: 42,
             battery_ma_override: None,
+            max_message_size: None,
         }
     }
 }
@@ -80,7 +84,7 @@ impl SimulatedTransport {
         let state = AtomicState::default();
         state.store(TransportState::Available);
         let caps = TransportCapabilities {
-            max_message_size: 64 * 1024,
+            max_message_size: config.max_message_size.unwrap_or(64 * 1024),
             supports_broadcast: true,
             supports_unicast: true,
             supports_multicast: true,
@@ -177,6 +181,18 @@ impl Transport for SimulatedTransport {
         peer: &PeerId,
         message: &SerializedMessage,
     ) -> Result<SendReceipt, TransportError> {
+        // RF-42: respect transport lifecycle — a shut-down transport must not deliver.
+        if self.state.load() == TransportState::Unavailable {
+            return Err(TransportError::ShuttingDown);
+        }
+        // RF-43: enforce the advertised MTU so fragmentation tests are meaningful.
+        let mtu = self.caps.max_message_size;
+        if message.payload.len() > mtu {
+            return Err(TransportError::MessageTooLarge {
+                limit: mtu,
+                actual: message.payload.len(),
+            });
+        }
         if self.is_lost().await {
             return Ok(SendReceipt {
                 peer_id: *peer,
