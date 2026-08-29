@@ -454,11 +454,25 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
         Ok(())
     }
 
-    async fn publish(&self, _config: &PublishConfig) -> Result<(), String> {
+    async fn publish(&self, config: &PublishConfig) -> Result<(), String> {
         if !self.available.load(Ordering::Acquire) {
             return Err("wifi_aware_unavailable".to_string());
         }
-        self.register();
+        // BLE-32: use the caller-provided beacon (service_specific_info) so the
+        // sim publishes the node's real identity instead of an invented counter.
+        // Fall back to the counter-based beacon for tests that publish with
+        // PublishConfig::default() (no SSI), preserving backward compatibility.
+        let mut tag = self.tag.lock().unwrap_or_else(|p| p.into_inner());
+        if *tag == 0 {
+            *tag = self.coordinator.register_peer(vec![]);
+        }
+        if !config.service_specific_info.is_empty() {
+            self.coordinator.set_beacon(*tag, config.service_specific_info.clone());
+        } else {
+            let mut short = [0u8; 16];
+            short[..8].copy_from_slice(&tag.to_le_bytes());
+            self.coordinator.set_beacon(*tag, self.beacon_bytes(&short));
+        }
         self.published.store(true, Ordering::Release);
         Ok(())
     }
