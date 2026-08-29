@@ -279,11 +279,11 @@ All 284 findings, in report order. Severities are post-verification.
 | **DTN-23** | Medium | `scf_contact.rs:64-101` | `on_new_contact` ranking is O(n²), and its `unwrap_or(7)` fallback silently demotes any message it cannot find | ✅ `357ddb7` |
 | **DTN-24** | Medium | `scf_contact.rs:107-115` | `enqueue_forward` discards the only failure signal it has and unconditionally returns `Ok(())` | ✅ `357ddb7` |
 | **DTN-25** | Medium | `scf_contact.rs:64-97` | `bandwidth_limit` is counted in **messages**, so a contact window is budgeted without reference to message size | ✅ `357ddb7` |
-| **BLE-1** | High | `ble.rs:157-178` | `BleAdapter` has no disconnect callback — a vanished peer stays `Connected` forever | ⬜ |
-| **BLE-2** | High | `ble.rs:686-806` | `connect()` holds a `std::sync::Mutex` across blocking FFI calls inside an async fn | ⬜ |
-| **BLE-3** | High | `ble.rs:704` | A per-peer connect flips a transport-global state, evicting the whole transport from routing | ⬜ |
-| **BLE-4** | High | `ble.rs:756-771` | The poller's frame-partition write-back is destroyed by the FFI bridge — cross-peer frame loss on real devices | ⬜ |
-| **BLE-5** | High | `ble_att.rs:110-156` | The whole negotiate-late MTU mechanism is unwired — `AttSegmenter`'s live MTU is dead code | ⬜ |
+| **BLE-1** | High | `ble.rs:157-178` | `BleAdapter` has no disconnect callback — a vanished peer stays `Connected` forever | 🔒 Blocked |
+| **BLE-2** | High | `ble.rs:686-806` | `connect()` holds a `std::sync::Mutex` across blocking FFI calls inside an async fn | ✅ `cd3bb01` |
+| **BLE-3** | High | `ble.rs:704` | A per-peer connect flips a transport-global state, evicting the whole transport from routing | ✅ `3a1789a` |
+| **BLE-4** | High | `ble.rs:756-771` | The poller's frame-partition write-back is destroyed by the FFI bridge — cross-peer frame loss on real devices | ✅ `24049e1` |
+| **BLE-5** | High | `ble_att.rs:110-156` | The whole negotiate-late MTU mechanism is unwired — `AttSegmenter`'s live MTU is dead code | ✅ `ed2a52f` |
 | **BLE-6** | Medium | `ble.rs:720-731` | iOS-leg `set_mtu` failure fallback misinterprets an MTU as a payload — every frame 3 bytes over the link budget | ⬜ |
 | **BLE-7** | Medium | `ble.rs:720-722` | `set_mtu` errors are silently swallowed | ⬜ |
 | **BLE-8** | Low | `ble.rs:619-624` | Unauthenticated advert bytes become `IncomingMessage.peer_id` | ⬜ |
@@ -305,10 +305,10 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-24** | Low | `ble_att.rs:481-497` | Tests that pass regardless of the logic they claim to cover | ⬜ |
 | **BLE-25** | Low | `ble_att.rs:146-148` | One shared `msg_id` counter for all peers, `Relaxed`, with silent wrap | ⬜ |
 | **BLE-26** | Low | `ble.rs:74-77` | `ScanFilter::rssi_threshold` is never set and `ScanResult::rssi` is never read | ⬜ |
-| **BLE-27** | High | `wifiaware.rs:754-799` | Wi-Fi Aware poller backlog is unbounded — the per-tick budget bounds CPU but not memory | ⬜ |
-| **BLE-28** | High | `wifiaware.rs:199-201` | The availability watcher never runs on real hardware — `Degraded` is a simulator-only state | ⬜ |
-| **BLE-29** | High | `wifiaware.rs:583-594` | Link death is classified by substring-matching the adapter's error text | ⬜ |
-| **BLE-30** | High | `wifiaware.rs:172-173` | The two hot-path drains are infallible by signature, forcing every adapter error to be swallowed | ⬜ |
+| **BLE-27** | High | `wifiaware.rs:754-799` | Wi-Fi Aware poller backlog is unbounded — the per-tick budget bounds CPU but not memory | ✅ `6dec4e7` |
+| **BLE-28** | High | `wifiaware.rs:199-201` | The availability watcher never runs on real hardware — `Degraded` is a simulator-only state | ✅ `395fb03` |
+| **BLE-29** | High | `wifiaware.rs:583-594` | Link death is classified by substring-matching the adapter's error text | ✅ `395fb03` (partial) |
+| **BLE-30** | High | `wifiaware.rs:172-173` | The two hot-path drains are infallible by signature, forcing every adapter error to be swallowed | ✅ `395fb03` (partial) |
 | **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` | ⬜ |
 | **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ⬜ |
 | **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ⬜ |
