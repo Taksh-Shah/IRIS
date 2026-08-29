@@ -798,7 +798,8 @@ pub struct WifiDirectTransport {
     adapter: AsyncMutex<Option<Arc<dyn WifiDirectAdapter>>>,
     state: Arc<AtomicState>,
     state_tx: broadcast::Sender<TransportStateEvent>,
-    incoming_tx: broadcast::Sender<IncomingMessage>,
+    /// RF-30: wrapped in Option so shutdown() can drop it, closing all receivers.
+    incoming_tx: StdMutex<Option<broadcast::Sender<IncomingMessage>>>,
     poller: AsyncMutex<Option<AbortHandle>>,
     avail_watcher: AsyncMutex<Option<AbortHandle>>,
     links: Arc<StdMutex<Vec<WifiDirectLink>>>,
@@ -857,7 +858,7 @@ impl WifiDirectTransport {
     /// a group link is open.
     pub fn new(adapter: Option<Arc<dyn WifiDirectAdapter>>) -> Self {
         let (state_tx, _) = broadcast::channel(64);
-        let (incoming_tx, _) = broadcast::channel(INCOMING_CHANNEL_CAPACITY);
+        let (incoming_tx, _incoming_rx0) = broadcast::channel(INCOMING_CHANNEL_CAPACITY);
         let id = crate::transport::TransportId::from("wifi-direct-0");
         let state = Arc::new(AtomicState::default());
         state.store(TransportState::Unavailable);
@@ -868,7 +869,7 @@ impl WifiDirectTransport {
             adapter: AsyncMutex::new(adapter),
             state,
             state_tx,
-            incoming_tx,
+            incoming_tx: StdMutex::new(Some(incoming_tx)),
             poller: AsyncMutex::new(None),
             avail_watcher: AsyncMutex::new(None),
             links: Arc::new(StdMutex::new(Vec::new())),
@@ -1085,7 +1086,15 @@ impl WifiDirectTransport {
         if poller.is_some() {
             return Ok(());
         }
-        let incoming_tx = self.incoming_tx.clone();
+        let Some(incoming_tx) = self
+            .incoming_tx
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone()
+        else {
+            // shutdown already dropped the sender; skip spawning.
+            return Ok(());
+        };
         let transport_id = self.id.clone();
         let links = self.links.clone();
         let dropped_inbound = self.dropped_inbound.clone();
@@ -1631,7 +1640,12 @@ impl Transport for WifiDirectTransport {
     }
 
     fn incoming_messages(&self) -> Pin<Box<dyn Stream<Item = IncomingMessage> + Send>> {
-        crate::transport::broadcast_stream(self.incoming_tx.subscribe(), "wifi_direct.messages")
+        // RF-30: subscribe only if the sender is still alive (not taken by shutdown).
+        if let Some(tx) = self.incoming_tx.lock().unwrap_or_else(|p| p.into_inner()).as_ref() {
+            crate::transport::broadcast_stream(tx.subscribe(), "wifi_direct.messages")
+        } else {
+            Box::pin(futures_util::stream::empty())
+        }
     }
 
     fn cost_snapshot(&self) -> TransportCost {
@@ -1666,6 +1680,9 @@ impl Transport for WifiDirectTransport {
         }
         self.links.lock().unwrap_or_else(|p| p.into_inner()).clear();
         self.clear_discovery();
+        // RF-30: drop the sender so all `incoming_messages()` streams see `Closed`
+        // and terminate rather than hanging forever.
+        self.incoming_tx.lock().unwrap_or_else(|p| p.into_inner()).take();
         self.shutdown_flag.store(true, Ordering::SeqCst);
         self.set_state(TransportState::Unavailable);
         Ok(())

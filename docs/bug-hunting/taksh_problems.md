@@ -348,7 +348,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-27** | Medium | `wifi_direct.rs:196-197` | Two adapter-trait methods cannot report failure by signature, forcing the Android bridge to swallow every error | ⬜ |
 | **RF-28** | Medium | `wifi_direct.rs:947-982` | The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames | ⬜ |
 | **RF-29** | Medium | `wifi_direct.rs:959-966` | Malformed, truncated and zero-length inbound frames are dropped with no counter and no log | ✅ |
-| **RF-30** | Medium | `wifi_direct.rs:1312-1329` | `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever | ⬜ |
+| **RF-30** | Medium | `wifi_direct.rs:1312-1329` | `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever | ✅ |
 | **RF-31** | Low | `wifi_direct.rs:794-795` | `dropped_inbound` is write-only — the counter has no accessor | ✅ |
 | **RF-32** | Medium | `wifi_direct.rs:20-24` | The TCP-over-GO data plane described in the module docs is not implemented — `go_addr`, `group_info` and `set_operating_band` are never called | ⬜ |
 | **RF-33** | Low | `wifi_direct.rs:1095-1114` | `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering | ⬜ |
