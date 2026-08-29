@@ -1070,6 +1070,21 @@ impl Transport for BleTransport {
                 ),
             ));
             let candidate_id = beacon.candidate_peer_id();
+            // BLE-22: skip peers that do not advertise GATT unicast support —
+            // they cannot participate in the IRIS data path.
+            if !beacon.capabilities.contains(CapabilityBits::GATT_UNICAST) {
+                continue;
+            }
+            // BLE-22: advisory staleness — skip beacons older than ~60 minutes.
+            // freshness==0 is the "no freshness info" sentinel (sim/builder didn't set it).
+            // Treated as advisory: a device with a wrong clock is not blocked.
+            if beacon.freshness_minutes != 0 {
+                let age_min = crate::transport::freshness_minutes_now()
+                    .wrapping_sub(beacon.freshness_minutes);
+                if age_min > 60 {
+                    continue;
+                }
+            }
             // BLE-19: honour DiscoveryConfig::filter — only emit peers the
             // caller asked for (None = all, mirroring wifiaware.rs:891-895).
             if let Some(filter) = config.filter.as_ref() {
@@ -2035,7 +2050,7 @@ mod tests {
         let t = BleTransport::new_ios(Some(adapter.clone()));
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, [7u8; 16], 1234);
+        let beacon = DiscoveryBeacon::build(caps, [7u8; 16], 0);
         adapter.inject_identify_read(beacon.clone());
         // An iOS advertisement with an EMPTY payload (UUID + local name only).
         adapter.inject_scan_result(BleAddress([0x11; 6]), Vec::new(), -60);
@@ -2076,8 +2091,9 @@ mod tests {
         // from the identification characteristic (iOS) — one parser, two
         // carriers.
         let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
         caps.set(CapabilityBits::ADVERTISE_BROADCAST);
-        let beacon = DiscoveryBeacon::build(caps, [9u8; 16], 99);
+        let beacon = DiscoveryBeacon::build(caps, [9u8; 16], 0);
         // Android leg: ad-carried payload.
         let android = std::sync::Arc::new(SimulatedBleAdapter::new());
         android.inject_scan_result(BleAddress([0x01; 6]), beacon.clone(), -50);
@@ -2822,7 +2838,7 @@ mod tests {
         caps.set(CapabilityBits::GATT_UNICAST);
         for i in 0..10u8 {
             let addr = BleAddress([i, 0xBB, 0, 0, 0, 0]);
-            let beacon = DiscoveryBeacon::build(caps, [i; 16], 1);
+            let beacon = DiscoveryBeacon::build(caps, [i; 16], 0);
             adapter.inject_identify_read_for_address(addr, beacon);
             adapter.inject_scan_result(addr, Vec::new(), -50);
         }
@@ -2874,7 +2890,7 @@ mod tests {
         let peer = std::sync::Arc::new(SimulatedBleAdapter::new());
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, [0xC5; 16], 77);
+        let beacon = DiscoveryBeacon::build(caps, [0xC5; 16], 0);
         peer.start_advertising(AdvertisementData {
             local_name: Some("iris-peer".to_string()),
             service_uuid: Some(IRIS_SERVICE_UUID),

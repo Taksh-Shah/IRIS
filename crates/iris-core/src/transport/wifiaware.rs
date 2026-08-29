@@ -1078,6 +1078,18 @@ impl Transport for WifiAwareTransport {
                 continue;
             };
             let peer_id = beacon.candidate_peer_id();
+            // BLE-22: skip peers that do not advertise NDP unicast capability.
+            if !beacon.capabilities.contains(CapabilityBits::NDP_UNICAST) {
+                continue;
+            }
+            // BLE-22: advisory staleness — skip beacons older than ~60 minutes.
+            // freshness==0 is the "no freshness info" sentinel (sim/builder didn't set it).
+            if beacon.freshness_minutes != 0 {
+                let age_min = freshness_minutes_now().wrapping_sub(beacon.freshness_minutes);
+                if age_min > 60 {
+                    continue;
+                }
+            }
             if let Some(filter) = config.filter.as_ref() {
                 if !filter.contains(&peer_id) {
                     continue;
