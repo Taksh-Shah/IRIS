@@ -370,7 +370,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-4** | Medium | `manager.rs:178-206` | Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected | ⬜ |
 | **MG-5** | Medium | `manager.rs:156-160` | No fallback candidate for P2–P7 — the manager provides no transport-level failover at all | ⬜ |
 | **MG-6** | Medium | `manager.rs:109-117` | `deregister` holds the registry write lock across `transport.shutdown().await` | ⬜ |
-| **MG-7** | Medium | `manager.rs:84-106` | State-forwarder task is spawned before the duplicate check and is never aborted on deregister | ✅ PLACEHOLDER_MG7 |
+| **MG-7** | Medium | `manager.rs:84-106` | State-forwarder task is spawned before the duplicate check and is never aborted on deregister | ✅ bf19112 |
 | **MG-8** | Medium | `manager.rs:78-81` | `topology_events()` has zero subscribers — transport state changes are broadcast into a void | ⬜ |
 | **MG-9** | Medium | `manager.rs:173-207` | `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority | ⬜ |
 | **MG-10** | Medium | `transport/mod.rs:282-292` | `RadioConflictGroup` is defined and never enforced anywhere | ✅ `ccf5a8e` |
@@ -6068,7 +6068,7 @@ match removed {
 #### MG-7: State-forwarder task is spawned before the duplicate check and is never aborted on deregister
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** PARTIALLY-CORRECT (and downgraded). See §14.
-- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_MG7  ·  2026-08-29  ·  `TransportManager` gains a `forwarders: RwLock<HashMap<TransportId, AbortHandle>>`. In `register()`, duplicate check is now before the spawn; abort handle is stored in `forwarders`. `deregister()` aborts the forwarder then removes the transport.
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit bf19112  ·  2026-08-29  ·  `TransportManager` gains a `forwarders: RwLock<HashMap<TransportId, AbortHandle>>`. In `register()`, duplicate check is now before the spawn; abort handle is stored in `forwarders`. `deregister()` aborts the forwarder then removes the transport.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:84-106` (fn `register`), `:109-117` (fn `deregister`)
 - **What:** Two defects in one block. (a) `tokio::spawn` at line 91 runs *before* the `DuplicateId` check at line 101 — a rejected registration leaves a live forwarder task for a transport that is not in the registry. (b) No `AbortHandle` is retained, so `deregister` cannot stop the task; it lives as long as the transport's state stream does.
