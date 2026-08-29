@@ -232,6 +232,18 @@ pub struct Simulation {
     /// is a mean, which cannot catch one message exploding past a
     /// per-message bound (e.g. binary spray's L) while others stay quiet.
     relays_by_msg: HashMap<MessageId, u64>,
+    /// Highest hop count reached by any message, tracked incrementally at
+    /// the point `forward_to` computes `new_hops` — NOT derived by scanning
+    /// `hops_by_msg` after the fact. SIM-30's terminal-delivery pruning
+    /// removes a message's `hops_by_msg` entry at both the delivering src
+    /// and dst in the SAME `forward_to` call that reaches the highest hop
+    /// count, before any end-of-tick scan could ever observe it — a
+    /// same-tick "insert, then prune, then sample" ordering that made a
+    /// scan-based `max_hops_seen` silently under-report by exactly one hop
+    /// for every message that got terminally delivered (found while fixing
+    /// an unrelated Tier 4 LoRa wake — `pilot_b3_mule_chain_delivers_
+    /// within_contact_window` was failing on `main` before this fix).
+    max_hops_seen: u8,
 }
 
 impl Simulation {
@@ -259,6 +271,7 @@ impl Simulation {
             blocked_no_advantage: 0,
             blocked_loss: 0,
             relays_by_msg: HashMap::new(),
+            max_hops_seen: 0,
         }
     }
 
@@ -537,6 +550,7 @@ impl Simulation {
         let mut new_env = msg.envelope.clone();
         let new_hops = hops + 1;
         new_env.hop_count = new_hops;
+        self.max_hops_seen = self.max_hops_seen.max(new_hops);
         self.nodes[dst].hops_by_msg.insert(id, new_hops);
         self.nodes[dst].buffered_at_ms.insert(id, self.now_ms);
 
@@ -731,7 +745,11 @@ impl Simulation {
 
         let mut injected: Vec<InjectedMsg> = Vec::new();
         let mut evictions_total: u64 = 0;
-        let mut max_hops_seen: u8 = 0;
+        // max_hops_seen is tracked incrementally on `self` (see the field's
+        // doc comment) rather than sampled here — SIM-30's terminal-delivery
+        // pruning removes a message's hops_by_msg entry in the same tick
+        // that reaches its highest hop count, before any end-of-tick scan
+        // could see it.
         // SIM-6: a running high-water mark, sampled every tick (not just
         // "after the run") — the old computation scanned `out.nodes` once
         // at the very end, which is the *final* usage, not a peak; a
@@ -861,7 +879,6 @@ impl Simulation {
             // itself create a momentary high-water mark before the next
             // contact relays it away, which a contact-only sample would miss.
             for n in &self.nodes {
-                max_hops_seen = max_hops_seen.max(*n.hops_by_msg.values().max().unwrap_or(&0));
                 peak_storage_bytes = peak_storage_bytes.max(n.scf.usage_bytes());
             }
         }
@@ -943,7 +960,7 @@ impl Simulation {
             per_priority,
             latencies,
             evictions_total,
-            max_hops_seen,
+            max_hops_seen: self.max_hops_seen,
             peak_storage_bytes,
             nodes: self.nodes,
             seed: self.seed,
@@ -1245,7 +1262,10 @@ mod tests {
                 b: 3,
                 duration_ms: 1000,
             });
-            sim.set_loss(SimLoss { rate: 0.3 });
+            sim.set_loss(SimLoss {
+                rate: 0.3,
+                ..Default::default()
+            });
             for i in 0..10 {
                 sim.inject(Injection::new(
                     200 + i as u64 * 100,

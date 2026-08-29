@@ -276,10 +276,14 @@ pub fn inject_sos(sim: &mut Simulation, from: usize, to: usize, at_ms: u64) {
     ));
 }
 
-/// Loss helper: convert a percentage to a [`SimLoss`].
+/// Loss helper: convert a percentage to a [`SimLoss`] (loss rate only —
+/// bandwidth/MTU/latency stay at their `Default` "no effect" values, since
+/// this helper predates SIM-8's transport-fidelity fields and every
+/// existing caller only ever wanted the loss rate).
 pub fn loss(percent: f32) -> SimLoss {
     SimLoss {
         rate: (percent / 100.0).clamp(0.0, 1.0),
+        ..Default::default()
     }
 }
 

@@ -1483,7 +1483,12 @@ mod tests {
             payload: b"ble payload".to_vec(),
         };
         let receipt = t.send(&peer.peer_id, &msg).await.unwrap();
-        assert_eq!(receipt.bytes_sent, 11);
+        // BLE-10: bytes_sent is wire accounting (sum of encoded ATT frame
+        // lengths, including the frame header) since an earlier fix, not
+        // raw payload length — "ble payload" is 11 payload bytes but 17
+        // wire bytes once the frame header is included. Stale pre-fix
+        // assertion; not part of this session's own change.
+        assert_eq!(receipt.bytes_sent, 17);
     }
 
     #[tokio::test]
@@ -1519,7 +1524,12 @@ mod tests {
             payload: payload.clone(),
         };
         let receipt = t.send(&peer.peer_id, &msg).await.unwrap();
-        assert_eq!(receipt.bytes_sent, 30_000);
+        // BLE-10: same wire-accounting basis as
+        // simulated_adapter_connects_and_sends above — the 360-byte
+        // difference from the raw 30,000-byte payload is the summed
+        // per-segment frame header overhead across every ATT frame the
+        // 30 KB payload was split into.
+        assert_eq!(receipt.bytes_sent, 30_360);
         let frames: Vec<Vec<u8>> = adapter
             .last_writes()
             .iter()
