@@ -34,7 +34,7 @@ These three results interact rather than simply stack: the parts of this section
 
 **Hardware verification milestone (2026-08-29):** Wi-Fi Direct P2P messaging was physically tested end-to-end on real hardware (vivo + a second Android device, both connected via `adb`, home Wi-Fi disconnected to remove the STA/P2P radio conflict) — not simulated, not unit-tested-only. Two separate unicast messages sent vivo→device2 via the in-app `/to <peer-id>` console command both completed `msg.sent` → `msg.delivered to final recipient` in 1-4 seconds, confirmed by reading both devices' live `adb logcat` output side by side. This is the first confirmed real Wi-Fi Direct message delivery of the entire hardware-verification pass (HW-1 through HW-21), following BLE's own already-confirmed 3-way mesh (HW-1 through HW-9). Wi-Fi Direct Tier 0 (the "can a message physically move at all" bar) is now cleared the same way BLE's was. HW-21's fix is code-complete and correctly targets the root cause found, but its own live round-trip re-confirmation is still pending — real P2P negotiation on this hardware showed the same intermittent group-formation flakiness all session (independent of any fix here), which prevented capturing one clean, uninterrupted forward-send-then-ACK cycle before the session ended. **Next session should start by re-confirming HW-21's ACK round trip** (fresh app launch on both test devices, wait for `connect_ok`, send immediately) before moving to Wi-Fi Aware. Everything else remaining after that is Wi-Fi Aware (FFI-6, NDP responder not yet started) or defensive/secondary hardening, not a blocker to basic Wi-Fi Direct messaging.
 
-**Last updated:** 2026-08-29 — **Tier 2 fully closed out** (see prior entry); **Tier 3 in progress** — 32 of 32 findings fixed (Wake 12: SIM-1/2/3/4 determinism/clock; Wake 13: SIM-5/6/11/17/18/31 dead/fabricated sim metrics; Wake 14: SIM-19/20/29 statistics/test-strength; Wake 16: SIM-13/14/15/16 ML leakage; Wake 17: SIM-21/22/23/24/25/26/27/28 observability; Wake 18: SIM-9 ContactEvent duration; Wake 19: SIM-7 RoutingEngine wiring, SIM-8 transport model — Tier 3 complete). Full history of every commit, blocked-finding reason and per-finding verification is in [`taksh_fix_log.md`](taksh_fix_log.md) (Runs 4-18); summary here, condensed as the tier grows:
+**Last updated:** 2026-08-29 — **Tier 3 complete** (32/32); **Tier 4 in progress** — TAK-7 RadioConflictGroup wiring, TAK-8 NaN-safe comparators fixed; FFI table backfill complete (18/19 FFI rows confirmed fixed from Tier 0, FFI-6 remains open); GAP-4/9/12 table rows backfilled (Wake 12: SIM-1/2/3/4 determinism/clock; Wake 13: SIM-5/6/11/17/18/31 dead/fabricated sim metrics; Wake 14: SIM-19/20/29 statistics/test-strength; Wake 16: SIM-13/14/15/16 ML leakage; Wake 17: SIM-21/22/23/24/25/26/27/28 observability; Wake 18: SIM-9 ContactEvent duration; Wake 19: SIM-7 RoutingEngine wiring, SIM-8 transport model — Tier 3 complete). Full history of every commit, blocked-finding reason and per-finding verification is in [`taksh_fix_log.md`](taksh_fix_log.md) (Runs 4-18); summary here, condensed as the tier grows:
 - **Wakes 1-3 (ROUT area, now closed):** all 36 ROUT-\* findings resolved — 33 fixed, 3 blocked (ROUT-23: two governing specs conflict with each other; ROUT-24: real fix needs a new wire-protocol feature outside scope; ROUT-26: governing requirement doc is internally inconsistent). Key commits: `4b03ae8`..`07338e5` (see taksh_fix_log.md Runs 4-6 for the full per-finding table).
 - **Wake 4:** opened DTN (Area B, 25 findings). Fixed the 8-finding core storage/eviction cluster (`c0c1007`: DTN-1,2,5,6,7,8,9,10) as one rewrite of `scf.rs`'s `buffer_message`/`evict_until`/`StoreKey`/byte-accounting — several of the individual fixes only compose correctly together (DTN-9's ordering fix is a precondition for DTN-8's O(1) eviction lookup). DTN-7's "P0 unbounded" defect turned out fully closed by DTN-1's reject-on-insert enforcement alone (see DTN-7's own status note).
 - **Wake 5:** fixed DTN-3+DTN-4 together (`b58de3d`) — any live, not-yet-offered message is now a relay candidate for any contact (DTN-4, store-carry-forward's core premise), gated by a new per-peer `offered` set (DTN-3) instead of the old global `forward_attempts` lockout. DTN-4's DP-based selectivity refinement not implemented — blocked by the same gap as ROUT-24 (see DTN-4's status note). Then DTN-11 (`ede33f1`, device-class ceilings now reach `ScfEngine` via a new `with_device_class` builder) and DTN-21/23/24/25 (`357ddb7`: deleted a false-delivery-receipt special case, deterministic priority+probability ranking, a `Result` that could only ever be `Ok`, and a message-count bandwidth limit that ignored message size).
@@ -444,7 +444,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **TAK-4** | High | `pg.rs:92-96` | No reconnection — one dropped PG connection bricks storage for the process lifetime | ✅ `f2fc6a7` |
 | **TAK-5** | High | `pg.rs:172-179` | Quota admission is a cross-store TOCTOU and never triggers eviction | ✅ `f766383` |
 | **TAK-6** | High | `pg.rs:88` | Database connection uses `NoTls` — password and all message CBOR travel in cleartext | 🔒 Blocked |
-| **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test | ✅ PENDING |
+| **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test | ✅ `ccf5a8e` |
 | **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three | ✅ `7bc7cf3` |
 | **TAK-9** | Medium | `pg.rs:191-195` | `u64 → i64` wrapping casts let a peer write negative timestamps into the store | ✅ `518b4ab` |
 | **TAK-10** | Medium | `pg.rs:197` | `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code | ✅ `c52f1a5` |
@@ -463,37 +463,37 @@ All 284 findings, in report order. Severities are post-verification.
 | **TAK-23** | Informational | `ml/mod.rs:9-15` | VERIFIED CLEAN — the ML predictor cannot bypass any security check | ⚪ N/A (verified clean) |
 | **TAK-24** | Low | `eviction.rs:59` | Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy | ✅ `1cda4a9` |
 | **TAK-25** | Low | `pg.rs:30-31` | `eviction_threshold` is a config field with no way to configure it | ✅ `ee7abdb` |
-| **FFI-1** | Critical | `wifi_direct.rs:1095-1112` | Wi-Fi Direct peer handles are allocated from two independent namespaces — every `p2p_send` misses its link | ⬜ |
-| **FFI-2** | Critical | `wifi_direct.rs:1049-1058` | `p2pSend` reports success for a frame that was only queued — `is_link_loss_error` can never fire | ⬜ |
-| **FFI-3** | Critical | `wifi_direct.rs:1189-1205` | GO-side links are keyed by remote **IP**, client-side by **MAC** — the two roles disagree on handles | ⬜ |
-| **FFI-4** | Critical | `wifiaware.rs:126-145` | Wi-Fi Aware never advertises the IRIS beacon — `publish()` discards its entire config and sets no `serviceSpecificInfo` | ⬜ |
-| **FFI-5** | Critical | `wifi_direct_serv.rs:19-27` | Wi-Fi Direct never advertises the TXT-record beacon either — `addLocalService` is given `emptyMap()` | ⬜ |
+| **FFI-1** | Critical | `wifi_direct.rs:1095-1112` | Wi-Fi Direct peer handles are allocated from two independent namespaces — every `p2p_send` misses its link | ✅ `f01135b` |
+| **FFI-2** | Critical | `wifi_direct.rs:1049-1058` | `p2pSend` reports success for a frame that was only queued — `is_link_loss_error` can never fire | ✅ `ef5c5a2` |
+| **FFI-3** | Critical | `wifi_direct.rs:1189-1205` | GO-side links are keyed by remote **IP**, client-side by **MAC** — the two roles disagree on handles | ✅ `a5a5e2d` |
+| **FFI-4** | Critical | `wifiaware.rs:126-145` | Wi-Fi Aware never advertises the IRIS beacon — `publish()` discards its entire config and sets no `serviceSpecificInfo` | ✅ `b76151d` |
+| **FFI-5** | Critical | `wifi_direct_serv.rs:19-27` | Wi-Fi Direct never advertises the TXT-record beacon either — `addLocalService` is given `emptyMap()` | ✅ `3a53a2d` |
 | **FFI-6** | Critical | `wifiaware.rs:1020-1050` | The Wi-Fi Aware NDP data path has no responder — no socket can ever be established | ⬜ |
-| **FFI-7** | Critical | `error.rs:7-26` | Missing runtime permissions surface as `SecurityException` — an undeclared error that aborts the Rust call | ⬜ |
-| **FFI-8** | High | `wifi_direct.rs:968-970` | Inbound Wi-Fi Direct frames are always attributed to the all-zero PeerId | ⬜ |
-| **FFI-9** | Medium | `wifi_direct.rs:1192-1199` | The band-fallback path in `create_group` can never fire — Kotlin's error string contains no "band" | ⬜ |
-| **FFI-10** | High | `wifi_direct.rs:92-96` | `go_addr` returns the GO's MAC address where Rust expects a routable endpoint address | ⬜ |
-| **FFI-11** | High | `wifiaware.rs:587-594` | Wi-Fi Aware link loss is reported as `"NDP network not yet available"` — a string no Rust matcher accepts | ⬜ |
-| **FFI-12** | High | `wifiaware.rs:1006-1012` | `unsubscribe` / `unpublish` / `stopDnsSd` drop session references without closing the platform sessions | ⬜ |
-| **FFI-13** | High | `wifi_direct.rs:906-931` | `start()` and `startDnsSd()` return success on a device that has no Wi-Fi Direct | ⬜ |
-| **FFI-14** | High | `wifi_direct.rs:1189-1215` | `addClient` silently succeeds for an unknown peer; `createGroup`/`joinGroup` return a fabricated group | ⬜ |
-| **FFI-15** | Medium | `wifi_direct.rs:1030-1042` | `startDiscovery` adds an unbounded number of DNS-SD service requests; `stopDiscovery` removes none | ⬜ |
-| **FFI-16** | High | `wifi_direct.rs:232-237` | The availability push channel is dead on Android — `spawn_avail_watcher` returns immediately for both transports | ⬜ |
-| **FFI-17** | Medium | `wifi_aware_adapter.rs:34-36` | RSSI is fabricated as 0 in Kotlin and then discarded by the bridge | ⬜ |
-| **FFI-18** | Medium | `wifi_direct.rs:1273` | `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks | ⬜ |
-| **FFI-19** | Medium | `wifi_direct_serv.rs:32-34` | Service-name constants disagree across the seam; `PublishConfig.service_name` and `PeerDiscovery.service_name` are both ignored | ⬜ |
+| **FFI-7** | Critical | `error.rs:7-26` | Missing runtime permissions surface as `SecurityException` — an undeclared error that aborts the Rust call | ✅ `1025e02` |
+| **FFI-8** | High | `wifi_direct.rs:968-970` | Inbound Wi-Fi Direct frames are always attributed to the all-zero PeerId | ✅ `b707198` |
+| **FFI-9** | Medium | `wifi_direct.rs:1192-1199` | The band-fallback path in `create_group` can never fire — Kotlin's error string contains no "band" | ✅ `c47c8a0` |
+| **FFI-10** | High | `wifi_direct.rs:92-96` | `go_addr` returns the GO's MAC address where Rust expects a routable endpoint address | ✅ `c47c8a0` |
+| **FFI-11** | High | `wifiaware.rs:587-594` | Wi-Fi Aware link loss is reported as `"NDP network not yet available"` — a string no Rust matcher accepts | ✅ `ef5c5a2` |
+| **FFI-12** | High | `wifiaware.rs:1006-1012` | `unsubscribe` / `unpublish` / `stopDnsSd` drop session references without closing the platform sessions | ✅ `9431aca` |
+| **FFI-13** | High | `wifi_direct.rs:906-931` | `start()` and `startDnsSd()` return success on a device that has no Wi-Fi Direct | ✅ `da7fb6e` |
+| **FFI-14** | High | `wifi_direct.rs:1189-1215` | `addClient` silently succeeds for an unknown peer; `createGroup`/`joinGroup` return a fabricated group | ✅ `4fd9504` |
+| **FFI-15** | Medium | `wifi_direct.rs:1030-1042` | `startDiscovery` adds an unbounded number of DNS-SD service requests; `stopDiscovery` removes none | ✅ `5a00f79` |
+| **FFI-16** | High | `wifi_direct.rs:232-237` | The availability push channel is dead on Android — `spawn_avail_watcher` returns immediately for both transports | ✅ `395fb03` |
+| **FFI-17** | Medium | `wifi_aware_adapter.rs:34-36` | RSSI is fabricated as 0 in Kotlin and then discarded by the bridge | ✅ `7542a83` |
+| **FFI-18** | Medium | `wifi_direct.rs:1273` | `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks | ✅ `f01135b` |
+| **FFI-19** | Medium | `wifi_direct_serv.rs:32-34` | Service-name constants disagree across the seam; `PublishConfig.service_name` and `PeerDiscovery.service_name` are both ignored | ✅ `0a916f3` |
 | **GAP-1** | High | `message_engine/mod.rs:1091-1140` | Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized | ⬜ |
 | **GAP-2** | High | `ble.rs:384` | `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB | ⬜ |
 | **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection | ⬜ |
-| **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms | ⬜ |
+| **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms | ✅ `e15809a` |
 | **GAP-5** | Medium | `ble_att.rs:9-14,` | The two live data-plane framings carry no version field, while all four discovery/latent framings do — the live wire format cannot be evolved | ⬜ |
 | **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field | ⬜ |
 | **GAP-7** | Critical | `message_engine/mod.rs:1207-1260` | `Transport::connect()` has zero production callers — no live transport can ever send a message | ✅ `d32c4cc` |
 | **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start | ⬜ |
-| **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded | ⬜ |
+| **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded | ✅ `e15809a` (partial) |
 | **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender | ⬜ |
 | **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable | ⬜ |
-| **GAP-12** | Medium | `ble.rs:744-790` | The BLE per-peer poller wakes 20×/second forever, per connected peer, while its two sibling transports implement adaptive backoff | ⬜ |
+| **GAP-12** | Medium | `ble.rs:744-790` | The BLE per-peer poller wakes 20×/second forever, per connected peer, while its two sibling transports implement adaptive backoff | ✅ `f9d740d` (partial) |
 | **GAP-13** | Medium | `internet.rs:100-136` | The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently | ⬜ |
 | **GAP-14** | Informational | `-` | Verified-clean classes (a negative result, recorded so nobody re-hunts them) | ⬜ |
 
@@ -8264,7 +8264,7 @@ if !host_is_loopback(&config.host) && config.sslmode == SslMode::Disable {
 
 #### TAK-7: `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test
 - **Severity:** High
-- **Fix status:** ✅ Fixed · Tier 4 · commit TAK-7-PENDING · 2026-08-29
+- **Fix status:** ✅ Fixed · Tier 4 · commit ccf5a8e · 2026-08-29
 - **Confidence:** Certain
 - **Location:** Declared `crates/iris-core/src/transport/mod.rs:285-293`; only other reference is the test `crates/iris-core/src/transport/manager.rs:587-596`
 - **What:** The enum's own doc comment states the rule: "only one transport per conflicting group may be CONNECTED at a time". No transport ever reports a conflict group — `TransportCapabilities` (mod.rs:158-181) has no field for it — and `manager.rs` never consults it during selection or connection. Repo-wide grep finds exactly two uses: the declaration, and a test asserting the variants differ from one another.
