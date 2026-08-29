@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 40 | 0 | 85 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-22/38/39/40 + MG-23 + RF-3 done; 85/126 done, 40 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 38 | 0 | 87 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-22/38/39/40 + MG-23 + RF-3/17/24/34 done; 87/126 done, 38 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **41** | **0** | **236** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **38** | **0** | **238** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -4951,7 +4951,7 @@ if g.len() >= MAX_BACKLOG_ENTRIES {
 
 #### RF-17: `close()` errors are discarded on every LoRa/satellite teardown path
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 8eb375d · 2026-08-29 · detach_adapter warns + records close_failures metric; shutdown propagates error after setting Unavailable
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:1320-1327` (`detach_adapter`), `1612-1621` (`shutdown`); `satellite.rs:929`, `933`, `944-951`, `1269-1278`
 - **What:** five `let _ = adapter.close().await;` sites. The caller of `detach_adapter()` (which returns `()`) and `shutdown()` (which returns `Ok(())` unconditionally) can never learn that the serial port / modem session failed to close.
@@ -5178,7 +5178,7 @@ pub fn record_mailbox_check(&self) -> bool {   // false = skipped, too soon
 #### RF-24: `discovery_should_rearm()` never arms the window — it returns `true` on every call, so the 30 s cadence is dead code
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit e538aaf · 2026-08-29 · None arm now writes discovery_until slot; regression test rf24_discovery_rearm_window_gates_second_call
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:1032-1042` (fn `discovery_should_rearm`)
 - **What:** `discovery_until` starts `None` (line 833). The only assignment is **inside the `Some(until)` arm** (line 1037), which is unreachable while the slot is `None`. The `None` arm returns `true` without writing the slot. The field is therefore `None` forever and the function is a constant `true`. `DISCOVERY_WINDOW` (line 91) is never used for anything.
@@ -5469,7 +5469,7 @@ for f in adapter.incoming().await {
 
 #### RF-34: The TXT record's `freshness_minutes` is parsed and never used, and `peer_short` is fully attacker-chosen
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (freshness only; table-key deferred) · Tier 4 · commit dfcd827 · 2026-08-29 · freshness staleness check in discover_peers; freshness==0 sentinel; peer_short/table-key change deferred
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct_serv.rs:109-112`, `156-163` (fn `parse`), `169-173` (`candidate_peer_id`); consumed at `wifi_direct.rs:1098-1112`
 - **What:** the beacon carries a freshness field described as an "anti-stale hint", and no consumer ever compares it to anything. `grep -n "freshness_minutes" wifi_direct.rs` → zero hits. Separately, `peer_short` is 16 attacker-chosen bytes (the record is unauthenticated — signing "lives in the IRIS envelope layer", line 27-28) and `candidate_peer_id()` zero-pads it into a full 32-byte `PeerId` that is then used as the `PeerInfo.peer_id` key and matched against `config.filter`.
