@@ -229,3 +229,60 @@ fn route2_spray_bounds_overhead_property() {
         out.avg_hop_count
     );
 }
+
+#[test]
+fn sim32_inject_standard_no_self_addressed_messages() {
+    // Regression: `inject_standard` with per_node == n - 1 would produce one
+    // self-addressed message per source node (destination formula wraps around
+    // to the sender). Those messages can never be delivered and silently deflate
+    // the delivery ratio (SIM-32).
+    //
+    // n=4, per_node=3 (=n-1): k=2 gives d=s for every source. Before the fix
+    // 4 undeliverable messages were injected; after the fix they are skipped.
+    let mut sim = iris_core::sim::scenario::dense_mesh(4, 1);
+    inject_standard(&mut sim, 3, 100, 3600);
+    let out = sim.run();
+    // For n=4, per_node=3: 4 sources × 3 - 4 self-addressed skips = 8 valid.
+    assert_eq!(
+        out.injected_total, 8,
+        "with n=4 per_node=3, exactly 8 non-self-addressed messages should be injected (SIM-32)"
+    );
+    // Dense mesh should deliver ≥ 90% of those 8 valid messages.
+    assert!(
+        out.delivery_ratio > 0.9,
+        "delivery ratio {:.2} unexpectedly low (SIM-32)",
+        out.delivery_ratio
+    );
+}
+
+#[test]
+fn sim12_injection_at_contact_time_is_carried_on_that_contact() {
+    // Regression: contacts sorted before injections at the same timestamp
+    // (kind 0=contact, 1=injection), so a message injected at T always missed
+    // the T-contacts and waited a full period (SIM-12).
+    //
+    // Setup: 2-node sim, one contact at t=100, one injection at t=100.
+    // With the old ordering: contact fires first (no messages yet) → the
+    // message is injected into node-0's buffer, but no further contact fires
+    // → the message is never delivered and delivery_ratio == 0.
+    // With the fix: injection fires first → message in node-0's buffer → the
+    // t=100 contact fires → delivered immediately. delivery_ratio == 1.
+    use iris_core::sim::{ContactEvent, Injection, Simulation};
+    use iris_core::sim::scenario::sim_peer;
+
+    let mut sim = Simulation::new(2, 42);
+    sim.add_contact(ContactEvent { at_ms: 100, a: 0, b: 1 });
+    sim.inject(Injection::new(
+        100,
+        0,
+        sim_peer(1),
+        iris_core::message::MessagePriority::P4,
+        b"test",
+        3600,
+    ));
+    let out = sim.run();
+    assert_eq!(
+        out.delivery_ratio, 1.0,
+        "injection at the same ms as the only contact must be delivered on that contact (SIM-12)"
+    );
+}

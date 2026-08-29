@@ -67,8 +67,13 @@ impl SimNode {
         SimNode {
             peer_id,
             scf: ScfEngine::new(MemoryStorage::new(), ScfConfig::default())
-                .with_virtual_clock(clock),
-            forwarded: ForwardedCache::default(),
+                .with_virtual_clock(Arc::clone(&clock)),
+            // SIM-10: wire the same virtual clock into ForwardedCache so the
+            // sim's anti-loop dedup window expires on virtual time, not wall
+            // time.  Without this, a message with TTL > EXACT_WINDOW (1 h)
+            // would never re-trigger once seen — the real dedup window lapses
+            // but the sim's never does.
+            forwarded: ForwardedCache::default().with_virtual_clock(Arc::clone(&clock)),
             hops_by_msg: HashMap::new(),
             buffered_at_ms: HashMap::new(),
             delivered: Vec::new(),
@@ -469,6 +474,16 @@ impl Simulation {
             self.nodes[dst].delivered.push((id, self.now_ms));
             self.nodes[src].scf.mark_forwarded(&id, dst_peer, true);
             self.nodes[dst].scf.mark_forwarded(&id, dst_peer, true);
+            // SIM-30: release per-message bookkeeping at the forwarding src and
+            // receiving dst on terminal delivery.  Without this, hops_by_msg and
+            // spray grow O(nodes × messages) and are never freed — blocking
+            // large-scale runs.  Other nodes that still carry a copy keep their
+            // entries (they need the hop budget); dedup + delivered-vec guards
+            // prevent re-delivery at dst regardless.
+            self.nodes[src].hops_by_msg.remove(&id);
+            self.nodes[dst].hops_by_msg.remove(&id);
+            self.nodes[src].spray.remove(&id);
+            self.nodes[dst].spray.remove(&id);
             return ForwardResult::Delivered;
         }
 
@@ -598,7 +613,14 @@ impl Simulation {
 
     /// Run all contacts and injections on the timeline, returning the outcome.
     pub fn run(mut self) -> SimOutcome {
-        // Event timeline: (sim_ms, kind) — 0 = contact, 1 = injection.
+        // Event timeline: (sim_ms, kind) — 0 = injection, 1 = contact.
+        // Injections sort BEFORE contacts at the same timestamp (SIM-12): a
+        // message injected at time T is buffered before the T-contacts fire,
+        // so it can be carried on the very first contact wave.  The previous
+        // convention (0=contact, 1=injection) meant an injection at T always
+        // missed the T-contacts and waited a full period — both unintuitive
+        // and inconsistent with how scenario authors write tests.
+        //
         // Contacts are DEDUPLICATED by timestamp: the contact branch below
         // processes every contact at `sim_ms` in one pass, so one marker per
         // timestamp (not per contact). A per-contact marker would re-run all
@@ -609,13 +631,13 @@ impl Simulation {
         let mut contact_ts: std::collections::HashSet<u64> = std::collections::HashSet::new();
         for c in &self.contacts {
             if contact_ts.insert(c.at_ms) {
-                timeline.push((c.at_ms, 0));
+                timeline.push((c.at_ms, 1)); // SIM-12: contact sorts after injection
             }
         }
         // Injections keep one marker EACH (the cursor consumes one injection
         // per marker; deduping them would silently drop same-timestamp ones).
         for i in &self.injections {
-            timeline.push((i.at_ms, 1));
+            timeline.push((i.at_ms, 0)); // SIM-12: injection sorts before contact
         }
         timeline.sort_unstable_by_key(|(t, k)| (*t, *k));
 
@@ -648,8 +670,8 @@ impl Simulation {
                 n.evictions += reaped.len() as u64;
             }
             match *kind {
-                1 => {
-                    // Injection.
+                0 => {
+                    // Injection (SIM-12: processes before contacts at same ms).
                     let (inj, rest) = inj_head
                         .split_first()
                         .expect("timeline injection marker implies a pending injection");
@@ -685,7 +707,7 @@ impl Simulation {
                         at_ms: *sim_ms,
                     });
                 }
-                0 => {
+                1 => {
                     // Contact: forward each direction (collect first to avoid
                     // borrowing self while mutating nodes).
                     let evs: Vec<ContactEvent> = self
@@ -1277,6 +1299,64 @@ mod tests {
             out.blocked_hop_budget >= 1,
             "hop-budget exhaustion must be tallied, got {}",
             out.blocked_hop_budget
+        );
+    }
+
+    #[test]
+    fn sim30_hops_by_msg_pruned_on_terminal_delivery() {
+        // Regression: hops_by_msg and spray were append-only — every message ever
+        // seen kept its entry for the whole run, making memory O(nodes × messages)
+        // and blocking large-scale simulations (SIM-30).
+        //
+        // After the fix, the forwarding src and receiving dst nodes both have
+        // their entries removed on terminal delivery.  Two-node direct-delivery
+        // scenario: after the run the delivering src must have no hops_by_msg
+        // entry for the delivered message.
+        let mut sim = Simulation::new(2, 1);
+        sim.add_contact(ContactEvent { at_ms: 500, a: 0, b: 1 });
+        let inj = Injection::new(100, 0, node_id(1), MessagePriority::P4, b"hi", 3600);
+        sim.inject(inj);
+        let out = sim.run();
+        assert_eq!(out.delivered_total, 1, "message must be delivered");
+        // After delivery, both nodes must have released their hops_by_msg entry.
+        let delivered_id = out.nodes[1].delivered[0].0;
+        assert!(
+            !out.nodes[0].hops_by_msg.contains_key(&delivered_id),
+            "src node must release hops_by_msg on terminal delivery (SIM-30)"
+        );
+        assert!(
+            !out.nodes[1].hops_by_msg.contains_key(&delivered_id),
+            "dst node must not have a hops_by_msg entry after delivery (SIM-30)"
+        );
+    }
+
+    #[test]
+    fn sim10_forwarded_cache_uses_virtual_clock() {
+        // Regression: SimNode::new() left ForwardedCache on wall time while
+        // ScfEngine used the virtual clock.  A sim run finishes in microseconds
+        // of real time, so the 1-hour EXACT_WINDOW never elapsed and the
+        // anti-loop exact set was permanent — loop_free() was guaranteed by
+        // construction (SIM-10).
+        //
+        // Fix: ForwardedCache::with_virtual_clock is now called in SimNode::new.
+        // This verifies the wiring: advance virtual time past EXACT_WINDOW and
+        // confirm the ring drains on the next record(), proving wall time is
+        // NOT what drives expiry.
+        use std::sync::atomic::Ordering;
+        let clock = Arc::new(AtomicU64::new(0));
+        let mut cache = crate::routing::dedup_cache::ForwardedCache::default()
+            .with_virtual_clock(Arc::clone(&clock));
+        cache.record(crate::protocol::MessageId::new_v7());
+        assert_eq!(cache.ring_len(), 1);
+
+        // Advance virtual time past 1-hour EXACT_WINDOW (3600 s).
+        clock.store(3601, Ordering::Relaxed);
+        // record() triggers evict_old() — the existing entry must be purged.
+        cache.record(crate::protocol::MessageId::new_v7());
+        assert_eq!(
+            cache.ring_len(), 1,
+            "the t=0 entry must be evicted by virtual-clock-driven EXACT_WINDOW; \
+             only the new entry should remain (SIM-10)"
         );
     }
 }

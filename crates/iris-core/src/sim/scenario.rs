@@ -228,11 +228,18 @@ pub fn random_walk(nodes: usize, pairs: usize, seed: u64) -> Simulation {
 
 /// Inject P4 messages from every source node to a rotating peer (used by the
 /// three canonical scenarios to produce measurable delivery ratios).
+///
+/// SIM-32: the destination formula `(s + 1 + k) % n` wraps around to `s`
+/// when `k == n - 1`, producing a self-addressed message that can never be
+/// delivered.  Skip that pair to avoid silently deflating delivery ratios.
 pub fn inject_standard(sim: &mut Simulation, per_node: usize, start_ms: u64, ttl: u64) {
     let n = sim.node_count();
     for s in 0..n {
         for k in 0..per_node {
             let d = (s + 1 + k) % n;
+            if d == s {
+                continue; // SIM-32: self-addressed — skip
+            }
             sim.inject(Injection::new(
                 start_ms + k as u64 * 50,
                 s,
@@ -282,6 +289,9 @@ pub fn pilot_nct_of_n(nodes: usize, per_node: usize, seed: u64) -> Simulation {
     for s in 0..nodes {
         for k in 0..per_node {
             let d = (s + 1 + k) % nodes;
+            if d == s {
+                continue; // SIM-32: self-addressed — skip
+            }
             sim.inject(Injection::new(
                 0,
                 s,
