@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 67 | 0 | 58 | 1 | 0 | **IN PROGRESS 2026-08-29** — MG-1/2/4/9/11/13/21, GAP-2/3/6, RF-1/4/5/7/10/14/16/29/30/31/33/41, BLE-14/15/18/19/20/21/23/31/33/34/35, TAK-7/8, SIM-9/43 area backfills, internet/GAP-8/10/11/13 fixes, manager shutdown/scoring — 58/126 done, 67 remaining, 1 blocked (TLS — supply-chain gate) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 53 | 0 | 72 | 1 | 0 | **IN PROGRESS 2026-08-29** — MG-1/2/4/9/11/13/21, GAP-2/3/6, RF-1/4/5/7/10/14/16/29/30/31/33/41, BLE-14/15/18/19/20/21/23/31/33/34/35, TAK-7/8, SIM-9/43 area backfills, internet/GAP-8/10/11/13 fixes, manager shutdown/scoring — 72/126 done, 53 remaining, 1 blocked (TLS — supply-chain gate) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **68** | **0** | **209** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **54** | **0** | **223** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -5350,7 +5350,7 @@ for f in adapter.incoming().await {
 
 #### RF-29: Malformed, truncated and zero-length inbound frames are dropped with no counter and no log
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 69f9fa4  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:959-966` (fn `spawn_poller`)
 - **What:** three silent `continue`s. Neither `malformed_rx`-style metrics (which `lora.rs:1092` and `satellite.rs:779` both have) nor a `tracing` call exist on any of them.
@@ -5374,7 +5374,7 @@ for f in adapter.incoming().await {
 
 #### RF-30: `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit b5a2ddb  ·  2026-08-29
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:1312-1329` (fn `shutdown`), `1290-1292` (fn `incoming_messages`), `mod.rs:304-324` (`broadcast_stream`)
 - **What:** shutdown aborts the poller and clears the links, but `incoming_tx` is owned by the transport and stays alive as long as the `Arc<WifiDirectTransport>` does. `broadcast_stream` terminates only on `RecvError::Closed`, which requires **all** senders to drop.
@@ -5403,7 +5403,7 @@ for f in adapter.incoming().await {
 
 #### RF-31: `dropped_inbound` is write-only — the counter has no accessor
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 69f9fa4  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:794-795` (field), `980` (only write)
 - **What:** the field is declared "Inbound frames that could not be delivered upstream (telemetry)", incremented once, and never read. `grep -n "dropped_inbound" wifi_direct.rs` → 795, 834, 946, 980. There is no `pub fn dropped_inbound()`.
@@ -5683,7 +5683,7 @@ if state.load() == TransportState::Connected && live_connections.fetch_sub(1, Ac
 
 #### RF-41: The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 6ddf2fa  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:290-306` (fn `spawn_reader`), `173-184` (`frame_payload_len`)
 - **What:** `_ => break` swallows the distinction between a clean peer close, a TCP reset, and a 10 s stall, with no log and no metric. And `frame_payload_len` returns `Some(0)` for a zero length; the reader then does `read_exact(&mut [])` (an immediate success) and publishes an empty `IncomingMessage` — whereas `wifi_direct.rs:964` explicitly rejects `len == 0` on the same framing.
@@ -5868,7 +5868,7 @@ repo-wide greps for unwired symbols.
 #### MG-1: Single-best selection has no score floor — an "eliminated" transport is still returned
 - **Severity:** Medium  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit b607d97  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:154-162` (fn `select_transports`), score at `:178-183`
 - **What:** `score_transport` assigns `-1000.0` to states it means to *eliminate*, and the cost penalty can drive a score to ≈ −1500. But the `score > 0.0` filter is applied **only** on the multipath branch. The `truncate(1)` branch keeps whatever sorted first, however negative. A transport the scorer explicitly disqualified is handed back as "the best transport".
@@ -5911,7 +5911,7 @@ if !(req.multipath && req.priority.is_emergency()) { candidates.truncate(1); }
 #### MG-2: `Connecting` passes the `>= Available` eligibility filter
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit b607d97  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:141`; discriminants `crates/iris-core/src/transport/mod.rs:73-86`
 - **What:** `TransportState` is ordered `Unavailable(0) < Available(1) < Connecting(2) < Degraded(3) < Connected(4)`. The eligibility filter is `state() >= Available`, which admits `Connecting` — a transport with *no link at all*, mid-association.
@@ -5976,7 +5976,7 @@ Additionally clamp `congestion_level` and `estimated_battery_ma` inside `score_t
 #### MG-4: Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** PARTIALLY-CORRECT. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit b607d97  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:178-206` (fn `score_transport`), esp. `:196-201`
 - **What:** Every term in the score is bounded (state ∈ [−1000, 40], latency bonus ∈ (0, 100], congestion ∈ [−30, 0]) **except** the bandwidth bonus, which is `log2(bps) * 5.0` on an absolute bit rate. The Connected→Degraded gap is 35 points; the bandwidth term spans 35 points for every 128× bandwidth ratio. So for any message over 10 000 bytes, bandwidth dominates state.
@@ -6136,7 +6136,7 @@ One hit: the definition. `iris-android/src/engine.rs:92` constructs the manager 
 #### MG-9: `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. High once a satellite transport is registered in a platform build. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit b607d97  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:173-207` (fn `score_transport`); type at `crates/iris-core/src/transport/mod.rs:182-190`, field at `:169`
 - **What:** `score_transport` reads `caps.typical_latency_ms` and the dynamic `TransportCost`, but never `caps.cost_class`. There is no hard gate on `Expensive`, and no user warning path.
@@ -6193,7 +6193,7 @@ mod.rs:283 /// CONNECTED at a time (TRANSPORT_ABSTRACTION.md §Multi-Transport C
 
 #### MG-11: `TransportManager::shutdown()` does not exist
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit b607d97  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:69-164` (the whole `impl`)
 - **What:** The manager exposes `register`, `deregister`, `get`, `list`, `select_transports`, `topology_events` — and no shutdown. `grep -n "fn shutdown" crates/iris-core/src/transport/manager.rs` returns only `:328`, the `StubTransport` trait impl.
@@ -6232,7 +6232,7 @@ pub async fn shutdown(&self) {
 
 #### MG-13: `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 1e80697  ·  2026-08-29
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/manager.rs:38-43`, `:139-150`; consumer at `crates/iris-core/src/message_engine/mod.rs:1218-1236`
 - **What:** Selection resolves each `Arc<dyn Transport>` under the read lock, discards it, and returns a bare `TransportId`. The caller must re-acquire the lock and re-look-up — twice per send, once for MTU and once for the actual send — and silently skips anything that vanished in between.
@@ -6467,7 +6467,7 @@ The doc comment claims the manager never selects satellite for P4; the body neve
 
 #### MG-21: `AtomicState` enforces no transitions and its inner field is public
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 1e80697  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/mod.rs:112-125`
 - **What:** `AtomicState` wraps a `pub AtomicU8` and offers only unconditional `store`. There is no compare-exchange, no legality check, and callers can bypass `store` entirely by touching `.0`.
@@ -10693,7 +10693,7 @@ Explicitly **verified clean**: all three discovery-beacon *framings* (`ble_adver
 
 #### GAP-2: `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 4a4f2cb  ·  2026-08-29
 - **Confidence:** Certain
 - **Blind spot:** B1 — a static capability describing a per-connection quantity
 - **Location:** `crates/iris-core/src/transport/ble.rs:384`; `crates/iris-core/src/transport/ble_att.rs:37-41, 165-186`
@@ -10718,7 +10718,7 @@ ble_att.rs:181:        if count > MAX_CHUNKS { return Err(FrameError::ChunkCount
 
 #### GAP-3: `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (partial — BLE state recovery added; Wi-Fi Aware/Direct stop/start cycle deferred)  ·  Tier 4  ·  commit 4a4f2cb  ·  2026-08-29
 - **Confidence:** High
 - **Blind spot:** B2 — restart lifecycle
 - **Location:** `crates/iris-core/src/transport/ble.rs:866-871`; `crates/iris-android/src/engine.rs:229-244` (`stop_all`) vs `:158-178` (`start_all`)
@@ -10797,7 +10797,7 @@ lora.rs:587:       pub const FRAME_VERSION: u8 = 1;               lora.rs:669 re
 
 #### GAP-6: `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit d0cb620  ·  2026-08-29
 - **Confidence:** Certain
 - **Blind spot:** B5 / B9 — semantic-unit confusion on a shared field, clock-source mixing
 - **Location:** `crates/iris-core/src/transport/ble.rs:653-662`; `crates/iris-core/src/transport/wifiaware.rs:366-372`; `crates/iris-core/src/transport/wifi_direct.rs:467-473`
