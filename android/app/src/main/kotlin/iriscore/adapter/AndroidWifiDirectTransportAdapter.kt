@@ -79,6 +79,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         const val DNS_SD_SERVICE_TYPE = "_iris._tcp"
 
         /**
+         * Bonjour instance name every IRIS node registers its local service
+         * under (`registerDnsSd`'s `WifiP2pDnsSdServiceInfo.newInstance`) —
+         * fixed, not per-device, since every peer runs the same code.
+         */
+        const val DNS_SD_INSTANCE_NAME = "iris"
+
+        /**
          * TXT-record key the 22-byte IRIS beacon (hex-encoded) is published
          * under (FFI-5). DNS-SD TXT values are text; hex is the binary-safe
          * encoding both `registerDnsSd` and `encodeTxtRecord` agree on.
@@ -171,8 +178,23 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * One request, retained and added once via its own gate, fixes this the
      * same way `dnsSdGate` already avoids re-registering the local service.
      */
+    // HW-16: `newInstance(serviceType)` (single-arg) is documented — Android's
+    // own API reference, confirmed against real live behavior across 2
+    // devices this session — to search for the service TYPE only (the PTR
+    // record). It does NOT request TXT data. `newInstance(instanceName,
+    // serviceType)` is the overload the docs explicitly describe as
+    // "Create a service discovery request to get the TXT data from the
+    // specified Bonjour service." This is why `dnsSdServiceListener` fired
+    // reliably and repeatedly (PTR responses were arriving fine) while
+    // `dnsSdTxtRecordListener` never fired even once, live, on either of 2
+    // devices, across three separate fix attempts (HW-13/14/15) that all
+    // addressed real but secondary issues — none of them could have worked
+    // alone, because TXT was never actually being requested at all. Every
+    // IRIS node registers under the same fixed instance name
+    // (`DNS_SD_INSTANCE_NAME`, `registerDnsSd`'s `WifiP2pDnsSdServiceInfo`),
+    // so this is always a valid, known instance to scope the request to.
     private val serviceRequest: WifiP2pDnsSdServiceRequest by lazy {
-        WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_SERVICE_TYPE)
+        WifiP2pDnsSdServiceRequest.newInstance(DNS_SD_INSTANCE_NAME, DNS_SD_SERVICE_TYPE)
     }
     private val serviceRequestGate = SessionGate<Unit>(create = {
         val channel = startGate.ensureStarted()
@@ -668,7 +690,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // half, WifiDirectTxtRecord::parse rejects every peer's record and
         // discovery yields zero peers, permanently.
         val serviceInfo = WifiP2pDnsSdServiceInfo.newInstance(
-            "iris",
+            DNS_SD_INSTANCE_NAME,
             DNS_SD_SERVICE_TYPE,
             mapOf(BEACON_TXT_KEY to PeerIdCodec.toHex(pendingOwnBeacon)),
         )
@@ -705,18 +727,20 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             "IrisWifiDirectDiag",
             "dnsSdTxtRecordListener FIRED fullDomainName=$fullDomainName txtRecordMap=$txtRecordMap device=${srcDevice.deviceAddress}",
         )
-        val address = srcDevice.deviceAddress
-        val beacon = encodeTxtRecord(txtRecordMap)
-        // HW-14: if the service listener already fired for this address
-        // (and found nothing to pair it with), finish the discovery now —
-        // this is very likely the common order in practice, given the
-        // service listener firing alone (with no TXT listener ever
-        // following) is exactly what was observed live.
-        if (pendingServiceOnly.remove(address) != null) {
-            publishDiscoveredMatch(address, beacon)
-        } else {
-            pendingTxtBeacons[address] = beacon
-        }
+        // HW-16 (continued): the TXT callback carries everything needed to
+        // publish a discovery on its own (address + beacon) — waiting to
+        // pair with the service (PTR) listener is unnecessary and, live,
+        // actively harmful: the two-arg `WifiP2pDnsSdServiceRequest`
+        // (instanceName+serviceType) this session switched to for TXT data
+        // was observed to make `dnsSdServiceListener` stop firing ENTIRELY
+        // on at least one real device — the platform appears to answer
+        // either the PTR-style query or the TXT-style query per
+        // registered request, not always both, at least on some OEM Wi-Fi
+        // stacks. Publish directly here; `dnsSdServiceListener` (still kept,
+        // still paired via `pendingServiceOnly`/`pendingTxtBeacons` for
+        // devices where it DOES fire and TXT arrives first) becomes a
+        // secondary, redundant path rather than the only one.
+        publishDiscoveredMatch(srcDevice.deviceAddress, encodeTxtRecord(txtRecordMap))
     }
 
     /**
