@@ -109,6 +109,10 @@ pub struct CostGuardConfig {
     pub est_cost_per_msg_inr: f64,
     /// Per-mailbox-check RX cost (≈$0.05 × provisional FX), folded in.
     pub mailbox_check_cost_inr: f64,
+    /// RF-22: minimum interval between billed mailbox polls (ms). Calls that
+    /// arrive sooner are skipped without billing or I/O. Default 300 s —
+    /// derived from the Iridium check cost: 45 checks × ₹4.5 ≈ daily budget.
+    pub min_mailbox_interval_ms: u64,
     /// When true, discretionary P1/P2 sends require confirmation-hook approval.
     pub confirm_discretionary_p1_p2: bool,
 }
@@ -120,6 +124,7 @@ impl Default for CostGuardConfig {
             daily_budget_inr: 200.0,
             est_cost_per_msg_inr: SAT_EST_TX_COST_INR,
             mailbox_check_cost_inr: 0.05 * SAT_USD_INR,
+            min_mailbox_interval_ms: RETRY_BASE_MS, // 300 s — matches AC-9 custody base
             confirm_discretionary_p1_p2: true,
         }
     }
@@ -353,6 +358,10 @@ pub struct SatelliteCostGuard {
     last_ms: AtomicU64,
     /// SAT-RT-103: unique admission tokens for exact-token refunds.
     next_token: AtomicU64,
+    /// RF-22: monotonic timestamp of the last billed mailbox check. Used to
+    /// enforce `cfg.min_mailbox_interval_ms` and prevent budget exhaustion
+    /// from high-frequency polling.
+    last_mailbox_ms: AtomicU64,
 }
 
 /// One non-emergency admission inside the rolling hourly window.
@@ -381,6 +390,7 @@ impl SatelliteCostGuard {
             now_fn,
             last_ms: AtomicU64::new(0),
             next_token: AtomicU64::new(1),
+            last_mailbox_ms: AtomicU64::new(0),
         }
     }
 
@@ -521,12 +531,26 @@ impl SatelliteCostGuard {
     }
 
     /// Bill one RX mailbox poll (checks cost money even when nothing arrives
-    /// — FC-7). Never refused: skipping checks loses inbound traffic.
-    pub fn record_mailbox_check(&self) {
+    /// — FC-7). RF-22: returns `false` (skip this poll) when the last billed
+    /// check is less than `cfg.min_mailbox_interval_ms` ago, preventing
+    /// high-frequency callers from exhausting the daily budget on empty polls.
+    pub fn record_mailbox_check(&self) -> bool {
         let t = self.now();
-        let _ = t;
+        let last = self.last_mailbox_ms.load(Ordering::Acquire);
+        if t.saturating_sub(last) < self.cfg.min_mailbox_interval_ms {
+            return false;
+        }
+        // CAS: only one thread bills per interval window.
+        if self
+            .last_mailbox_ms
+            .compare_exchange(last, t, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return false;
+        }
         self.mailbox_today.fetch_add(1, Ordering::Relaxed);
         self.ledger.record(LedgerEvent::MailboxCheckBilled);
+        true
     }
 
     /// Remaining slots this hour for non-emergency traffic.
@@ -1211,7 +1235,12 @@ impl SatelliteTransport {
         let Some(adapter) = adapter else {
             return Err(TransportError::NotConnected);
         };
-        self.guard.record_mailbox_check();
+        // RF-22: skip this poll if the minimum inter-check interval has not
+        // elapsed — prevents a high-frequency caller from exhausting the daily
+        // budget on empty mailbox sessions.
+        if !self.guard.record_mailbox_check() {
+            return Ok(0);
+        }
         self.metrics
             .mailbox_checks()
             .fetch_add(1, Ordering::Relaxed);
