@@ -313,7 +313,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ⬜ |
 | **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ✅ |
 | **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ✅ |
-| **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ⬜ |
+| **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ✅ (backfill) |
 | **BLE-36** | Medium | `wifiaware.rs:906-913` | `stop_discovery` is a partial stop, and `shutdown` is irreversible | ⬜ |
 | **BLE-37** | Low | `wifiaware.rs:125-147` | `PublishConfig` is a constant — every field is dead configuration | ⬜ |
 | **BLE-38** | Low | `wifiaware.rs:98-103` | NAN RSSI is carried across the FFI and dropped at the bridge | ⬜ |
@@ -364,17 +364,17 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ✅ 699dd5d |
 | **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused | ⬜ |
 | **RF-45** | Medium | `simulated.rs:159-166` | `connect()` cannot fail, `bandwidth_bps` never throttles, ordering is not preserved, and in-flight sends survive shutdown | ⬜ |
-| **MG-1** | Medium | `manager.rs:154-162` | Single-best selection has no score floor — an "eliminated" transport is still returned | ⬜ |
-| **MG-2** | Medium | `manager.rs:141` | `Connecting` passes the `>= Available` eligibility filter | ⬜ |
+| **MG-1** | Medium | `manager.rs:154-162` | Single-best selection has no score floor — an "eliminated" transport is still returned | ✅ |
+| **MG-2** | Medium | `manager.rs:141` | `Connecting` passes the `>= Available` eligibility filter | ✅ |
 | **MG-3** | Medium | `manager.rs:152-160` | `total_cmp` does not reject NaN — a NaN score sorts **first** and wins selection | ✅ `5852ff2` |
-| **MG-4** | Medium | `manager.rs:178-206` | Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected | ⬜ |
+| **MG-4** | Medium | `manager.rs:178-206` | Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected | ✅ |
 | **MG-5** | Medium | `manager.rs:156-160` | No fallback candidate for P2–P7 — the manager provides no transport-level failover at all | ⬜ |
 | **MG-6** | Medium | `manager.rs:109-117` | `deregister` holds the registry write lock across `transport.shutdown().await` | ✅ `bf19112` |
 | **MG-7** | Medium | `manager.rs:84-106` | State-forwarder task is spawned before the duplicate check and is never aborted on deregister | ✅ bf19112 |
 | **MG-8** | Medium | `manager.rs:78-81` | `topology_events()` has zero subscribers — transport state changes are broadcast into a void | ⬜ |
-| **MG-9** | Medium | `manager.rs:173-207` | `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority | ⬜ |
+| **MG-9** | Medium | `manager.rs:173-207` | `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority | ✅ |
 | **MG-10** | Medium | `transport/mod.rs:282-292` | `RadioConflictGroup` is defined and never enforced anywhere | ✅ `ccf5a8e` |
-| **MG-11** | Medium | `manager.rs:69-164` | `TransportManager::shutdown()` does not exist | ⬜ |
+| **MG-11** | Medium | `manager.rs:69-164` | `TransportManager::shutdown()` does not exist | ✅ |
 | **MG-12** | Medium | `manager.rs:84-106` | No recovery-after-failure logic — no backoff, no retry, no `TransportPermanentFailure` | ⬜ |
 | **MG-13** | Medium | `manager.rs:38-43` | `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send | ⬜ |
 | **MG-14** | Medium | `manager.rs:47-60` | `target_peer` is never read — spec selection rule 1 (reachability) is unimplemented, and broadcast/unicast capability flags are ignored | ⬜ |
@@ -3957,7 +3957,7 @@ $ grep -rn "dropped_inbound" crates/iris-core/src/transport/wifiaware.rs
 
 #### BLE-35: No timeout on any Wi-Fi Aware adapter call
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Already fixed (backfill) — `CONNECT_TIMEOUT` (15 s) and `SEND_TIMEOUT` (10 s) constants exist; `open_ndp` and `ndp_send` are both wrapped in `tokio::time::timeout`.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:708-715`, `:985-988`, `:1036`, `:924-927`, `:1094-1099`
 - **What:** Every `await` on the adapter is bare. A JNI/coroutine call that never returns hangs the

@@ -11,7 +11,8 @@ use tokio::sync::{broadcast, RwLock};
 
 use crate::message::{MessagePriority, PeerId};
 use crate::transport::{
-    TopologyEvent, Transport, TransportCapabilities, TransportCost, TransportId, TransportState,
+    TopologyEvent, Transport, TransportCapabilities, TransportCost, TransportCostClass, TransportId,
+    TransportState,
 };
 use crate::TransportError;
 
@@ -141,20 +142,35 @@ impl TransportManager {
         self.registry.read().await.keys().cloned().collect()
     }
 
+    /// Shut down all registered transports and clear the registry.
+    pub async fn shutdown(&self) {
+        let ids: Vec<TransportId> = self.registry.read().await.keys().cloned().collect();
+        for id in ids {
+            self.deregister(&id).await.ok();
+        }
+    }
+
     /// Select transports for a send request, ranked by score.
     ///
     /// Rules (TRANSPORT_ABSTRACTION.md §Selection):
-    /// 1. state >= Available
-    /// 2. max_message_size >= message_size
-    /// 3. score by state, latency, cost, bandwidth, congestion
-    /// 4. P0/P1 multipath → all viable; otherwise single best
+    /// 1. state is Available, Degraded, or Connected (MG-2: Connecting excluded)
+    /// 2. max_message_size >= message_size (unless fragmentable)
+    /// 3. Expensive transports only for P0–P2 (MG-9)
+    /// 4. score by state, latency, cost, bandwidth, congestion
+    /// 5. P0/P1 multipath → all viable (score > 0); otherwise single best (score > 0)
     pub async fn select_transports(&self, req: &TransportSelectionRequest) -> Vec<RankedTransport> {
         let registry = self.registry.read().await;
 
         let mut candidates: Vec<RankedTransport> = registry
             .values()
-            .filter(|t| t.state() >= TransportState::Available)
+            // MG-2: exclude Connecting — it passes `>= Available` by discriminant (=2) but cannot yet carry traffic.
+            .filter(|t| matches!(t.state(), TransportState::Available | TransportState::Degraded | TransportState::Connected))
             .filter(|t| req.fragmentable || t.capabilities().max_message_size >= req.message_size)
+            // MG-9: Expensive transports (satellite) only for P0–P2; P3+ hard-fails with no fallback.
+            .filter(|t| {
+                t.capabilities().cost_class != TransportCostClass::Expensive
+                    || req.priority <= MessagePriority::P2
+            })
             .map(|t| {
                 let score = score_transport(t.as_ref(), req);
                 RankedTransport {
@@ -198,9 +214,11 @@ impl TransportManager {
             });
         }
 
-        if req.multipath && req.priority.is_emergency() {
-            candidates.retain(|c| c.score > 0.0);
-        } else {
+        // MG-1: apply score floor before any truncation so an eliminated transport
+        // (score ≤ 0) is never returned, even for single-best selection.
+        candidates.retain(|c| c.score > 0.0);
+
+        if !req.multipath || !req.priority.is_emergency() {
             candidates.truncate(1);
         }
 
@@ -240,9 +258,13 @@ pub fn score_transport(t: &dyn Transport, req: &TransportSelectionRequest) -> f3
 
     // Bandwidth bonus if message is large. Guard against 0 bps → -inf,
     // which corrupts ranking (RED-0003-01 score NaN/-inf).
+    // MG-4: cap at 19 so bandwidth never overrides state ordering:
+    // log2 is normalised to [0,19] where 1 Gbps ≈ 19 (just below the 20-pt
+    // Available→Connected gap), ensuring Connected always outranks Degraded
+    // regardless of bandwidth.
     if req.message_size > 10_000 {
         let bw = cost.bandwidth_available_bps.max(1) as f32;
-        score += bw.log2() * 5.0;
+        score += (bw.log2() / 30.0 * 19.0).clamp(0.0, 19.0);
     }
 
     // Congestion penalty.
