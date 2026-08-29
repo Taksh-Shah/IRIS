@@ -52,7 +52,7 @@ fn ferry_l2_only(seed: u64) -> SimOutcome {
     sim.run()
 }
 
-// --- AC-1: feature determinism ----------------------------------------------
+// --- AC-1: feature determinism and shadow isolation -------------------------
 
 #[test]
 fn ac1_features_are_deterministic_same_seed() {
@@ -79,14 +79,23 @@ fn ac1_features_are_deterministic_same_seed() {
     }
 }
 
+// SIM-27: the old test never ran the no-shadow case at all — both bindings
+// used ferry_shadow or ferry_l2_only without inspecting shadow_samples.
+// Now explicitly verify the no-shadow run produces an empty sample vec.
 #[test]
 fn ac1_no_shadow_is_zero_cost() {
-    // Without the observer the shadow vec is empty and the anchor matches the
-    // L2-only run (the observer never alters forwarding).
-    let out = ferry_shadow(7);
+    // A run without with_shadow() must produce zero shadow samples.
     let base = ferry_l2_only(7);
-    assert_eq!(out.result_anchor, base.result_anchor, "AC-2 anchor parity");
-    assert!(!out.shadow_samples.is_empty(), "shadow samples captured");
+    assert!(
+        base.shadow_samples.is_empty(),
+        "a run without with_shadow() must not record any samples"
+    );
+    // A run with the observer must capture decisions.
+    let shadowed = ferry_shadow(7);
+    assert!(
+        !shadowed.shadow_samples.is_empty(),
+        "shadow observer must capture decisions"
+    );
 }
 
 // --- AC-2: shadow-only guarantee --------------------------------------------
@@ -95,13 +104,44 @@ fn ac1_no_shadow_is_zero_cost() {
 fn ac2_shadow_run_is_byte_identical_to_l2_only() {
     let shadowed = ferry_shadow(7);
     let base = ferry_l2_only(7);
-    assert_eq!(shadowed.result_anchor, base.result_anchor);
-    assert_eq!(shadowed.delivered_total, base.delivered_total);
+    // SIM-27: compare full delivery traces (message_id, node_index, at_ms)
+    // not just aggregate counts — aggregates survive per-decision perturbations.
+    // The trace-hash anchor (SIM-2) already captures this, so anchor equality
+    // is the primary check; the sorted triple comparison makes the invariant
+    // explicit and catches cases where counts coincidentally match.
+    assert_eq!(
+        shadowed.result_anchor, base.result_anchor,
+        "shadow run must produce the same delivery trace as the L2-only run"
+    );
+    let mut shadowed_trace: Vec<_> = shadowed
+        .nodes
+        .iter()
+        .enumerate()
+        .flat_map(|(node_idx, n)| {
+            n.delivered
+                .iter()
+                .map(move |(id, at_ms)| (node_idx, *id, *at_ms))
+        })
+        .collect();
+    shadowed_trace.sort_unstable();
+    let mut base_trace: Vec<_> = base
+        .nodes
+        .iter()
+        .enumerate()
+        .flat_map(|(node_idx, n)| {
+            n.delivered
+                .iter()
+                .map(move |(id, at_ms)| (node_idx, *id, *at_ms))
+        })
+        .collect();
+    base_trace.sort_unstable();
+    assert_eq!(
+        shadowed_trace, base_trace,
+        "per-delivery trace must be identical across shadow and L2-only runs"
+    );
     assert_eq!(shadowed.relays_total, base.relays_total);
-    assert_eq!(shadowed.avg_hop_count, base.avg_hop_count);
-    assert_eq!(shadowed.injected_total, base.injected_total);
     assert!(
-        shadowed.shadow_samples.len() > base.shadow_samples.len(),
+        !shadowed.shadow_samples.is_empty(),
         "shadow run must record decisions"
     );
 }
@@ -127,9 +167,17 @@ fn ac3_lp_agrees_with_l2_on_ferry_test_window() {
         m.decision_agreement >= 0.70,
         "LP agreement with L2 GTMX+ must be >= 0.70 on the test window, got {m:?}"
     );
+    // SIM-28: a Brier score is mean((p-y)^2) ∈ [0,1] by definition, so a
+    // range check asserts nothing. Compare against the base-rate Brier score
+    // (p*(1-p) for the delivery rate p) — a model no better than the prior
+    // must fail this check.
+    let delivery_rate = out.delivery_ratio;
+    let base_rate_brier = delivery_rate * (1.0 - delivery_rate);
     assert!(
-        (0.0..=1.0).contains(&m.brier_score),
-        "Brier score must be a valid probability loss: {m:?}"
+        m.brier_score <= base_rate_brier + 0.05,
+        "LP Brier score {:.4} must not exceed the base-rate bound {:.4} + margin: {m:?}",
+        m.brier_score,
+        base_rate_brier
     );
 }
 
@@ -272,16 +320,18 @@ fn ac5_ten_seeds_reproducible_both_regimes() {
 
 #[test]
 fn ac6_shadow_features_encode_priority_rank() {
-    // The 8th feature slot (index 7) must equal the envelope priority rank
-    // (0 for P0 ... 7 for P7). This proves the shadow feature extraction reads
-    // real in-band state and stays in sync with the message's priority.
+    // The 8th feature slot (index 7) must equal the envelope priority rank.
+    // inject_standard uses MessagePriority::P4, so ALL samples must carry 4.0.
+    // SIM-28: a range check (0..=7) passes even if the slot holds the hop
+    // count (0..3 for P4) or buffer occupancy — the exact expected value is
+    // the only discriminating assertion.
     let out = ferry_shadow(7);
     assert!(!out.shadow_samples.is_empty());
     for s in &out.shadow_samples {
         let rank = s.features.as_slice()[7];
-        assert!(
-            (0.0..=7.0).contains(&rank),
-            "priority-rank feature must be in 0..=7, got {rank}"
+        assert_eq!(
+            rank, 4.0,
+            "ferry_shadow injects P4 messages; priority-rank feature must be 4.0, got {rank}"
         );
     }
 }

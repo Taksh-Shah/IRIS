@@ -6,15 +6,28 @@
 //!
 //! Design: `docs/implementation/OBS_DESIGN.md`. Research: `RES-0012`.
 //!
-//! Privacy contract (hard constraints):
+//! Privacy contract (constraints):
 //! - P1: payload bytes never in any event/log/metric.
 //! - P2: identifiers in local/exported text are truncated 8-byte prefixes
 //!   (`MessageId::short()` / `PeerId::short()`); full IDs in memory only.
-//! - P3: default-deny attribute allow-list — fields come from this module's
-//!   event registry, not free-form caller attributes.
+//! - P3 (convention, reviewer-enforced): event fields follow the taxonomy in
+//!   `mod event`; no compile-time or runtime allow-list exists yet. A future
+//!   `macro_rules! iris_event!` or CI grep will mechanise this. Until then
+//!   reviewers must ensure no `?.payload`, `?peer`, or full identity appears.
 //! - P4: telemetry opt-in; production default `INFO`, TRACE never enabled.
-//! - P5: bounded retention (7-day metric window per OBSERVABILITY.md).
+//!   Peer identity (stable pseudonyms) is only emitted at DEBUG/TRACE level
+//!   in this module; do not promote to INFO/WARN without a privacy review.
+//! - P5 (host responsibility): the embedder MUST call `MetricsRegistry::reset()`
+//!   at least once per 7-day window (e.g. in the periodic metric flush).
+//!   v1 ships no in-crate rotation timer; see `reset()` doc for the contract.
 //! - P6: no per-event metric writes on the hot path (metrics read at flush).
+//!
+//! **v1 scope note (SIM-21):** `MetricsRegistry` ships counters only. The
+//! design document (`docs/implementation/OBSERVABILITY.md`) references gauges
+//! (`iris_messages_in_queue`, `iris_storage_usage_bytes`, etc.) and a latency
+//! histogram (`iris_message_delivery_latency_ms`) that are deferred to v2.
+//! The naming grammar also diverges: the doc uses `iris_x_y`, the code uses
+//! `iris.x.y`. Operators should not expect those series to appear in v1.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -123,6 +136,30 @@ pub mod event {
 
 /// Metric names — `iris.<domain>.<name>` grammar with unit suffix (RES-0012 §C).
 pub mod metric {
+    // SIM-22: ALL drives both MetricsRegistry::new() and the count assertion in
+    // tests — add any new constant here AND nowhere else to register it.
+    pub const ALL: &[&str] = &[
+        MESSAGES_SENT_TOTAL,
+        MESSAGES_DELIVERED_TOTAL,
+        MESSAGES_RELAYED_TOTAL,
+        MESSAGES_DROPPED_DUPLICATES_TOTAL,
+        MESSAGES_EXPIRED_TOTAL,
+        MESSAGES_DELIVERY_FAILED_TOTAL,
+        MESSAGES_SENT_UNENCRYPTED_TOTAL,
+        MESSAGES_EMERGENCY_AUTH_DROPPED_TOTAL,
+        MESSAGES_EMERGENCY_SOS_RATE_LIMITED_TOTAL,
+        MESSAGES_RATE_LIMITED_TOTAL,
+        MESSAGES_QUOTA_EXCEEDED_TOTAL,
+        MESSAGES_REPLAY_TOO_OLD_TOTAL,
+        MESSAGES_REPLAY_TOO_FUTURE_TOTAL,
+        MESSAGES_REPLAY_DETECTED_TOTAL,
+        MESSAGES_LIKELY_SPAM_TOTAL,
+        MESSAGES_EMERGENCY_ACL_DENIED_TOTAL,
+        ROUTING_DECISIONS_TOTAL,
+        ROUTING_FLOODS_TOTAL,
+        SCF_EVICTIONS_TOTAL,
+    ];
+
     pub const MESSAGES_SENT_TOTAL: &str = "iris.messages.sent_total";
     pub const MESSAGES_DELIVERED_TOTAL: &str = "iris.messages.delivered_total";
     pub const MESSAGES_RELAYED_TOTAL: &str = "iris.messages.relayed_total";
@@ -162,15 +199,18 @@ pub mod metric {
     pub const TRANSPORT_INBOUND_LAGGED: &str = "iris.transport.inbound_lagged_total";
 }
 
-/// Lock-free counter-backed metrics registry.
+/// Lock-free counter-backed metrics registry (v1: counters only).
 ///
 /// No global state: a registry is created and injected into the engines
 /// (same pattern as `EngineMetrics`). Counters are `AtomicU64`, read on
-/// demand at flush time (privacy/overhead P6). Labels are low-cardinality
-/// (`MessagePriority`, routing algorithm, gateway id) and bounded.
+/// demand at flush time (privacy/overhead P6).
 ///
 /// `Clone` is cheap and shares the same counters — inject one registry into
 /// several engines to accumulate a single mesh-wide telemetry view.
+///
+/// All registered counter names live in `metric::ALL`; that slice is the
+/// single source of truth for both registration and the count assertion in
+/// tests (SIM-22). v1 ships no gauge or histogram — see module-level note.
 #[derive(Debug, Clone)]
 pub struct MetricsRegistry {
     inner: Arc<RegistryInner>,
@@ -189,29 +229,10 @@ impl Default for MetricsRegistry {
 
 impl MetricsRegistry {
     /// A fresh registry with all counters pre-registered (zeroed).
+    /// The set of counters is driven by `metric::ALL` — the single source.
     pub fn new() -> Self {
-        let mut counters = HashMap::with_capacity(24);
-        for name in [
-            metric::MESSAGES_SENT_TOTAL,
-            metric::MESSAGES_DELIVERED_TOTAL,
-            metric::MESSAGES_RELAYED_TOTAL,
-            metric::MESSAGES_DROPPED_DUPLICATES_TOTAL,
-            metric::MESSAGES_EXPIRED_TOTAL,
-            metric::MESSAGES_DELIVERY_FAILED_TOTAL,
-            metric::MESSAGES_SENT_UNENCRYPTED_TOTAL,
-            metric::MESSAGES_EMERGENCY_AUTH_DROPPED_TOTAL,
-            metric::MESSAGES_EMERGENCY_SOS_RATE_LIMITED_TOTAL,
-            metric::MESSAGES_RATE_LIMITED_TOTAL,
-            metric::MESSAGES_QUOTA_EXCEEDED_TOTAL,
-            metric::MESSAGES_REPLAY_TOO_OLD_TOTAL,
-            metric::MESSAGES_REPLAY_TOO_FUTURE_TOTAL,
-            metric::MESSAGES_REPLAY_DETECTED_TOTAL,
-            metric::MESSAGES_LIKELY_SPAM_TOTAL,
-            metric::MESSAGES_EMERGENCY_ACL_DENIED_TOTAL,
-            metric::ROUTING_DECISIONS_TOTAL,
-            metric::ROUTING_FLOODS_TOTAL,
-            metric::SCF_EVICTIONS_TOTAL,
-        ] {
+        let mut counters = HashMap::with_capacity(metric::ALL.len() + 4);
+        for &name in metric::ALL {
             counters.insert(name, AtomicU64::new(0));
         }
         Self {
@@ -220,14 +241,30 @@ impl MetricsRegistry {
     }
 
     /// Increment a counter by one (relaxed, lock-free, no allocation).
+    ///
+    /// # Panics (debug only)
+    /// Panics in debug builds if `name` was not pre-registered in
+    /// `metric::ALL` — a new `pub const` in `mod metric` must also appear
+    /// in `ALL` (SIM-22).
     pub fn increment(&self, name: &'static str) {
+        debug_assert!(
+            self.inner.counters.contains_key(name),
+            "unregistered metric name '{name}' — add it to metric::ALL"
+        );
         if let Some(c) = self.inner.counters.get(name) {
             c.fetch_add(1, Ordering::Relaxed);
         }
     }
 
-    /// Add a delta (used for bytes, batches, recipients counts).
+    /// Add a delta (used for bytes, batches, recipient counts).
+    ///
+    /// # Panics (debug only)
+    /// Same contract as `increment` (SIM-22).
     pub fn add(&self, name: &'static str, delta: u64) {
+        debug_assert!(
+            self.inner.counters.contains_key(name),
+            "unregistered metric name '{name}' — add it to metric::ALL"
+        );
         if let Some(c) = self.inner.counters.get(name) {
             c.fetch_add(delta, Ordering::Relaxed);
         }
@@ -252,23 +289,50 @@ impl MetricsRegistry {
 
     /// Reset all counters to zero (call at flush/rotation time).
     ///
-    /// This is the OBSERVABILITY.md P5 retention hook: the embedding host is
-    /// expected to call `reset()` at least once per 7-day window (e.g. in the
-    /// periodic metric flush to SQLite) so counters never accumulate without
-    /// bound. v1 ships no in-crate rotation timer; the contract lives here.
+    /// P5 (host responsibility): the embedder MUST call this at least once per
+    /// 7-day window (e.g. in a periodic metric flush) so counters do not
+    /// accumulate without bound. v1 ships no in-crate rotation timer.
+    /// `iris-android/engine.rs`, `iris-ios/engine.rs`, and
+    /// `iris-desktop/engine_handle.rs` each hold a registry and must call
+    /// this method in their flush / maintenance tick (SIM-24).
     pub fn reset(&self) {
         for c in self.inner.counters.values() {
             c.store(0, Ordering::Relaxed);
         }
     }
-}
 
-/// Tag-free per-priority delivered/relayed aggregation for one flush window.
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct PriorityTally {
-    pub delivered: u64,
-    pub relayed: u64,
-    pub dropped: u64,
+    /// Derive a [`DeliveryWindow`] covering the interval between `prev`
+    /// (a snapshot taken earlier) and now (SIM-23).
+    ///
+    /// `window_ms` is the elapsed wall-clock time in milliseconds between the
+    /// two snapshots — callers supply this because the registry carries no
+    /// clock. Returns zeroed counts if no messages were sent in the interval.
+    pub fn window_since(
+        &self,
+        prev: &HashMap<&'static str, u64>,
+        window_ms: u64,
+    ) -> DeliveryWindow {
+        let now = self.snapshot();
+        let sent = now
+            .get(metric::MESSAGES_SENT_TOTAL)
+            .copied()
+            .unwrap_or(0)
+            .saturating_sub(*prev.get(metric::MESSAGES_SENT_TOTAL).unwrap_or(&0));
+        let delivered = now
+            .get(metric::MESSAGES_DELIVERED_TOTAL)
+            .copied()
+            .unwrap_or(0)
+            .saturating_sub(
+                *prev
+                    .get(metric::MESSAGES_DELIVERED_TOTAL)
+                    .unwrap_or(&0),
+            );
+        DeliveryWindow {
+            window_ms,
+            sent,
+            delivered,
+        }
+    }
 }
 
 /// Derived 1-hour delivery window metrics (RES-0012 §C).
@@ -304,10 +368,23 @@ mod tests {
         let snap = reg.snapshot();
         assert_eq!(snap[metric::MESSAGES_SENT_TOTAL], 2);
         assert_eq!(snap[metric::ROUTING_DECISIONS_TOTAL], 3);
-        // Unknown names are silently ignored — default-deny (P3).
-        reg.increment("iris.unknown.name");
-        // 19 registry counters + 1 transport-lag global (SYS-3) = 20
-        assert_eq!(reg.snapshot().len(), 20);
+        // SIM-22: metric::ALL is the single registration source; snapshot len
+        // must equal ALL.len() + 1 (the SYS-3 transport-lag global).
+        assert_eq!(reg.snapshot().len(), metric::ALL.len() + 1);
+    }
+
+    #[test]
+    fn registry_window_since_derives_delivery_window() {
+        let reg = MetricsRegistry::new();
+        let prev = reg.snapshot();
+        reg.increment(metric::MESSAGES_SENT_TOTAL);
+        reg.increment(metric::MESSAGES_SENT_TOTAL);
+        reg.increment(metric::MESSAGES_DELIVERED_TOTAL);
+        let w = reg.window_since(&prev, 3_600_000);
+        assert_eq!(w.sent, 2);
+        assert_eq!(w.delivered, 1);
+        assert_eq!(w.window_ms, 3_600_000);
+        assert!((w.ratio() - 0.5).abs() < 1e-9);
     }
 
     #[test]

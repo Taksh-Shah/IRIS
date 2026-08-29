@@ -615,7 +615,8 @@ impl MessageEngine {
                 tracing::warn!(
                     event = event::MSG_REPLAY_DETECTED,
                     message_id = %envelope.message_id.short(),
-                    sender = %hex::encode(sender_short),
+                    // SIM-26: sender pseudonym (stable 8-byte prefix) omitted at
+                    // WARN to avoid social-graph linkage in production logs (P4).
                     "inbound message rejected: replay detected (high-water)"
                 );
                 return Ok(InboundOutcome::Duplicate);
@@ -633,7 +634,7 @@ impl MessageEngine {
             tracing::info!(
                 event = event::MSG_LIKELY_SPAM,
                 message_id = %envelope.message_id.short(),
-                sender = %hex::encode(sender_short),
+                // SIM-26: sender pseudonym omitted at INFO — see P4 in observability/mod.rs.
                 "inbound message annotated as likely spam (receiver-side only)"
             );
             // Note: we do NOT drop here — only annotate for UI (AC-10)
@@ -658,7 +659,7 @@ impl MessageEngine {
                     tracing::warn!(
                         event = event::MSG_EMERGENCY_ACL_DENIED,
                         message_id = %envelope.message_id.short(),
-                        sender = %hex::encode(sender_short),
+                        // SIM-26: sender pseudonym omitted at WARN — see P4 in observability/mod.rs.
                         "emergency message denied by ACL-1 (unauthorized sender)"
                     );
                     return Ok(InboundOutcome::EmergencyDropped);
@@ -672,7 +673,7 @@ impl MessageEngine {
                     tracing::warn!(
                         event = event::MSG_EMERGENCY_ACL_DENIED,
                         message_id = %envelope.message_id.short(),
-                        sender = %hex::encode(sender_short),
+                        // SIM-26: sender pseudonym omitted at WARN — see P4 in observability/mod.rs.
                         "emergency message denied by ACL-1 (invalid authority chain)"
                     );
                     return Ok(InboundOutcome::EmergencyDropped);

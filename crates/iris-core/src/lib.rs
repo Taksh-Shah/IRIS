@@ -42,7 +42,7 @@ pub use message::{
     DiscoveryConfig, IncomingMessage, LinkQuality, MessagePriority, NodeAdvertisement, PeerId,
     PeerInfo, SendReceipt, SerializedMessage, TransportLink,
 };
-pub use observability::{DeliveryWindow, MetricsRegistry, PriorityTally};
+pub use observability::{DeliveryWindow, MetricsRegistry};
 pub use protocol::{ContentType, EncryptionHdr, Envelope, EnvelopeError, MessageId, RoutingHints};
 pub use routing::{
     DeliveryPredictability, OpportunisticDecision, OpportunisticRouter, ProphetConfig, SprayBudget,
