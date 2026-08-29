@@ -144,16 +144,17 @@ impl DesktopEngine {
             None => {}
         }
 
-        // D8: Internet transport when a relay is configured.
-        for addr in &config.relay_addrs {
+        // D8: One internet transport for all configured relays (tried in order).
+        // Constructing one-per-relay collides on the constant transport id.
+        if !config.relay_addrs.is_empty() {
             let relay = Arc::new(InternetTransport::new(
-                std::slice::from_ref(addr),
+                &config.relay_addrs,
                 InternetCostParams::default(),
             ));
             manager
                 .register(relay.clone())
                 .await
-                .map_err(|e| format!("register relay {addr}: {e}"))?;
+                .map_err(|e| format!("register relay: {e}"))?;
             transports.push(relay.transport_id().clone());
         }
 

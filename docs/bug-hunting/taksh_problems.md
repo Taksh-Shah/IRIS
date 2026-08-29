@@ -489,7 +489,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **GAP-5** | Medium | `ble_att.rs:9-14,` | The two live data-plane framings carry no version field, while all four discovery/latent framings do — the live wire format cannot be evolved | ⬜ |
 | **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field | ⬜ |
 | **GAP-7** | Critical | `message_engine/mod.rs:1207-1260` | `Transport::connect()` has zero production callers — no live transport can ever send a message | ✅ `d32c4cc` |
-| **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start | ⬜ |
+| **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start | ✅ PLACEHOLDER_GAP8 |
 | **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded | ✅ `e15809a` (partial) |
 | **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender | ✅ ce126fe |
 | **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable | ✅ ce126fe |
@@ -10859,7 +10859,7 @@ internet.rs:405:            return Err(TransportError::NotConnected);
 
 #### GAP-8: Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_GAP8  ·  2026-08-29  ·  `engine_handle.rs` `for addr in relay_addrs` loop replaced with a single `InternetTransport::new(&config.relay_addrs, …)` call that passes all relay candidates at once, as the constructor signature intends.
 - **Confidence:** Certain
 - **Blind spot:** B8 — configuration that is validated nowhere; the identity constant lives in one file and the loop that violates it in another
 - **Location:** `crates/iris-core/src/transport/internet.rs:209-214`; `crates/iris-desktop/src/engine_handle.rs:137-148`; `crates/iris-core/src/transport/manager.rs:99-104`
