@@ -47,6 +47,19 @@ pub struct FfiGattWriteEvent {
     pub data: Vec<u8>,
 }
 
+/// HW-9: a remote central that connected to this node's GATT SERVER
+/// (`ble::AcceptedConnection`) — the peripheral-role counterpart to
+/// `connect_gatt()`'s own outbound connections, which previously had no FFI
+/// projection at all.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiAcceptedConnection {
+    /// Same handle scheme `FfiGattWriteEvent::handle` and `gatt_write`'s
+    /// `handle` param use — on Android, `deviceHash(BluetoothDevice)`.
+    pub handle: u64,
+    /// `"AA:BB:CC:DD:EE:FF"` — same format as `FfiScanResult::address`.
+    pub address: String,
+}
+
 /// Foreign-trait projection of `ble::BleAdapter`. Implemented by
 /// `AndroidBleTransportAdapter` (Kotlin); simulated in Rust unit tests.
 #[uniffi::export(with_foreign)]
@@ -64,6 +77,9 @@ pub trait FfiBleAdapter: Send + Sync + 'static {
     fn incoming_gatt_writes(&self) -> Vec<FfiGattWriteEvent>;
     /// Drain scan results (projection of the MutexGuard drain).
     fn scan_results(&self) -> Vec<FfiScanResult>;
+    /// HW-9: drain connections accepted by this node's GATT server since
+    /// last call (a remote central dialed us) — see `FfiAcceptedConnection`.
+    fn accepted_connections(&self) -> Vec<FfiAcceptedConnection>;
 }
 
 #[cfg(test)]
@@ -97,6 +113,9 @@ pub(crate) mod tests {
             Vec::new()
         }
         fn scan_results(&self) -> Vec<FfiScanResult> {
+            Vec::new()
+        }
+        fn accepted_connections(&self) -> Vec<FfiAcceptedConnection> {
             Vec::new()
         }
     }

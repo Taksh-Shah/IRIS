@@ -269,6 +269,23 @@ impl BleAdapter for BleBridge {
         }));
         buf
     }
+
+    // HW-9: projects `FfiAcceptedConnection` (Kotlin's GATT-server
+    // `onConnectionStateChange` queue) onto `ble::AcceptedConnection` — the
+    // real counterpart to the default no-op every OTHER `BleAdapter`
+    // implementor (the simulator's test-local wrappers) keeps inheriting.
+    fn accepted_connections(&self) -> Vec<iris_core::transport::ble::AcceptedConnection> {
+        self.ffi
+            .accepted_connections()
+            .into_iter()
+            .filter_map(|c| {
+                Some(iris_core::transport::ble::AcceptedConnection {
+                    handle: GattHandle(c.handle),
+                    address: hex_to_ble_addr(&c.address)?,
+                })
+            })
+            .collect()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -604,6 +621,9 @@ mod tests {
             std::mem::take(&mut self.pending.lock().unwrap())
         }
         fn scan_results(&self) -> Vec<FfiScanResult> {
+            Vec::new()
+        }
+        fn accepted_connections(&self) -> Vec<crate::ffi::ble_adapter::FfiAcceptedConnection> {
             Vec::new()
         }
     }

@@ -653,6 +653,9 @@ internal interface UniffiCallbackInterfaceFfiBleAdapterMethod8 : com.sun.jna.Cal
 internal interface UniffiCallbackInterfaceFfiBleAdapterMethod9 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiBleAdapterMethod10 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceFfiWifiAwareAdapterMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiFutureCallback`: UniffiForeignFutureCompleteVoid,`uniffiCallbackData`: Long,`uniffiOutDroppedCallback`: UniffiForeignFutureDroppedCallbackStruct,)
 }
@@ -759,7 +762,7 @@ internal open class UniffiVTableCallbackInterfaceFfiInboxListener(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults", "acceptedConnections")
 internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -773,6 +776,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `setMtu`: UniffiCallbackInterfaceFfiBleAdapterMethod7? = null,
     @JvmField internal var `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
     @JvmField internal var `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
+    @JvmField internal var `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -787,7 +791,8 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `setMtu`: UniffiCallbackInterfaceFfiBleAdapterMethod7? = null,
         `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
         `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
-    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,), Structure.ByValue
+        `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
+    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiBleAdapter) {
         `uniffiFree` = other.`uniffiFree`
@@ -802,6 +807,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `setMtu` = other.`setMtu`
         `incomingGattWrites` = other.`incomingGattWrites`
         `scanResults` = other.`scanResults`
+        `acceptedConnections` = other.`acceptedConnections`
     }
 
 }
@@ -979,6 +985,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_scan_results(
     ): Int
+    external fun uniffi_iriscode_checksum_method_ffibleadapter_accepted_connections(
+    ): Int
     external fun uniffi_iriscode_checksum_method_ffiwifiawareadapter_start(
     ): Int
     external fun uniffi_iriscode_checksum_method_ffiwifiawareadapter_subscribe(
@@ -1110,6 +1118,8 @@ external fun uniffi_iriscode_fn_method_ffibleadapter_set_mtu(`ptr`: Long,`handle
 external fun uniffi_iriscode_fn_method_ffibleadapter_incoming_gatt_writes(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_ffibleadapter_scan_results(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_ffibleadapter_accepted_connections(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_clone_ffiwifiawareadapter(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1346,6 +1356,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_ffibleadapter_scan_results() != 691) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_accepted_connections() != 36488) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_ffiwifiawareadapter_start() != 65277) {
@@ -2105,6 +2118,12 @@ public interface FfiBleAdapter {
      */
     fun `scanResults`(): List<FfiScanResult>
     
+    /**
+     * HW-9: drain connections accepted by this node's GATT server since
+     * last call (a remote central dialed us) — see `FfiAcceptedConnection`.
+     */
+    fun `acceptedConnections`(): List<FfiAcceptedConnection>
+    
     companion object
 }
 
@@ -2346,6 +2365,23 @@ open class FfiBleAdapterImpl: Disposable, AutoCloseable, FfiBleAdapter
     
 
     
+    /**
+     * HW-9: drain connections accepted by this node's GATT server since
+     * last call (a remote central dialed us) — see `FfiAcceptedConnection`.
+     */override fun `acceptedConnections`(): List<FfiAcceptedConnection> {
+            return FfiConverterSequenceTypeFfiAcceptedConnection.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_ffibleadapter_accepted_connections(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -2509,6 +2545,17 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`acceptedConnections`(
+                )
+            }
+            val writeReturn = { value: List<FfiAcceptedConnection> -> uniffiOutReturn.setValue(FfiConverterSequenceTypeFfiAcceptedConnection.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2535,6 +2582,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
         `setMtu`,
         `incomingGattWrites`,
         `scanResults`,
+        `acceptedConnections`,
     )
 
     // Registers the foreign callback with the Rust side.
@@ -5529,6 +5577,57 @@ public object FfiConverterTypeIrisEngine: FfiConverter<IrisEngine, Long> {
 
 
 /**
+ * HW-9: a remote central that connected to this node's GATT SERVER
+ * (`ble::AcceptedConnection`) — the peripheral-role counterpart to
+ * `connect_gatt()`'s own outbound connections, which previously had no FFI
+ * projection at all.
+ */
+data class FfiAcceptedConnection (
+    /**
+     * Same handle scheme `FfiGattWriteEvent::handle` and `gatt_write`'s
+     * `handle` param use — on Android, `deviceHash(BluetoothDevice)`.
+     */
+    var `handle`: kotlin.ULong
+    , 
+    /**
+     * `"AA:BB:CC:DD:EE:FF"` — same format as `FfiScanResult::address`.
+     */
+    var `address`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAcceptedConnection: FfiConverterRustBuffer<FfiAcceptedConnection> {
+    override fun read(buf: ByteBuffer): FfiAcceptedConnection {
+        return FfiAcceptedConnection(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAcceptedConnection) = (
+            FfiConverterULong.allocationSize(value.`handle`) +
+            FfiConverterString.allocationSize(value.`address`)
+    )
+
+    override fun write(value: FfiAcceptedConnection, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`handle`, buf)
+            FfiConverterString.write(value.`address`, buf)
+    }
+}
+
+
+
+/**
  * Owned advertisement payload for the discovery beacon (`ble::AdvertisementData`).
  */
 data class FfiAdvertisementData (
@@ -5582,7 +5681,10 @@ data class FfiDirectPeerDiscovery (
     var `peerHandle`: kotlin.ULong
     , 
     /**
-     * Matched p2p service name (must equal `_iris._tcp`).
+     * Matched p2p service name (must equal
+     * `iris_core::transport::wifi_direct_serv::WIFI_DIRECT_SERVICE_NAME`,
+     * currently `"_iris._tcp"` — FFI-19: `discover_peers` now enforces
+     * this rather than accepting any value).
      */
     var `serviceName`: kotlin.String
     , 
@@ -6542,6 +6644,34 @@ public object FfiConverterSequenceULong: FfiConverterRustBuffer<List<kotlin.ULon
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterULong.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiAcceptedConnection: FfiConverterRustBuffer<List<FfiAcceptedConnection>> {
+    override fun read(buf: ByteBuffer): List<FfiAcceptedConnection> {
+        val len = buf.getInt()
+        return List<FfiAcceptedConnection>(len) {
+            FfiConverterTypeFfiAcceptedConnection.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiAcceptedConnection>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiAcceptedConnection.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiAcceptedConnection>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiAcceptedConnection.write(it, buf)
         }
     }
 }

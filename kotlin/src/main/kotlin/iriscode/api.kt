@@ -69,6 +69,8 @@ typealias FfiAdvertisementData = uniffi.iriscode.FfiAdvertisementData
 @Suppress("unused")
 typealias FfiGattWriteEvent = uniffi.iriscode.FfiGattWriteEvent
 @Suppress("unused")
+typealias FfiAcceptedConnection = uniffi.iriscode.FfiAcceptedConnection
+@Suppress("unused")
 typealias FfiPublishConfig = uniffi.iriscode.FfiPublishConfig
 @Suppress("unused")
 typealias FfiPeerDiscovery = uniffi.iriscode.FfiPeerDiscovery

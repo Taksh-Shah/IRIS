@@ -120,7 +120,7 @@ pub struct AdvertisementData {
 pub struct ScanHandle(pub u64);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AdvHandle(pub u64);
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GattHandle(pub u64);
 
 /// An inbound GATT write from a peer.
@@ -162,6 +162,22 @@ pub struct ScanResult {
     /// Raw advertisement payload (the IRIS discovery beacon).
     pub payload: Vec<u8>,
     pub rssi: i32,
+}
+
+/// HW-9: a remote central that connected TO this node's GATT server
+/// (peripheral role) — the counterpart to `connect_gatt()`'s own outbound
+/// connections. Until this existed, nothing on the peripheral side ever
+/// told the core a new link had been accepted, so no per-connection
+/// reassembly poller was ever spawned for it: `onCharacteristicWriteRequest`
+/// correctly queued the raw write, but no Rust task was ever draining that
+/// queue for a connection the local node did not itself initiate. Confirmed
+/// live: sender-side `msg.sent` succeeded and the write physically arrived
+/// at the peer's GATT server (visible in its own `onCharacteristicWriteRequest`
+/// log), but the message was never surfaced anywhere upstream.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AcceptedConnection {
+    pub handle: GattHandle,
+    pub address: BleAddress,
 }
 
 /// Platform-neutral BLE adapter trait (mirrors the spec; real adapters via FFI).
@@ -224,6 +240,17 @@ pub trait BleAdapter: Send + Sync + 'static {
     fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent>;
     /// Scan results delivered since last drain (real impl: callbacks).
     fn scan_results(&self) -> std::sync::MutexGuard<'_, Vec<ScanResult>>;
+    /// HW-9: connections accepted by this node's GATT SERVER (a remote
+    /// central dialled us) since the last call — the peripheral-role
+    /// counterpart to `connect_gatt()`'s central-role connections. Default
+    /// empty so every existing `BleAdapter` implementor (the simulator's
+    /// many test-local delegating wrappers included) keeps compiling
+    /// unchanged; only adapters that can actually observe an accepted
+    /// connection (the real Android bridge, `SimulatedBleAdapter` for
+    /// tests) need to override it.
+    fn accepted_connections(&self) -> Vec<AcceptedConnection> {
+        Vec::new()
+    }
 }
 
 /// In-memory BLE adapter for tests and simulation. No hardware involved.
@@ -433,7 +460,13 @@ pub struct BleTransport {
     /// GATT handles + negotiated ATT MTU per connected peer — one connection
     /// per peer is reused for all sends (AC-9; RES-0019 R6.4/G2 bounds
     /// GATT-client churn). MTU is per-link (BLE-RT-003), never global.
-    connections: std::sync::Mutex<std::collections::HashMap<PeerId, (GattHandle, u16)>>,
+    /// HW-9: `Arc`-wrapped (was a bare `Mutex`) so the accept-poller task
+    /// spawned in `start_advertising` — which must outlive any single
+    /// `&self` call and therefore cannot borrow `self` — can hold a cheap
+    /// clone of the SAME map `send()`/`shutdown()` read, instead of a
+    /// snapshot that would immediately go stale.
+    connections:
+        std::sync::Arc<std::sync::Mutex<std::collections::HashMap<PeerId, (GattHandle, u16)>>>,
     /// Per-peer async lock (BLE-2): concurrent `connect()` calls to the SAME
     /// peer serialize on this (BLE-RT-002 — exactly one GATT link/poller per
     /// peer), but connects to DIFFERENT peers run fully in parallel. The
@@ -447,7 +480,23 @@ pub struct BleTransport {
         std::sync::Mutex<std::collections::HashMap<PeerId, std::sync::Arc<tokio::sync::Mutex<()>>>>,
     /// Abort handles for the per-peer inbound-poll tasks so shutdown() actually
     /// stops them (RED-0009-02, was an unowned infinite loop leaking a task).
-    pollers: std::sync::RwLock<std::collections::HashMap<PeerId, tokio::task::AbortHandle>>,
+    /// HW-9: `Arc`-wrapped for the same reason as `connections` above — the
+    /// accept-poller task registers pollers it spawns into this same map so
+    /// `shutdown()` aborts them too, not just the ones `connect()` spawned.
+    pollers: std::sync::Arc<std::sync::RwLock<std::collections::HashMap<PeerId, tokio::task::AbortHandle>>>,
+    /// HW-9: best-known candidate `PeerId` for every `BleAddress` seen in a
+    /// discovery beacon (`discover_peers`, DEC-BLE-0006 candidate hint,
+    /// same semantics `send()`/HW-5 already treat candidate ids with) —
+    /// consulted by the accept-poller to attribute an inbound connection it
+    /// did not itself dial, since Android's peripheral role never gives the
+    /// GATT server a beacon/identity for the central that just connected to
+    /// it, only its MAC address.
+    known_addresses: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<BleAddress, PeerId>>>,
+    /// HW-9: the single long-lived task that drains `accepted_connections()`
+    /// and spawns a reassembly poller for each new one. One per transport
+    /// instance, started (idempotently) from `start_advertising` — the
+    /// natural point at which this node becomes dialable at all.
+    accept_poller: std::sync::Mutex<Option<tokio::task::AbortHandle>>,
     /// Fragment-header codec only. BLE-5: the doc here used to claim the
     /// segmenter's own MTU resizes live via `on_mtu_changed` — it never did;
     /// `on_mtu_changed`/`mtu()` have zero callers outside `ble_att.rs`'s own
@@ -513,9 +562,11 @@ impl BleTransport {
             incoming_tx,
             scan_handle: std::sync::Mutex::new(None),
             adv_handle: std::sync::Mutex::new(None),
-            connections: std::sync::Mutex::new(std::collections::HashMap::new()),
+            connections: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             connect_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
-            pollers: std::sync::RwLock::new(std::collections::HashMap::new()),
+            pollers: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
+            known_addresses: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            accept_poller: std::sync::Mutex::new(None),
             segmenter: AttSegmenter::new(),
             scan_times: std::sync::Mutex::new(std::collections::VecDeque::new()),
             scan_backoff_s: std::sync::Mutex::new(0),
@@ -568,6 +619,167 @@ impl BleTransport {
         let mut id = [0u8; 32];
         id[..16].copy_from_slice(&short);
         PeerId(id)
+    }
+
+    /// HW-9: deterministic fallback identity for an accepted connection
+    /// whose `BleAddress` has no known candidate id yet (this node has not
+    /// — or not yet — scanned a beacon from it, even though it just dialed
+    /// us). Distinct hash domain (`b"ble-unknown-addr:"` prefix) from
+    /// `candidate_key_for`/`peer_short`'s own hashing so this can never
+    /// collide with a genuine candidate id and be mistaken for one — it is
+    /// explicitly a last-resort placeholder, not a trust claim, consistent
+    /// with candidate ids themselves never being a trust boundary
+    /// (DEC-BLE-0006). Upstream (message/envelope layer) is expected to
+    /// re-attribute the real sender from the decrypted envelope itself,
+    /// same as any other candidate-keyed connection.
+    fn synthesize_unknown_peer_id(address: &BleAddress) -> PeerId {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(b"ble-unknown-addr:");
+        hasher.update(address.0);
+        let digest = hasher.finalize();
+        let mut id = [0u8; 32];
+        id[..16].copy_from_slice(&digest[..16]);
+        PeerId(id)
+    }
+
+    /// HW-9: the reassembly poller body shared by `connect()` (central-role,
+    /// a connection we dialed) and `ensure_accept_poller()` (peripheral-role,
+    /// a connection a remote central dialed to US). Previously this loop
+    /// existed only inline inside `connect()` — a connection accepted the
+    /// other way around had no equivalent, so `onCharacteristicWriteRequest`
+    /// could queue a write forever with nothing ever draining it. Free
+    /// function (no `&self`) so it can be spawned as a genuinely `'static`
+    /// task from either call site without borrowing the transport.
+    fn spawn_inbound_poller(
+        incoming: broadcast::Sender<IncomingMessage>,
+        adapter: std::sync::Arc<dyn BleAdapter>,
+        handle: GattHandle,
+        peer_id: PeerId,
+        tid: TransportId,
+    ) -> tokio::task::AbortHandle {
+        let task = tokio::spawn(async move {
+            // GAP-12: this poller ran a fixed 50ms sleep forever, with no
+            // backoff, per connected peer — 8 peers meant 160 wakeups/sec
+            // indefinitely, including while completely idle, which also
+            // prevents the OS reaching a deep sleep state. Wi-Fi Aware
+            // solved this for its (single, transport-wide) poller with a
+            // fast/idle split keyed on recent activity; mirror that here,
+            // keyed on whether THIS peer has produced a frame recently.
+            const FAST_POLL_MS: u64 = 50;
+            const IDLE_POLL_MS: u64 = 500;
+            const ACTIVE_WINDOW: Duration = Duration::from_secs(2);
+            let mut recon = Reassembler::new();
+            let mut last_evict = std::time::Instant::now();
+            let mut last_activity = std::time::Instant::now();
+            loop {
+                let fast = last_activity.elapsed() < ACTIVE_WINDOW;
+                tokio::time::sleep(Duration::from_millis(if fast {
+                    FAST_POLL_MS
+                } else {
+                    IDLE_POLL_MS
+                }))
+                .await;
+                // Coarse TTL sweep so partial-message slots are reclaimed
+                // (BLE-RT-001: eviction is NOT dead code at runtime).
+                let now = std::time::Instant::now();
+                if now.duration_since(last_evict) >= Duration::from_secs(1) {
+                    recon.evict_stale(REASSEMBLY_TTL, now);
+                    last_evict = now;
+                }
+                // BLE-4: handle-scoped drain — the adapter itself now owns
+                // partitioning frames by connection (see `drain_gatt_writes`
+                // doc), so there is no shared buffer here for a real bridge
+                // to clear out from under a sibling poller (BLE-RT-016).
+                let mine = adapter.drain_gatt_writes(handle);
+                if !mine.is_empty() {
+                    last_activity = std::time::Instant::now();
+                }
+                for w in mine {
+                    // Reject frames addressed to another characteristic.
+                    if w.char_uuid != IRIS_WRITE_CHARACTERISTIC {
+                        continue;
+                    }
+                    match recon.push(&w.data, std::time::Instant::now()) {
+                        Ok(Some(payload)) => {
+                            incoming.send(IncomingMessage {
+                                peer_id,
+                                transport_id: tid.0.clone(),
+                                payload,
+                                received_at: std::time::Instant::now(),
+                            }).ok();
+                        }
+                        Ok(None) => {} // awaiting more chunks
+                        Err(_) => {}   // malformed frame dropped (adversarial-safe)
+                    }
+                }
+            }
+        });
+        task.abort_handle()
+    }
+
+    /// HW-9: start (idempotently) the single long-lived task that drains
+    /// `adapter.accepted_connections()` — connections a remote central
+    /// dialed to US — and spawns `spawn_inbound_poller` for each new one,
+    /// exactly as `connect()` already does for connections we dial
+    /// ourselves. Called from `start_advertising`: becoming dialable at all
+    /// is the natural point to also start accepting. A no-op on every call
+    /// after the first (an already-running accept-poller keeps running
+    /// across advertising restarts/re-announcements).
+    fn ensure_accept_poller(&self, adapter: std::sync::Arc<dyn BleAdapter>) {
+        let mut guard = self.accept_poller.lock().unwrap_or_else(|p| p.into_inner());
+        if guard.is_some() {
+            return;
+        }
+        let known_addresses = self.known_addresses.clone();
+        let connections = self.connections.clone();
+        let pollers = self.pollers.clone();
+        let incoming_tx = self.incoming_tx.clone();
+        let tid = self.id.clone();
+        let task = tokio::spawn(async move {
+            // Handles already turned into a spawned poller — an accepted
+            // connection is reported on every drain until it disconnects
+            // (mirrors `drain_gatt_writes`'s own "since last call" framing
+            // for the underlying queue), so this guards against spawning a
+            // duplicate poller for the same still-live connection.
+            let mut spawned: std::collections::HashSet<GattHandle> = std::collections::HashSet::new();
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                for accepted in adapter.accepted_connections() {
+                    if !spawned.insert(accepted.handle) {
+                        continue;
+                    }
+                    let peer_id = known_addresses
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner())
+                        .get(&accepted.address)
+                        .copied()
+                        .unwrap_or_else(|| BleTransport::synthesize_unknown_peer_id(&accepted.address));
+                    // Registered under whatever MTU `set_mtu` would default
+                    // to — the peripheral role never proactively negotiates
+                    // (only the central side calls `requestMtu`), so this is
+                    // a size assumption, not a measured value, exactly like
+                    // `MTU_DEFAULT`'s existing use as a pre-negotiation
+                    // fallback elsewhere in this file.
+                    connections
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner())
+                        .entry(peer_id)
+                        .or_insert((accepted.handle, crate::transport::ble_att::MTU_DEFAULT));
+                    let abort = BleTransport::spawn_inbound_poller(
+                        incoming_tx.clone(),
+                        adapter.clone(),
+                        accepted.handle,
+                        peer_id,
+                        tid.clone(),
+                    );
+                    if let Some(prev) = pollers.write().unwrap_or_else(|p| p.into_inner()).insert(peer_id, abort) {
+                        prev.abort();
+                    }
+                }
+            }
+        });
+        *guard = Some(task.abort_handle());
     }
 
     /// Tear down a peer's GATT link (BLE-RT-005): remove the connection entry,
@@ -767,6 +979,16 @@ impl Transport for BleTransport {
                         r.address.0[5]
                     ),
                 ));
+                // HW-9: record this address's candidate id so the
+                // accept-poller (a connection WE did not dial, so its
+                // GATT-server callback only ever sees a MAC, never a beacon)
+                // can attribute it to a peer we've independently seen while
+                // scanning, exactly as `send()`'s HW-5 candidate resolution
+                // already treats this same value.
+                self.known_addresses
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .insert(r.address, beacon.candidate_peer_id());
                 Some(PeerInfo {
                     peer_id: beacon.candidate_peer_id(),
                     addresses: Vec::new(),
@@ -824,6 +1046,10 @@ impl Transport for BleTransport {
             })
             .map_err(to_transport_err)?;
         *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
+        // HW-9: becoming dialable is the natural point to also start
+        // accepting — idempotent, so re-announcement (key rotation etc.)
+        // never spawns a second accept-poller alongside the first.
+        self.ensure_accept_poller(adapter);
         Ok(())
     }
 
@@ -974,67 +1200,16 @@ impl Transport for BleTransport {
         // (AC-4/AC-6); malformed frames are dropped, never panic (RES-0019 R5).
         // The poller owns `my_handle` and only consumes frames addressed to its
         // own connection (BLE-RT-016: the adapter queue is shared across peers).
-        let incoming = self.incoming_tx.clone();
-        let adapter = adapter.clone();
-        let tid = self.id.clone();
-        let peer_id = peer.peer_id;
-        let poller = tokio::spawn(async move {
-            // GAP-12: this poller ran a fixed 50ms sleep forever, with no
-            // backoff, per connected peer — 8 peers meant 160 wakeups/sec
-            // indefinitely, including while completely idle, which also
-            // prevents the OS reaching a deep sleep state. Wi-Fi Aware
-            // solved this for its (single, transport-wide) poller with a
-            // fast/idle split keyed on recent activity; mirror that here,
-            // keyed on whether THIS peer has produced a frame recently.
-            const FAST_POLL_MS: u64 = 50;
-            const IDLE_POLL_MS: u64 = 500;
-            const ACTIVE_WINDOW: Duration = Duration::from_secs(2);
-            let mut recon = Reassembler::new();
-            let mut last_evict = std::time::Instant::now();
-            let mut last_activity = std::time::Instant::now();
-            loop {
-                let fast = last_activity.elapsed() < ACTIVE_WINDOW;
-                tokio::time::sleep(Duration::from_millis(if fast {
-                    FAST_POLL_MS
-                } else {
-                    IDLE_POLL_MS
-                }))
-                .await;
-                // Coarse TTL sweep so partial-message slots are reclaimed
-                // (BLE-RT-001: eviction is NOT dead code at runtime).
-                let now = std::time::Instant::now();
-                if now.duration_since(last_evict) >= Duration::from_secs(1) {
-                    recon.evict_stale(REASSEMBLY_TTL, now);
-                    last_evict = now;
-                }
-                // BLE-4: handle-scoped drain — the adapter itself now owns
-                // partitioning frames by connection (see `drain_gatt_writes`
-                // doc), so there is no shared buffer here for a real bridge
-                // to clear out from under a sibling poller (BLE-RT-016).
-                let mine = adapter.drain_gatt_writes(handle);
-                if !mine.is_empty() {
-                    last_activity = std::time::Instant::now();
-                }
-                for w in mine {
-                    // Reject frames addressed to another characteristic.
-                    if w.char_uuid != IRIS_WRITE_CHARACTERISTIC {
-                        continue;
-                    }
-                    match recon.push(&w.data, std::time::Instant::now()) {
-                        Ok(Some(payload)) => {
-                            incoming.send(IncomingMessage {
-                                peer_id,
-                                transport_id: tid.0.clone(),
-                                payload,
-                                received_at: std::time::Instant::now(),
-                            }).ok();
-                        }
-                        Ok(None) => {} // awaiting more chunks
-                        Err(_) => {}   // malformed frame dropped (adversarial-safe)
-                    }
-                }
-            }
-        });
+        // HW-9: extracted to `spawn_inbound_poller` so the accept-poller
+        // (peripheral-role connections we did not dial) can spawn the exact
+        // same reassembly loop instead of a second, drifting copy of it.
+        let abort_handle = Self::spawn_inbound_poller(
+            self.incoming_tx.clone(),
+            adapter.clone(),
+            handle,
+            peer.peer_id,
+            self.id.clone(),
+        );
         // Abort any previous poller for this peer (a reconnect after a partial
         // teardown must not leave the old task draining the shared queue).
         if let Some(prev) = self.pollers.write().unwrap_or_else(|p| p.into_inner()).remove(&peer.peer_id) {
@@ -1043,7 +1218,7 @@ impl Transport for BleTransport {
         self.pollers
             .write()
             .unwrap()
-            .insert(peer.peer_id, poller.abort_handle());
+            .insert(peer.peer_id, abort_handle);
         Ok(TransportLink {
             peer_id: peer.peer_id,
             transport_id: self.id.0.clone(),
@@ -1153,6 +1328,12 @@ impl Transport for BleTransport {
     async fn shutdown(&self) -> Result<(), TransportError> {
         // Abort all per-peer pollers (RED-0009-02).
         for (_, p) in self.pollers.write().unwrap_or_else(|p| p.into_inner()).drain() {
+            p.abort();
+        }
+        // HW-9: the accept-poller is a separate, transport-lifetime task —
+        // not one of the per-peer entries above — so it needs its own abort
+        // or shutdown() would leave it running forever.
+        if let Some(p) = self.accept_poller.lock().unwrap_or_else(|p| p.into_inner()).take() {
             p.abort();
         }
         self.set_state(TransportState::Unavailable);

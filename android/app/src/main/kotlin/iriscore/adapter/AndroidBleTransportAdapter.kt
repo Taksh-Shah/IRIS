@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.content.Context
 import android.os.Build
@@ -22,6 +23,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult as AndroidScanResult
 import android.bluetooth.le.ScanSettings
+import iriscode.FfiAcceptedConnection
 import iriscode.FfiAdvertisementData
 import iriscode.FfiBleAdapter
 import iriscode.FfiGattWriteEvent
@@ -138,6 +140,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     // draining and the buffer is growing.
     private val pendingScanResults = ConcurrentLinkedQueue<FfiScanResult>()
     private val pendingGattWrites = ConcurrentLinkedQueue<FfiGattWriteEvent>()
+
+    // HW-9: connections accepted by our own GATT SERVER — a remote central
+    // dialed US — drained by the Rust accept-poller via
+    // accepted_connections(). Previously nothing queued these at all: the
+    // GATT server callback had no onConnectionStateChange override, so a
+    // peripheral-role connection existed at the platform level (writes
+    // landed in pendingGattWrites just fine) with no signal anywhere that
+    // it had happened, meaning no per-connection poller was ever spawned to
+    // drain it on the Rust side.
+    private val pendingAcceptedConnections = ConcurrentLinkedQueue<FfiAcceptedConnection>()
 
     // AND-RT-111: IRIS characteristic cached by onServicesDiscovered (async);
     // negotiated MTU + last client-write status tracked per connection.
@@ -322,6 +334,26 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     private var gattServer: BluetoothGattServer? = null
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
+        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+            // HW-9: this override did not exist at all before — the GATT
+            // server had no way to tell the Rust core "a remote central
+            // just dialed us." Queueing the accepted connection here is
+            // what lets `accepted_connections()` (drained by the new
+            // Rust-side accept-poller in ble.rs) spawn a reassembly poller
+            // for it, exactly as connect_gatt()'s own central-role
+            // connections already get one.
+            android.util.Log.d(
+                "IrisBleDiag",
+                "gattServer onConnectionStateChange device=${device.address} status=$status newState=$newState",
+            )
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                while (pendingAcceptedConnections.size >= MAX_PENDING) pendingAcceptedConnections.poll()
+                pendingAcceptedConnections.add(
+                    FfiAcceptedConnection(handle = deviceHash(device), address = device.address),
+                )
+            }
+        }
+
         override fun onCharacteristicWriteRequest(
             device: BluetoothDevice,
             requestId: Int,
@@ -331,6 +363,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             offset: Int,
             value: ByteArray,
         ) {
+            // HW-9 investigation: this callback previously had zero tracing —
+            // a sender-side msg.sent success gave no way to tell whether the
+            // write ever reached the peer's GATT server at all, versus
+            // arriving and being silently dropped/misrouted downstream.
+            android.util.Log.d(
+                "IrisBleDiag",
+                "onCharacteristicWriteRequest device=${device.address} uuid=${characteristic.uuid} " +
+                    "matchesIris=${characteristic.uuid == IRIS_CHARACTERISTIC_UUID} len=${value.size} " +
+                    "responseNeeded=$responseNeeded",
+            )
             if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
                 // Bounded: if the core stops draining, drop the oldest rather
                 // than growing without limit.
@@ -377,7 +419,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     /** Open the process-scoped GATT server once and serve the IRIS transport characteristic. */
     private fun ensureGattServer() {
         if (gattServer != null) return
-        val server = bleManager?.openGattServer(appContext, gattServerCallback) ?: return
+        val server = bleManager?.openGattServer(appContext, gattServerCallback)
+        if (server == null) {
+            android.util.Log.w("IrisBleDiag", "ensureGattServer: openGattServer returned null")
+            return
+        }
         val service = BluetoothGattService(
             IRIS_SERVICE_UUID,
             BluetoothGattService.SERVICE_TYPE_PRIMARY,
@@ -391,7 +437,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 BluetoothGattCharacteristic.PERMISSION_WRITE,
             ),
         )
-        if (server.addService(service)) gattServer = server
+        val added = server.addService(service)
+        android.util.Log.d("IrisBleDiag", "ensureGattServer: addService(IRIS_SERVICE_UUID=$IRIS_SERVICE_UUID) -> $added")
+        if (added) gattServer = server
     }
 
     private val advertiseHandles = ConcurrentHashMap<Long, Pair<BluetoothLeAdvertiser, AdvertiseCallback>>()
@@ -633,6 +681,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun scanResults(): List<FfiScanResult> =
         FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(pendingScanResults) }
+
+    // HW-9: drained by the Rust accept-poller (ble.rs's ensure_accept_poller)
+    // to spawn a reassembly poller for each connection a remote central
+    // dialed to us, mirroring incomingGattWrites()/scanResults()'s pattern.
+    override fun acceptedConnections(): List<FfiAcceptedConnection> =
+        FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(pendingAcceptedConnections) }
 
     /**
      * Atomically removes and returns every buffered item.
