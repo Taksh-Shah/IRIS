@@ -1547,23 +1547,151 @@ RF-16) in one commit, plus 3 pre-existing-breakage restorations in a
 separate commit (not counted against the findings cap). Tier 4: 55 of
 126 done, 70 remaining, 1 blocked (TAK-6, TLS/supply-chain gate).
 
-### Next run (Run 20)
-Wake RF-B: RF-1, RF-5, RF-7 — the three LoRa findings deferred from
-this run for being independently substantial. RF-1: extend
-`LoRaLinkAdapter` with `configure`/`read_config`; stub both in
-`AtSerialAdapter`/`SpiNativeAdapter` (trivial — both are "shape only,"
-every method already returns `HardwareGated` unconditionally); give
-`SimulatedLoRaAdapter` real configure/read_config state (default
-compliant, settable by a test to simulate a misconfigured module);
-`attach_adapter` reads and validates config before promoting to
-Available; `try_send_inner` calls `configure` when the required profile
-differs from the last-applied one. RF-5: add `TransportError::
-RateLimited { retry_after_ms, remaining_fraction }`; verified this is
-safe to add (no exhaustive `match` on `TransportError` outside
-`error.rs`'s own `Display` impl and its own tests — checked before
-scoping this in). RF-7: add `ComplianceConfig::max_ton_ms`/`min_off_ms`
-with a new distinct refusal error, sibling to `BudgetExhausted` — check
-how many `ComplianceConfig { .. }` literal construction sites exist
-before adding fields (same class of break this run's SimLoss fix just
-cleaned up). Read all three findings' current source fresh before
-implementing.
+## Run 20 — 2026-08-29 — Tier 4 Wake RF-B: LoRa config verification, structured rate-limit, per-transmission timing (RF-1/5/7)
+
+Owner said "continue with wake RF-B" — the three LoRa findings deferred
+from Run 19 (RF-4/10/14/16) for being independently substantial.
+
+**RF-5 (Medium).** `BudgetExhausted`'s computed next-legal-send-window
+(RES-0008 R7) was logged at `debug!` and discarded; `try_send_inner`
+returned bare `TransportError::Busy`, indistinguishable from ordinary
+pool saturation, no retry time. Added `TransportError::RateLimited {
+retry_after_ms, remaining_fraction }`, wired into the duty-refusal
+branch. This forced dropping `TransportError`'s `Eq` derive (kept
+`PartialEq`): `f32` cannot implement `Eq` (NaN) — confirmed via an
+actual compile attempt before deciding how to handle it, not assumed.
+Grepped the workspace for any HashMap/HashSet key usage or explicit
+`Eq` bound on `TransportError` before dropping the derive; found none.
+Added `RateLimited` to `is_retryable()` — it names its own recovery
+time, so a caller retrying after `retry_after_ms` will get the same
+admission decision reconsidered, unlike a permanent policy/hardware
+refusal. While implementing this, found satellite.rs has the exact
+same pattern — `admit_tx()`'s `GuardRefusal { reason, retry_at_unix_ms
+}` collapsed to bare `Busy` at its own call site (checked current
+source, not the finding's possibly-stale line numbers: confirmed
+still there). Not fixed here — it belongs with the other satellite
+spend-guard findings (RF-19..22) already planned as a separate,
+later wake, and touching it in isolation now would mean revisiting
+the same code twice. Noted for that wake instead.
+
+**RF-7 (Medium).** No ceiling on a single transmission's on-time — a
+full P0 frame is a 9.02s continuous emission, monopolizing the
+half-duplex channel and likely violating EN 300 220's per-transmission
+timing conditions independent of the aggregate 1% duty figure. Checked
+all 5 `ComplianceConfig { .. }` construction sites before adding fields
+(the same class of break Run 19's SimLoss fix had to clean up) — all 4
+test sites already use `..Default::default()`, so only the `Default`
+impl itself needed updating. Added `max_ton_ms`/`min_off_ms` +
+`DutyCycleTracker::check_transmission_timing`, called BEFORE (not
+folded into) `check_and_consume` — a genuinely separate,
+`BudgetExhausted`-sibling error type (`TransmissionTimingRefused`),
+kept out of `check_and_consume`'s own `Result<NextWindow,
+BudgetExhausted>` signature specifically so the ~15 existing call
+sites (mostly tests) needed zero changes.
+
+**Deliberately did not use the finding's own suggested `max_ton_ms`
+default of 1000ms — verified independently BEFORE writing any tracker
+code**, not after: wrote a standalone rustc smoke test of the exact
+`airtime_ms` formula and found that at SF12 (the P0/emergency-SOS
+profile), even a ZERO-payload frame — just the 18-byte header, the
+physical minimum possible — already takes 1319ms. A 1000ms default
+would have made P0 categorically unable to transmit over LoRa at all,
+under any payload size, forever — the finding's own remediation text
+("for P0 this forces fragmentation to ≤1s frames") assumes fragmenting
+smaller can bring SF12 under 1 second, which is not physically
+possible for this profile. This would have been a far worse outcome
+than the 9-second-emission problem RF-7 exists to fix — blindly
+implementing the finding's literal suggestion here would have shipped
+a regression that silences the exact life-safety traffic class this
+whole bug-hunt effort cares most about protecting. Defaulted instead
+to 4000ms: comfortably above 3285ms (P0's REAL current worst case, a
+60-byte payload under RF-10's own cap, at SF12), so this does not
+regress P0 sending, while still meaningfully bounding the old,
+uncapped 9020ms worst case the finding was actually concerned about.
+`min_off_ms` defaults to 0 (disabled) — no specific EN 300 220
+off-time figure was given for this deployment's exact sub-band, and
+inventing one risked encoding a wrong regulatory number rather than no
+constraint at all; the mechanism is fully wired and testable, just not
+defaulted to a number I can't verify. Max-on-time violations map to
+`TransportError::PolicyDenied` (no existing variant fits a *time*-
+shaped per-request ceiling cleanly — `MessageTooLarge`'s `limit`/
+`actual` are byte counts); min-off-time violations map to the new
+`RateLimited`. Four new regression tests, including one exercising the
+real `try_send_inner` path end-to-end, not just the tracker method
+directly.
+
+**RF-1 (Critical, downgraded to High).** The duty tracker bills
+airtime for a `RadioProfile` (SF/BW/power) the `LoRaLinkAdapter` trait
+had no way to confirm the module is actually transmitting at —
+compliance evidence that never observes the radio. Extended the trait
+with `configure()`/`read_config()`. Checked both real-adapter impls
+before touching them: `AtSerialAdapter`/`SpiNativeAdapter` are both
+"shape only" (every existing method already unconditionally returns
+`HardwareGated`, pending BLK-0005 hardware procurement), so trivial
+matching stubs are zero behavior change, not a new gap. Gave
+`SimulatedLoRaAdapter` real configure/read_config state, defaulted to
+the compliant `DEFAULT_RADIO_PROFILE`/14dBm — ran the FULL pre-
+existing LoRa test suite immediately after this change, before writing
+any new RF-1 tests, specifically to confirm every existing
+`attach_adapter` call site (which all rely on the simulated adapter's
+default state) still succeeded unchanged. It did, 37/37.
+
+`attach_adapter` now calls `read_config()` after `open()` and refuses
+to promote to `Available` if the reported frequency disagrees with
+`ComplianceConfig.freq_hz` or reported power exceeds `max_erp_dbm` —
+the exact cross-check the finding's own evidence section asks for
+("RadioProfile.freq_hz and ComplianceConfig.freq_hz... two unrelated
+constants both happening to be 866_000_000"). Deliberately checks only
+frequency + power, not SF/BW/coding-rate: `try_send_inner` already
+reconfigures per-send for whichever profile the specific message needs
+(P0 vs everything else), so attach time only needs to confirm the
+module's regulatory ceiling agrees with this tracker's, not commit to
+one specific SF up front. Added `last_configured_profile` tracking on
+`LoRaTransport` so consecutive sends sharing a profile don't redundantly
+re-configure the module on every single send. A `configure()` failure
+mid-send refunds the just-reserved duty token (mirrors RF-4's own
+refund-on-proven-no-emission logic from Run 19) rather than burning
+budget for a transmission that never actually got configured. Added
+`DutyCycleTracker::compliance_config()` as a small read accessor
+(`ComplianceConfig` is `Copy`, so this is a cheap snapshot) since
+`attach_adapter` needs the tracker's own config to validate the
+module's reported one against. Three new regression tests, including
+one that reads the simulated adapter's config back after a real P0
+send to confirm `try_send_inner` actually reconfigured it to SF12, not
+just that the send succeeded.
+
+**Run 20 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop`
+— 711 iris-core lib tests, 0 failed (+8 from this wake: 4 RF-7, 3
+RF-1, 1 RF-5), only the separately-flagged, pre-existing `crypto_e2e`
+failure remains (task_2b02c5f4, confirmed still unrelated); `cargo
+test -p iris-core --lib transport::lora::` — 40/40 pass; `cargo clippy
+-p iris-core --lib --no-deps` — no new warnings (checked `error.rs`
+specifically, clean; `lora.rs`'s one warning is the pre-existing
+`state_tx.send()` pattern shared by every transport file in this
+crate).
+
+**§8 accounting:** 3 findings fixed this run (RF-1, RF-5, RF-7) in one
+commit, comfortably under the cap. Tier 4: 58 of 126 done, 67
+remaining, 1 blocked (TAK-6, TLS/supply-chain gate). This closes out 7
+of the RF-1..23 LoRa/satellite duty-cycle cluster (RF-1/4/5/7/10/14/16)
+across Wakes RF-A and RF-B — 16 remain (RF-2/3/6/8/9/11/12/13/15/17,
+the rest of lora.rs; RF-18..23, the satellite spend-guard cluster).
+
+### Next run (Run 21)
+Wake RF-C (LoRa continues): RF-2, RF-3, RF-9 — a natural next cluster.
+RF-2: no persistence for the duty budget across process restarts (a
+crash-loop or force-stop/reopen resets the hourly budget to 100% for
+free) — needs a new `DutyLedger` seam mirroring satellite's existing
+`CostLedger` trait, a real new subsystem, not a small fix. RF-3: the
+per-bucket proportional share (60/25/10/5%) is enforced as a hard
+ceiling instead of work-conserving, so P0 can be refused with the
+aggregate budget mostly idle if only its own bucket is spent — read
+RF-7's own fix note first ("fragmenting increases total airtime, so
+RF-3's work-conserving fix becomes load-bearing") since RF-7 already
+landed and may interact. RF-9: `poll_inbound`'s receive loop has no
+per-call frame budget, unlike every other transport with an open-medium
+attack surface (`wifi_direct.rs`'s `MAX_FRAMES_PER_TICK`) — smallest of
+the three, a direct mirror of that existing pattern. Read all three
+findings' current source fresh before implementing, same discipline as
+every run this session.
