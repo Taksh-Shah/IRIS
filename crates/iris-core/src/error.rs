@@ -3,7 +3,13 @@
 use std::fmt;
 
 /// Errors produced by transport implementations and the transport manager.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// RF-5: `Eq` dropped (was derived alongside `PartialEq`) — `RateLimited`'s
+/// `remaining_fraction: f32` cannot implement `Eq` (NaN), and grepping the
+/// workspace found no HashMap/HashSet key usage or explicit `Eq` bound on
+/// this type to preserve. `PartialEq` alone is sufficient for every
+/// existing `assert_eq!`/`matches!` comparison.
+#[derive(Debug, Clone, PartialEq)]
 pub enum TransportError {
     /// No active link to the target peer on this transport.
     NotConnected,
@@ -53,6 +59,15 @@ pub enum TransportError {
     /// tell a transient failure from a permanent one — see
     /// [`Self::is_retryable`].
     Io { kind: std::io::ErrorKind, msg: String },
+    /// RF-5: refused by a rate/duty-cycle limiter that knows exactly when
+    /// it will admit again — distinct from [`Self::Busy`] (pool
+    /// saturation, no known recovery time). A caller can schedule a retry
+    /// at `retry_after_ms` instead of guessing a generic backoff or
+    /// spinning immediately against a limiter that cannot yet say yes.
+    RateLimited {
+        retry_after_ms: u64,
+        remaining_fraction: f32,
+    },
 }
 
 impl fmt::Display for TransportError {
@@ -78,6 +93,14 @@ impl fmt::Display for TransportError {
             ),
             TransportError::PolicyDenied(reason) => write!(f, "transport: policy denied: {reason}"),
             TransportError::Io { kind, msg } => write!(f, "transport io error: {msg} ({kind:?})"),
+            TransportError::RateLimited {
+                retry_after_ms,
+                remaining_fraction,
+            } => write!(
+                f,
+                "transport: rate limited, retry after {retry_after_ms}ms ({:.1}% budget remaining)",
+                remaining_fraction * 100.0
+            ),
         }
     }
 }
@@ -106,6 +129,13 @@ impl TransportError {
             self,
             TransportError::Busy
                 | TransportError::ConnectionFailed
+                // RF-5: a rate/duty-cycle limit that names its own recovery
+                // time will admit the same request again once that time
+                // passes — retryable, unlike a permanent policy/hardware
+                // refusal. The caller should wait `retry_after_ms`, not
+                // spin, but that pacing is a caller concern (matching how
+                // `Busy` and `ConnectionFailed` carry no delay either).
+                | TransportError::RateLimited { .. }
                 | TransportError::Io {
                     kind: std::io::ErrorKind::WouldBlock
                         | std::io::ErrorKind::TimedOut
@@ -119,6 +149,20 @@ impl TransportError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rf5_rate_limited_is_retryable_and_displays_its_retry_time() {
+        let e = TransportError::RateLimited {
+            retry_after_ms: 1_234,
+            remaining_fraction: 0.5,
+        };
+        assert!(e.is_retryable());
+        let shown = e.to_string();
+        assert!(
+            shown.contains("1234"),
+            "Display must surface the retry time: {shown}"
+        );
+    }
 
     #[test]
     fn mg39_is_retryable_covers_the_transient_cases() {

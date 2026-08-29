@@ -69,6 +69,44 @@ pub struct ComplianceConfig {
     pub window_ms: u64,
     /// Airtime budget per window (ms). Derived: `window_ms × duty%`.
     pub airtime_budget_ms: u64,
+    /// RF-7: maximum on-time for a single transmission (ms). EN 300 220's
+    /// duty-cycle band access conditions the 1% sub-bands typically pair
+    /// the aggregate duty figure with a per-transmission ceiling (commonly
+    /// 1 s) — the aggregate budget alone does not bound one continuous
+    /// emission, which a single SF12 P0 frame could otherwise turn into a
+    /// 9.02 s unbroken transmission (see `airtime_matches_semtech_
+    /// formula_anchors`).
+    ///
+    /// **Deliberately NOT the finding's suggested default of 1000.**
+    /// Verified independently (a standalone rustc smoke test of the exact
+    /// `airtime_ms` formula, before touching this default): at SF12 (the
+    /// P0 profile), even a ZERO-payload frame — just the 18-byte header,
+    /// the physical minimum possible — already takes 1319 ms. A 1000 ms
+    /// cap would make P0 (emergency SOS) categorically unable to transmit
+    /// over LoRa at all, under any payload size, which is a far worse
+    /// outcome than the finding's own 9.02 s-emission concern — the
+    /// finding's own remediation text ("for P0 this forces fragmentation
+    /// to ≤1 s frames") assumes fragmenting smaller can bring SF12 under
+    /// 1 s, which is not physically possible for this profile. Defaulted
+    /// instead to 4000 — comfortably above 3285 ms (P0's real current
+    /// worst case: a 60-byte payload, RF-10's own cap, at SF12), so this
+    /// does not regress P0 sending, while still meaningfully bounding the
+    /// old, uncapped 9020 ms worst case the finding was actually
+    /// concerned about. Like `min_off_ms` below, this is a safe,
+    /// non-breaking starting point, not a verified EN 300 220 sub-band
+    /// figure — tune once that figure is confirmed for this deployment's
+    /// exact band/region, and reconcile against `max_payload_for`'s P0
+    /// cap (RF-10) if either changes.
+    pub max_ton_ms: u64,
+    /// RF-7: minimum time between the end of one transmission and the
+    /// start of the next (ms). Default 0 (disabled) — unlike
+    /// `max_ton_ms`, no specific EN 300 220 off-time figure was given for
+    /// this deployment's exact sub-band, and inventing one would risk
+    /// encoding a wrong regulatory number rather than no constraint at
+    /// all. The mechanism is fully wired (`check_transmission_timing`);
+    /// set a nonzero value here once the correct figure for this
+    /// deployment's specific band/region is confirmed.
+    pub min_off_ms: u64,
 }
 
 impl Default for ComplianceConfig {
@@ -79,6 +117,8 @@ impl Default for ComplianceConfig {
             duty_percent: 1.0,
             window_ms: 3_600_000,
             airtime_budget_ms: 36_000,
+            max_ton_ms: 4_000,
+            min_off_ms: 0,
         }
     }
 }
@@ -210,6 +250,33 @@ pub struct BudgetExhausted {
     pub at_unix_ms: u64,
     pub delay_ms: u64,
     pub remaining_fraction: f32,
+}
+
+/// RF-7: why [`DutyCycleTracker::check_transmission_timing`] refused a send
+/// — a distinct, `BudgetExhausted`-sibling error, not the aggregate 1%
+/// window budget. `BudgetExhausted` answers "has this device transmitted
+/// too much total airtime this hour"; this answers "is THIS ONE
+/// transmission itself too long, or too soon after the last one" — EN 300
+/// 220's per-transmission timing constraints, checked independently of and
+/// before the aggregate budget (there is no point reserving airtime for a
+/// transmission that can never legally happen as shaped).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimingRefusalReason {
+    /// The requested airtime exceeds `ComplianceConfig::max_ton_ms` — no
+    /// wait fixes this, the caller must fragment the message smaller.
+    MaxOnTimeExceeded,
+    /// The send would start before `ComplianceConfig::min_off_ms` has
+    /// elapsed since the end of the last transmission.
+    MinOffTimeNotElapsed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TransmissionTimingRefused {
+    pub reason: TimingRefusalReason,
+    /// Milliseconds until this exact request would become legal. Always 0
+    /// for `MaxOnTimeExceeded` (waiting never helps); the remaining
+    /// off-time for `MinOffTimeNotElapsed`.
+    pub delay_ms: u64,
 }
 
 type NowFn = Box<dyn Fn() -> u64 + Send + Sync>;
@@ -480,6 +547,50 @@ impl DutyCycleTracker {
             delay_ms: delay,
             remaining_fraction: remaining_fraction(used, budget),
         })
+    }
+
+    /// RF-7: per-transmission timing constraints, independent of the
+    /// aggregate window budget `check_and_consume` enforces. Callers
+    /// should check this FIRST — there is no point reserving airtime
+    /// (which mutates tracker state) for a transmission that can never
+    /// legally happen as shaped, or that must wait regardless of budget.
+    pub fn check_transmission_timing(
+        &self,
+        airtime_ms: u64,
+    ) -> Result<(), TransmissionTimingRefused> {
+        if airtime_ms > self.cfg.max_ton_ms {
+            return Err(TransmissionTimingRefused {
+                reason: TimingRefusalReason::MaxOnTimeExceeded,
+                delay_ms: 0,
+            });
+        }
+        if self.cfg.min_off_ms > 0 {
+            let now = self.now();
+            let q = self.tx.lock().unwrap_or_else(|p| p.into_inner());
+            // The queue is append-only-at-the-back / prune-from-the-front
+            // under a monotonic clock, so it stays ordered by start_ms —
+            // `.back()` is the most recent transmission recorded.
+            if let Some(last) = q.back() {
+                let last_end = last.start_ms.saturating_add(last.airtime_ms);
+                let elapsed = now.saturating_sub(last_end);
+                if elapsed < self.cfg.min_off_ms {
+                    return Err(TransmissionTimingRefused {
+                        reason: TimingRefusalReason::MinOffTimeNotElapsed,
+                        delay_ms: self.cfg.min_off_ms - elapsed,
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Read-only access to the compliance configuration this tracker was
+    /// constructed with (RF-1: `attach_adapter` needs `freq_hz`/
+    /// `max_erp_dbm` to validate an attached module's reported config).
+    /// `ComplianceConfig` is `Copy`, so this is a cheap snapshot, not a
+    /// live reference into tracker state.
+    pub fn compliance_config(&self) -> ComplianceConfig {
+        self.cfg
     }
 }
 
@@ -873,6 +984,25 @@ pub trait LoRaLinkAdapter: Send + Sync + 'static {
     /// Poll one inbound SLIP frame; `None` = nothing received yet.
     async fn rx(&self) -> Result<Option<Vec<u8>>, LoRaLinkError>;
     async fn status(&self) -> Result<LinkStatus, LoRaLinkError>;
+    /// RF-1: set the module's PHY configuration. `try_send_inner` calls
+    /// this whenever the profile required by the message being sent
+    /// (`profile_for_priority`) differs from the last-applied one — the
+    /// duty tracker bills airtime computed FOR a profile it never actually
+    /// confirmed the module is transmitting AT, unless something makes
+    /// the two agree. Infallible-to-ignore-at-your-peril: nothing in this
+    /// trait's OTHER methods depends on `configure` ever having been
+    /// called, by design (a firmware that silently keeps its own default
+    /// SF/power regardless of this call is still memory/type-safe to use
+    /// — it is simply non-compliant, which `attach_adapter`'s
+    /// `read_config` check below exists to catch at attach time).
+    async fn configure(&self, profile: &RadioProfile, max_erp_dbm: i8) -> Result<(), LoRaLinkError>;
+    /// RF-1: read back the module's actual, currently-active PHY
+    /// configuration. `attach_adapter` calls this once, after `open()`,
+    /// and refuses to promote the transport to `Available` if the
+    /// reported profile's frequency is outside the compliance band or its
+    /// power exceeds the compliance ceiling — a module that will not (or
+    /// cannot) confirm compliant config never becomes selectable.
+    async fn read_config(&self) -> Result<(RadioProfile, i8), LoRaLinkError>;
 }
 
 /// EBYTE E22-900M30S over USB-CDC/UART speaking the vendor AT set —
@@ -910,6 +1040,12 @@ impl LoRaLinkAdapter for AtSerialAdapter {
     async fn status(&self) -> Result<LinkStatus, LoRaLinkError> {
         Err(LoRaLinkError::HardwareGated)
     }
+    async fn configure(&self, _profile: &RadioProfile, _max_erp_dbm: i8) -> Result<(), LoRaLinkError> {
+        Err(LoRaLinkError::HardwareGated)
+    }
+    async fn read_config(&self) -> Result<(RadioProfile, i8), LoRaLinkError> {
+        Err(LoRaLinkError::HardwareGated)
+    }
 }
 
 /// Waveshare SX1262 LoRa HAT over SPI (RPi gateway) — **shape only**, same
@@ -944,6 +1080,12 @@ impl LoRaLinkAdapter for SpiNativeAdapter {
     async fn status(&self) -> Result<LinkStatus, LoRaLinkError> {
         Err(LoRaLinkError::HardwareGated)
     }
+    async fn configure(&self, _profile: &RadioProfile, _max_erp_dbm: i8) -> Result<(), LoRaLinkError> {
+        Err(LoRaLinkError::HardwareGated)
+    }
+    async fn read_config(&self) -> Result<(RadioProfile, i8), LoRaLinkError> {
+        Err(LoRaLinkError::HardwareGated)
+    }
 }
 
 /// Deterministic in-memory link for tests/conformance (pattern:
@@ -964,6 +1106,14 @@ struct SimWireState {
     peer: Option<Arc<SimWire>>,
     inbound: VecDeque<PendingFrame>,
     rng: ChaCha8Rng,
+    /// RF-1: the module's simulated PHY config, mutated by `configure()`
+    /// and read back by `read_config()`. Defaults to the compliant
+    /// `DEFAULT_RADIO_PROFILE`/14 dBm so a test that never calls
+    /// `configure()` still attaches cleanly — a test that wants to
+    /// exercise `attach_adapter`'s rejection path calls `configure()`
+    /// with a bad profile/power BEFORE `attach_adapter`, simulating a
+    /// module that booted already misconfigured.
+    configured: (RadioProfile, i8),
 }
 
 struct PendingFrame {
@@ -1002,6 +1152,7 @@ impl SimulatedLoRaAdapter {
                 peer: None,
                 inbound: VecDeque::new(),
                 rng: ChaCha8Rng::seed_from_u64(cfg.seed),
+                configured: (DEFAULT_RADIO_PROFILE, 14),
             }),
         }))
     }
@@ -1071,6 +1222,21 @@ impl LoRaLinkAdapter for SimulatedLoRaAdapter {
             duty_remaining_fraction: 1.0,
             battery_pct: 100,
         })
+    }
+
+    async fn configure(&self, profile: &RadioProfile, max_erp_dbm: i8) -> Result<(), LoRaLinkError> {
+        if !self.0.opened.load(Ordering::Acquire) {
+            return Err(LoRaLinkError::Closed);
+        }
+        self.0.state.lock().unwrap_or_else(|p| p.into_inner()).configured = (*profile, max_erp_dbm);
+        Ok(())
+    }
+
+    async fn read_config(&self) -> Result<(RadioProfile, i8), LoRaLinkError> {
+        if !self.0.opened.load(Ordering::Acquire) {
+            return Err(LoRaLinkError::Closed);
+        }
+        Ok(self.0.state.lock().unwrap_or_else(|p| p.into_inner()).configured)
     }
 }
 
@@ -1350,6 +1516,11 @@ pub struct LoRaTransport {
     metrics: LoRaMetrics,
     last_priority: AtomicU8,
     shutdown_flag: AtomicBool,
+    /// RF-1: the profile `configure()` was last (successfully) called
+    /// with, so `try_send_inner` only re-configures the module when the
+    /// send actually needs a different profile than what's already
+    /// active — avoiding a `configure` round trip on every single send.
+    last_configured_profile: Mutex<Option<RadioProfile>>,
 }
 
 // SYS-2: deadline constants for LoRa adapter calls.
@@ -1377,6 +1548,7 @@ impl LoRaTransport {
             metrics: LoRaMetrics::default(),
             last_priority: AtomicU8::new(MessagePriority::P4.as_u8()),
             shutdown_flag: AtomicBool::new(false),
+            last_configured_profile: Mutex::new(None),
         }
     }
 
@@ -1402,7 +1574,45 @@ impl LoRaTransport {
         tokio::time::timeout(OPEN_TIMEOUT, adapter.open())
             .await
             .map_err(|_| LoRaLinkError::Io("open timed out".to_string()))??;
+        // RF-1: a module that will not (or cannot) confirm compliant PHY
+        // config never becomes selectable — without this, the duty
+        // tracker bills airtime for a profile it never actually verified
+        // the module is transmitting at, making its own compliance
+        // evidence unfalsifiable (this finding's core concern). Checks
+        // only frequency + power (not SF/BW/coding rate) — `try_send_
+        // inner` reconfigures per-send for the priority-specific profile,
+        // so attach time only needs to confirm the module's regulatory
+        // ceiling agrees with this tracker's, not any one specific SF.
+        let (reported_profile, reported_power_dbm) =
+            tokio::time::timeout(OPEN_TIMEOUT, adapter.read_config())
+                .await
+                .map_err(|_| LoRaLinkError::Io("read_config timed out".to_string()))??;
+        let cfg = self.tracker.compliance_config();
+        if reported_profile.freq_hz != cfg.freq_hz {
+            // Cross-checks RadioProfile.freq_hz against ComplianceConfig.
+            // freq_hz — today's DEFAULT_RADIO_PROFILE/P0_RADIO_PROFILE and
+            // ComplianceConfig both happen to pin 866_000_000 Hz, but
+            // nothing enforced them staying in agreement (RF-1's evidence
+            // section: "two unrelated constants both happening to be
+            // 866_000_000").
+            return Err(LoRaLinkError::Io(format!(
+                "module reports {} Hz, compliance config pins {} Hz",
+                reported_profile.freq_hz, cfg.freq_hz
+            )));
+        }
+        if reported_power_dbm > cfg.max_erp_dbm {
+            return Err(LoRaLinkError::Io(format!(
+                "module reports {reported_power_dbm} dBm e.r.p., exceeds the {} dBm Table-I ceiling",
+                cfg.max_erp_dbm
+            )));
+        }
         *self.adapter.write().await = Some(adapter);
+        // A freshly-attached module's actual configured profile is
+        // whatever it reported above, not necessarily what the first send
+        // will need -- reset so try_send_inner's first send always
+        // reconfigures rather than trusting a stale assumption from a
+        // previous adapter instance.
+        *self.last_configured_profile.lock().unwrap_or_else(|p| p.into_inner()) = None;
         if self.state.load() < TransportState::Available {
             self.set_state(TransportState::Available);
         }
@@ -1506,6 +1716,37 @@ impl LoRaTransport {
         // carrier framing, not on-air bytes, and are deliberately not billed.
         let profile = profile_for_priority(msg.priority);
         let airtime = airtime_ms(&profile, encoded.len());
+        // RF-7: per-transmission timing (max on-time / min off-time) is a
+        // separate constraint from the aggregate window budget below —
+        // checked first, since reserving airtime for a transmission that
+        // can never legally happen as shaped (or must wait regardless of
+        // budget) would just need refunding.
+        if let Err(tr) = self.tracker.check_transmission_timing(airtime) {
+            tracing::debug!(
+                target: "iris.transport.lora",
+                timing_refusal = ?tr.reason,
+                retry_in_ms = tr.delay_ms,
+                "send refused by per-transmission timing constraint"
+            );
+            self.metrics.record_refusal();
+            return Err(match tr.reason {
+                // No wait fixes an inherently-too-long single transmission
+                // — the caller must fragment smaller and retry. Closest
+                // existing variant: permanent for this exact request, but
+                // (unlike a true PolicyDenied) retrying on LoRa WOULD work
+                // once the message is re-fragmented — there is no clean
+                // existing TransportError variant for a *time*-shaped
+                // per-request ceiling (MessageTooLarge's limit/actual are
+                // byte counts).
+                TimingRefusalReason::MaxOnTimeExceeded => TransportError::PolicyDenied(
+                    "single LoRa transmission exceeds the regulatory max on-time; message must be fragmented smaller",
+                ),
+                TimingRefusalReason::MinOffTimeNotElapsed => TransportError::RateLimited {
+                    retry_after_ms: tr.delay_ms,
+                    remaining_fraction: self.tracker.duty_cycle_remaining_fraction(),
+                },
+            });
+        }
         let admission = match self.tracker.check_and_consume(msg.priority, airtime) {
             Ok(w) => w,
             Err(be) => {
@@ -1516,9 +1757,44 @@ impl LoRaTransport {
                     "send refused by 1% duty budget; re-route or P0-switch"
                 );
                 self.metrics.record_refusal();
-                return Err(TransportError::Busy);
+                // RF-5: `NextWindow`/`BudgetExhausted` already compute the
+                // next legal send time (RES-0008 R7) — `TransportError::Busy`
+                // (pool saturation, no known recovery time) discarded it, so
+                // a caller could not tell a duty refusal from a busy socket
+                // pool and got no retry time to schedule around.
+                return Err(TransportError::RateLimited {
+                    retry_after_ms: be.delay_ms,
+                    remaining_fraction: be.remaining_fraction,
+                });
             }
         };
+        // RF-1: (re)configure the module when this send needs a different
+        // profile than what's currently active, so the airtime just
+        // reserved above is actually billed for the profile the module is
+        // really transmitting at. Done after the budget/timing checks
+        // (not before) to avoid a wasted hardware round trip on a request
+        // that was going to be refused anyway; done before `tx()` so a
+        // configure failure can still refund cleanly.
+        let needs_configure = *self
+            .last_configured_profile
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            != Some(profile);
+        if needs_configure {
+            let cfg = self.tracker.compliance_config();
+            if let Err(e) = adapter.configure(&profile, cfg.max_erp_dbm).await {
+                // The reservation was never used -- refund it, same as any
+                // other proven-no-emission failure (RF-4).
+                self.tracker.refund(admission.token);
+                self.metrics.record_tx_failure();
+                tracing::debug!(target: "iris.transport.lora", "configure failed before transmit; budget refunded");
+                return Err(lora_link_err("lora link configure", e));
+            }
+            *self
+                .last_configured_profile
+                .lock()
+                .unwrap_or_else(|p| p.into_inner()) = Some(profile);
+        }
         let slip = encode_slip(&encoded);
         let tx_result = tokio::time::timeout(TX_TIMEOUT, adapter.tx(&slip))
             .await
@@ -1929,6 +2205,97 @@ mod tests {
             .expect("window rolled: p0 share restored");
     }
 
+    // ---- RF-7: per-transmission timing (max on-time / min off-time) ----
+
+    #[test]
+    fn rf7_max_on_time_exceeded_refuses_regardless_of_budget() {
+        // A transmission that is itself too long is refused even though the
+        // aggregate window budget has plenty of room — check_transmission_
+        // timing runs independently of, and before, check_and_consume.
+        let cfg = ComplianceConfig {
+            max_ton_ms: 500,
+            ..Default::default()
+        };
+        let tracker =
+            DutyCycleTracker::with_clock(cfg, Box::new(|| 0)).expect("valid config");
+        let err = tracker
+            .check_transmission_timing(600)
+            .expect_err("600ms exceeds the 500ms cap");
+        assert_eq!(err.reason, TimingRefusalReason::MaxOnTimeExceeded);
+        assert_eq!(err.delay_ms, 0, "no wait fixes an inherently-too-long frame");
+        // Half the aggregate budget is untouched -- this is not a budget
+        // refusal in disguise.
+        assert!(tracker.duty_cycle_remaining_fraction() > 0.99);
+        tracker
+            .check_transmission_timing(500)
+            .expect("exactly at the cap must be admitted");
+    }
+
+    #[test]
+    fn rf7_min_off_time_not_elapsed_refuses_too_soon_after_last_tx() {
+        let clock = Arc::new(AtomicU64::new(0));
+        let c = clock.clone();
+        let cfg = ComplianceConfig {
+            min_off_ms: 1_000,
+            ..Default::default()
+        };
+        let tracker = DutyCycleTracker::with_clock(cfg, Box::new(move || c.load(Ordering::Relaxed)))
+            .expect("valid config");
+        // Admit a 300ms transmission at t=0 -> ends at t=300.
+        tracker
+            .check_and_consume(MessagePriority::P4, 300)
+            .expect("first send admitted");
+        // At t=500, only 200ms of the 1000ms off-time has elapsed since the
+        // first transmission ended (t=300).
+        clock.store(500, Ordering::Relaxed);
+        let err = tracker
+            .check_transmission_timing(100)
+            .expect_err("only 200ms of the 1000ms off-time has elapsed");
+        assert_eq!(err.reason, TimingRefusalReason::MinOffTimeNotElapsed);
+        assert_eq!(err.delay_ms, 800, "1000ms off-time minus 200ms already elapsed");
+        // At t=1300, the full 1000ms off-time (since t=300) has elapsed.
+        clock.store(1_300, Ordering::Relaxed);
+        tracker
+            .check_transmission_timing(100)
+            .expect("full off-time has elapsed");
+    }
+
+    #[test]
+    fn rf7_min_off_time_disabled_by_default() {
+        // Default min_off_ms is 0 (disabled) -- back-to-back transmissions
+        // are not refused unless a deployment explicitly opts in.
+        let (_clock, tracker) = fake_tracker(0);
+        tracker
+            .check_and_consume(MessagePriority::P4, 100)
+            .expect("first send");
+        tracker
+            .check_transmission_timing(100)
+            .expect("immediate back-to-back send is fine with the default config");
+    }
+
+    #[tokio::test]
+    async fn rf7_try_send_inner_maps_timing_refusals_to_transport_errors() {
+        // End-to-end wiring check through the real send() path, not just the
+        // tracker method directly.
+        let cfg = ComplianceConfig {
+            max_ton_ms: 100,
+            ..Default::default()
+        };
+        let tracker = DutyCycleTracker::with_clock(cfg, Box::new(|| 0)).expect("valid config");
+        let t = LoRaTransport::with_tracker("lora-0", Arc::new(tracker));
+        let (a, _b) = sim_pair();
+        t.attach_adapter(a).await.expect("adapter opens");
+        // A P3/50B frame's airtime comfortably exceeds a 100ms cap.
+        let err = t
+            .send(&PeerId([8u8; 32]), &msg(MessagePriority::P3, 50))
+            .await
+            .expect_err("max on-time exceeded");
+        assert!(
+            matches!(err, TransportError::PolicyDenied(_)),
+            "max-on-time violation must map to PolicyDenied (permanent for this frame size), got {err:?}"
+        );
+    }
+
     // ---- radio profiles + airtime (AC-7) ----
 
     #[test]
@@ -2245,7 +2612,9 @@ mod tests {
             .send(&peer, &msg(MessagePriority::P3, 150))
             .await
             .expect_err("bulk share spent");
-        assert!(matches!(err, TransportError::Busy));
+        // RF-5: duty refusal now carries a retry time (RateLimited), not
+        // the generic pool-saturation Busy.
+        assert!(matches!(err, TransportError::RateLimited { .. }));
         assert_eq!(t.metrics_snapshot().duty_refusals, 1);
         assert!(t.duty_cycle_remaining() > 0.9, "only the bucket is spent");
 
@@ -2365,6 +2734,71 @@ mod tests {
             .expect_err("HardwareGated open must fail attach");
         assert_eq!(err, LoRaLinkError::HardwareGated);
         assert_eq!(t.state(), TransportState::Unavailable);
+    }
+
+    #[tokio::test]
+    async fn rf1_attach_rejects_module_reporting_wrong_frequency() {
+        let t = LoRaTransport::new("lora-0");
+        let (a, _b) = sim_pair();
+        // Simulate a module that booted already configured off the
+        // compliance-pinned frequency (RF-1's own trigger scenario: an
+        // EU-default module boots at 868 MHz, not the 866 MHz Table-I pin).
+        a.open().await.expect("test setup: open before preset");
+        a.configure(&RadioProfile { freq_hz: 868_000_000, ..DEFAULT_RADIO_PROFILE }, 14)
+            .await
+            .expect("test setup: preset a non-compliant frequency");
+        let err = t
+            .attach_adapter(a)
+            .await
+            .expect_err("frequency mismatch must refuse attach");
+        assert!(matches!(err, LoRaLinkError::Io(_)));
+        assert_eq!(
+            t.state(),
+            TransportState::Unavailable,
+            "a rejected module must never be promoted to Available"
+        );
+    }
+
+    #[tokio::test]
+    async fn rf1_attach_rejects_module_reporting_excessive_power() {
+        let t = LoRaTransport::new("lora-0");
+        let (a, _b) = sim_pair();
+        a.open().await.expect("test setup: open before preset");
+        a.configure(&DEFAULT_RADIO_PROFILE, 27) // above the 14 dBm Table-I ceiling
+            .await
+            .expect("test setup: preset excessive power");
+        let err = t
+            .attach_adapter(a)
+            .await
+            .expect_err("power exceeding the compliance ceiling must refuse attach");
+        assert!(matches!(err, LoRaLinkError::Io(_)));
+        assert_eq!(t.state(), TransportState::Unavailable);
+    }
+
+    #[tokio::test]
+    async fn rf1_try_send_inner_configures_the_module_for_the_actual_profile_sent() {
+        // End-to-end: a P0 send must leave the module confirmed-configured
+        // for P0_RADIO_PROFILE (SF12), not silently left at whatever it
+        // reported at attach time (DEFAULT_RADIO_PROFILE, SF9) -- this is
+        // RF-1's core finding: the duty tracker must not bill airtime for
+        // a profile the module was never actually told to use.
+        let t = LoRaTransport::new("lora-0");
+        let (a, _b) = sim_pair();
+        t.attach_adapter(a.clone()).await.expect("adapter opens");
+        let (initial_profile, _) = a.read_config().await.expect("read back initial config");
+        assert_eq!(
+            initial_profile, DEFAULT_RADIO_PROFILE,
+            "attach leaves the module at whatever it already reported"
+        );
+        t.send(&PeerId([11u8; 32]), &msg(MessagePriority::P0, 60))
+            .await
+            .expect("p0 send");
+        let (after_p0, power) = a.read_config().await.expect("read back post-send config");
+        assert_eq!(
+            after_p0, P0_RADIO_PROFILE,
+            "try_send_inner must configure the module for the profile it actually bills airtime for"
+        );
+        assert_eq!(power, 14);
     }
 
     #[tokio::test]
