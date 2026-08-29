@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 45 | 0 | 80 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-8/14/24/25/26/32/37 + MG-23 done; 80/126 done, 45 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 41 | 0 | 84 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-8/14/24/25/26/32/37 + MG-23 + BLE-22/38/39/40 done; 84/126 done, 41 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **46** | **0** | **231** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **42** | **0** | **235** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -3354,7 +3354,7 @@ ble_advert.rs:223:        assert_eq!(padded.len(), MAX_ADVERT_BYTES);   <- test 
 
 #### BLE-22: Beacon `freshness_minutes` and `capabilities` are parsed and then thrown away
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 442c646 · 2026-08-29 · capability and freshness checks in discover_peers for both BLE and Wi-Fi Aware
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble_advert.rs:92-93`, `wifiaware_beacon.rs:100-101`; consumers `ble.rs:604-624`, `wifiaware.rs:887-901`
 - **What:** Both beacons carry an anti-stale freshness field and a capability bitmask. Neither
@@ -4088,7 +4088,7 @@ let ndp = tokio::time::timeout(NDP_OPEN_TIMEOUT, adapter.open_ndp(PeerHandle(han
 
 #### BLE-38: NAN RSSI is carried across the FFI and dropped at the bridge
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 402276c · 2026-08-29 · rssi field on PeerDiscovery, forwarded from bridge, sort before truncation
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:98-103` (`PeerDiscovery`); dropped at `crates/iris-android/src/bridge.rs:376-383`
 - **What:** `FfiPeerDiscovery` has an `rssi: i32` field; the core's `PeerDiscovery` has no place to put
@@ -4123,7 +4123,7 @@ let ndp = tokio::time::timeout(NDP_OPEN_TIMEOUT, adapter.open_ndp(PeerHandle(han
 
 #### BLE-39: `connect()` trusts a caller-supplied peer handle with no cross-check against the beacon
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit bda5a18 · 2026-08-29 · discovery_cache validates handles in connect(); cleared on stop_discovery
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:945-950`, `:999-1002`
 - **What:** The NDP target is parsed out of a decimal string in `PeerInfo::transport_addresses` and
@@ -4161,7 +4161,7 @@ let ndp = tokio::time::timeout(NDP_OPEN_TIMEOUT, adapter.open_ndp(PeerHandle(han
 
 #### BLE-40: `SimMeshCoordinator` masks two real backpressure behaviours from every test
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit f4bcef9 · 2026-08-29 · VecDeque outbox, O(1) pop_front, dropped AtomicU64 counter
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:276-293` (`MAX_OUTBOX_FRAMES`, `MAX_DRAIN_PER_CALL`, `proxy_send`)
 - **What:** The simulator silently drops the oldest frame on overflow with no counter, and pins its
