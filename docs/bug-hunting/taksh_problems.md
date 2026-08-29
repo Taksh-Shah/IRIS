@@ -359,7 +359,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-38** | High | `internet.rs:139-148` | There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff | ✅ `bc1f2ed` |
 | **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection | ✅ `6471d86` |
 | **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ✅ 4d1ae57 |
-| **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ⬜ |
+| **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ✅ |
 | **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ✅ 699dd5d |
 | **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ✅ 699dd5d |
 | **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused | ⬜ |

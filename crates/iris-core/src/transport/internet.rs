@@ -200,7 +200,10 @@ pub fn encode_frame(message: &SerializedMessage) -> Result<Vec<u8>, TransportErr
     Ok(frame)
 }
 
-/// Decode the payload length from a frame header (or None if incomplete).
+/// Decode the payload length from a frame header (or None if incomplete/invalid).
+///
+/// RF-41: returns `None` for zero-length frames (all call sites should treat them
+/// as malformed; previously two of three guarded `len == 0` independently).
 pub fn frame_payload_len(header: &[u8]) -> Option<usize> {
     if header.len() < FRAME_LEN_BYTES {
         return None;
@@ -208,7 +211,7 @@ pub fn frame_payload_len(header: &[u8]) -> Option<usize> {
     let mut b = [0u8; FRAME_LEN_BYTES];
     b.copy_from_slice(&header[..FRAME_LEN_BYTES]);
     let len = u32::from_le_bytes(b) as usize;
-    if len > MAX_FRAME_BYTES {
+    if len == 0 || len > MAX_FRAME_BYTES {
         return None;
     }
     Some(len)
@@ -376,9 +379,22 @@ impl InternetTransport {
                 let header_res =
                     tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut header))
                         .await;
+                // RF-41: log each disconnect cause so slowloris attacks and
+                // clean peer closes are distinguishable in telemetry.
                 match header_res {
                     Ok(Ok(_)) => {}
-                    _ => break, // EOF / reset / timeout
+                    Err(_elapsed) => {
+                        tracing::warn!(peer = ?peer_id, transport = %transport_id, "reader: header read timeout (slowloris?)");
+                        break;
+                    }
+                    Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        tracing::debug!(peer = ?peer_id, transport = %transport_id, "reader: peer closed connection (EOF)");
+                        break;
+                    }
+                    Ok(Err(e)) => {
+                        tracing::warn!(peer = ?peer_id, transport = %transport_id, err = %e, "reader: TCP error");
+                        break;
+                    }
                 }
                 let Some(len) = frame_payload_len(&header) else {
                     break;
