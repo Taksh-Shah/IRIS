@@ -1406,17 +1406,164 @@ warnings as Wake 13 (confirmed by exact count, none in `sim/`).
 in one commit — well under the cap. Tier 3: 13 of 32 done, 19
 remaining across Wakes 15-18 per the Run 16 plan.
 
-### Next run (Run 19)
-Wake 15: SIM-10, SIM-12, SIM-30, SIM-32 — sim-internal mechanics, each
-contained to `sim/mod.rs` plus at most one sibling file. SIM-10:
-`ForwardedCache` ages on `Instant::now()` (real time) instead of the
-virtual clock, so the sim's anti-loop cache never expires within a run
-— `loop_free()` is guaranteed by construction, not actually proven.
-SIM-12: contacts sort before injections at the same timestamp, so a
-message injected at time T misses the contact at time T. SIM-30:
-`hops_by_msg`/`spray` (and now `buffered_at_ms`, added this session's
-Wake 12 — noted at the time as needing the same treatment) grow
-unboundedly, never pruned on terminal delivery. SIM-32:
-`inject_standard` can address a message to its own sender when
-`k == n-1`, producing a permanently undeliverable message. Read all
-four findings' current source fresh before implementing.
+## Runs 19+ — gap in this file (not in the work)
+
+This file was not updated between this session's own Run 18 and the
+entry below. In between, work continued through the branch's shared
+`origin/main` from a **different worktree/session** than the one
+writing this file — it closed out the rest of Tier 3 (Wakes 15-19:
+SIM-10/12/30/32, SIM-13/14/15/16, SIM-21..28, SIM-9, SIM-7/SIM-8) and
+made 51/126 progress into Tier 4 (MG-1/2/4/9/11/13/21, GAP-2/3/6,
+RF-29/30/31/33/41, BLE-14/15/18/19/20/21/23/31/33/34/35, TAK-7/8, plus
+an extensive live hardware-verification pass — HW-9 through HW-21,
+BLE mesh and Wi-Fi Direct confirmed working end-to-end on physical
+devices). None of that is missing — it's fully recorded in
+`taksh_problems.md`'s Progress Tracker (Wake-by-wake narrative,
+Fix status line per finding, and the Tier roll-up table) and in
+`git log`, which is why that document — not this one — is the
+authoritative "what's done" source per its own file header. This file
+only lost its role as the detailed per-run narrative for that stretch;
+picking it back up now, for the first run this worktree actually did
+after pulling that work in.
+
+## Run 19 — 2026-08-29 — Tier 4 Wake RF-A: LoRa refund/eligibility (RF-4/10/14/16)
+
+Owner said "continue with tier 4" after a prior message confirmed the
+`origin/main` pull (60+ commits) and the corrected Tier 4 status
+(51/126, not the owner's initially-recalled "51/121 in tier 3" — Tier 3
+was in fact fully closed at 32/32).
+
+**Scoped the full RF-1..23 LoRa/satellite duty-cycle cluster (23
+findings) before writing any code** — same discipline as every
+tier/cluster opening this session. This is qualitatively different
+from anything in Tier 3: real WPC G.S.R. 853(E) 2021 regulatory
+exposure (LoRa duty-cycle/e.r.p. compliance) and real financial
+exposure (Iridium satellite billing, ~₹10/message), several findings
+needing platform-specific code this environment can't build or verify
+(RF-6's boot-time clock shim needs `CLOCK_BOOTTIME`/`mach_continuous_
+time`), and much larger individual findings than typical (RF-1 extends
+a public trait across 3 adapter impls; RF-8 replaces a single frequency
+constant with a whole channel-plan model). Deliberately split more
+conservatively than Tier 3's wakes: this run covers the four
+best-contained findings; RF-1 (trait extension), RF-5 (new
+`TransportError` variant), RF-7 (new `ComplianceConfig` fields + a
+distinct error type) are each independently substantial and deferred
+to a follow-up run rather than bundled in to hit a larger batch.
+
+**Before touching any Tier 4 code, had to restore a green tree.**
+`cargo build --workspace --all-targets` failed outright: `SimLoss`
+(upstream SIM-8 work) gained `bandwidth_bps`/`mtu_bytes`/`latency_
+base_ms` fields, but two construction sites weren't updated —
+`sim/scenario.rs`'s `loss()` helper (blocks the whole lib) and this
+session's own `same_seed_same_result_anchor` test (blocks
+`--all-targets`). Fixed both with `..Default::default()`. Once
+building, `cargo test --workspace` surfaced three more: two BLE tests
+asserting stale pre-BLE-10 `bytes_sent` values (payload-only, not the
+wire-accounting-with-header-overhead the upstream fix correctly
+switched to); and a real bug in `max_hops_seen`, found by tracing
+(added a temporary debug print, ran the failing test, read the actual
+`hops_by_msg` state, removed the print before committing) rather than
+guessed — SIM-30's terminal-delivery pruning (upstream, this tier)
+removes a message's `hops_by_msg` entry at both the delivering src and
+dst inside the SAME `forward_to` call that reaches the highest hop
+count, before the end-of-tick scan-based sample (this session's own
+Wake 12 addition) could ever see it, so every terminally-delivered
+message's true max hop count was silently under-reported by one. Fixed
+by tracking `max_hops_seen` incrementally on `Simulation`, updated at
+the exact point `forward_to` computes `new_hops` — before any pruning
+can happen — instead of deriving it from a post-hoc scan of state
+pruning can invalidate. A fourth failure
+(`crypto_e2e::m7_fragmented_encrypted_message_reassembles_and_
+verifies`) was investigated and root-caused precisely (`message_
+engine::serialize_for_transport`'s fragment-size budget subtracts only
+`FRAGMENT_HEADER_LEN` (86 B), not the full envelope's wire overhead
+that `codec::encode(frag)` — what actually gets sent — adds on top;
+exposed by an upstream RF-43 fix that started actually enforcing
+transport MTUs that used to be silently ignored) but deliberately NOT
+fixed here — flagged via `spawn_task` (`task_2b02c5f4`) with the full
+diagnosis, since it's message-integrity-relevant code well outside a
+LoRa wake's scope and deserves independent verification, not a rushed
+fix bundled into an unrelated commit. Committed the three genuine
+restorations separately (`d34fc1d`) from the Tier 4 finding work
+(`a405ec8`) so git history stays legible about what was and wasn't
+part of this wake.
+
+**RF-10 (Medium).** Every priority rode LoRa at up to 237 B, contradicting
+LORA.md's "P4+ never transmitted over LoRa" and its per-priority
+payload budget — read the doc directly rather than trust the finding's
+partial quote, confirming P0=60B/P1=80B/P2=120B/P3=150B. Added
+`max_payload_for(priority) -> Option<usize>`, wired into both
+`enqueue_backlog` and `try_send_inner` (a message can reach the latter
+directly via `Transport::send()`, bypassing the backlog). P4+ refused
+via `TransportError::PolicyDenied`, not the finding's suggested
+`Protocol` — the finding text predates this session's own MG-40 fix
+(Tier 2), which narrowed `Protocol` to genuine framing/decode failures
+specifically to stop this kind of conflation; using it here would have
+reintroduced exactly what MG-40 closed. Six existing tests hardcoded
+pre-fix priorities/sizes, all six already named in the finding's own
+Dependencies field. Fixed each by hand-deriving new airtime values from
+the Semtech AN1200.13 formula and cross-checking against the existing
+`airtime_matches_semtech_formula_anchors` test's 9020ms anchor before
+trusting my own arithmetic (it matched); ran every fix and confirmed
+the derived numbers empirically rather than assuming the hand math was
+right. One test (`backlog_holds_while_exhausted_and_drains_after_
+recovery`) redesigned to discover its bucket-exhaustion boundary via a
+loop instead of a hardcoded frame count tied to a payload size that's
+no longer valid for any priority — a more robust pattern, not a
+weakened assertion.
+
+**RF-4 + RF-16 (Medium/Low, fixed together — both touch `refund`).**
+`DutyCycleTracker::refund` was `pub` and keyed by (class, airtime_ms) —
+deterministic and enumerable from `airtime_ms(profile, len)`, so any
+code holding the tracker's `Arc` could de-bill a guessable reservation,
+arithmetically identical to raising the module's documented "no
+runtime override" legal budget (RF-16). Separately, every tx-failure
+refunded the reservation regardless of error type, including
+`Io`/`HardwareGated` — errors that CAN follow a real emission, not just
+ones that prove nothing was radiated (RF-4). Mirrored satellite.rs's
+existing `GuardAdmission { token }` pattern (SAT-RT-103) exactly:
+`DutyCycleTracker` now mints a unique token per admission, `refund` is
+`pub(crate)` and exact-token. Added a fifth `LoRaLinkError::
+NotTransmitted` variant; `try_send_inner` classifies before refunding —
+`Closed`/`NotTransmitted` refund, `Io`/`HardwareGated` keep the
+reservation fail-closed and record a new `tx_unknown_outcome` metric.
+
+**RF-14 (Low).** LDRO's condition (`sf>=11 && bw==125`) missed SF12/BW250
+(also >16ms symbol time, LDRO's actual physical trigger), under-counting
+that profile's airtime — the one case in a function whose every other
+rounding choice is deliberately conservative. Computed DE from the
+already-derived `ts_ms` instead of the SF/BW shorthand.
+
+**Run 19 closeout:** `cargo build --workspace --exclude iris-desktop
+--all-targets` clean; `cargo test --workspace --exclude iris-desktop` —
+green except the one deliberately-unfixed, separately-flagged
+`crypto_e2e` failure; `cargo test -p iris-core --lib transport::lora::`
+— 33/33 pass; `cargo clippy -p iris-core --lib --no-deps` — no new
+warnings in any file touched this run (confirmed by direct
+file-location check against the full warning list).
+
+**§8 accounting:** 4 findings fixed this run (RF-4, RF-10, RF-14,
+RF-16) in one commit, plus 3 pre-existing-breakage restorations in a
+separate commit (not counted against the findings cap). Tier 4: 55 of
+126 done, 70 remaining, 1 blocked (TAK-6, TLS/supply-chain gate).
+
+### Next run (Run 20)
+Wake RF-B: RF-1, RF-5, RF-7 — the three LoRa findings deferred from
+this run for being independently substantial. RF-1: extend
+`LoRaLinkAdapter` with `configure`/`read_config`; stub both in
+`AtSerialAdapter`/`SpiNativeAdapter` (trivial — both are "shape only,"
+every method already returns `HardwareGated` unconditionally); give
+`SimulatedLoRaAdapter` real configure/read_config state (default
+compliant, settable by a test to simulate a misconfigured module);
+`attach_adapter` reads and validates config before promoting to
+Available; `try_send_inner` calls `configure` when the required profile
+differs from the last-applied one. RF-5: add `TransportError::
+RateLimited { retry_after_ms, remaining_fraction }`; verified this is
+safe to add (no exhaustive `match` on `TransportError` outside
+`error.rs`'s own `Display` impl and its own tests — checked before
+scoping this in). RF-7: add `ComplianceConfig::max_ton_ms`/`min_off_ms`
+with a new distinct refusal error, sibling to `BudgetExhausted` — check
+how many `ComplianceConfig { .. }` literal construction sites exist
+before adding fields (same class of break this run's SimLoss fix just
+cleaned up). Read all three findings' current source fresh before
+implementing.
