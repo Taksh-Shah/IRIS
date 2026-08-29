@@ -491,8 +491,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **GAP-7** | Critical | `message_engine/mod.rs:1207-1260` | `Transport::connect()` has zero production callers — no live transport can ever send a message | ✅ `d32c4cc` |
 | **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start | ⬜ |
 | **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded | ✅ `e15809a` (partial) |
-| **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender | ✅ PLACEHOLDER_GAP10 |
-| **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable | ✅ PLACEHOLDER_GAP11 |
+| **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender | ✅ ce126fe |
+| **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable | ✅ ce126fe |
 | **GAP-12** | Medium | `ble.rs:744-790` | The BLE per-peer poller wakes 20×/second forever, per connected peer, while its two sibling transports implement adaptive backoff | ✅ `f9d740d` (partial) |
 | **GAP-13** | Medium | `internet.rs:100-136` | The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently | ⬜ |
 | **GAP-14** | Informational | `-` | Verified-clean classes (a negative result, recorded so nobody re-hunts them) | ⬜ |
@@ -10915,7 +10915,7 @@ iris-ios/src/engine.rs:208:                        originated_at_ms: view.receiv
 
 #### GAP-10: The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender
 - **Severity:** Critical
-- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_GAP10  ·  2026-08-29  ·  `build()` `None` arm changed to `None if config.dev` so loopback is only registered in dev mode; bare `None => {}` arm added for production path.
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit ce126fe  ·  2026-08-29  ·  `build()` `None` arm changed to `None if config.dev` so loopback is only registered in dev mode; bare `None => {}` arm added for production path.
 - **Confidence:** High
 - **Blind spot:** B8 — an unsafe default wired at the composition root, invisible to anyone reviewing either `simulated.rs` or `engine_handle.rs` alone
 - **Location:** `crates/iris-desktop/src/engine_handle.rs:112-135`; `crates/iris-core/src/transport/simulated.rs:74-76, 167-202`
@@ -10944,7 +10944,7 @@ simulated.rs:197:        Ok(SendReceipt { peer_id: *peer, bytes_sent: message.pa
 
 #### GAP-11: Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable
 - **Severity:** High
-- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_GAP11  ·  2026-08-29  ·  `INCOMING_CHANNEL_CAPACITY` raised from 32 to 1024 in both `wifiaware.rs` and `wifi_direct.rs`, matching all other transports.
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit ce126fe  ·  2026-08-29  ·  `INCOMING_CHANNEL_CAPACITY` raised from 32 to 1024 in both `wifiaware.rs` and `wifi_direct.rs`, matching all other transports.
 - **Confidence:** Certain
 - **Blind spot:** B6 — one concept, two constants, divergent values; plus a documented guarantee that the API cannot provide
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:71, 613, 786-798`; `crates/iris-core/src/transport/wifi_direct.rs:81, 815`
