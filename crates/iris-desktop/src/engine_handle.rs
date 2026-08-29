@@ -115,7 +115,8 @@ impl DesktopEngine {
 
         let mut transports = Vec::with_capacity(1 + config.relay_addrs.len());
 
-        // D8: loopback transport always (proves the mesh path with no hardware).
+        // D8: loopback transport in dev mode only (proves the mesh path with no
+        // hardware without polluting production routing with a self-echo sink).
         // A caller-provided `extra` transport REPLACES it (test wiring).
         match extra {
             Some(t) => {
@@ -123,7 +124,7 @@ impl DesktopEngine {
                 manager.register(t).await.map_err(|e| e.to_string())?;
                 transports.push(id);
             }
-            None => {
+            None if config.dev => {
                 let loopback = Arc::new(SimulatedTransport::new(
                     "loopback",
                     "Loopback (simulated)",
@@ -140,6 +141,7 @@ impl DesktopEngine {
                     .map_err(|e| e.to_string())?;
                 transports.push(loopback.transport_id().clone());
             }
+            None => {}
         }
 
         // D8: Internet transport when a relay is configured.

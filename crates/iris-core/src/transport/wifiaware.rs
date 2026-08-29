@@ -70,9 +70,9 @@ const MAX_NAN_MESSAGE_BYTES: usize = 1024 * 1024;
 /// NDP pool bounded when the engine re-connects/re-routes (WAW-RT-001, AC-9).
 const MAX_NDP_POOL: usize = 32;
 
-/// Incoming-frame channel capacity (WAW-RT-005). 32 × 1 MiB = 32 MiB worst-case
-/// buffered bytes instead of an unbounded ~1 GiB aggregate.
-const INCOMING_CHANNEL_CAPACITY: usize = 32;
+/// Incoming-frame channel capacity (WAW-RT-005). Matches all other transports at 1024
+/// slots — 32 caused receiver lag under burst load before the reader task drained it.
+const INCOMING_CHANNEL_CAPACITY: usize = 1024;
 
 /// Max frames forwarded to the engine per 10 ms poll tick (WAW-RT-005). Frames
 /// beyond the budget stay in the adapter and drain next tick — no loss, bounded

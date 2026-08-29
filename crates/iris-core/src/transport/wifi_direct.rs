@@ -82,7 +82,7 @@ const MAX_GO_CLIENTS: usize = 8;
 /// up to 1 MiB each → 32 MiB worst-case buffered bytes (the poller forwards up
 /// to `MAX_FRAMES_PER_TICK` frames per 10-ms tick, bounded work, no unbounded
 /// buffering).
-const INCOMING_CHANNEL_CAPACITY: usize = 32;
+const INCOMING_CHANNEL_CAPACITY: usize = 1024;
 
 /// Max frames forwarded to the engine per poll tick (bounded per-tick work).
 const MAX_FRAMES_PER_TICK: usize = 8;
