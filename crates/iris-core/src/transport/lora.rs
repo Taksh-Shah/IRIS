@@ -230,7 +230,6 @@ fn bucket_index(b: DutyBucket) -> usize {
 /// around the window per RES-0008 R7 (`next_send_window`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NextWindow {
-    pub at_unix_ms: u64,
     pub delay_ms: u64,
     pub remaining_fraction: f32,
     /// RF-4/RF-16: exact-token refund handle for this reservation (mirrors
@@ -248,7 +247,6 @@ pub struct NextWindow {
 /// a panic, never a hold.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BudgetExhausted {
-    pub at_unix_ms: u64,
     pub delay_ms: u64,
     pub remaining_fraction: f32,
 }
@@ -526,7 +524,6 @@ impl DutyCycleTracker {
                 token,
             });
             return Ok(NextWindow {
-                at_unix_ms: now + airtime_ms,
                 delay_ms: airtime_ms,
                 remaining_fraction: remaining_fraction(used + airtime_ms, budget),
                 token,
@@ -556,7 +553,6 @@ impl DutyCycleTracker {
         }
         let delay = chosen.unwrap_or(window + 1);
         Err(BudgetExhausted {
-            at_unix_ms: now + delay,
             delay_ms: delay,
             remaining_fraction: remaining_fraction(used, budget),
         })

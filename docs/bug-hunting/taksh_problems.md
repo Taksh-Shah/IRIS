@@ -4723,7 +4723,7 @@ let effective_bucket_remaining = if contended { bucket_remaining } else { global
 
 #### RF-8: Pinned centre frequency 866.000 MHz is not in the documented IN865 channel plan, and duty is tracked globally rather than per sub-band
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (partial)  ·  Tier 4  ·  commit 2583ee7  ·  2026-08-30  ·  freq changed to 865_062_500 Hz (IN865_1); full ChannelPlan struct deferred
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/lora.rs:74-84` (`ComplianceConfig::default`), `507-524` (radio profiles), `231-249` (`DutyCycleTracker`)
 - **What:** the code pins 866.000 MHz. `SPECTRUM_CONSIDERATIONS.md` §2.1 lists the three TRAI-recommended IN865 channels as 865.0625 / 865.4025 / 865.985 MHz and states "IRIS uses IN865_1 as primary channel and IN865_3 as secondary". 866.000 MHz is none of them. There is also no channel list, no channel hopping, and the `DutyCycleTracker` keeps one global bucket with no per-channel or per-sub-band dimension.
@@ -4802,7 +4802,7 @@ if msg.priority > MessagePriority::P3 {
 
 #### RF-11: LoRa (and satellite) never leave `Connected` on link failure and never report `Degraded`; `LinkStatus` telemetry is fetched and discarded
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (LoRa)  ·  Tier 4  ·  commit 2583ee7  ·  2026-08-30  ·  `consecutive_tx_failures: AtomicU32`; demotes to Degraded at 3, recovers to Connected on success. Satellite deferred.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:1562-1580` (fn `connect`), `1414-1421` (tx failure path); mirrored at `satellite.rs:1210-1231` and `1069-1075`
 - **What:** `connect()` probes `adapter.status()`, **drops the returned `LinkStatus`**, and stores `Connected`. Nothing ever demotes the state afterwards: a `tx()` failure returns `Io` and leaves the state at `Connected`; `grep -n "Degraded" lora.rs satellite.rs` returns **zero hits in both files**.
