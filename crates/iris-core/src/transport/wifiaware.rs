@@ -104,6 +104,8 @@ pub struct PeerDiscovery {
     pub peer_handle: PeerHandle,
     /// Raw `service_specific_info` bytes (the IRIS beacon, WIFI_AWARE.md §4.2).
     pub service_specific_info: Vec<u8>,
+    /// Received signal strength in dBm (BLE-38). 0 when unavailable (sim).
+    pub rssi: i32,
 }
 
 /// A frame received on an NDP data path.
@@ -493,6 +495,7 @@ impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
             .map(|(t, beacon)| PeerDiscovery {
                 peer_handle: PeerHandle(t),
                 service_specific_info: beacon,
+                rssi: 0,
             })
             .collect())
     }
@@ -1062,10 +1065,13 @@ impl Transport for WifiAwareTransport {
         let adapter = self.adapter().await?;
         // BLE-30: the drain is now fallible — surface an adapter-session
         // failure as a real error instead of silently reporting zero peers.
-        let matches = adapter
+        let mut matches = adapter
             .matches()
             .await
             .map_err(TransportError::Protocol)?;
+        // BLE-38: sort by RSSI descending so the closest peers are preferred
+        // when max_peers truncation applies. rssi=0 (sim) sorts last.
+        matches.sort_unstable_by(|a, b| b.rssi.cmp(&a.rssi));
         let mut infos: Vec<PeerInfo> = Vec::new();
         for m in matches.iter().take(config.max_peers) {
             let Ok(beacon) = WifiAwareBeacon::parse(&m.service_specific_info) else {

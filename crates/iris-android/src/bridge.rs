@@ -370,6 +370,7 @@ impl WifiAwareAdapter for WifiAwareBridge {
             .map(|m: FfiPeerDiscovery| WaPeerDiscovery {
                 peer_handle: WaPeerHandle(m.peer_handle),
                 service_specific_info: m.service_specific_info,
+                rssi: m.rssi,
             })
             .collect())
     }
