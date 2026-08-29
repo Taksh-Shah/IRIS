@@ -1289,15 +1289,20 @@ impl SimLinkBudget {
     }
 
     /// Okumura-Hata urban path loss (dB), medium-city correction, for
-    /// 150–1500 MHz carriers (866 qualifies). Distance clamped to validity.
-    pub fn okumura_hata_urban_loss_db(freq_mhz: f64, dist_km: f64) -> f64 {
-        let d = dist_km.clamp(Self::MIN_RANGE_KM, Self::MAX_RANGE_KM);
+    /// 150–1500 MHz carriers (866 qualifies).
+    /// RF-15: returns `None` when `dist_km` is outside the model's validity
+    /// window `[MIN_RANGE_KM, MAX_RANGE_KM]` — callers must handle the
+    /// out-of-range case rather than silently receiving the clamped 20 km value.
+    pub fn okumura_hata_urban_loss_db(freq_mhz: f64, dist_km: f64) -> Option<f64> {
+        if !(Self::MIN_RANGE_KM..=Self::MAX_RANGE_KM).contains(&dist_km) {
+            return None;
+        }
         let lf = freq_mhz.log10();
         let lhb = Self::BASE_STATION_M.log10();
         let a_hm = (1.1 * lf - 0.7) * Self::MOBILE_M - (1.56 * lf - 0.8);
         let c1 = 69.55 + 26.16 * lf - 13.82 * lhb - a_hm;
         let slope = 44.9 - 6.55 * lhb;
-        c1 + slope * d.log10()
+        Some(c1 + slope * dist_km.log10())
     }
 
     /// Max range (km) where TX power still closes the link for `profile`
@@ -1319,11 +1324,18 @@ impl SimLinkBudget {
 
     /// Delivery probability model: unity while the link margin holds, then a
     /// linear fade to a 0.05 floor across −9 dB of shadowing allowance.
+    /// RF-15: returns `0.0` when `dist_km` is outside the model's validity
+    /// window — unlike the previous clamp, this signals "cannot close the link"
+    /// rather than substituting the 20 km answer for a 500 km question.
     /// Deterministic pure function (SIMULATION_VALIDATED only).
     pub fn delivery_probability(profile: &RadioProfile, tx_dbm: i8, dist_km: f64) -> f32 {
         let sens = Self::sensitivity_dbm(profile.sf).unwrap_or(-129.0);
         let freq_mhz = profile.freq_hz as f64 / 1.0e6;
-        let loss = Self::okumura_hata_urban_loss_db(freq_mhz, dist_km);
+        // RF-15: None outside model validity → treat as unreachable (0.0).
+        let loss = match Self::okumura_hata_urban_loss_db(freq_mhz, dist_km) {
+            Some(l) => l,
+            None => return 0.0,
+        };
         let margin_db = f64::from(tx_dbm) - f64::from(sens) - loss;
         if margin_db >= 0.0 {
             1.0
@@ -2679,6 +2691,17 @@ mod tests {
         let far = SimLinkBudget::delivery_probability(&DEFAULT_RADIO_PROFILE, 14, 10.0);
         assert!(far <= 0.05, "way past the margin fades to the floor");
         assert!(SimLinkBudget::MAX_RANGE_KM >= r12);
+
+        // RF-15: outside the model validity window → None / 0.0, not clamped.
+        assert!(
+            SimLinkBudget::okumura_hata_urban_loss_db(866.0, 500.0).is_none(),
+            "500 km is outside model validity"
+        );
+        assert_eq!(
+            SimLinkBudget::delivery_probability(&DEFAULT_RADIO_PROFILE, 14, 500.0),
+            0.0,
+            "far-field delivery_probability returns 0.0, not the 20 km floor"
+        );
     }
 
     // ---- backlog queue (AC-5) ----
