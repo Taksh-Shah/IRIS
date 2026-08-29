@@ -192,6 +192,13 @@ pub struct NextWindow {
     pub at_unix_ms: u64,
     pub delay_ms: u64,
     pub remaining_fraction: f32,
+    /// RF-4/RF-16: exact-token refund handle for this reservation (mirrors
+    /// `satellite.rs`'s `GuardAdmission::token`, SAT-RT-103). Refunding by
+    /// `(class, airtime_ms)` let any code holding the tracker's `Arc`
+    /// de-bill an enumerable, guessable key — arithmetically identical to
+    /// raising the "no runtime override" legal budget. 0 is never minted
+    /// (tokens start at 1), so it is available as an always-invalid sentinel.
+    pub token: u64,
 }
 
 /// Why a LoRa send was refused: the 1% duty budget (or this bucket's share)
@@ -212,6 +219,8 @@ struct TxRecord {
     start_ms: u64,
     airtime_ms: u64,
     bucket: DutyBucket,
+    /// RF-4/RF-16: exact-token refund handle — see `NextWindow::token`.
+    token: u64,
 }
 
 fn usage_locked(q: &VecDeque<TxRecord>) -> (u64, [u64; 4]) {
@@ -246,6 +255,9 @@ pub struct DutyCycleTracker {
     last_ms: AtomicU64,
     /// Forward-jump guard. `None` when an explicit clock is injected.
     monotonic: Option<Mutex<MonotonicGuard>>,
+    /// RF-4/RF-16: mints unique refund tokens (SAT-RT-103 pattern). Starts
+    /// at 1 so 0 stays available as an always-invalid sentinel.
+    next_token: AtomicU64,
 }
 
 /// Bounds wall-clock advancement by real elapsed time.
@@ -316,6 +328,7 @@ impl DutyCycleTracker {
             last_ms: AtomicU64::new(0),
             // Real wall clock => guard against forward jumps.
             monotonic: Some(Mutex::new(MonotonicGuard::new())),
+            next_token: AtomicU64::new(1),
         })
     }
 
@@ -332,6 +345,7 @@ impl DutyCycleTracker {
             now_fn,
             last_ms: AtomicU64::new(0),
             monotonic: None,
+            next_token: AtomicU64::new(1),
         })
     }
 
@@ -370,20 +384,25 @@ impl DutyCycleTracker {
         self.last_ms.load(Ordering::Acquire)
     }
 
-    /// RT-104: refund a reservation that never reached the air (TX failed
-    /// after `check_and_consume` admitted it). Removes the NEWEST record
-    /// matching class+airtime. Under concurrent senders an identical
-    /// (class, airtime) reservation may race — the worst case is one
-    /// reservation of refund ambiguity, never a budget bypass (refund only
-    /// ever REMOVES usage).
-    pub fn refund(&self, class: MessagePriority, airtime_ms: u64) -> bool {
-        let bucket = DutyBucket::from_priority(class);
+    /// RT-104/RF-4/RF-16: refund a reservation that never reached the air
+    /// (TX failed after `check_and_consume` admitted it). `pub(crate)` and
+    /// exact-token, not `pub` and (class, airtime) — the module's headline
+    /// property is "a hard legal floor with no runtime override", and
+    /// `airtime_ms` is deterministic and enumerable from `airtime_ms(profile,
+    /// len)`, so a public, guessable-key refund was a one-call bypass of
+    /// that property for any code holding the tracker's `Arc` (which
+    /// `LoRaTransport::with_tracker` requires the caller to construct).
+    /// Mirrors `SatelliteCostGuard::refund_tx`'s token pattern (SAT-RT-103):
+    /// `token == 0` (never minted) and an already-refunded/expired token are
+    /// both safe no-ops, matching that function's documented behaviour.
+    pub(crate) fn refund(&self, token: u64) -> bool {
+        if token == 0 {
+            return false;
+        }
         let mut q = self.tx.lock().unwrap_or_else(|p| p.into_inner());
-        for idx in (0..q.len()).rev() {
-            if q[idx].bucket == bucket && q[idx].airtime_ms == airtime_ms {
-                q.remove(idx);
-                return true;
-            }
+        if let Some(idx) = q.iter().position(|r| r.token == token) {
+            q.remove(idx);
+            return true;
         }
         false
     }
@@ -422,15 +441,18 @@ impl DutyCycleTracker {
         let bucket_remaining = cap.saturating_sub(by_bucket[bucket_index(bucket)]);
 
         if airtime_ms <= global_remaining && airtime_ms <= bucket_remaining {
+            let token = self.next_token.fetch_add(1, Ordering::Relaxed);
             q.push_back(TxRecord {
                 start_ms: now,
                 airtime_ms,
                 bucket,
+                token,
             });
             return Ok(NextWindow {
                 at_unix_ms: now + airtime_ms,
                 delay_ms: airtime_ms,
                 remaining_fraction: remaining_fraction(used + airtime_ms, budget),
+                token,
             });
         }
 
@@ -568,11 +590,15 @@ pub fn airtime_ms(profile: &RadioProfile, payload_len: usize) -> u64 {
     let sf = profile.sf as f64;
     let bw_hz = profile.bandwidth_khz as f64 * 1000.0;
     let ts_ms = 2.0f64.powf(sf) / bw_hz * 1000.0;
-    let de = if profile.sf >= 11 && profile.bandwidth_khz == 125 {
-        1.0
-    } else {
-        0.0
-    };
+    // RF-14: LDRO's physical trigger is symbol time > 16 ms (Semtech
+    // AN1200.13), not "SF>=11 && BW==125" — that shorthand covers the
+    // default plan but misses e.g. SF12/BW250 (also 16.384 ms), which used
+    // to under-count airtime by omitting the DE term. This module's own
+    // rounding convention is deliberately conservative everywhere else
+    // (`.ceil()` below, "rounded UP — never under-count legal airtime");
+    // computing DE from the already-derived ts_ms keeps this case
+    // consistent with that convention instead of being the one exception.
+    let de = if ts_ms > 16.0 { 1.0 } else { 0.0 };
     let numerator = 8.0 * payload_len as f64 - 4.0 * sf + 28.0 + 16.0;
     let denominator = 4.0 * (sf - 2.0 * de);
     let ceil_term = (numerator / denominator).ceil().max(0.0);
@@ -595,6 +621,23 @@ pub const MAX_FRAME_BYTES: usize = 255;
 pub const MAX_PAYLOAD_BYTES: usize = MAX_FRAME_BYTES - HEADER_LEN;
 /// RT-106: backlog depth bound (memory guard for constrained devices).
 pub const MAX_BACKLOG_ENTRIES: usize = 256;
+
+/// RF-10: LORA.md §Bandwidth Budget's per-priority payload allowance under
+/// the ~1.4 B/s effective throughput the 1% duty ceiling leaves — P0 SOS
+/// 60 B, P1 Evacuation 80 B, P2 Medical 120 B, P3 Logistics 150 B, and
+/// "P4+ never transmitted over LoRa" (`None`). Distinct from
+/// [`MAX_PAYLOAD_BYTES`] (237 B, the raw PHY/wire limit every class used
+/// to share): that let a 237-byte P6 fragment burn 3.5% of the device's
+/// entire legal hour on a class the spec forbids outright.
+pub fn max_payload_for(priority: MessagePriority) -> Option<usize> {
+    match priority {
+        MessagePriority::P0 => Some(60),
+        MessagePriority::P1 => Some(80),
+        MessagePriority::P2 => Some(120),
+        MessagePriority::P3 => Some(150),
+        _ => None,
+    }
+}
 
 /// Malformed-input error — defensive parse never panics (BLE-002 AC-6 pattern).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -764,6 +807,13 @@ pub enum LoRaLinkError {
     HardwareGated,
     Closed,
     Io(String),
+    /// RF-4: the adapter/firmware confirms the PA never keyed up for this
+    /// frame (e.g. rejected before transmit). Distinct from `Io`, which
+    /// covers faults that CAN follow a real emission (a write that
+    /// succeeded but whose ack read timed out, a mid-transmission USB
+    /// detach) — only this variant is proof of no airtime spent, which is
+    /// what `try_send_inner`'s refund decision actually needs.
+    NotTransmitted(String),
 }
 
 impl std::fmt::Display for LoRaLinkError {
@@ -772,6 +822,7 @@ impl std::fmt::Display for LoRaLinkError {
             LoRaLinkError::HardwareGated => write!(f, "link hardware-gated (BLK-0005/GAP-004)"),
             LoRaLinkError::Closed => write!(f, "link closed"),
             LoRaLinkError::Io(m) => write!(f, "link io: {m}"),
+            LoRaLinkError::NotTransmitted(m) => write!(f, "not transmitted: {m}"),
         }
     }
 }
@@ -792,6 +843,10 @@ fn lora_link_err(context: &str, e: LoRaLinkError) -> TransportError {
         LoRaLinkError::Io(msg) => TransportError::Io {
             kind: std::io::ErrorKind::Other,
             msg: format!("{context}: {msg}"),
+        },
+        LoRaLinkError::NotTransmitted(msg) => TransportError::Io {
+            kind: std::io::ErrorKind::Other,
+            msg: format!("{context}: not transmitted: {msg}"),
         },
     }
 }
@@ -1105,8 +1160,15 @@ pub struct LoRaMetrics {
     bytes_rx: AtomicU64,
     airtime_consumed_ms: AtomicU64,
     duty_refusals: AtomicU64,
-    /// RT-104: sends whose duty reservation was refunded after a TX failure.
+    /// RT-104: sends whose duty reservation was refunded after a TX failure
+    /// PROVEN not to have reached the air (RF-4: `Closed`/`NotTransmitted`).
     tx_failures: AtomicU64,
+    /// RF-4: sends whose duty reservation was KEPT after a TX failure that
+    /// does not prove no emission (`Io`/`HardwareGated`) — the reservation
+    /// stays billed (fail-closed on the legal budget) even though the
+    /// caller never got a receipt, so telemetry can still distinguish
+    /// "burned airtime, outcome unknown" from a clean refund.
+    tx_unknown_outcome: AtomicU64,
     /// RT-105: inbound frames dropped for malformed SLIP/frame encoding.
     malformed_rx: AtomicU64,
 }
@@ -1121,6 +1183,8 @@ pub struct LoRaMetricsSnapshot {
     pub airtime_consumed_ms: u64,
     pub duty_refusals: u64,
     pub tx_failures: u64,
+    /// RF-4: TX failures where the reservation was kept (unproven no-emission).
+    pub tx_unknown_outcome: u64,
     pub malformed_rx: u64,
 }
 
@@ -1147,6 +1211,10 @@ impl LoRaMetrics {
         self.tx_failures.fetch_add(1, Ordering::Relaxed);
     }
 
+    fn record_tx_unknown_outcome(&self) {
+        self.tx_unknown_outcome.fetch_add(1, Ordering::Relaxed);
+    }
+
     fn record_malformed_rx(&self) {
         self.malformed_rx.fetch_add(1, Ordering::Relaxed);
     }
@@ -1160,6 +1228,7 @@ impl LoRaMetrics {
             airtime_consumed_ms: self.airtime_consumed_ms.load(Ordering::Relaxed),
             duty_refusals: self.duty_refusals.load(Ordering::Relaxed),
             tx_failures: self.tx_failures.load(Ordering::Relaxed),
+            tx_unknown_outcome: self.tx_unknown_outcome.load(Ordering::Relaxed),
             malformed_rx: self.malformed_rx.load(Ordering::Relaxed),
         }
     }
@@ -1374,11 +1443,17 @@ impl LoRaTransport {
     /// depth (`MAX_BACKLOG_ENTRIES`) against memory exhaustion on
     /// constrained devices.
     pub fn enqueue_backlog(&self, msg: SerializedMessage) -> Result<(), TransportError> {
-        if msg.payload.len() > MAX_PAYLOAD_BYTES {
+        // RF-10: P4+ is spec-excluded from LoRa outright (permanent for
+        // this transport — MG-40's PolicyDenied, not a size/framing issue
+        // MessageTooLarge would wrongly imply is fixable by fragmenting).
+        let Some(cap) = max_payload_for(msg.priority) else {
+            return Err(TransportError::PolicyDenied("LoRa carries P0-P3 only"));
+        };
+        if msg.payload.len() > cap {
             // MG-40: resolvable by fragmenting upstream and retrying on
             // this same transport — not a framing/decode failure.
             return Err(TransportError::MessageTooLarge {
-                limit: MAX_PAYLOAD_BYTES,
+                limit: cap,
                 actual: msg.payload.len(),
             });
         }
@@ -1404,9 +1479,15 @@ impl LoRaTransport {
         let Some(adapter) = adapter else {
             return Err(TransportError::NotConnected);
         };
-        if msg.payload.len() > MAX_PAYLOAD_BYTES {
+        // RF-10: same priority-eligibility + per-class cap as
+        // enqueue_backlog — a message could reach here directly via
+        // Transport::send() without ever passing through the backlog.
+        let Some(cap) = max_payload_for(msg.priority) else {
+            return Err(TransportError::PolicyDenied("LoRa carries P0-P3 only"));
+        };
+        if msg.payload.len() > cap {
             return Err(TransportError::MessageTooLarge {
-                limit: MAX_PAYLOAD_BYTES,
+                limit: cap,
                 actual: msg.payload.len(),
             });
         }
@@ -1425,26 +1506,45 @@ impl LoRaTransport {
         // carrier framing, not on-air bytes, and are deliberately not billed.
         let profile = profile_for_priority(msg.priority);
         let airtime = airtime_ms(&profile, encoded.len());
-        if let Err(be) = self.tracker.check_and_consume(msg.priority, airtime) {
-            tracing::debug!(
-                target: "iris.transport.lora",
-                duty_refusal = true,
-                retry_in_ms = be.delay_ms,
-                "send refused by 1% duty budget; re-route or P0-switch"
-            );
-            self.metrics.record_refusal();
-            return Err(TransportError::Busy);
-        }
+        let admission = match self.tracker.check_and_consume(msg.priority, airtime) {
+            Ok(w) => w,
+            Err(be) => {
+                tracing::debug!(
+                    target: "iris.transport.lora",
+                    duty_refusal = true,
+                    retry_in_ms = be.delay_ms,
+                    "send refused by 1% duty budget; re-route or P0-switch"
+                );
+                self.metrics.record_refusal();
+                return Err(TransportError::Busy);
+            }
+        };
         let slip = encode_slip(&encoded);
         let tx_result = tokio::time::timeout(TX_TIMEOUT, adapter.tx(&slip))
             .await
             .map_err(|_| LoRaLinkError::Io("tx timed out".to_string()));
         if let Err(e) = tx_result.and_then(|r| r) {
-            // RT-104: the reservation never reached the air — refund it so a
-            // flapping dongle cannot incinerate the legal hourly budget.
-            self.tracker.refund(msg.priority, airtime);
-            self.metrics.record_tx_failure();
-            tracing::debug!(target: "iris.transport.lora", "tx failed after duty reservation; budget refunded");
+            // RF-4: refund only when the error PROVES no emission happened.
+            // `Closed`/`NotTransmitted` are that proof; `Io`/`HardwareGated`
+            // can both follow a real emission (a write that succeeded but
+            // whose ack read timed out, a mid-transmission USB detach) —
+            // regulatory airtime is consumed by the radio, not by the
+            // return value, so those keep the reservation (fail-closed on
+            // the legal budget) rather than refunding on an assumption the
+            // adapter contract never actually promised.
+            match &e {
+                LoRaLinkError::Closed | LoRaLinkError::NotTransmitted(_) => {
+                    // RT-104: the reservation never reached the air — refund
+                    // it so a flapping dongle cannot incinerate the budget.
+                    self.tracker.refund(admission.token);
+                    self.metrics.record_tx_failure();
+                    tracing::debug!(target: "iris.transport.lora", "tx failed before transmit; budget refunded");
+                }
+                LoRaLinkError::Io(_) | LoRaLinkError::HardwareGated => {
+                    self.metrics.record_tx_unknown_outcome();
+                    tracing::debug!(target: "iris.transport.lora", "tx failed with unproven outcome; budget kept (fail-closed)");
+                }
+            }
             return Err(lora_link_err("lora link tx", e));
         }
         self.metrics.record_tx(encoded.len(), airtime);
@@ -2128,14 +2228,21 @@ mod tests {
         t.attach_adapter(a).await.expect("adapter opens");
         assert_eq!(t.state(), TransportState::Available);
 
-        // Bulk share is 1800 ms; a full 255-B P4 frame (237-B payload +
-        // 18-B header, RT-101) costs 1251 ms -> one fits.
+        // RF-10: P4+ no longer rides LoRa at all -- P3 (150-B cap) is now
+        // the only priority that still occupies the Bulk bucket (P0-P2 map
+        // to their own named buckets; P3-P7 all mapped to Bulk before, and
+        // P3 is the sole survivor of that set). A full 150-B P3 frame
+        // (168-B encoded) costs 862 ms; Bulk share is 1800 ms, so two fit
+        // (1724 ms) and a third does not (2586 ms).
         let peer = PeerId([2u8; 32]);
-        t.send(&peer, &msg(MessagePriority::P4, 237))
+        t.send(&peer, &msg(MessagePriority::P3, 150))
             .await
             .expect("first bulk send fits the 5% share");
+        t.send(&peer, &msg(MessagePriority::P3, 150))
+            .await
+            .expect("second bulk send still fits");
         let err = t
-            .send(&peer, &msg(MessagePriority::P4, 237))
+            .send(&peer, &msg(MessagePriority::P3, 150))
             .await
             .expect_err("bulk share spent");
         assert!(matches!(err, TransportError::Busy));
@@ -2144,12 +2251,12 @@ mod tests {
 
         // Window rolls -> the same send succeeds again.
         _clock.store(5_000_000 + 3_600_000, Ordering::Relaxed);
-        t.send(&peer, &msg(MessagePriority::P4, 237))
+        t.send(&peer, &msg(MessagePriority::P3, 150))
             .await
             .expect("rolling hour restored the budget");
         let m = t.metrics_snapshot();
-        assert_eq!(m.packets_tx, 2);
-        assert_eq!(m.airtime_consumed_ms, 2 * 1_251);
+        assert_eq!(m.packets_tx, 3);
+        assert_eq!(m.airtime_consumed_ms, 3 * 862);
     }
 
     #[tokio::test]
@@ -2161,8 +2268,12 @@ mod tests {
 
         // A 1-B payload rides a 19-B frame: airtime(SF9, PL=19) = 186 ms,
         // NOT the payload-only 104 ms. RT-101 regression anchor.
+        // RF-10: P3, not P4 -- P4+ no longer rides LoRa at all. P3 maps to
+        // the same Bulk bucket P4 used to (DutyBucket::from_priority's `_`
+        // arm covers both) and shares P4's SF9 profile, so this changes
+        // nothing about the airtime arithmetic below, only eligibility.
         let peer = PeerId([9u8; 32]);
-        t.send(&peer, &msg(MessagePriority::P4, 1))
+        t.send(&peer, &msg(MessagePriority::P3, 1))
             .await
             .expect("minimal frame fits");
         assert_eq!(t.metrics_snapshot().airtime_consumed_ms, 186);
@@ -2172,7 +2283,7 @@ mod tests {
         // exceed the Table-I share (the pre-fix accounting admitted 17).
         let mut admitted = 0;
         for _ in 1..=17 {
-            if t.send(&peer, &msg(MessagePriority::P4, 1)).await.is_ok() {
+            if t.send(&peer, &msg(MessagePriority::P3, 1)).await.is_ok() {
                 admitted += 1;
             }
         }
@@ -2193,10 +2304,13 @@ mod tests {
 
         // Kill the link AFTER attach: the next send consumes duty, then the
         // adapter refuses -> refund + failure metric, no budget burn.
+        // RF-10: P3/100 B, not P4/237 B -- P4+ is now rejected at the
+        // priority gate before ever reaching the tx attempt this test
+        // exercises, and 237 B exceeds every priority's new payload cap.
         a.close().await.expect("close sim link");
         let peer = PeerId([10u8; 32]);
         let err = t
-            .send(&peer, &msg(MessagePriority::P4, 237))
+            .send(&peer, &msg(MessagePriority::P3, 100))
             .await
             .expect_err("closed link fails the tx");
         // MG-39/41: a closed link is distinguishable from a genuine I/O
@@ -2259,11 +2373,13 @@ mod tests {
         let t = LoRaTransport::with_tracker("lora-0", Arc::new(tracker));
         let (a, _b) = sim_pair();
         t.attach_adapter(a).await.expect("adapter opens");
-        t.send(&PeerId([1u8; 32]), &msg(MessagePriority::P0, 237))
+        // RF-10: P0's payload cap is now 60 B (was 237, the pre-fix uniform
+        // ceiling) -- airtime(SF12, PL=78) recomputed for the 60-B payload
+        // + 18-B header, not the old 255-B full-frame anchor.
+        t.send(&PeerId([1u8; 32]), &msg(MessagePriority::P0, 60))
             .await
             .expect("p0 within its 60% share");
-        // Full 255-B frame billed (RT-101): airtime(SF12, PL=255) = 9020 ms.
-        assert_eq!(t.metrics_snapshot().airtime_consumed_ms, 9_020);
+        assert_eq!(t.metrics_snapshot().airtime_consumed_ms, 3_285);
         assert_eq!(t.send_priority_hint(), MessagePriority::P4, "hint unset");
         t.set_send_priority_hint(MessagePriority::P0);
         assert_eq!(t.send_priority_hint(), MessagePriority::P0);
@@ -2274,10 +2390,14 @@ mod tests {
         let t = LoRaTransport::new("lora-0");
         let (a, _b) = sim_pair();
         t.attach_adapter(a).await.expect("adapter opens");
+        // RF-10: P3's new 150-B cap is the binding oversize boundary now,
+        // not the old uniform 255-B wire limit -- P4+ would hit
+        // PolicyDenied first, which is a different (also-tested-elsewhere)
+        // failure mode than "too big for this priority's frame".
         let err = t
-            .send(&PeerId([3u8; 32]), &msg(MessagePriority::P4, 256))
+            .send(&PeerId([3u8; 32]), &msg(MessagePriority::P3, 151))
             .await
-            .expect_err(">255 B cannot ride one LoRa frame");
+            .expect_err(">150 B exceeds P3's LoRa payload cap");
         assert!(matches!(err, TransportError::MessageTooLarge { .. }));
     }
 
@@ -2312,23 +2432,25 @@ mod tests {
         t.attach_adapter(a).await.expect("adapter opens");
         let peer = PeerId([5u8; 32]);
 
-        // Spend most of the P2 (Location, 10% = 3600 ms) bucket: two full
-        // 255-B frames at 1251 ms each leave only 1098 ms — less than
-        // another full frame (RT-101 billing basis).
-        t.send(&peer, &msg(MessagePriority::P2, 237))
-            .await
-            .expect("p2 frame #1");
-        t.send(&peer, &msg(MessagePriority::P2, 237))
-            .await
-            .expect("p2 frame #2");
-        assert!(
-            t.send(&peer, &msg(MessagePriority::P2, 237)).await.is_err(),
-            "third frame exceeds the location bucket share"
-        );
+        // RF-10: P2's payload cap is now 120 B (was 237). Send full-size P2
+        // frames until the Location bucket (10% = 3600 ms) refuses one,
+        // rather than hardcoding a frame count derived from the old,
+        // larger payload size.
+        let mut sent = 0;
+        loop {
+            match t.send(&peer, &msg(MessagePriority::P2, 120)).await {
+                Ok(_) => sent += 1,
+                Err(_) => break,
+            }
+            assert!(
+                sent < 100,
+                "bucket should exhaust well before this many full-size frames"
+            );
+        }
+        assert!(sent >= 1, "at least one full P2 frame must fit the 10% share");
 
-        // Hold a message that cannot fit the remaining share (1098 ms left,
-        // a full P2 frame needs 1251 ms).
-        t.enqueue_backlog(msg(MessagePriority::P2, 237))
+        // Hold a message that cannot fit the now-exhausted share.
+        t.enqueue_backlog(msg(MessagePriority::P2, 120))
             .expect("fits the queue");
 
         let drained = t.drain_backlog(4).await;
