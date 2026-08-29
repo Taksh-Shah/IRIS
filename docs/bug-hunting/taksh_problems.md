@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 49 | 0 | 76 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-8/14/24/26 done; 76/126 done, 49 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 45 | 0 | 80 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-8/14/24/25/26/32/37 + MG-23 done; 80/126 done, 45 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **50** | **0** | **227** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **46** | **0** | **231** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -3493,7 +3493,7 @@ if partial.bytes > partial.total { return Err(FrameError::Truncated); }   // fai
 
 #### BLE-25: One shared `msg_id` counter for all peers, `Relaxed`, with silent wrap
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `7a132ca`  ·  2026-08-29  ·  added per-connection msg_id field to connections tuple; new segment_for_mtu_with_id; old method delegates
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/ble_att.rs:146-148` (fn `alloc_msg_id`), `crates/iris-core/src/transport/ble.rs:358` (single shared `segmenter`)
 - **What:** `BleTransport` holds one `AttSegmenter`, so a single `AtomicU16` allocates message ids
@@ -3819,7 +3819,7 @@ let peer_id = links.lock().unwrap().iter()
 
 #### BLE-32: `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `d4846c1`  ·  2026-08-29  ·  sim publish() now uses config.service_specific_info when non-empty; real start_advertising already fixed by FFI-4
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:915-929` (fn `start_advertising`), `:363-385` (sim `beacon_bytes`/`register`); contrast `crates/iris-core/src/transport/ble.rs:653-662`
 - **What:** The `NodeAdvertisement` parameter is bound to `_info` and never used. The beacon's
@@ -4055,7 +4055,7 @@ let ndp = tokio::time::timeout(NDP_OPEN_TIMEOUT, adapter.open_ndp(PeerHandle(han
 
 #### BLE-37: `PublishConfig` is a constant — every field is dead configuration
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `309cfa5`  ·  2026-08-29  ·  updated PublishConfig field docs to be honest about which fields are not threaded through FFI
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:125-147` (struct + `Default`), `:925` (the only construction)
 - **What:** `PublishConfig::default()` is the only value ever constructed. `service_name`,
@@ -6567,7 +6567,7 @@ Only `lora.rs:1607-1610` and `satellite.rs:1264-1266` store it, and both only in
 
 #### MG-24: `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `c5c5ace`  ·  2026-08-29  ·  default no-op body on trait; removed 5 redundant overrides (BLE, Wi-Fi Aware, Wi-Fi Direct, SimulatedTransport, manager stub)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/mod.rs:170-171`
 - **What:** The regulatory band is a `String` holding prose. Nothing can parse it, so no automated region/duty-cycle check can consume it.
