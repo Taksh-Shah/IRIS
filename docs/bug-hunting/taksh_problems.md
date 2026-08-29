@@ -309,9 +309,9 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-28** | High | `wifiaware.rs:199-201` | The availability watcher never runs on real hardware — `Degraded` is a simulator-only state | ✅ `395fb03` |
 | **BLE-29** | High | `wifiaware.rs:583-594` | Link death is classified by substring-matching the adapter's error text | ✅ `395fb03` (partial) |
 | **BLE-30** | High | `wifiaware.rs:172-173` | The two hot-path drains are infallible by signature, forcing every adapter error to be swallowed | ✅ `395fb03` (partial) |
-| **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` | ⬜ |
+| **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` | ✅ |
 | **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ⬜ |
-| **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ⬜ |
+| **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ✅ |
 | **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ⬜ |
 | **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ⬜ |
 | **BLE-36** | Medium | `wifiaware.rs:906-913` | `stop_discovery` is a partial stop, and `shutdown` is irreversible | ⬜ |
@@ -3767,7 +3767,7 @@ async fn ndp_send(&self, ndp: NdpHandle, payload: &[u8]) -> Result<(), NdpError>
 #### BLE-31: `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])`
 - **Severity:** Low  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** PARTIALLY-CORRECT (core factual assertion refuted; residual gap real but minor). See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:114-121` (struct), `:779-784` (attribution)
 - **What:** The struct carries a local NDP handle specifically so the receiver can map a frame to a
@@ -3874,7 +3874,7 @@ adapter.publish(&PublishConfig { service_specific_info: ssi, ..Default::default(
 
 #### BLE-33: `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:572-575` (field), `:797` (the only write)
 - **What:** The counter is incremented and never read. There is no getter, no metric registration, no

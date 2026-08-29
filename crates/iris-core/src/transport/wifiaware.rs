@@ -690,6 +690,13 @@ impl WifiAwareTransport {
         }
     }
 
+    /// BLE-33: observable count of frames dropped because the inbound broadcast
+    /// channel had no subscriber. Zero means no loss; non-zero means the engine
+    /// called `incoming_messages()` too late or the channel wrapped.
+    pub fn dropped_inbound(&self) -> u64 {
+        self.dropped_inbound.load(Ordering::Relaxed)
+    }
+
     fn set_state(&self, new: TransportState) {
         let old = self.state.load();
         if old != new {
@@ -907,7 +914,15 @@ impl WifiAwareTransport {
                     // handle-namespace unification) already addresses the
                     // PRIMARY real-hardware cause of `sender` being None —
                     // this substitution remains a last-resort fallback.
-                    let peer_id = frame.sender.unwrap_or(PeerId([0u8; 32]));
+                    // BLE-31: resolve the NDP handle in `links` first — the
+                    // transport already maintains the NdpHandle→PeerId mapping.
+                    // Fall back to adapter-reported sender, then zero.
+                    let peer_id = links.lock().unwrap()
+                        .iter()
+                        .find(|l| l.ndp == frame.ndp)
+                        .map(|l| l.peer_id)
+                        .or(frame.sender)
+                        .unwrap_or(PeerId([0u8; 32]));
                     // NEW-WA-RT-106: count (not silently swallow) frames that
                     // cannot be delivered upstream — a closed receiver or a
                     // receiver too slow for the broadcast channel.
@@ -920,7 +935,14 @@ impl WifiAwareTransport {
                         })
                         .is_err()
                     {
-                        dropped_inbound.fetch_add(1, Ordering::Relaxed);
+                        let n = dropped_inbound.fetch_add(1, Ordering::Relaxed) + 1;
+                        // BLE-33: warn once on first drop so the field is observable.
+                        if n == 1 {
+                            tracing::warn!(
+                                transport = %transport_id,
+                                "first inbound frame dropped: no subscriber yet (dropped_inbound=1)"
+                            );
+                        }
                     }
                 }
             }
