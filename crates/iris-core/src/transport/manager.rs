@@ -37,10 +37,25 @@ impl std::fmt::Display for RegistrationError {
 impl std::error::Error for RegistrationError {}
 
 /// A transport ranked for a given send request.
-#[derive(Debug, Clone)]
+///
+/// Carries the `Arc` directly (MG-13) so callers can invoke `send()` without
+/// a second registry lookup — avoiding the TOCTOU window where a deregistered
+/// transport would otherwise be silently re-selected or missed.
+#[derive(Clone)]
 pub struct RankedTransport {
     pub transport_id: TransportId,
     pub score: f32,
+    /// The transport instance, ready to call without re-locking the registry.
+    pub transport: Arc<dyn Transport>,
+}
+
+impl std::fmt::Debug for RankedTransport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RankedTransport")
+            .field("transport_id", &self.transport_id)
+            .field("score", &self.score)
+            .finish()
+    }
 }
 
 /// Selection request produced by the routing engine (ROUTE-001/002).
@@ -176,6 +191,7 @@ impl TransportManager {
                 RankedTransport {
                     transport_id: t.transport_id().clone(),
                     score,
+                    transport: t.clone(),
                 }
             })
             .collect();

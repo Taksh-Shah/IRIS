@@ -110,8 +110,11 @@ impl TransportState {
 }
 
 /// Wrapper around `AtomicU8` for lock-free state updates.
+///
+/// The inner field is `pub(crate)` (MG-21): external callers must use
+/// `load()` / `store()`, preventing bypass of future transition guards.
 #[derive(Debug, Default)]
-pub struct AtomicState(pub AtomicU8);
+pub struct AtomicState(pub(crate) AtomicU8);
 
 impl AtomicState {
     pub fn load(&self) -> TransportState {

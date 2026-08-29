@@ -376,7 +376,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-10** | Medium | `transport/mod.rs:282-292` | `RadioConflictGroup` is defined and never enforced anywhere | ✅ `ccf5a8e` |
 | **MG-11** | Medium | `manager.rs:69-164` | `TransportManager::shutdown()` does not exist | ✅ |
 | **MG-12** | Medium | `manager.rs:84-106` | No recovery-after-failure logic — no backoff, no retry, no `TransportPermanentFailure` | ⬜ |
-| **MG-13** | Medium | `manager.rs:38-43` | `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send | ⬜ |
+| **MG-13** | Medium | `manager.rs:38-43` | `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send | ✅ |
 | **MG-14** | Medium | `manager.rs:47-60` | `target_peer` is never read — spec selection rule 1 (reachability) is unimplemented, and broadcast/unicast capability flags are ignored | ⬜ |
 | **MG-15** | Medium | `manager.rs:52` | `max_latency_ms` is never read | ⬜ |
 | **MG-16** | Medium | `manager.rs:209-226` | Battery cost model is entirely unwired — `cost_from_model`, `BLE_COST`, and cost accounting have no callers | ⬜ |
@@ -384,7 +384,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-18** | Medium | `manager.rs:228-331` | `StubTransport` — a silent blackhole that reports success — ships in the public API | ⬜ |
 | **MG-19** | Medium | `transport/mod.rs:181-190` | `TransportCostClass` variants carry no cost data, so the required cost warning cannot be built | ⬜ |
 | **MG-20** | Medium | `manager.rs:586-599` | Three tests would still pass with the logic inverted or deleted | ⬜ |
-| **MG-21** | Medium | `transport/mod.rs:112-125` | `AtomicState` enforces no transitions and its inner field is public | ⬜ |
+| **MG-21** | Medium | `transport/mod.rs:112-125` | `AtomicState` enforces no transitions and its inner field is public | ✅ (partial: inner field made pub(crate)) |
 | **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths | ⬜ |
 | **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa | ⬜ |
 | **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable | ⬜ |
