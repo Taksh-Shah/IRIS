@@ -62,6 +62,8 @@ pub struct TransportSelectionRequest {
 /// Registry and selector for all transports.
 pub struct TransportManager {
     registry: RwLock<HashMap<TransportId, Arc<dyn Transport>>>,
+    /// Abort handles for per-transport state-forwarder tasks (MG-7).
+    forwarders: RwLock<HashMap<TransportId, tokio::task::AbortHandle>>,
     /// broadcast of topology events for the routing engine.
     topology_tx: broadcast::Sender<TopologyEvent>,
 }
@@ -71,6 +73,7 @@ impl TransportManager {
         let (topology_tx, _) = broadcast::channel(256);
         TransportManager {
             registry: RwLock::new(HashMap::new()),
+            forwarders: RwLock::new(HashMap::new()),
             topology_tx,
         }
     }
@@ -84,11 +87,21 @@ impl TransportManager {
     pub async fn register(&self, transport: Arc<dyn Transport>) -> Result<(), RegistrationError> {
         let id = transport.transport_id().clone();
 
-        // Forward state changes to topology subscribers before insertion.
+        // Duplicate check BEFORE spawning the forwarder task (MG-7):
+        // a rejected registration must not leave a live task.
+        let mut registry = self.registry.write().await;
+        if registry.contains_key(&id) {
+            return Err(RegistrationError::DuplicateId);
+        }
+        registry.insert(id.clone(), transport.clone());
+        drop(registry);
+
+        // Forward state changes to topology subscribers; store the abort
+        // handle so deregister() can stop the task (MG-7).
         let mut state_stream = transport.state_stream();
         let tx = self.topology_tx.clone();
         let forward_id = id.clone();
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             while let Some(event) = state_stream.next().await {
                 tx.send(TopologyEvent::TransportStateChanged {
                     transport_id: forward_id.clone(),
@@ -96,20 +109,22 @@ impl TransportManager {
                 }).ok();
             }
         });
-
-        let mut registry = self.registry.write().await;
-        if registry.contains_key(&id) {
-            return Err(RegistrationError::DuplicateId);
-        }
-        registry.insert(id.clone(), transport);
+        self.forwarders.write().await.insert(id, handle.abort_handle());
         Ok(())
     }
 
     /// Deregister a transport (e.g. LoRa dongle unplugged).
     pub async fn deregister(&self, id: &TransportId) -> Result<(), RegistrationError> {
-        let mut registry = self.registry.write().await;
-        if let Some(transport) = registry.remove(id) {
-            transport.shutdown().await.ok();
+        // Abort the forwarder task first so it can't emit events for a dead transport.
+        if let Some(handle) = self.forwarders.write().await.remove(id) {
+            handle.abort();
+        }
+        let transport = {
+            let mut registry = self.registry.write().await;
+            registry.remove(id)
+        };
+        if let Some(t) = transport {
+            t.shutdown().await.ok();
             Ok(())
         } else {
             Err(RegistrationError::NotFound)
