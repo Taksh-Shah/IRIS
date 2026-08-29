@@ -1184,7 +1184,7 @@ impl Transport for BleTransport {
         // Also run on the blocking pool: it is the same kind of synchronous
         // platform round trip as connect_gatt above.
         let mtu_adapter = adapter.clone();
-        let negotiated = tokio::time::timeout(
+        let mtu_result = tokio::time::timeout(
             MTU_TIMEOUT,
             tokio::task::spawn_blocking(move || {
                 mtu_adapter.set_mtu(handle, crate::transport::ble_att::MTU_NEGOTIATED)
@@ -1193,16 +1193,27 @@ impl Transport for BleTransport {
         .await
         .ok()
         .and_then(|r| r.ok())
-        .and_then(Result::ok)
-        .unwrap_or(crate::transport::ble_att::MTU_DEFAULT);
-        // iOS reports the negotiated ATT *payload* (`maximumWriteValueLength`,
-        // no request API) rather than the MTU — translate so per-connection
-        // frame sizing honors the FULL report (DEC-BLE-002-0004). Degraded
-        // 20-B payloads (iOS 16.0/16.0.1) are accepted as-is, never an error.
-        let stored_mtu = if self.ios_leg {
-            crate::transport::ble_att::payload_to_mtu(negotiated)
-        } else {
-            negotiated
+        // flatten: Ok(Ok(v)) -> Ok(v), Ok(Err(e)) -> Err(e), timeout -> None -> Ok(MTU_DEFAULT)
+        .map_or(Ok(crate::transport::ble_att::MTU_DEFAULT), |r| r);
+        // BLE-6 / BLE-7: distinguish error kinds before applying payload_to_mtu.
+        // Fatal errors (radio off, permission revoked) surface so the caller can
+        // tear down; transient GATT failures are warned and fall back to the
+        // conservative MTU_DEFAULT.
+        let stored_mtu = match mtu_result {
+            Ok(val) if self.ios_leg => {
+                // iOS reports ATT payload, not MTU — translate (DEC-BLE-002-0004).
+                // Degraded 20-B payloads (iOS 16.0/16.0.1) are accepted as-is.
+                crate::transport::ble_att::payload_to_mtu(val)
+            }
+            Ok(val) => val,
+            Err(BleError::PermissionDenied) | Err(BleError::AdapterOff) => {
+                self.set_state(TransportState::Unavailable);
+                return Err(TransportError::ShuttingDown);
+            }
+            Err(e) => {
+                tracing::warn!(peer = ?peer.peer_id, err = %e, "set_mtu failed; using MTU_DEFAULT");
+                crate::transport::ble_att::MTU_DEFAULT
+            }
         };
         self.connections
             .lock()

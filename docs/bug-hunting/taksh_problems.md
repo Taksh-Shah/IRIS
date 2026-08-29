@@ -284,8 +284,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-3** | High | `ble.rs:704` | A per-peer connect flips a transport-global state, evicting the whole transport from routing | ✅ `3a1789a` |
 | **BLE-4** | High | `ble.rs:756-771` | The poller's frame-partition write-back is destroyed by the FFI bridge — cross-peer frame loss on real devices | ✅ `24049e1` |
 | **BLE-5** | High | `ble_att.rs:110-156` | The whole negotiate-late MTU mechanism is unwired — `AttSegmenter`'s live MTU is dead code | ✅ `ed2a52f` |
-| **BLE-6** | Medium | `ble.rs:720-731` | iOS-leg `set_mtu` failure fallback misinterprets an MTU as a payload — every frame 3 bytes over the link budget | ⬜ |
-| **BLE-7** | Medium | `ble.rs:720-722` | `set_mtu` errors are silently swallowed | ⬜ |
+| **BLE-6** | Medium | `ble.rs:720-731` | iOS-leg `set_mtu` failure fallback misinterprets an MTU as a payload — every frame 3 bytes over the link budget | ✅ |
+| **BLE-7** | Medium | `ble.rs:720-722` | `set_mtu` errors are silently swallowed | ✅ |
 | **BLE-8** | Low | `ble.rs:619-624` | Unauthenticated advert bytes become `IncomingMessage.peer_id` | ⬜ |
 | **BLE-9** | Critical | `ble.rs:80-85` | `AdvertisementData` cannot express connectability, and its UUID/name are dropped at the FFI seam | ⬜ |
 | **BLE-10** | Medium | `ble.rs:829-842` | A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking | ⬜ |
@@ -2688,7 +2688,7 @@ ble_att.rs only (definitions + unit tests)
 #### BLE-6: iOS-leg `set_mtu` failure fallback misinterprets an MTU as a payload — every frame 3 bytes over the link budget
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/ble.rs:720-731`; `crates/iris-core/src/transport/ble_att.rs:57-62` (fn `payload_to_mtu`)
 - **What:** On the iOS leg, an errored `set_mtu` falls back to `MTU_DEFAULT` (23) and then feeds that
@@ -2741,7 +2741,7 @@ let stored_mtu = if self.ios_leg {
 
 #### BLE-7: `set_mtu` errors are silently swallowed
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:720-722` (fn `connect`)
 - **What:** `.unwrap_or(MTU_DEFAULT)` discards the `BleError` entirely.
