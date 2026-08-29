@@ -1,4 +1,4 @@
-//! Scenario builder — SIM-001 (WP-6).
+﻿//! Scenario builder — SIM-001 (WP-6).
 //!
 //! Reproducible contact-schedule scenarios that exercise the store-carry-
 //! forward path and the routing hop budgets. Each builder returns a ready
@@ -17,11 +17,12 @@ pub fn dense_mesh(nodes: usize, seed: u64) -> Simulation {
     let t = 1000u64;
     for a in 0..nodes {
         for b in (a + 1)..nodes {
-            sim.add_contact(ContactEvent { at_ms: t, a, b });
+            sim.add_contact(ContactEvent { at_ms: t, a, b, duration_ms: 1000 });
             sim.add_contact(ContactEvent {
                 at_ms: t + 500,
                 a,
                 b,
+        duration_ms: 1000,
             });
         }
     }
@@ -44,6 +45,7 @@ pub fn partition_carry(island_a: usize, mid: usize, island_b: usize, seed: u64) 
             at_ms: 1000,
             a: i,
             b: island_a,
+            duration_ms: 1000,
         });
     }
     // Carrier meets island B at t=4000 (outbound delivery); island B fully
@@ -53,12 +55,14 @@ pub fn partition_carry(island_a: usize, mid: usize, island_b: usize, seed: u64) 
             at_ms: 4000,
             a: island_a,
             b: b_base + i,
+            duration_ms: 1000,
         });
         for j in (i + 1)..island_b {
             sim.add_contact(ContactEvent {
                 at_ms: 2000,
                 a: b_base + i,
                 b: b_base + j,
+                duration_ms: 1000,
             });
         }
     }
@@ -69,6 +73,7 @@ pub fn partition_carry(island_a: usize, mid: usize, island_b: usize, seed: u64) 
             at_ms: 6000,
             a: i,
             b: island_a,
+            duration_ms: 1000,
         });
     }
     sim
@@ -86,6 +91,7 @@ pub fn vehicle_relay(stations: usize, seed: u64) -> Simulation {
             at_ms: step * (s as u64 + 1),
             a: s,
             b: relay,
+            duration_ms: 1000,
         });
         // Station-to-station same-line links (backbone within station cluster).
         if s + 1 < stations {
@@ -93,6 +99,7 @@ pub fn vehicle_relay(stations: usize, seed: u64) -> Simulation {
                 at_ms: step * (s as u64 + 1) + 300,
                 a: s,
                 b: s + 1,
+                duration_ms: 1000,
             });
         }
     }
@@ -125,6 +132,7 @@ pub fn community_ferry(
                     at_ms: t,
                     a: i,
                     b: j,
+                    duration_ms: 1000,
                 });
             }
         }
@@ -136,6 +144,7 @@ pub fn community_ferry(
                     at_ms: t,
                     a: b_base + i,
                     b: b_base + j,
+                    duration_ms: 1000,
                 });
             }
         }
@@ -150,6 +159,7 @@ pub fn community_ferry(
             at_ms: t,
             a: ferry_idx,
             b: member,
+            duration_ms: 1000,
         });
         t += period_ms;
     }
@@ -189,6 +199,7 @@ pub fn periodic_ferry(stations: usize, period_ms: u64, step_ms: u64, seed: u64) 
                 at_ms: at,
                 a: s,
                 b: ferry,
+                duration_ms: 1000,
             });
             // Terminal-to-terminal backbone within the line (contact
             // frequency so in-line messages relay even before the ferry).
@@ -197,6 +208,7 @@ pub fn periodic_ferry(stations: usize, period_ms: u64, step_ms: u64, seed: u64) 
                     at_ms: at + step_ms / 2,
                     a: s,
                     b: s + 1,
+                    duration_ms: 1000,
                 });
             }
         }
@@ -218,7 +230,7 @@ pub fn random_walk(nodes: usize, pairs: usize, seed: u64) -> Simulation {
         let a = rng.gen_range(0..nodes);
         let b = rng.gen_range(0..nodes);
         if a != b {
-            sim.add_contact(ContactEvent { at_ms: t, a, b });
+            sim.add_contact(ContactEvent { at_ms: t, a, b, duration_ms: 1000 });
         }
         // Aperiodic gap between 200 and 2000 ms (uniform).
         t += rng.gen_range(200..=2000);
@@ -282,7 +294,7 @@ pub fn pilot_nct_of_n(nodes: usize, per_node: usize, seed: u64) -> Simulation {
         let t = 1000 + r * 1000;
         for a in 0..nodes {
             for b in (a + 1)..nodes {
-                sim.add_contact(ContactEvent { at_ms: t, a, b });
+                sim.add_contact(ContactEvent { at_ms: t, a, b, duration_ms: 1000 });
             }
         }
     }
@@ -318,8 +330,8 @@ pub fn pilot_partition_heal(part: usize, heal_at_ms: u64, seed: u64) -> Simulati
     let b_base = part;
     for a in 0..part {
         for b in (a + 1)..part {
-            sim.add_contact(ContactEvent { at_ms: 1000, a, b });
-            sim.add_contact(ContactEvent { at_ms: 5000, a, b });
+            sim.add_contact(ContactEvent { at_ms: 1000, a, b, duration_ms: 1000 });
+            sim.add_contact(ContactEvent { at_ms: 5000, a, b, duration_ms: 1000 });
         }
     }
     for a in 0..part {
@@ -328,11 +340,13 @@ pub fn pilot_partition_heal(part: usize, heal_at_ms: u64, seed: u64) -> Simulati
                 at_ms: 1000,
                 a: b_base + a,
                 b: b_base + b,
+                duration_ms: 1000,
             });
             sim.add_contact(ContactEvent {
                 at_ms: 5000,
                 a: b_base + a,
                 b: b_base + b,
+                duration_ms: 1000,
             });
         }
     }
@@ -342,11 +356,13 @@ pub fn pilot_partition_heal(part: usize, heal_at_ms: u64, seed: u64) -> Simulati
                 at_ms: heal_at_ms,
                 a,
                 b: b_base + b,
+                duration_ms: 1000,
             });
             sim.add_contact(ContactEvent {
                 at_ms: heal_at_ms + 1000,
                 a,
                 b: b_base + b,
+                duration_ms: 1000,
             });
         }
     }
@@ -366,6 +382,7 @@ pub fn pilot_mule_chain(segments: usize, seed: u64) -> Simulation {
             at_ms: (i as u64 + 1) * 1000,
             a: i,
             b: i + 1,
+            duration_ms: 1000,
         });
     }
     sim
@@ -384,19 +401,21 @@ pub fn pilot_ios_limited_relay(seed: u64) -> Simulation {
     let mut sim = Simulation::new(total, seed);
     for a in 0..5 {
         for b in (a + 1)..5 {
-            sim.add_contact(ContactEvent { at_ms: 1000, a, b });
-            sim.add_contact(ContactEvent { at_ms: 5000, a, b });
+            sim.add_contact(ContactEvent { at_ms: 1000, a, b, duration_ms: 1000 });
+            sim.add_contact(ContactEvent { at_ms: 5000, a, b, duration_ms: 1000 });
         }
     }
     sim.add_contact(ContactEvent {
         at_ms: 2000,
         a: 0,
         b: ios,
+        duration_ms: 1000,
     });
     sim.add_contact(ContactEvent {
         at_ms: 12_000,
         a: 4,
         b: ios,
+        duration_ms: 1000,
     });
     sim
 }

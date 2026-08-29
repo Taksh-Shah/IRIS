@@ -1,4 +1,4 @@
-//! Discrete-event simulation scaffold — SIM-001 (WP-6).
+﻿//! Discrete-event simulation scaffold — SIM-001 (WP-6).
 //!
 //! Drives the real ROUTE-001 (hop budgets, `ForwardedCache` anti-loop) and
 //! SCF-001 (`ScfEngine`) logic over a *virtual clock* so every run is
@@ -86,12 +86,21 @@ impl SimNode {
     }
 }
 
-/// A scheduled contact: nodes `a` and `b` are in range at `at_ms`.
+/// A scheduled contact: nodes `a` and `b` are in range at `at_ms` for
+/// `duration_ms` milliseconds (SIM-9).
+///
+/// `duration_ms` makes the contact window representable so the sim can
+/// enforce byte budgets (`bandwidth_bps × duration_ms`) and model mid-
+/// transfer disconnects (SIM-8 scope). Set to 0 for a legacy instantaneous
+/// contact (unbounded transfer, old behaviour).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ContactEvent {
     pub at_ms: u64,
     pub a: usize,
     pub b: usize,
+    /// Duration of the contact window in sim-milliseconds. 0 = unbounded
+    /// (instantaneous — legacy; enforcement deferred to SIM-8).
+    pub duration_ms: u64,
 }
 
 /// A message injection: `from` sends to `to` at `at_ms`.
@@ -977,11 +986,13 @@ mod tests {
             at_ms: 1000,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 1,
             b: 2,
+            duration_ms: 1000,
         });
         sim.inject(Injection::new(
             500,
@@ -1005,11 +1016,13 @@ mod tests {
             at_ms: 1000,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 1,
             b: 2,
+            duration_ms: 1000,
         });
         sim.inject(Injection::new(
             500,
@@ -1087,6 +1100,7 @@ mod tests {
             at_ms: 900,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         let out = sim.run();
         assert!(
@@ -1108,16 +1122,19 @@ mod tests {
                 at_ms: 1000,
                 a: 0,
                 b: 1,
+                duration_ms: 1000,
             });
             sim.add_contact(ContactEvent {
                 at_ms: 1500,
                 a: 1,
                 b: 2,
+                duration_ms: 1000,
             });
             sim.add_contact(ContactEvent {
                 at_ms: 2000,
                 a: 2,
                 b: 3,
+                duration_ms: 1000,
             });
             sim.set_loss(SimLoss { rate: 0.3 });
             for i in 0..10 {
@@ -1157,26 +1174,31 @@ mod tests {
             at_ms: 2000,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 2,
             b: 3,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 1,
             b: 4,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 3,
             b: 0,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 4,
             b: 2,
+            duration_ms: 1000,
         });
         let out = sim.run();
         assert_eq!(
@@ -1206,6 +1228,7 @@ mod tests {
             at_ms: 5000,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         let out = sim.run();
         assert_eq!(
@@ -1240,6 +1263,7 @@ mod tests {
             at_ms: 1000,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         let out = sim.run();
         assert_eq!(out.delivered_total, 1);
@@ -1274,21 +1298,25 @@ mod tests {
             at_ms: 1000,
             a: 0,
             b: 1,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 2000,
             a: 1,
             b: 2,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 3000,
             a: 2,
             b: 3,
+            duration_ms: 1000,
         });
         sim.add_contact(ContactEvent {
             at_ms: 4000,
             a: 3,
             b: 4,
+            duration_ms: 1000,
         });
         let out = sim.run();
         assert_eq!(
@@ -1313,7 +1341,7 @@ mod tests {
         // scenario: after the run the delivering src must have no hops_by_msg
         // entry for the delivered message.
         let mut sim = Simulation::new(2, 1);
-        sim.add_contact(ContactEvent { at_ms: 500, a: 0, b: 1 });
+        sim.add_contact(ContactEvent { at_ms: 500, a: 0, b: 1, duration_ms: 1000 });
         let inj = Injection::new(100, 0, node_id(1), MessagePriority::P4, b"hi", 3600);
         sim.inject(inj);
         let out = sim.run();

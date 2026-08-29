@@ -1,4 +1,4 @@
-//! Reproducible SIM-001 scenarios (ORCH-0001 WP-6 acceptance):
+﻿//! Reproducible SIM-001 scenarios (ORCH-0001 WP-6 acceptance):
 //! ≥3 scenarios (dense mesh, sparse partition carry, vehicle relay) with
 //! delivery ratio + no-loop evidence, and same-seed determinism.
 
@@ -199,6 +199,7 @@ fn route2_spray_bounds_overhead_property() {
                     at_ms: 500 * (a + b),
                     a: a as usize,
                     b: b as usize,
+                    duration_ms: 1000,
                 });
             }
         }
@@ -271,7 +272,7 @@ fn sim12_injection_at_contact_time_is_carried_on_that_contact() {
     use iris_core::sim::scenario::sim_peer;
 
     let mut sim = Simulation::new(2, 42);
-    sim.add_contact(ContactEvent { at_ms: 100, a: 0, b: 1 });
+    sim.add_contact(ContactEvent { at_ms: 100, a: 0, b: 1, duration_ms: 1000 });
     sim.inject(Injection::new(
         100,
         0,
