@@ -55,8 +55,9 @@ impl CapabilityBits {
     pub fn bits(self) -> u16 {
         self.0
     }
+    /// BLE-20: mask to the known set so `build`→`parse` always round-trips.
     pub fn set(&mut self, bit: u16) {
-        self.0 |= bit;
+        self.0 |= bit & Self::all().bits();
     }
     pub fn contains(self, bit: u16) -> bool {
         self.0 & bit != 0
@@ -68,6 +69,8 @@ impl CapabilityBits {
 pub enum AdvertError {
     /// Beacon shorter than `BEACON_LEN`.
     TooShort,
+    /// Beacon longer than `MAX_ADVERT_BYTES` (BLE-21).
+    TooLong,
     /// Unsupported version.
     UnsupportedVersion(u8),
     /// Unknown beacon kind.
@@ -115,6 +118,10 @@ impl DiscoveryBeacon {
     pub fn parse(bytes: &[u8]) -> Result<Self, AdvertError> {
         if bytes.len() < BEACON_LEN {
             return Err(AdvertError::TooShort);
+        }
+        // BLE-21: reject oversized adverts before any allocation.
+        if bytes.len() > MAX_ADVERT_BYTES {
+            return Err(AdvertError::TooLong);
         }
         let version = bytes[0];
         if version != BEACON_VERSION {
@@ -210,9 +217,10 @@ mod tests {
     }
 
     #[test]
-    fn oversized_payload_tolerated_without_panic() {
-        // A 512-byte padded advert must parse the 22-byte prefix fine (BLE
-        // adverts may be padded); anything shorter is rejected.
+    fn advert_size_bounds_enforced() {
+        // Payloads up to MAX_ADVERT_BYTES are accepted (BLE 5 extended adverts
+        // may be padded); anything strictly over must be rejected without panic
+        // (BLE-21 / RES-0019 R5).
         let b = DiscoveryBeacon::build(
             CapabilityBits::from_bits(CapabilityBits::GATT_UNICAST),
             [7u8; 16],
@@ -223,6 +231,14 @@ mod tests {
         assert_eq!(padded.len(), MAX_ADVERT_BYTES);
         let parsed = DiscoveryBeacon::parse(&padded).unwrap();
         assert_eq!(parsed.peer_short, [7u8; 16]);
+        // One byte over the cap must be rejected.
+        let mut oversize = padded.clone();
+        oversize.push(0u8);
+        assert_eq!(
+            DiscoveryBeacon::parse(&oversize).unwrap_err(),
+            AdvertError::TooLong,
+            "payloads > MAX_ADVERT_BYTES must be rejected"
+        );
     }
 
     #[test]

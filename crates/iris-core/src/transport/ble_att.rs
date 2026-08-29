@@ -311,13 +311,22 @@ impl Reassembler {
                 last_seen: now,
             };
         }
+        // BLE-23: per-chunk byte cap — reject a chunk whose data alone exceeds
+        // the declared total before storing anything. This catches a hostile peer
+        // that lies about `total` to drive a large Vec::with_capacity at reassembly.
+        if data.len() > total {
+            return Err(FrameError::Truncated);
+        }
         if partial.chunks[idx].is_none() {
             partial.chunks[idx] = Some(data.to_vec());
             partial.received += 1;
         }
         if partial.received == partial.count {
             let partial = self.partials.remove(&msg_id).expect("present");
-            let mut out = Vec::with_capacity(partial.total);
+            // Use actual accumulated size as capacity to avoid over-allocating on
+            // a lied-about `total` that survived the per-chunk check above.
+            let actual_cap = partial.chunks.iter().flatten().map(Vec::len).sum();
+            let mut out = Vec::with_capacity(actual_cap);
             for chunk in partial.chunks {
                 out.extend_from_slice(&chunk.expect("received==count guarantees all chunks"));
             }

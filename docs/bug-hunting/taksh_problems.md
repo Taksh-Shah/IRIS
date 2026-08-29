@@ -298,10 +298,10 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-17** | Medium | `ble.rs:477-512` | Scan backoff escalates permanently and is never reset by a successful scan | ✅ |
 | **BLE-18** | Medium | `ble.rs:828` | The service UUID is used as the data characteristic UUID | ✅ (prior session) |
 | **BLE-19** | Medium | `ble.rs:533-627` | BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout` | ✅ (filter fixed; timeout deferred) |
-| **BLE-20** | Low | `ble_advert.rs:58-60` | `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects | ⬜ |
-| **BLE-21** | Low | `ble_advert.rs:151-152` | `MAX_ADVERT_BYTES` is unwired — `DiscoveryBeacon::parse` has no upper bound | ⬜ |
+| **BLE-20** | Low | `ble_advert.rs:58-60` | `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects | ✅ |
+| **BLE-21** | Low | `ble_advert.rs:151-152` | `MAX_ADVERT_BYTES` is unwired — `DiscoveryBeacon::parse` has no upper bound | ✅ |
 | **BLE-22** | Low | `ble_advert.rs:92-93` | Beacon `freshness_minutes` and `capabilities` are parsed and then thrown away | ⬜ |
-| **BLE-23** | Medium | `ble_att.rs:230-249` | Reassembly has no aggregate byte cap and no per-chunk length validation | ⬜ |
+| **BLE-23** | Medium | `ble_att.rs:230-249` | Reassembly has no aggregate byte cap and no per-chunk length validation | ✅ (per-chunk cap; global cap deferred) |
 | **BLE-24** | Low | `ble_att.rs:481-497` | Tests that pass regardless of the logic they claim to cover | ⬜ |
 | **BLE-25** | Low | `ble_att.rs:146-148` | One shared `msg_id` counter for all peers, `Relaxed`, with silent wrap | ⬜ |
 | **BLE-26** | Low | `ble.rs:74-77` | `ScanFilter::rssi_threshold` is never set and `ScanResult::rssi` is never read | ⬜ |
@@ -3277,7 +3277,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-20: `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble_advert.rs:58-60`; contrast `crates/iris-core/src/transport/wifiaware_beacon.rs:63-65`
 - **What:** The BLE variant ORs the raw argument in; the Wi-Fi Aware variant masks it to the known set.
@@ -3313,7 +3313,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-21: `MAX_ADVERT_BYTES` is unwired — `DiscoveryBeacon::parse` has no upper bound
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble_advert.rs:151-152` (const), `:115-139` (fn `parse`); contrast `crates/iris-core/src/transport/wifiaware_beacon.rs:128-130`
 - **What:** The constant exists and is documented as "Maximum bytes of advertised payload IRIS will
@@ -3384,7 +3384,7 @@ ble_advert.rs:223:        assert_eq!(padded.len(), MAX_ADVERT_BYTES);   <- test 
 
 #### BLE-23: Reassembly has no aggregate byte cap and no per-chunk length validation
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Partial  ·  Tier 4  — per-chunk `data.len() > total` check added; global cross-peer cap deferred
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/ble_att.rs:230-249` (fn `decode_frame`), `:284-331` (fn `push`)
 - **What:** `decode_frame` validates `total`, `count` and `idx`, but never validates the *data* length
