@@ -360,8 +360,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection | ✅ `6471d86` |
 | **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ✅ 4d1ae57 |
 | **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ⬜ |
-| **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ✅ PLACEHOLDER_RF42 |
-| **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ✅ PLACEHOLDER_RF42 |
+| **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ✅ 699dd5d |
+| **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ✅ 699dd5d |
 | **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused | ⬜ |
 | **RF-45** | Medium | `simulated.rs:159-166` | `connect()` cannot fail, `bandwidth_bps` never throttles, ordering is not preserved, and in-flight sends survive shutdown | ⬜ |
 | **MG-1** | Medium | `manager.rs:154-162` | Single-best selection has no score floor — an "eliminated" transport is still returned | ⬜ |
@@ -5712,7 +5712,7 @@ production behaviour that those suites cannot observe.
 #### RF-42: `send()` ignores transport state entirely — a shut-down simulated transport still delivers
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_RF42  ·  2026-08-29  ·  `send()` now checks `state == Unavailable` at entry and returns `TransportError::ShuttingDown`. The `Available` (pre-connect) path is not rejected — SimulatedTransport is designed as an infrastructure-free loopback and existing tests rely on sending from `Available`.
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 699dd5d  ·  2026-08-29  ·  `send()` now checks `state == Unavailable` at entry and returns `TransportError::ShuttingDown`. The `Available` (pre-connect) path is not rejected — SimulatedTransport is designed as an infrastructure-free loopback and existing tests rely on sending from `Available`.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/simulated.rs:168-203` (fn `send`), `220-223` (fn `shutdown`)
 - **What:** `send()` never reads `self.state`. `shutdown()` sets `Unavailable` and nothing else; the next `send()` succeeds, spawns the delivery task, and publishes to `incoming_tx`. `SimulatedTransport` can never return `ShuttingDown`, `NotConnected`, `NotSupported` or `ConnectionFailed` — `TransportError` is unreachable from it in its entirety.
@@ -5751,7 +5751,7 @@ match self.state.load() {
 #### RF-43: `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_RF42  ·  2026-08-29  ·  `send()` now enforces `caps.max_message_size` and returns `MessageTooLarge` on excess. `SimConfig::max_message_size: Option<usize>` added — `None` keeps the 64 KiB default; tests can set 237 or 185 to simulate LoRa/BLE budgets.
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 699dd5d  ·  2026-08-29  ·  `send()` now enforces `caps.max_message_size` and returns `MessageTooLarge` on excess. `SimConfig::max_message_size: Option<usize>` added — `None` keeps the 64 KiB default; tests can set 237 or 185 to simulate LoRa/BLE budgets.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/simulated.rs:76-92` (capabilities), `168-203` (fn `send`)
 - **What:** the simulator advertises `max_message_size: 64 * 1024` and then accepts and "delivers" a payload of any size. There is no length check anywhere in `send()`.
