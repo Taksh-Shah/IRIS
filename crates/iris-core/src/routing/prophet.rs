@@ -205,7 +205,7 @@ impl DeliveryPredictability {
             .dps
             .iter()
             .filter(|(d, _)| !protect.contains(d))
-            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .min_by(|(_, a), (_, b)| a.total_cmp(b))
             .map(|(d, p)| (*d, *p))
         {
             self.dps.remove(&lo_dst);

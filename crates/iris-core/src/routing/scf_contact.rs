@@ -117,8 +117,7 @@ impl<S: MessageStorage> ScfEngine<S> {
         ranked.sort_by(|a, b| {
             a.priority_rank.cmp(&b.priority_rank).then_with(|| {
                 b.delivery_probability
-                    .partial_cmp(&a.delivery_probability)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .total_cmp(&a.delivery_probability)
                     .then_with(|| a.message_id.cmp(&b.message_id))
             })
         });

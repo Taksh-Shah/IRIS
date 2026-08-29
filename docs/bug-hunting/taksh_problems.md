@@ -440,29 +440,29 @@ All 284 findings, in report order. Severities are post-verification.
 | **SIM-32** | Low | `scenario.rs:231-246` | `inject_standard` can address a message to its own sender, producing a permanently undeliverable message that silently deflates the delivery ratio | ✅ `dec33ab` |
 | **TAK-1** | Critical | `common/mod.rs:18-22` | All 14 PostgreSQL-backed storage tests silently no-op yet report PASS | ✅ `c5325d8` |
 | **TAK-2** | Critical | `pg.rs:160,170-179` | Remote attacker can permanently exhaust the store with unevictable P0 rows | ✅ `08d3534` |
-| **TAK-3** | High | `pg.rs:294-305` | A single undecodable row permanently blocks the entire send queue | ⬜ |
-| **TAK-4** | High | `pg.rs:92-96` | No reconnection — one dropped PG connection bricks storage for the process lifetime | ⬜ |
-| **TAK-5** | High | `pg.rs:172-179` | Quota admission is a cross-store TOCTOU and never triggers eviction | ⬜ |
-| **TAK-6** | High | `pg.rs:88` | Database connection uses `NoTls` — password and all message CBOR travel in cleartext | ⬜ |
+| **TAK-3** | High | `pg.rs:294-305` | A single undecodable row permanently blocks the entire send queue | ✅ `8d8ead9` |
+| **TAK-4** | High | `pg.rs:92-96` | No reconnection — one dropped PG connection bricks storage for the process lifetime | ✅ `f2fc6a7` |
+| **TAK-5** | High | `pg.rs:172-179` | Quota admission is a cross-store TOCTOU and never triggers eviction | ✅ `f766383` |
+| **TAK-6** | High | `pg.rs:88` | Database connection uses `NoTls` — password and all message CBOR travel in cleartext | 🔒 Blocked |
 | **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test | ⬜ |
-| **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three | ⬜ |
-| **TAK-9** | Medium | `pg.rs:191-195` | `u64 → i64` wrapping casts let a peer write negative timestamps into the store | ⬜ |
-| **TAK-10** | Medium | `pg.rs:197` | `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code | ⬜ |
-| **TAK-11** | Medium | `schema.rs:24-27` | Both partial indexes are unusable by the queries they were created for | ⬜ |
-| **TAK-12** | Medium | `eviction.rs:44-70` | The eviction loop issues two round trips per evicted row and can livelock | ⬜ |
-| **TAK-13** | Low | `gc.rs:22-28` | GC uses the default `MissedTickBehavior::Burst`, so a slow tick is followed by a stampede | ⬜ |
-| **TAK-14** | High | `seal.rs:28-34` | The at-rest AAD binds only 3 of 8 metadata columns, contradicting the module's tamper claim | ⬜ |
-| **TAK-15** | Medium | `pg.rs:220-229` | Enabling sealing makes every pre-existing plaintext row permanently unreadable — no data migration exists | ⬜ |
-| **TAK-16** | Medium | `seal.rs:60-63` | `Debug` derives expose the at-rest key and the DB password | ⬜ |
-| **TAK-17** | Low | `seal.rs:60-63` | The at-rest key is never zeroized | ⬜ |
-| **TAK-18** | High | `loom_models.rs:38-86` | The loom concurrency models exercise no Section 3 code at all | ⬜ |
-| **TAK-19** | High | `tokio_behavior.rs:140-177` | The test that claims to guard the transport-selection comparator cannot execute a single comparison | ⬜ |
-| **TAK-20** | Medium | `tokio_behavior.rs:179-197` | Two of the four `tokio_behavior` tests assert nothing about IRIS code | ⬜ |
-| **TAK-21** | Medium | `features.rs:28-34` | `FeatureVec` finiteness is enforced only by `debug_assert!`, so NaN reaches the scorer in release builds | ⬜ |
-| **TAK-22** | Low | `predictor.rs:103-105` | `GtPredictor::predict_next` can overflow `u64` on a sparse contact schedule | ⬜ |
-| **TAK-23** | Informational | `ml/mod.rs:9-15` | VERIFIED CLEAN — the ML predictor cannot bypass any security check | ⬜ |
-| **TAK-24** | Low | `eviction.rs:59` | Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy | ⬜ |
-| **TAK-25** | Low | `pg.rs:30-31` | `eviction_threshold` is a config field with no way to configure it | ⬜ |
+| **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three | ✅ PENDING |
+| **TAK-9** | Medium | `pg.rs:191-195` | `u64 → i64` wrapping casts let a peer write negative timestamps into the store | ✅ `518b4ab` |
+| **TAK-10** | Medium | `pg.rs:197` | `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code | ✅ `c52f1a5` |
+| **TAK-11** | Medium | `schema.rs:24-27` | Both partial indexes are unusable by the queries they were created for | ✅ `0e1f2d3` |
+| **TAK-12** | Medium | `eviction.rs:44-70` | The eviction loop issues two round trips per evicted row and can livelock | ✅ `5960080` |
+| **TAK-13** | Low | `gc.rs:22-28` | GC uses the default `MissedTickBehavior::Burst`, so a slow tick is followed by a stampede | ✅ `9f3a526` |
+| **TAK-14** | High | `seal.rs:28-34` | The at-rest AAD binds only 3 of 8 metadata columns, contradicting the module's tamper claim | ✅ `92c6110` |
+| **TAK-15** | Medium | `pg.rs:220-229` | Enabling sealing makes every pre-existing plaintext row permanently unreadable — no data migration exists | ✅ `dff5358` |
+| **TAK-16** | Medium | `seal.rs:60-63` | `Debug` derives expose the at-rest key and the DB password | ✅ `868f42a` |
+| **TAK-17** | Low | `seal.rs:60-63` | The at-rest key is never zeroized | ✅ `87c4af9` |
+| **TAK-18** | High | `loom_models.rs:38-86` | The loom concurrency models exercise no Section 3 code at all | ✅ `c8d237e` |
+| **TAK-19** | High | `tokio_behavior.rs:140-177` | The test that claims to guard the transport-selection comparator cannot execute a single comparison | ✅ `5852ff2` |
+| **TAK-20** | Medium | `tokio_behavior.rs:179-197` | Two of the four `tokio_behavior` tests assert nothing about IRIS code | ✅ `efc8e6d` |
+| **TAK-21** | Medium | `features.rs:28-34` | `FeatureVec` finiteness is enforced only by `debug_assert!`, so NaN reaches the scorer in release builds | ✅ `3e22a34` |
+| **TAK-22** | Low | `predictor.rs:103-105` | `GtPredictor::predict_next` can overflow `u64` on a sparse contact schedule | ✅ `ff9e9e4` |
+| **TAK-23** | Informational | `ml/mod.rs:9-15` | VERIFIED CLEAN — the ML predictor cannot bypass any security check | ⚪ N/A (verified clean) |
+| **TAK-24** | Low | `eviction.rs:59` | Eviction's final tie-break evicts the NEWEST message, contradicting the module's stated policy | ✅ `1cda4a9` |
+| **TAK-25** | Low | `pg.rs:30-31` | `eviction_threshold` is a config field with no way to configure it | ✅ `ee7abdb` |
 | **FFI-1** | Critical | `wifi_direct.rs:1095-1112` | Wi-Fi Direct peer handles are allocated from two independent namespaces — every `p2p_send` misses its link | ⬜ |
 | **FFI-2** | Critical | `wifi_direct.rs:1049-1058` | `p2pSend` reports success for a frame that was only queued — `is_link_loss_error` can never fire | ⬜ |
 | **FFI-3** | Critical | `wifi_direct.rs:1189-1205` | GO-side links are keyed by remote **IP**, client-side by **MAC** — the two roles disagree on handles | ⬜ |
@@ -8286,7 +8286,7 @@ manager.rs:590      RadioConflictGroup::Bluetooth24GHz,
 
 #### TAK-8: The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit TAK-8-PENDING · 2026-08-29
 - **Confidence:** Certain
 - **Location:** Fixed: `transport/manager.rs:154`, `gateway/mod.rs:634`. **Missed:** `routing/scf_contact.rs:79-85`, `routing/prophet.rs:195`, `sim/ml/predictor.rs:90`
 - **What:** The remediation replaced `partial_cmp().unwrap()` with `total_cmp` in the transport and gateway rankers, and `manager.rs:152-153` documents that intent. Three other float comparators were left using `partial_cmp(..).unwrap_or(Ordering::Equal)`. That form does not panic, but it makes the comparator **non-transitive** in the presence of NaN — NaN compares `Equal` to every value while those values compare unequally to each other.
