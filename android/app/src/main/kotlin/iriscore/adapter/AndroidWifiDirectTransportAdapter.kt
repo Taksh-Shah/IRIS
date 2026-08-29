@@ -306,6 +306,40 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         }
         FfiCallTimeout.suspendCall { dnsSdGate.ensureStarted() }
         android.util.Log.d("IrisWifiDirectDiag", "startDnsSd DONE len=${txtRecord.size} wasStarted=$wasStarted beaconChanged=$beaconChanged")
+        // HW-15: confirmed via research (matches a documented, real-world
+        // WifiP2pManager quirk, not speculation) — after addLocalService
+        // changes what this node advertises, an ALREADY-RUNNING discovery
+        // session (discoverServices()) does not pick up the new TXT data on
+        // its own; the framework only (re)transmits the current TXT record
+        // in response to a FRESH discoverServices() call issued after the
+        // local service change. HW-13 re-registers the local service
+        // correctly when the beacon changes, but if `discoverServices()`
+        // had already been called earlier (this node's own discovery loop
+        // starts independently, on its own ~30s cadence, from
+        // `discover_peers()` — not gated on this beacon update at all),
+        // that already-in-flight session keeps serving the OLD (possibly
+        // still-empty-placeholder) TXT data until its own next unrelated
+        // rearm, which live testing showed simply never surfaced a paired
+        // TXT record at all. Force an immediate restart here so a beacon
+        // change always propagates promptly instead of waiting on an
+        // unrelated timer.
+        if (beaconChanged && serviceRequestGate.isStarted()) {
+            android.util.Log.d("IrisWifiDirectDiag", "startDnsSd: restarting active discovery session so peers see the new TXT record")
+            val channel = startGate.ensureStarted()
+            runCatching {
+                awaitAction { p2pManagerOrThrow().stopPeerDiscovery(channel, it) }
+                // `stopPeerDiscovery()` was observed live to also invalidate
+                // the registered service request on at least one real
+                // device (reproducing the exact NO_SERVICE_REQUESTS failure
+                // FFI-15's own removeServiceRequest+reset already exists to
+                // avoid in stopDiscovery() below) — mirror that same
+                // defensive re-add here rather than assume the request
+                // survives a bare stop/restart.
+                serviceRequestGate.reset()
+                serviceRequestGate.ensureStarted()
+                awaitAction { p2pManagerOrThrow().discoverServices(channel, it) }
+            }
+        }
     }
 
     override suspend fun stopDnsSd() {
