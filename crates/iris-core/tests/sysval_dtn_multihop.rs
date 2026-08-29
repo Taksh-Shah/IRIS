@@ -14,10 +14,10 @@ use iris_core::transport::lora::{LoRaTransport, SimulatedLoRaAdapter};
 use iris_core::transport::Transport as _;
 use std::sync::Arc;
 
-fn envelope(priority: MessagePriority, tag: u8) -> SerializedMessage {
+fn envelope(priority: MessagePriority, tag: u8, len: usize) -> SerializedMessage {
     SerializedMessage {
         message_id: MessageId::from([tag; 16]),
-        payload: vec![tag; 120],
+        payload: vec![tag; len],
         priority,
     }
 }
@@ -49,8 +49,11 @@ async fn four_leg_chain_delivers_with_priorities_preserved_and_no_loops() {
     let n4 = LoRaTransport::new("n4-l34");
     n4.attach_adapter(l34_b).await.unwrap();
 
-    let p0 = envelope(MessagePriority::P0, 0x10);
-    let p2 = envelope(MessagePriority::P2, 0x20);
+    // RF-10: LoRa caps P0 payloads at 60 B (SF12's airtime cost makes a
+    // larger P0 frame a duty-cycle liability) and P2 at 120 B; sized here
+    // to clear both, not shrunk arbitrarily.
+    let p0 = envelope(MessagePriority::P0, 0x10, 60);
+    let p2 = envelope(MessagePriority::P2, 0x20, 120);
 
     // ---- Leg 1 window opens: N1 -> N2-in ----
     let peer_n2 = PeerId([2; 32]);

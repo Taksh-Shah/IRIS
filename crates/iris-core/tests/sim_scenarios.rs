@@ -233,20 +233,28 @@ fn route2_spray_bounds_overhead_property() {
 
 #[test]
 fn sim32_inject_standard_no_self_addressed_messages() {
-    // Regression: `inject_standard` with per_node == n - 1 would produce one
-    // self-addressed message per source node (destination formula wraps around
-    // to the sender). Those messages can never be delivered and silently deflate
-    // the delivery ratio (SIM-32).
+    // Regression: `inject_standard`'s destination formula is
+    // `d = (s + 1 + k) % n`, which wraps around to the sender exactly when
+    // `k == n - 1` (not `per_node == n - 1` — those coincide only when
+    // `per_node == n`, a distinction the first version of this test got
+    // wrong: it used per_node=3=n-1 and asserted 8 injected, but with
+    // per_node=3, k only ranges 0..3 (0,1,2) and never reaches the actual
+    // trigger k=n-1=3, so nothing was ever self-addressed at those
+    // parameters and the real (correctly-computed) count is 12, not 8 —
+    // confirmed by running the unmodified fix against the old parameters).
+    // Those messages can never be delivered and silently deflate the
+    // delivery ratio (SIM-32).
     //
-    // n=4, per_node=3 (=n-1): k=2 gives d=s for every source. Before the fix
-    // 4 undeliverable messages were injected; after the fix they are skipped.
+    // n=4, per_node=4: k ranges 0..4, and k=n-1=3 gives
+    // d=(s+1+3)%4=(s+4)%4=s for every source — exactly one self-addressed
+    // skip per source (4 total) out of 4 sources × 4 per_node = 16
+    // attempts, leaving 12.
     let mut sim = iris_core::sim::scenario::dense_mesh(4, 1);
-    inject_standard(&mut sim, 3, 100, 3600);
+    inject_standard(&mut sim, 4, 100, 3600);
     let out = sim.run();
-    // For n=4, per_node=3: 4 sources × 3 - 4 self-addressed skips = 8 valid.
     assert_eq!(
-        out.injected_total, 8,
-        "with n=4 per_node=3, exactly 8 non-self-addressed messages should be injected (SIM-32)"
+        out.injected_total, 12,
+        "with n=4 per_node=4, exactly 12 non-self-addressed messages should be injected (SIM-32): 16 attempts minus 4 self-addressed skips (one per source, at k=n-1)"
     );
     // Dense mesh should deliver ≥ 90% of those 8 valid messages.
     assert!(

@@ -677,7 +677,9 @@ impl BleTransport {
     /// `DiscoveryBeacon::candidate_peer_id()`'s exact byte layout.
     fn candidate_key_for(real_peer: &PeerId) -> PeerId {
         let short = crate::identity::peer_id::peer_short(&real_peer.0);
-        let mut id = [0u8; 32];
+        // BLE-8: upper 16 bytes must be 0xFF sentinel to match candidate_peer_id()
+        // in ble_advert.rs — connections are keyed by that exact form.
+        let mut id = [0xFFu8; 32];
         id[..16].copy_from_slice(&short);
         PeerId(id)
     }

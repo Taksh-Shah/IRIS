@@ -2773,77 +2773,99 @@ mod tests {
     #[tokio::test]
     async fn send_consumes_duty_then_refuses_then_recovers_after_roll() {
         let (_clock, tracker) = fake_tracker(5_000_000);
-        let t = LoRaTransport::with_tracker("lora-0", Arc::new(tracker));
+        let tracker = Arc::new(tracker);
+        let t = LoRaTransport::with_tracker("lora-0", tracker.clone());
         let (a, _b) = sim_pair();
         t.attach_adapter(a).await.expect("adapter opens");
         assert_eq!(t.state(), TransportState::Available);
 
-        // RF-10: P4+ no longer rides LoRa at all -- P3 (150-B cap) is now
-        // the only priority that still occupies the Bulk bucket (P0-P2 map
-        // to their own named buckets; P3-P7 all mapped to Bulk before, and
-        // P3 is the sole survivor of that set). A full 150-B P3 frame
-        // (168-B encoded) costs 862 ms; Bulk share is 1800 ms, so two fit
-        // (1724 ms) and a third does not (2586 ms).
+        // RF-3 (work-conserving shares): Bulk (P3) is the lowest priority
+        // LoRa accepts, so it's never "contended" — it can always borrow
+        // from idle P0/P1/P2 shares up to the global 36 s legal cap.
+        // To test that refusal DOES eventually happen, exhaust the global
+        // budget directly via the tracker, leaving only enough for 2 P3
+        // sends. A 150-B P3 frame costs 862 ms; 2 × 862 = 1724 ms.
+        let global_cap_ms = 36_000u64;
+        let frame_ms = 862u64;
+        let left_for_sends = 2 * frame_ms; // 1724 ms
+        tracker
+            .check_and_consume(MessagePriority::P0, global_cap_ms - left_for_sends)
+            .expect("prime global budget — leaves 1724 ms");
+
         let peer = PeerId([2u8; 32]);
         t.send(&peer, &msg(MessagePriority::P3, 150))
             .await
-            .expect("first bulk send fits the 5% share");
+            .expect("first send fits remaining budget");
         t.send(&peer, &msg(MessagePriority::P3, 150))
             .await
-            .expect("second bulk send still fits");
+            .expect("second send fits exactly");
         let err = t
             .send(&peer, &msg(MessagePriority::P3, 150))
             .await
-            .expect_err("bulk share spent");
+            .expect_err("global budget exhausted");
         // RF-5: duty refusal now carries a retry time (RateLimited), not
         // the generic pool-saturation Busy.
         assert!(matches!(err, TransportError::RateLimited { .. }));
         assert_eq!(t.metrics_snapshot().duty_refusals, 1);
-        assert!(t.duty_cycle_remaining() > 0.9, "only the bucket is spent");
 
-        // Window rolls -> the same send succeeds again.
+        // Window rolls -> budget restores; the same send succeeds again.
         _clock.store(5_000_000 + 3_600_000, Ordering::Relaxed);
         t.send(&peer, &msg(MessagePriority::P3, 150))
             .await
             .expect("rolling hour restored the budget");
         let m = t.metrics_snapshot();
         assert_eq!(m.packets_tx, 3);
-        assert_eq!(m.airtime_consumed_ms, 3 * 862);
+        assert_eq!(m.airtime_consumed_ms, 3 * frame_ms);
     }
 
     #[tokio::test]
     async fn duty_bills_full_encoded_frame_not_just_payload_rt101() {
         let (_clock, tracker) = fake_tracker(0);
-        let t = LoRaTransport::with_tracker("lora-0", Arc::new(tracker));
+        let tracker = Arc::new(tracker);
+        let t = LoRaTransport::with_tracker("lora-0", tracker.clone());
         let (a, _b) = sim_pair();
         t.attach_adapter(a).await.expect("adapter opens");
 
-        // A 1-B payload rides a 19-B frame: airtime(SF9, PL=19) = 186 ms,
-        // NOT the payload-only 104 ms. RT-101 regression anchor.
-        // RF-10: P3, not P4 -- P4+ no longer rides LoRa at all. P3 maps to
-        // the same Bulk bucket P4 used to (DutyBucket::from_priority's `_`
-        // arm covers both) and shares P4's SF9 profile, so this changes
-        // nothing about the airtime arithmetic below, only eligibility.
+        // RT-101 regression anchor: a 1-B payload rides a 19-B LoRa frame.
+        // airtime(SF9, BW125, PL=19) = 186 ms — NOT the payload-only value.
+        // RF-10: P3 replaces the old P4+ example (P4+ no longer rides LoRa).
+        //
+        // RF-3 (work-conserving shares): Bulk (P3) is the lowest priority
+        // LoRa accepts — never contended, so it borrows from idle shares up
+        // to the global 36 s cap. To test that the global limit is enforced,
+        // prime the budget via tracker BEFORE any P3 sends so the queue is
+        // empty and P0 is uncontended (can use the full global budget).
+        // Leave room for exactly 5 P3 frames (5 × 186 = 930 ms).
+        let frame_ms = 186u64; // 1-B P3 frame, SF9
+        let global_cap_ms = 36_000u64;
+        let total_sends = 5u64;
+        let to_prime = global_cap_ms - total_sends * frame_ms; // 36000 - 930 = 35070 ms
+        tracker
+            .check_and_consume(MessagePriority::P0, to_prime)
+            .expect("prime: queue is empty so P0 borrows from global budget");
+
         let peer = PeerId([9u8; 32]);
+        // First send verifies RT-101 frame-overhead billing.
         t.send(&peer, &msg(MessagePriority::P3, 1))
             .await
-            .expect("minimal frame fits");
-        assert_eq!(t.metrics_snapshot().airtime_consumed_ms, 186);
+            .expect("first minimal frame fits");
+        assert_eq!(
+            t.metrics_snapshot().airtime_consumed_ms, frame_ms,
+            "RT-101: frame overhead (18 bytes header) must be included in duty billing, not payload bytes only"
+        );
 
-        // Flood bound: Bulk cap 1800 ms admits floor(1800/186) = 9 minimal
-        // frames; the 10th must refuse BEFORE the true on-air time can
-        // exceed the Table-I share (the pre-fix accounting admitted 17).
+        // 4 more frames fit; the 5th must refuse (global cap reached).
         let mut admitted = 0;
-        for _ in 1..=17 {
+        for _ in 0..10 {
             if t.send(&peer, &msg(MessagePriority::P3, 1)).await.is_ok() {
                 admitted += 1;
             }
         }
-        assert_eq!(admitted, 8, "9 total minimal frames max per bulk hour");
+        assert_eq!(admitted, (total_sends - 1) as usize, "global budget limits sends after priming");
         let total = t.metrics_snapshot().airtime_consumed_ms;
         assert!(
-            total <= 1_800,
-            "bulk bucket accounting {total} ms must stay under its 1800 ms share"
+            total <= global_cap_ms,
+            "total transport airtime {total} ms must not exceed the 36 s Table-I legal cap"
         );
     }
 
@@ -2905,6 +2927,45 @@ mod tests {
         assert_eq!(tb.poll_inbound().await.expect("poll"), 1);
         assert_eq!(tb.metrics_snapshot().malformed_rx, 1);
         assert_eq!(tb.metrics_snapshot().packets_rx, 1);
+    }
+
+    #[tokio::test]
+    async fn rf9_poll_inbound_is_bounded_not_an_unconditional_drain() {
+        // A continuously transmitting node (hostile or a stuck neighbour)
+        // must not be able to make a single poll_inbound() call process an
+        // unbounded backlog -- that used to block the caller's task
+        // indefinitely as long as rx() kept returning Some.
+        let ta = LoRaTransport::new("lora-a");
+        let tb = LoRaTransport::new("lora-b");
+        let (a, b) = sim_pair();
+        ta.attach_adapter(a.clone()).await.expect("adapter opens");
+        tb.attach_adapter(b.clone()).await.expect("adapter opens");
+
+        let total = MAX_FRAMES_PER_POLL * 2 + 3; // deliberately not a clean multiple
+        for i in 0..total {
+            let frame = encode_slip(
+                &LoRaFrame {
+                    priority: MessagePriority::P3,
+                    message_id: MessageId::from([(i % 256) as u8; 16]),
+                    payload: b"flood".to_vec(),
+                }
+                .encode()
+                .unwrap(),
+            );
+            a.tx(&frame).await.expect("frame queued");
+        }
+
+        let first = tb.poll_inbound().await.expect("first poll");
+        assert_eq!(
+            first, MAX_FRAMES_PER_POLL,
+            "one call must process at most the per-call budget, not the whole backlog"
+        );
+        // The caller re-polls for the rest -- nothing was lost, just deferred.
+        let second = tb.poll_inbound().await.expect("second poll");
+        assert_eq!(second, MAX_FRAMES_PER_POLL);
+        let third = tb.poll_inbound().await.expect("third poll");
+        assert_eq!(third, total - 2 * MAX_FRAMES_PER_POLL, "remainder drains on the next call");
+        assert_eq!(tb.metrics_snapshot().packets_rx, total as u64);
     }
 
     #[tokio::test]

@@ -57,7 +57,11 @@ async fn three_node_cross_transport_relay_delivers_verbatim() {
     let mut inbox_n3 = n3.incoming_messages();
 
     // Inject a P0 emergency envelope at N1's lora link toward N2.
-    let env = envelope(MessagePriority::P0, 200);
+    // RF-10: LoRa caps P0 payloads at 60 B; both the LoRa-bound original
+    // and its satellite-bound relay below must shrink together (and stay
+    // equal) or the byte-for-byte "verbatim across two transports"
+    // assertion at the end of this test would compare mismatched lengths.
+    let env = envelope(MessagePriority::P0, 60);
     let orig_bytes = env.payload.clone();
     n1.send(&PeerId([2u8; 32]), &env).await.expect("N1 -> N2");
 
@@ -66,7 +70,7 @@ async fn three_node_cross_transport_relay_delivers_verbatim() {
     // The relay reads the same bytes off the incoming stream and forwards.
     // (In production MessageEngine does this; here we prove the pipes.)
     // Drive the forwarded copy directly through N2's satellite transport.
-    let relayed = envelope(MessagePriority::P0, 200);
+    let relayed = envelope(MessagePriority::P0, 60);
     n2_sat
         .send(&PeerId([3u8; 32]), &relayed)
         .await

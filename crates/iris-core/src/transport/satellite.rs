@@ -1602,11 +1602,17 @@ mod tests {
         let a = Arc::new(InMemoryLedger::new());
         let b = Arc::new(InMemoryLedger::new());
         let fanout = FanoutLedger::new(vec![a.clone(), b.clone()]);
+        // daily_budget_inr=15.0: first P2 (10 INR = 1000c) fits budget (1500c);
+        // second P2 (next=2000c) exceeds it → DailyBudget refusal. Setting
+        // min_mailbox_interval_ms=0 so the mailbox check at t=0 actually bills
+        // (default=300s throttle would make it a no-op at t=0).
         let (_clock, guard) = fake_guard(
             0,
             CostGuardConfig {
                 hourly_msg_cap: 500,
-                daily_budget_inr: 22.0,
+                daily_budget_inr: 15.0,
+                confirm_discretionary_p1_p2: false,
+                min_mailbox_interval_ms: 0,
                 ..Default::default()
             },
         );
@@ -1615,6 +1621,7 @@ mod tests {
             CostGuardConfig {
                 hourly_msg_cap: 500,
                 daily_budget_inr: 10_000.0,
+                min_mailbox_interval_ms: 0,
                 ..Default::default()
             },
             Arc::new(fanout),
