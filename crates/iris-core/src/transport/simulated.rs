@@ -5,6 +5,7 @@
 //! seed yields reproducible behavior (SIM-001 acceptance criterion).
 
 use std::pin::Pin;
+use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
@@ -57,17 +58,12 @@ impl Default for SimConfig {
     }
 }
 
-/// A simulated peer that echoes received messages back.
-#[derive(Debug, Clone)]
-pub struct SimulatedPeer {
-    pub peer_id: PeerId,
-    pub echo: bool,
-    pub drop_rate: f32,
-}
-
 /// In-memory transport that applies configured loss/latency deterministically.
 pub struct SimulatedTransport {
     id: TransportId,
+    /// Stable PeerId derived from the transport id string, used as sender attribution
+    /// when this transport delivers a message to a paired peer transport.
+    my_peer_id: PeerId,
     display: String,
     caps: TransportCapabilities,
     config: SimConfig,
@@ -75,6 +71,9 @@ pub struct SimulatedTransport {
     state: AtomicState,
     state_tx: broadcast::Sender<TransportStateEvent>,
     incoming_tx: broadcast::Sender<IncomingMessage>,
+    /// When `Some`, send() routes outbound frames to the paired transport instead of
+    /// looping back to self. Set by `connect_pair`.
+    peer_tx: StdMutex<Option<broadcast::Sender<IncomingMessage>>>,
 }
 
 impl SimulatedTransport {
@@ -102,8 +101,13 @@ impl SimulatedTransport {
             conflict_group: crate::transport::RadioConflictGroup::None,
         };
         let seed = config.seed;
+        let mut peer_id_bytes = [0u8; 32];
+        let id_bytes = id.as_bytes();
+        let copy_len = id_bytes.len().min(32);
+        peer_id_bytes[..copy_len].copy_from_slice(&id_bytes[..copy_len]);
         SimulatedTransport {
             id: TransportId::from(id),
+            my_peer_id: PeerId(peer_id_bytes),
             display: display.to_string(),
             caps,
             config,
@@ -111,7 +115,15 @@ impl SimulatedTransport {
             state,
             state_tx,
             incoming_tx,
+            peer_tx: StdMutex::new(None),
         }
+    }
+
+    /// Wire two transports to each other so that send() on A delivers to B's
+    /// incoming stream (and vice-versa), attributed to the sender's own peer id.
+    pub fn connect_pair(a: &SimulatedTransport, b: &SimulatedTransport) {
+        *a.peer_tx.lock().unwrap() = Some(b.incoming_tx.clone());
+        *b.peer_tx.lock().unwrap() = Some(a.incoming_tx.clone());
     }
 
     fn set_state(&self, state: TransportState) {
@@ -205,14 +217,20 @@ impl Transport for SimulatedTransport {
             rand::Rng::gen_range(&mut *rng, 0..self.config.latency_spread_ms + 1)
         };
         let delay = Duration::from_millis(latency);
-        let incoming = self.incoming_tx.clone();
+        // Route to paired peer if connected; otherwise loopback (for standalone tests).
+        let (target_tx, sender_peer_id) = {
+            let guard = self.peer_tx.lock().unwrap();
+            match guard.clone() {
+                Some(tx) => (tx, self.my_peer_id),
+                None => (self.incoming_tx.clone(), *peer),
+            }
+        };
         let transport_id = self.id.as_str().to_string();
-        let peer_id = *peer;
         let payload = message.payload.clone();
         tokio::spawn(async move {
             tokio::time::sleep(delay).await;
-            incoming.send(IncomingMessage {
-                peer_id,
+            target_tx.send(IncomingMessage {
+                peer_id: sender_peer_id,
                 transport_id,
                 payload,
                 received_at: Instant::now(),
@@ -248,6 +266,27 @@ impl Transport for SimulatedTransport {
 mod tests {
     use super::*;
     use futures_util::StreamExt;
+
+    #[tokio::test]
+    async fn connect_pair_delivers_cross_transport() {
+        let cfg = SimConfig { latency_base_ms: 0, latency_spread_ms: 0, ..Default::default() };
+        let a = SimulatedTransport::new("sim-a", "A", cfg.clone());
+        let b = SimulatedTransport::new("sim-b", "B", cfg);
+        SimulatedTransport::connect_pair(&a, &b);
+
+        let mut in_b = b.incoming_messages();
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([1u8; 16]),
+            priority: MessagePriority::P3,
+            payload: b"hello-from-a".to_vec(),
+        };
+        a.send(&PeerId([2u8; 32]), &msg).await.unwrap();
+        let got = tokio::time::timeout(Duration::from_millis(200), in_b.next()).await;
+        let im = got.expect("timed out").expect("stream closed");
+        assert_eq!(im.payload, b"hello-from-a");
+        // sender attribution must be A's derived peer id, not the destination id
+        assert_eq!(&im.peer_id.0[..5], b"sim-a");
+    }
 
     #[tokio::test]
     async fn zero_loss_delivers() {

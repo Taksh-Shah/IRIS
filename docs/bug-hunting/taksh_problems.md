@@ -366,7 +366,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ✅ |
 | **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ✅ 699dd5d |
 | **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ✅ 699dd5d |
-| **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused | ⬜ |
+| **RF-44** | Medium | `simulated.rs:185-197` | The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused | ✅ |
 | **RF-45** | Medium | `simulated.rs:159-166` | `connect()` cannot fail, `bandwidth_bps` never throttles, ordering is not preserved, and in-flight sends survive shutdown | ⬜ |
 | **MG-1** | Medium | `manager.rs:154-162` | Single-best selection has no score floor — an "eliminated" transport is still returned | ✅ |
 | **MG-2** | Medium | `manager.rs:141` | `Connecting` passes the `>= Available` eligibility filter | ✅ |
@@ -5110,7 +5110,7 @@ if !emergency_exempt && spend + cost > budget { /* refuse */ }
 
 #### RF-22: `record_mailbox_check` is unthrottled and can never be refused — ~44 polls exhaust the daily budget and lock out all P1/P2
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `a0e6fce`  ·  2026-08-29  ·  added `min_mailbox_interval_ms` to `CostGuardConfig` (default 300 s); `record_mailbox_check()` returns `bool` — CAS-guarded interval check; `poll_inbound` returns `Ok(0)` without modem I/O when throttled
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/satellite.rs:523-530` (fn `record_mailbox_check`), `1121-1132` (fn `poll_inbound`)
 - **What:** every `poll_inbound()` call bills one mailbox check unconditionally, before any I/O. There is no minimum inter-poll interval, no cap, and no refusal path — and those charges count against the same `daily_budget_inr` that gates P1/P2 sends.
@@ -5148,7 +5148,7 @@ pub fn record_mailbox_check(&self) -> bool {   // false = skipped, too soon
 
 #### RF-23: `RETRY_BASE_MS` / `RETRY_JITTER_FRACTION` are "pinned by a test" but no retry logic exists
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `11c2b49`  ·  2026-08-29  ·  `BacklogEntry` gains `next_attempt_at: Instant`; `push_deferred` now takes full entry to preserve retry timestamps; satellite `drain_backlog` sets `next_attempt_at = now + RETRY_BASE_MS + jitter(RETRY_JITTER_FRACTION)` on transient error; both lora/satellite skip not-yet-due entries; test renamed and simplified
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/satellite.rs:56-59` (constants), `1799-1808` (test `async_ack_constants_pinned_ac9`)
 - **What:** the two AC-9 constants have no reader anywhere. The test that "pins" them wraps them in a function specifically to defeat the dead-code lint.
@@ -5786,7 +5786,7 @@ if message.payload.len() > self.caps.max_message_size {
 
 #### RF-44: The simulator is a self-loopback echo, not a link — and `SimulatedPeer` is entirely unused
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  2026-08-29  ·  added `connect_pair`, `peer_tx` field, `my_peer_id` for sender attribution; deleted dead `SimulatedPeer`
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/simulated.rs:185-197` (fn `send`), `50-56` (`SimulatedPeer`)
 - **What:** `send()` publishes the payload onto **this same transport's** `incoming_tx`, tagged with the *destination* `peer_id`. There is no second endpoint, no pairing mechanism (contrast `SimulatedLoRaAdapter::connect_pair`, `SimulatedSatelliteAdapter::connect_pair`, `SimP2pCoordinator`), and no peer model — `SimulatedPeer { peer_id, echo, drop_rate }` has **zero references** in the entire workspace (`grep -rn "SimulatedPeer" crates/` → the declaration only).
