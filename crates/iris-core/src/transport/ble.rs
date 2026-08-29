@@ -87,6 +87,12 @@ pub const IRIS_WRITE_CHARACTERISTIC: Uuid = Uuid([
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BleAddress(pub [u8; 6]);
 
+/// Minimum RSSI (dBm) for a scan candidate to be admitted (BLE-26).
+/// Android bridge uses this as its floor; iOS applies its own CoreBluetooth
+/// filter. The value -85 dBm corresponds to a link margin of ~10 m in an
+/// open office environment and rejects wall-attenuated/out-of-range peers.
+pub const RSSI_FLOOR_DBM: i32 = -85;
+
 /// Scan filter.
 #[derive(Debug, Clone, Default)]
 pub struct ScanFilter {
@@ -289,6 +295,12 @@ pub struct SimulatedBleAdapter {
     /// HW-1: every handle `stop_scan` was called with, in order — lets a
     /// test assert a re-arm stops the PREVIOUS scan before starting a new one.
     scan_stop_calls: std::sync::Mutex<Vec<ScanHandle>>,
+    /// BLE-24: per-address identify data for multi-peer tests; looked up by
+    /// handle→address before falling back to the global `identify_data` slot.
+    identify_by_address: std::sync::Mutex<std::collections::HashMap<BleAddress, Vec<u8>>>,
+    /// BLE-24: maps each allocated GattHandle back to the BleAddress it was
+    /// opened for, so `gatt_read` can serve the right per-peer beacon.
+    handle_to_address: std::sync::Mutex<std::collections::HashMap<GattHandle, BleAddress>>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -307,6 +319,15 @@ impl SimulatedBleAdapter {
     /// discovery beacon) that `gatt_read` serves for `IRIS_IDENTIFY_CHARACTERISTIC`.
     pub fn inject_identify_read(&self, data: Vec<u8>) {
         *self.identify_data.lock().unwrap_or_else(|p| p.into_inner()) = data;
+    }
+    /// BLE-24: inject a per-address identify beacon. When a GATT connection is
+    /// opened to `addr`, `gatt_read` will serve `data` instead of the global
+    /// slot, so multi-peer tests can assert which specific peers were resolved.
+    pub fn inject_identify_read_for_address(&self, addr: BleAddress, data: Vec<u8>) {
+        self.identify_by_address
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(addr, data);
     }
     /// Advertisement data as passed to `start_advertising` by the transport.
     pub fn last_ad_received(&self) -> Option<AdvertisementData> {
@@ -395,7 +416,7 @@ impl BleAdapter for SimulatedBleAdapter {
         Ok(AdvHandle(1))
     }
     fn stop_advertising(&self, _handle: AdvHandle) {}
-    fn connect_gatt(&self, _address: BleAddress) -> Result<GattHandle, BleError> {
+    fn connect_gatt(&self, address: BleAddress) -> Result<GattHandle, BleError> {
         *self.connect_calls.lock().unwrap_or_else(|p| p.into_inner()) += 1;
         // Distinct handle per connection so multi-peer tests can attribute
         // inbound writes to the right link (BLE-RT-016).
@@ -405,6 +426,11 @@ impl BleAdapter for SimulatedBleAdapter {
                 + 1,
         );
         self.handles.lock().unwrap_or_else(|p| p.into_inner()).push(h);
+        // BLE-24: record handle→address so gatt_read can serve per-peer beacons.
+        self.handle_to_address
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(h, address);
         Ok(h)
     }
     fn disconnect_gatt(&self, _handle: GattHandle) {}
@@ -424,14 +450,32 @@ impl BleAdapter for SimulatedBleAdapter {
         ));
         Ok(())
     }
-    fn gatt_read(&self, _handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
+    fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
         // Only the IRIS identification characteristic exists on the simulated
         // server; reads of anything else fail like an absent characteristic.
-        if char_uuid == IRIS_IDENTIFY_CHARACTERISTIC {
-            Ok(self.identify_data.lock().unwrap_or_else(|p| p.into_inner()).clone())
-        } else {
-            Err(BleError::DeviceNotFound)
+        if char_uuid != IRIS_IDENTIFY_CHARACTERISTIC {
+            return Err(BleError::DeviceNotFound);
         }
+        // BLE-24: prefer per-address beacon (set via inject_identify_read_for_address)
+        // so multi-peer tests can assert which specific peers were resolved.
+        let addr = self
+            .handle_to_address
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(&handle)
+            .copied();
+        if let Some(a) = addr {
+            if let Some(data) = self
+                .identify_by_address
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .get(&a)
+                .cloned()
+            {
+                return Ok(data);
+            }
+        }
+        Ok(self.identify_data.lock().unwrap_or_else(|p| p.into_inner()).clone())
     }
     fn set_mtu(&self, _handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
         Ok(mtu)
@@ -909,10 +953,10 @@ impl Transport for BleTransport {
             // must never run against unfiltered ambient advertising.
             ScanFilter {
                 service_uuids: vec![IRIS_SERVICE_UUID],
-                ..ScanFilter::default()
+                rssi_threshold: Some(RSSI_FLOOR_DBM),
             }
         } else {
-            ScanFilter::default()
+            ScanFilter { rssi_threshold: Some(RSSI_FLOOR_DBM), ..ScanFilter::default() }
         };
         // HW-1 (found on real hardware, 2026-08-27): every discovery pass
         // called start_scan() again without first stopping the PREVIOUS
@@ -2745,23 +2789,29 @@ mod tests {
         let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
         adapter.simulate_ios();
         let t = BleTransport::new_ios(Some(adapter.clone()));
-        // Seed identify values for peers 0..=9; inject 20 empty ads so the
-        // probe path would otherwise connect far beyond the ceiling.
+        // BLE-24: use per-address injection so each probe returns that peer's
+        // own beacon — previously the global slot was overwritten each iteration,
+        // meaning every resolved peer appeared identical (peer 9's beacon).
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
         for i in 0..10u8 {
+            let addr = BleAddress([i, 0xBB, 0, 0, 0, 0]);
             let beacon = DiscoveryBeacon::build(caps, [i; 16], 1);
-            adapter.inject_identify_read(beacon.clone());
-            adapter.inject_scan_result(BleAddress([i, 0xBB, 0, 0, 0, 0]), Vec::new(), -50);
+            adapter.inject_identify_read_for_address(addr, beacon);
+            adapter.inject_scan_result(addr, Vec::new(), -50);
         }
         for i in 10..20u8 {
             adapter.inject_scan_result(BleAddress([i, 0xBB, 0, 0, 0, 0]), Vec::new(), -50);
         }
         let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
-        let mut count = 0;
-        while stream.next().await.is_some() {
-            count += 1;
+        let mut resolved: std::collections::HashSet<[u8; 16]> = std::collections::HashSet::new();
+        while let Some(peer) = stream.next().await {
+            // The lower 16 bytes of a candidate PeerId are the peer_short from
+            // the beacon (upper 16 bytes are the 0xFF sentinel added by BLE-8).
+            let short: [u8; 16] = peer.peer_id.0[..16].try_into().unwrap();
+            resolved.insert(short);
         }
+        let count = resolved.len();
         assert!(
             count <= 8,
             "iOS-leg probe budget must bound candidates (BLE-RT-C001/003), got {count}"
@@ -2770,6 +2820,22 @@ mod tests {
             adapter.connect_count() <= 8,
             "iOS-leg probe budget must bound GATT connects, got {}",
             adapter.connect_count()
+        );
+        // Each resolved peer must have a distinct beacon short-id drawn from
+        // the 10 injected peers (injected as [i; 16] for i in 0..10).
+        // With per-address injection, each connect resolves a different beacon —
+        // confirming attribution is not broken by single-slot overwriting.
+        for short in &resolved {
+            let uniform_byte = short[0];
+            assert!(
+                uniform_byte < 10 && short.iter().all(|&b| b == uniform_byte),
+                "resolved peer_short {short:?} not from injected set"
+            );
+        }
+        assert_eq!(
+            resolved.len(),
+            count,
+            "no two resolved peers must share a short-id"
         );
     }
 
