@@ -493,8 +493,29 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
     private val channelListener = object : WifiP2pManager.ChannelListener {
         override fun onChannelDisconnected() {
-            // invalidate is suspend (AND-RT-105); lift the platform callback into scope.
-            callbackScope.launch { startGate.invalidate() }
+            // HW-12: only startGate was ever invalidated here. dnsSdGate and
+            // serviceRequestGate are each a `create` lambda that registers
+            // something (addLocalService / addServiceRequest) against the
+            // channel startGate.ensureStarted() hands back — but their own
+            // "am I started" state survived a channel disconnect unchanged.
+            // The next startDiscovery() call sees the OLD channel is gone,
+            // has startGate mint a genuinely NEW one via re-initialize(), but
+            // serviceRequestGate still believes itself started and skips
+            // re-registering the service request against that new channel —
+            // confirmed live: `WifiP2p action failed reason=3`
+            // (NO_SERVICE_REQUESTS) calling discoverServices() on a channel
+            // that was never actually given a service request. Same root
+            // cause would silently break addLocalService's registration
+            // (dnsSdGate) the same way — an advertiser that stops responding
+            // to discovery after any channel hiccup, with no error at all
+            // since discoverServices() itself doesn't require addLocalService
+            // to have succeeded. Invalidate all three together so a fresh
+            // channel always gets fresh registrations on top of it.
+            callbackScope.launch {
+                startGate.invalidate()
+                dnsSdGate.invalidate()
+                serviceRequestGate.invalidate()
+            }
             availability.setAvailable(false)
         }
     }
