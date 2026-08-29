@@ -1259,6 +1259,7 @@ fn lora_capabilities() -> TransportCapabilities {
         regulatory_band: Some(String::from(
             "WPC 865-868 MHz SRD (G.S.R. 853(E) 2021), <=25 mW e.r.p., <=1% duty",
         )),
+        conflict_group: crate::transport::RadioConflictGroup::SubGHz,
     }
 }
 

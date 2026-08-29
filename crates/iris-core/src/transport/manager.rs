@@ -159,6 +159,30 @@ impl TransportManager {
         // (RED-0003-01 replaces partial_cmp().unwrap() panic-on-NaN).
         candidates.sort_by(|a, b| b.score.total_cmp(&a.score));
 
+        // TAK-7: enforce RadioConflictGroup — at most one transport per non-None
+        // group may be selected (TRANSPORT_ABSTRACTION.md §Multi-Transport Concurrency).
+        // Walk candidates in score order (best first); once a group is claimed,
+        // drop any lower-ranked candidate in the same group.
+        {
+            use std::collections::HashSet;
+            use crate::transport::RadioConflictGroup;
+            let mut claimed: HashSet<RadioConflictGroup> = HashSet::new();
+            candidates.retain(|c| {
+                let group = registry
+                    .get(&c.transport_id)
+                    .map(|t| t.capabilities().conflict_group)
+                    .unwrap_or(RadioConflictGroup::None);
+                if group == RadioConflictGroup::None {
+                    return true;
+                }
+                if claimed.contains(&group) {
+                    return false;
+                }
+                claimed.insert(group);
+                true
+            });
+        }
+
         if req.multipath && req.priority.is_emergency() {
             candidates.retain(|c| c.score > 0.0);
         } else {
@@ -366,6 +390,7 @@ mod tests {
             requires_special_hardware: false,
             cost_class: TransportCostClass::Free,
             regulatory_band: None,
+            conflict_group: RadioConflictGroup::None,
         }
     }
 
@@ -597,19 +622,67 @@ mod tests {
         );
     }
 
-    #[test]
-    fn radio_conflict_groups_distinct() {
-        use std::collections::HashSet;
-        let groups = [
-            RadioConflictGroup::Bluetooth24GHz,
-            RadioConflictGroup::WiFi24GHz,
-            RadioConflictGroup::WiFi5GHz,
-            RadioConflictGroup::SubGHz,
-            RadioConflictGroup::Cellular,
-            RadioConflictGroup::None,
-        ];
-        let set: HashSet<_> = groups.iter().collect();
-        assert_eq!(set.len(), groups.len());
+    // TAK-7: two same-group transports → only the higher-scored one selected.
+    #[tokio::test]
+    async fn conflict_group_prunes_lower_ranked_same_group() {
+        let mgr = TransportManager::new();
+
+        // BLE and Wi-Fi Aware both use WiFi24GHz group. Wi-Fi Aware has far
+        // higher bandwidth, so it scores first and BLE is pruned.
+        let mut ble_caps = caps(512, 30, 1_000_000);
+        ble_caps.conflict_group = RadioConflictGroup::Bluetooth24GHz;
+        let mut wf_aware_caps = caps(65_000, 5, 20_000_000);
+        wf_aware_caps.conflict_group = RadioConflictGroup::WiFi24GHz;
+        let mut wd_caps = caps(65_000, 1_000, 10_000_000);
+        wd_caps.conflict_group = RadioConflictGroup::WiFi24GHz;
+
+        mgr.register(Arc::new(StubTransport::new(
+            "ble-android",
+            ble_caps,
+            TransportState::Connected,
+            cost(2.0, 0.0, 1_000_000, 0.0),
+        )))
+        .await
+        .unwrap();
+        mgr.register(Arc::new(StubTransport::new(
+            "wifiaware-0",
+            wf_aware_caps,
+            TransportState::Connected,
+            cost(4.0, 0.0, 20_000_000, 0.0),
+        )))
+        .await
+        .unwrap();
+        mgr.register(Arc::new(StubTransport::new(
+            "wifidirect-0",
+            wd_caps,
+            TransportState::Connected,
+            cost(4.0, 0.0, 10_000_000, 0.0),
+        )))
+        .await
+        .unwrap();
+
+        // P0 multipath: BLE (Bluetooth24GHz) is kept; Wi-Fi Aware (WiFi24GHz)
+        // wins over Wi-Fi Direct (same group) — only one of the two selected.
+        let selected = mgr
+            .select_transports(&TransportSelectionRequest {
+                target_peer: None,
+                message_size: 100,
+                priority: MessagePriority::P0,
+                prefer_low_cost: false,
+                max_latency_ms: None,
+                multipath: true,
+                fragmentable: false,
+            })
+            .await;
+        let ids: Vec<&str> = selected.iter().map(|c| c.transport_id.as_str()).collect();
+        assert!(ids.contains(&"wifiaware-0"), "Wi-Fi Aware should be selected: {ids:?}");
+        assert!(!ids.contains(&"wifidirect-0"), "Wi-Fi Direct pruned by conflict: {ids:?}");
+        assert!(ids.contains(&"ble-android"), "BLE (different group) kept: {ids:?}");
+        assert_eq!(
+            ids.iter().filter(|&&id| id == "wifiaware-0" || id == "wifidirect-0").count(),
+            1,
+            "exactly one WiFi24GHz transport selected"
+        );
     }
 
     #[tokio::test]

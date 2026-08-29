@@ -860,6 +860,7 @@ fn satellite_capabilities() -> TransportCapabilities {
         requires_special_hardware: true,
         cost_class: TransportCostClass::Expensive,
         regulatory_band: Some(String::from("GMPCS/MSS operator authorization required")),
+        conflict_group: crate::transport::RadioConflictGroup::None,
     }
 }
 

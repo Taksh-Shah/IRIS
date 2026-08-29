@@ -95,6 +95,7 @@ impl SimulatedTransport {
             requires_special_hardware: false,
             cost_class: TransportCostClass::Free,
             regulatory_band: None,
+            conflict_group: crate::transport::RadioConflictGroup::None,
         };
         let seed = config.seed;
         SimulatedTransport {

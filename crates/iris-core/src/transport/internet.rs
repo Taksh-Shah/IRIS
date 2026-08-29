@@ -70,6 +70,7 @@ pub fn internet_capabilities() -> TransportCapabilities {
         requires_special_hardware: false,
         cost_class: TransportCostClass::Metered,
         regulatory_band: None,
+        conflict_group: crate::transport::RadioConflictGroup::None,
     }
 }
 

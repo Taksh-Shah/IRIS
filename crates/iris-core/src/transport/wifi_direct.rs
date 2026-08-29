@@ -780,6 +780,7 @@ fn wifi_direct_capabilities() -> TransportCapabilities {
         requires_special_hardware: false,
         cost_class: crate::transport::TransportCostClass::Free,
         regulatory_band: None,
+        conflict_group: crate::transport::RadioConflictGroup::WiFi24GHz,
     }
 }
 

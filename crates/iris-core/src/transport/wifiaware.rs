@@ -580,6 +580,7 @@ fn wifiaware_capabilities() -> TransportCapabilities {
         requires_special_hardware: true,
         cost_class: crate::transport::TransportCostClass::Free,
         regulatory_band: None,
+        conflict_group: crate::transport::RadioConflictGroup::WiFi24GHz,
     }
 }
 

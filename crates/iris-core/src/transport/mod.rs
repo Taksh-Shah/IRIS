@@ -169,6 +169,10 @@ pub struct TransportCapabilities {
     pub cost_class: TransportCostClass,
     /// Regulatory band hint (e.g. LoRa IN865), when applicable.
     pub regulatory_band: Option<String>,
+    /// Hardware sharing group: at most one transport per non-None group may be
+    /// selected for a single send (TRANSPORT_ABSTRACTION.md §Multi-Transport Concurrency).
+    #[serde(default)]
+    pub conflict_group: RadioConflictGroup,
 }
 
 impl TransportCapabilities {
@@ -281,13 +285,14 @@ pub enum TopologyEvent {
 
 /// Hardware sharing groups — only one transport per conflicting group may be
 /// CONNECTED at a time (TRANSPORT_ABSTRACTION.md §Multi-Transport Concurrency).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
 pub enum RadioConflictGroup {
     Bluetooth24GHz,
     WiFi24GHz,
     WiFi5GHz,
     SubGHz,
     Cellular,
+    #[default]
     None,
 }
 

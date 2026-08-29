@@ -444,8 +444,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **TAK-4** | High | `pg.rs:92-96` | No reconnection — one dropped PG connection bricks storage for the process lifetime | ✅ `f2fc6a7` |
 | **TAK-5** | High | `pg.rs:172-179` | Quota admission is a cross-store TOCTOU and never triggers eviction | ✅ `f766383` |
 | **TAK-6** | High | `pg.rs:88` | Database connection uses `NoTls` — password and all message CBOR travel in cleartext | 🔒 Blocked |
-| **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test | ⬜ |
-| **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three | ✅ PENDING |
+| **TAK-7** | High | `transport/mod.rs:285-293` | `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test | ✅ PENDING |
+| **TAK-8** | High | `manager.rs:154` | The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three | ✅ `7bc7cf3` |
 | **TAK-9** | Medium | `pg.rs:191-195` | `u64 → i64` wrapping casts let a peer write negative timestamps into the store | ✅ `518b4ab` |
 | **TAK-10** | Medium | `pg.rs:197` | `is_own_message` is hardcoded `false`, so the "evict relayed before own" policy is dead code | ✅ `c52f1a5` |
 | **TAK-11** | Medium | `schema.rs:24-27` | Both partial indexes are unusable by the queries they were created for | ✅ `0e1f2d3` |
@@ -8264,7 +8264,7 @@ if !host_is_loopback(&config.host) && config.sslmode == SslMode::Disable {
 
 #### TAK-7: `RadioConflictGroup` is entirely unwired — a documented hardware-safety rule is unimplemented, masked by a fake test
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit TAK-7-PENDING · 2026-08-29
 - **Confidence:** Certain
 - **Location:** Declared `crates/iris-core/src/transport/mod.rs:285-293`; only other reference is the test `crates/iris-core/src/transport/manager.rs:587-596`
 - **What:** The enum's own doc comment states the rule: "only one transport per conflicting group may be CONNECTED at a time". No transport ever reports a conflict group — `TransportCapabilities` (mod.rs:158-181) has no field for it — and `manager.rs` never consults it during selection or connection. Repo-wide grep finds exactly two uses: the declaration, and a test asserting the variants differ from one another.
@@ -8286,7 +8286,7 @@ manager.rs:590      RadioConflictGroup::Bluetooth24GHz,
 
 #### TAK-8: The NaN-comparator hardening (RED-0003-01) was applied to two sites and missed three
 - **Severity:** High
-- **Fix status:** ✅ Fixed · Tier 4 · commit TAK-8-PENDING · 2026-08-29
+- **Fix status:** ✅ Fixed · Tier 4 · commit 7bc7cf3 · 2026-08-29
 - **Confidence:** Certain
 - **Location:** Fixed: `transport/manager.rs:154`, `gateway/mod.rs:634`. **Missed:** `routing/scf_contact.rs:79-85`, `routing/prophet.rs:195`, `sim/ml/predictor.rs:90`
 - **What:** The remediation replaced `partial_cmp().unwrap()` with `total_cmp` in the transport and gateway rankers, and `manager.rs:152-153` documents that intent. Three other float comparators were left using `partial_cmp(..).unwrap_or(Ordering::Equal)`. That form does not panic, but it makes the comparator **non-transitive** in the presence of NaN — NaN compares `Equal` to every value while those values compare unequally to each other.

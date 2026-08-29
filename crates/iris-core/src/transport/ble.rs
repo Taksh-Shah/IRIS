@@ -551,6 +551,7 @@ impl BleTransport {
             requires_special_hardware: false,
             cost_class: TransportCostClass::Free,
             regulatory_band: None,
+            conflict_group: crate::transport::RadioConflictGroup::Bluetooth24GHz,
         };
         BleTransport {
             id: TransportId::from("ble-android"),

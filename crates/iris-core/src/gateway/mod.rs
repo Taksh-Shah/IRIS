@@ -1778,6 +1778,7 @@ mod tests {
             requires_special_hardware: false,
             cost_class: TransportCostClass::Metered,
             regulatory_band: None,
+            conflict_group: crate::transport::RadioConflictGroup::None,
         };
         let cost = TransportCost {
             estimated_battery_ma: 50.0,
@@ -1817,6 +1818,7 @@ mod tests {
             requires_special_hardware: false,
             cost_class: TransportCostClass::Metered,
             regulatory_band: None,
+            conflict_group: crate::transport::RadioConflictGroup::None,
         };
         // Live figure well below the datasheet ceiling — a congested link.
         let congested = TransportCost {
