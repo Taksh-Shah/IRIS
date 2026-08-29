@@ -312,7 +312,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` | ✅ |
 | **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ⬜ |
 | **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ✅ |
-| **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ⬜ |
+| **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ✅ |
 | **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ⬜ |
 | **BLE-36** | Medium | `wifiaware.rs:906-913` | `stop_discovery` is a partial stop, and `shutdown` is irreversible | ⬜ |
 | **BLE-37** | Low | `wifiaware.rs:125-147` | `PublishConfig` is a constant — every field is dead configuration | ⬜ |
@@ -3916,7 +3916,7 @@ $ grep -rn "dropped_inbound" crates/iris-core/src/transport/wifiaware.rs
 
 #### BLE-34: `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:702-735` (fn `ensure_started`)
 - **What:** The gate that serialises *all* connects is held across `adapter.start()` and

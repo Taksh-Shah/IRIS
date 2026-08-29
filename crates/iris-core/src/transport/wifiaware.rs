@@ -611,6 +611,10 @@ pub struct WifiAwareTransport {
     /// Set once `shutdown()` has completed; prevents a racing `ensure_started`
     /// bring-up from resurrecting a dead transport (NEW-WA-RT-102).
     shutdown_flag: AtomicBool,
+    /// Set on the first successful `ensure_started` completion so subsequent
+    /// calls return early before acquiring `connect_gate` (BLE-34). Cleared by
+    /// `shutdown()` so a restarted transport re-runs bring-up exactly once.
+    started_flag: AtomicBool,
     /// Inbound frames that could not be delivered upstream (closed/slow
     /// receiver), counted for telemetry instead of silently swallowed
     /// (NEW-WA-RT-106).
@@ -686,6 +690,7 @@ impl WifiAwareTransport {
             links: Arc::new(StdMutex::new(Vec::new())),
             connect_gate: AsyncMutex::new(()),
             shutdown_flag: AtomicBool::new(false),
+            started_flag: AtomicBool::new(false),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
         }
     }
@@ -789,7 +794,23 @@ impl WifiAwareTransport {
     /// and strand a half-spawned poller, and a `shutdown_flag` permanently
     /// blocks any later bring-up attempt. Re-checks both before promotion.
     async fn ensure_started(&self) -> Result<(), TransportError> {
+        // BLE-34: short-circuit before touching connect_gate when bring-up is
+        // already done. This removes the head-of-line block on connect() that
+        // every discover_peers / start_advertising call previously imposed.
+        if self.started_flag.load(Ordering::Acquire) {
+            if self.shutdown_flag.load(Ordering::SeqCst) {
+                return Err(TransportError::ShuttingDown);
+            }
+            return Ok(());
+        }
         let _gate = self.connect_gate.lock().await;
+        // Re-check under the gate (another caller may have completed bring-up).
+        if self.started_flag.load(Ordering::Acquire) {
+            if self.shutdown_flag.load(Ordering::SeqCst) {
+                return Err(TransportError::ShuttingDown);
+            }
+            return Ok(());
+        }
         if self.shutdown_flag.load(Ordering::SeqCst) {
             return Err(TransportError::ShuttingDown);
         }
@@ -820,6 +841,7 @@ impl WifiAwareTransport {
             self.set_state(initial);
         }
         self.spawn_avail_watcher(adapter).await;
+        self.started_flag.store(true, Ordering::Release);
         Ok(())
     }
 
@@ -1287,6 +1309,9 @@ impl Transport for WifiAwareTransport {
         // NEW-WA-RT-102: latch shutdown so no later ensure_started() can
         // resurrect the transport (e.g. a discover_peers on a dead transport).
         self.shutdown_flag.store(true, Ordering::SeqCst);
+        // BLE-34: clear started_flag so the shutdown_flag check in
+        // ensure_started's fast path fires correctly on any subsequent call.
+        self.started_flag.store(false, Ordering::Release);
         self.set_state(TransportState::Unavailable);
         Ok(())
     }
