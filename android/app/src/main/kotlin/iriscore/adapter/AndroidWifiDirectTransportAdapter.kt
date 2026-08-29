@@ -265,8 +265,36 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun startDnsSd(txtRecord: ByteArray) {
+        // HW-13: `ensure_started()` (Rust) calls this with an EMPTY
+        // placeholder just to bring the DNS-SD subsystem/response listeners
+        // up before any real identity is known (needed for scan-only
+        // callers — discover_peers()/connect() with no NodeAdvertisement to
+        // build a beacon from); `start_advertising()` then calls this AGAIN
+        // moments later with the real 22-byte beacon, on the (Rust-side)
+        // assumption the real one "supersedes" the placeholder. It doesn't:
+        // `dnsSdGate` — like every `SessionGate` in this file — registers
+        // via `create()` (`registerDnsSd()`, one `addLocalService` call)
+        // exactly ONCE and caches that forever; whichever of the two calls
+        // wins the race to arrive first is what stays registered permanently,
+        // with nothing that would ever update it. Confirmed live: the empty
+        // placeholder won every single time across 3 real devices, so the
+        // DNS-SD TXT record every peer's discovery actually saw advertised
+        // an empty/undersized record `WifiDirectTxtRecord::parse` correctly
+        // rejects — i.e. this node was never truly discoverable, on every
+        // device, despite `start_advertising` reporting success and every
+        // scan cycle running cleanly with zero errors. Force a fresh
+        // registration whenever the beacon actually changes (covers the
+        // placeholder-then-real case here, and also a legitimate future
+        // re-announcement after identity/key rotation).
+        val beaconChanged = !txtRecord.contentEquals(pendingOwnBeacon)
+        val wasStarted = dnsSdGate.isStarted()
         pendingOwnBeacon = txtRecord
+        if (beaconChanged && wasStarted) {
+            android.util.Log.d("IrisWifiDirectDiag", "startDnsSd: beacon changed (len=${txtRecord.size}) while already started — forcing re-registration")
+            dnsSdGate.reset()
+        }
         FfiCallTimeout.suspendCall { dnsSdGate.ensureStarted() }
+        android.util.Log.d("IrisWifiDirectDiag", "startDnsSd DONE len=${txtRecord.size} wasStarted=$wasStarted beaconChanged=$beaconChanged")
     }
 
     override suspend fun stopDnsSd() {
@@ -607,6 +635,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     private val dnsSdServiceListener = WifiP2pManager.DnsSdServiceResponseListener { instanceName, _registrationType, srcDevice ->
+        android.util.Log.d(
+            "IrisWifiDirectDiag",
+            "dnsSdServiceListener FIRED instanceName=$instanceName registrationType=$_registrationType device=${srcDevice.deviceAddress}",
+        )
         // FFI-1/FFI-18: allocate through the single allocator so this
         // handle is the SAME one join_group/add_client, p2p_send, and the
         // socket data path (attachLink/links/groupRegistry) will all agree
@@ -635,6 +667,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     private val dnsSdTxtRecordListener = WifiP2pManager.DnsSdTxtRecordListener { fullDomainName, txtRecordMap, srcDevice ->
+        android.util.Log.d(
+            "IrisWifiDirectDiag",
+            "dnsSdTxtRecordListener FIRED fullDomainName=$fullDomainName txtRecordMap=$txtRecordMap device=${srcDevice.deviceAddress}",
+        )
         pendingTxtBeacons[srcDevice.deviceAddress] = encodeTxtRecord(txtRecordMap)
     }
 

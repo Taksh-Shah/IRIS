@@ -815,6 +815,24 @@ pub struct WifiDirectTransport {
     /// also the pre-start default and would otherwise be indistinguishable
     /// from "never tried yet").
     permanently_unsupported: AtomicBool,
+    /// HW-13: set once `ensure_started()` has registered the empty DNS-SD
+    /// placeholder at least once. `ensure_started()` — despite its own doc
+    /// comment calling it "one-shot" — has no other guard against running
+    /// its body more than once: `discover_peers()` calls it on EVERY pass,
+    /// not just the first. The Android bridge's `dnsSdGate` only ever runs
+    /// its `addLocalService` registration once and caches that forever
+    /// (matching its own doc: registers "at most once per discovery
+    /// session"), so it treats every `start_dns_sd()` call after the first
+    /// as a request to re-register under new data — meaning a SECOND
+    /// unconditional empty-placeholder call (the second, third, ... N-th
+    /// discovery pass) silently overwrote the real beacon `start_advertising`
+    /// had already registered, permanently reverting this node to
+    /// undiscoverable after its very first discovery pass. Confirmed live on
+    /// 2 physical devices: the real 22-byte beacon registered correctly for
+    /// several seconds, then a same-second follow-up empty registration
+    /// silently reverted it — with `engine.start_all_partial` still reporting
+    /// wifi-direct-0 successfully started throughout, no error anywhere.
+    dns_sd_bootstrapped: AtomicBool,
     /// Discovery re-arm window end (app cadence, 30 s); None = not discovering.
     discovery_until: StdMutex<Option<Instant>>,
     /// Inbound frames that could not be delivered upstream (telemetry).
@@ -857,6 +875,7 @@ impl WifiDirectTransport {
             connect_gate: AsyncMutex::new(()),
             shutdown_flag: AtomicBool::new(false),
             permanently_unsupported: AtomicBool::new(false),
+            dns_sd_bootstrapped: AtomicBool::new(false),
             discovery_until: StdMutex::new(None),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
         }
@@ -1000,14 +1019,27 @@ impl WifiDirectTransport {
         // NodeAdvertisement to build a real beacon from): register with an
         // empty placeholder just to get the DNS-SD subsystem up. The real
         // beacon is registered by start_advertising's own start_dns_sd call
-        // immediately after, once the node's actual identity is known —
-        // this only matters for the placeholder ever being visible in the
-        // narrow window between the two calls, which is what discovery
-        // would already be filtering as an unparseable record anyway.
-        adapter
-            .start_dns_sd(Vec::new())
-            .await
-            .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
+        // immediately after, once the node's actual identity is known.
+        //
+        // HW-13: only do this ONCE per transport lifetime, not on every
+        // `ensure_started()` call (discover_peers calls this every single
+        // discovery pass). The Android bridge's `dnsSdGate` registers via
+        // `addLocalService` exactly once and then caches that registration
+        // forever; every `start_dns_sd()` call after the first is instead a
+        // request to REPLACE it. A second empty-placeholder call — the
+        // second, third, ... discovery pass, all still hitting this
+        // "generic bring-up" path — silently reverted the real beacon
+        // `start_advertising` had already registered back to an empty one,
+        // permanently undoing discoverability after the very first
+        // discovery pass, with zero errors anywhere (`start_advertising`
+        // itself only runs once at engine startup and never re-fires to
+        // restore it).
+        if !self.dns_sd_bootstrapped.swap(true, Ordering::SeqCst) {
+            adapter
+                .start_dns_sd(Vec::new())
+                .await
+                .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
+        }
         self.spawn_poller(adapter.clone()).await?;
         if self.state.load() == TransportState::Unavailable {
             let initial = if adapter.is_available() {
