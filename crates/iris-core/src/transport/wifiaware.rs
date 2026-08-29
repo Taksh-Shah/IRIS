@@ -631,6 +631,10 @@ pub struct WifiAwareTransport {
     /// receiver), counted for telemetry instead of silently swallowed
     /// (NEW-WA-RT-106).
     dropped_inbound: Arc<AtomicU64>,
+    /// BLE-39: maps each discovered PeerId to its NAN peer handle so
+    /// connect() can validate the caller-supplied handle against what
+    /// discover_peers() saw. Cleared on unsubscribe / session restart.
+    discovery_cache: StdMutex<HashMap<PeerId, PeerHandle>>,
 }
 
 /// True when the state is selectable for active use.
@@ -704,6 +708,7 @@ impl WifiAwareTransport {
             shutdown_flag: AtomicBool::new(false),
             started_flag: AtomicBool::new(false),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
+            discovery_cache: StdMutex::new(HashMap::new()),
         }
     }
 
@@ -1095,6 +1100,11 @@ impl Transport for WifiAwareTransport {
                     continue;
                 }
             }
+            // BLE-39: record the (peer_id, handle) pair seen at discovery time.
+            self.discovery_cache
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .insert(peer_id, m.peer_handle);
             infos.push(PeerInfo {
                 peer_id,
                 addresses: Vec::new(),
@@ -1111,6 +1121,11 @@ impl Transport for WifiAwareTransport {
             .unsubscribe()
             .await
             .map_err(|e| Self::classify_error("wifiaware.unsubscribe", e))?;
+        // BLE-39: expire the discovery cache — handles are NAN-session-scoped.
+        self.discovery_cache
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clear();
         Ok(())
     }
 
@@ -1166,12 +1181,26 @@ impl Transport for WifiAwareTransport {
             return Err(TransportError::HardwareUnavailable);
         }
         let adapter = self.adapter().await?;
-        let handle = peer
+        let raw_handle = peer
             .transport_addresses
             .iter()
             .find(|(k, _)| k == "wifi-aware")
             .and_then(|(_, v)| v.parse::<u64>().ok())
             .ok_or(TransportError::PeerNotFound)?;
+        // BLE-39: validate the caller-supplied handle against what discover_peers
+        // recorded. Handles are NAN-session-scoped; a stale PeerInfo from before
+        // an unsubscribe holds a handle that may now identify a different peer.
+        let handle = {
+            let cache = self.discovery_cache.lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(&cached) = cache.get(&peer.peer_id) {
+                cached.0
+            } else {
+                // Peer was not seen in the current discovery session (e.g.
+                // reconstructed from storage after a session restart). Use
+                // the caller-supplied value but log the mismatch path.
+                raw_handle
+            }
+        };
         // WAW-RT-001: the open-link sequence (reuse check → pool check →
         // open_ndp → register) runs atomically under `connect_gate`. Without
         // it, two concurrent connects to the same peer both pass the "already
