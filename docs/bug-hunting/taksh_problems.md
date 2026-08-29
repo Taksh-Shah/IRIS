@@ -494,7 +494,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **GAP-10** | Critical | `engine_handle.rs:112-135` | The desktop build registers a self-echo loopback transport in production, and it is the only selectable transport — every desktop send is silently blackholed and reflected back to the sender | ✅ ce126fe |
 | **GAP-11** | High | `wifiaware.rs:71,` | Wi-Fi Aware and Wi-Fi Direct — the two highest-bandwidth live transports — use a 32-slot inbound channel where every other transport uses 1024, and the overflow is provably uncountable | ✅ ce126fe |
 | **GAP-12** | Medium | `ble.rs:744-790` | The BLE per-peer poller wakes 20×/second forever, per connected peer, while its two sibling transports implement adaptive backoff | ✅ `f9d740d` (partial) |
-| **GAP-13** | Medium | `internet.rs:100-136` | The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently | ⬜ |
+| **GAP-13** | Medium | `internet.rs:100-136` | The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently | ✅ PLACEHOLDER_GAP13 (partial) |
 | **GAP-14** | Informational | `-` | Verified-clean classes (a negative result, recorded so nobody re-hunts them) | ⬜ |
 
 ## 6. Systemic findings — patterns that span the whole section
@@ -11012,7 +11012,7 @@ wifiaware.rs:762:  tokio::time::sleep(Duration::from_millis(if fast { 10 } else 
 
 #### GAP-13: The internet connection pool silently discards the write half of over-cap connections while their reader task and socket live on, and a cancelled `send` loses a connection permanently
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (partial)  ·  Tier 4  ·  commit PLACEHOLDER_GAP13  ·  2026-08-29  ·  `PooledConnection` now holds `Option<AbortHandle>`; `Drop` aborts the reader task when an entry is evicted (over-cap or expired). `acquire` reaps expired entries before searching (their Drop aborts orphaned readers). `spawn_reader` returns an `AbortHandle` (cloned to `self.readers` for shutdown). Write-failure path in `send()` now explicitly aborts the reader. **Not done:** in-flight connection cap and `Drop`-guard for `send()` cancellation (the partial-frame / stranded-write-half case) — these require larger structural changes deferred to avoid scope creep.
 - **Confidence:** High
 - **Blind spot:** B3 (leak under sustained normal concurrency) and B7 (cancellation)
 - **Location:** `crates/iris-core/src/transport/internet.rs:100-136` (`ConnectionPool`), `:250-278` (`get_connection`), `:279-325` (`spawn_reader`), `:399-440` (`send`)

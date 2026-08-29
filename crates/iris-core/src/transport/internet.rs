@@ -95,7 +95,11 @@ impl Default for InternetCostParams {
 /// destined for peer A can never be written to peer B's relay (RED-0001-01).
 struct PooledConnection {
     addr: SocketAddr,
-    write: OwnedWriteHalf,
+    write: Option<OwnedWriteHalf>,
+    /// Abort handle for the paired reader task. Taken out on acquire (so the
+    /// reader keeps running while the write half is in use); aborted on Drop
+    /// so over-cap and expired evictions kill the orphaned reader task.
+    reader_abort: Option<tokio::task::AbortHandle>,
     last_used: Instant,
     idle_timeout: Duration,
 }
@@ -103,6 +107,14 @@ struct PooledConnection {
 impl PooledConnection {
     fn is_expired(&self, now: Instant) -> bool {
         now.duration_since(self.last_used) > self.idle_timeout
+    }
+}
+
+impl Drop for PooledConnection {
+    fn drop(&mut self) {
+        if let Some(h) = self.reader_abort.take() {
+            h.abort();
+        }
     }
 }
 
@@ -123,25 +135,32 @@ impl ConnectionPool {
     }
 
     /// Acquire a live connection bound to exactly `addr` (never any other relay).
-    fn acquire(&mut self, now: Instant, addr: SocketAddr) -> Option<OwnedWriteHalf> {
-        let idx = self
-            .connections
-            .iter()
-            .position(|c| !c.is_expired(now) && c.addr == addr);
-        idx.map(|i| self.connections.remove(i).write)
+    /// Reaps expired entries first — their Drop aborts orphaned reader tasks.
+    fn acquire(&mut self, now: Instant, addr: SocketAddr) -> Option<(OwnedWriteHalf, tokio::task::AbortHandle)> {
+        self.connections.retain(|c| !c.is_expired(now));
+        let idx = self.connections.iter().position(|c| c.addr == addr);
+        idx.map(|i| {
+            let mut conn = self.connections.remove(i);
+            let write = conn.write.take().expect("write always present in pool");
+            let abort = conn.reader_abort.take().expect("abort always present in pool");
+            (write, abort)
+        })
     }
 
-    fn release(&mut self, conn: OwnedWriteHalf, addr: SocketAddr, now: Instant) {
+    fn release(&mut self, write: OwnedWriteHalf, reader_abort: tokio::task::AbortHandle, addr: SocketAddr, now: Instant) {
         self.connections.retain(|c| !c.is_expired(now));
         let per_addr = self.connections.iter().filter(|c| c.addr == addr).count();
+        let conn = PooledConnection {
+            addr,
+            write: Some(write),
+            reader_abort: Some(reader_abort),
+            last_used: now,
+            idle_timeout: self.idle_timeout,
+        };
         if per_addr < self.max_per_relay {
-            self.connections.push(PooledConnection {
-                addr,
-                write: conn,
-                last_used: now,
-                idle_timeout: self.idle_timeout,
-            });
+            self.connections.push(conn);
         }
+        // else: conn drops here; Drop aborts the orphaned reader task.
     }
 }
 
@@ -279,8 +298,10 @@ impl InternetTransport {
             .or_else(|| self.relay_candidates.first().copied())
     }
 
-    /// Open a pooled connection to a peer's relay and return its write half.
-    async fn get_connection(&self, peer: &PeerInfo) -> Result<OwnedWriteHalf, TransportError> {
+    /// Open a pooled connection to a peer's relay.
+    /// Returns the write half paired with the reader task's abort handle so the
+    /// caller can pool them together and abort the reader on eviction.
+    async fn get_connection(&self, peer: &PeerInfo) -> Result<(OwnedWriteHalf, tokio::task::AbortHandle), TransportError> {
         let addr = self
             .resolve_relay(peer)
             .await
@@ -302,8 +323,8 @@ impl InternetTransport {
 
         let mut pool = self.pool.lock().await;
         let now = Instant::now();
-        if let Some(conn) = pool.acquire(now, addr) {
-            return Ok(conn);
+        if let Some(pair) = pool.acquire(now, addr) {
+            return Ok(pair);
         }
         drop(pool);
 
@@ -335,11 +356,14 @@ impl InternetTransport {
         let (read, write) = stream.into_split();
         // Reader task pushes frames to incoming broadcast; on link loss it
         // downgrades state so selection stops choosing a blackholed transport.
-        self.spawn_reader(peer.peer_id, read);
-        Ok(write)
+        let abort = self.spawn_reader(peer.peer_id, read);
+        Ok((write, abort))
     }
 
-    fn spawn_reader(&self, peer_id: PeerId, mut read: OwnedReadHalf) {
+    /// Spawn a reader task for the given half and return its abort handle.
+    /// A clone is stored in `self.readers` for shutdown (RF-37); the returned
+    /// handle is given to the pool so over-cap eviction kills the task.
+    fn spawn_reader(&self, peer_id: PeerId, mut read: OwnedReadHalf) -> tokio::task::AbortHandle {
         let incoming = self.incoming_tx.clone();
         let transport_id = self.id.clone();
         let state = self.state.clone();
@@ -387,11 +411,12 @@ impl InternetTransport {
                 }).ok();
             }
         });
-        // Store the abort handle so shutdown() can stop readers before they
-        // clobber the Unavailable state (RF-37).
+        let abort = handle.abort_handle();
+        // Store in self.readers so shutdown() can stop all readers (RF-37).
         if let Ok(mut guards) = self.readers.lock() {
-            guards.push(handle.abort_handle());
+            guards.push(abort.clone());
         }
+        abort
     }
 }
 
@@ -449,15 +474,15 @@ impl Transport for InternetTransport {
         })?;
         *self.relay_addr.lock().await = Some(addr);
         self.peer_relays.lock().await.insert(peer.peer_id, addr);
-        let conn = match self.get_connection(peer).await {
-            Ok(c) => c,
+        let (conn, abort) = match self.get_connection(peer).await {
+            Ok(pair) => pair,
             Err(e) => {
                 self.set_state(TransportState::Available);
                 return Err(e);
             }
         };
         // Park the connection in the pool (keyed by relay) for send() reuse.
-        self.pool.lock().await.release(conn, addr, Instant::now());
+        self.pool.lock().await.release(conn, abort, addr, Instant::now());
         self.set_state(TransportState::Connected);
         Ok(TransportLink {
             peer_id: peer.peer_id,
@@ -486,7 +511,7 @@ impl Transport for InternetTransport {
             transport_addresses: Vec::new(),
             last_seen: Some(Instant::now()),
         };
-        let mut write = self.get_connection(&peer_info).await?;
+        let (mut write, reader_abort) = self.get_connection(&peer_info).await?;
         let frame = encode_frame(message)?;
         let write_res: Result<(), std::io::Error> = async {
             write.write_all(&frame).await?;
@@ -494,20 +519,22 @@ impl Transport for InternetTransport {
             Ok(())
         }
         .await;
-        // On write failure the link is dead: leave Connected immediately and
-        // drop the socket so the reader marks the transport Available, letting
-        // the manager steer traffic away (RED-0001-02 zombie state).
+        // On write failure the link is dead: abort the reader immediately
+        // (don't wait for its 10 s timeout), mark Degraded, and discard the
+        // socket so the reader marks the transport Available on its exit
+        // (RED-0001-02 zombie state).
         let addr = self
             .resolve_relay(&peer_info)
             .await
             .ok_or(TransportError::PeerNotFound)?;
         if let Err(e) = write_res {
+            reader_abort.abort();
             self.set_state(TransportState::Degraded);
             return Err(e.into());
         }
         let now = Instant::now();
         let mut pool = self.pool.lock().await;
-        pool.release(write, addr, now);
+        pool.release(write, reader_abort, addr, now);
         Ok(SendReceipt {
             peer_id: *peer,
             bytes_sent: frame.len(),
