@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- IRIS logo (LOGO/IRIS.svg) — converted 1:1 from the source SVG's
+     1024x1024 viewBox: black background + the open-ellipse stroke mark,
+     same path data, stroke color, stroke width (64) and round linecap. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="48dp"
     android:height="48dp"
-    android:viewportWidth="48"
-    android:viewportHeight="48">
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
     <path
-        android:fillColor="#0F172A"
-        android:pathData="M24,4 L43,42 L24,32 L5,42 Z" />
+        android:fillColor="#000000"
+        android:pathData="M0,0h1024v1024h-1024z" />
     <path
-        android:fillColor="#2DD4BF"
-        android:pathData="M24,10 L37.5,39 L24,31 L10.5,39 Z" />
+        android:strokeColor="#E2E8F0"
+        android:strokeWidth="64"
+        android:strokeLineCap="round"
+        android:pathData="M424.443,271.439C481.722,250.591 544.559,250.865 601.653,272.212C658.748,293.559 706.352,334.577 735.903,387.889C765.454,441.2 775.013,503.307 762.861,563.038C750.709,622.768 717.642,676.203 669.61,713.73C621.577,751.257 561.73,770.414 500.834,767.755C439.938,765.096 381.988,740.796 337.409,699.226C292.83,657.655 264.546,601.542 257.646,540.979C250.746,480.417 265.682,419.38 299.767,368.846" />
 </vector>
