@@ -29,7 +29,7 @@
 //! Available (cluster discovery only); the unicast data scope drops. This
 //! matches the "availability churn" contract in WIFI_AWARE.md §3.5.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -244,7 +244,9 @@ pub struct SimMeshCoordinator {
     /// queued frames: (to_tag, from_tag, payload). The from-tag lets the
     /// receiver attribute the frame to the sender's beacon (NEW-WA-RT-101);
     /// the receiver knows nothing about the sender's NDP handle.
-    outbox: StdMutex<Vec<(u64, u64, Vec<u8>)>>,
+    outbox: StdMutex<VecDeque<(u64, u64, Vec<u8>)>>,
+    /// Frames silently dropped because the outbox was full (BLE-40).
+    pub dropped: AtomicU64,
     next_tag: AtomicU64,
     next_ndp: AtomicU64,
 }
@@ -253,7 +255,8 @@ impl SimMeshCoordinator {
     pub fn new() -> Self {
         SimMeshCoordinator {
             peers: StdMutex::new(HashMap::new()),
-            outbox: StdMutex::new(Vec::new()),
+            outbox: StdMutex::new(VecDeque::new()),
+            dropped: AtomicU64::new(0),
             next_tag: AtomicU64::new(1),
             next_ndp: AtomicU64::new(1),
         }
@@ -317,9 +320,10 @@ impl SimMeshCoordinator {
         let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         if outbox.len() >= Self::MAX_OUTBOX_FRAMES {
             // Drop the oldest frame; keep the newest (finite NDP buffer).
-            outbox.remove(0);
+            outbox.pop_front();
+            self.dropped.fetch_add(1, Ordering::Relaxed);
         }
-        outbox.push((to_tag, from_tag, payload.to_vec()));
+        outbox.push_back((to_tag, from_tag, payload.to_vec()));
     }
 
     /// True when a peer with this tag is registered in the mesh (RT-010).
@@ -336,14 +340,14 @@ impl SimMeshCoordinator {
     fn drain_outbox(&self, tag: u64) -> Vec<(u64, Vec<u8>)> {
         let mut outbox = self.outbox.lock().unwrap_or_else(|p| p.into_inner());
         let mut mine = Vec::with_capacity(Self::MAX_DRAIN_PER_CALL.min(outbox.len()));
-        let mut keep = Vec::with_capacity(outbox.len());
+        let mut keep = VecDeque::with_capacity(outbox.len());
         let mut budget = Self::MAX_DRAIN_PER_CALL;
         for (to, from, payload) in outbox.drain(..) {
             if to == tag && budget > 0 {
                 mine.push((from, payload));
                 budget -= 1;
             } else {
-                keep.push((to, from, payload));
+                keep.push_back((to, from, payload));
             }
         }
         *outbox = keep;
@@ -1612,6 +1616,11 @@ mod tests {
             outbox_len <= SimMeshCoordinator::MAX_OUTBOX_FRAMES,
             "outbox capped ({outbox_len} > {})",
             SimMeshCoordinator::MAX_OUTBOX_FRAMES
+        );
+        // BLE-40: dropped counter must be non-zero after flooding 4× the cap.
+        assert!(
+            coord.dropped.load(Ordering::Relaxed) > 0,
+            "dropped counter was not incremented during flood"
         );
 
         // A single drain obeys the per-call budget and carries sender tags.
