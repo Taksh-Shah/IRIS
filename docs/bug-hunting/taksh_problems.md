@@ -1,4 +1,4 @@
-# Section 3 — Routing, Transport & Storage: Deep Bug-Hunt Report
+﻿# Section 3 — Routing, Transport & Storage: Deep Bug-Hunt Report
 
 **Owner:** Taksh Shah
 **Section:** 3 — Routing, Transport & Storage (`docs/testing/CODE_REVIEW_SECTIONS.md`)
@@ -415,29 +415,29 @@ All 284 findings, in report order. Severities are post-verification.
 | **SIM-7** | Critical | `sim/mod.rs:297-403` | The simulator implements its own forwarding pipeline and never calls the production `RoutingEngine` | ⬜ |
 | **SIM-8** | Critical | `sim/mod.rs:114-118` | The discrete-event simulator models no transport at all — no latency, bandwidth, MTU, reordering, duplication, corruption, or mid-transfer disconnect | ⬜ |
 | **SIM-9** | High | `sim/mod.rs:75-81` | `ContactEvent` is an instant, not a window — contact duration is unmodelled, so "contact window" assertions are fiction | ✅ `9a9fcdf` |
-| **SIM-10** | High | `sim/mod.rs:44,315,377` | `ForwardedCache` ages on `Instant::now()` (real time), so the sim's anti-loop cache never expires — `loop_free()` is guaranteed by construction | ⬜ |
+| **SIM-10** | High | `sim/mod.rs:44,315,377` | `ForwardedCache` ages on `Instant::now()` (real time), so the sim's anti-loop cache never expires — `loop_free()` is guaranteed by construction | ✅ `dec33ab` |
 | **SIM-11** | Medium | `sim/mod.rs:120-127` | `ForwardResult` is computed on every forward and discarded — the enum is dead and the sim cannot count blocked/sinked forwards | ✅ `4cabba0` |
-| **SIM-12** | Medium | `sim/mod.rs:530-542,555-557` | Contacts sort before injections at the same timestamp, so a message injected at time T misses the contact at time T | ⬜ |
-| **SIM-13** | Critical | `experiment.rs:57-75` | Label leakage — the LP training labels come from the whole run, including test-window deliveries, in direct violation of the documented leakage guard | ⬜ |
-| **SIM-14** | High | `experiment.rs:62-63,72` | Group leakage — the same `msg_id` appears in both train and test slices, so the model memorises per-message outcomes | ⬜ |
-| **SIM-15** | Medium | `experiment.rs:110-124` | `agreement()` takes a `_labelled` closure it never uses — "decision agreement" measures agreement with L2, and the threshold sweep optimises for that, not for delivery | ⬜ |
-| **SIM-16** | Medium | `experiment.rs:152-174` | `evaluate_gt` never dedups contact times, so a duplicate timestamp injects a zero interval that drags the learned period down | ⬜ |
+| **SIM-12** | Medium | `sim/mod.rs:530-542,555-557` | Contacts sort before injections at the same timestamp, so a message injected at time T misses the contact at time T | ✅ `dec33ab` |
+| **SIM-13** | Critical | `experiment.rs:57-75` | Label leakage — the LP training labels come from the whole run, including test-window deliveries, in direct violation of the documented leakage guard | ✅ `bd221ad` |
+| **SIM-14** | High | `experiment.rs:62-63,72` | Group leakage — the same `msg_id` appears in both train and test slices, so the model memorises per-message outcomes | ✅ `bd221ad` |
+| **SIM-15** | Medium | `experiment.rs:110-124` | `agreement()` takes a `_labelled` closure it never uses — "decision agreement" measures agreement with L2, and the threshold sweep optimises for that, not for delivery | ✅ `bd221ad` |
+| **SIM-16** | Medium | `experiment.rs:152-174` | `evaluate_gt` never dedups contact times, so a duplicate timestamp injects a zero interval that drags the learned period down | ✅ `bd221ad` |
 | **SIM-17** | High | `sim_scenarios.rs:174-192` | `route2_opportunistic_matches_delivery_with_lower_overhead` never asserts overhead — and no test anywhere reads `overhead_ratio` | ✅ `4cabba0` |
 | **SIM-18** | Medium | `metrics.rs:85-89` | `overhead_ratio` returns 0.0 — the best possible value — when nothing was delivered | ✅ `4cabba0` |
 | **SIM-19** | Medium | `metrics.rs:123-132` | Percentile index uses `round()` on `(n-1)*p`, so `p95` of 20 samples returns the 90th percentile | ✅ `5d65b11` |
 | **SIM-20** | Medium | `metrics.rs:138-152` | `wilson_ci_95` produces silent `NaN` when `k > n`, and never validates its inputs | ✅ `5d65b11` |
-| **SIM-21** | High | `observability/mod.rs:124-160` | OBSERVABILITY.md promises gauges, a latency histogram and priority labels; the implementation ships bare counters with no labels | ⬜ |
-| **SIM-22** | Medium | `observability/mod.rs:219-231` | `MetricsRegistry::increment` silently discards unknown metric names, and a test enshrines that as a feature | ⬜ |
-| **SIM-23** | Medium | `observability/mod.rs:255-280` | `PriorityTally` and `DeliveryWindow` are public API, re-exported from the crate root, and constructed nowhere outside their own unit tests | ⬜ |
-| **SIM-24** | Medium | `observability/mod.rs:15-16` | P5 "bounded retention" is a comment, not a mechanism — `reset()` has no caller | ⬜ |
-| **SIM-25** | Medium | `observability/mod.rs:13-14,70-71` | The P3 "default-deny attribute allow-list" does not exist — `tracing` call sites pass free-form fields with no enforcement | ⬜ |
-| **SIM-26** | Medium | `routing/mod.rs:210-213` | Truncated but stable peer pseudonyms in routing and security logs let a log holder reconstruct the social graph | ⬜ |
-| **SIM-27** | Medium | `ml_experiments.rs:74-99` | `ac1_no_shadow_is_zero_cost` never runs the no-shadow case, and `ac2`'s "byte-identical" assertion compares a trivially-true inequality | ⬜ |
-| **SIM-28** | Medium | `ml_experiments.rs:237-251` | `ac6_shadow_features_encode_priority_rank` and `ac3`'s Brier assertion are tautologies | ⬜ |
+| **SIM-21** | High | `observability/mod.rs:124-160` | OBSERVABILITY.md promises gauges, a latency histogram and priority labels; the implementation ships bare counters with no labels | ✅ `319c7a8` |
+| **SIM-22** | Medium | `observability/mod.rs:219-231` | `MetricsRegistry::increment` silently discards unknown metric names, and a test enshrines that as a feature | ✅ `319c7a8` |
+| **SIM-23** | Medium | `observability/mod.rs:255-280` | `PriorityTally` and `DeliveryWindow` are public API, re-exported from the crate root, and constructed nowhere outside their own unit tests | ✅ `319c7a8` |
+| **SIM-24** | Medium | `observability/mod.rs:15-16` | P5 "bounded retention" is a comment, not a mechanism — `reset()` has no caller | ✅ `319c7a8` |
+| **SIM-25** | Medium | `observability/mod.rs:13-14,70-71` | The P3 "default-deny attribute allow-list" does not exist — `tracing` call sites pass free-form fields with no enforcement | ✅ `319c7a8` |
+| **SIM-26** | Medium | `routing/mod.rs:210-213` | Truncated but stable peer pseudonyms in routing and security logs let a log holder reconstruct the social graph | ✅ `319c7a8` |
+| **SIM-27** | Medium | `ml_experiments.rs:74-99` | `ac1_no_shadow_is_zero_cost` never runs the no-shadow case, and `ac2`'s "byte-identical" assertion compares a trivially-true inequality | ✅ `319c7a8` |
+| **SIM-28** | Medium | `ml_experiments.rs:237-251` | `ac6_shadow_features_encode_priority_rank` and `ac3`'s Brier assertion are tautologies | ✅ `319c7a8` |
 | **SIM-29** | Medium | `sim_scenarios.rs:104-112` | `loss_reduces_delivery_ratio_monotonically` and `route2_spray_bounds_overhead_property` both pass when the mechanism they test is disabled | ✅ `5d65b11` |
-| **SIM-30** | Medium | `sim/mod.rs:45,52` | Per-node sim state grows unboundedly with message count — `hops_by_msg`, `spray`, and the dedup ring are never pruned | ⬜ |
+| **SIM-30** | Medium | `sim/mod.rs:45,52` | Per-node sim state grows unboundedly with message count — `hops_by_msg`, `spray`, and the dedup ring are never pruned | ✅ `dec33ab` |
 | **SIM-31** | Low | `sim/mod.rs:178-180,205-207,232-234,750-756` | Dead sim API — `avg_latency_ms`, `shadow_enabled`, `injections_public`, `loss_rate`, `peak_storage_bytes` and `SimMetrics::overhead` have no readers | ✅ `4cabba0` |
-| **SIM-32** | Low | `scenario.rs:231-246` | `inject_standard` can address a message to its own sender, producing a permanently undeliverable message that silently deflates the delivery ratio | ⬜ |
+| **SIM-32** | Low | `scenario.rs:231-246` | `inject_standard` can address a message to its own sender, producing a permanently undeliverable message that silently deflates the delivery ratio | ✅ `dec33ab` |
 | **TAK-1** | Critical | `common/mod.rs:18-22` | All 14 PostgreSQL-backed storage tests silently no-op yet report PASS | ✅ `c5325d8` |
 | **TAK-2** | Critical | `pg.rs:160,170-179` | Remote attacker can permanently exhaust the store with unevictable P0 rows | ✅ `08d3534` |
 | **TAK-3** | High | `pg.rs:294-305` | A single undecodable row permanently blocks the entire send queue | ⬜ |
