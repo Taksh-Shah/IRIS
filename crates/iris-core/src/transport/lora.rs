@@ -1454,10 +1454,15 @@ fn backlog_ttl(priority: MessagePriority) -> Duration {
 
 /// One held send: its priority plus the payload waiting for budget recovery.
 /// RF-13: `enqueued_at` drives per-class TTL sweeps in push/pop.
+/// RF-23: `next_attempt_at` gates retry timing — `drain_backlog` skips an
+/// entry until the wall clock passes this instant.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BacklogEntry<T> {
     pub priority: MessagePriority,
     pub enqueued_at: Instant,
+    /// RF-23: earliest time this entry may be retried. Initialized to the
+    /// enqueue instant so entries are immediately eligible on first drain.
+    pub next_attempt_at: Instant,
     pub item: T,
 }
 
@@ -1502,7 +1507,7 @@ impl<T> BacklogQueue<T> {
             }
         }
         let pos = g.partition_point(|e| e.priority <= priority);
-        g.insert(pos, BacklogEntry { priority, enqueued_at: now, item });
+        g.insert(pos, BacklogEntry { priority, enqueued_at: now, next_attempt_at: now, item });
         true
     }
 
@@ -1510,11 +1515,12 @@ impl<T> BacklogQueue<T> {
     /// re-insert an item that was ALREADY queued (drain deferral) — ignores
     /// the depth cap so concurrent enqueues during a drain can never silently
     /// drop held traffic. May temporarily exceed [`MAX_BACKLOG_ENTRIES`].
-    pub fn push_deferred(&self, priority: MessagePriority, item: T) {
+    /// Preserves the caller-set `next_attempt_at` so retry scheduling survives
+    /// the deferred re-insert (RF-23).
+    pub fn push_deferred(&self, entry: BacklogEntry<T>) {
         let mut g = self.entries.lock().unwrap_or_else(|p| p.into_inner());
-        let now = Instant::now();
-        let pos = g.partition_point(|e| e.priority <= priority);
-        g.insert(pos, BacklogEntry { priority, enqueued_at: now, item });
+        let pos = g.partition_point(|e| e.priority <= entry.priority);
+        g.insert(pos, entry);
     }
 
     /// Pop the highest-priority non-expired entry (front of the sorted vec).
@@ -1921,10 +1927,16 @@ impl LoRaTransport {
     pub async fn drain_backlog(&self, max: usize) -> Vec<(SerializedMessage, SendReceipt)> {
         let mut drained = Vec::new();
         let mut deferred = Vec::new();
+        let now = Instant::now();
         'drain: for _ in 0..max {
             let Some(entry) = self.backlog.pop_highest() else {
                 break;
             };
+            // RF-23: skip entries whose retry window has not yet elapsed.
+            if now < entry.next_attempt_at {
+                deferred.push(entry);
+                continue;
+            }
             // Backlog entries carry no destination (raw-LoRa is broadcast at
             // the PHY): receipts use the zero-PeerId fallback convention.
             match self.try_send_inner(&PeerId([0u8; 32]), &entry.item).await {
@@ -1932,7 +1944,7 @@ impl LoRaTransport {
                 // RF-12: terminal transport errors — put this entry back and
                 // stop draining; the transport cannot deliver anything now.
                 Err(TransportError::ShuttingDown | TransportError::NotConnected) => {
-                    self.backlog.push_deferred(entry.priority, entry.item);
+                    self.backlog.push_deferred(entry);
                     break 'drain;
                 }
                 // RF-12: permanent per-message errors — the entry will never
@@ -1956,7 +1968,7 @@ impl LoRaTransport {
         for entry in deferred {
             // SAT-RT-104: deferred items were already queued once — re-insert
             // over-capacity so concurrent enqueues can never drop them.
-            self.backlog.push_deferred(entry.priority, entry.item);
+            self.backlog.push_deferred(entry);
         }
         drained
     }
@@ -2680,7 +2692,12 @@ mod tests {
         assert!(!q.push(MessagePriority::P4, 7), "cap refuses new pushes");
         // Deferred re-insert ignores the cap: nothing already-held is dropped
         // when concurrent enqueues refill during a drain.
-        q.push_deferred(MessagePriority::P4, 7);
+        q.push_deferred(BacklogEntry {
+            priority: MessagePriority::P4,
+            enqueued_at: Instant::now(),
+            next_attempt_at: Instant::now(),
+            item: 7u8,
+        });
         assert_eq!(q.len(), MAX_BACKLOG_ENTRIES + 1);
         // Drain still works over the temporarily-over-cap queue.
         let mut drained = 0;

@@ -1143,10 +1143,16 @@ impl SatelliteTransport {
     pub async fn drain_backlog(&self, max: usize) -> Vec<(SerializedMessage, SendReceipt)> {
         let mut drained = Vec::new();
         let mut deferred = Vec::new();
+        let now = Instant::now();
         'drain: for _ in 0..max {
-            let Some(entry) = self.backlog.pop_highest() else {
+            let Some(mut entry) = self.backlog.pop_highest() else {
                 break;
             };
+            // RF-23: skip entries whose retry window has not yet elapsed.
+            if now < entry.next_attempt_at {
+                deferred.push(entry);
+                continue;
+            }
             // Backlog entries carry no destination (raw broadcast medium):
             // receipts use the zero-PeerId fallback convention.
             match self.try_send_inner(&PeerId([0u8; 32]), &entry.item).await {
@@ -1154,7 +1160,7 @@ impl SatelliteTransport {
                 // RF-12: terminal transport errors — put this entry back and
                 // stop draining; the transport cannot deliver anything now.
                 Err(TransportError::ShuttingDown | TransportError::NotConnected) => {
-                    self.backlog.push_deferred(entry.priority, entry.item);
+                    self.backlog.push_deferred(entry);
                     break 'drain;
                 }
                 // RF-12: permanent per-message errors — drop and count.
@@ -1170,15 +1176,25 @@ impl SatelliteTransport {
                         "backlog entry permanently dropped (protocol/policy error)"
                     );
                 }
-                // Transient errors (Busy, RateLimited, Io, …) — defer.
-                Err(_) => deferred.push(entry),
+                // RF-23: transient error — schedule retry after RETRY_BASE_MS
+                // + up to RETRY_JITTER_FRACTION of additional random delay
+                // (AC-9: asynchronous custody-style, never sync-RTT paced).
+                Err(_) => {
+                    let jitter_range =
+                        (RETRY_BASE_MS as f64 * RETRY_JITTER_FRACTION as f64) as u64;
+                    let jitter_ms: u64 =
+                        rand::Rng::gen_range(&mut rand::thread_rng(), 0..=jitter_range);
+                    entry.next_attempt_at =
+                        Instant::now() + Duration::from_millis(RETRY_BASE_MS + jitter_ms);
+                    deferred.push(entry);
+                }
             }
         }
         for entry in deferred {
             // SAT-RT-104: deferred items were already queued once — re-insert
             // over-capacity so concurrent enqueues can never drop held P0-P2
             // traffic (queue-not-drop, AC-4).
-            self.backlog.push_deferred(entry.priority, entry.item);
+            self.backlog.push_deferred(entry);
         }
         drained
     }
@@ -1882,14 +1898,14 @@ mod tests {
     }
 
     #[test]
-    fn async_ack_constants_pinned_ac9() {
-        // Opaque accessor keeps the lint from folding this to a constant.
-        fn ack_constants() -> (u64, f32) {
-            (RETRY_BASE_MS, RETRY_JITTER_FRACTION)
-        }
-        let (base_ms, jitter) = ack_constants();
-        assert_eq!(base_ms, 300_000, ">= 5 minutes, never sync-RTT");
-        assert!(jitter > 0.0 && jitter < 1.0, "jitter bounded inside (0,1)");
+    fn async_ack_constants_ac9() {
+        // RF-23: these constants are now actually consumed by drain_backlog's
+        // retry scheduler. Verify the values remain in the AC-9-compliant range.
+        assert_eq!(RETRY_BASE_MS, 300_000, ">= 5 minutes, never sync-RTT");
+        assert!(
+            RETRY_JITTER_FRACTION > 0.0 && RETRY_JITTER_FRACTION < 1.0,
+            "jitter bounded inside (0,1)"
+        );
     }
 
     #[test]
