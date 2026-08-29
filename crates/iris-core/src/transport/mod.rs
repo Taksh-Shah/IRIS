@@ -345,6 +345,19 @@ pub fn inbound_lagged_total() -> u64 {
     INBOUND_LAGGED_TOTAL.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// Minutes since UNIX epoch mod 2^16 — the shared freshness clock for all
+/// discovery beacons (GAP-6). BLE, Wi-Fi Aware, and Wi-Fi Direct all define
+/// `freshness_minutes` as "minutes since epoch mod 2^16"; calling this helper
+/// rather than a local `Instant::elapsed()` keeps all three transports
+/// consistent on the same wall-clock origin.
+pub fn freshness_minutes_now() -> u16 {
+    (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        / 60) as u16
+}
+
 /// The core transport abstraction. Every transport must implement this trait.
 ///
 /// All methods are `&self` so a transport can be shared as `Arc<dyn Transport>`

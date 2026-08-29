@@ -60,8 +60,8 @@ use crate::transport::wifi_direct_serv::{
     WifiDirectCapBits, WifiDirectTxtRecord, WIFI_DIRECT_SERVICE_NAME,
 };
 use crate::transport::{
-    AtomicState, Transport, TransportCapabilities, TransportCost, TransportState,
-    TransportStateEvent, WIFI_DIRECT_COST,
+    freshness_minutes_now, AtomicState, Transport, TransportCapabilities, TransportCost,
+    TransportState, TransportStateEvent, WIFI_DIRECT_COST,
 };
 use crate::TransportError;
 
@@ -482,7 +482,7 @@ impl SimulatedWifiDirectAdapter {
         WifiDirectTxtRecord::build(
             caps,
             *peer_short,
-            self.started.elapsed().as_secs().div_euclid(60) as u16,
+            freshness_minutes_now(), // GAP-6: wall-clock epoch, not uptime
         )
     }
 

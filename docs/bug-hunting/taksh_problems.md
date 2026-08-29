@@ -487,7 +487,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection | ✅ (partial: start_advertising recovers Unavailable→Available) |
 | **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms | ✅ `e15809a` |
 | **GAP-5** | Medium | `ble_att.rs:9-14,` | The two live data-plane framings carry no version field, while all four discovery/latent framings do — the live wire format cannot be evolved | ⬜ |
-| **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field | ⬜ |
+| **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field | ✅ |
 | **GAP-7** | Critical | `message_engine/mod.rs:1207-1260` | `Transport::connect()` has zero production callers — no live transport can ever send a message | ✅ `d32c4cc` |
 | **GAP-8** | High | `internet.rs:209-214` | Every `InternetTransport` hardcodes the id `"internet-0"` — configuring a second relay makes the desktop engine fail to start | ✅ 30a1295 |
 | **GAP-9** | Medium | `engine.rs:46,` | The FFI reports the sender's self-declared origination time as `received_at_ms` — the inbox timestamp is remote-controlled, and the real receive time is discarded | ✅ `e15809a` (partial) |

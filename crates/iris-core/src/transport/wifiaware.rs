@@ -52,8 +52,8 @@ use crate::message::{
 use crate::transport::internet::{encode_frame, frame_payload_len};
 use crate::transport::wifiaware_beacon::{CapabilityBits, WifiAwareBeacon};
 use crate::transport::{
-    AtomicState, Transport, TransportCapabilities, TransportCost, TransportState,
-    TransportStateEvent, WIFI_AWARE_COST,
+    freshness_minutes_now, AtomicState, Transport, TransportCapabilities, TransportCost,
+    TransportState, TransportStateEvent, WIFI_AWARE_COST,
 };
 use crate::TransportError;
 
@@ -406,7 +406,7 @@ impl SimulatedWifiAwareAdapter {
         WifiAwareBeacon::build(
             caps,
             *peer_short,
-            self.started.elapsed().as_secs().div_euclid(60) as u16,
+            freshness_minutes_now(), // GAP-6: wall-clock epoch, not uptime
         )
     }
 
