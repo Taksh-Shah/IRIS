@@ -171,10 +171,23 @@ impl AttSegmenter {
         payload: &[u8],
         mtu: u16,
     ) -> Result<(u16, Vec<Vec<u8>>), FrameError> {
+        self.segment_for_mtu_with_id(payload, mtu, self.alloc_msg_id())
+    }
+
+    /// Segment `payload` using an explicit `msg_id` supplied by the caller.
+    ///
+    /// BLE-25: the shared `alloc_msg_id` counter is now bypassed on the send
+    /// path; `send()` holds a per-connection counter in the connections map
+    /// and calls this variant so each GATT link has an independent id space.
+    pub fn segment_for_mtu_with_id(
+        &self,
+        payload: &[u8],
+        mtu: u16,
+        msg_id: u16,
+    ) -> Result<(u16, Vec<Vec<u8>>), FrameError> {
         if payload.len() > MAX_MESSAGE_BYTES {
             return Err(FrameError::MessageTooLarge);
         }
-        let msg_id = self.alloc_msg_id();
         let clamped = mtu.clamp(MTU_DEFAULT, MTU_NEGOTIATED);
         // Per-connection ATT payload => min(mtu-5, 512), then subtract the
         // 6-byte frame header for the chunk-data budget (BLE-RT-003).

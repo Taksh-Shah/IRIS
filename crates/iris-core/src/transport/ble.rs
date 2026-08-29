@@ -511,8 +511,11 @@ pub struct BleTransport {
     /// `&self` call and therefore cannot borrow `self` — can hold a cheap
     /// clone of the SAME map `send()`/`shutdown()` read, instead of a
     /// snapshot that would immediately go stale.
+    /// BLE-25: tuple is (handle, mtu, per-connection-next-msg-id). The third
+    /// field replaces the shared AttSegmenter counter so concurrent sends to
+    /// different peers cannot collide on the same id space.
     connections:
-        std::sync::Arc<std::sync::Mutex<std::collections::HashMap<PeerId, (GattHandle, u16)>>>,
+        std::sync::Arc<std::sync::Mutex<std::collections::HashMap<PeerId, (GattHandle, u16, u16)>>>,
     /// Per-peer async lock (BLE-2): concurrent `connect()` calls to the SAME
     /// peer serialize on this (BLE-RT-002 — exactly one GATT link/poller per
     /// peer), but connects to DIFFERENT peers run fully in parallel. The
@@ -828,7 +831,7 @@ impl BleTransport {
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
                         .entry(peer_id)
-                        .or_insert((accepted.handle, crate::transport::ble_att::MTU_DEFAULT));
+                        .or_insert((accepted.handle, crate::transport::ble_att::MTU_DEFAULT, 0u16));
                     let abort = BleTransport::spawn_inbound_poller(
                         incoming_tx.clone(),
                         adapter.clone(),
@@ -856,7 +859,7 @@ impl BleTransport {
         adapter: std::sync::Arc<dyn BleAdapter>,
         _cause: Option<&BleError>,
     ) {
-        if let Some((handle, _)) = self.connections.lock().unwrap_or_else(|p| p.into_inner()).remove(peer) {
+        if let Some((handle, ..)) = self.connections.lock().unwrap_or_else(|p| p.into_inner()).remove(peer) {
             adapter.disconnect_gatt(handle);
         }
         // Not load-bearing for correctness (a stale empty-Mutex entry just
@@ -1315,7 +1318,7 @@ impl Transport for BleTransport {
         self.connections
             .lock()
             .unwrap()
-            .insert(peer.peer_id, (handle, stored_mtu));
+            .insert(peer.peer_id, (handle, stored_mtu, 0u16));
         self.set_state(TransportState::Connected);
         let established_at = Instant::now();
         // Poll inbound GATT writes for THIS peer into a per-peer reassembler,
@@ -1384,17 +1387,22 @@ impl Transport for BleTransport {
             }
         };
         let resolved_key = resolved_key.ok_or(TransportError::NotConnected)?;
-        let (handle, mtu) = self
-            .connections
-            .lock()
-            .unwrap()
-            .get(&resolved_key)
-            .copied()
-            .ok_or(TransportError::NotConnected)?;
+        // BLE-25: fetch handle+mtu and atomically increment the per-connection
+        // msg_id counter in one lock hold so concurrent sends to different
+        // peers use independent counters (was: one shared AtomicU16 on segmenter).
+        let (handle, mtu, msg_id) = {
+            let mut conns = self.connections.lock().unwrap();
+            let entry = conns.get_mut(&resolved_key).ok_or(TransportError::NotConnected)?;
+            let h = entry.0;
+            let m = entry.1;
+            let id = entry.2;
+            entry.2 = entry.2.wrapping_add(1);
+            (h, m, id)
+        };
         // Segment the payload into ATT frames sized to THIS peer's negotiated
         // MTU (AC-2 + BLE-RT-003). A late high-MTU peer must never inflate
         // frames destined to a low-MTU peer.
-        let (_msg_id, frames) = self.segmenter.segment_for_mtu(&message.payload, mtu).map_err(|e| {
+        let (_msg_id, frames) = self.segmenter.segment_for_mtu_with_id(&message.payload, mtu, msg_id).map_err(|e| {
             // MG-40: a payload/chunk-count overflow is resolvable by
             // fragmenting upstream and retrying — a genuine framing bug
             // (TooShort/BadChunkIndex/Truncated/TooManyPartials) is not.
@@ -1469,7 +1477,7 @@ impl Transport for BleTransport {
             .lock()
             .unwrap()
             .drain()
-            .map(|(_, (h, _))| h)
+            .map(|(_, (h, ..))| h)
             .collect();
         for h in handles {
             adapter.disconnect_gatt(h);
