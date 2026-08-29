@@ -41,6 +41,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -85,6 +87,12 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
         /** Bounded settle window for the async CONNECTION_CHANGED group snapshot. */
         private const val GROUP_INFO_SETTLE_MS = 5_000L
+
+        // HW-11: bounded retry specifically for WifiP2pManager's BUSY (reason=2)
+        // — see awaitAction's own doc for why this is correct here.
+        private const val BUSY_RETRY_ATTEMPTS = 5
+        private const val BUSY_RETRY_DELAY_MS = 500L
+        private const val WIFI_P2P_BUSY = 2
 
         /** Poll interval while awaiting the group snapshot (AND-RT-103). */
         private const val GROUP_INFO_POLL_MS = 100L
@@ -908,7 +916,50 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * word "band") has something to actually match against. Most callers
      * pass none; the generic reason code is otherwise all Rust ever sees.
      */
-    private suspend fun awaitAction(failureContext: String? = null, launch: (WifiP2pManager.ActionListener) -> Unit) {
+    // HW-11: WifiP2pManager, like BluetoothGatt (HW-6/HW-7), tolerates only
+    // one outstanding action per channel — confirmed live on a real S24
+    // Ultra: `discoverServices()` (fired by the discovery poll loop) and
+    // `addLocalService()` (fired by `start_advertising`'s `registerDnsSd()`)
+    // both go through this SAME channel via separate, independently-gated
+    // suspend functions (`serviceRequestGate`, `dnsSdGate`) with nothing
+    // stopping them from being in flight at once — and when they were,
+    // Android returned `WifiP2p action failed reason=2` (BUSY) rather than
+    // queuing the second request. Every `awaitAction` call site now
+    // serializes on this single mutex, so at most one WifiP2pManager action
+    // is ever in flight for this adapter, regardless of which caller issued
+    // it — the same fix shape as HW-7's GATT write completion wait, applied
+    // to the analogous one-op-at-a-time constraint on this platform API.
+    private val actionMutex = Mutex()
+
+    // HW-11: BUSY (reason=2) survived the mutex above on a real Samsung S24
+    // Ultra even with nothing else of OURS in flight — `dumpsys wifip2p`
+    // showed the platform's own P2P state machine taking well over the
+    // adapter's fixed 30s per-call timeout to leave P2pDisabledState on this
+    // device, meaning our very first request can legitimately still be
+    // "busy" from the platform's own slow bring-up, not from anything this
+    // adapter did wrong. BUSY is Android's documented signal for exactly
+    // this kind of transient local contention (the same category HW-6/7
+    // already established for BluetoothGatt's analogous case) — retrying
+    // the specific failed call after a short backoff is correct here in a
+    // way blind retry is not: every OTHER failure reason (P2P_UNSUPPORTED,
+    // ERROR, a permission denial) still fails immediately, unchanged.
+    private suspend fun awaitAction(failureContext: String? = null, launch: (WifiP2pManager.ActionListener) -> Unit) =
+        actionMutex.withLock {
+            var attempt = 0
+            while (true) {
+                attempt++
+                try {
+                    awaitActionOnce(failureContext, launch)
+                    return@withLock
+                } catch (e: TransportFailure) {
+                    val busy = e.message?.contains("reason=$WIFI_P2P_BUSY") == true
+                    if (!busy || attempt >= BUSY_RETRY_ATTEMPTS) throw e
+                    delay(BUSY_RETRY_DELAY_MS)
+                }
+            }
+        }
+
+    private suspend fun awaitActionOnce(failureContext: String?, launch: (WifiP2pManager.ActionListener) -> Unit) {
         suspendCancellableCoroutine { cont ->
             try {
                 launch(object : WifiP2pManager.ActionListener {
