@@ -288,9 +288,9 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-7** | Medium | `ble.rs:720-722` | `set_mtu` errors are silently swallowed | ✅ |
 | **BLE-8** | Low | `ble.rs:619-624` | Unauthenticated advert bytes become `IncomingMessage.peer_id` | ⬜ |
 | **BLE-9** | Critical | `ble.rs:80-85` | `AdvertisementData` cannot express connectability, and its UUID/name are dropped at the FFI seam | ⬜ |
-| **BLE-10** | Medium | `ble.rs:829-842` | A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking | ⬜ |
-| **BLE-11** | Medium | `ble.rs:897-904` | `parse_mac` silently converts malformed input into a valid-looking address | ⬜ |
-| **BLE-12** | Medium | `ble.rs:888-895` | `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported` | ⬜ |
+| **BLE-10** | Medium | `ble.rs:829-842` | A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking | ✅ (partial: bytes_sent fixed) |
+| **BLE-11** | Medium | `ble.rs:897-904` | `parse_mac` silently converts malformed input into a valid-looking address | ✅ |
+| **BLE-12** | Medium | `ble.rs:888-895` | `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported` | ✅ (MG-41) |
 | **BLE-13** | Medium | `ble.rs:560-564` | `.drain(..).take(n)` silently destroys every scan result past `max_peers` | ✅ |
 | **BLE-14** | Medium | `ble.rs:583-605` | Blocking GATT connect/read/disconnect inside a synchronous closure in an async fn, with no timeout | ⬜ |
 | **BLE-15** | Medium | `ble.rs:637-679` | Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind | ⬜ |
@@ -2884,7 +2884,7 @@ let stored_mtu = if self.ios_leg {
 
 #### BLE-10: A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Partial  ·  Tier 4  — `bytes_sent` now sums frame wire bytes; abort-frame protocol change deferred
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:829-842` (fn `send`)
 - **What:** `send` writes frames in a loop and aborts on the first failure. Frames already delivered
@@ -2924,7 +2924,7 @@ let stored_mtu = if self.ios_leg {
 
 #### BLE-11: `parse_mac` silently converts malformed input into a valid-looking address
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:897-904` (fn `parse_mac`), called at `:702`
 - **What:** Non-hex octets become `0`, fewer than six octets leave the remainder as `0`, and there is
@@ -2961,7 +2961,7 @@ let stored_mtu = if self.ios_leg {
 
 #### BLE-12: `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported`
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (MG-41)  ·  Tier 4  — `PermissionDenied` → `TransportError::PermissionDenied`, `AdapterOff` → `TransportError::RadioDisabled`
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:888-895` (fn `to_transport_err`)
 - **What:** `PermissionDenied`, `AdapterOff` and `NotSupported` all map to `TransportError::NotSupported`.

@@ -1111,11 +1111,13 @@ impl Transport for BleTransport {
             });
         }
         // Peer's BLE address comes from transport_addresses (["ble", "AA:BB:.."]).
+        // BLE-11: parse_mac now returns Option — malformed addresses produce
+        // PeerNotFound rather than silently connecting to 00:00:00:00:00:00.
         let mac = peer
             .transport_addresses
             .iter()
             .find(|(t, _)| t == "ble")
-            .map(|(_, addr)| parse_mac(addr))
+            .and_then(|(_, addr)| parse_mac(addr))
             .ok_or(TransportError::PeerNotFound)?;
         // BLE-3: only the FIRST connection in flight should move the
         // transport-wide state to `Connecting`. Doing this unconditionally
@@ -1324,9 +1326,10 @@ impl Transport for BleTransport {
                 return Err(to_transport_err(e));
             }
         }
+        // BLE-10: count wire bytes actually sent (payload + per-frame ATT headers).
         Ok(SendReceipt {
             peer_id: *peer,
-            bytes_sent: message.payload.len(),
+            bytes_sent: frames.iter().map(Vec::len).sum(),
             sent_at: Instant::now(),
         })
     }
@@ -1397,12 +1400,20 @@ fn to_transport_err(e: BleError) -> TransportError {
 }
 
 /// Parse `"AA:BB:CC:DD:EE:FF"` into a `BleAddress`.
-fn parse_mac(s: &str) -> BleAddress {
-    let mut b = [0u8; 6];
-    for (i, part) in s.split(':').take(6).enumerate() {
-        b[i] = u8::from_str_radix(part, 16).unwrap_or(0);
+///
+/// Returns `None` on any parse error — fewer than 6 octets, non-hex digits,
+/// or values out of range — so callers can propagate `PeerNotFound` rather
+/// than silently connecting to `00:00:00:00:00:00` (BLE-11).
+fn parse_mac(s: &str) -> Option<BleAddress> {
+    let parts: Vec<&str> = s.split(':').collect();
+    if parts.len() != 6 {
+        return None;
     }
-    BleAddress(b)
+    let mut b = [0u8; 6];
+    for (i, part) in parts.iter().enumerate() {
+        b[i] = u8::from_str_radix(part, 16).ok()?;
+    }
+    Some(BleAddress(b))
 }
 
 #[cfg(test)]
@@ -2160,8 +2171,13 @@ mod tests {
 
     #[test]
     fn mac_parser_works() {
-        let b = parse_mac("AA:BB:CC:DD:EE:FF");
+        let b = parse_mac("AA:BB:CC:DD:EE:FF").expect("valid MAC must parse");
         assert_eq!(b.0, [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]);
+        // BLE-11: malformed inputs must return None, not 00:00:00:00:00:00.
+        assert!(parse_mac("garbage").is_none());
+        assert!(parse_mac("AA:BB").is_none());
+        assert!(parse_mac("").is_none());
+        assert!(parse_mac("ZZ:BB:CC:DD:EE:FF").is_none());
     }
 
     // --- BLE-RT regressions (AC-15 SECURITY_REVIEW, iter 88) ---
