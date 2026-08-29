@@ -158,10 +158,25 @@ impl Injection {
     }
 }
 
-/// Per-link loss applied during a contact forward (deterministic via RNG).
+/// Per-link loss and transport fidelity parameters (SIM-8).
+///
+/// `bandwidth_bps = 0` (default) → unlimited (legacy instantaneous transfer).
+/// `mtu_bytes = 0` (default) → no size limit.
+/// `latency_base_ms = 0` (default) → delivery at contact time.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SimLoss {
+    /// Symmetric packet-loss rate [0,1]. Applied per-forward via the seeded RNG.
     pub rate: f32,
+    /// Bandwidth ceiling in bits per second. Combined with `ContactEvent::duration_ms`
+    /// (SIM-9) to compute per-contact byte budgets: bytes = bps * duration_ms / 8_000.
+    /// 0 = unlimited (legacy behavior).
+    pub bandwidth_bps: u64,
+    /// Maximum message payload size in bytes. Messages larger than this are
+    /// dropped at the transport layer (not buffered for later). 0 = no limit.
+    pub mtu_bytes: u64,
+    /// Base one-way latency added to every delivery timestamp (ms). Does not
+    /// affect forwarding decisions — only the `delivered` record's timestamp.
+    pub latency_base_ms: u64,
 }
 
 /// Result of one forward attempt during a contact.
@@ -179,6 +194,10 @@ enum ForwardResult {
     BlockedHopBudget,   // hop budget for this priority is exhausted
     BlockedNoAdvantage, // L2 (GTMX+/spray) declined: no DP advantage, no spray budget
     BlockedLoss,        // link loss draw
+    /// SIM-8: message payload exceeds the configured `mtu_bytes` ceiling —
+    /// the radio cannot carry it in one frame, and the sim does not yet
+    /// model fragmentation/reassembly.
+    BlockedMtu,
     /// Malformed `recipient_id` (not 32 bytes) — defensive only; every sim
     /// code path builds `recipient_id` from a 32-byte `PeerId`, so this is
     /// unreachable in practice and deliberately not one of the four tallied
@@ -279,6 +298,23 @@ impl Simulation {
         self
     }
 
+    /// Configure SIM-8 transport fidelity parameters.
+    /// `bandwidth_bps` limits bytes transferred per contact direction
+    /// (combined with `ContactEvent::duration_ms` from SIM-9).
+    /// `mtu_bytes` rejects oversized messages at the link layer.
+    /// `latency_base_ms` adds one-way propagation delay to delivery timestamps.
+    pub fn with_transport_model(
+        &mut self,
+        bandwidth_bps: u64,
+        mtu_bytes: u64,
+        latency_base_ms: u64,
+    ) -> &mut Self {
+        self.loss.bandwidth_bps = bandwidth_bps;
+        self.loss.mtu_bytes = mtu_bytes;
+        self.loss.latency_base_ms = latency_base_ms;
+        self
+    }
+
     pub fn nodes(&self) -> &[SimNode] {
         &self.nodes
     }
@@ -341,7 +377,8 @@ impl Simulation {
             ForwardResult::BlockedHopBudget => self.blocked_hop_budget += 1,
             ForwardResult::BlockedNoAdvantage => self.blocked_no_advantage += 1,
             ForwardResult::BlockedLoss => self.blocked_loss += 1,
-            ForwardResult::BlockedMalformed
+            ForwardResult::BlockedMtu
+            | ForwardResult::BlockedMalformed
             | ForwardResult::Delivered
             | ForwardResult::Relayed
             | ForwardResult::Sinked => {}
@@ -406,6 +443,16 @@ impl Simulation {
     ) -> ForwardResult {
         let dst_peer = self.nodes[dst].peer_id;
         let id = msg.envelope.message_id;
+
+        // SIM-8: MTU check — reject messages that exceed the radio frame size.
+        // The sim does not model fragmentation; a message that cannot fit in
+        // one frame is never carried over this link.
+        if self.loss.mtu_bytes > 0 {
+            let payload_bytes = msg.envelope.payload.len() as u64;
+            if payload_bytes > self.loss.mtu_bytes {
+                return ForwardResult::BlockedMtu;
+            }
+        }
 
         // Terminal copies at src are inert (already delivered elsewhere).
         if msg.delivery_status.is_terminal() {
@@ -508,8 +555,11 @@ impl Simulation {
 
         let is_recipient = msg.envelope.recipient_id.as_slice() == dst_peer.as_bytes();
         if is_recipient {
-            // Terminal delivery.
-            self.nodes[dst].delivered.push((id, self.now_ms));
+            // Terminal delivery. SIM-8: add one-way latency to the delivery
+            // timestamp so latency percentiles reflect propagation time, not
+            // just the contact schedule. Default 0 → no change (legacy).
+            let delivery_ms = self.now_ms.saturating_add(self.loss.latency_base_ms);
+            self.nodes[dst].delivered.push((id, delivery_ms));
             self.nodes[src].scf.mark_forwarded(&id, dst_peer, true);
             self.nodes[dst].scf.mark_forwarded(&id, dst_peer, true);
             // SIM-30: release per-message bookkeeping at the forwarding src and
@@ -765,11 +815,41 @@ impl Simulation {
                         }
                         let a_msgs: Vec<_> = self.nodes[a].scf.ordered_buffered();
                         let b_msgs: Vec<_> = self.nodes[b].scf.ordered_buffered();
+                        // SIM-8: per-contact byte budget from bandwidth × duration
+                        // (SIM-9 supplies duration_ms). 0 bps or 0 duration_ms →
+                        // unlimited (legacy instantaneous-transfer behaviour).
+                        let byte_budget: Option<u64> =
+                            if self.loss.bandwidth_bps > 0 && ev.duration_ms > 0 {
+                                Some(
+                                    self.loss
+                                        .bandwidth_bps
+                                        .saturating_mul(ev.duration_ms)
+                                        / 8_000,
+                                )
+                            } else {
+                                None
+                            };
+                        let mut a_bytes: u64 = 0;
                         for m in &a_msgs {
+                            if let Some(budget) = byte_budget {
+                                let sz = m.envelope.payload.len() as u64;
+                                if a_bytes.saturating_add(sz) > budget {
+                                    break; // window exhausted a→b
+                                }
+                                a_bytes += sz;
+                            }
                             let r = self.forward_to(a, b, m);
                             self.tally(r);
                         }
+                        let mut b_bytes: u64 = 0;
                         for m in &b_msgs {
+                            if let Some(budget) = byte_budget {
+                                let sz = m.envelope.payload.len() as u64;
+                                if b_bytes.saturating_add(sz) > budget {
+                                    break; // window exhausted b→a
+                                }
+                                b_bytes += sz;
+                            }
                             let r = self.forward_to(b, a, m);
                             self.tally(r);
                         }
