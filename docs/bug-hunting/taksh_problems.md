@@ -357,8 +357,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-36** | High | `internet.rs:241-250` | `resolve_relay`'s fallback chain re-opens RED-0001-01 — a send for peer B goes out on peer A's relay | ✅ `c22b3b6` |
 | **RF-37** | High | `internet.rs:280-325` | A reader task resurrects a shut-down transport by unconditionally storing `Available` on EOF | ✅ `c9f28f0` |
 | **RF-38** | High | `internet.rs:139-148` | There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff | ✅ `bc1f2ed` |
-| **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection | ⬜ |
-| **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ⬜ |
+| **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection | ✅ `6471d86` |
+| **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ✅ PLACEHOLDER_RF40 |
 | **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ⬜ |
 | **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ⬜ |
 | **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ⬜ |
@@ -5622,7 +5622,7 @@ if state.load() == TransportState::Connected && live_connections.fetch_sub(1, Ac
 
 #### RF-39: Pooled connections leak sockets — dropping only the write half never closes the TCP connection
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 6471d86  ·  2026-08-29  ·  `PooledConnection` now owns `Option<AbortHandle>` for its reader task; `Drop` aborts the reader on eviction (over-cap or expired). Same commit as GAP-13 — the two findings share the same root defect.
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/internet.rs:117-136` (`ConnectionPool::acquire`/`release`), `465-471` (`shutdown`)
 - **What:** the pool stores only `OwnedWriteHalf`; the matching `OwnedReadHalf` lives inside the spawned reader task (line 276). A `TcpStream` split into owned halves is closed only when **both** halves drop. Three paths drop the write half without touching the reader: `release` when over `max_per_relay` (line 128, the `else` is implicit — the conn is simply not pushed and falls out of scope), `release`'s expiry `retain` (line 126), and `shutdown`'s `connections.clear()` (line 467).
@@ -5646,7 +5646,7 @@ if state.load() == TransportState::Connected && live_connections.fetch_sub(1, Ac
 
 #### RF-40: `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_RF40  ·  2026-08-29  ·  `get_connection` now returns `(OwnedWriteHalf, AbortHandle, SocketAddr)`; `send()` uses the returned addr directly — no post-write resolve call.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:413-434` (fn `send`)
 - **What:** the write completes at line 420. Only then does the code resolve `addr` (needed to key the pool release), with a `?` that returns early. On that path the successful write is reported as `PeerNotFound`, and `write` is dropped instead of released — the connection is half-closed and never reused.

@@ -299,9 +299,9 @@ impl InternetTransport {
     }
 
     /// Open a pooled connection to a peer's relay.
-    /// Returns the write half paired with the reader task's abort handle so the
-    /// caller can pool them together and abort the reader on eviction.
-    async fn get_connection(&self, peer: &PeerInfo) -> Result<(OwnedWriteHalf, tokio::task::AbortHandle), TransportError> {
+    /// Returns `(write_half, abort_handle, relay_addr)` so the caller has the
+    /// relay address before writing — avoids resolve-after-write for RF-40.
+    async fn get_connection(&self, peer: &PeerInfo) -> Result<(OwnedWriteHalf, tokio::task::AbortHandle, SocketAddr), TransportError> {
         let addr = self
             .resolve_relay(peer)
             .await
@@ -323,8 +323,8 @@ impl InternetTransport {
 
         let mut pool = self.pool.lock().await;
         let now = Instant::now();
-        if let Some(pair) = pool.acquire(now, addr) {
-            return Ok(pair);
+        if let Some((write, abort)) = pool.acquire(now, addr) {
+            return Ok((write, abort, addr));
         }
         drop(pool);
 
@@ -357,7 +357,7 @@ impl InternetTransport {
         // Reader task pushes frames to incoming broadcast; on link loss it
         // downgrades state so selection stops choosing a blackholed transport.
         let abort = self.spawn_reader(peer.peer_id, read);
-        Ok((write, abort))
+        Ok((write, abort, addr))
     }
 
     /// Spawn a reader task for the given half and return its abort handle.
@@ -474,15 +474,15 @@ impl Transport for InternetTransport {
         })?;
         *self.relay_addr.lock().await = Some(addr);
         self.peer_relays.lock().await.insert(peer.peer_id, addr);
-        let (conn, abort) = match self.get_connection(peer).await {
-            Ok(pair) => pair,
+        let (conn, abort, conn_addr) = match self.get_connection(peer).await {
+            Ok(triple) => triple,
             Err(e) => {
                 self.set_state(TransportState::Available);
                 return Err(e);
             }
         };
         // Park the connection in the pool (keyed by relay) for send() reuse.
-        self.pool.lock().await.release(conn, abort, addr, Instant::now());
+        self.pool.lock().await.release(conn, abort, conn_addr, Instant::now());
         self.set_state(TransportState::Connected);
         Ok(TransportLink {
             peer_id: peer.peer_id,
@@ -511,7 +511,10 @@ impl Transport for InternetTransport {
             transport_addresses: Vec::new(),
             last_seen: Some(Instant::now()),
         };
-        let (mut write, reader_abort) = self.get_connection(&peer_info).await?;
+        // get_connection returns the relay addr it resolved, so we know it before
+        // writing — a post-write resolution miss returning PeerNotFound on bytes
+        // already on the wire (RF-40) is now impossible.
+        let (mut write, reader_abort, addr) = self.get_connection(&peer_info).await?;
         let frame = encode_frame(message)?;
         let write_res: Result<(), std::io::Error> = async {
             write.write_all(&frame).await?;
@@ -523,10 +526,6 @@ impl Transport for InternetTransport {
         // (don't wait for its 10 s timeout), mark Degraded, and discard the
         // socket so the reader marks the transport Available on its exit
         // (RED-0001-02 zombie state).
-        let addr = self
-            .resolve_relay(&peer_info)
-            .await
-            .ok_or(TransportError::PeerNotFound)?;
         if let Err(e) = write_res {
             reader_abort.abort();
             self.set_state(TransportState::Degraded);
