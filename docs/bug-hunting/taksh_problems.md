@@ -358,7 +358,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-37** | High | `internet.rs:280-325` | A reader task resurrects a shut-down transport by unconditionally storing `Available` on EOF | ✅ `c9f28f0` |
 | **RF-38** | High | `internet.rs:139-148` | There is no reconnect logic at all — `backoff_ms` has zero production callers despite the module doc and verification record claiming backoff | ✅ `bc1f2ed` |
 | **RF-39** | Medium | `internet.rs:117-136` | Pooled connections leak sockets — dropping only the write half never closes the TCP connection | ✅ `6471d86` |
-| **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ✅ PLACEHOLDER_RF40 |
+| **RF-40** | Medium | `internet.rs:413-434` | `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half | ✅ 4d1ae57 |
 | **RF-41** | Low | `internet.rs:290-306` | The reader collapses EOF, reset and timeout into a silent `break`, and accepts zero-length frames | ⬜ |
 | **RF-42** | Medium | `simulated.rs:168-203` | `send()` ignores transport state entirely — a shut-down simulated transport still delivers | ⬜ |
 | **RF-43** | Medium | `simulated.rs:76-92` | `send()` ignores `max_message_size` — every MTU and fragmentation test on the simulator is vacuous | ⬜ |
@@ -5646,7 +5646,7 @@ if state.load() == TransportState::Connected && live_connections.fetch_sub(1, Ac
 
 #### RF-40: `send()` resolves the relay *after* writing, so a resolution miss returns `PeerNotFound` on bytes already on the wire and leaks the write half
 - **Severity:** Medium
-- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit PLACEHOLDER_RF40  ·  2026-08-29  ·  `get_connection` now returns `(OwnedWriteHalf, AbortHandle, SocketAddr)`; `send()` uses the returned addr directly — no post-write resolve call.
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 4d1ae57  ·  2026-08-29  ·  `get_connection` now returns `(OwnedWriteHalf, AbortHandle, SocketAddr)`; `send()` uses the returned addr directly — no post-write resolve call.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/internet.rs:413-434` (fn `send`)
 - **What:** the write completes at line 420. Only then does the code resolve `addr` (needed to key the pool release), with a `?` that returns early. On that path the successful write is reported as `PeerNotFound`, and `write` is dropped instead of released — the connection is half-closed and never reused.
