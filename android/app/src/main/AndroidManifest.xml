@@ -32,6 +32,23 @@
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="33" />
 
+    <!-- HW-10: Wi-Fi Direct's own control-plane permissions — distinct from
+         NEARBY_WIFI_DEVICES above, and never declared before this. Confirmed
+         live: `WifiP2pManager.initialize()` -> `getMessenger()` ->
+         `WifiP2pServiceImpl.enforceAccessPermission()` throws a
+         RemoteException on EVERY real device tested (Android 12/14/16 —
+         three different OEMs), which `AndroidWifiDirectTransportAdapter`
+         swallowed into an undifferentiated `NotSupported`/"required
+         hardware not present on this device." That symptom is what every
+         static review before this pass, and this pass's own initial live
+         testing, read as "no Wi-Fi Direct hardware" — but normal
+         (non-runtime, install-time-only) `ACCESS_WIFI_STATE` and
+         `CHANGE_WIFI_STATE` were never in this manifest at all, so the
+         platform's own service-side permission enforcement failed
+         identically regardless of what hardware or OEM was underneath. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
     <!-- OEM battery-kill UX: user-initiated exemption request only (AC-7) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 

@@ -506,10 +506,29 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * subsystem that can never come up.
      */
     private fun initialize(): WifiP2pManager.Channel {
-        val manager = p2pManager ?: throw NotSupported()
-        val channel = runCatching {
+        val manager = p2pManager ?: run {
+            android.util.Log.w("IrisWifiDirectDiag", "initialize: getSystemService(WIFI_P2P_SERVICE) returned null")
+            throw NotSupported()
+        }
+        // HW verification pass: this used to be `runCatching { }.getOrNull()`,
+        // discarding whatever `initialize()` actually threw (permission
+        // denial, a null Looper, anything) into an undifferentiated
+        // NotSupported — indistinguishable from genuine "no Wi-Fi Direct
+        // radio," and confirmed live reproducing identically on all three
+        // test devices (Android 12/14/16), which is far more consistent with
+        // one shared root cause (most likely a permission gap — Wi-Fi P2P on
+        // API 33+ needs NEARBY_WIFI_DEVICES at runtime, not just declared)
+        // than three unrelated phones all lacking Wi-Fi Direct hardware.
+        val result = runCatching {
             manager.initialize(appContext, Looper.getMainLooper(), channelListener)
-        }.getOrNull() ?: throw NotSupported()
+        }
+        result.exceptionOrNull()?.let {
+            android.util.Log.w("IrisWifiDirectDiag", "initialize: manager.initialize() threw", it)
+        }
+        val channel = result.getOrNull() ?: run {
+            android.util.Log.w("IrisWifiDirectDiag", "initialize: manager.initialize() returned null channel")
+            throw NotSupported()
+        }
         registerStateReceiver()
         availability.setAvailable(true)
         return channel
