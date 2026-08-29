@@ -745,6 +745,12 @@ pub const MAX_PAYLOAD_BYTES: usize = MAX_FRAME_BYTES - HEADER_LEN;
 /// RT-106: backlog depth bound (memory guard for constrained devices).
 pub const MAX_BACKLOG_ENTRIES: usize = 256;
 
+/// RF-9: per-call inbound frame budget, mirroring `wifi_direct::MAX_FRAMES_PER_TICK`.
+/// A continuous emitter on the open LoRa medium can keep `rx()` returning
+/// `Some` indefinitely — capping the loop lets the poller task return and
+/// re-schedule, preventing a livelock.
+pub const MAX_FRAMES_PER_POLL: usize = 8;
+
 /// RF-10: LORA.md §Bandwidth Budget's per-priority payload allowance under
 /// the ~1.4 B/s effective throughput the 1% duty ceiling leaves — P0 SOS
 /// 60 B, P1 Evacuation 80 B, P2 Medical 120 B, P3 Logistics 150 B, and
@@ -1351,6 +1357,9 @@ pub struct LoRaMetrics {
     malformed_rx: AtomicU64,
     /// RF-17: adapter.close() calls that returned an error on teardown.
     close_failures: AtomicU64,
+    /// RF-12: backlog entries dropped because the error is permanent
+    /// (Protocol / PolicyDenied / MessageTooLarge — will never succeed).
+    backlog_protocol_drops: AtomicU64,
 }
 
 /// Point-in-time copy of [`LoRaMetrics`].
@@ -1368,6 +1377,8 @@ pub struct LoRaMetricsSnapshot {
     pub malformed_rx: u64,
     /// RF-17: adapter close errors on detach or shutdown.
     pub close_failures: u64,
+    /// RF-12: backlog entries permanently dropped (Protocol/PolicyDenied/MessageTooLarge).
+    pub backlog_protocol_drops: u64,
 }
 
 impl LoRaMetrics {
@@ -1405,6 +1416,10 @@ impl LoRaMetrics {
         self.close_failures.fetch_add(1, Ordering::Relaxed);
     }
 
+    fn record_backlog_protocol_drop(&self) {
+        self.backlog_protocol_drops.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn snapshot(&self) -> LoRaMetricsSnapshot {
         LoRaMetricsSnapshot {
             packets_tx: self.packets_tx.load(Ordering::Relaxed),
@@ -1417,6 +1432,7 @@ impl LoRaMetrics {
             tx_unknown_outcome: self.tx_unknown_outcome.load(Ordering::Relaxed),
             malformed_rx: self.malformed_rx.load(Ordering::Relaxed),
             close_failures: self.close_failures.load(Ordering::Relaxed),
+            backlog_protocol_drops: self.backlog_protocol_drops.load(Ordering::Relaxed),
         }
     }
 }
@@ -1873,7 +1889,7 @@ impl LoRaTransport {
     pub async fn drain_backlog(&self, max: usize) -> Vec<(SerializedMessage, SendReceipt)> {
         let mut drained = Vec::new();
         let mut deferred = Vec::new();
-        for _ in 0..max {
+        'drain: for _ in 0..max {
             let Some(entry) = self.backlog.pop_highest() else {
                 break;
             };
@@ -1881,6 +1897,27 @@ impl LoRaTransport {
             // the PHY): receipts use the zero-PeerId fallback convention.
             match self.try_send_inner(&PeerId([0u8; 32]), &entry.item).await {
                 Ok(receipt) => drained.push((entry.item, receipt)),
+                // RF-12: terminal transport errors — put this entry back and
+                // stop draining; the transport cannot deliver anything now.
+                Err(TransportError::ShuttingDown | TransportError::NotConnected) => {
+                    self.backlog.push_deferred(entry.priority, entry.item);
+                    break 'drain;
+                }
+                // RF-12: permanent per-message errors — the entry will never
+                // succeed on this transport; drop and count.
+                Err(
+                    TransportError::Protocol(_)
+                    | TransportError::PolicyDenied(_)
+                    | TransportError::MessageTooLarge { .. },
+                ) => {
+                    self.metrics.record_backlog_protocol_drop();
+                    tracing::warn!(
+                        target: "iris.transport.lora",
+                        priority = ?entry.priority,
+                        "backlog entry permanently dropped (protocol/policy error)"
+                    );
+                }
+                // Transient errors (Busy, RateLimited, Io, …) — defer.
                 Err(_) => deferred.push(entry),
             }
         }
@@ -1905,7 +1942,10 @@ impl LoRaTransport {
             return Err(TransportError::NotConnected);
         };
         let mut delivered = 0usize;
-        loop {
+        // RF-9: bound per-call work. An adversarial emitter on the open LoRa
+        // medium can keep rx() returning Some forever — cap the loop so the
+        // poller task can yield and re-schedule, preventing a livelock.
+        for _ in 0..MAX_FRAMES_PER_POLL {
             match adapter.rx().await {
                 Ok(Some(slip)) => {
                     // RT-105: a malformed frame must not abort the poll

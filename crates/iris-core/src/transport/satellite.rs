@@ -796,6 +796,9 @@ pub struct SatelliteMetrics {
     mailbox_checks: AtomicU64,
     /// RF-17: adapter.close() calls that returned an error on teardown.
     close_failures: AtomicU64,
+    /// RF-12: backlog entries dropped because the error is permanent
+    /// (Protocol / PolicyDenied / MessageTooLarge — will never succeed).
+    backlog_protocol_drops: AtomicU64,
 }
 
 /// Point-in-time copy of [`SatelliteMetrics`].
@@ -813,6 +816,8 @@ pub struct SatelliteMetricsSnapshot {
     pub mailbox_checks: u64,
     /// RF-17: adapter close errors on detach or shutdown.
     pub close_failures: u64,
+    /// RF-12: backlog entries permanently dropped (Protocol/PolicyDenied/MessageTooLarge).
+    pub backlog_protocol_drops: u64,
 }
 
 macro_rules! sat_metric_accessors {
@@ -841,7 +846,8 @@ sat_metric_accessors!(
     tx_failures,
     malformed_rx,
     mailbox_checks,
-    close_failures
+    close_failures,
+    backlog_protocol_drops
 );
 
 // ==== SatelliteTransport — the Transport impl wiring it together ====
@@ -1137,7 +1143,7 @@ impl SatelliteTransport {
     pub async fn drain_backlog(&self, max: usize) -> Vec<(SerializedMessage, SendReceipt)> {
         let mut drained = Vec::new();
         let mut deferred = Vec::new();
-        for _ in 0..max {
+        'drain: for _ in 0..max {
             let Some(entry) = self.backlog.pop_highest() else {
                 break;
             };
@@ -1145,6 +1151,26 @@ impl SatelliteTransport {
             // receipts use the zero-PeerId fallback convention.
             match self.try_send_inner(&PeerId([0u8; 32]), &entry.item).await {
                 Ok(receipt) => drained.push((entry.item, receipt)),
+                // RF-12: terminal transport errors — put this entry back and
+                // stop draining; the transport cannot deliver anything now.
+                Err(TransportError::ShuttingDown | TransportError::NotConnected) => {
+                    self.backlog.push_deferred(entry.priority, entry.item);
+                    break 'drain;
+                }
+                // RF-12: permanent per-message errors — drop and count.
+                Err(
+                    TransportError::Protocol(_)
+                    | TransportError::PolicyDenied(_)
+                    | TransportError::MessageTooLarge { .. },
+                ) => {
+                    self.metrics.backlog_protocol_drops().fetch_add(1, Ordering::Relaxed);
+                    tracing::warn!(
+                        target: "iris.transport.satellite",
+                        priority = ?entry.priority,
+                        "backlog entry permanently dropped (protocol/policy error)"
+                    );
+                }
+                // Transient errors (Busy, RateLimited, Io, …) — defer.
                 Err(_) => deferred.push(entry),
             }
         }
