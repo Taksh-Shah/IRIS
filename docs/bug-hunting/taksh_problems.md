@@ -483,8 +483,8 @@ All 284 findings, in report order. Severities are post-verification.
 | **FFI-18** | Medium | `wifi_direct.rs:1273` | `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks | ✅ `f01135b` |
 | **FFI-19** | Medium | `wifi_direct_serv.rs:32-34` | Service-name constants disagree across the seam; `PublishConfig.service_name` and `PeerDiscovery.service_name` are both ignored | ✅ `0a916f3` |
 | **GAP-1** | High | `message_engine/mod.rs:1091-1140` | Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized | ⬜ |
-| **GAP-2** | High | `ble.rs:384` | `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB | ⬜ |
-| **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection | ⬜ |
+| **GAP-2** | High | `ble.rs:384` | `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB | ✅ |
+| **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection | ✅ (partial: start_advertising recovers Unavailable→Available) |
 | **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms | ✅ `e15809a` |
 | **GAP-5** | Medium | `ble_att.rs:9-14,` | The two live data-plane framings carry no version field, while all four discovery/latent framings do — the live wire format cannot be evolved | ⬜ |
 | **GAP-6** | Medium | `ble.rs:653-662` | `freshness_minutes` means "minutes since epoch" on BLE and "minutes since transport start" on Wi-Fi Aware and Wi-Fi Direct — one node emits two incompatible values for one wire field | ⬜ |

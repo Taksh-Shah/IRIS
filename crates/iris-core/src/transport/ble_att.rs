@@ -39,6 +39,11 @@ pub const MAX_MESSAGE_BYTES: usize = u16::MAX as usize;
 /// At MTU 23 (12 data bytes/frame) this caps a message at ~3 KB, which is below
 /// any P-class budget; at negotiated MTU the practical cap is ~129 KB.
 pub const MAX_CHUNKS: usize = 255;
+/// Conservative `max_message_size` to publish in `TransportCapabilities` (GAP-2).
+/// Uses the minimum data_cap (12 bytes at MTU_DEFAULT) so the manager's eligibility
+/// filter and fragmenter never assume more than BLE can deliver at the worst-case MTU.
+/// Computed as: MAX_CHUNKS × (MTU_DEFAULT − 5 ATT-header − FRAME_HEADER) = 255 × 12.
+pub const BLE_MAX_MESSAGE_CONSERVATIVE: usize = MAX_CHUNKS * ((MTU_DEFAULT as usize) - 5 - FRAME_HEADER);
 /// Stale partial-message TTL before eviction.
 pub const REASSEMBLY_TTL: Duration = Duration::from_secs(30);
 /// Cap on concurrently tracked partial messages (anti-DoS, mirrors SEC-001

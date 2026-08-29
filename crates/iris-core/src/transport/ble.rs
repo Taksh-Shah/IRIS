@@ -29,7 +29,9 @@ use crate::message::{
     SendReceipt, SerializedMessage, TransportLink,
 };
 use crate::transport::ble_advert::{CapabilityBits, DiscoveryBeacon};
-use crate::transport::ble_att::{AttSegmenter, Reassembler, MAX_MESSAGE_BYTES, REASSEMBLY_TTL};
+use crate::transport::ble_att::{
+    AttSegmenter, BLE_MAX_MESSAGE_CONSERVATIVE, Reassembler, MAX_MESSAGE_BYTES, REASSEMBLY_TTL,
+};
 use crate::transport::{
     AtomicState, Transport, TransportCapabilities, TransportCost, TransportCostClass, TransportId,
     TransportState, TransportStateEvent,
@@ -539,7 +541,10 @@ impl BleTransport {
         let state = AtomicState::default();
         state.store(TransportState::Available);
         let caps = TransportCapabilities {
-            max_message_size: MAX_MESSAGE_BYTES, // segmented; wire cap u16::MAX (AC-2)
+            // GAP-2: report the worst-case floor so the manager's eligibility filter
+            // and fragmenter never overestimate what BLE can carry. Uses MTU_DEFAULT
+            // (23 B) as the denominator; actual cap rises with the negotiated MTU.
+            max_message_size: BLE_MAX_MESSAGE_CONSERVATIVE,
             supports_broadcast: true,
             supports_unicast: true,
             supports_multicast: false,
@@ -1079,6 +1084,13 @@ impl Transport for BleTransport {
         // accepting — idempotent, so re-announcement (key rotation etc.)
         // never spawns a second accept-poller alongside the first.
         self.ensure_accept_poller(adapter);
+        // GAP-3: if a previous shutdown() left the transport Unavailable, recover
+        // to Available so a stop→start cycle re-enters manager selection.
+        // The state never goes above Unavailable on the bring-up path, so this
+        // is the earliest safe place to transition it back.
+        if self.state() == TransportState::Unavailable {
+            self.set_state(TransportState::Available);
+        }
         Ok(())
     }
 
