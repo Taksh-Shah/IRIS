@@ -351,7 +351,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-30** | Medium | `wifi_direct.rs:1312-1329` | `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever | ✅ |
 | **RF-31** | Low | `wifi_direct.rs:794-795` | `dropped_inbound` is write-only — the counter has no accessor | ✅ |
 | **RF-32** | Medium | `wifi_direct.rs:20-24` | The TCP-over-GO data plane described in the module docs is not implemented — `go_addr`, `group_info` and `set_operating_band` are never called | ⬜ |
-| **RF-33** | Low | `wifi_direct.rs:1095-1114` | `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering | ⬜ |
+| **RF-33** | Low | `wifi_direct.rs:1095-1114` | `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering | ✅ |
 | **RF-34** | Low | `wifi_direct_serv.rs:109-112` | The TXT record's `freshness_minutes` is parsed and never used, and `peer_short` is fully attacker-chosen | ⬜ |
 | **RF-35** | High | `internet.rs:1-13` | No TLS and no relay authentication — the transport is plaintext TCP, contradicting its own module docs and INTERNET.md | ✅ `2df2c9d` |
 | **RF-36** | High | `internet.rs:241-250` | `resolve_relay`'s fallback chain re-opens RED-0001-01 — a send for peer B goes out on peer A's relay | ✅ `c22b3b6` |
@@ -5440,7 +5440,7 @@ for f in adapter.incoming().await {
 
 #### RF-33: `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (partial — service name check + take-after-filter; timeout not wired)  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:1095-1114` (fn `discover_peers`)
 - **What:** three defects in one block. (a) `PeerDiscovery.service_name` — documented at line 147 as "must equal `WIFI_DIRECT_SERVICE_NAME`" — is never compared to anything; the transport trusts the adapter to have filtered. Only the *simulator* filters (`visible_services`, line 315); the Android bridge (`bridge.rs:373-384`) passes through whatever the Kotlin layer returns. (b) `config.timeout` is ignored entirely — no `DiscoveryTimeout` is ever produced despite the error variant existing (`error.rs:14`). (c) `.take(config.max_peers)` is applied **before** parse-failure and filter rejection, so 64 unparseable records mask a valid 65th.
