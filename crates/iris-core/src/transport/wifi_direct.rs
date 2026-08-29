@@ -87,6 +87,11 @@ const INCOMING_CHANNEL_CAPACITY: usize = 1024;
 /// Max frames forwarded to the engine per poll tick (bounded per-tick work).
 const MAX_FRAMES_PER_TICK: usize = 8;
 
+/// RF-28: ingress backlog depth bound — frames beyond this are dropped oldest-first.
+/// Keeps the per-tick-forwarding design honest: the 8-per-tick budget is only
+/// effective when the staging deque cannot grow without bound.
+const MAX_INBOUND_BACKLOG: usize = 64;
+
 /// Idle poll cadence when no group links are active.
 const IDLE_POLL_MS: u64 = 500;
 
@@ -1105,7 +1110,16 @@ impl WifiDirectTransport {
                 let fast = !links.lock().unwrap_or_else(|p| p.into_inner()).is_empty();
                 tokio::time::sleep(Duration::from_millis(if fast { 10 } else { IDLE_POLL_MS }))
                     .await;
-                backlog.extend(adapter.incoming().await);
+                // RF-28: bound the ingress backlog — drop oldest frames when at
+                // capacity so a burst (or a slow Kotlin GC pause) cannot grow
+                // the deque without bound and OOM the process.
+                for frame in adapter.incoming().await {
+                    if backlog.len() >= MAX_INBOUND_BACKLOG {
+                        backlog.pop_front();
+                        dropped_inbound.fetch_add(1, Ordering::Relaxed);
+                    }
+                    backlog.push_back(frame);
+                }
                 for _ in 0..MAX_FRAMES_PER_TICK {
                     let Some(frame) = backlog.pop_front() else {
                         break;
