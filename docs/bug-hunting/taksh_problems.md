@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 41 | 0 | 84 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-8/14/24/25/26/32/37 + MG-23 + BLE-22/38/39/40 done; 84/126 done, 41 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 40 | 0 | 85 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-22/38/39/40 + MG-23 + RF-3 done; 85/126 done, 40 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **42** | **0** | **235** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **41** | **0** | **236** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -4591,7 +4591,7 @@ async fn read_config(&self) -> Result<(RadioProfile, i8), LoRaLinkError>;
 #### RF-3: P0 SOS is refused on LoRa while 40 % of the legal budget sits unused
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed · Tier 4 · commit 329743f · 2026-08-29 · work-conserving shares: bucket cap only enforced when lower-priority demand exists in window; updated 2 tests
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:161-175` (`budget_fraction`/`cap_ms`), `419-435` (`check_and_consume`)
 - **What:** the bucket cap is applied **unconditionally**, not "under contention" as its own doc comment claims. `bucket_remaining` is derived only from that bucket's own past usage; nothing checks whether the other buckets have any demand. A P0 send is therefore refused once P0 has used 21 600 ms even when the global budget has 14 400 ms free and no P1/P2/P3 traffic exists.
