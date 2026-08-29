@@ -295,6 +295,48 @@ impl CostLedger for FanoutLedger {
 
 // ==== Cost guard (D-3 / DEC-SAT-0003) ====
 
+/// RF-18: monotonic guard — mirrors lora.rs `MonotonicGuard` exactly. The
+/// spend guard uses a CAS-based backward clamp (SAT-RT-102) but had no
+/// forward-jump defence; `MonotonicGuard` bounds how far ahead `now()` can
+/// jump per call to at most "previous output + real elapsed + tolerance".
+/// Used when a real wall clock is injected (`new()`) but skipped when a
+/// test-controlled clock is injected (`with_clock()`).
+struct SatMonotonicGuard {
+    anchor: std::time::Instant,
+    last_out: u64,
+    last_elapsed_ms: u64,
+}
+
+impl SatMonotonicGuard {
+    fn new() -> Self {
+        SatMonotonicGuard {
+            anchor: std::time::Instant::now(),
+            last_out: 0,
+            last_elapsed_ms: 0,
+        }
+    }
+
+    fn bound(&mut self, raw: u64) -> u64 {
+        let elapsed = self.anchor.elapsed().as_millis() as u64;
+        if self.last_out == 0 {
+            self.last_out = raw;
+            self.last_elapsed_ms = elapsed;
+            return raw;
+        }
+        let real_delta = elapsed.saturating_sub(self.last_elapsed_ms);
+        let ceiling = self
+            .last_out
+            .saturating_add(real_delta)
+            .saturating_add(SAT_MONOTONIC_TOLERANCE_MS);
+        let out = raw.min(ceiling).max(self.last_out);
+        self.last_out = out;
+        self.last_elapsed_ms = elapsed;
+        out
+    }
+}
+
+const SAT_MONOTONIC_TOLERANCE_MS: u64 = 1_000;
+
 /// Successful admission. `requires_confirmation` is true ONLY for
 /// discretionary P1/P2 when the config asks for confirmation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -348,6 +390,9 @@ pub struct SatelliteCostGuard {
     /// entry carries its admission token for exact-token refunds).
     hourly: Mutex<VecDeque<HourEntry>>,
     day_index: AtomicU64,
+    /// RF-21: P0 sends metered separately — exempt from REFUSAL but still
+    /// counted so daily_spend_inr() reports the true financial picture.
+    p0_today: AtomicU32,
     p12_today: AtomicU32,
     mailbox_today: AtomicU32,
     ledger: Arc<dyn CostLedger>,
@@ -356,6 +401,9 @@ pub struct SatelliteCostGuard {
     /// backward wall-clock step can neither reset daily counters nor freeze
     /// hourly pruning (lesson mirrored verbatim from lora RT-102).
     last_ms: AtomicU64,
+    /// RF-18: forward-jump guard. `None` when a test-controlled clock is
+    /// injected (via `with_clock`); `Some` for real wall clock (`new`).
+    monotonic: Option<Mutex<SatMonotonicGuard>>,
     /// SAT-RT-103: unique admission tokens for exact-token refunds.
     next_token: AtomicU64,
     /// RF-22: monotonic timestamp of the last billed mailbox check. Used to
@@ -375,8 +423,21 @@ const DAY_MS: u64 = DAILY_WINDOW_MS;
 
 impl SatelliteCostGuard {
     pub fn new(cfg: CostGuardConfig, ledger: Arc<dyn CostLedger>) -> Self {
-        let now_fn: NowFn = Box::new(system_now_ms);
-        SatelliteCostGuard::with_clock(cfg, ledger, now_fn)
+        SatelliteCostGuard {
+            cfg,
+            hourly: Mutex::new(VecDeque::new()),
+            day_index: AtomicU64::new(u64::MAX),
+            p0_today: AtomicU32::new(0),
+            p12_today: AtomicU32::new(0),
+            mailbox_today: AtomicU32::new(0),
+            ledger,
+            now_fn: Box::new(system_now_ms),
+            last_ms: AtomicU64::new(0),
+            // RF-18: real clock path — guard against forward wall-clock jumps.
+            monotonic: Some(Mutex::new(SatMonotonicGuard::new())),
+            next_token: AtomicU64::new(1),
+            last_mailbox_ms: AtomicU64::new(0),
+        }
     }
 
     pub fn with_clock(cfg: CostGuardConfig, ledger: Arc<dyn CostLedger>, now_fn: NowFn) -> Self {
@@ -384,21 +445,31 @@ impl SatelliteCostGuard {
             cfg,
             hourly: Mutex::new(VecDeque::new()),
             day_index: AtomicU64::new(u64::MAX),
+            p0_today: AtomicU32::new(0),
             p12_today: AtomicU32::new(0),
             mailbox_today: AtomicU32::new(0),
             ledger,
             now_fn,
             last_ms: AtomicU64::new(0),
+            // No forward-jump guard with an injected clock — tests must be
+            // able to jump time freely.
+            monotonic: None,
             next_token: AtomicU64::new(1),
             last_mailbox_ms: AtomicU64::new(0),
         }
     }
 
-    /// SAT-RT-102: monotonic-clamped clock — accepted time never decreases
-    /// (backward wall-clock steps are ignored), and day rollover resets
-    /// today's counters exactly once per boundary on the clamped timeline.
+    /// SAT-RT-102 + RF-18: monotonic-clamped clock — backward steps are
+    /// ignored (RT-102); forward jumps are bounded to real elapsed time when
+    /// the guard is present (RF-18). Day rollover resets today's counters
+    /// exactly once per boundary on the clamped timeline.
     fn now(&self) -> u64 {
-        let t = (self.now_fn)();
+        let raw = (self.now_fn)();
+        // RF-18: clamp forward jumps to at most "prev + real elapsed + tolerance".
+        let t = match &self.monotonic {
+            Some(g) => g.lock().unwrap_or_else(|p| p.into_inner()).bound(raw),
+            None => raw,
+        };
         let mut prev_ms = self.last_ms.load(Ordering::Acquire);
         while t > prev_ms {
             match self
@@ -419,6 +490,7 @@ impl SatelliteCostGuard {
                 .compare_exchange(prev, d, Ordering::AcqRel, Ordering::Acquire)
                 .is_ok()
             {
+                self.p0_today.store(0, Ordering::Release);
                 self.p12_today.store(0, Ordering::Release);
                 self.mailbox_today.store(0, Ordering::Release);
             }
@@ -437,9 +509,13 @@ impl SatelliteCostGuard {
     }
 
     fn daily_spend_cents(&self) -> f64 {
+        // RF-21: include P0 in reported spend (exempt from REFUSAL, not from
+        // accounting — "metered but never blocked").
+        let p0 = self.p0_today.load(Ordering::Relaxed) as f64;
         let p12 = self.p12_today.load(Ordering::Relaxed) as f64;
         let mb = self.mailbox_today.load(Ordering::Relaxed) as f64;
-        p12 * self.cfg.est_cost_per_msg_inr * 100.0 + mb * self.cfg.mailbox_check_cost_inr * 100.0
+        (p0 + p12) * self.cfg.est_cost_per_msg_inr * 100.0
+            + mb * self.cfg.mailbox_check_cost_inr * 100.0
     }
 
     /// Reserve a transmission slot. **P0 always admits** — emergencies never
@@ -448,10 +524,13 @@ impl SatelliteCostGuard {
         let t = self.now();
         let emergency = matches!(priority, MessagePriority::P0 | MessagePriority::P1);
         if matches!(priority, MessagePriority::P0) {
+            // RF-21: meter P0 — exempt from REFUSAL but still counted so
+            // daily_spend_inr() reports the true financial picture. Reset
+            // on day boundary like p12_today (handled in now()).
+            self.p0_today.fetch_add(1, Ordering::Relaxed);
             self.ledger.record(LedgerEvent::TxAdmitted { emergency });
-            // P0 is untracked by design (SOS-exempt); token 0 marks it
-            // unrefundable (SAT-RT-101: classification authority lives ABOVE
-            // the transport — RECORDED obligation).
+            // Token 0 marks it unrefundable (SAT-RT-101: classification
+            // authority lives ABOVE the transport — RECORDED obligation).
             return Ok(GuardAdmission {
                 requires_confirmation: false,
                 token: 0,
@@ -1126,7 +1205,11 @@ impl SatelliteTransport {
                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| hook(msg.priority)))
                         .unwrap_or(false)
                 }
-                None => true, // core policy: auto-confirm; UI wiring later
+                // RF-20: fail-closed — no hook = no approval. Headless nodes
+                // that never need user confirmation must set
+                // CostGuardConfig { confirm_discretionary_p1_p2: false }
+                // so this branch is never reached (requires_confirmation=false).
+                None => false,
             };
             if !approved {
                 self.guard.refund_tx(admission.token);
@@ -1758,6 +1841,9 @@ mod tests {
     async fn tx_failure_refunds_guard_rt104() {
         let (_clock, guard) = fake_guard(0, CostGuardConfig::default());
         let t = SatelliteTransport::with_guard("sat-0", guard);
+        // RF-20: default config has confirm_discretionary_p1_p2=true; install
+        // an approving hook so the guard passes and the link error surfaces.
+        t.set_confirm_hook(Some(Arc::new(|_| true))).await;
         let (a, _b) = sim_pair();
         t.attach_adapter(a.clone()).await.expect("adapter opens");
 
