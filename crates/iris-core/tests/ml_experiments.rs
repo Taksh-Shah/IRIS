@@ -13,7 +13,7 @@
 //! AC-5  >=10 seeds × periodic+random regimes run reproducibly.
 //! AC-6  cargo test --workspace green + clippy 0 (CI gate).
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use iris_core::protocol::MessageId;
 use iris_core::routing::ProphetConfig;
@@ -21,11 +21,19 @@ use iris_core::sim::ml::{evaluate_gt, run_shadow_experiment, GtEval, ShadowRecor
 use iris_core::sim::scenario::{community_ferry, inject_standard, periodic_ferry, random_walk};
 use iris_core::sim::SimOutcome;
 
-fn delivered_ids(out: &SimOutcome) -> HashSet<MessageId> {
-    out.nodes
-        .iter()
-        .flat_map(|n| n.delivered.iter().map(|(id, _)| *id))
-        .collect()
+// SIM-13: preserve delivery timestamps so run_shadow_experiment can label
+// train samples true only when delivery happened before the split.
+// Uses minimum delivery time when the same msg_id is delivered via multiple nodes.
+fn delivered_at(out: &SimOutcome) -> HashMap<MessageId, u64> {
+    let mut map: HashMap<MessageId, u64> = HashMap::new();
+    for n in &out.nodes {
+        for (id, t) in &n.delivered {
+            map.entry(*id)
+                .and_modify(|e| *e = (*e).min(*t))
+                .or_insert(*t);
+        }
+    }
+    map
 }
 
 /// Sparse community + ferry with L2 enabled AND the shadow observer attached.
@@ -109,7 +117,7 @@ fn ac3_lp_agrees_with_l2_on_ferry_test_window() {
     );
     // Temporal split: first half of the timeline is train, second half test.
     let split_at_ms = 7000;
-    let delivered = delivered_ids(&out);
+    let delivered = delivered_at(&out);
     let m = run_shadow_experiment(&out.shadow_samples, &delivered, split_at_ms);
     assert!(
         m.n_train > 0 && m.n_test > 0,

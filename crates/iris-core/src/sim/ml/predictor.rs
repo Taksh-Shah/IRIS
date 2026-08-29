@@ -91,6 +91,7 @@ impl GtPredictor {
         }
         let mut times: Vec<u64> = contact_times_ms.to_vec();
         times.sort_unstable();
+        times.dedup(); // SIM-16: duplicate timestamps produce zero intervals that skew the median
         let mut intervals: Vec<f64> = times.windows(2).map(|w| (w[1] - w[0]) as f64).collect();
         // Median interval — robust to one-off gaps (vehicle + stations).
         intervals.sort_by(|a, b| a.total_cmp(b));

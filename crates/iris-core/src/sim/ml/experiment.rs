@@ -13,7 +13,7 @@
 //!   weights carry no timing model). Robust median should beat the mean only
 //!   when contacts are periodic (ML-001 §3.2, AC-4).
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use crate::protocol::MessageId;
 use crate::sim::ml::features::FeatureVec;
@@ -51,16 +51,44 @@ impl Default for MlMetrics {
 
 /// Run the LP shadow experiment over recorded decisions.
 ///
-/// `delivered_ids` = message ids that were delivered within TTL (from the
-/// same simulation's delivery log — the supervision signal). `split_at_ms`
-/// separates the train (early) from test (late) timeline.
+/// `delivered_at` = delivery timestamps keyed by message id (from the same
+/// simulation's delivery log). `split_at_ms` separates the train (early)
+/// from test (late) timeline.
 pub fn run_shadow_experiment(
     samples: &[ShadowDecision],
-    delivered_ids: &HashSet<MessageId>,
+    delivered_at: &HashMap<MessageId, u64>,
     split_at_ms: u64,
 ) -> MlMetrics {
-    let train: Vec<&ShadowDecision> = samples.iter().filter(|s| s.at_ms < split_at_ms).collect();
-    let test: Vec<&ShadowDecision> = samples.iter().filter(|s| s.at_ms >= split_at_ms).collect();
+    // SIM-14: group-stable split — assign each msg_id wholly to train or test
+    // by its first-decision time; prevents the same message from appearing in
+    // both slices (group leakage).
+    let mut first_seen: HashMap<MessageId, u64> = HashMap::new();
+    for s in samples {
+        first_seen
+            .entry(s.msg_id)
+            .and_modify(|e| *e = (*e).min(s.at_ms))
+            .or_insert(s.at_ms);
+    }
+    let train: Vec<&ShadowDecision> = samples
+        .iter()
+        .filter(|s| {
+            first_seen
+                .get(&s.msg_id)
+                .copied()
+                .unwrap_or(u64::MAX)
+                < split_at_ms
+        })
+        .collect();
+    let test: Vec<&ShadowDecision> = samples
+        .iter()
+        .filter(|s| {
+            first_seen
+                .get(&s.msg_id)
+                .copied()
+                .unwrap_or(0)
+                >= split_at_ms
+        })
+        .collect();
     if train.is_empty() || test.is_empty() {
         return MlMetrics {
             n_train: train.len(),
@@ -69,7 +97,14 @@ pub fn run_shadow_experiment(
         };
     }
 
-    let labelled = |s: &ShadowDecision| delivered_ids.contains(&s.msg_id);
+    // SIM-13: label true only when the message was delivered BEFORE the split
+    // (not just "ever delivered") — test-window deliveries must not pollute the
+    // training supervision signal (label leakage).
+    let labelled = |s: &ShadowDecision| {
+        delivered_at
+            .get(&s.msg_id)
+            .is_some_and(|t| *t < split_at_ms)
+    };
     let fit_data: Vec<(FeatureVec, bool)> =
         train.iter().map(|s| (s.features, labelled(s))).collect();
     let predictor = LinearPredictor::fit(&fit_data);
@@ -79,7 +114,7 @@ pub fn run_shadow_experiment(
     let mut best_agree = -1.0f64;
     let mut t = 0.05f32;
     while t < 1.0 {
-        let agree = agreement(&train, &predictor, t, labelled);
+        let agree = agreement(&train, &predictor, t);
         if agree > best_agree {
             best_agree = agree;
             best = t;
@@ -87,7 +122,7 @@ pub fn run_shadow_experiment(
         t += 0.05;
     }
 
-    let decision_agreement = agreement(&test, &predictor, best, labelled);
+    let decision_agreement = agreement(&test, &predictor, best);
     let brier_score = test
         .iter()
         .map(|s| {
@@ -107,11 +142,13 @@ pub fn run_shadow_experiment(
     }
 }
 
+// SIM-15: dropped the unused `_labelled` parameter — agreement measures L3
+// threshold-score vs the L2 decision actually taken (s.l2_decided), never
+// the delivery label, so the closure was dead weight.
 fn agreement(
     samples: &[&ShadowDecision],
     predictor: &LinearPredictor,
     threshold: f32,
-    _labelled: impl Fn(&ShadowDecision) -> bool,
 ) -> f64 {
     if samples.is_empty() {
         return 0.0;
@@ -154,6 +191,7 @@ pub fn evaluate_gt(gateway_contact_times_ms: &[u64], split_at_ms: u64) -> GtEval
     // copy prevents u64 underflow on `w[1]-w[0]` from out-of-order input.
     let mut sorted: Vec<u64> = gateway_contact_times_ms.to_vec();
     sorted.sort_unstable();
+    sorted.dedup(); // SIM-16: duplicate timestamps produce zero intervals that skew the median
     let train: Vec<u64> = sorted
         .iter()
         .copied()
@@ -196,9 +234,77 @@ mod tests {
 
     #[test]
     fn empty_experiment_returns_default_metrics() {
-        let m = run_shadow_experiment(&[], &HashSet::new(), 1000);
+        let m = run_shadow_experiment(&[], &HashMap::new(), 1000);
         assert_eq!(m.n_train, 0);
         assert_eq!(m.n_test, 0);
+    }
+
+    // SIM-13: label leakage guard — a message delivered after split_at_ms must
+    // NOT be labeled true in the training slice.
+    #[test]
+    fn sim13_post_split_delivery_does_not_pollute_train_label() {
+        use crate::sim::ml::ShadowDecision;
+        let zero_fx = crate::sim::ml::features::FeatureVec::new([0.0; 8]);
+        let msg_a = MessageId([1u8; 16]); // first seen pre-split → train
+        let msg_b = MessageId([2u8; 16]); // first seen post-split → test
+        let samples = vec![
+            ShadowDecision {
+                msg_id: msg_a,
+                at_ms: 100,
+                src: 0,
+                dst: 1,
+                features: zero_fx,
+                l2_decided: false,
+            },
+            ShadowDecision {
+                msg_id: msg_b,
+                at_ms: 700,
+                src: 1,
+                dst: 0,
+                features: zero_fx,
+                l2_decided: false,
+            },
+        ];
+        // msg_a delivered at t=800 (post-split) → must label false in train
+        // msg_b delivered at t=200 (pre-split) → correctly labeled true in test
+        let mut delivered_at = HashMap::new();
+        delivered_at.insert(msg_a, 800u64);
+        delivered_at.insert(msg_b, 200u64);
+        let m = run_shadow_experiment(&samples, &delivered_at, 500);
+        assert_eq!(m.n_train, 1, "msg_a (first seen t=100) goes to train");
+        assert_eq!(m.n_test, 1, "msg_b (first seen t=700) goes to test");
+    }
+
+    // SIM-14: group leakage guard — the same msg_id must not appear in both
+    // train and test slices.
+    #[test]
+    fn sim14_same_msg_id_not_split_across_train_and_test() {
+        use crate::sim::ml::ShadowDecision;
+        let zero_fx = crate::sim::ml::features::FeatureVec::new([0.0; 8]);
+        let msg = MessageId([3u8; 16]);
+        // Same message observed at t=200 (pre-split) and t=700 (post-split).
+        let samples = vec![
+            ShadowDecision {
+                msg_id: msg,
+                at_ms: 200,
+                src: 0,
+                dst: 1,
+                features: zero_fx,
+                l2_decided: true,
+            },
+            ShadowDecision {
+                msg_id: msg,
+                at_ms: 700,
+                src: 1,
+                dst: 0,
+                features: zero_fx,
+                l2_decided: false,
+            },
+        ];
+        // Group-stable split: first-seen is t=200 < 500 → both samples go to train.
+        let m = run_shadow_experiment(&samples, &HashMap::new(), 500);
+        assert_eq!(m.n_train, 2, "both observations of the same msg go to train");
+        assert_eq!(m.n_test, 0, "test slice is empty (no test-only msg_ids)");
     }
 
     #[test]
