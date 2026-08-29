@@ -89,6 +89,15 @@ pub fn split_payload(payload: &[u8], max_chunk: usize) -> Vec<Vec<u8>> {
 /// Serialized fragment-header overhead (everything before the chunk bytes).
 pub const FRAGMENT_HEADER_LEN: usize = 86;
 
+/// Conservative CBOR envelope encoding overhead per fragment (all non-payload
+/// fields: map header, message_id, sender/recipient ids, priority, ttl,
+/// timestamp, hop_count, payload_type, payload_size, payload_hash,
+/// payload_ref, signature, plus the CBOR byte-array length prefix for the
+/// payload field itself).  Used in MTU budgeting so encoded fragments always
+/// fit within the transport MTU — without this the payload chunk fills the MTU
+/// leaving no room for the envelope wrapper.
+pub const ENVELOPE_CODEC_OVERHEAD: usize = 300;
+
 pub fn encode_fragment(
     index: u16,
     total: u16,

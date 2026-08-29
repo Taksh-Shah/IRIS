@@ -1099,7 +1099,14 @@ impl MessageEngine {
             return Ok(vec![envelope.clone()]);
         }
         // R8: two-fragment model.
-        let usable = max_mtu.saturating_sub(fragment::FRAGMENT_HEADER_LEN);
+        // Reserve both the binary fragment header (FRAGMENT_HEADER_LEN) AND the
+        // CBOR envelope encoding overhead (ENVELOPE_CODEC_OVERHEAD) so the fully
+        // encoded fragment fits within the transport MTU.  Without the codec
+        // margin the chunk fills the raw MTU leaving no room for the ~250B of
+        // CBOR envelope fields, causing send() to return MessageTooLarge.
+        let usable = max_mtu
+            .saturating_sub(fragment::FRAGMENT_HEADER_LEN)
+            .saturating_sub(fragment::ENVELOPE_CODEC_OVERHEAD);
         let parts = split_payload(&envelope.payload, usable.max(64));
         if parts.len() > fragment::MAX_FRAGMENTS as usize {
             return Err(MsgEngineError::BadEnvelope(
