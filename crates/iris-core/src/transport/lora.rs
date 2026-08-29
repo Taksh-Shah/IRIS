@@ -1349,6 +1349,8 @@ pub struct LoRaMetrics {
     tx_unknown_outcome: AtomicU64,
     /// RT-105: inbound frames dropped for malformed SLIP/frame encoding.
     malformed_rx: AtomicU64,
+    /// RF-17: adapter.close() calls that returned an error on teardown.
+    close_failures: AtomicU64,
 }
 
 /// Point-in-time copy of [`LoRaMetrics`].
@@ -1364,6 +1366,8 @@ pub struct LoRaMetricsSnapshot {
     /// RF-4: TX failures where the reservation was kept (unproven no-emission).
     pub tx_unknown_outcome: u64,
     pub malformed_rx: u64,
+    /// RF-17: adapter close errors on detach or shutdown.
+    pub close_failures: u64,
 }
 
 impl LoRaMetrics {
@@ -1397,6 +1401,10 @@ impl LoRaMetrics {
         self.malformed_rx.fetch_add(1, Ordering::Relaxed);
     }
 
+    fn record_close_failure(&self) {
+        self.close_failures.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn snapshot(&self) -> LoRaMetricsSnapshot {
         LoRaMetricsSnapshot {
             packets_tx: self.packets_tx.load(Ordering::Relaxed),
@@ -1408,6 +1416,7 @@ impl LoRaMetrics {
             tx_failures: self.tx_failures.load(Ordering::Relaxed),
             tx_unknown_outcome: self.tx_unknown_outcome.load(Ordering::Relaxed),
             malformed_rx: self.malformed_rx.load(Ordering::Relaxed),
+            close_failures: self.close_failures.load(Ordering::Relaxed),
         }
     }
 }
@@ -1635,7 +1644,14 @@ impl LoRaTransport {
     /// Unavailable (`TransportManager::deregister` removes it from selection).
     pub async fn detach_adapter(&self) {
         if let Some(adapter) = self.adapter.write().await.take() {
-            adapter.close().await.ok();
+            if let Err(e) = adapter.close().await {
+                tracing::warn!(
+                    target: "iris.transport.lora",
+                    error = %e,
+                    "adapter close failed on detach; OS handle may be leaked"
+                );
+                self.metrics.record_close_failure();
+            }
         }
         if self.state.load() >= TransportState::Available {
             self.set_state(TransportState::Unavailable);
@@ -2029,10 +2045,24 @@ impl Transport for LoRaTransport {
         self.shutdown_flag.store(true, Ordering::Release);
         // RT-103: take the adapter out of the slot so a post-shutdown attach
         // can never silently resurrect a closed dongle behind Available state.
-        if let Some(adapter) = self.adapter.write().await.take() {
-            adapter.close().await.ok();
-        }
+        let close_err = if let Some(adapter) = self.adapter.write().await.take() {
+            adapter.close().await.err()
+        } else {
+            None
+        };
         self.set_state(TransportState::Unavailable);
+        if let Some(e) = close_err {
+            self.metrics.record_close_failure();
+            tracing::warn!(
+                target: "iris.transport.lora",
+                error = %e,
+                "adapter close failed on shutdown"
+            );
+            return Err(TransportError::Io {
+                kind: std::io::ErrorKind::Other,
+                msg: e.to_string(),
+            });
+        }
         Ok(())
     }
 }

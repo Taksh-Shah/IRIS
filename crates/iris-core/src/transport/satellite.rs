@@ -794,6 +794,8 @@ pub struct SatelliteMetrics {
     tx_failures: AtomicU64,
     malformed_rx: AtomicU64,
     mailbox_checks: AtomicU64,
+    /// RF-17: adapter.close() calls that returned an error on teardown.
+    close_failures: AtomicU64,
 }
 
 /// Point-in-time copy of [`SatelliteMetrics`].
@@ -809,6 +811,8 @@ pub struct SatelliteMetricsSnapshot {
     pub tx_failures: u64,
     pub malformed_rx: u64,
     pub mailbox_checks: u64,
+    /// RF-17: adapter close errors on detach or shutdown.
+    pub close_failures: u64,
 }
 
 macro_rules! sat_metric_accessors {
@@ -836,7 +840,8 @@ sat_metric_accessors!(
     confirmation_denied,
     tx_failures,
     malformed_rx,
-    mailbox_checks
+    mailbox_checks,
+    close_failures
 );
 
 // ==== SatelliteTransport — the Transport impl wiring it together ====
@@ -967,7 +972,14 @@ impl SatelliteTransport {
     /// Unavailable (`TransportManager::deregister` removes it from selection).
     pub async fn detach_adapter(&self) {
         if let Some(adapter) = self.adapter.write().await.take() {
-            adapter.close().await.ok();
+            if let Err(e) = adapter.close().await {
+                tracing::warn!(
+                    target: "iris.transport.satellite",
+                    error = %e,
+                    "adapter close failed on detach; modem session may be leaked"
+                );
+                self.metrics.close_failures().fetch_add(1, Ordering::Relaxed);
+            }
         }
         if self.state.load() >= TransportState::Available {
             self.set_state(TransportState::Unavailable);
@@ -1301,10 +1313,24 @@ impl Transport for SatelliteTransport {
         self.shutdown_flag.store(true, Ordering::Release);
         // RT-103: take the adapter out so post-shutdown attach cannot
         // resurrect a closed device behind Available state.
-        if let Some(adapter) = self.adapter.write().await.take() {
-            adapter.close().await.ok();
-        }
+        let close_err = if let Some(adapter) = self.adapter.write().await.take() {
+            adapter.close().await.err()
+        } else {
+            None
+        };
         self.set_state(TransportState::Unavailable);
+        if let Some(e) = close_err {
+            self.metrics.close_failures().fetch_add(1, Ordering::Relaxed);
+            tracing::warn!(
+                target: "iris.transport.satellite",
+                error = %e,
+                "adapter close failed on shutdown"
+            );
+            return Err(TransportError::Io {
+                kind: std::io::ErrorKind::Other,
+                msg: e.to_string(),
+            });
+        }
         Ok(())
     }
 }
