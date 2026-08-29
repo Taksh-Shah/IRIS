@@ -291,11 +291,11 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-10** | Medium | `ble.rs:829-842` | A partially-written message leaves the peer's reassembler permanently poisoned; no in-flight tracking | ⬜ |
 | **BLE-11** | Medium | `ble.rs:897-904` | `parse_mac` silently converts malformed input into a valid-looking address | ⬜ |
 | **BLE-12** | Medium | `ble.rs:888-895` | `to_transport_err` collapses three distinct, differently-actionable failures into `NotSupported` | ⬜ |
-| **BLE-13** | Medium | `ble.rs:560-564` | `.drain(..).take(n)` silently destroys every scan result past `max_peers` | ⬜ |
+| **BLE-13** | Medium | `ble.rs:560-564` | `.drain(..).take(n)` silently destroys every scan result past `max_peers` | ✅ |
 | **BLE-14** | Medium | `ble.rs:583-605` | Blocking GATT connect/read/disconnect inside a synchronous closure in an async fn, with no timeout | ⬜ |
 | **BLE-15** | Medium | `ble.rs:637-679` | Advertising/scan handles are never cleared, and a failed re-advertise leaves a stale handle behind | ⬜ |
-| **BLE-16** | Medium | `ble.rs:779-785` | BLE inbound drops are invisible; Wi-Fi Aware counts the same event | ⬜ |
-| **BLE-17** | Medium | `ble.rs:477-512` | Scan backoff escalates permanently and is never reset by a successful scan | ⬜ |
+| **BLE-16** | Medium | `ble.rs:779-785` | BLE inbound drops are invisible; Wi-Fi Aware counts the same event | ✅ |
+| **BLE-17** | Medium | `ble.rs:477-512` | Scan backoff escalates permanently and is never reset by a successful scan | ✅ |
 | **BLE-18** | Medium | `ble.rs:828` | The service UUID is used as the data characteristic UUID | ⬜ |
 | **BLE-19** | Medium | `ble.rs:533-627` | BLE `discover_peers` ignores `DiscoveryConfig::filter` and `::timeout` | ⬜ |
 | **BLE-20** | Low | `ble_advert.rs:58-60` | `CapabilityBits::set` in `ble_advert` does not mask reserved bits — the builder can emit a beacon its own parser rejects | ⬜ |
@@ -2407,7 +2407,7 @@ hung JNI call hangs the caller indefinitely. (BLE-35)
 |---|---|---|
 | ble.rs:720-722 | `set_mtu(..).unwrap_or(MTU_DEFAULT)` | MTU negotiation failed vs. genuinely negotiated 23 (BLE-7) |
 | ble.rs:597-600 | `.ok()?` ×3 on connect/read/parse | which of connect, read, or parse failed on an iOS probe (BLE-14) |
-| ble.rs:779 | `let _ = incoming.send(..)` | inbound message dropped for want of a subscriber (BLE-16) |
+| ble.rs:710 | ~~`let _ = incoming.send(..)`~~ → `is_err()` + `fetch_add` | inbound message dropped for want of a subscriber (BLE-16) ✅ |
 | ble.rs:901 | `u8::from_str_radix(..).unwrap_or(0)` | the MAC was malformed (BLE-11) |
 | ble.rs:888-895 | `to_transport_err` | `PermissionDenied` vs `AdapterOff` vs `NotSupported` (BLE-12) |
 | ble.rs:159/161/163 (trait) | `stop_scan`/`stop_advertising`/`disconnect_gatt` return `()` | that the stop/disconnect failed (BLE-15) |
@@ -2997,7 +2997,7 @@ let stored_mtu = if self.ios_leg {
 
 #### BLE-13: `.drain(..).take(n)` silently destroys every scan result past `max_peers`
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:560-564` (fn `discover_peers`)
 - **What:** `Vec::drain(..)` removes the entire range when the `Drain` guard is dropped, regardless of
@@ -3125,7 +3125,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-16: BLE inbound drops are invisible; Wi-Fi Aware counts the same event
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:779-785` vs `crates/iris-core/src/transport/wifiaware.rs:788-798`
 - **What:** The BLE poller discards the send result; the Wi-Fi Aware poller increments a counter for
@@ -3165,7 +3165,7 @@ let beacon = tokio::time::timeout(PROBE_TIMEOUT,
 
 #### BLE-17: Scan backoff escalates permanently and is never reset by a successful scan
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:477-512` (fn `scan_allowed`)
 - **What:** `scan_backoff_s` only ever grows. Nothing resets it after a quiet period or a successful

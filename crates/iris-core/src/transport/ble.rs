@@ -515,6 +515,9 @@ pub struct BleTransport {
     /// (iOS `maximumWriteValueLength`), not the MTU — translated via
     /// `ble_att::payload_to_mtu` (DEC-BLE-002-0004).
     ios_leg: bool,
+    /// BLE-16: count frames dropped because the inbound broadcast channel has
+    /// no subscriber yet (early-connect window). Mirrors wifiaware.rs:dropped_inbound.
+    dropped_inbound: std::sync::Arc<std::sync::atomic::AtomicU64>,
 }
 
 /// Scan-restart ceiling: max scan starts in the window.
@@ -573,6 +576,7 @@ impl BleTransport {
             scan_backoff_s: std::sync::Mutex::new(0),
             refused_until: std::sync::RwLock::new(None),
             ios_leg: false,
+            dropped_inbound: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 
@@ -658,6 +662,7 @@ impl BleTransport {
         handle: GattHandle,
         peer_id: PeerId,
         tid: TransportId,
+        dropped_inbound: std::sync::Arc<std::sync::atomic::AtomicU64>,
     ) -> tokio::task::AbortHandle {
         let task = tokio::spawn(async move {
             // GAP-12: this poller ran a fixed 50ms sleep forever, with no
@@ -703,12 +708,15 @@ impl BleTransport {
                     }
                     match recon.push(&w.data, std::time::Instant::now()) {
                         Ok(Some(payload)) => {
-                            incoming.send(IncomingMessage {
+                            // BLE-16: count frames dropped due to no subscriber.
+                            if incoming.send(IncomingMessage {
                                 peer_id,
                                 transport_id: tid.0.clone(),
                                 payload,
                                 received_at: std::time::Instant::now(),
-                            }).ok();
+                            }).is_err() {
+                                dropped_inbound.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            }
                         }
                         Ok(None) => {} // awaiting more chunks
                         Err(_) => {}   // malformed frame dropped (adversarial-safe)
@@ -737,6 +745,7 @@ impl BleTransport {
         let pollers = self.pollers.clone();
         let incoming_tx = self.incoming_tx.clone();
         let tid = self.id.clone();
+        let dropped_inbound_accept = self.dropped_inbound.clone();
         let task = tokio::spawn(async move {
             // Handles already turned into a spawned poller — an accepted
             // connection is reported on every drain until it disconnects
@@ -773,6 +782,7 @@ impl BleTransport {
                         accepted.handle,
                         peer_id,
                         tid.clone(),
+                        dropped_inbound_accept.clone(),
                     );
                     if let Some(prev) = pollers.write().unwrap_or_else(|p| p.into_inner()).insert(peer_id, abort) {
                         prev.abort();
@@ -848,6 +858,11 @@ impl BleTransport {
             *self.refused_until.write().unwrap_or_else(|p| p.into_inner()) = Some(until);
             return false;
         }
+        // BLE-17: reset the backoff when the window is quiet (times is empty after
+        // expiry — no burst in the last SCAN_WINDOW seconds).
+        if times.is_empty() {
+            *self.scan_backoff_s.lock().unwrap_or_else(|p| p.into_inner()) = 0;
+        }
         times.push_back(now);
         true
     }
@@ -917,15 +932,14 @@ impl Transport for BleTransport {
             let handle = adapter.start_scan(filter).map_err(to_transport_err)?;
             *scan_handle = Some(handle);
         }
-        // Drain scan results produced by the adapter (real impl: Android
-        // BluetoothLeScanner callbacks; simulated: inject_scan_result). Advert
-        // floods are bounded BEFORE materializing the Vec (BLE-RT-C007) — the
-        // cap applies to allocation, not just the candidate output.
-        let results: Vec<ScanResult> = adapter
-            .scan_results()
-            .drain(..)
-            .take(config.max_peers)
-            .collect();
+        // Drain the first max_peers scan results. BLE-13: drain(..).take(n)
+        // removes and discards the whole Vec's tail — use a bounded drain so
+        // results past the cap are left queued for the next pass (BLE-RT-C007).
+        let results: Vec<ScanResult> = {
+            let mut q = adapter.scan_results();
+            let n = q.len().min(config.max_peers);
+            q.drain(..n).collect()
+        };
         let max_peers = config.max_peers;
         // iOS-leg probe budget: connect-to-identify probes are the most
         // expensive BLE op; cap consecutive probes per discovery pass at the
@@ -1210,6 +1224,7 @@ impl Transport for BleTransport {
             handle,
             peer.peer_id,
             self.id.clone(),
+            self.dropped_inbound.clone(),
         );
         // Abort any previous poller for this peer (a reconnect after a partial
         // teardown must not leave the old task draining the shared queue).
