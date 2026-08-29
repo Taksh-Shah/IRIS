@@ -493,21 +493,36 @@ mod tests {
     }
 
     #[test]
-    fn oversized_declared_total_rejected() {
+    fn max_total_with_missing_chunks_stays_pending() {
+        // BLE-24: the old name "oversized_declared_total_rejected" was wrong —
+        // u16::MAX (65535) is within MAX_MESSAGE_BYTES so nothing is rejected.
+        // The test name now matches what it actually asserts: a large but valid
+        // total with a missing second chunk leaves the message pending.
         let mut r = Reassembler::new();
-        // total = 65,535 (u16::MAX) is the largest expressible value and is
-        // within the allowed bound, so push the *reassembly* over the budget
-        // via a frame that declares more chunks than data could ever fill.
         let mut frame = Vec::new();
         frame.extend_from_slice(&u16::MAX.to_be_bytes()); // total = 65535
         frame.extend_from_slice(&0u16.to_be_bytes()); // msg_id
         frame.push(0); // idx
         frame.push(2); // count = 2 chunks
         frame.push(0);
-        // count=2, idx=0 valid; message stays partial (never completes because
-        // the second chunk never arrives). Just assert no panic and pending grows.
         assert_eq!(r.push(&frame, Instant::now()).unwrap(), None);
         assert_eq!(r.pending(), 1);
+    }
+
+    #[test]
+    fn out_of_range_chunk_index_is_rejected() {
+        // BLE-24: real decode_frame rejection — idx >= count must produce
+        // BadChunkIndex. (Note: total cannot exceed u16::MAX = MAX_MESSAGE_BYTES,
+        // so a total-too-large rejection test is not meaningful until BLE-23 adds
+        // byte-level caps and lowers the effective limit.)
+        let mut frame = Vec::new();
+        frame.extend_from_slice(&10u16.to_be_bytes()); // total
+        frame.extend_from_slice(&0u16.to_be_bytes()); // msg_id
+        frame.push(3); // idx = 3
+        frame.push(3); // count = 3 — idx(3) >= count(3) → BadChunkIndex
+        frame.push(0); // one data byte
+        let mut r = Reassembler::new();
+        assert_eq!(r.push(&frame, Instant::now()).unwrap_err(), FrameError::BadChunkIndex);
     }
 
     #[test]
