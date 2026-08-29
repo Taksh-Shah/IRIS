@@ -28,7 +28,7 @@
 
 use std::collections::VecDeque;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -112,7 +112,8 @@ pub struct ComplianceConfig {
 impl Default for ComplianceConfig {
     fn default() -> Self {
         ComplianceConfig {
-            freq_hz: 866_000_000,
+            // RF-8: IN865_1 per SPECTRUM_CONSIDERATIONS.md §2.1 (865.0625 MHz)
+            freq_hz: 865_062_500,
             max_erp_dbm: 14,
             duty_percent: 1.0,
             window_ms: 3_600_000,
@@ -649,12 +650,13 @@ pub struct RadioProfile {
     pub preamble_symbols: u8,
 }
 
-/// Default link profile: SF9 / BW125 kHz / CR4/5 @ 866.0 MHz.
+/// Default link profile: SF9 / BW125 kHz / CR4/5 @ IN865_1 (865.0625 MHz).
 pub const DEFAULT_RADIO_PROFILE: RadioProfile = RadioProfile {
     sf: 9,
     bandwidth_khz: 125,
     coding_rate_denom: 5,
-    freq_hz: 866_000_000,
+    // RF-8: IN865_1 per SPECTRUM_CONSIDERATIONS.md §2.1 (865.0625 MHz)
+    freq_hz: 865_062_500,
     preamble_symbols: 8,
 };
 
@@ -664,7 +666,8 @@ pub const P0_RADIO_PROFILE: RadioProfile = RadioProfile {
     sf: 12,
     bandwidth_khz: 125,
     coding_rate_denom: 5,
-    freq_hz: 866_000_000,
+    // RF-8: IN865_1 per SPECTRUM_CONSIDERATIONS.md §2.1 (865.0625 MHz)
+    freq_hz: 865_062_500,
     preamble_symbols: 8,
 };
 
@@ -1608,6 +1611,9 @@ pub struct LoRaTransport {
     /// send actually needs a different profile than what's already
     /// active — avoiding a `configure` round trip on every single send.
     last_configured_profile: Mutex<Option<RadioProfile>>,
+    /// RF-11: consecutive tx() failures; resets on success. Demotes to
+    /// Degraded at threshold so the manager stops ranking a dead link first.
+    consecutive_tx_failures: AtomicU32,
 }
 
 // SYS-2: deadline constants for LoRa adapter calls.
@@ -1636,6 +1642,7 @@ impl LoRaTransport {
             last_priority: AtomicU8::new(MessagePriority::P4.as_u8()),
             shutdown_flag: AtomicBool::new(false),
             last_configured_profile: Mutex::new(None),
+            consecutive_tx_failures: AtomicU32::new(0),
         }
     }
 
@@ -1677,11 +1684,9 @@ impl LoRaTransport {
         let cfg = self.tracker.compliance_config();
         if reported_profile.freq_hz != cfg.freq_hz {
             // Cross-checks RadioProfile.freq_hz against ComplianceConfig.
-            // freq_hz — today's DEFAULT_RADIO_PROFILE/P0_RADIO_PROFILE and
-            // ComplianceConfig both happen to pin 866_000_000 Hz, but
-            // nothing enforced them staying in agreement (RF-1's evidence
-            // section: "two unrelated constants both happening to be
-            // 866_000_000").
+            // freq_hz — DEFAULT_RADIO_PROFILE/P0_RADIO_PROFILE and
+            // ComplianceConfig all pin IN865_1 (865_062_500 Hz); this
+            // assertion catches any drift (RF-1 evidence section).
             return Err(LoRaLinkError::Io(format!(
                 "module reports {} Hz, compliance config pins {} Hz",
                 reported_profile.freq_hz, cfg.freq_hz
@@ -1915,7 +1920,22 @@ impl LoRaTransport {
                     tracing::debug!(target: "iris.transport.lora", "tx failed with unproven outcome; budget kept (fail-closed)");
                 }
             }
+            // RF-11: count consecutive failures; demote to Degraded after 3.
+            let n = self.consecutive_tx_failures.fetch_add(1, Ordering::Relaxed) + 1;
+            if n >= 3 && self.state.load() == TransportState::Connected {
+                tracing::warn!(
+                    target: "iris.transport.lora",
+                    failures = n,
+                    "demoting to Degraded after consecutive tx failures"
+                );
+                self.set_state(TransportState::Degraded);
+            }
             return Err(lora_link_err("lora link tx", e));
+        }
+        // RF-11: successful tx — reset failure streak and recover to Connected.
+        let prev = self.consecutive_tx_failures.swap(0, Ordering::Relaxed);
+        if prev > 0 && self.state.load() == TransportState::Degraded {
+            self.set_state(TransportState::Connected);
         }
         self.metrics.record_tx(encoded.len(), airtime);
         tracing::debug!(
@@ -2202,7 +2222,7 @@ mod tests {
     #[test]
     fn compliance_default_pins_wpc_table_i() {
         let cfg = ComplianceConfig::default();
-        assert_eq!(cfg.freq_hz, 866_000_000);
+        assert_eq!(cfg.freq_hz, 865_062_500, "IN865_1 primary channel per SPECTRUM_CONSIDERATIONS §2.1");
         assert_eq!(cfg.max_erp_dbm, 14, "25 mW e.r.p. == 14 dBm");
         assert_eq!(cfg.duty_percent, 1.0);
         assert_eq!(cfg.window_ms, 3_600_000);

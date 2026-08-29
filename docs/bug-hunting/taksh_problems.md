@@ -4976,7 +4976,7 @@ if g.len() >= MAX_BACKLOG_ENTRIES {
 #### RF-18: The satellite spend guard has **no** forward-clock-jump guard — the LoRa fix was never mirrored
 - **Severity:** High  *(as filed: Critical — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 9d9650e  ·  2026-08-29  ·  `SatMonotonicGuard` added, mirrors `MonotonicGuard` in lora.rs; forward-jump bounded to real elapsed time
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/satellite.rs:387-417` (fn `now`)
 - **What:** `SatelliteCostGuard::now()` implements only the **backward** monotonic floor. There is no `MonotonicGuard` equivalent of `lora.rs:264-293`. A forward wall-clock step immediately (a) changes `day_index`, resetting `p12_today` and `mailbox_today` to zero, and (b) prunes the entire rolling hourly window.
@@ -5007,7 +5007,7 @@ if g.len() >= MAX_BACKLOG_ENTRIES {
 #### RF-19: The `Expensive`-transport priority gate does not exist in the selector — P3+ can be selected onto satellite and then hard-fails with no fallback
 - **Severity:** High
 - **Verdict:** PARTIALLY-CORRECT. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (subsumed by MG-9)  ·  Tier 4  ·  filter added to `select_transports`: `cost_class != Expensive || priority <= P2`
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/satellite.rs:1008-1016` (transport-side gate); `crates/iris-core/src/transport/manager.rs:136-163` (`select_transports`), `172-205` (`score_transport`)
 - **What:** the transport correctly rejects P3+. But nothing upstream keeps P3+ from *selecting* it. `score_transport` has no `cost_class` gate at all — the only cost handling is a score penalty, and it is applied only when `prefer_low_cost || priority >= P4`, so **P3 gets no penalty whatsoever**. `select_transports` then does `candidates.truncate(1)` for non-multipath, so if satellite scores highest the message has exactly one selected transport, which is guaranteed to refuse it.
@@ -5049,7 +5049,7 @@ if g.len() >= MAX_BACKLOG_ENTRIES {
 #### RF-20: "User is warned before the satellite send" is a no-op — the hook has zero production callers and defaults to auto-approve
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 9d9650e  ·  2026-08-29  ·  `None => false` (fail-closed); headless nodes opt in via `confirm_discretionary_p1_p2: false`
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/satellite.rs:1050-1068` (fn `try_send_inner`), `962-966` (`set_confirm_hook`)
 - **What:** `confirm_discretionary_p1_p2` defaults to `true` (line 123), so `requires_confirmation` is set — and then the confirmation branch treats "no hook installed" as **approved**. `grep -rn "set_confirm_hook" crates/ --include=*.rs` returns hits **only** in `satellite.rs` itself (definition at 964, test at 1518, test at 1874). Nothing in the app, FFI, or bridge ever installs one.
@@ -5073,7 +5073,7 @@ if g.len() >= MAX_BACKLOG_ENTRIES {
 #### RF-21: P0 satellite sends are completely unmetered and unrecorded — unbounded spend and a lying spend meter
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 9d9650e  ·  2026-08-29  ·  `p0_today: AtomicU32` added to `SatelliteCostGuard`; counted separately, reset with daily window, surfaced in snapshot
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/satellite.rs:437-449` (fn `admit_tx`), `429-433` (`daily_spend_cents`), `539-542` (`daily_spend_inr`)
 - **What:** the P0 path returns before touching `hourly`, `p12_today`, or any counter. It is not merely exempt from *refusal* (which is the intended SOS exemption) — it is exempt from *accounting*. There is no P0 counter anywhere, and `daily_spend_inr()` therefore reports only P1/P2 + mailbox spend.
