@@ -145,11 +145,15 @@ impl DiscoveryBeacon {
         })
     }
 
-    /// Surface the short id as a zero-padded `PeerId` for the discovery stream.
+    /// Surface the short id as a sentinel-padded `PeerId` for the discovery stream.
     /// The full 32-byte identity is resolved only after the GATT handshake /
     /// verified advertisement (IDENT-001); here it is a candidate hint.
+    ///
+    /// BLE-8: upper 16 bytes are set to `0xFF` so a candidate id can never
+    /// collide with a verified `PeerId` (derived from a 32-byte public-key hash
+    /// with cryptographically negligible probability of all-ones upper half).
     pub fn candidate_peer_id(&self) -> PeerId {
-        let mut id = [0u8; 32];
+        let mut id = [0xFFu8; 32];
         id[..16].copy_from_slice(&self.peer_short);
         PeerId(id)
     }
@@ -256,13 +260,14 @@ mod tests {
     }
 
     #[test]
-    fn candidate_peer_id_pads_short_id() {
+    fn candidate_peer_id_uses_sentinel_upper_half() {
         let mut short = [0u8; 16];
         short[0] = 0xDE;
         let b = DiscoveryBeacon::build(CapabilityBits::empty(), short, 0);
         let parsed = DiscoveryBeacon::parse(&b).unwrap();
         let id = parsed.candidate_peer_id();
+        // lower 16 bytes = peer_short; upper 16 bytes = 0xFF sentinel (BLE-8)
         assert_eq!(&id.0[..16], &short);
-        assert_eq!(&id.0[16..], &[0u8; 16]);
+        assert_eq!(&id.0[16..], &[0xFFu8; 16]);
     }
 }
