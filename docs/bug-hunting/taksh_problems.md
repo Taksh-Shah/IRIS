@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 53 | 0 | 72 | 1 | 0 | **IN PROGRESS 2026-08-29** — MG-1/2/4/9/11/13/21, GAP-2/3/6, RF-1/4/5/7/10/14/16/29/30/31/33/41, BLE-14/15/18/19/20/21/23/31/33/34/35, TAK-7/8, SIM-9/43 area backfills, internet/GAP-8/10/11/13 fixes, manager shutdown/scoring — 72/126 done, 53 remaining, 1 blocked (TLS — supply-chain gate) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 50 | 0 | 75 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-8/24/26 added; 75/126 done, 50 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **54** | **0** | **223** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **51** | **0** | **226** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -2776,7 +2776,7 @@ let stored_mtu = if self.ios_leg {
 #### BLE-8: Unauthenticated advert bytes become `IncomingMessage.peer_id`
 - **Severity:** Low  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** REFUTED (as a security finding); the hygiene point stands as Low. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 2bec35b  ·  2026-08-29
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/ble.rs:619-624`, `:743`, `:779-784`; `crates/iris-core/src/transport/ble_advert.rs:144-148` (fn `candidate_peer_id`)
 - **What:** The 16-byte `peer_short` from an unsigned, unauthenticated advertisement is zero-padded to
@@ -3446,7 +3446,7 @@ if partial.bytes > partial.total { return Err(FrameError::Truncated); }   // fai
 
 #### BLE-24: Tests that pass regardless of the logic they claim to cover
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 2379d96, 4f9f40f  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble_att.rs:481-497`, `crates/iris-core/src/transport/ble.rs:1583-1586`, `:2027-2057`, `:1818-1846`
 - **What:** Four tests do not test what their names assert.
@@ -3532,7 +3532,7 @@ if partial.bytes > partial.total { return Err(FrameError::Truncated); }   // fai
 
 #### BLE-26: `ScanFilter::rssi_threshold` is never set and `ScanResult::rssi` is never read
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 4f9f40f  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/ble.rs:74-77` (`ScanFilter`), `:127-134` (`ScanResult`), `:543-553` (the only filter construction)
 - **What:** Both RSSI fields are plumbed all the way through the FFI and then ignored by the transport.
