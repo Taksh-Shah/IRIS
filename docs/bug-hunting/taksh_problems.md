@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 35 | 0 | 90 | 1 | 0 | **IN PROGRESS 2026-08-29** — BLE-22/38/39/40 + MG-23 + RF-3/9/12/13/17/24/34 done; 90/126 done, 35 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 29 | 0 | 96 | 1 | 0 | **IN PROGRESS 2026-08-29** — RF-22/23/28 + RF-15 + RF-44 + GAP-1 fixed after 90/126 rollup; 96/126 done, 29 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **35** | **0** | **241** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **29** | **0** | **247** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -4901,7 +4901,7 @@ if g.len() >= MAX_BACKLOG_ENTRIES {
 
 #### RF-15: The whole link-budget model is unwired, and its distance clamp makes far links look reachable
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `31a3ec2`  ·  2026-08-29  ·  `okumura_hata_urban_loss_db` now returns `None` when distance is outside the [1, 20] km validity range and `delivery_probability` returns 0.0 for out-of-range distances — the old clamp made far links look reachable by silently pinning to the 20 km boundary value
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:1010-1077` (`SimLinkBudget`), specifically `1036-1044` and `1066-1076`
 - **What:** `okumura_hata_urban_loss_db` clamps distance into `[0.01, 20]` km **before** computing loss, so `delivery_probability` at 200 km returns the 20 km value. And `grep -rn "SimLinkBudget\|max_range_km" crates/ --include=*.rs` shows **no caller anywhere** outside this module's own tests — the model feeds no routing, no cost snapshot, no capability.
@@ -5318,7 +5318,7 @@ match *slot {
 
 #### RF-28: The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `b19c452`  ·  2026-08-29  ·  capped `spawn_poller`'s backlog deque to `MAX_INBOUND_BACKLOG=64` frames; frames beyond the cap are counted and dropped rather than accumulating without bound
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:947-982` (fn `spawn_poller`)
 - **What:** `backlog.extend(adapter.incoming().await)` appends everything the adapter returns, but only `MAX_FRAMES_PER_TICK` (8) are forwarded per tick. If the adapter returns more than 8 per 10 ms, the deque grows without bound. The trait contract for `incoming()` (line 223-224) places **no** limit on the returned count — the 8-per-call cap exists only in the simulator (`SimP2pCoordinator::MAX_DRAIN_PER_CALL`, line 382).
@@ -10663,7 +10663,7 @@ Explicitly **verified clean**: all three discovery-beacon *framings* (`ble_adver
 
 #### GAP-1: Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized
 - **Severity:** High
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit `1541276`  ·  2026-08-29  ·  added `fragment::ENVELOPE_CODEC_OVERHEAD = 300` (conservative margin for all CBOR envelope fields); `serialize_for_transport` now subtracts both `FRAGMENT_HEADER_LEN` and `ENVELOPE_CODEC_OVERHEAD` from the usable chunk size, so encoded fragments fit within the MTU. Verified by `m7_fragmented_encrypted_message_reassembles_and_verifies` which was timing out at 2.09s (fragment 0 silently rejected by SimulatedTransport as MessageTooLarge, only fragment 1 reached the broadcast channel)
 - **Confidence:** Certain
 - **Blind spot:** B1 — cross-boundary size contract
 - **Location:** `crates/iris-core/src/message_engine/mod.rs:1091-1140` (`serialize_for_transport`), consumed at `mod.rs:1217-1240`

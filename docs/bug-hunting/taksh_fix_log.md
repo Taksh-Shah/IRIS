@@ -1678,8 +1678,61 @@ of the RF-1..23 LoRa/satellite duty-cycle cluster (RF-1/4/5/7/10/14/16)
 across Wakes RF-A and RF-B — 16 remain (RF-2/3/6/8/9/11/12/13/15/17,
 the rest of lora.rs; RF-18..23, the satellite spend-guard cluster).
 
-### Next run (Run 21)
-Wake RF-C (LoRa continues): RF-2, RF-3, RF-9 — a natural next cluster.
+## Run 21 — 2026-08-29 — Green tree restoration + crypto_e2e CBOR overhead fix
+
+**Context.** Run 20 ended with a single deliberately-unfixed integration
+test failure (`m7_fragmented_encrypted_message_reassembles_and_verifies`)
+tagged as task_2b02c5f4. This run opened with the diagnosis already done
+from the previous context window and applied the fix before starting Tier
+4 RF-C work.
+
+**Three pre-existing green-tree breaks surfaced on `git pull origin main`:**
+- `sim_scenarios.rs`, `sysval_dtn_multihop.rs`, `sysval_mesh_integration.rs`:
+  latent breaks introduced by 60+ upstream commits from concurrent sessions;
+  restored to green.
+- `ml_experiments.rs` AC-3: `split_at_ms=7000` made the test window empty
+  (all community_ferry messages are first-seen before 7000ms); corrected to
+  250ms, which places 4 train messages and 14 test messages into distinct
+  windows as designed (with proper group-stable split comments matching the
+  existing ML test spec).
+
+**BLE-8 completion.** `candidate_peer_id()` in `ble_advert.rs` was already
+corrected by Sohan's session (commit 2bec35b, upper 16 bytes → 0xFF) but
+`candidate_key_for()` in `ble.rs` still used `[0u8;32]`. The lookup table
+key and the advertised candidate key were structurally mismatched; any
+`send(real_peer)` call that needed to fall back to the candidate form failed
+with `NotConnected`. Fixed `candidate_key_for()` to `[0xFFu8;32]`; hw5_
+send_by_real_peer_id passes.
+
+**Satellite ledger double-write seam fix.** `ledger_records_every_mutation_
+double_write_seam` test config was wrong in two ways: (a) `daily_budget_inr=22`
+meant the second P2 only cost 2000c against a 2200c budget and passed rather
+than failing; fixed to 15 (1500c budget), (b) default `min_mailbox_interval=
+300s` made both `record_mailbox_check()` calls no-ops at t=0; fixed to 0 for
+both guard configs.
+
+**crypto_e2e CBOR envelope overhead (CR-1).** `serialize_for_transport`'s
+chunk-size formula `usable = max_mtu - FRAGMENT_HEADER_LEN` was incomplete:
+CBOR encoding adds ~250 bytes of fixed envelope overhead (map header, ids,
+timestamps, signature, payload CBOR length prefix) on top of the raw binary
+payload. Fragment 0's encoded size ≈ 65775B exceeded the 65536B MTU →
+`SimulatedTransport.send()` returned `MessageTooLarge` silently, fragment 0
+never reached the broadcast channel, fragment 1 appeared as "f0" in the test
+stream and the wait for "f1" timed out after 2.09s. Fixed by introducing
+`fragment::ENVELOPE_CODEC_OVERHEAD = 300` (conservative margin covering all
+envelope fields) and subtracting it from `usable`. With `usable = 65536 −
+86 − 300 = 65150`: encoded fragment 0 ≈ 65486B ≤ MTU ✓; encoded fragment 1
+≈ 5190B ✓. All 3 crypto_e2e tests pass; full workspace 716 lib tests pass.
+
+**§8 accounting:** 0 new Tier 4 findings fixed this run (green tree + infra
+fix only). Tier 4: 90 of 126 done, 35 remaining, 1 blocked (TAK-6, TLS).
+Committed as `5e4206f` (session fixes) and `1541276` (crypto_e2e).
+
+### Next run (Run 22)
+Wake RF-C (LoRa): RF-2 — duty budget lost on process restart (DutyLedger
+persistence seam, mirrors satellite's CostLedger). RF-3 and RF-9 were
+already fixed by prior sessions (commits 329743f, 6ee3f6b) and are marked
+✅ in the problems doc.
 RF-2: no persistence for the duty budget across process restarts (a
 crash-loop or force-stop/reopen resets the hourly budget to 100% for
 free) — needs a new `DutyLedger` seam mirroring satellite's existing
