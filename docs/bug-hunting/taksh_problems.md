@@ -369,7 +369,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-3** | Medium | `manager.rs:152-160` | `total_cmp` does not reject NaN — a NaN score sorts **first** and wins selection | ✅ `5852ff2` |
 | **MG-4** | Medium | `manager.rs:178-206` | Unbounded `log2(bandwidth)` term overrides the state ordering — Degraded outranks Connected | ⬜ |
 | **MG-5** | Medium | `manager.rs:156-160` | No fallback candidate for P2–P7 — the manager provides no transport-level failover at all | ⬜ |
-| **MG-6** | Medium | `manager.rs:109-117` | `deregister` holds the registry write lock across `transport.shutdown().await` | ⬜ |
+| **MG-6** | Medium | `manager.rs:109-117` | `deregister` holds the registry write lock across `transport.shutdown().await` | ✅ `bf19112` |
 | **MG-7** | Medium | `manager.rs:84-106` | State-forwarder task is spawned before the duplicate check and is never aborted on deregister | ✅ bf19112 |
 | **MG-8** | Medium | `manager.rs:78-81` | `topology_events()` has zero subscribers — transport state changes are broadcast into a void | ⬜ |
 | **MG-9** | Medium | `manager.rs:173-207` | `TransportCostClass` is never consulted — `Expensive` (satellite) is not gated on priority | ⬜ |
@@ -6032,7 +6032,7 @@ if req.message_size > 10_000 {
 #### MG-6: `deregister` holds the registry write lock across `transport.shutdown().await`
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. High the moment hot-unplug is wired. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit bf19112  ·  2026-08-29  ·  Same commit as MG-7: the new `deregister` extracts the transport in a scoped block (dropping the registry lock), then calls `shutdown().await` after the lock is released. The prior code bound `transport` inside the write guard's scope.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:109-117` (fn `deregister`)
 - **What:** The `tokio::sync::RwLock` write guard is alive across an unbounded `.await`. Every reader — `select_transports`, `get`, `list` — is blocked for the entire duration of a hardware teardown.
