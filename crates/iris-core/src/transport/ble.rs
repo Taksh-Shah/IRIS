@@ -577,6 +577,10 @@ const SCAN_BACKOFF_MAX_S: u64 = 30;
 // A hung connectGatt call blocks the node indefinitely without these.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 const MTU_TIMEOUT: Duration = Duration::from_secs(10);
+/// BLE-14: per-probe deadline (connect + read + disconnect). CoreBluetooth's
+/// own connect timeout is ~5 s; cap the whole triple at 8 s so a stalled
+/// probe cannot hold the executor indefinitely.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 
 impl BleTransport {
     pub fn new(adapter: Option<std::sync::Arc<dyn BleAdapter>>) -> Self {
@@ -1003,72 +1007,90 @@ impl Transport for BleTransport {
         // and close the probe. The result is candidate-level only, never a
         // trust boundary (DEC-BLE-002-0006); malformed/absent identify reads
         // drop the peer without panic (AC-6).
+        // BLE-14: probe the iOS-leg GATT characteristic inside spawn_blocking
+        // with a per-probe timeout so stalled CoreBluetooth connects cannot
+        // hold the tokio executor thread indefinitely. Previously this ran
+        // synchronously inside a filter_map closure with no timeout.
         let mut probe_count: usize = 0;
-        let peers: Vec<PeerInfo> = results
-            .into_iter()
-            .take(max_peers)
-            .filter_map(|r| {
-                // Connect-to-identify (iOS leg ONLY, BLE-RT-C001): on Android
-                // the ad-carried beacon is the discovery payload — an empty
-                // payload means "not an IRIS peer", never a probe target.
-                // Gating on ios_leg prevents blind GATT connects against
-                // ambient non-IRIS advertising on the production Android leg.
-                let probe_guard = &mut probe_count;
-                let beacon = if r.payload.is_empty() && self.ios_leg {
-                    // Probe budget (BLE-RT-C001/003): at most probe_budget
-                    // connect/read/disconnect cycles per discovery pass.
-                    if *probe_guard == probe_budget {
-                        return None;
-                    }
-                    *probe_guard += 1;
-                    let handle = adapter.connect_gatt(r.address).ok()?;
-                    let payload = adapter.gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC).ok();
-                    adapter.disconnect_gatt(handle);
-                    DiscoveryBeacon::parse(&payload?).ok()
-                } else if r.payload.is_empty() {
-                    None
-                } else {
-                    DiscoveryBeacon::parse(&r.payload).ok()
-                }?;
-                let mut addresses = Vec::with_capacity(1);
-                addresses.push((
-                    "ble".to_string(),
-                    format!(
-                        "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                        r.address.0[0],
-                        r.address.0[1],
-                        r.address.0[2],
-                        r.address.0[3],
-                        r.address.0[4],
-                        r.address.0[5]
-                    ),
-                ));
-                let candidate_id = beacon.candidate_peer_id();
-                // BLE-19: honour DiscoveryConfig::filter — only emit peers the
-                // caller asked for (None = all, mirroring wifiaware.rs:891-895).
-                if let Some(filter) = config.filter.as_ref() {
-                    if !filter.contains(&candidate_id) {
-                        return None;
-                    }
+        let mut peers: Vec<PeerInfo> = Vec::new();
+        for r in results.into_iter().take(max_peers) {
+            // Connect-to-identify (iOS leg ONLY, BLE-RT-C001): on Android
+            // the ad-carried beacon is the discovery payload — an empty
+            // payload means "not an IRIS peer", never a probe target.
+            // Gating on ios_leg prevents blind GATT connects against
+            // ambient non-IRIS advertising on the production Android leg.
+            let beacon_opt: Option<DiscoveryBeacon> = if r.payload.is_empty() && self.ios_leg {
+                // Probe budget (BLE-RT-C001/003): at most probe_budget
+                // connect/read/disconnect cycles per discovery pass.
+                if probe_count >= probe_budget {
+                    continue;
                 }
-                // HW-9: record this address's candidate id so the
-                // accept-poller (a connection WE did not dial, so its
-                // GATT-server callback only ever sees a MAC, never a beacon)
-                // can attribute it to a peer we've independently seen while
-                // scanning, exactly as `send()`'s HW-5 candidate resolution
-                // already treats this same value.
-                self.known_addresses
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner())
-                    .insert(r.address, candidate_id);
-                Some(PeerInfo {
-                    peer_id: candidate_id,
-                    addresses: Vec::new(),
-                    transport_addresses: addresses,
-                    last_seen: Some(std::time::Instant::now()),
-                })
-            })
-            .collect();
+                probe_count += 1;
+                let adapter2 = adapter.clone();
+                let addr = r.address;
+                // Run the blocking GATT triple on a dedicated thread with a
+                // deadline so a stalled probe never monopolises the executor.
+                match tokio::time::timeout(
+                    PROBE_TIMEOUT,
+                    tokio::task::spawn_blocking(move || -> Option<DiscoveryBeacon> {
+                        let handle = adapter2.connect_gatt(addr).ok()?;
+                        let payload = adapter2.gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC).ok();
+                        adapter2.disconnect_gatt(handle);
+                        DiscoveryBeacon::parse(&payload?).ok()
+                    }),
+                )
+                .await
+                {
+                    Ok(Ok(b)) => b,
+                    _ => continue,
+                }
+            } else if r.payload.is_empty() {
+                continue;
+            } else {
+                DiscoveryBeacon::parse(&r.payload).ok()
+            };
+            let beacon = match beacon_opt {
+                Some(b) => b,
+                None => continue,
+            };
+            let mut addresses = Vec::with_capacity(1);
+            addresses.push((
+                "ble".to_string(),
+                format!(
+                    "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                    r.address.0[0],
+                    r.address.0[1],
+                    r.address.0[2],
+                    r.address.0[3],
+                    r.address.0[4],
+                    r.address.0[5]
+                ),
+            ));
+            let candidate_id = beacon.candidate_peer_id();
+            // BLE-19: honour DiscoveryConfig::filter — only emit peers the
+            // caller asked for (None = all, mirroring wifiaware.rs:891-895).
+            if let Some(filter) = config.filter.as_ref() {
+                if !filter.contains(&candidate_id) {
+                    continue;
+                }
+            }
+            // HW-9: record this address's candidate id so the
+            // accept-poller (a connection WE did not dial, so its
+            // GATT-server callback only ever sees a MAC, never a beacon)
+            // can attribute it to a peer we've independently seen while
+            // scanning, exactly as `send()`'s HW-5 candidate resolution
+            // already treats this same value.
+            self.known_addresses
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .insert(r.address, candidate_id);
+            peers.push(PeerInfo {
+                peer_id: candidate_id,
+                addresses: Vec::new(),
+                transport_addresses: addresses,
+                last_seen: Some(std::time::Instant::now()),
+            });
+        }
         Ok(Box::pin(futures_util::stream::iter(peers)))
     }
 
