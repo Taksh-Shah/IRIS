@@ -282,11 +282,32 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     val group = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)
                     val info = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
-                    group?.let { groupState.update(it) }
                     // Group formation is the only point at which the GO address
                     // and this node's role are known — stand the data path up here.
                     if (info != null && info.groupFormed) {
+                        group?.let { groupState.update(it) }
                         callbackScope.launch { onGroupFormed(info, group) }
+                    } else {
+                        // HW-21: this branch never existed — the receiver
+                        // was confirmed live to keep p2p_send()-ing (and
+                        // Rust's connect() reuse check kept short-circuiting
+                        // Ok) against a group that had already gone away at
+                        // the OS level, surfacing as "not connected to peer"
+                        // only on the NEXT send attempt, reactively, after
+                        // the failure already happened — this is exactly
+                        // the ACK path's symptom (fails to reply moments
+                        // after successfully receiving a message on the
+                        // same, by-then-stale, link). Researched pattern
+                        // (Android's own WIFI_P2P_CONNECTION_CHANGED_ACTION
+                        // docs + WifiP2pInfo.groupFormed): a `false` here
+                        // IS the platform's own disconnect signal — tear
+                        // down the data path and clear cached group state
+                        // immediately instead of waiting to discover it the
+                        // hard way. Reuses the exact cleanup shutdown()
+                        // already performs on a deliberate teardown.
+                        closeDataPath()
+                        groupState.clear()
+                        cachedGoAddr = null
                     }
                 }
             }
