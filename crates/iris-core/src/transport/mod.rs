@@ -322,12 +322,21 @@ pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
             match rx.recv().await {
                 Ok(item) => return Some((item, rx)),
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                    INBOUND_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
+                    // MG-22: separate state-stream lag (topology loss) from
+                    // message-stream lag (data loss) — state lag is more severe
+                    // because the routing engine may never recover the missed edge.
+                    let is_state = label.ends_with(".state") || label.ends_with(".availability");
+                    if is_state {
+                        STATE_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
+                    } else {
+                        INBOUND_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
+                    }
                     tracing::warn!(
-                        event = "transport.inbound_lagged",
+                        event = if is_state { "transport.state_lagged" } else { "transport.inbound_lagged" },
                         transport = label,
                         skipped,
-                        "inbound transport buffer overran; messages were dropped"
+                        "transport buffer overran; {} were dropped",
+                        if is_state { "state transitions" } else { "messages" }
                     );
                     continue;
                 }
@@ -337,12 +346,20 @@ pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
     }))
 }
 
-/// Count of inbound messages dropped because a receive buffer overran.
+/// Count of inbound data messages dropped because a receive buffer overran.
 static INBOUND_LAGGED_TOTAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// Count of transport state-change events dropped due to buffer overrun (MG-22).
+static STATE_LAGGED_TOTAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// Total inbound messages lost to receive-buffer overrun since process start.
+/// Total inbound data messages lost to receive-buffer overrun since process start.
 pub fn inbound_lagged_total() -> u64 {
     INBOUND_LAGGED_TOTAL.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Total transport state-change events dropped due to buffer overrun since process start.
+/// A non-zero value means the routing engine may have missed topology changes.
+pub fn state_lagged_total() -> u64 {
+    STATE_LAGGED_TOTAL.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Minutes since UNIX epoch mod 2^16 — the shared freshness clock for all

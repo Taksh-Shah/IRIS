@@ -6361,7 +6361,7 @@ internet.rs:446-458   bandwidth_available_bps: self.caps.typical_throughput_bps 
 
 #### MG-18: `StubTransport` — a silent blackhole that reports success — ships in the public API
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (subsumed by SYS-6)  ·  Tier 4  ·  `#[cfg(any(test, feature = "test-support"))]` already applied; not compiled into release builds
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:228-331`
 - **What:** `StubTransport` is declared `pub` outside any `#[cfg(test)]` block (the test module begins at `:333`). It is compiled into the release library and reachable as `iris_core::transport::manager::StubTransport`. Its `send()` unconditionally returns a successful `SendReceipt`.
@@ -6540,7 +6540,7 @@ Used for state streams at `ble.rs:530`, `internet.rs:347`, `lora.rs:1536`, `sate
 
 #### MG-23: `set_send_priority_hint` is a no-op in every wireless transport except LoRa
 - **Severity:** Low
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed (subsumed by MG-24)  ·  Tier 4  ·  default no-op body added to trait (commit c5c5ace); redundant overrides in BLE/Wi-Fi Aware/Wi-Fi Direct removed
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/mod.rs:386-387` (trait); impls at `ble.rs:862-864`, `wifiaware.rs:1077-1079`, `wifi_direct.rs:1308-1310`
 - **What:** The trait method exists on the hot path (`message_engine/mod.rs:1237` calls it before every send) and does nothing in three of five real transports.

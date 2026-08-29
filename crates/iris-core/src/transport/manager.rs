@@ -181,6 +181,8 @@ impl TransportManager {
             // MG-2: exclude Connecting — it passes `>= Available` by discriminant (=2) but cannot yet carry traffic.
             .filter(|t| matches!(t.state(), TransportState::Available | TransportState::Degraded | TransportState::Connected))
             .filter(|t| req.fragmentable || t.capabilities().max_message_size >= req.message_size)
+            // MG-15: honour the caller's hard latency deadline when set.
+            .filter(|t| req.max_latency_ms.map_or(true, |m| t.capabilities().typical_latency_ms <= m))
             // MG-9: Expensive transports (satellite) only for P0–P2; P3+ hard-fails with no fallback.
             .filter(|t| {
                 t.capabilities().cost_class != TransportCostClass::Expensive
