@@ -126,48 +126,39 @@ pub struct IncomingNdpData {
 
 /// Publish configuration for the NAN session (infrastructure profile: the
 /// publish instance carries the beacon in `service_specific_info`).
+///
+/// BLE-37: `service_name`, `instance_id`, `cached`, and `ttl_s` are policy-
+/// reserved placeholders. The Kotlin bridge hard-codes all four values and
+/// never reads them from `FfiPublishConfig` — threading them through the FFI
+/// is future work. Only `service_specific_info` (the 22-byte IRIS discovery
+/// beacon) is both populated by Rust and consumed by the Android bridge.
 #[derive(Debug, Clone)]
 pub struct PublishConfig {
-    /// Cluster identity `nan_service` string (INFRA.md naming; carrier
-    /// allow-list decides the exact value per market).
-    ///
-    /// FFI-19: this field is never read by Kotlin's `publishConfig()` —
-    /// both `publish()` and `subscribe()` hard-code `IRIS_SERVICE_NAME =
-    /// "com.iris.mesh.v1"` directly rather than threading this value
-    /// through. Unlike Wi-Fi Direct's DNS-SD (where a foreign advertiser's
-    /// response is silently accepted unless Rust validates it), NAN's own
-    /// publish/subscribe match is service-name-filtered by the OS stack
-    /// itself — a subscriber with a different service name simply never
-    /// discovers this publisher, so leaving this unwired doesn't create
-    /// Wi-Fi Direct's cross-advertiser leak. The default below is kept in
-    /// sync with Kotlin's constant so the two don't silently drift again.
+    /// NAN service name string. Currently NOT threaded through the FFI —
+    /// Kotlin hard-codes `IRIS_SERVICE_NAME = "com.iris.mesh.v1"` directly
+    /// (FFI-19). The default is kept in sync with Kotlin's constant. When
+    /// carrier-specific service names are needed this field must be wired
+    /// into `FfiPublishConfig` and the Kotlin `publishConfig()` call.
     pub service_name: String,
     /// Matched-instance visibility: `-1` = every IRIS neighbor; else the
-    /// 4-octet service instance id.
+    /// 4-octet service instance id. Not threaded through the FFI (BLE-37).
     pub instance_id: i16,
-    /// Publishing stays cached across display-off (availability churn §3.5).
+    /// Publish set cached across display-off (§3.5 availability churn).
+    /// Not threaded through the FFI (BLE-37).
     pub cached: bool,
+    /// Session TTL in seconds. Not threaded through the FFI (BLE-37).
     pub ttl_s: u16,
     /// The IRIS discovery beacon (`WifiAwareBeacon::build`, 22 bytes) to
-    /// publish as NAN `service_specific_info`. FFI-4: this field didn't
-    /// exist at all — `start_advertising` called `publish(&PublishConfig
-    /// ::default())`, ignoring the `NodeAdvertisement` it was given, and
-    /// Kotlin's own `publish()` never read its config argument either
-    /// (`FfiPublishConfig` had no field to carry the beacon bytes even if
-    /// it had). No beacon was ever put on the air, so `WifiAwareBeacon
-    /// ::parse` rejected every peer's `service_specific_info` as
-    /// zero-length and Wi-Fi Aware discovery yielded zero peers,
-    /// permanently, on real hardware.
+    /// publish as NAN `service_specific_info`. Populated by
+    /// `start_advertising` from the node's real `PeerId` (FFI-4 fix) and
+    /// forwarded to the Android bridge via `FfiPublishConfig`.
     pub service_specific_info: Vec<u8>,
 }
 
 impl Default for PublishConfig {
     fn default() -> Self {
         PublishConfig {
-            // FFI-19: was "IRIS" — a value that existed only here and never
-            // crossed the seam. Aligned to Kotlin's actual, functioning
-            // IRIS_SERVICE_NAME constant.
-            service_name: "com.iris.mesh.v1".to_string(),
+            service_name: "com.iris.mesh.v1".to_string(), // matches Kotlin IRIS_SERVICE_NAME
             instance_id: -1,
             cached: true,
             ttl_s: 60,
