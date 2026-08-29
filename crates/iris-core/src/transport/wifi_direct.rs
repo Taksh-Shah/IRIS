@@ -1233,7 +1233,11 @@ impl WifiDirectTransport {
     fn discovery_should_rearm(&self) -> bool {
         let mut slot = self.discovery_until.lock().unwrap_or_else(|p| p.into_inner());
         match *slot {
-            None => true,
+            None => {
+                // RF-24: first call — arm the window and allow the start.
+                *slot = Some(Instant::now() + DISCOVERY_WINDOW);
+                true
+            }
             Some(until) if Instant::now() >= until => {
                 *slot = Some(Instant::now() + DISCOVERY_WINDOW);
                 true
@@ -1878,6 +1882,22 @@ mod tests {
             .await;
         assert_eq!(peers2.len(), 1);
         assert_eq!(ta.state(), TransportState::Available);
+    }
+
+    #[tokio::test]
+    async fn rf24_discovery_rearm_window_gates_second_call() {
+        // RF-24: the None arm of discovery_should_rearm must arm the window,
+        // so that a second call within DISCOVERY_WINDOW returns false and does
+        // NOT invoke start_discovery() again (battery drain fix).
+        let ta = WifiDirectTransport::new(None::<Arc<dyn WifiDirectAdapter>>);
+        // First call: slot is None → arms the window, returns true.
+        assert!(ta.discovery_should_rearm(), "first call arms and returns true");
+        assert!(
+            ta.discovery_until.lock().unwrap_or_else(|p| p.into_inner()).is_some(),
+            "slot must be Some after the first arm"
+        );
+        // Second call within the window: slot is Some(future) → returns false.
+        assert!(!ta.discovery_should_rearm(), "second call within window returns false");
     }
 
     /// WD-AC-8 — lifecycle: shutdown aborts the poller, removes the group, and
