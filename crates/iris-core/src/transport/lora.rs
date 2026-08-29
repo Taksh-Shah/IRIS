@@ -504,10 +504,19 @@ impl DutyCycleTracker {
         prune_locked(&mut q, window, now);
         let (used, by_bucket) = usage_locked(&q);
         let global_remaining = budget.saturating_sub(used);
+        let bi = bucket_index(bucket);
         let cap = bucket.cap_ms(budget);
-        let bucket_remaining = cap.saturating_sub(by_bucket[bucket_index(bucket)]);
+        let bucket_remaining = cap.saturating_sub(by_bucket[bi]);
 
-        if airtime_ms <= global_remaining && airtime_ms <= bucket_remaining {
+        // RF-3: work-conserving shares. The 60/25/10/5 splits are a fairness
+        // policy "under contention" (LORA.md §Duty Cycle, REQ-ROUTE-C-002).
+        // Only enforce the bucket cap when lower-priority demand actually sits
+        // in the window; otherwise let the bucket borrow unused spectrum from
+        // lower-priority slots without exceeding the absolute legal cap.
+        let contended = q.iter().any(|r| bucket_index(r.bucket) > bi);
+        let effective_remaining = if contended { bucket_remaining } else { global_remaining };
+
+        if airtime_ms <= global_remaining && airtime_ms <= effective_remaining {
             let token = self.next_token.fetch_add(1, Ordering::Relaxed);
             q.push_back(TxRecord {
                 start_ms: now,
@@ -523,12 +532,13 @@ impl DutyCycleTracker {
             });
         }
 
-        // RT-107: find the earliest record expiry that satisfies BOTH
+        // RT-107: find the earliest record expiry that satisfies the binding
         // constraints (walking every record — an absolute-oversize request
-        // finds none and waits out the full window).
+        // finds none and waits out the full window). When not contended only
+        // global budget recovery matters; when contended both global and bucket
+        // must recover (conservative: ignores mid-walk contention changes).
         let mut g_left = global_remaining;
         let mut b_left = bucket_remaining;
-        let bi = bucket_index(bucket);
         let mut chosen: Option<u64> = None;
         for r in q.iter() {
             let expires = r.start_ms + window;
@@ -536,7 +546,9 @@ impl DutyCycleTracker {
             if bucket_index(r.bucket) == bi {
                 b_left += r.airtime_ms;
             }
-            if airtime_ms <= g_left && airtime_ms <= b_left {
+            let global_ok = airtime_ms <= g_left;
+            let bucket_ok = !contended || airtime_ms <= b_left;
+            if global_ok && bucket_ok {
                 chosen = Some(expires + 1 - now);
                 break;
             }
@@ -2128,22 +2140,26 @@ mod tests {
 
     #[test]
     fn duty_bucket_caps_enforced_proportionally() {
-        let (_clock, tracker) = fake_tracker(1_000_000);
-        // Bulk cap = 5% of 36 s = 1800 ms.
-        tracker
-            .check_and_consume(MessagePriority::P4, 1_800)
-            .expect("exactly the bulk share fits");
-        let err = tracker
-            .check_and_consume(MessagePriority::P4, 1_000)
-            .expect_err("bulk bucket exhausted even though global budget is free");
-        assert!(err.remaining_fraction > 0.9, "global mostly untouched");
-        assert_eq!(err.delay_ms, 3_600_001, "window frees at oldest expiry");
+        // RF-3: bucket caps are work-conserving — only enforced under contention
+        // from lower-priority demand in the window.
 
-        // Emergency cap = 60% = 21,600 ms.
+        // P0 cap enforced when P1 demand creates contention.
+        let (_clock, t1) = fake_tracker(1_000_000);
+        t1.check_and_consume(MessagePriority::P0, 21_600)
+            .expect("p0 share fits");
+        t1.check_and_consume(MessagePriority::P1, 100)
+            .expect("add p1 to create contention");
+        let err = t1
+            .check_and_consume(MessagePriority::P0, 5_000)
+            .expect_err("P0 bucket cap enforced when lower-priority p1 demand exists");
+        assert!(err.remaining_fraction > 0.0, "global budget not fully consumed");
+
+        // P0 can borrow unused airtime when no lower-priority demand sits in window.
         let (_c2, t2) = fake_tracker(1_000_000);
         t2.check_and_consume(MessagePriority::P0, 21_600)
             .expect("p0 share fits");
-        assert!(t2.check_and_consume(MessagePriority::P0, 5_000).is_err());
+        t2.check_and_consume(MessagePriority::P0, 5_000)
+            .expect("no lower-priority contention — P0 borrows from unused shares");
     }
 
     #[test]
@@ -2188,16 +2204,16 @@ mod tests {
 
     #[test]
     fn duty_p0_switch_seam_reports_exhaustion_without_hold() {
+        // RF-3: with no lower-priority demand in the window, P0 can borrow
+        // unused airtime from the idle lower-priority shares — no refusal.
         let (clock, tracker) = fake_tracker(1_000_000);
         tracker
             .check_and_consume(MessagePriority::P0, 20_000)
             .expect("under the p0 share");
-        // Remaining global room exists but the P0 share is spent: the seam
-        // surfaces exhaustion so routing switches P0 elsewhere — nothing is
-        // ever held waiting for budget.
-        assert!(tracker
+        // No lower-priority demand → work-conserving: P0 uses global budget.
+        tracker
             .check_and_consume(MessagePriority::P0, 5_000)
-            .is_err());
+            .expect("P0 borrows unused airtime with no lower-priority contention");
         assert!(tracker.duty_cycle_remaining_fraction() > 0.0);
         clock.store(1_000_000 + 3_600_000, Ordering::Relaxed);
         tracker
