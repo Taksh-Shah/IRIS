@@ -67,22 +67,20 @@ Advance to Tier 1: PM-3 (ACK tracker leak), PM-7 (mode ladder), PM-8 (dedup rota
 
 ---
 
-## Run 3 — [DATE] — Tier 1 batch A (PM-3, PM-7, PM-8)
-
-**(Fill in when run begins.)**
+## Run 3 — 2026-08-30 — Tier 1 batch A (PM-3, PM-7, PM-8)
 
 Target findings: PM-3 (High, P0 ACK tracker leak), PM-7 (Medium, disaster mode ladder),
 PM-8 (Medium, dedup rotation by call count).
 
-**Drift notes:** _(fill in)_
+**Drift notes:** All cited locations confirmed accurate against HEAD before edits.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PM-3 | ⬜ | — | — |
-| 2 | PM-7 | ⬜ | — | — |
-| 3 | PM-8 | ⬜ | — | — |
+| 1 | PM-3 | ✅ Fixed | a7c2b4d | register_sent stores timestamp+ttl_seconds; due_retries(now, now_unix) filters expired; drain_expired sweeps GC task; MAX_PENDING_ACKS=8192 cap. Three new tests (p0_leak_stopped_by_ttl_drain, max_pending_cap_evicts_oldest, existing tests updated). requeue_for_retry TtlExpired now calls forget instead of .ok(). PENDING LINUX-CI. |
+| 2 | PM-7 | ✅ Fixed | a7c2b4d | guarded_transition gains triggers:&Triggers param; Normal→Emergency, Emergency→Crisis (hold+trigger), Crisis→Degraded (hold+no trigger) escalation arms added. Four new tests. PENDING LINUX-CI. |
+| 3 | PM-8 | ✅ Fixed | a7c2b4d | DedupEngine::seen() guards current.insert behind !current.contains; replaying_id_does_not_rotate test confirms rotation counter stays at 0 for replayed ids. PENDING LINUX-CI. |
 
-**Batch A closeout:** full workspace build + sweep.
+**Batch A closeout:** ✅ Complete — PM-3, PM-7, PM-8 all fixed.
 
 ### Next run
 PM-9 (clock-skew dead code), PM-10 (fragment MTU override), PM-12 (P0 size limit tests-only), PM-14 (signing scope disagreement).

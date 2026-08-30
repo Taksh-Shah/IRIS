@@ -18,12 +18,12 @@
 | Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
-| 1 | High correctness + Medium safety/protocol | 7 | 0 | 0 | 0 | 7 |
+| 1 | High correctness + Medium safety/protocol | 7 | 3 | 0 | 0 | 4 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 0 | 0 | 0 | 5 |
 | 3 | Structural enhancements | 7 | 0 | 0 | 0 | 7 |
-| **Total** | | **25** | **6** | **0** | **0** | **19** |
+| **Total** | | **25** | **9** | **0** | **0** | **16** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 1 (Tier 0 ✅ COMPLETE)
+**Last updated:** 2026-08-30 · **Active tier:** 1 (Run 3 complete — PM-3, PM-7, PM-8 ✅)
 
 ---
 
@@ -198,7 +198,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-3 — Expired P0 messages are never released from the ACK tracker
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit a7c2b4d (2026-08-30)
 - **File(s):** `crates/iris-core/src/message_engine/ack.rs:183-188`, `:156-164`; retry loop `crates/iris-core/src/message_engine/mod.rs:1308-1344`
 - **Category:** correctness · **Severity:** High
 - **Tier:** 1
@@ -224,7 +224,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-7 — The disaster-mode ladder cannot escalate
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit a7c2b4d (2026-08-30)
 - **File(s):** `crates/iris-core/src/emergency/mode.rs:87-115`, `:53-68`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 1
@@ -245,7 +245,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-8 — Dedup rotation is driven by call count, so replay traffic shrinks the dedup window
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit a7c2b4d (2026-08-30)
 - **File(s):** `crates/iris-core/src/message_engine/dedup.rs:292-308`, `:177-183`; tombstone call `crates/iris-core/src/message_engine/mod.rs:533`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 1
