@@ -73,7 +73,7 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 0 | 0 | 125 | 1 | 0 | **IN PROGRESS 2026-08-30** — Run 22: RF-2/26/27/32/45, BLE-36, MG-5/12/16/19; Run 23: MG-8/14/17, GAP-5 fixed. 125/126 done, 0 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 0 | 0 | 125 | 1 | 0 | **✅ COMPLETE 2026-08-30** — Run 22: RF-2/26/27/32/45, BLE-36, MG-5/12/16/19; Run 23: MG-8/14/17, GAP-5. 125/126 ✅, 1 🔒 blocked (RF-18 TLS, external dep) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
 | **Total** | | **284** | **0** | **0** | **276** | **5** | **0** | | ✅ |
 
