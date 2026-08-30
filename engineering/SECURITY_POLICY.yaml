@@ -30,6 +30,12 @@ key_storage_requirements:
   windows: "Windows Credential Manager or DPAPI-encrypted file"
   macos: "macOS Keychain"
   rule: "Private keys NEVER in plaintext in storage or logs"
+  # v1 DEVIATION (SEC6_AUDIT P1, flagged not fixed): the shipped desktop store
+  # is FileKeyStore — protected-key-file (0600-from-birth, atomic rename,
+  # lock-reclaim, Zeroizing) with PLAINTEXT-AT-REST seeds; no OS keychain /
+  # DPAPI / Argon2id-file layer yet. Deliberate, documented in IDENT_DESIGN.md
+  # §5.3 and IDENT_VERIFICATION.md AC-10; hardening owned by Section 1 under
+  # RT-005. Reconcile this rule or land RT-005 before general availability.
 
 input_validation_requirements:
   - "Validate ALL external input before processing"
@@ -96,5 +102,5 @@ supply_chain_security:
   dependency_audit: "cargo audit on every CI run"
   dependency_review: "New dependencies require: reason, license, maintenance status, security history"
   lockfile: "Cargo.lock committed and verified"
-  allowed_licenses: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unlicense]
-  forbidden_licenses: [GPL, LGPL, AGPL]  # Unless in optional simulation/research code
+  allowed_licenses: [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Unlicense, Zlib, Unicode-3.0, 0BSD, MPL-2.0, WTFPL, CC0-1.0]  # mirrored 1:1 with deny.toml [licenses].allow (SEC6_AUDIT P2)
+  forbidden_licenses: [GPL, LGPL, AGPL]  # Unless in optional simulation/research code. MPL-2.0 is weak copyleft but explicitly allowed above (file-level copyleft, statically linkable); cargo-deny enforces copyleft=deny for the strong-copyleft families.

@@ -8,6 +8,8 @@ version = 2
 
 [advisories]
 # Local advisory DB (mirror of https://github.com/RustSec/advisory-db).
+# Fresh runners fetch a live DB here; refresh cadence is tied to the weekly
+# scheduled sweep (Sunday 02:00 UTC) in ci.yml.
 db-path = "~/.cargo/advisory-db"
 # A security vulnerability is a hard FAIL.
 vulnerability = "deny"
@@ -16,8 +18,40 @@ unmaintained = "deny"
 yanked = "deny"
 # Notice-level advisories are informational; do not fail the gate.
 notice = "warn"
-# No silent suppressions: every entry needs id + reason + expiry.
-ignore = []
+# Suppressions are MIRRORED 1:1 from .cargo/audit.toml (single source of truth
+# for the reason + expiry contract; re-review date 2026-12-31). Any NEW
+# advisory still fails this gate. No silent suppressions.
+ignore = [
+  # ---- Desktop/tray UI-transitive (iris-desktop Tauri v2 shell) ----
+  # gtk-rs GTK3 family (atk/gdk/gtk/glib) = transitive of Tauri v2 / tao / wry
+  # on iris-desktop only; NOT reachable from iris-core. Unmaintained upstream
+  # but pinned by Tauri's stable shell ABI; thin local shell, not mesh attack
+  # surface. Drop when Tauri moves to a maintained GTK4/relm tree.
+  # Expiry: 2026-12-31
+  "RUSTSEC-2024-0412",   # gdk unmaintained
+  "RUSTSEC-2024-0413",   # atk unmaintained
+  "RUSTSEC-2024-0414",   # gdkx11-sys unmaintained
+  "RUSTSEC-2024-0415",   # gtk unmaintained
+  "RUSTSEC-2024-0416",   # atk-sys unmaintained
+  "RUSTSEC-2024-0417",   # gdkx11 unmaintained
+  "RUSTSEC-2024-0418",   # gdk-sys unmaintained
+  "RUSTSEC-2024-0419",   # gtk3-macros unmaintained
+  "RUSTSEC-2024-0420",   # gtk-sys unmaintained
+  "RUSTSEC-2024-0411",   # gdkwayland-sys unmaintained
+  "RUSTSEC-2024-0429",   # glib unsound (VariantStrIter DoubleEndedIterator)
+  # ---- Build-tooling transitive ----
+  # proc-macro-error: transitive build-time dep of syn/quote ecosystem;
+  # no runtime reachability. Expiry: 2026-12-31
+  "RUSTSEC-2024-0370",
+  # ---- unic-* unicode tables (unmaintained upstream) ----
+  # Transitive unicode-table data crates used by macro/parser tooling; no
+  # runtime reachability in iris-core. Expiry: 2026-12-31
+  "RUSTSEC-2025-0081",   # unic-char-property
+  "RUSTSEC-2025-0075",   # unic-char-range
+  "RUSTSEC-2025-0080",   # unic-common
+  "RUSTSEC-2025-0100",   # unic-ucd-ident
+  "RUSTSEC-2025-0098",   # unic-ucd-version
+]
 ignore-with-reason = []
 
 [bans]
@@ -345,6 +379,7 @@ allow = [
   "MIT",
   "Apache-2.0",
   "ISC",
+  "Unlicense",
   "Zlib",
   "BSD-3-Clause",
   "Unicode-3.0",
@@ -365,6 +400,7 @@ licenses.allow = [
   "MIT",
   "Apache-2.0",
   "ISC",
+  "Unlicense",
   "Zlib",
   "BSD-3-Clause",
   "Unicode-3.0",
