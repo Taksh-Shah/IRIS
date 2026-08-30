@@ -55,31 +55,36 @@ pub struct EmergencyAuditRecord {
 }
 
 /// In-memory bounded audit log (ring capacity).
+///
+/// PS-6: backed by `VecDeque` so `append` is O(1) at steady state instead
+/// of O(capacity) memmove. `snapshot` calls `make_contiguous()` — a one-time
+/// reorganise on the diagnostics path, not the hot append path.
 #[derive(Debug, Clone)]
 pub struct AuditLog {
     capacity: usize,
-    records: Vec<EmergencyAuditRecord>,
+    records: std::collections::VecDeque<EmergencyAuditRecord>,
 }
 
 impl AuditLog {
     pub fn new(capacity: usize) -> Self {
+        let cap = capacity.max(1);
         Self {
-            capacity: capacity.max(1),
-            records: Vec::with_capacity(capacity.max(1)),
+            capacity: cap,
+            records: std::collections::VecDeque::with_capacity(cap),
         }
     }
 
     pub fn append(&mut self, record: EmergencyAuditRecord) {
         if self.records.len() >= self.capacity {
-            let overflow = 1 + self.records.len() - self.capacity;
-            self.records.drain(..overflow);
+            self.records.pop_front();
         }
-        self.records.push(record);
+        self.records.push_back(record);
     }
 
     /// Snapshot for UI/diagnostics (audit rows are metadata-safe to display).
-    pub fn snapshot(&self) -> &[EmergencyAuditRecord] {
-        &self.records
+    /// Takes `&mut self` to call `make_contiguous()` on the deque.
+    pub fn snapshot(&mut self) -> &[EmergencyAuditRecord] {
+        self.records.make_contiguous()
     }
 
     pub fn len(&self) -> usize {

@@ -13,7 +13,8 @@
 //! | P3       | 300 s           | 2×      | 3 |
 //! | P4–P7    | 600 s           | 2×      | 2 |
 
-use std::collections::HashMap;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use crate::message::MessagePriority;
@@ -99,9 +100,29 @@ fn ack_ttl_expired(timestamp: u64, ttl_seconds: u64, now_unix: u64) -> bool {
 }
 
 /// ACK/custody tracker: pending map + retry scheduling.
-#[derive(Debug, Default)]
+///
+/// PS-4: A min-heap replaces the O(n) `due_retries` full-map scan.
+/// `retry_heap` stores `(deadline, id)` entries; stale entries (acked or
+/// forgotten before their deadline) are skipped lazily when popped.
+/// Exhausted messages move immediately to `failed` in `record_retry`,
+/// replacing the per-tick O(n) `exhausted()` scan with an O(1) set lookup.
+#[derive(Debug)]
 pub struct AckTracker {
     pending: HashMap<MessageId, PendingAck>,
+    /// Min-heap: `Reverse<(deadline, id)>` so the nearest deadline is on top.
+    retry_heap: BinaryHeap<Reverse<(Instant, MessageId)>>,
+    /// Messages whose attempt budget is exhausted (PS-4 / PM-3).
+    failed: HashSet<MessageId>,
+}
+
+impl Default for AckTracker {
+    fn default() -> Self {
+        Self {
+            pending: HashMap::new(),
+            retry_heap: BinaryHeap::new(),
+            failed: HashSet::new(),
+        }
+    }
 }
 
 impl AckTracker {
@@ -124,6 +145,12 @@ impl AckTracker {
         timestamp: u64,
         ttl_seconds: u64,
     ) {
+        // PS-4: once a message is exhausted it is in `failed`; do not reset
+        // its attempt count if the delivery path re-registers it after the
+        // budget was reached.
+        if self.failed.contains(&id) {
+            return;
+        }
         // PM-3: defense-in-depth cap. P0 messages (max_attempts = None) never
         // exhaust their budget, so a network-split node would grow this map
         // without bound. Evict the entry with the oldest last_attempt_at when
@@ -152,12 +179,16 @@ impl AckTracker {
                 ttl_seconds,
             },
         );
+        // PS-4: push the deadline onto the min-heap (stale entries cleaned lazily).
+        self.retry_heap.push(Reverse((next_retry, id)));
     }
 
     /// Stop tracking `id` without treating it as acknowledged (e.g. the stored
     /// copy is gone, so no retry can ever be dispatched for it).
     pub fn forget(&mut self, id: MessageId) {
         self.pending.remove(&id);
+        self.failed.remove(&id);
+        // Stale heap entry for `id` will be skipped lazily in `due_retries`.
     }
 
     /// Number of messages awaiting acknowledgement.
@@ -167,21 +198,36 @@ impl AckTracker {
 
     /// Record that a retry was dispatched for `id`; returns the *new* policy
     /// state for the caller. `None` if the message is no longer tracked.
+    ///
+    /// PS-4: pushes the new deadline onto the min-heap. If the attempt budget
+    /// is now exhausted the entry moves to `failed` and is removed from
+    /// `pending`, replacing the per-tick O(n) `exhausted()` scan.
     pub fn record_retry(&mut self, id: MessageId, at: Instant) -> Option<RetryState> {
         let entry = self.pending.get_mut(&id)?;
         entry.attempts += 1;
         entry.last_attempt_at = at;
         let policy = retry_policy(entry.priority);
-        entry.next_retry = Some(at + policy.timeout_for_attempt(entry.attempts));
-        Some(RetryState {
+        let next_retry = at + policy.timeout_for_attempt(entry.attempts);
+        entry.next_retry = Some(next_retry);
+        let state = RetryState {
             attempts: entry.attempts,
             max_attempts: policy.max_attempts,
-        })
+        };
+        if policy.max_attempts.map(|m| entry.attempts >= m).unwrap_or(false) {
+            self.pending.remove(&id);
+            self.failed.insert(id);
+        } else {
+            self.retry_heap.push(Reverse((next_retry, id)));
+        }
+        Some(state)
     }
 
     /// Consume an ACK; returns `true` if a pending message was acknowledged.
     pub fn acknowledge(&mut self, id: MessageId) -> bool {
-        self.pending.remove(&id).is_some()
+        let removed = self.pending.remove(&id).is_some();
+        self.failed.remove(&id);
+        // Stale heap entry cleaned lazily in `due_retries`.
+        removed
     }
 
     /// Whether an ACK is still awaited for `id`.
@@ -190,19 +236,33 @@ impl AckTracker {
     }
 
     /// All pending messages whose retry window has passed at `now` and whose
-    /// TTL has not yet expired at `now_unix`. Expired entries are excluded so
-    /// that P0 messages (no attempt cap) stop being retried when their wire TTL
-    /// has passed (PM-3).
-    pub fn due_retries(&self, now: Instant, now_unix: u64) -> Vec<MessageId> {
-        self.pending
-            .iter()
-            .filter(|(_, p)| {
-                !ack_ttl_expired(p.timestamp, p.ttl_seconds, now_unix)
-                    && p.next_retry.map(|t| t <= now).unwrap_or(false)
-                    && p.max_attempts_remaining() > 0
-            })
-            .map(|(id, _)| *id)
-            .collect()
+    /// TTL has not yet expired at `now_unix`.
+    ///
+    /// PS-4: pops from the min-heap rather than scanning the full HashMap.
+    /// Stale heap entries (acked/forgotten since they were pushed) are skipped
+    /// in O(1). Cost: O(k log n) where k is the number of due messages, not O(n).
+    pub fn due_retries(&mut self, now: Instant, now_unix: u64) -> Vec<MessageId> {
+        let mut due = Vec::new();
+        while let Some(Reverse((deadline, id))) = self.retry_heap.peek().copied() {
+            if deadline > now {
+                break; // heap head not yet due; nothing behind it is either
+            }
+            self.retry_heap.pop();
+            // Skip stale: entry was acked or forgotten after being pushed.
+            let Some(p) = self.pending.get(&id) else { continue };
+            // Skip if the stored deadline no longer matches (entry was re-pushed).
+            let stored = p.next_retry.unwrap_or(deadline);
+            if stored != deadline { continue; }
+            if ack_ttl_expired(p.timestamp, p.ttl_seconds, now_unix) { continue; }
+            due.push(id);
+        }
+        due
+    }
+
+    /// Deadline of the nearest pending retry (`None` when queue is empty).
+    /// The ACK task can sleep until this time instead of polling every second.
+    pub fn next_due(&self) -> Option<Instant> {
+        self.retry_heap.peek().map(|Reverse((t, _))| *t)
     }
 
     /// Remove and return the ids of all pending entries whose wire TTL has
@@ -217,23 +277,26 @@ impl AckTracker {
             .collect();
         for id in &expired {
             self.pending.remove(id);
+            self.failed.remove(id);
+            // Stale heap entries for `id` cleaned lazily.
         }
         expired
     }
 
-    /// Messages whose attempt budget is exhausted (candidates for
-    /// `DeliveryFailed`).
-    pub fn exhausted(&self) -> Vec<(MessageId, u32)> {
-        self.pending
-            .iter()
-            .filter(|(_, p)| p.max_attempts_remaining() == 0)
-            .map(|(id, p)| (*id, p.attempts))
-            .collect()
+    /// Messages whose attempt budget is exhausted (candidates for `DeliveryFailed`).
+    ///
+    /// PS-4: O(1) drain from the `failed` set instead of O(n) HashMap scan.
+    /// `record_retry` moves exhausted entries here immediately.
+    pub fn exhausted(&mut self) -> Vec<(MessageId, u32)> {
+        let ids: Vec<MessageId> = self.failed.drain().collect();
+        ids.into_iter().map(|id| (id, 0)).collect()
     }
 
     /// Drop all tracking (e.g. on shutdown).
     pub fn clear(&mut self) {
         self.pending.clear();
+        self.retry_heap.clear();
+        self.failed.clear();
     }
 }
 

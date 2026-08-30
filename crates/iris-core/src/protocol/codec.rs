@@ -378,6 +378,58 @@ fn get_opt_bytes(map: &[(Value, Value)], k: u8) -> Result<Option<Vec<u8>>, Envel
     }
 }
 
+// ---------------------------------------------------------------------------
+// PS-2: single-pass field extraction helpers.
+// ---------------------------------------------------------------------------
+
+/// Extract a CBOR integer key as a `u8`.  Non-integer or out-of-range keys
+/// yield `None` and are skipped (ADR-0011 extension tolerance).
+fn extract_key_u8(k: &Value) -> Option<u8> {
+    match k {
+        Value::Integer(i) => u8::try_from(i128::from(*i)).ok(),
+        _ => None,
+    }
+}
+
+/// Single-pass drain: move each map entry into `slots[key]`.
+/// Keys outside 1–18, or duplicate keys, are dropped (first-wins for duplicates).
+fn drain_to_slots(map: Vec<(Value, Value)>) -> [Option<Value>; 19] {
+    let mut slots: [Option<Value>; 19] = std::array::from_fn(|_| None);
+    for (k, v) in map {
+        if let Some(key) = extract_key_u8(&k) {
+            let idx = key as usize;
+            if idx < 19 && slots[idx].is_none() {
+                slots[idx] = Some(v);
+            }
+        }
+    }
+    slots
+}
+
+/// Take a required field out of the slot array (O(1)).
+fn take_slot(slots: &mut [Option<Value>; 19], k: u8) -> Result<Value, EnvelopeError> {
+    slots[k as usize].take().ok_or(EnvelopeError::MissingField(field_name(k)))
+}
+
+/// Owned Value → u64 (no borrow needed).
+fn slot_u64(v: Value) -> Result<u64, EnvelopeError> {
+    match v {
+        Value::Integer(i) => u64::try_from(i128::from(i))
+            .map_err(|_| EnvelopeError::InvalidField("unsigned integer")),
+        _ => Err(EnvelopeError::InvalidField("unsigned integer")),
+    }
+}
+
+/// Owned Value → Vec<u8> **without copying** when the variant is `Bytes`.
+fn slot_bytes(v: Value, field: &'static str) -> Result<Vec<u8>, EnvelopeError> {
+    match v {
+        Value::Bytes(b) => Ok(b),
+        _ => Err(EnvelopeError::InvalidField(field)),
+    }
+}
+
+// ---------------------------------------------------------------------------
+
 fn decode_encryption_hdr(m: &[(Value, Value)]) -> Result<EncryptionHdr, EnvelopeError> {
     let epub = get_bytes(m, 1)?;
     let nonce = get_bytes(m, 2)?;
@@ -474,65 +526,71 @@ fn decode_routing_hints(m: &[(Value, Value)]) -> Result<RoutingHints, EnvelopeEr
 /// content-type codes are in range; sender/recipient id lengths match the
 /// wire contract; payload_size matches the payload bytes.
 pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
+    // PS-2: single-pass field extraction.  Parse once into a Value tree, then
+    // drain the top-level map into a fixed-size slot array so each field read
+    // is O(1) instead of the previous O(n) linear scan per field.
     let value: Value = ciborium::de::from_reader(bytes)?;
-    let map = expect_map(&value)?;
+    let map = match value {
+        Value::Map(m) => m,
+        _ => return Err(EnvelopeError::NotAMap),
+    };
+    let mut s = drain_to_slots(map);
 
-    let version = get_u64(map, 1)?;
+    let version = slot_u64(take_slot(&mut s, 1)?)?;
     if version != u64::from(PROTOCOL_VERSION) {
         return Err(EnvelopeError::UnsupportedVersion(version));
     }
 
-    let message_id = MessageId::from_slice(&get_bytes(map, 2)?)
+    let message_id_bytes = slot_bytes(take_slot(&mut s, 2)?, "message_id")?;
+    let message_id = MessageId::from_slice(&message_id_bytes)
         .ok_or(EnvelopeError::InvalidField("message_id (16 bytes)"))?;
 
-    let sender_id = get_bytes(map, 3)?;
+    let sender_id = slot_bytes(take_slot(&mut s, 3)?, "sender_id")?;
     if !matches!(sender_id.len(), 16 | 32) {
         return Err(EnvelopeError::InvalidSenderIdLen(sender_id.len()));
     }
 
-    let recipient_id = get_bytes(map, 4)?;
+    let recipient_id = slot_bytes(take_slot(&mut s, 4)?, "recipient_id")?;
     if !matches!(recipient_id.len(), 4 | 32) {
         return Err(EnvelopeError::InvalidRecipientIdLen(recipient_id.len()));
     }
 
-    let priority_code = get_u64(map, 5)?;
+    let priority_code = slot_u64(take_slot(&mut s, 5)?)?;
     let priority = MessagePriority::from_u8(
         u8::try_from(priority_code).map_err(|_| EnvelopeError::InvalidPriority(priority_code))?,
     )
     .ok_or(EnvelopeError::InvalidPriority(priority_code))?;
 
-    // PM-12: enforce P0 envelope size budget at decode.  An oversized P0 is
-    // un-evictable (INV-ROUTE-003), rate-limit exempt, and structurally unable
-    // to traverse LoRa — the transport it is designed for.  Reject before it
-    // enters storage or the ACK tracker.
+    // PM-12: enforce P0 envelope size budget at decode.
     if priority == MessagePriority::P0 && bytes.len() > P0_MAX_ENVELOPE_BYTES {
         return Err(EnvelopeError::InvalidField(
             "P0 SOS envelope exceeds P0_MAX_ENVELOPE_BYTES (255 B)",
         ));
     }
 
-    let ttl_seconds = get_u64(map, 6)?;
-    let timestamp = get_u64(map, 7)?;
-    let hop_count = u8::try_from(get_u64(map, 8)?)
+    let ttl_seconds = slot_u64(take_slot(&mut s, 6)?)?;
+    let timestamp = slot_u64(take_slot(&mut s, 7)?)?;
+    let hop_count = u8::try_from(slot_u64(take_slot(&mut s, 8)?)?)
         .map_err(|_| EnvelopeError::InvalidField("hop_count (0-255)"))?;
-    let max_hops = match get_opt_u64(map, 9)? {
-        Some(v) => {
-            Some(u8::try_from(v).map_err(|_| EnvelopeError::InvalidField("max_hops (0-255)"))?)
-        }
+    let max_hops = match s[9].take() {
+        Some(v) => Some(
+            u8::try_from(slot_u64(v)?)
+                .map_err(|_| EnvelopeError::InvalidField("max_hops (0-255)"))?,
+        ),
         None => None,
     };
 
-    let ct_code = get_u64(map, 10)?;
+    let ct_code = slot_u64(take_slot(&mut s, 10)?)?;
     let payload_type = ContentType::from_u8(
         u8::try_from(ct_code).map_err(|_| EnvelopeError::InvalidContentType(ct_code))?,
     )
     .ok_or(EnvelopeError::InvalidContentType(ct_code))?;
 
-    let payload_size = get_u64(map, 11)?;
-    let payload_hash: [u8; 32] = get_bytes(map, 12)?
+    let payload_size = slot_u64(take_slot(&mut s, 11)?)?;
+    let payload_hash: [u8; 32] = slot_bytes(take_slot(&mut s, 12)?, "payload_hash")?
         .try_into()
         .map_err(|_| EnvelopeError::InvalidField("payload_hash (32 bytes)"))?;
-    let payload = get_bytes(map, 13)?;
+    let payload = slot_bytes(take_slot(&mut s, 13)?, "payload")?;
     if payload_size != payload.len() as u64 {
         return Err(EnvelopeError::PayloadSizeMismatch(
             payload_size,
@@ -540,16 +598,20 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
         ));
     }
 
-    let payload_ref = match get_opt_bytes(map, 14)? {
-        Some(b) => Some(
-            MessageId::from_slice(&b)
-                .ok_or(EnvelopeError::InvalidField("payload_ref (16 bytes)"))?,
-        ),
+    let payload_ref = match s[14].take() {
+        Some(v) => {
+            let b = slot_bytes(v, "payload_ref")?;
+            Some(
+                MessageId::from_slice(&b)
+                    .ok_or(EnvelopeError::InvalidField("payload_ref (16 bytes)"))?,
+            )
+        }
         None => None,
     };
 
-    let signature = match get_opt_bytes(map, 15)? {
-        Some(b) => {
+    let signature = match s[15].take() {
+        Some(v) => {
+            let b = slot_bytes(v, "signature")?;
             let len = b.len();
             let arr: [u8; 64] = b
                 .try_into()
@@ -559,23 +621,23 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
         None => None,
     };
 
-    let encryption_hdr = match get(map, 16) {
-        Some(Value::Map(m)) => Some(decode_encryption_hdr(m)?),
+    let encryption_hdr = match s[16].take() {
+        Some(Value::Map(m)) => Some(decode_encryption_hdr(&m)?),
         Some(_) => return Err(EnvelopeError::InvalidField("encryption_hdr (map)")),
         None => None,
     };
 
-    let routing_hints = match get(map, 17) {
-        Some(Value::Map(m)) => Some(decode_routing_hints(m)?),
+    let routing_hints = match s[17].take() {
+        Some(Value::Map(m)) => Some(decode_routing_hints(&m)?),
         Some(_) => return Err(EnvelopeError::InvalidField("routing_hints (map)")),
         None => None,
     };
 
-    let auth_cert_chain = match get(map, 18) {
+    let auth_cert_chain = match s[18].take() {
         Some(Value::Array(items)) => {
             let mut chain = Vec::with_capacity(items.len());
             for item in items {
-                chain.push(as_bytes(item)?.to_vec());
+                chain.push(as_bytes(&item)?.to_vec());
             }
             Some(chain)
         }

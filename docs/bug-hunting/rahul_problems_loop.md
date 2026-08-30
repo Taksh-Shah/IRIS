@@ -34,9 +34,9 @@ Before the first Tier 3 commit, confirm the following with the relevant section 
 
 | Finding | Coordination needed | Status |
 |---|---|---|
-| PS-1 | Section 3: per-adapter transport re-entrancy under concurrent `send()` — BLE, LoRa, Wi-Fi Direct, Wi-Fi Aware, satellite, internet. If any adapter is not re-entrant, per-transport in-flight cap must be 1. **Blocks PS-1.** | ⬜ |
-| PS-3 | Section 1: how revocation and key rotation invalidate a cached `VerifiedAuthority`. Without this contract, caching Section 1's verification result is a security regression. **Blocks PS-3.** | ⬜ |
-| PS-5 | Section 3: whether concurrent scans contend for shared radio hardware or OS scan arbiter (BLE + Wi-Fi share physical radio on many phones). **Verify before implementing PS-5** — it may need to be per-radio-family concurrency rather than per-transport. | ⬜ |
+| PS-1 | Section 3: per-adapter transport re-entrancy under concurrent `send()` — BLE, LoRa, Wi-Fi Direct, Wi-Fi Aware, satellite, internet. If any adapter is not re-entrant, per-transport in-flight cap must be 1. **Blocks PS-1.** | 🔒 Awaiting Section 3 |
+| PS-3 | Section 1: how revocation and key rotation invalidate a cached `VerifiedAuthority`. Without this contract, caching Section 1's verification result is a security regression. **Blocks PS-3.** | 🔒 Awaiting Section 1 |
+| PS-5 | Section 3: whether concurrent scans contend for shared radio hardware or OS scan arbiter (BLE + Wi-Fi share physical radio on many phones). **Verify before implementing PS-5** — it may need to be per-radio-family concurrency rather than per-transport. | 🔒 Awaiting Section 3 |
 
 ---
 

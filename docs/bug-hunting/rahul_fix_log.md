@@ -137,55 +137,52 @@ human go-ahead — see `rahul_problems_loop.md` §2.3. Do not begin PS-* without
 
 ---
 
-## Run 6 — [DATE] — Tier 3 opened under explicit human sign-off
+## Run 6 — 2026-08-30 — Tier 3 (PS-6, PS-2, PS-4; PS-1/PS-3/PS-5/PS-7 blocked)
 
-**(Fill in when run begins. Gate: human must have given explicit go-ahead before this run starts.)**
+**Gate confirmation:** User said "start tier 3" — explicit human go-ahead received.
 
-**Gate confirmation:** _(record the explicit instruction here)_
+Target findings: PS-6 (audit Vec→VecDeque), PS-2 (decode single-pass), PS-4 (ACK retry heap).
+PS-1/PS-5/PS-7 deferred (Section 3 coordination unresolved). PS-3 deferred (Section 1 revocation contract unresolved).
 
-Target findings: PS-1 (delivery poll), PS-2 (decode Value tree), PS-6 (audit Vec→VecDeque).
-Rationale: PS-6 is the lowest-risk change (container swap, same semantics, measured 100× improvement).
-PS-2 is self-contained within `codec.rs`. PS-1 needs Section 3 transport re-entrancy confirmation first —
-if that coordination is not yet resolved, defer PS-1 and proceed with PS-2 + PS-6 only.
-
-**Drift notes:** _(fill in)_
+**Drift notes:** All three unblocked findings confirmed present at cited locations before edits.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PS-6 | ⬜ | — | — |
-| 2 | PS-2 | ⬜ | — | — |
-| 3 | PS-1 | ⬜ | — | — (blocked if Section 3 transport re-entrancy unresolved) |
+| 1 | PS-6 | ✅ Fixed | Run 6 commit | `AuditLog.records` Vec→VecDeque; `append` uses `pop_front`+`push_back` O(1); `snapshot` calls `make_contiguous()`. `ring_bounds_capacity` + `event_codes_round_trip` pass. 733/733 lib tests pass. PENDING LINUX-CI. |
+| 2 | PS-2 | ✅ Fixed | Run 6 commit | `drain_to_slots`+`take_slot`+`slot_u64`+`slot_bytes` helpers; `decode()` drains top-level map into `[Option<Value>; 19]` (single pass), each field extracted O(1). Old helpers retained for sub-decoders. 733/733 lib tests pass. PENDING LINUX-CI. |
+| 3 | PS-4 | ✅ Fixed | Run 6 commit | `retry_heap: BinaryHeap<Reverse<(Instant,MessageId)>>` + `failed: HashSet<MessageId>` in `AckTracker`. `register_sent` skips exhausted entries. `due_retries` pops heap, skips stale lazily. `exhausted()` drains `failed` O(1). `spawn_ack_task` sleeps until `next_due()`. 733/733 lib tests pass. PENDING LINUX-CI. |
+| 4 | PS-1 | 🔒 Blocked | — | Section 3 transport re-entrancy for concurrent send() not yet confirmed |
+| 5 | PS-3 | 🔒 Blocked | — | Section 1 revocation/caching contract for VerifiedAuthority not yet established |
+| 6 | PS-5 | 🔒 Blocked | — | Section 3 hardware contention (BLE/Wi-Fi shared radio) not yet answered |
+| 7 | PS-7 | 🔒 Blocked | — | Section 3 max_message_size inconsistency (lora.rs vs internet.rs) not yet reconciled |
 
-**Batch closeout:** full workspace build + sweep including benches (`cargo test -p iris-core --bench codec --bench envelope`).
+**Batch closeout:** `cargo build -p iris-core` (GNU toolchain) clean. `cargo test -p iris-core --lib` 733/733 pass.
 
-### Next run
-PS-3 (authority chain cache — blocked until Section 1 revocation contract established),
-PS-4 (ACK retry heap — implement together with PM-3 cleanup if not already done),
-PS-5 (discovery parallel scan — blocked until Section 3 hardware contention verified),
-PS-7 (serialize_for_transport bytes — implement together with PM-10 fix).
+**Tier 3 checkpoint:** 3/7 findings ✅, 4/7 🔒 Blocked. All implementable Tier 3 work complete.
 
 ---
 
-## Run 7 — [DATE] — Tier 3 continued (PS-4, PS-7; PS-3/PS-5 blocked)
+## Run 7 — [DATE] — Tier 3 continued (PS-7; PS-1/PS-3/PS-5 blocked)
 
 **(Fill in when run begins.)**
 
-Target findings: PS-4 (ACK retry heap), PS-7 (serialize_for_transport → bytes).
-PS-3 blocked (Section 1 revocation contract). PS-5 blocked (Section 3 hardware confirmation).
+Target findings: PS-7 (serialize_for_transport → bytes), when Section 3 max_message_size reconciled.
+PS-1 blocked (Section 3 re-entrancy). PS-3 blocked (Section 1 revocation contract). PS-5 blocked (Section 3 hardware contention).
+Note: PS-4 was completed in Run 6.
 
 **Drift notes:** _(fill in)_
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PS-4 | ⬜ | — | — |
-| 2 | PS-7 | ⬜ | — | — |
+| 1 | PS-7 | ⬜ | — | — (blocked until Section 3 max_message_size reconciled) |
+| 2 | PS-1 | 🔒 Blocked | — | Blocked: Section 3 transport re-entrancy not yet confirmed |
 | 3 | PS-3 | 🔒 Blocked | — | Blocked: Section 1 revocation/caching contract not yet established |
-| 4 | PS-5 | 🔒 Blocked | — | Blocked: Section 3 hardware contention answer needed before implementing |
+| 4 | PS-5 | 🔒 Blocked | — | Blocked: Section 3 hardware contention answer needed |
 
 **Batch closeout:** full workspace build + sweep.
 
 ### Next run
-PS-3 and PS-5 when their respective Section coordination is resolved.
+PS-1, PS-3, PS-5, PS-7 when their respective Section coordination is resolved.
 When all Tier 3 findings are ✅ or 🔒: Tier 3 checkpoint commit.
 
 ---

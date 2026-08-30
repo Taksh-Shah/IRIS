@@ -1512,7 +1512,16 @@ impl MessageEngine {
         let this = self.clone();
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(1)).await;
+                // PS-4: sleep until the nearest known retry deadline rather than
+                // polling every second. Falls back to 1 s when the heap is empty
+                // so new arrivals are picked up promptly.
+                let sleep_dur = {
+                    let guard = this.acks.lock().await;
+                    guard.next_due().map(|t| {
+                        t.saturating_duration_since(std::time::Instant::now())
+                    }).unwrap_or(Duration::from_secs(1))
+                };
+                tokio::time::sleep(sleep_dur).await;
                 let due = this
                     .acks
                     .lock()

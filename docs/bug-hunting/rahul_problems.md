@@ -20,10 +20,10 @@
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
-| 3 | Structural enhancements | 7 | 0 | 0 | 0 | 7 |
-| **Total** | | **25** | **18** | **0** | **0** | **7** |
+| 3 | Structural enhancements | 7 | 3 | 4 | 0 | 0 |
+| **Total** | | **25** | **21** | **4** | **0** | **0** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 3 (Tier 2 complete — all 5 findings ✅; Tier 3 GATED — awaiting human go-ahead)
+**Last updated:** 2026-08-30 · **Active tier:** 3 complete (3 ✅, 4 🔒 blocked — awaiting Section 1/3 cross-section sign-off)
 
 ---
 
@@ -454,7 +454,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-1 — Outbound delivery is a fixed-rate poll that dispatches one message at a time
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked · Section 3 transport re-entrancy sign-off required before implementing concurrent dispatch
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1142-1154` (`spawn_delivery_loop`); `:1233-1254` (`deliver_outbound`)
 - **Category:** architecture · **Priority:** Blocking for scale
 - **Tier:** 3
@@ -475,7 +475,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-2 — Envelope decode builds a throwaway `Value` tree with 29 linear-scan field lookups
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 3 · Run 6 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/protocol/codec.rs:459-579`
 - **Category:** architecture · **Priority:** Blocking for scale
 - **Tier:** 3
@@ -495,7 +495,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-3 — Authority chains are re-transmitted and re-verified on every alert
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked · Section 1 must specify revocation/key-rotation invalidation contract for cached VerifiedAuthority before this ships
 - **File(s):** `crates/iris-core/src/emergency/authority.rs`, `broadcast.rs`, `provider.rs`
 - **Category:** architecture · **Priority:** High
 - **Tier:** 3
@@ -513,7 +513,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-4 — ACK retry scheduling scans every pending message once per second
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 3 · Run 6 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/ack.rs:156`; `crates/iris-core/src/message_engine/mod.rs:1308-1363`
 - **Category:** architecture · **Priority:** Would help, not urgent
 - **Tier:** 3
@@ -530,7 +530,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-5 — Discovery scans transports serially inside an interval shorter than the worst case
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked · Section 3 must verify whether concurrent scans contend for shared radio hardware before implementing
 - **File(s):** `crates/iris-core/src/discovery/mod.rs:187-221`
 - **Category:** architecture · **Priority:** Would help, not urgent — verify premise first
 - **Tier:** 3
@@ -547,7 +547,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-6 — The emergency audit "ring" is a shifting `Vec` with O(n) append at steady state
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 3 · Run 6 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/emergency/audit.rs:59-78`
 - **Category:** architecture · **Priority:** Would help, not urgent
 - **Tier:** 3
@@ -567,7 +567,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PS-7 — `serialize_for_transport` returns `Envelope`s, forcing triple encode per outbound message
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked · Section 3 max_message_size inconsistency (lora.rs payload ceiling vs internet.rs frame total) must be reconciled first
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1091`, `:1188`, `:1239`
 - **Category:** architecture · **Priority:** Would help, not urgent — implement as part of PM-10's fix
 - **Tier:** 3

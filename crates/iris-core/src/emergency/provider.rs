@@ -168,7 +168,7 @@ impl EmergencyGateway {
     pub fn audit_snapshot(&self) -> Vec<EmergencyAuditRecord> {
         self.audit
             .lock()
-            .map(|a| a.snapshot().to_vec())
+            .map(|mut a| a.snapshot().to_vec())
             .unwrap_or_default()
     }
 }
