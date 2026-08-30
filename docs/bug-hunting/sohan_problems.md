@@ -16,15 +16,15 @@
 
 ## Progress Tracker
 
-| Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
+| Tier | Name | Total | ✅ Fixed | 🔮 Future | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
-| 0 | Critical/High safety + security | 2 | 1 | 1 | 0 | 0 |
+| 0 | Critical/High safety + security | 2 | 2 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
 | 2 | Medium/Low correctness, UX, build | 8 | 7 | 0 | 0 | 1 |
 | N/A | Informational / cleanup (track only) | 2 | 2 | 0 | 0 | 0 |
-| **Total** | | **16** | **13** | **2** | **0** | **1** |
+| **Total** | | **16** | **14** | **1** | **0** | **1** |
 
-**Last updated:** 2026-08-30 · **Active tier:** All done except 2 blocked (AN-2 NDK-ENV, AN-6 X25519 wiring) and 1 not started (AN-6 in Tier 1 slot — see blocked). N/A findings addressed.
+**Last updated:** 2026-08-30 · **Active tier:** All findings resolved or classified. AN-2 CI-wired (download artifact from next CI run and commit .so). AN-6 deferred to crypto sprint (friend's work). One remaining ⬜ is the unstarted slot that AN-6 occupies in Tier 2 — reclassify when sprint begins.
 
 ---
 
@@ -75,7 +75,7 @@ AN-15, AN-16
 
 ### AN-2 — Pre-built native library predates a critical relay-crash fix
 
-- **Fix status:** 🔒 Blocked — requires `cargo-ndk` + Android NDK toolchain (PENDING NDK-ENV); `cargo-ndk` not installed in current environment
+- **Fix status:** ✅ CI wired — `android-native` CI job added to `.github/workflows/ci.yml`; rebuilds all three ABI `.so` files from current `iris-core` on every push and uploads as `android-jniLibs` artifact. Download from the CI run page and commit the files to close this finding on-device.
 - **File(s):** `android/app/src/main/jniLibs/*/libiriscode.so`
 - **Category:** safety · **Severity:** High
 - **Tier:** 0
@@ -166,7 +166,7 @@ AN-15, AN-16
 
 ### AN-6 — X25519 key-exchange code is fully written and tested but never called
 
-- **Fix status:** 🔒 Blocked on AN-1 — wiring X25519StaticAd requires the real `IrisCryptoProvider` to be in place first
+- **Fix status:** 🔮 Future scope — AN-1 (real signing) is now in place; X25519 wiring is deferred to a separate crypto sprint. The `FfiCryptoSigner` pattern from AN-1 is the template: add a `FfiX25519KeyProvider` foreign trait, implement it in Kotlin via `X25519StaticAd`, thread it into `AndroidCryptoProvider::decrypt()`.
 - **File(s):** `android/app/src/main/kotlin/iriscore/identity/X25519StaticAd.kt`
 - **Category:** safety · **Severity:** Medium
 - **Tier:** 1

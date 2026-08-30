@@ -256,3 +256,44 @@ jobs:
           else
             echo "::warning::no gradle wrapper - JVM gate deferred until ANDROID-002"
           fi
+
+  # ----------------------------------------------------------- android-native
+  # AN-2: Rebuild the three-ABI native library from the current iris-core source
+  # and upload the result as a CI artifact. Download the artifact from the Actions
+  # run page and commit the .so files into android/app/src/main/jniLibs/ to close
+  # AN-2. The job runs on ubuntu-latest which includes the Android NDK toolchain.
+  android-native:
+    name: android / native .so rebuild (AN-2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android,x86_64-linux-android,armv7-linux-androideabi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Set up Android NDK r27c
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          link-to-sdk: true
+      - name: Install cargo-ndk
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-ndk
+      - name: Build .so for arm64-v8a, x86_64, armeabi-v7a
+        run: >-
+          cargo ndk
+          -t arm64-v8a
+          -t x86_64
+          -t armeabi-v7a
+          -o android/app/src/main/jniLibs
+          build --release -p iris-android
+      - name: Upload native libraries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-jniLibs
+          path: android/app/src/main/jniLibs/
+          if-no-files-found: error

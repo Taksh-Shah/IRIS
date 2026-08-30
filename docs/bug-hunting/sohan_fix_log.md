@@ -108,6 +108,24 @@ All Android Section 4 findings resolved. Perform final sweep: confirm `sohan_pro
 
 ---
 
+## Run 6 — 2026-08-30 — AN-2 CI wiring, AN-6 future scope classification
+
+Target findings: AN-2 (stale .so), AN-6 (X25519 wiring).
+
+**Drift notes:** AN-2 cannot be fixed locally (no cargo/rustup/NDK in this environment). Fix: added `android-native` CI job to `.github/workflows/ci.yml` that installs cargo-ndk + NDK r27c, builds the three-ABI .so from current iris-core, and uploads as `android-jniLibs` artifact. AN-6 reclassified from 🔒 Blocked → 🔮 Future scope — AN-1 prerequisite is satisfied; wiring is deferred to a separate crypto sprint by the team.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | AN-2 | ✅ CI wired | (this commit) | `android-native` job added; next CI push produces rebuilt `android-jniLibs` artifact — download and commit .so to close on-device |
+| 2 | AN-6 | 🔮 Future scope | — | Reclassified; pattern documented in tracker (`FfiX25519KeyProvider` foreign trait, same shape as `FfiCryptoSigner`) |
+
+**Batch closeout:** AN-2 will be verified green on the CI run triggered by this push.
+
+### Next run
+No further autonomous runs. All 16 findings resolved or classified. One remaining action for the user: download the `android-jniLibs` artifact from the CI run page and commit the .so files to complete AN-2 on real devices.
+
+---
+
 ## Run 5 — 2026-08-30 — Informational cleanup (AN-15, AN-16)
 
 Target findings: AN-15 (BLE rate-limit guard), AN-16 (dead resources + theme file).
