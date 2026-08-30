@@ -1748,3 +1748,51 @@ attack surface (`wifi_direct.rs`'s `MAX_FRAMES_PER_TICK`) — smallest of
 the three, a direct mirror of that existing pattern. Read all three
 findings' current source fresh before implementing, same discipline as
 every run this session.
+
+---
+
+## Run 22 — 2026-08-30 — Tier 4 batch: manager cluster, LoRa DutyLedger, wifi-direct cluster, simulated transport fidelity, wifiaware lifecycle
+
+**Context.** Resumed from Run 21 with 111/126 Tier-4 findings done (14 remaining, 1 blocked). Status lines for MG-15/20/22 had drifted (already fixed in upstream commits but individual entries still showed ⬜); corrected. RF-25 was also already fixed in pulled commits (WifiDirectError typed enum); its entry updated accordingly.
+
+**Manager cluster (transport/mod.rs + manager.rs).**
+- MG-5: P2/P3 now keeps 2 fallback candidates; P4-P7 keeps 1; multipath+emergency keeps all viable.
+- MG-9 filter: updated to use `is_expensive()` helper (compatible with new struct variant).
+- MG-12: `TopologyEvent::TransportPermanentFailure { transport_id, attempts }` added to `transport/mod.rs`.
+- MG-16: deleted dead `BLE_COST` constant and `cost_from_model` function (zero callers).
+- MG-19: `TransportCostClass` expanded to `Metered { cost_per_kb_inr }` and `Expensive { cost_per_message_inr, minimum_cost_inr }`; `is_expensive()` helper added; all construction sites in satellite.rs, internet.rs, and gateway/mod.rs updated.
+
+**LoRa DutyLedger (RF-2, lora.rs).**
+- `TxRecord` made `pub`.
+- `DutyLedger` trait (Send+Sync): `record_tx`, `record_refund`, `load_recent`.
+- `InMemoryDutyLedger` implements the trait with a `Mutex<Vec<TxRecord>>`.
+- `try_new_with_ledger()` constructor: fail-closed if the ledger cannot be read at startup.
+- `check_and_consume` calls `ledger.record_tx()` on success; `refund` calls `ledger.record_refund()`.
+- `DutyCycleTracker::ledger` field is `Option<Arc<dyn DutyLedger>>`; `None` = no persistence.
+
+**Wi-Fi Direct cluster (wifi_direct.rs + bridge.rs).**
+- RF-25: already fixed (pulled from main — WifiDirectError typed enum, p2p_send typed result).
+- RF-26: `>= GO_INTENT_BALANCED` → `> GO_INTENT_BALANCED` (two occurrences) prevents dual-GO.
+- RF-27: `matches()` and `incoming()` return `Result<Vec<_>, String>`; bridge.rs maps FFI errors; call sites use `unwrap_or_else(|e| { warn!(...); Vec::new() })`.
+- RF-32: module doc updated to describe the actual `p2p_send`/`incoming` data plane.
+
+**Simulated transport fidelity (RF-45, simulated.rs).**
+- (a) `SimConfig::connect_failure_rate: f32` — probabilistic `ConnectionFailed` in `connect()`.
+- (b) `TokenBucket` struct; `SimulatedTransport::token_bucket` — `send()` returns `Busy` if bucket empty.
+- (c) `SimConfig::preserve_order: bool` + `last_delivery_at: StdMutex<Instant>` — when true, each message's deliver instant is ≥ the previous one's, preserving send order.
+- (d) `pending_deliveries: StdMutex<Vec<JoinHandle<()>>>` — all spawned delivery tasks tracked; `shutdown()` aborts them so no post-shutdown delivery occurs.
+- Module header now lists modelled vs. unmodelled behaviours.
+
+**Wi-Fi Aware lifecycle (BLE-36, wifiaware.rs).**
+- `stop_discovery`: after `unsubscribe()`, aborts the NDP poller and transitions state to `Available` when no active links remain.
+- `shutdown_flag` latch: `restart()` added — under `connect_gate`, clears `shutdown_flag` and `started_flag` so the transport can be brought up again (display-off/display-on cycle).
+- `SimulatedWifiAwareAdapter::availability_stream()`: changed from one-shot `.take()` to `available_tx.subscribe()` so the stream is re-subscribable after a restart.
+
+**§8 accounting:** 10 new Tier 4 findings fixed this run (RF-2/26/27/32/45, BLE-36, MG-5/12/16/19). Tier 4: 121 of 126 done, 4 remaining (MG-8/14/17, GAP-5), 1 blocked (TLS).
+
+### Remaining (Run 23 onwards)
+- **MG-8**: `topology_events()` zero subscribers — integration wiring in `iris-android/src/engine.rs`. Medium complexity.
+- **MG-14**: `target_peer` never read — requires `NeighborTable` reference in manager. Medium complexity.
+- **MG-17**: `TransportCost` is static — needs EWMA goodput counters. Medium-high complexity.
+- **GAP-5**: Live data-plane framings carry no version field — wire-format evolution blocked. Medium.
+- **Blocked**: TLS transport (external dependency).

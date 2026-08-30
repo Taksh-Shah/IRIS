@@ -20,9 +20,11 @@
 //! v1 shape (RES-0021 Q1/Q4/Q5/Q7, WIFI_DIRECT_TRANSPORT_DESIGN.md §1): Wi-Fi
 //! Direct is the **data plane on the BLE control plane**. Discovery = **DNS-SD
 //! (Bonjour) service discovery** (p2p service name [`WIFI_DIRECT_SERVICE_NAME`],
-//! TXT record = 22-byte beacon); data path = **TCP socket over the Group Owner**
-//! reusing INTERNET-001 framing (1 MiB cap, pool + backoff). WPA2 protects the
-//! L2 link only; the app-layer envelope is the trust anchor (DEC-WD-0002/0007).
+//! TXT record = 22-byte beacon); data path = **`p2p_send`/`incoming` on the
+//! platform adapter** (RF-32: the documented TCP-over-GO path is not yet
+//! implemented; framing uses `encode_frame` length-prefix only). WPA2 protects
+//! the L2 link only; the app-layer envelope is the trust anchor
+//! (DEC-WD-0002/0007).
 //!
 //! Security posture: the P2P device MAC is NEVER an identity (platform
 //! randomized / persistent-group-bound); peer identity is the 32-byte IRIS
@@ -238,7 +240,11 @@ pub trait WifiDirectAdapter: Send + Sync {
     async fn stop_discovery(&self) -> Result<(), String>;
 
     /// Drain current DNS-SD service matches (candidates only).
-    async fn matches(&self) -> Vec<PeerDiscovery>;
+    ///
+    /// Returns `Err(msg)` on permission denial or radio failure (RF-27) so
+    /// the transport can degrade state and log the cause rather than silently
+    /// treating every real error as "discovery found nothing".
+    async fn matches(&self) -> Result<Vec<PeerDiscovery>, String>;
 
     /// Form an autonomous persistent Group Owner (RES-0021 Q5).
     async fn create_group(&self, config: &GroupConfig) -> Result<GroupInfo, String>;
@@ -265,7 +271,11 @@ pub trait WifiDirectAdapter: Send + Sync {
     async fn p2p_send(&self, peer: PeerHandle, payload: &[u8]) -> Result<(), WifiDirectError>;
 
     /// Drain inbound group frames.
-    async fn incoming(&self) -> Vec<IncomingWifiDirectData>;
+    ///
+    /// Returns `Err(msg)` on permission denial or adapter failure (RF-27) so
+    /// the poller can count the error and back off rather than silently returning
+    /// zero frames forever against a permanently-denied adapter.
+    async fn incoming(&self) -> Result<Vec<IncomingWifiDirectData>, String>;
 
     /// Tear down the subsystem (unregister DNS-SD, remove group, detach).
     async fn shutdown(&self) -> Result<(), String>;
@@ -596,12 +606,12 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         Ok(())
     }
 
-    async fn matches(&self) -> Vec<PeerDiscovery> {
+    async fn matches(&self) -> Result<Vec<PeerDiscovery>, String> {
         if !self.discovery_on.load(Ordering::Acquire) {
-            return Vec::new();
+            return Ok(Vec::new());
         }
         let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
-        self.coordinator
+        Ok(self.coordinator
             .visible_services(tag)
             .into_iter()
             .map(|(t, name, txt)| PeerDiscovery {
@@ -609,7 +619,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
                 service_name: name,
                 txt_record: txt,
             })
-            .collect()
+            .collect())
     }
 
     async fn create_group(&self, config: &GroupConfig) -> Result<GroupInfo, String> {
@@ -754,9 +764,9 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         Ok(())
     }
 
-    async fn incoming(&self) -> Vec<IncomingWifiDirectData> {
+    async fn incoming(&self) -> Result<Vec<IncomingWifiDirectData>, String> {
         let tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
-        self.coordinator
+        Ok(self.coordinator
             .drain_outbox(tag)
             .into_iter()
             .map(|(from, payload)| {
@@ -767,7 +777,7 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
                     .map(|r| r.candidate_peer_id());
                 IncomingWifiDirectData { sender, payload }
             })
-            .collect()
+            .collect())
     }
 
     async fn shutdown(&self) -> Result<(), String> {
@@ -1138,7 +1148,12 @@ impl WifiDirectTransport {
                 // RF-28: bound the ingress backlog — drop oldest frames when at
                 // capacity so a burst (or a slow Kotlin GC pause) cannot grow
                 // the deque without bound and OOM the process.
-                for frame in adapter.incoming().await {
+                // RF-27: incoming() now returns Result; log and skip on error.
+                let inbound = adapter.incoming().await.unwrap_or_else(|e| {
+                    tracing::warn!(target: "iris.transport.wifi_direct", error = %e, "incoming() error");
+                    Vec::new()
+                });
+                for frame in inbound {
                     if backlog.len() >= MAX_INBOUND_BACKLOG {
                         backlog.pop_front();
                         dropped_inbound.fetch_add(1, Ordering::Relaxed);
@@ -1334,7 +1349,11 @@ impl Transport for WifiDirectTransport {
                 .await
                 .map_err(|e| Self::classify_error("wifi_direct.find", e))?;
         }
-        let matches = adapter.matches().await;
+        // RF-27: matches() returns Result; log and return empty on error.
+        let matches = adapter.matches().await.unwrap_or_else(|e| {
+            tracing::warn!(target: "iris.transport.wifi_direct", error = %e, "matches() error");
+            Vec::new()
+        });
         let mut infos: Vec<PeerInfo> = Vec::new();
         // RF-33: take(max_peers) must come AFTER all per-peer filters (TXT parse,
         // config.filter id check) so that filtered-out entries don't consume budget.
@@ -1424,7 +1443,11 @@ impl Transport for WifiDirectTransport {
         // with nothing at all for Kotlin to advertise.
         let mut caps = WifiDirectCapBits::empty();
         caps.set(WifiDirectCapBits::CLIENT_CAPABLE);
-        if self.group_config.go_intent >= GO_INTENT_BALANCED {
+        // RF-26: strict comparison — intent > balanced threshold so the default
+        // (GO_INTENT_BALANCED = 7) takes the GC/join path. Two nodes both at 7
+        // would otherwise both call create_group(), forming dual autonomous GOs
+        // that cannot join each other on real hardware.
+        if self.group_config.go_intent > GO_INTENT_BALANCED {
             caps.set(WifiDirectCapBits::GROUP_OWNER_CAPABLE);
         }
         let peer_short = crate::identity::peer_id::peer_short(&info.peer_id.0);
@@ -1535,7 +1558,11 @@ impl Transport for WifiDirectTransport {
         }
         // Group formation: GO-biased config forms/keeps a persistent GO and
         // invites the peer (p2p_invite); otherwise join the peer's group (GC).
-        if self.group_config.go_intent >= GO_INTENT_BALANCED {
+        // RF-26: strict comparison — intent > balanced threshold so the default
+        // (GO_INTENT_BALANCED = 7) takes the GC/join path. Two nodes both at 7
+        // would otherwise both call create_group(), forming dual autonomous GOs
+        // that cannot join each other on real hardware.
+        if self.group_config.go_intent > GO_INTENT_BALANCED {
             // Try the requested band; band-constrained GO creation fails → AUTO
             // fallback (AC-3, DEC-WD-0005).
             let mut cfg = self.group_config.clone();

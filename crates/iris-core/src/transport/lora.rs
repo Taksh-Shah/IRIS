@@ -280,13 +280,61 @@ pub struct TransmissionTimingRefused {
 
 type NowFn = Box<dyn Fn() -> u64 + Send + Sync>;
 
+/// A single admitted LoRa transmission record (RF-2: used by `DutyLedger`).
 #[derive(Debug, Clone, Copy)]
-struct TxRecord {
-    start_ms: u64,
-    airtime_ms: u64,
-    bucket: DutyBucket,
+pub struct TxRecord {
+    pub start_ms: u64,
+    pub airtime_ms: u64,
+    pub bucket: DutyBucket,
     /// RF-4/RF-16: exact-token refund handle — see `NextWindow::token`.
-    token: u64,
+    pub token: u64,
+}
+
+/// Persistence seam for the duty-cycle budget (RF-2).
+///
+/// Called on every admitted reservation and every refund. A durable sink
+/// survives process restarts, preventing a crash-looping device from
+/// resetting its 1 % legal budget on every launch. Fail-closed: if
+/// `load_recent` returns `Err`, the caller treats the budget as fully spent
+/// (assumes maximum possible airtime used in the current window).
+pub trait DutyLedger: Send + Sync {
+    fn record_tx(&self, record: TxRecord);
+    fn record_refund(&self, token: u64);
+    /// Return all records whose `start_ms` falls within `window_ms` before
+    /// `now_ms`. Return `Err(())` if the store is unreadable.
+    fn load_recent(&self, window_ms: u64, now_ms: u64) -> Result<Vec<TxRecord>, ()>;
+}
+
+/// In-memory `DutyLedger` (tests and as-yet-unimplemented durable path).
+#[derive(Debug, Default)]
+pub struct InMemoryDutyLedger {
+    records: Mutex<Vec<TxRecord>>,
+}
+
+impl InMemoryDutyLedger {
+    pub fn new() -> Self {
+        InMemoryDutyLedger { records: Mutex::new(Vec::new()) }
+    }
+}
+
+impl DutyLedger for InMemoryDutyLedger {
+    fn record_tx(&self, record: TxRecord) {
+        self.records.lock().unwrap_or_else(|p| p.into_inner()).push(record);
+    }
+
+    fn record_refund(&self, token: u64) {
+        self.records.lock().unwrap_or_else(|p| p.into_inner())
+            .retain(|r| r.token != token);
+    }
+
+    fn load_recent(&self, window_ms: u64, now_ms: u64) -> Result<Vec<TxRecord>, ()> {
+        let cutoff = now_ms.saturating_sub(window_ms);
+        Ok(self.records.lock().unwrap_or_else(|p| p.into_inner())
+            .iter()
+            .filter(|r| r.start_ms >= cutoff)
+            .copied()
+            .collect())
+    }
 }
 
 fn usage_locked(q: &VecDeque<TxRecord>) -> (u64, [u64; 4]) {
@@ -324,6 +372,9 @@ pub struct DutyCycleTracker {
     /// RF-4/RF-16: mints unique refund tokens (SAT-RT-103 pattern). Starts
     /// at 1 so 0 stays available as an always-invalid sentinel.
     next_token: AtomicU64,
+    /// RF-2: optional persistence seam — records every reservation and refund
+    /// so the budget survives process restarts.
+    ledger: Option<Arc<dyn DutyLedger>>,
 }
 
 /// Bounds wall-clock advancement by real elapsed time.
@@ -392,9 +443,45 @@ impl DutyCycleTracker {
             tx: Mutex::new(VecDeque::new()),
             now_fn,
             last_ms: AtomicU64::new(0),
-            // Real wall clock => guard against forward jumps.
             monotonic: Some(Mutex::new(MonotonicGuard::new())),
             next_token: AtomicU64::new(1),
+            ledger: None,
+        })
+    }
+
+    /// Tracker with a durable persistence seam (RF-2).
+    ///
+    /// On construction, recent records are replayed from the ledger so the
+    /// budget reflects what was actually transmitted before a restart.
+    /// Fail-closed: if the ledger is unreadable, the budget is treated as
+    /// fully spent for this window.
+    pub fn try_new_with_ledger(
+        cfg: ComplianceConfig,
+        ledger: Arc<dyn DutyLedger>,
+    ) -> Result<Self, ComplianceError> {
+        cfg.validate()?;
+        let now = system_now_ms();
+        let window = cfg.window_ms;
+        let budget = cfg.airtime_budget_ms;
+        // Fail-closed: unreadable store → full budget assumed spent.
+        let initial = ledger.load_recent(window, now).unwrap_or_else(|_| {
+            vec![TxRecord {
+                start_ms: now.saturating_sub(window / 2),
+                airtime_ms: budget,
+                bucket: DutyBucket::Emergency,
+                token: 0,
+            }]
+        });
+        let tx: VecDeque<TxRecord> = initial.into_iter().collect();
+        let now_fn: NowFn = Box::new(system_now_ms);
+        Ok(DutyCycleTracker {
+            cfg,
+            tx: Mutex::new(tx),
+            now_fn,
+            last_ms: AtomicU64::new(0),
+            monotonic: Some(Mutex::new(MonotonicGuard::new())),
+            next_token: AtomicU64::new(1),
+            ledger: Some(ledger),
         })
     }
 
@@ -412,6 +499,7 @@ impl DutyCycleTracker {
             last_ms: AtomicU64::new(0),
             monotonic: None,
             next_token: AtomicU64::new(1),
+            ledger: None,
         })
     }
 
@@ -468,6 +556,10 @@ impl DutyCycleTracker {
         let mut q = self.tx.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(idx) = q.iter().position(|r| r.token == token) {
             q.remove(idx);
+            // RF-2: mirror the refund to the ledger.
+            if let Some(ref ledger) = self.ledger {
+                ledger.record_refund(token);
+            }
             return true;
         }
         false
@@ -517,12 +609,12 @@ impl DutyCycleTracker {
 
         if airtime_ms <= global_remaining && airtime_ms <= effective_remaining {
             let token = self.next_token.fetch_add(1, Ordering::Relaxed);
-            q.push_back(TxRecord {
-                start_ms: now,
-                airtime_ms,
-                bucket,
-                token,
-            });
+            let record = TxRecord { start_ms: now, airtime_ms, bucket, token };
+            q.push_back(record);
+            // RF-2: persist so the budget survives process restarts.
+            if let Some(ref ledger) = self.ledger {
+                ledger.record_tx(record);
+            }
             return Ok(NextWindow {
                 delay_ms: airtime_ms,
                 remaining_fraction: remaining_fraction(used + airtime_ms, budget),

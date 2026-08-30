@@ -186,14 +186,30 @@ impl TransportCapabilities {
 }
 
 /// Monetary cost classification per `docs/transports/TRANSPORT_ABSTRACTION.md`.
+///
+/// Variants carry the figures required for the user-consent cost warning
+/// (TRANSPORT_ABSTRACTION.md:462 — MG-19/MG-9).
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TransportCostClass {
     /// BLE, Wi-Fi, LoRa — no per-message cost.
     Free,
     /// Cellular / relay metered traffic.
-    Metered,
-    /// Satellite — only for P0/P1, warned before send.
-    Expensive,
+    Metered { cost_per_kb_inr: f64 },
+    /// Satellite — only for P0–P2, warned before send.
+    Expensive {
+        /// Estimated per-message charge in INR.
+        cost_per_message_inr: f64,
+        /// Minimum charge per billing event in INR.
+        minimum_cost_inr: f64,
+    },
+}
+
+impl TransportCostClass {
+    /// True if this class imposes real per-message charges (gates the
+    /// user-consent warning required by TRANSPORT_ABSTRACTION.md:462).
+    pub fn is_expensive(&self) -> bool {
+        matches!(self, TransportCostClass::Expensive { .. })
+    }
 }
 
 /// Dynamic cost snapshot used for transport selection.
@@ -218,15 +234,6 @@ pub struct BatteryCostModel {
     pub tx_ma_per_kbps: f32,
     pub rx_ma_per_kbps: f32,
 }
-
-/// BLE current draw (TRANSPORT_ABSTRACTION.md §Battery Cost Model).
-pub const BLE_COST: BatteryCostModel = BatteryCostModel {
-    scan_ma: 8.0,
-    advertise_ma: 5.0,
-    connected_idle_ma: 3.0,
-    tx_ma_per_kbps: 0.02,
-    rx_ma_per_kbps: 0.01,
-};
 
 /// Wi-Fi Aware current draw (TRANSPORT_ABSTRACTION.md).
 pub const WIFI_AWARE_COST: BatteryCostModel = BatteryCostModel {
@@ -283,6 +290,15 @@ pub enum TopologyEvent {
         gateway_id: PeerId,
         gateway_type: String,
         available: bool,
+    },
+    /// Emitted after the recovery-backoff ladder exhausts all attempts
+    /// (TRANSPORT_ABSTRACTION.md:513-519 — MG-12). The supervision task
+    /// (to be wired in the composition root) drives the ladder; this variant
+    /// is the event it emits on permanent failure.
+    TransportPermanentFailure {
+        transport_id: TransportId,
+        /// Number of recovery attempts made before giving up.
+        attempts: u32,
     },
 }
 

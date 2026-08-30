@@ -467,18 +467,18 @@ impl WifiDirectAdapter for WifiDirectBridge {
         self.ffi.stop_discovery().await.map_err(|e| e.to_string())
     }
 
-    async fn matches(&self) -> Vec<WdPeerDiscovery> {
-        self.ffi
-            .matches()
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|m: FfiDirectPeerDiscovery| WdPeerDiscovery {
-                peer_handle: WdPeerHandle(m.peer_handle),
-                service_name: m.service_name,
-                txt_record: m.txt_record,
-            })
-            .collect()
+    async fn matches(&self) -> Result<Vec<WdPeerDiscovery>, String> {
+        match self.ffi.matches().await {
+            Ok(peers) => Ok(peers
+                .into_iter()
+                .map(|m: FfiDirectPeerDiscovery| WdPeerDiscovery {
+                    peer_handle: WdPeerHandle(m.peer_handle),
+                    service_name: m.service_name,
+                    txt_record: m.txt_record,
+                })
+                .collect()),
+            Err(e) => Err(e.to_string()),
+        }
     }
 
     async fn create_group(&self, config: &GroupConfig) -> Result<GroupInfo, String> {
@@ -554,20 +554,20 @@ impl WifiDirectAdapter for WifiDirectBridge {
             })
     }
 
-    async fn incoming(&self) -> Vec<IncomingWifiDirectData> {
-        self.ffi
-            .incoming()
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|d: FfiIncomingWifiDirectData| IncomingWifiDirectData {
-                sender: d
-                    .sender
-                    .and_then(|s| <[u8; 32]>::try_from(s).ok())
-                    .map(iris_core::message::PeerId::from_bytes),
-                payload: d.payload,
-            })
-            .collect()
+    async fn incoming(&self) -> Result<Vec<IncomingWifiDirectData>, String> {
+        match self.ffi.incoming().await {
+            Ok(frames) => Ok(frames
+                .into_iter()
+                .map(|d: FfiIncomingWifiDirectData| IncomingWifiDirectData {
+                    sender: d
+                        .sender
+                        .and_then(|s| <[u8; 32]>::try_from(s).ok())
+                        .map(iris_core::message::PeerId::from_bytes),
+                    payload: d.payload,
+                })
+                .collect()),
+            Err(e) => Err(e.to_string()),
+        }
     }
 
     async fn shutdown(&self) -> Result<(), String> {

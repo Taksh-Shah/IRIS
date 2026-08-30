@@ -185,7 +185,7 @@ impl TransportManager {
             .filter(|t| req.max_latency_ms.map_or(true, |m| t.capabilities().typical_latency_ms <= m))
             // MG-9: Expensive transports (satellite) only for P0–P2; P3+ hard-fails with no fallback.
             .filter(|t| {
-                t.capabilities().cost_class != TransportCostClass::Expensive
+                !t.capabilities().cost_class.is_expensive()
                     || req.priority <= MessagePriority::P2
             })
             .map(|t| {
@@ -236,8 +236,17 @@ impl TransportManager {
         // (score ≤ 0) is never returned, even for single-best selection.
         candidates.retain(|c| c.score > 0.0);
 
-        if !req.multipath || !req.priority.is_emergency() {
-            candidates.truncate(1);
+        // MG-5: return a ranked fallback list per spec priority table
+        // (TRANSPORT_ABSTRACTION.md:401-402):
+        //   P0/P1 + multipath → all viable (score > 0 already enforced above)
+        //   P2 → best 2 ("Best 2 transports, avoid expensive only")
+        //   P3 → best + fallback ("Best transport, fallback to second")
+        //   P4+ → single best
+        if req.multipath && req.priority.is_emergency() {
+            // keep all viable
+        } else {
+            let keep = if req.priority <= MessagePriority::P3 { 2 } else { 1 };
+            candidates.truncate(keep);
         }
 
         candidates
@@ -289,25 +298,6 @@ pub fn score_transport(t: &dyn Transport, req: &TransportSelectionRequest) -> f3
     score -= cost.congestion_level * 30.0;
 
     score
-}
-
-/// Build a cost snapshot from a battery model + live inputs.
-pub fn cost_from_model(
-    model: crate::transport::BatteryCostModel,
-    tx_kbps: f32,
-    rx_kbps: f32,
-    bandwidth_available_bps: u64,
-    congestion_level: f32,
-    monetary_cost_per_kb: f64,
-) -> TransportCost {
-    TransportCost {
-        estimated_battery_ma: model.connected_idle_ma
-            + model.tx_ma_per_kbps * tx_kbps
-            + model.rx_ma_per_kbps * rx_kbps,
-        monetary_cost_per_kb,
-        bandwidth_available_bps,
-        congestion_level,
-    }
 }
 
 /// A no-op transport that reports given caps (used in manager tests).

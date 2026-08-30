@@ -1776,7 +1776,7 @@ mod tests {
             supports_background_android: true,
             supports_background_ios: true,
             requires_special_hardware: false,
-            cost_class: TransportCostClass::Metered,
+            cost_class: TransportCostClass::Metered { cost_per_kb_inr: 0.0 },
             regulatory_band: None,
             conflict_group: crate::transport::RadioConflictGroup::None,
         };
@@ -1816,7 +1816,7 @@ mod tests {
             supports_background_android: true,
             supports_background_ios: true,
             requires_special_hardware: false,
-            cost_class: TransportCostClass::Metered,
+            cost_class: TransportCostClass::Metered { cost_per_kb_inr: 0.0 },
             regulatory_band: None,
             conflict_group: crate::transport::RadioConflictGroup::None,
         };

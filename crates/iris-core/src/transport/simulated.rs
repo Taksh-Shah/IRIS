@@ -3,6 +3,20 @@
 //! Mirrors `docs/transports/TRANSPORT_ABSTRACTION.md` §SimulatedTransport.
 //! All loss/delay decisions are driven by a seeded ChaCha8 RNG, so a fixed
 //! seed yields reproducible behavior (SIM-001 acceptance criterion).
+//!
+//! ## What this simulator models
+//! - Deterministic packet loss (`packet_loss_rate`) — SIM-001 AC-1
+//! - Deterministic latency (`latency_base_ms` + `latency_spread_ms`) — SIM-001 AC-2
+//! - MTU enforcement (`max_message_size`) — RF-43
+//! - Probabilistic connection failure (`connect_failure_rate`) — RF-45-a
+//! - Bandwidth throttling via token bucket (`bandwidth_bps`) — RF-45-b
+//! - Optional ordering preservation (`preserve_order`) — RF-45-c
+//! - Delivery-task abort on shutdown — RF-45-d
+//!
+//! ## What this simulator does NOT model
+//! - Multi-hop routing or mesh topology
+//! - Encryption or authentication overhead
+//! - Real OS radio arbitration or power-save delays
 
 use std::pin::Pin;
 use std::sync::Mutex as StdMutex;
@@ -24,6 +38,43 @@ use crate::transport::{
 };
 use crate::TransportError;
 
+/// Token bucket for bandwidth enforcement (RF-45-b).
+struct TokenBucket {
+    available_bytes: f64,
+    last_refill: Instant,
+    rate_bytes_per_sec: f64,
+    capacity_bytes: f64,
+}
+
+impl TokenBucket {
+    fn new(bandwidth_bps: u64) -> Self {
+        let rate = bandwidth_bps as f64 / 8.0;
+        let capacity = rate.max(65536.0); // at least 64 KiB burst
+        TokenBucket {
+            available_bytes: capacity,
+            last_refill: Instant::now(),
+            rate_bytes_per_sec: rate,
+            capacity_bytes: capacity,
+        }
+    }
+
+    /// Refill from elapsed time and try to consume `bytes`. Returns false if
+    /// the bucket is empty (caller should return `TransportError::Busy`).
+    fn try_consume(&mut self, bytes: usize) -> bool {
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.last_refill).as_secs_f64();
+        self.available_bytes =
+            (self.available_bytes + elapsed * self.rate_bytes_per_sec).min(self.capacity_bytes);
+        self.last_refill = now;
+        if self.available_bytes >= bytes as f64 {
+            self.available_bytes -= bytes as f64;
+            true
+        } else {
+            false
+        }
+    }
+}
+
 /// Configuration for a simulated transport.
 #[derive(Debug, Clone)]
 pub struct SimConfig {
@@ -42,6 +93,12 @@ pub struct SimConfig {
     /// Maximum payload bytes `send()` accepts (RF-43). None defaults to 64 KiB.
     /// Set to e.g. 237 to simulate a LoRa-like MTU, or 185 for BLE.
     pub max_message_size: Option<usize>,
+    /// Probability that `connect()` returns `ConnectionFailed` (RF-45-a).
+    /// 0.0 = always succeed, 1.0 = always fail.
+    pub connect_failure_rate: f32,
+    /// When true, messages are delivered in send order (RF-45-c).
+    /// When false (default), independent per-message sleeps may reorder delivery.
+    pub preserve_order: bool,
 }
 
 impl Default for SimConfig {
@@ -54,6 +111,8 @@ impl Default for SimConfig {
             seed: 42,
             battery_ma_override: None,
             max_message_size: None,
+            connect_failure_rate: 0.0,
+            preserve_order: false,
         }
     }
 }
@@ -74,6 +133,13 @@ pub struct SimulatedTransport {
     /// When `Some`, send() routes outbound frames to the paired transport instead of
     /// looping back to self. Set by `connect_pair`.
     peer_tx: StdMutex<Option<broadcast::Sender<IncomingMessage>>>,
+    /// Handles for in-flight delivery tasks; aborted on shutdown() (RF-45-d).
+    pending_deliveries: StdMutex<Vec<tokio::task::JoinHandle<()>>>,
+    /// For preserve_order: the earliest Instant at which the next message may be delivered,
+    /// ensuring messages queue behind the previous one (RF-45-c).
+    last_delivery_at: StdMutex<Instant>,
+    /// Token bucket for bandwidth enforcement (RF-45-b).
+    token_bucket: StdMutex<TokenBucket>,
 }
 
 impl SimulatedTransport {
@@ -105,6 +171,7 @@ impl SimulatedTransport {
         let id_bytes = id.as_bytes();
         let copy_len = id_bytes.len().min(32);
         peer_id_bytes[..copy_len].copy_from_slice(&id_bytes[..copy_len]);
+        let bw = config.bandwidth_bps;
         SimulatedTransport {
             id: TransportId::from(id),
             my_peer_id: PeerId(peer_id_bytes),
@@ -116,6 +183,9 @@ impl SimulatedTransport {
             state_tx,
             incoming_tx,
             peer_tx: StdMutex::new(None),
+            pending_deliveries: StdMutex::new(Vec::new()),
+            last_delivery_at: StdMutex::new(Instant::now()),
+            token_bucket: StdMutex::new(TokenBucket::new(bw)),
         }
     }
 
@@ -180,6 +250,14 @@ impl Transport for SimulatedTransport {
     }
 
     async fn connect(&self, peer: &PeerInfo) -> Result<TransportLink, TransportError> {
+        // RF-45-a: fault injection — probabilistic connection failure.
+        if self.config.connect_failure_rate > 0.0 {
+            let mut rng = self.rng.lock().await;
+            let r: f32 = rand::Rng::gen_range(&mut *rng, 0.0..1.0);
+            if r < self.config.connect_failure_rate {
+                return Err(TransportError::ConnectionFailed);
+            }
+        }
         self.set_state(TransportState::Connected);
         Ok(TransportLink {
             peer_id: peer.peer_id,
@@ -205,6 +283,10 @@ impl Transport for SimulatedTransport {
                 actual: message.payload.len(),
             });
         }
+        // RF-45-b: token-bucket bandwidth enforcement.
+        if !self.token_bucket.lock().unwrap().try_consume(message.payload.len()) {
+            return Err(TransportError::Busy);
+        }
         if self.is_lost().await {
             return Ok(SendReceipt {
                 peer_id: *peer,
@@ -227,8 +309,22 @@ impl Transport for SimulatedTransport {
         };
         let transport_id = self.id.as_str().to_string();
         let payload = message.payload.clone();
-        tokio::spawn(async move {
-            tokio::time::sleep(delay).await;
+        // RF-45-c: when preserve_order is true, ensure this message's delivery
+        // instant is no earlier than the previous message's delivery instant.
+        let sleep_until = if self.config.preserve_order {
+            let mut last = self.last_delivery_at.lock().unwrap();
+            let deliver_at = (*last).max(Instant::now()) + delay;
+            *last = deliver_at;
+            deliver_at
+        } else {
+            Instant::now() + delay
+        };
+        // RF-45-d: track the spawned task so shutdown() can abort it.
+        let handle = tokio::spawn(async move {
+            let now = Instant::now();
+            if sleep_until > now {
+                tokio::time::sleep(sleep_until - now).await;
+            }
             target_tx.send(IncomingMessage {
                 peer_id: sender_peer_id,
                 transport_id,
@@ -236,6 +332,12 @@ impl Transport for SimulatedTransport {
                 received_at: Instant::now(),
             }).ok();
         });
+        {
+            let mut pending = self.pending_deliveries.lock().unwrap();
+            // Prune finished handles to bound memory.
+            pending.retain(|h| !h.is_finished());
+            pending.push(handle);
+        }
         Ok(SendReceipt {
             peer_id: *peer,
             bytes_sent: message.payload.len(),
@@ -257,6 +359,11 @@ impl Transport for SimulatedTransport {
     }
 
     async fn shutdown(&self) -> Result<(), TransportError> {
+        // RF-45-d: abort all in-flight delivery tasks so messages sent before
+        // shutdown() never arrive after it.
+        for handle in self.pending_deliveries.lock().unwrap().drain(..) {
+            handle.abort();
+        }
         self.set_state(TransportState::Unavailable);
         Ok(())
     }

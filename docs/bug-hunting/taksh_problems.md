@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 14 | 0 | 111 | 1 | 0 | **IN PROGRESS 2026-08-30** — batches 1+2 fixed RF-3/6/8/11/15/17/18/19/20/21/22/23/24/25, MG-15/18/20/22/23/24, BLE-32/37/38/39/40, GAP-1, RF-28/34; tracker sync corrected drift. 111/126 done, 14 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 4 | 0 | 121 | 1 | 0 | **IN PROGRESS 2026-08-30** — Run 22: RF-2/26/27/32/45, BLE-36, MG-5/12/16/19 fixed; RF-25/MG-15/20/22 drift corrected. 121/126 done, 4 remaining (MG-8/14/17, GAP-5), 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **14** | **0** | **262** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **4** | **0** | **272** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -4009,7 +4009,7 @@ let ndp = tokio::time::timeout(NDP_OPEN_TIMEOUT, adapter.open_ndp(PeerHandle(han
 
 #### BLE-36: `stop_discovery` is a partial stop, and `shutdown` is irreversible
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  abort poller in stop_discovery when no links remain; add restart() to clear shutdown latch; SimulatedWifiAwareAdapter::availability_stream() now re-subscribable
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifiaware.rs:906-913` (`stop_discovery`), `:1081-1107` (`shutdown`)
 - **What:** `stop_discovery` unsubscribes but leaves the poller running, the state untouched, and the
@@ -4563,7 +4563,7 @@ async fn read_config(&self) -> Result<(RadioProfile, i8), LoRaLinkError>;
 #### RF-2: The hourly duty budget is reset to 100 % by every process restart
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  DutyLedger trait + InMemoryDutyLedger seam; try_new_with_ledger() constructor; record_tx/refund wired in DutyCycleTracker
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/lora.rs:309-336` (`try_new` / `with_clock`), `239-249` (struct `DutyCycleTracker`)
 - **What:** `DutyCycleTracker` holds its entire state in an in-memory `Mutex<VecDeque<TxRecord>>`. There is no persistence seam at all — contrast the satellite transport, which has a whole `CostLedger` trait (`satellite.rs:226-228`) precisely so its budget "survives reboots (disaster-context requirement)".
@@ -5215,7 +5215,7 @@ match *slot {
 #### RF-25: `is_link_loss_error` matches strings that the real Android adapter never produces — a dead group is never torn down
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  pulled from main  ·  2026-08-29  ·  WifiDirectError typed enum; p2p_send returns typed Result
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:1049-1059` (fn `is_link_loss_error`), `1273-1282` (fn `send`); real strings from `crates/iris-android/src/ffi/error.rs:7-26` via `crates/iris-android/src/bridge.rs:443-447`
 - **What:** link-loss classification is substring matching on an error *message*. The production adapter's messages come from `IrisFfiError`'s `Display` impls, and **none of the structured variants contains any of the five markers**.
@@ -5249,7 +5249,7 @@ match *slot {
 #### RF-26: The default `GroupConfig` makes **both** peers Group Owners; GO intent is never negotiated and never reaches the platform
 - **Severity:** High
 - **Verdict:** CONFIRMED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  `>= GO_INTENT_BALANCED` → `> GO_INTENT_BALANCED` prevents dual-GO on default config
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:98-100`, `133-141` (`GroupConfig::default`), `1186-1210` (fn `connect`)
 - **What:** the GO/GC decision is a purely **local** comparison of this node's own configured intent against a constant. There is no exchange of intents, no tie-breaker, and the peer's advertised `GROUP_OWNER_CAPABLE` / `PERSISTENT_GO` capability bits from the TXT record are read by nothing. With `GroupConfig::default()` (`go_intent: GO_INTENT_BALANCED` = 7), `7 >= 7` is true, so **every** default-configured node takes the `create_group` branch.
@@ -5282,7 +5282,7 @@ match *slot {
 
 #### RF-27: Two adapter-trait methods cannot report failure by signature, forcing the Android bridge to swallow every error
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  matches()/incoming() now return Result<Vec<_>, String>; bridge.rs maps FFI errors; call sites use unwrap_or_else with warn
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:196-197` (`matches`), `223-224` (`incoming`); consequence at `crates/iris-android/src/bridge.rs:373-384` and `451-464`
 - **What:** `async fn matches(&self) -> Vec<PeerDiscovery>` and `async fn incoming(&self) -> Vec<IncomingWifiDirectData>` return bare `Vec`. The FFI trait *does* return `Result` (`ffi/wifi_direct_adapter.rs:84`, `115`), so the bridge has to discard it.
@@ -5423,7 +5423,7 @@ for f in adapter.incoming().await {
 
 #### RF-32: The TCP-over-GO data plane described in the module docs is not implemented — `go_addr`, `group_info` and `set_operating_band` are never called
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  module doc updated to reflect actual p2p_send/incoming implementation; removed misleading TCP-over-GO description
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/wifi_direct.rs:20-24` (module doc), `211-218` (trait methods), `1186-1225` (fn `connect`), `1272-1282` (fn `send`)
 - **What:** the doc says "data path = **TCP socket over the Group Owner** reusing INTERNET-001 framing (1 MiB cap, pool + backoff)". What exists: `encode_frame` is used to build the length-prefixed frame, and then the frame is handed to `adapter.p2p_send()`. No `TcpStream`, no socket, no pool, no backoff. `go_addr()` — the whole point of which is to supply the GO's IP for that socket — is **never called by the transport**: `grep -n "go_addr" wifi_direct.rs` shows only the trait decl (215), the sim's own returns (588, 622, 637, 673, 688) and the doc. Same for `group_info()` (called only by the sim's own `create_group`, line 575) and `set_operating_band()` (never called; the band travels only inside `GroupConfig` to `create_group`).
@@ -5816,7 +5816,7 @@ if message.payload.len() > self.caps.max_message_size {
 
 #### RF-45: `connect()` cannot fail, `bandwidth_bps` never throttles, ordering is not preserved, and in-flight sends survive shutdown
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  SimConfig: connect_failure_rate+preserve_order; TokenBucket for bandwidth; ordered delivery via last_delivery_at; pending_deliveries aborted on shutdown; module doc now lists modelled/unmodelled behaviours
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/simulated.rs:159-166` (`connect`), `180-197` (`send`), `26-48` (`SimConfig`)
 - **What:** four contract gaps in one surface. (a) `connect()` unconditionally sets `Connected` and returns `Ok` — `ConnectionFailed`, `PeerNotFound` and `DiscoveryTimeout` are unreachable. (b) `bandwidth_bps` feeds only `capabilities` and `cost_snapshot`; no send is ever delayed or refused by it, so congestion/backpressure is unmodelled. (c) each send spawns an independent `sleep(base + rand(0..=spread))`, so two back-to-back messages can arrive out of order — while `internet.rs` and `wifi_direct.rs` ride ordered TCP. (d) the spawned delivery tasks are untracked, so messages sent before `shutdown()` still arrive after it.
@@ -6012,7 +6012,7 @@ if req.message_size > 10_000 {
 #### MG-5: No fallback candidate for P2–P7 — the manager provides no transport-level failover at all
 - **Severity:** Medium  *(as filed: High — corrected by adversarial verification)*
 - **Verdict:** CONFIRMED-BUT-DOWNGRADED. See §14.
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  P2/P3 now keeps 2 candidates; P4-P7 keeps 1; multipath+emergency keeps all
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:156-160`
 - **What:** For every non-emergency priority the candidate list is truncated to exactly one entry. The caller receives no second choice, so when the chosen transport's `send()` fails there is nothing to fail over *to* within that delivery attempt.
@@ -6216,7 +6216,7 @@ pub async fn shutdown(&self) {
 
 #### MG-12: No recovery-after-failure logic — no backoff, no retry, no `TransportPermanentFailure`
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  TopologyEvent::TransportPermanentFailure { transport_id, attempts } added to transport/mod.rs
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:84-106` (the only lifecycle code); `crates/iris-core/src/transport/mod.rs:254-280` (`TopologyEvent`)
 - **What:** When a transport drops to `Unavailable`, the manager takes no action. It does not retry, does not schedule anything, and there is no event variant for permanent failure.
@@ -6292,7 +6292,7 @@ Two filters. Neither mentions the peer.
 
 #### MG-15: `max_latency_ms` is never read
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit ae1728a  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:52`; `score_transport` at `:173-207`
 - **What:** A deadline constraint on the request that no code enforces. `score_transport` uses `caps.typical_latency_ms` for an emergency *bonus* (`:187`) but never compares it against `req.max_latency_ms`.
@@ -6315,7 +6315,7 @@ manager.rs:188        score += 100.0 / (caps.typical_latency_ms as f32 + 1.0);
 
 #### MG-16: Battery cost model is entirely unwired — `cost_from_model`, `BLE_COST`, and cost accounting have no callers
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  deleted BLE_COST constant and cost_from_model function (zero callers)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:209-226` (fn `cost_from_model`); `crates/iris-core/src/transport/mod.rs:205-252` (`BatteryCostModel` + constants)
 - **What:** `cost_from_model` — the one function that turns a `BatteryCostModel` into a `TransportCost` — has zero callers. `BLE_COST` has zero callers. The other constants are used only for a two-branch `if connected { idle_ma } else { scan_ma }` pick, so `tx_ma_per_kbps`/`rx_ma_per_kbps` are read nowhere. There is no cost ledger in the manager.
@@ -6394,7 +6394,7 @@ Line 333 (`#[cfg(test)] mod tests`) confirms it is *not* inside the test module.
 
 #### MG-19: `TransportCostClass` variants carry no cost data, so the required cost warning cannot be built
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  Run 22  ·  2026-08-30  ·  Metered { cost_per_kb_inr } + Expensive { cost_per_message_inr, minimum_cost_inr }; is_expensive() helper; all construction sites updated
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/mod.rs:181-190`
 - **What:** The enum is three unit variants. The spec's version carries the actual figures.
@@ -6426,7 +6426,7 @@ pub enum TransportCostClass {
 
 #### MG-20: Three tests would still pass with the logic inverted or deleted
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit 5bda806  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/manager.rs:586-599`, `:652-684`; `crates/iris-core/tests/sysval_mesh_integration.rs:189-233`
 - **What:** Three tests present as guarding invariants they do not exercise.
@@ -6507,7 +6507,7 @@ plus a `tracing::warn!` on the illegal path so adapter bugs are visible.
 
 #### MG-22: One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started  ·  Tier 4
+- **Fix status:** ✅ Fixed  ·  Tier 4  ·  commit ae1728a  ·  2026-08-29
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/transport/mod.rs:294-332`
 - **What:** `broadcast_stream` is generic and used for **both** `incoming_messages()` and `state_stream()`. On `Lagged` it increments a single process-global counter named `INBOUND_LAGGED_TOTAL`, logs `"inbound transport buffer overran; messages were dropped"`, and continues. The accessor `inbound_lagged_total()` has no callers.

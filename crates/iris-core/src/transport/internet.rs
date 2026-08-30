@@ -68,7 +68,7 @@ pub fn internet_capabilities() -> TransportCapabilities {
         supports_background_android: true,
         supports_background_ios: true,
         requires_special_hardware: false,
-        cost_class: TransportCostClass::Metered,
+        cost_class: TransportCostClass::Metered { cost_per_kb_inr: 0.0 },
         regulatory_band: None,
         conflict_group: crate::transport::RadioConflictGroup::None,
     }
@@ -728,7 +728,7 @@ mod tests {
         let caps = internet_capabilities();
         assert!(caps.requires_infrastructure);
         assert!(!caps.requires_special_hardware);
-        assert_eq!(caps.cost_class, TransportCostClass::Metered);
+        assert!(matches!(caps.cost_class, TransportCostClass::Metered { .. }));
         assert!(caps.supports_background_android && caps.supports_background_ios);
         assert!(caps.max_message_size >= 1_000_000);
     }

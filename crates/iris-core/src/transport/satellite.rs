@@ -972,7 +972,10 @@ fn satellite_capabilities() -> TransportCapabilities {
         supports_background_android: false,
         supports_background_ios: false,
         requires_special_hardware: true,
-        cost_class: TransportCostClass::Expensive,
+        cost_class: TransportCostClass::Expensive {
+            cost_per_message_inr: SAT_EST_TX_COST_INR,
+            minimum_cost_inr: SAT_EST_TX_COST_INR,
+        },
         regulatory_band: Some(String::from("GMPCS/MSS operator authorization required")),
         conflict_group: crate::transport::RadioConflictGroup::None,
     }
@@ -1548,7 +1551,7 @@ mod tests {
             caps.max_message_size, 270,
             "SAT-RT-105: MT relay budget advertised"
         );
-        assert_eq!(caps.cost_class, TransportCostClass::Expensive);
+        assert!(caps.cost_class.is_expensive());
         assert!(caps.requires_special_hardware);
         assert!(caps.requires_infrastructure);
         assert!(!caps.supports_multicast);

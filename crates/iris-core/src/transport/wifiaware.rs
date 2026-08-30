@@ -373,8 +373,9 @@ pub struct SimulatedWifiAwareAdapter {
     published: AtomicBool,
     ndp_open: StdMutex<HashMap<NdpHandle, u64>>,
     available: AtomicBool,
+    /// BLE-36: kept as sender only — `availability_stream()` subscribes fresh
+    /// each time so the stream is re-subscribable after a transport restart.
     available_tx: broadcast::Sender<bool>,
-    available_rx: StdMutex<Option<broadcast::Receiver<bool>>>,
     /// Adapter start time, drives monotonic `freshness_minutes` (RT-011) so
     /// the anti-stale field is exercised with real non-zero values in CI.
     started: Instant,
@@ -382,7 +383,7 @@ pub struct SimulatedWifiAwareAdapter {
 
 impl SimulatedWifiAwareAdapter {
     pub fn new(coordinator: Arc<SimMeshCoordinator>) -> Self {
-        let (available_tx, available_rx) = broadcast::channel(8);
+        let (available_tx, _) = broadcast::channel(8);
         SimulatedWifiAwareAdapter {
             coordinator,
             tag: StdMutex::new(0),
@@ -391,7 +392,6 @@ impl SimulatedWifiAwareAdapter {
             ndp_open: StdMutex::new(HashMap::new()),
             available: AtomicBool::new(true),
             available_tx,
-            available_rx: StdMutex::new(Some(available_rx)),
             started: Instant::now(),
         }
     }
@@ -431,10 +431,11 @@ impl SimulatedWifiAwareAdapter {
 #[async_trait]
 impl WifiAwareAdapter for SimulatedWifiAwareAdapter {
     fn availability_stream(&self) -> Option<Pin<Box<dyn Stream<Item = bool> + Send + 'static>>> {
-        self.available_rx.lock().unwrap_or_else(|p| p.into_inner()).take().map(|rx| {
-            Box::pin(crate::transport::broadcast_stream(rx, "wifiaware.availability"))
-                as Pin<Box<dyn Stream<Item = bool> + Send + 'static>>
-        })
+        // BLE-36: subscribe a fresh receiver each call so the stream is
+        // re-subscribable after a transport restart (not a one-shot `.take()`).
+        let rx = self.available_tx.subscribe();
+        Some(Box::pin(crate::transport::broadcast_stream(rx, "wifiaware.availability"))
+            as Pin<Box<dyn Stream<Item = bool> + Send + 'static>>)
     }
 
     async fn start(&self) -> Result<(), String> {
@@ -710,6 +711,17 @@ impl WifiAwareTransport {
             dropped_inbound: Arc::new(AtomicU64::new(0)),
             discovery_cache: StdMutex::new(HashMap::new()),
         }
+    }
+
+    /// BLE-36: reset the transport after a `shutdown()` so it can be brought up
+    /// again (e.g. display-on after display-off). Must be called before the next
+    /// `discover_peers` / `start_advertising` cycle. Runs under `connect_gate` so
+    /// it cannot race a concurrent `ensure_started` or `shutdown`.
+    pub async fn restart(&self) {
+        let _gate = self.connect_gate.lock().await;
+        self.shutdown_flag.store(false, Ordering::SeqCst);
+        self.started_flag.store(false, Ordering::Release);
+        self.set_state(TransportState::Unavailable);
     }
 
     /// BLE-33: observable count of frames dropped because the inbound broadcast
@@ -1126,6 +1138,24 @@ impl Transport for WifiAwareTransport {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .clear();
+        // BLE-36: if there are no active links the NDP poller serves no purpose
+        // and burns the idle-poll timer. Abort it so the transport actually stops
+        // scanning. State drops to Available (not Unavailable — the adapter is
+        // still up and a fresh discover_peers / ensure_started can restart).
+        let no_links = self
+            .links
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .is_empty();
+        if no_links {
+            if let Some(handle) = self.poller.lock().await.take() {
+                handle.abort();
+            }
+            // Only update state if we were Connected (no links left).
+            if self.state.load() == TransportState::Connected {
+                self.set_state(TransportState::Available);
+            }
+        }
         Ok(())
     }
 
