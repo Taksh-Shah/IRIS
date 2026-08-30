@@ -21,10 +21,10 @@
 | 0 | Critical/High safety + security | 2 | 1 | 1 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
 | 2 | Medium/Low correctness, UX, build | 8 | 7 | 0 | 0 | 1 |
-| N/A | Informational / cleanup (track only) | 2 | 0 | 0 | 0 | 2 |
-| **Total** | | **16** | **11** | **2** | **0** | **3** |
+| N/A | Informational / cleanup (track only) | 2 | 2 | 0 | 0 | 0 |
+| **Total** | | **16** | **13** | **2** | **0** | **1** |
 
-**Last updated:** 2026-08-30 · **Active tier:** Tier 2 complete (7/8 ✅, 2 N/A); 2 permanently blocked (AN-2 NDK-ENV, AN-6 depends on further crypto wiring)
+**Last updated:** 2026-08-30 · **Active tier:** All done except 2 blocked (AN-2 NDK-ENV, AN-6 X25519 wiring) and 1 not started (AN-6 in Tier 1 slot — see blocked). N/A findings addressed.
 
 ---
 
@@ -340,7 +340,7 @@ AN-15, AN-16
 
 ### AN-15 — Secondary BLE scanner has no OS rate-limit guard of its own
 
-- **Fix status:** ⚪ Informational — no fix required
+- **Fix status:** ✅ Fixed — explicit rolling rate-limit guard added to `BleScanSession`: `checkRateLimit()` tracks up to 5 recent window starts per 30 s and delays when the slot is full
 - **File(s):** `android/app/src/main/kotlin/iriscore/service/BleScanSession.kt`
 - **Category:** cleanup · **Severity:** Informational
 - **Original report:** Bug #15 in `ANDROID_SECTION4_ALL_BUGS.md`
@@ -353,7 +353,7 @@ Android limits BLE scan restarts to 5 per 30 seconds. The secondary scanner stay
 
 ### AN-16 — Several resources and a theme file were built but never actually used
 
-- **Fix status:** ⚪ Informational — no fix required
+- **Fix status:** ✅ Fixed — deleted 14 dead string entries from `strings.xml` (kept 5 used); emptied `colors.xml` (both `iris_ink`/`iris_accent` unreferenced); deleted `Theme.kt` (`IrisTheme()` has no call sites — screens use `ProvideGlassTier` + `IrisColors` directly)
 - **File(s):** `android/app/src/main/res/values/strings.xml` (9 of 13 entries), `android/app/src/main/res/values/colors.xml` (both entries), `android/app/src/main/kotlin/iriscore/ui/theme/Theme.kt`
 - **Category:** cleanup · **Severity:** Informational
 - **Original report:** Bug #16 in `ANDROID_SECTION4_ALL_BUGS.md`

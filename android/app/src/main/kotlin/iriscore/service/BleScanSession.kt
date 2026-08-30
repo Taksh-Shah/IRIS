@@ -39,6 +39,11 @@ class BleScanSession(private val context: Context) {
     private var consecutiveEmpties = 0
     @Volatile private var activeWindow = false
 
+    // AN-15: OS caps BLE startScan to 5 calls per 30 s per process.
+    // Track the rolling window of recent starts; checkRateLimit() returns 0
+    // when a slot is free (and claims it), or the millis to wait otherwise.
+    private val recentWindowStarts = ArrayDeque<Long>(6)
+
     /** PendingIntent of the current scan window (same REQ_CODE + intent identity for stop). */
     private var scanPendingIntent: android.app.PendingIntent? = null
 
@@ -62,6 +67,11 @@ class BleScanSession(private val context: Context) {
                     delay(policy.cooldownMs(consecutiveEmpties))
                     continue
                 }
+                val rateLimitWaitMs = checkRateLimit()
+                if (rateLimitWaitMs > 0L) {
+                    delay(rateLimitWaitMs)
+                    continue
+                }
                 activeWindow = true
                 val found = startOneWindow(guarded)
                 if (found) delay(ScanRestartPolicy.WINDOW_ON_MS)
@@ -79,6 +89,18 @@ class BleScanSession(private val context: Context) {
             context,
             Manifest.permission.BLUETOOTH_SCAN,
         ) == PackageManager.PERMISSION_GRANTED
+
+    private fun checkRateLimit(): Long {
+        val now = System.currentTimeMillis()
+        while (recentWindowStarts.isNotEmpty() && now - recentWindowStarts.first() >= RATE_LIMIT_WINDOW_MS) {
+            recentWindowStarts.removeFirst()
+        }
+        if (recentWindowStarts.size < MAX_STARTS_PER_WINDOW) {
+            recentWindowStarts.addLast(now)
+            return 0L
+        }
+        return RATE_LIMIT_WINDOW_MS - (now - recentWindowStarts.first()) + 1L
+    }
 
     private fun startOneWindow(scanner: BluetoothLeScanner): Boolean {
         val settings = ScanSettings.Builder()
@@ -133,6 +155,9 @@ class BleScanSession(private val context: Context) {
     companion object {
         /** Matches the manifest `<receiver>` request-code contract. */
         const val PendingIntentRequestCode = 0x1F1
+
+        private const val RATE_LIMIT_WINDOW_MS = 30_000L
+        private const val MAX_STARTS_PER_WINDOW = 5
     }
 }
 

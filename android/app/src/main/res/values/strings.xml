@@ -5,18 +5,4 @@
     <string name="service_channel_description">Keeps the disruption-tolerant mesh transports running</string>
     <string name="service_notification_title">IRIS mesh active</string>
     <string name="service_notification_text">BLE control plane + Wi-Fi re-arm window</string>
-    <string name="home_title">IRIS</string>
-    <string name="node_id_label">Node</string>
-    <string name="recipient_label">Recipient PeerId (64 hex)</string>
-    <string name="message_hint">Message…</string>
-    <string name="send_action">Send</string>
-    <string name="send_p0_action">SOS (P0)</string>
-    <string name="permissions_title">Permissions required</string>
-    <string name="permissions_body">IRIS needs nearby-device permissions to reach other nodes. Without them the mesh starts but carries no traffic.</string>
-    <string name="permissions_action">Grant</string>
-    <string name="relay_action">Relay</string>
-    <string name="status_idle">Idle</string>
-    <string name="status_starting">Starting transports…</string>
-    <string name="status_running">Mesh running</string>
-    <string name="status_unavailable">Radio unavailable</string>
 </resources>

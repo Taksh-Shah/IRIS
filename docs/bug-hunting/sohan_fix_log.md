@@ -108,6 +108,28 @@ All Android Section 4 findings resolved. Perform final sweep: confirm `sohan_pro
 
 ---
 
+## Run 5 — 2026-08-30 — Informational cleanup (AN-15, AN-16)
+
+Target findings: AN-15 (BLE rate-limit guard), AN-16 (dead resources + theme file).
+
+**Drift notes:** AN-16 strings.xml had 19 entries total (tracker said 13 — likely written against an earlier version); 5 are used (app_name, service_channel_*, service_notification_*), 14 removed. Both colors.xml entries (iris_ink/iris_accent) verified dead — no R.color or @color references anywhere; values match inline Color() constants in the now-deleted Theme.kt. AN-15 guard is defensive: with AN-7 fixed the scanner runs once per 30+ s and stays well within limits regardless.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | AN-15 | ✅ | (this commit) | `checkRateLimit()` + `recentWindowStarts` rolling deque added to `BleScanSession`; constants `RATE_LIMIT_WINDOW_MS=30000`, `MAX_STARTS_PER_WINDOW=5` |
+| 2 | AN-16 | ✅ | (this commit) | 14 dead string entries removed; `colors.xml` emptied; `Theme.kt` deleted via git rm |
+
+**Batch closeout:** `./gradlew assembleDebug` PENDING ANDROID-CI. `./gradlew test` PENDING ANDROID-CI.
+
+**Final checkpoint:** 13/16 findings ✅, 2 🔒 blocked (AN-2 NDK-ENV, AN-6 X25519 wiring), 1 ⬜ (AN-6 deferred in Tier 1).
+
+### Next run
+No further autonomous runs needed. Blocked findings require environment changes:
+- AN-2: install `cargo-ndk` + NDK toolchain, then `cargo ndk -t aarch64-linux-android build --release`
+- AN-6: bridge Kotlin X25519 key into the `decrypt()` path in `AndroidCryptoProvider`
+
+---
+
 *(Add further runs as needed — copy the template below)*
 
 ---
