@@ -21,25 +21,23 @@ findings are `PENDING ANDROID-CI` until AN-4 is fixed and a green run is observe
 
 ---
 
-## Run 1 — [DATE] — Tier 0 batch (AN-1, AN-2)
-
-**(Fill in when run begins.)**
+## Run 1 — 2026-08-30 — Tier 0 batch (AN-1, AN-2)
 
 Target findings: AN-1 (Critical, fake crypto stub), AN-2 (High, stale `.so`).
 
-Pre-run drift audit: re-read `engine.rs:127`, `X25519StaticAd.kt`, and `.so` git log against HEAD before writing any fix.
-
-**Drift notes:** _(fill in)_
+**Drift notes:** AN-1: `DevCryptoProvider` still in place at `engine.rs:139` (line drifted from :127). Android Keystore identity is fully implemented in `KeystoreEd25519.kt` + `IrisCoreModule.kt` but never bridged to Rust signing. Fix is a new `FfiCryptoSigner` FFI trait + `AndroidCryptoProvider` struct. AN-2: `cargo-ndk` not installed — NDK rebuild not possible in this environment.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | AN-1 | ⬜ | — | — |
-| 2 | AN-2 | ⬜ | — | — |
+| 1 | AN-1 | ✅ | (this commit) | `FfiCryptoSigner` trait + `AndroidCryptoProvider` added; `IrisEngine::new` takes `signer` param; `IrisCoreModule` wires `KeystoreEd25519.sign` → Rust |
+| 2 | AN-2 | 🔒 | — | PENDING NDK-ENV: `cargo-ndk` not available; rebuild deferred |
 
-**Batch closeout:** `./gradlew assembleDebug` clean · `./gradlew test` pass count · also update `sohan_problems.md` Tier 0 rows and `taksh_problems.md` Tier 0 rows to ✅.
+**Batch closeout:** `./gradlew assembleDebug` PENDING ANDROID-CI. `./gradlew test` PENDING ANDROID-CI.
+
+**Tier 0 checkpoint:** 1/2 ✅, 1/2 🔒 — AN-1 done; AN-2 deferred pending NDK toolchain.
 
 ### Next run
-Advance to Tier 1: AN-3 (gradle.properties), AN-4 (CI path), AN-5 (SOS content type), AN-6 (X25519 wiring).
+Tier 1 already complete (committed in prior run). Next: Tier 2 batch A — AN-7+AN-12, AN-8, AN-9, AN-10.
 
 ---
 

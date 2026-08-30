@@ -4,10 +4,12 @@
 //! AC-4 wiring: the engine owns a `tokio::runtime::Runtime` (explicit handle
 //! pattern, issue #2576 workaround, D-2), a `TransportManager` with the three
 //! transports registered over the injected FFI adapters (via `crate::bridge`),
-//! and a `MessageEngine` over `MemoryStorage` + `DevCryptoProvider` (STORE-001
-//! / RED-0001 dev seam). Inbound frames from every registered transport are
-//! forwarded into `process_incoming` by auto-spawned tasks; delivered messages
-//! surface to the Kotlin shell through `subscribe_inbox` (FfiInboxListener).
+//! and a `MessageEngine` over `MemoryStorage` + `AndroidCryptoProvider` (AN-1:
+//! real Ed25519/X25519/ChaCha20-Poly1305; signing delegates to the Kotlin-side
+//! `FfiCryptoSigner` so the Android Keystore TEE key never leaves Kotlin).
+//! Inbound frames from every registered transport are forwarded into
+//! `process_incoming` by auto-spawned tasks; delivered messages surface to the
+//! Kotlin shell through `subscribe_inbox` (FfiInboxListener).
 
 use std::sync::Arc;
 
@@ -16,7 +18,6 @@ use tokio::runtime::{Handle, Runtime};
 
 use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
-use iris_core::message_engine::crypto::DevCryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
 use iris_core::message_engine::{
     expiry::unix_now, InboundOutcome, MessageEngine, MessageEngineConfig,
@@ -28,8 +29,10 @@ use iris_core::transport::wifi_direct::WifiDirectTransport;
 use iris_core::transport::wifiaware::WifiAwareTransport;
 use iris_core::transport::{Transport, TransportId, TransportManager};
 
+use crate::android_crypto::AndroidCryptoProvider;
 use crate::bridge::{BleBridge, WifiAwareBridge, WifiDirectBridge};
 use crate::ffi::ble_adapter::FfiBleAdapter;
+use crate::ffi::crypto_signer::FfiCryptoSigner;
 use crate::ffi::error::IrisFfiError;
 use crate::ffi::wifi_aware_adapter::FfiWifiAwareAdapter;
 use crate::ffi::wifi_direct_adapter::FfiWifiDirectAdapter;
@@ -85,6 +88,7 @@ impl IrisEngine {
         aware: Arc<dyn FfiWifiAwareAdapter>,
         direct: Arc<dyn FfiWifiDirectAdapter>,
         node_id: Vec<u8>,
+        signer: Arc<dyn FfiCryptoSigner>,
     ) -> Result<Arc<Self>, IrisFfiError> {
         // HW-3: install the logcat bridge before anything else can emit a
         // tracing event worth seeing — every transport/discovery/message-
@@ -136,7 +140,7 @@ impl IrisEngine {
                     ..Default::default()
                 },
                 Arc::new(MemoryStorage::new()),
-                Arc::new(DevCryptoProvider::new()),
+                Arc::new(AndroidCryptoProvider::new(signer.clone())),
                 manager.clone(),
                 MetricsRegistry::new(),
             );

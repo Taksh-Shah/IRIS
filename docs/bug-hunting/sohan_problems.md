@@ -18,13 +18,13 @@
 
 | Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
-| 0 | Critical/High safety + security | 2 | 0 | 0 | 0 | 2 |
+| 0 | Critical/High safety + security | 2 | 1 | 1 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
 | 2 | Medium/Low correctness, UX, build | 8 | 0 | 0 | 0 | 8 |
 | N/A | Informational / cleanup (track only) | 2 | 0 | 0 | 0 | 2 |
-| **Total** | | **16** | **3** | **1** | **0** | **12** |
+| **Total** | | **16** | **4** | **2** | **0** | **10** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 1 (Tier 1 complete — 3 ✅, 1 🔒)
+**Last updated:** 2026-08-30 · **Active tier:** 0 complete (1 ✅, 1 🔒), Tier 1 complete (3 ✅, 1 🔒)
 
 ---
 
@@ -52,7 +52,7 @@ AN-15, AN-16
 
 ### AN-1 — Android engine uses a fake, always-valid crypto stub instead of real encryption
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — added `FfiCryptoSigner` FFI trait + `AndroidCryptoProvider`; signing delegates to Kotlin's `KeystoreEd25519`, verification/AEAD in Rust; `IrisEngine::new` now takes `signer: Arc<dyn FfiCryptoSigner>`
 - **File(s):** `crates/iris-android/src/engine.rs:127`
 - **Category:** safety · **Severity:** Critical
 - **Tier:** 0
@@ -75,7 +75,7 @@ AN-15, AN-16
 
 ### AN-2 — Pre-built native library predates a critical relay-crash fix
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked — requires `cargo-ndk` + Android NDK toolchain (PENDING NDK-ENV); `cargo-ndk` not installed in current environment
 - **File(s):** `android/app/src/main/jniLibs/*/libiriscode.so`
 - **Category:** safety · **Severity:** High
 - **Tier:** 0

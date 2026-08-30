@@ -12,8 +12,10 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 async-trait.workspace = true
+ed25519-dalek.workspace = true
 futures-util.workspace = true
 iris-core = { path = "../iris-core" }
+rand.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

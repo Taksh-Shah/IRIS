@@ -9,6 +9,7 @@
 
 uniffi::setup_scaffolding!();
 
+pub mod android_crypto;
 pub mod bridge;
 pub mod engine;
 pub mod ffi;
@@ -18,6 +19,7 @@ pub use engine::{FfiInboxListener, FfiIncomingMessage, IrisEngine};
 pub use ffi::ble_adapter::{
     FfiAdvertisementData, FfiBleAdapter, FfiGattWriteEvent, FfiScanFilter, FfiScanResult,
 };
+pub use ffi::crypto_signer::FfiCryptoSigner;
 pub use ffi::error::IrisFfiError;
 pub use ffi::wifi_aware_adapter::{
     FfiIncomingNdpData, FfiPeerDiscovery, FfiPublishConfig, FfiWifiAwareAdapter,

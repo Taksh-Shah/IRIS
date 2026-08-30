@@ -7,6 +7,7 @@
 //! cross the FFI boundary, so the spike introduces owned projection types.
 
 pub mod ble_adapter;
+pub mod crypto_signer;
 pub mod error;
 pub mod wifi_aware_adapter;
 pub mod wifi_direct_adapter;

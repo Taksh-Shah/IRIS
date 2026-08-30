@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import iriscode.FfiBleAdapter
+import iriscode.FfiCryptoSigner
 import iriscode.FfiWifiAwareAdapter
 import iriscode.FfiWifiDirectAdapter
 import iriscode.IrisEngine
@@ -16,8 +17,8 @@ import javax.inject.Singleton
 
 /**
  * Engages the Rust engine: provisions the identity (AC-8) and builds [IrisEngine]
- * over the three injected adapters (constructor contract = generated Kotlin:
- * `(ble, aware, direct, nodeId: ByteArray)`).
+ * over the three injected adapters and the Keystore-backed [FfiCryptoSigner]
+ * (AN-1: real Ed25519 signing, no longer a dev stub).
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -35,6 +36,18 @@ object IrisCoreModule {
     fun provideNodeId(keystore: KeystoreEd25519): ByteArray = keystore.publicKeyRaw()
 
     /**
+     * AN-1: bridges the Android Keystore Ed25519 signing key into the Rust engine.
+     * The private key never leaves Kotlin/Keystore TEE — Rust calls `sign(data)`
+     * and receives the 64-byte raw signature back over the FFI boundary.
+     */
+    @Provides
+    @Singleton
+    fun provideFfiCryptoSigner(keystore: KeystoreEd25519): FfiCryptoSigner =
+        object : FfiCryptoSigner {
+            override fun sign(data: ByteArray): ByteArray = keystore.sign(data)
+        }
+
+    /**
      * Shared relay spool. The UI send path and the WorkManager drain cadence
      * must observe the same queue, so this is a singleton — a per-injection
      * instance would silently strand queued messages in a dead copy.
@@ -50,5 +63,6 @@ object IrisCoreModule {
         aware: FfiWifiAwareAdapter,
         direct: FfiWifiDirectAdapter,
         @NodeId nodeId: ByteArray,
-    ): IrisEngine = IrisEngine(ble, aware, direct, nodeId)
+        signer: FfiCryptoSigner,
+    ): IrisEngine = IrisEngine(ble, aware, direct, nodeId, signer)
 }
