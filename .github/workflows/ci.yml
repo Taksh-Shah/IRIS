@@ -240,7 +240,7 @@ jobs:
           java-version: "21"
           cache: gradle
       - name: Gradle wrapper regeneration check
-        working-directory: crates/iris-android
+        working-directory: android
         run: |
           wrapperJar=$(find . -maxdepth 2 -name gradle-wrapper.jar | head -n1)
           if [ -n "$wrapperJar" ]; then
@@ -249,10 +249,10 @@ jobs:
             echo "::warning::gradle wrapper jar missing - regeneration required; skipping build"
           fi
       - name: Android shared AAR test
-        working-directory: crates/iris-android
+        working-directory: android
         run: |
           if [ -f gradlew ]; then
-            ./gradlew testDebugUnitTest || true
+            ./gradlew testDebugUnitTest
           else
             echo "::warning::no gradle wrapper - JVM gate deferred until ANDROID-002"
           fi

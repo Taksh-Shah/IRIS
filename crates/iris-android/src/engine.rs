@@ -409,7 +409,11 @@ fn build_text_envelope(
         timestamp: unix_now(),
         hop_count: 0,
         max_hops: None,
-        payload_type: ContentType::Text,
+        payload_type: if priority == MessagePriority::P0 {
+            ContentType::Sos
+        } else {
+            ContentType::Text
+        },
         payload_size: text.len() as u64,
         payload_hash: [0u8; 32],
         payload: text.as_bytes().to_vec(),

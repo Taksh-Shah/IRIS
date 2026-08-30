@@ -43,26 +43,22 @@ Advance to Tier 1: AN-3 (gradle.properties), AN-4 (CI path), AN-5 (SOS content t
 
 ---
 
-## Run 2 — [DATE] — Tier 1 batch (AN-3, AN-4, AN-5, AN-6)
+## Run 2 — 2026-08-30 — Tier 1 batch (AN-3, AN-4, AN-5, AN-6)
 
-**(Fill in when run begins.)**
+Target findings: AN-3 (High, gradle.properties hardcoded Windows JDK path), AN-4 (High, CI wrong folder + `|| true` mask), AN-5 (High, SOS content type), AN-6 (Medium, X25519 never called — blocked).
 
-Target findings: AN-3 (High, gradle.properties merge), AN-4 (High, CI wrong folder), AN-5 (High, SOS content type), AN-6 (Medium, X25519 never called).
-
-Pre-run drift audit: re-read all four cited locations before any edits.
-
-**Drift notes:** _(fill in)_
+**Drift notes:** AN-3 description in tracker said "two settings merged on one line" but actual file had them on separate lines. Real bug: `org.gradle.java.home=C:/IRIS/tools/jdk-17` Windows path at end of file overrides CI's `setup-java` JDK. AN-5: confirmed `build_text_envelope` always hardcodes `ContentType::Text` regardless of priority; fix is in that function's struct literal.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | AN-3 | ⬜ | — | — |
-| 2 | AN-4 | ⬜ | — | — |
-| 3 | AN-5 | ⬜ | — | — |
-| 4 | AN-6 | ⬜ | — | — |
+| 1 | AN-3 | ✅ | (this commit) | Removed `org.gradle.java.home=C:/IRIS/tools/jdk-17` from `android/gradle.properties` |
+| 2 | AN-4 | ✅ | (this commit) | Both `jvm` CI steps → `working-directory: android`; `\|\| true` removed from `testDebugUnitTest` |
+| 3 | AN-5 | ✅ | (this commit) | `build_text_envelope` now sets `payload_type: ContentType::Sos` when `priority == P0` |
+| 4 | AN-6 | 🔒 | — | Blocked on AN-1 (DevCryptoProvider → IrisCryptoProvider must land first) |
 
-**Batch closeout:** `./gradlew assembleDebug` clean · `./gradlew test` pass count. AN-4 fix: confirm CI job step now points to `android/` and `continue-on-error` removed. Update both tracker files.
+**Batch closeout:** `./gradlew assembleDebug` PENDING ANDROID-CI (AN-4 is the fix that unblocks CI; no local Gradle env available in this session). `./gradlew test` PENDING ANDROID-CI. AN-4 fix: CI `jvm` job now points to `android/` and failure mask removed.
 
-**Tier 1 checkpoint:** all 4 Tier 1 findings should be ✅ or 🔒 after this run.
+**Tier 1 checkpoint:** ✅ 3/4 fixed, 1 🔒 blocked — Tier 1 complete.
 
 ### Next run
 Advance to Tier 2: AN-7+AN-12 (BLE scanner — fix together), AN-8 (main-thread init), AN-9 (crash on unexpected exception), AN-10 (no reconnect button).

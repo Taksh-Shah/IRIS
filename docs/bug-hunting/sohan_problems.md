@@ -19,12 +19,12 @@
 | Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety + security | 2 | 0 | 0 | 0 | 2 |
-| 1 | High correctness + Medium safety/protocol | 4 | 0 | 0 | 0 | 4 |
+| 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
 | 2 | Medium/Low correctness, UX, build | 8 | 0 | 0 | 0 | 8 |
 | N/A | Informational / cleanup (track only) | 2 | 0 | 0 | 0 | 2 |
-| **Total** | | **16** | **0** | **0** | **0** | **16** |
+| **Total** | | **16** | **3** | **1** | **0** | **12** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 0
+**Last updated:** 2026-08-30 · **Active tier:** 1 (Tier 1 complete — 3 ✅, 1 🔒)
 
 ---
 
@@ -102,7 +102,7 @@ AN-15, AN-16
 
 ### AN-3 — Merged `gradle.properties` line silently drops a JDK version setting
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — removed `org.gradle.java.home=C:/IRIS/tools/jdk-17` (Windows-specific hardcoded path overriding CI's `setup-java`)
 - **File(s):** `android/gradle.properties:16`
 - **Category:** correctness · **Severity:** High
 - **Tier:** 1
@@ -122,7 +122,7 @@ AN-15, AN-16
 
 ### AN-4 — CI Android test step points at a Rust folder; Android tests never run
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — both `jvm` job steps changed to `working-directory: android`; removed `|| true` from `testDebugUnitTest`
 - **File(s):** `.github/workflows/ci.yml:227–258`
 - **Category:** correctness · **Severity:** High
 - **Tier:** 1
@@ -144,7 +144,7 @@ AN-15, AN-16
 
 ### AN-5 — SOS messages are typed as plain Text, not as SOS, at the network level
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `build_text_envelope` in `engine.rs` now sets `payload_type: ContentType::Sos` when `priority == MessagePriority::P0`
 - **File(s):** `crates/iris-android/src/engine.rs`, `crates/iris-desktop/src/engine_handle.rs`
 - **Category:** protocol · **Severity:** High
 - **Tier:** 1
@@ -166,7 +166,7 @@ AN-15, AN-16
 
 ### AN-6 — X25519 key-exchange code is fully written and tested but never called
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked on AN-1 — wiring X25519StaticAd requires the real `IrisCryptoProvider` to be in place first
 - **File(s):** `android/app/src/main/kotlin/iriscore/identity/X25519StaticAd.kt`
 - **Category:** safety · **Severity:** Medium
 - **Tier:** 1
