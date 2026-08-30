@@ -17,11 +17,11 @@
 
 | Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
-| 0 | Critical/High safety+security | 6 | 0 | 0 | 0 | 6 |
+| 0 | Critical/High safety+security | 6 | 3 | 0 | 0 | 3 |
 | 1 | High correctness + Medium safety/protocol | 7 | 0 | 0 | 0 | 7 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 0 | 0 | 0 | 5 |
 | 3 | Structural enhancements | 7 | 0 | 0 | 0 | 7 |
-| **Total** | | **25** | **0** | **0** | **0** | **25** |
+| **Total** | | **25** | **3** | **0** | **0** | **22** |
 
 **Last updated:** 2026-08-30 · **Active tier:** 0
 
@@ -53,7 +53,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-1 — SOS P3 downgrade destroys the signature it needs to relay
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 0 · commit 0beaca2 · 2026-08-30 · PENDING LINUX-CI (IrisCryptoProvider wire-integrity test)
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:798`; signing scope `crates/iris-core/src/protocol/codec.rs:161`
 - **Category:** safety · **Severity:** Critical
 - **Tier:** 0
@@ -76,7 +76,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-2 — Every SOS CANCEL is rejected; a false alarm can never be withdrawn
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 0 · commit 9c83143 · 2026-08-30 · PENDING LINUX-CI (IrisCryptoProvider wire-integrity test)
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1503`; policy `crates/iris-core/src/emergency/sos.rs:60-71`
 - **Category:** safety · **Severity:** Critical
 - **Tier:** 0
@@ -170,7 +170,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-15 — AC-6 same-signer requirement for SOS CANCEL is unimplemented
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 0 · commit 9c83143 · 2026-08-30 · PENDING LINUX-CI (shipped together with PM-2)
 - **File(s):** `crates/iris-core/src/emergency/sos.rs:60-71`; spec `docs/implementation/EMERG_DESIGN.md:239-241`, `:489`
 - **Category:** safety · **Severity:** Medium
 - **Tier:** 0

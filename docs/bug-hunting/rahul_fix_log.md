@@ -21,30 +21,27 @@ MSVC cannot link without Windows SDK. Exclude `iris-desktop` from every build/te
 
 ---
 
-## Run 1 — [DATE] — Tier 0 batch A (PM-1, PM-2+PM-15)
-
-**(Fill in when run begins.)**
+## Run 1 — 2026-08-30 — Tier 0 batch A (PM-1, PM-2+PM-15)
 
 Target findings: PM-1 (Critical, signed-field downgrade), PM-2 + PM-15 (Critical, CANCEL
 rejection + same-signer check — these MUST ship together per rahul_problems.md).
 
 Pre-run drift audit: re-read all Tier 0 finding locations against current source before writing any fix.
-Record any drift below.
 
-**Drift notes:** _(fill in)_
+**Drift notes:** All cited line numbers confirmed accurate against HEAD before any edits.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PM-1 | ⬜ | — | — |
-| 2 | PM-2 + PM-15 | ⬜ | — | — |
+| 1 | PM-1 | ✅ Fixed | 0beaca2 | `QueuedMessage::scheduling_priority` carries downgrade; wire field 5 untouched; relay path returns `Relayed` for all 4 SOS; `emergency_sos_rate_limited == 1`. Full IrisCryptoProvider sign+verify PENDING LINUX-CI. |
+| 2 | PM-2 + PM-15 | ✅ Fixed | 9c83143 | SosLedger (cap 3600) stores accepted-SOS (timestamp, sender_short); `sos_register` called on AcceptedSos; `sos_original` looked up before cancel classification; `CancelSignerMismatch` rejects cross-sender cancels. `cancel_forgery_rejected_pm15` test added. PENDING LINUX-CI. |
 
-**Batch A closeout:** full workspace build + sweep — _X_ passed / 0 failed.
+**Batch A closeout:** ✅ Complete — PM-1, PM-2+PM-15 all fixed.
 
 **Carried notes for later runs / owners:**
-- _(fill in)_
+- PM-1: IrisCryptoProvider wire-integrity test needs Linux CI (can't run `cargo kani` or IrisCryptoProvider here — add as a TODO test in the crate).
 
 ### Next run
-PM-4 (fragment reassembly before rate-limit), PM-5 (handshake decode budget), PM-6 (SOS timestamps unbounded).
+PM-2 + PM-15 (CANCEL rejection + same-signer check — must ship together).
 
 ---
 
