@@ -57,13 +57,13 @@ use crate::message::{
     DiscoveryConfig, IncomingMessage, MessagePriority, NodeAdvertisement, PeerId, PeerInfo,
     SendReceipt, SerializedMessage, TransportLink,
 };
-use crate::transport::internet::{encode_frame, frame_payload_len};
+use crate::transport::internet::{encode_frame, frame_payload_len, FRAME_HEADER_LEN};
 use crate::transport::wifi_direct_serv::{
     WifiDirectCapBits, WifiDirectTxtRecord, WIFI_DIRECT_SERVICE_NAME,
 };
 use crate::transport::{
-    freshness_minutes_now, AtomicState, Transport, TransportCapabilities, TransportCost,
-    TransportState, TransportStateEvent, WIFI_DIRECT_COST,
+    freshness_minutes_now, AtomicState, EwmaGoodput, Transport, TransportCapabilities,
+    TransportCost, TransportState, TransportStateEvent, WIFI_DIRECT_COST,
 };
 use crate::TransportError;
 
@@ -879,6 +879,8 @@ pub struct WifiDirectTransport {
     discovery_until: StdMutex<Option<Instant>>,
     /// Inbound frames that could not be delivered upstream (telemetry).
     dropped_inbound: Arc<AtomicU64>,
+    /// MG-17: EWMA goodput tracker.
+    ewma: EwmaGoodput,
 }
 
 impl fmt::Debug for WifiDirectTransport {
@@ -920,6 +922,7 @@ impl WifiDirectTransport {
             dns_sd_bootstrapped: AtomicBool::new(false),
             discovery_until: StdMutex::new(None),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
+            ewma: EwmaGoodput::new(),
         }
     }
 
@@ -1173,7 +1176,7 @@ impl WifiDirectTransport {
                         );
                         continue;
                     };
-                    let start = 4; // u32 LE length prefix (internet frame header)
+                    let start = FRAME_HEADER_LEN; // GAP-5: version + u32 LE length prefix
                     let end = start + len;
                     if len == 0 || end > frame.payload.len() {
                         // RF-29: log zero-length / frame-overrun drops.
@@ -1700,9 +1703,11 @@ impl Transport for WifiDirectTransport {
                 return Err(TransportError::Busy);
             }
         }
+        let bytes_sent = frame.len();
+        self.ewma.record_send(bytes_sent); // MG-17
         Ok(SendReceipt {
             peer_id: *peer,
-            bytes_sent: frame.len(),
+            bytes_sent,
             sent_at: Instant::now(),
         })
     }
@@ -1725,7 +1730,7 @@ impl Transport for WifiDirectTransport {
                 WIFI_DIRECT_COST.scan_ma
             },
             monetary_cost_per_kb: 0.0,
-            bandwidth_available_bps: 10_000_000,
+            bandwidth_available_bps: self.ewma.bandwidth_bps(self.caps.typical_throughput_bps),
             congestion_level: 0.0,
         }
     }

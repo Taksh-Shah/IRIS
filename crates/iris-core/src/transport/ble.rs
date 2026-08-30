@@ -33,8 +33,8 @@ use crate::transport::ble_att::{
     AttSegmenter, BLE_MAX_MESSAGE_CONSERVATIVE, Reassembler, MAX_MESSAGE_BYTES, REASSEMBLY_TTL,
 };
 use crate::transport::{
-    AtomicState, Transport, TransportCapabilities, TransportCost, TransportCostClass, TransportId,
-    TransportState, TransportStateEvent,
+    AtomicState, EwmaGoodput, Transport, TransportCapabilities, TransportCost, TransportCostClass,
+    TransportId, TransportState, TransportStateEvent,
 };
 use crate::TransportError;
 
@@ -567,6 +567,8 @@ pub struct BleTransport {
     /// BLE-16: count frames dropped because the inbound broadcast channel has
     /// no subscriber yet (early-connect window). Mirrors wifiaware.rs:dropped_inbound.
     dropped_inbound: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    /// MG-17: EWMA goodput tracker.
+    ewma: EwmaGoodput,
 }
 
 /// Scan-restart ceiling: max scan starts in the window.
@@ -633,6 +635,7 @@ impl BleTransport {
             refused_until: std::sync::RwLock::new(None),
             ios_leg: false,
             dropped_inbound: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            ewma: EwmaGoodput::new(),
         }
     }
 
@@ -1447,9 +1450,11 @@ impl Transport for BleTransport {
             }
         }
         // BLE-10: count wire bytes actually sent (payload + per-frame ATT headers).
+        let bytes_sent: usize = frames.iter().map(Vec::len).sum();
+        self.ewma.record_send(bytes_sent); // MG-17
         Ok(SendReceipt {
             peer_id: *peer,
-            bytes_sent: frames.iter().map(Vec::len).sum(),
+            bytes_sent,
             sent_at: Instant::now(),
         })
     }
@@ -1466,7 +1471,7 @@ impl Transport for BleTransport {
         TransportCost {
             estimated_battery_ma: 3.0,
             monetary_cost_per_kb: 0.0,
-            bandwidth_available_bps: 1_000_000,
+            bandwidth_available_bps: self.ewma.bandwidth_bps(self.caps.typical_throughput_bps),
             congestion_level: congestion,
         }
     }
@@ -1572,10 +1577,10 @@ mod tests {
         let receipt = t.send(&peer.peer_id, &msg).await.unwrap();
         // BLE-10: bytes_sent is wire accounting (sum of encoded ATT frame
         // lengths, including the frame header) since an earlier fix, not
-        // raw payload length — "ble payload" is 11 payload bytes but 17
-        // wire bytes once the frame header is included. Stale pre-fix
-        // assertion; not part of this session's own change.
-        assert_eq!(receipt.bytes_sent, 17);
+        // raw payload length — "ble payload" is 11 payload bytes but 18
+        // wire bytes once the 7-byte frame header (GAP-5: +1 version byte) is
+        // included.
+        assert_eq!(receipt.bytes_sent, 18);
     }
 
     #[tokio::test]
@@ -1612,11 +1617,11 @@ mod tests {
         };
         let receipt = t.send(&peer.peer_id, &msg).await.unwrap();
         // BLE-10: same wire-accounting basis as
-        // simulated_adapter_connects_and_sends above — the 360-byte
+        // simulated_adapter_connects_and_sends above — the 420-byte
         // difference from the raw 30,000-byte payload is the summed
-        // per-segment frame header overhead across every ATT frame the
-        // 30 KB payload was split into.
-        assert_eq!(receipt.bytes_sent, 30_360);
+        // per-segment frame header overhead (GAP-5: 7-byte header, was 6)
+        // across every ATT frame the 30 KB payload was split into.
+        assert_eq!(receipt.bytes_sent, 30_420);
         let frames: Vec<Vec<u8>> = adapter
             .last_writes()
             .iter()

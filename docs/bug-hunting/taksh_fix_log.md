@@ -1790,9 +1790,28 @@ every run this session.
 
 **§8 accounting:** 10 new Tier 4 findings fixed this run (RF-2/26/27/32/45, BLE-36, MG-5/12/16/19). Tier 4: 121 of 126 done, 4 remaining (MG-8/14/17, GAP-5), 1 blocked (TLS).
 
-### Remaining (Run 23 onwards)
-- **MG-8**: `topology_events()` zero subscribers — integration wiring in `iris-android/src/engine.rs`. Medium complexity.
-- **MG-14**: `target_peer` never read — requires `NeighborTable` reference in manager. Medium complexity.
-- **MG-17**: `TransportCost` is static — needs EWMA goodput counters. Medium-high complexity.
-- **GAP-5**: Live data-plane framings carry no version field — wire-format evolution blocked. Medium.
-- **Blocked**: TLS transport (external dependency).
+---
+
+## Run 23 — 2026-08-30 — Tier 4 final batch: GAP-5, MG-8, MG-14, MG-17
+
+**Context.** Resumed from Run 22 with 121/126 Tier-4 findings done (4 remaining, 1 blocked).
+
+**§1 — GAP-5: Version byte added to BLE ATT and internet framings.**
+- `crates/iris-core/src/transport/ble_att.rs`: Added `FRAME_VERSION = 1`, grew `FRAME_HEADER` from 6→7. `encode_frame()` prepends version byte; `decode_frame()` checks it and returns new `UnsupportedVersion` variant on mismatch. All offsets shifted by 1. Three manual-frame tests updated to prepend `FRAME_VERSION`; `too_short_frame_rejected` updated for new 7-byte minimum; new `unknown_version_rejected` test added. BLE wire-byte assertions in `ble.rs` updated: 17→18 (single-chunk) and 30360→30420 (30 KB large-message, 60 frames × 1 extra header byte each).
+- `crates/iris-core/src/transport/internet.rs`: Added `FRAME_VERSION = 1`, `FRAME_HEADER_LEN = 5` (public). `encode_frame()` prepends version byte; `frame_payload_len()` checks version at byte 0, reads length from bytes 1–4. Reader task buffer grown to `FRAME_HEADER_LEN`. Six tests updated: `frame_roundtrip`, `frame_rejects_oversized_payload`, `encode_frame_accepts_exactly_max_frame_bytes`, `frame_payload_len_rejects_truncated_header`, both TCP server helpers in `send_receive_localhost_roundtrip` and `connection_pool_reuses_socket_for_back_to_back_sends`.
+- `crates/iris-core/src/transport/wifiaware.rs` and `wifi_direct.rs`: imported `FRAME_HEADER_LEN`; replaced hardcoded `let start = 4` decode offset with `FRAME_HEADER_LEN` so these transports' pollers correctly skip the full 5-byte header after GAP-5.
+
+**§2 — MG-8: topology_events() subscribed in engine.rs.**
+- `crates/iris-android/src/engine.rs`: after all transports and the discovery manager are started inside `block_on`, call `manager.topology_events()` and spawn a tokio task that loops over the receiver. Handles `Lagged` with a `tracing::warn` (does not break), handles `Closed` by breaking. Ensures `tx.send()` inside the `register()` forwarder always has at least one live receiver.
+
+**§3 — MG-14: capability filter added to select_transports.**
+- `crates/iris-core/src/transport/manager.rs`: inserted `.filter(|t| match &req.target_peer { None => t.capabilities().supports_broadcast, Some(_) => t.capabilities().supports_unicast })` in the candidate chain. Updated test `caps()` helper to set `supports_broadcast: true` (test transports support both modes). Updated satellite test `manager_registers_selects_and_hot_unplugs_satellite` to pass `target_peer: Some(PeerId([0u8; 32]))` since satellite is unicast-only.
+
+**§4 — MG-17: EwmaGoodput tracker wired into all 6 transports.**
+- `crates/iris-core/src/transport/mod.rs`: added `EwmaGoodput` struct (α=0.2 EWMA) with `record_send(bytes)` and `bandwidth_bps(fallback)` methods.
+- All 6 transports (`ble.rs`, `internet.rs`, `wifiaware.rs`, `wifi_direct.rs`, `lora.rs`, `satellite.rs`): added `ewma: EwmaGoodput` field, call `ewma.record_send(bytes_sent)` after each successful send, and return `ewma.bandwidth_bps(fallback)` from `cost_snapshot()`. LoRa and satellite fall back to their existing duty-cycle/headroom estimates before the first send; all others fall back to `typical_throughput_bps`.
+
+**§5 accounting:** 4 new Tier-4 findings fixed (GAP-5, MG-8, MG-14, MG-17). Tier 4: 125/126 done, 0 remaining, 1 blocked (TLS). 717/6 iris-core/iris-android tests green.
+
+### Remaining (after Run 23)
+- **Blocked**: TLS transport (TAK-6, external dependency).

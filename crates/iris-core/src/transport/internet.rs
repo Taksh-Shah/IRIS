@@ -38,13 +38,17 @@ use crate::message::{
     SendReceipt, SerializedMessage, TransportLink,
 };
 use crate::transport::{
-    AtomicState, Transport, TransportCapabilities, TransportCost, TransportCostClass, TransportId,
-    TransportState, TransportStateEvent,
+    AtomicState, EwmaGoodput, Transport, TransportCapabilities, TransportCost, TransportCostClass,
+    TransportId, TransportState, TransportStateEvent,
 };
 use crate::TransportError;
 
-/// Wire frame: `[u32 LE payload_len][payload]`.
+/// GAP-5: version byte prepended to every frame so future format changes can be
+/// rejected cleanly rather than mis-parsed.
+pub const FRAME_VERSION: u8 = 1;
+/// Wire frame: `[u8 version][u32 LE payload_len][payload]`.
 const FRAME_LEN_BYTES: usize = 4;
+pub const FRAME_HEADER_LEN: usize = 1 + FRAME_LEN_BYTES; // version + length prefix
 /// Maximum frame size we will accept (1 MiB — well above P0-P7 budgets).
 const MAX_FRAME_BYTES: usize = 1024 * 1024;
 /// Cap on backoff wait (INTERNET.md §Reconnection Logic).
@@ -194,7 +198,8 @@ pub fn encode_frame(message: &SerializedMessage) -> Result<Vec<u8>, TransportErr
             actual: len,
         });
     }
-    let mut frame = Vec::with_capacity(FRAME_LEN_BYTES + len);
+    let mut frame = Vec::with_capacity(FRAME_HEADER_LEN + len);
+    frame.push(FRAME_VERSION); // GAP-5: version byte first
     frame.extend_from_slice(&(len as u32).to_le_bytes());
     frame.extend_from_slice(&message.payload);
     Ok(frame)
@@ -205,11 +210,15 @@ pub fn encode_frame(message: &SerializedMessage) -> Result<Vec<u8>, TransportErr
 /// RF-41: returns `None` for zero-length frames (all call sites should treat them
 /// as malformed; previously two of three guarded `len == 0` independently).
 pub fn frame_payload_len(header: &[u8]) -> Option<usize> {
-    if header.len() < FRAME_LEN_BYTES {
+    if header.len() < FRAME_HEADER_LEN {
+        return None;
+    }
+    // GAP-5: reject unknown versions cleanly rather than mis-parsing them.
+    if header[0] != FRAME_VERSION {
         return None;
     }
     let mut b = [0u8; FRAME_LEN_BYTES];
-    b.copy_from_slice(&header[..FRAME_LEN_BYTES]);
+    b.copy_from_slice(&header[1..FRAME_HEADER_LEN]);
     let len = u32::from_le_bytes(b) as usize;
     if len == 0 || len > MAX_FRAME_BYTES {
         return None;
@@ -247,6 +256,10 @@ pub struct InternetTransport {
     /// Per-instance jitter seed — derived at construction from SystemTime so
     /// concurrent nodes de-correlate their reconnect storms (RF-38).
     jitter_seed: u64,
+    /// MG-17: EWMA goodput tracker — updated on every successful send so
+    /// cost_snapshot() returns a live bandwidth estimate rather than the
+    /// compile-time constant that was there before.
+    ewma: EwmaGoodput,
 }
 
 impl InternetTransport {
@@ -277,6 +290,7 @@ impl InternetTransport {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .subsec_nanos() as u64,
+            ewma: EwmaGoodput::new(),
         }
     }
 
@@ -372,7 +386,7 @@ impl InternetTransport {
         let state = self.state.clone();
         let state_tx = self.state_tx.clone();
         let handle = tokio::spawn(async move {
-            let mut header = [0u8; FRAME_LEN_BYTES];
+            let mut header = [0u8; FRAME_HEADER_LEN];
             loop {
                 // Per-read timeout: a malicious/stalled relay must not pin a
                 // 1 MiB allocation + task forever (RED-0001-02 slowloris).
@@ -548,6 +562,7 @@ impl Transport for InternetTransport {
             return Err(e.into());
         }
         let now = Instant::now();
+        self.ewma.record_send(frame.len()); // MG-17: update goodput estimate
         let mut pool = self.pool.lock().await;
         pool.release(write, reader_abort, addr, now);
         Ok(SendReceipt {
@@ -570,7 +585,7 @@ impl Transport for InternetTransport {
         TransportCost {
             estimated_battery_ma: self.cost_params.estimated_battery_ma,
             monetary_cost_per_kb: self.cost_params.cost_per_kb_inr,
-            bandwidth_available_bps: self.caps.typical_throughput_bps,
+            bandwidth_available_bps: self.ewma.bandwidth_bps(self.caps.typical_throughput_bps),
             congestion_level: congestion,
         }
     }
@@ -616,14 +631,15 @@ mod tests {
     fn frame_roundtrip() {
         let msg = sample_message(b"hello iris", MessagePriority::P1);
         let frame = encode_frame(&msg).expect("sample message encodes");
-        let len = frame_payload_len(&frame[..4]).unwrap();
+        let len = frame_payload_len(&frame[..FRAME_HEADER_LEN]).unwrap();
         assert_eq!(len, 10);
-        assert_eq!(&frame[4..], b"hello iris");
+        assert_eq!(&frame[FRAME_HEADER_LEN..], b"hello iris");
     }
 
     #[test]
     fn frame_rejects_oversized_payload() {
-        let header = (MAX_FRAME_BYTES as u32 + 1).to_le_bytes();
+        let mut header = vec![FRAME_VERSION];
+        header.extend_from_slice(&(MAX_FRAME_BYTES as u32 + 1).to_le_bytes());
         assert!(frame_payload_len(&header).is_none());
     }
 
@@ -666,9 +682,9 @@ mod tests {
 
         let server = tokio::spawn(async move {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut header = [0u8; 4];
+            let mut header = [0u8; FRAME_HEADER_LEN];
             socket.read_exact(&mut header).await.unwrap();
-            let len = u32::from_le_bytes(header) as usize;
+            let len = frame_payload_len(&header).expect("valid frame header");
             let mut payload = vec![0u8; len];
             socket.read_exact(&mut payload).await.unwrap();
             payload
@@ -687,7 +703,7 @@ mod tests {
 
         let msg = sample_message(b"relay delivery", MessagePriority::P2);
         let receipt = transport.send(&peer, &msg).await.unwrap();
-        assert_eq!(receipt.bytes_sent, 4 + 14);
+        assert_eq!(receipt.bytes_sent, FRAME_HEADER_LEN + 14);
 
         let received = server.await.unwrap();
         assert_eq!(received, b"relay delivery");
@@ -753,20 +769,23 @@ mod tests {
         let msg = sample_message(&vec![0u8; MAX_FRAME_BYTES], MessagePriority::P4);
         let frame = encode_frame(&msg).expect("max-size frame encodes");
         assert_eq!(
-            frame_payload_len(&frame[..FRAME_LEN_BYTES]),
+            frame_payload_len(&frame[..FRAME_HEADER_LEN]),
             Some(MAX_FRAME_BYTES)
         );
     }
 
     #[test]
     fn frame_payload_len_rejects_truncated_header() {
-        // Adversarial: any header shorter than the 4-byte length prefix is incomplete.
+        // Adversarial: any header shorter than FRAME_HEADER_LEN (5 bytes) is incomplete.
         assert!(frame_payload_len(&[]).is_none());
-        assert!(frame_payload_len(&[0x00]).is_none());
-        assert!(frame_payload_len(&[0x00, 0x00]).is_none());
-        assert!(frame_payload_len(&[0x00, 0x00, 0x00]).is_none());
-        // A 4-byte header claiming an absurd length is also rejected.
-        assert!(frame_payload_len(&[0x00, 0x00, 0x00, 0x80]).is_none());
+        assert!(frame_payload_len(&[FRAME_VERSION]).is_none());
+        assert!(frame_payload_len(&[FRAME_VERSION, 0x00]).is_none());
+        assert!(frame_payload_len(&[FRAME_VERSION, 0x00, 0x00]).is_none());
+        assert!(frame_payload_len(&[FRAME_VERSION, 0x00, 0x00, 0x00]).is_none());
+        // Unknown version byte — even with sufficient length, must be rejected.
+        assert!(frame_payload_len(&[0x00, 0x01, 0x00, 0x00, 0x00]).is_none());
+        // Version correct but absurd payload length.
+        assert!(frame_payload_len(&[FRAME_VERSION, 0x00, 0x00, 0x00, 0x80]).is_none());
     }
 
     #[tokio::test]
@@ -780,9 +799,9 @@ mod tests {
             let (mut socket, _) = listener.accept().await.unwrap();
             let mut frames = Vec::new();
             for _ in 0..2 {
-                let mut header = [0u8; 4];
+                let mut header = [0u8; FRAME_HEADER_LEN];
                 socket.read_exact(&mut header).await.unwrap();
-                let len = u32::from_le_bytes(header) as usize;
+                let len = frame_payload_len(&header).expect("valid frame header");
                 let mut payload = vec![0u8; len];
                 socket.read_exact(&mut payload).await.unwrap();
                 frames.push(payload);

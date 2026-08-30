@@ -49,11 +49,11 @@ use crate::message::{
     DiscoveryConfig, IncomingMessage, MessagePriority, NodeAdvertisement, PeerId, PeerInfo,
     SendReceipt, SerializedMessage, TransportLink,
 };
-use crate::transport::internet::{encode_frame, frame_payload_len};
+use crate::transport::internet::{encode_frame, frame_payload_len, FRAME_HEADER_LEN};
 use crate::transport::wifiaware_beacon::{CapabilityBits, WifiAwareBeacon};
 use crate::transport::{
-    freshness_minutes_now, AtomicState, Transport, TransportCapabilities, TransportCost,
-    TransportState, TransportStateEvent, WIFI_AWARE_COST,
+    freshness_minutes_now, AtomicState, EwmaGoodput, Transport, TransportCapabilities,
+    TransportCost, TransportState, TransportStateEvent, WIFI_AWARE_COST,
 };
 use crate::TransportError;
 
@@ -636,6 +636,8 @@ pub struct WifiAwareTransport {
     /// connect() can validate the caller-supplied handle against what
     /// discover_peers() saw. Cleared on unsubscribe / session restart.
     discovery_cache: StdMutex<HashMap<PeerId, PeerHandle>>,
+    /// MG-17: EWMA goodput tracker.
+    ewma: EwmaGoodput,
 }
 
 /// True when the state is selectable for active use.
@@ -710,6 +712,7 @@ impl WifiAwareTransport {
             started_flag: AtomicBool::new(false),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
             discovery_cache: StdMutex::new(HashMap::new()),
+            ewma: EwmaGoodput::new(),
         }
     }
 
@@ -937,7 +940,7 @@ impl WifiAwareTransport {
                     let Some(len) = frame_payload_len(&frame.payload) else {
                         continue; // truncated/oversized header; drop.
                     };
-                    let start = 4; // u32 LE length prefix (internet frame header)
+                    let start = FRAME_HEADER_LEN; // GAP-5: version + u32 LE length prefix
                     let end = start + len;
                     if len == 0 || end > frame.payload.len() {
                         continue;
@@ -1342,9 +1345,11 @@ impl Transport for WifiAwareTransport {
                 return Err(TransportError::Busy);
             }
         }
+        let bytes_sent = frame.len();
+        self.ewma.record_send(bytes_sent); // MG-17
         Ok(SendReceipt {
             peer_id: *peer,
-            bytes_sent: frame.len(),
+            bytes_sent,
             sent_at: Instant::now(),
         })
     }
@@ -1362,7 +1367,7 @@ impl Transport for WifiAwareTransport {
                 WIFI_AWARE_COST.scan_ma
             },
             monetary_cost_per_kb: 0.0,
-            bandwidth_available_bps: 20_000_000,
+            bandwidth_available_bps: self.ewma.bandwidth_bps(self.caps.typical_throughput_bps),
             congestion_level: 0.0,
         }
     }

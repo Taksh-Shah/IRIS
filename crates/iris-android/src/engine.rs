@@ -159,6 +159,25 @@ impl IrisEngine {
             }
             discovery.start().await;
 
+            // MG-8: subscribe to topology events so the broadcast channel has
+            // at least one live receiver and tx.send() stops returning Err.
+            // Without this, every TransportStateChanged event sent by the
+            // register() forwarder is silently discarded.
+            let mut topo_rx = manager.topology_events();
+            tokio::spawn(async move {
+                loop {
+                    match topo_rx.recv().await {
+                        Ok(event) => {
+                            tracing::debug!(event = ?event, "topology event");
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            tracing::warn!(skipped = n, "topology_events lagged");
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                    }
+                }
+            });
+
             Ok::<_, IrisFfiError>((manager, engine, transports, discovery))
         })?;
 

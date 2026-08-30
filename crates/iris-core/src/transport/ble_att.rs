@@ -28,8 +28,11 @@ pub const MTU_DEFAULT: u16 = 23;
 pub const MTU_NEGOTIATED: u16 = 517;
 /// Max ATT payload bytes per frame we ever emit (517 − 5 header, conservative 512).
 pub const MAX_ATT_PAYLOAD: usize = 512;
-/// Frame header size in bytes.
-pub const FRAME_HEADER: usize = 6;
+/// Frame version byte (GAP-5). Prepended as the first byte of every frame so
+/// that future format changes can be rejected cleanly instead of mis-parsed.
+pub const FRAME_VERSION: u8 = 1;
+/// Frame header size in bytes (version + total + msg_id + idx + count).
+pub const FRAME_HEADER: usize = 7;
 /// Upper bound on a single message we will reassemble — the frame `total` field
 /// is a `u16`, so the wire cap is 65,535 bytes. Far above P0-P7 budgets (max
 /// message class ≥64 KB); INTERNET-001 uses a larger 1 MiB cap for TCP, which
@@ -81,6 +84,8 @@ pub enum FrameError {
     Truncated,
     /// Reassembly slot exhausted.
     TooManyPartials,
+    /// GAP-5: leading version byte does not match `FRAME_VERSION`.
+    UnsupportedVersion,
 }
 
 impl std::fmt::Display for FrameError {
@@ -236,6 +241,7 @@ pub fn encode_frame(
     }
     let total_u16 = total as u16;
     let mut out = Vec::with_capacity(FRAME_HEADER + chunk.len());
+    out.push(FRAME_VERSION); // GAP-5: version byte first
     out.extend_from_slice(&total_u16.to_be_bytes());
     out.extend_from_slice(&msg_id.to_be_bytes());
     out.push(idx as u8);
@@ -249,10 +255,14 @@ pub fn decode_frame(frame: &[u8]) -> Result<(usize, u16, usize, usize, &[u8]), F
     if frame.len() < FRAME_HEADER {
         return Err(FrameError::TooShort);
     }
-    let total = u16::from_be_bytes([frame[0], frame[1]]) as usize;
-    let msg_id = u16::from_be_bytes([frame[2], frame[3]]);
-    let idx = frame[4] as usize;
-    let count = frame[5] as usize;
+    // GAP-5: version check — reject unknown versions cleanly.
+    if frame[0] != FRAME_VERSION {
+        return Err(FrameError::UnsupportedVersion);
+    }
+    let total = u16::from_be_bytes([frame[1], frame[2]]) as usize;
+    let msg_id = u16::from_be_bytes([frame[3], frame[4]]);
+    let idx = frame[5] as usize;
+    let count = frame[6] as usize;
     if total > MAX_MESSAGE_BYTES {
         return Err(FrameError::MessageTooLarge);
     }
@@ -499,9 +509,27 @@ mod tests {
             r.push(&[], Instant::now()).unwrap_err(),
             FrameError::TooShort
         );
+        // Still < FRAME_HEADER (7 bytes).
         assert_eq!(
-            r.push(&[0, 0, 0], Instant::now()).unwrap_err(),
+            r.push(&[0, 0, 0, 0, 0, 0], Instant::now()).unwrap_err(),
             FrameError::TooShort
+        );
+    }
+
+    #[test]
+    fn unknown_version_rejected() {
+        let mut r = Reassembler::new();
+        // Frame with version byte = 0 (unknown) — must return UnsupportedVersion.
+        let mut frame = Vec::new();
+        frame.push(0u8); // bad version
+        frame.extend_from_slice(&10u16.to_be_bytes()); // total
+        frame.extend_from_slice(&0u16.to_be_bytes()); // msg_id
+        frame.push(0); // idx
+        frame.push(1); // count
+        frame.push(0); // data
+        assert_eq!(
+            r.push(&frame, Instant::now()).unwrap_err(),
+            FrameError::UnsupportedVersion
         );
     }
 
@@ -513,6 +541,7 @@ mod tests {
         // total with a missing second chunk leaves the message pending.
         let mut r = Reassembler::new();
         let mut frame = Vec::new();
+        frame.push(FRAME_VERSION); // GAP-5: version byte
         frame.extend_from_slice(&u16::MAX.to_be_bytes()); // total = 65535
         frame.extend_from_slice(&0u16.to_be_bytes()); // msg_id
         frame.push(0); // idx
@@ -529,6 +558,7 @@ mod tests {
         // so a total-too-large rejection test is not meaningful until BLE-23 adds
         // byte-level caps and lowers the effective limit.)
         let mut frame = Vec::new();
+        frame.push(FRAME_VERSION); // GAP-5: version byte
         frame.extend_from_slice(&10u16.to_be_bytes()); // total
         frame.extend_from_slice(&0u16.to_be_bytes()); // msg_id
         frame.push(3); // idx = 3
@@ -543,6 +573,7 @@ mod tests {
         let mut r = Reassembler::new();
         // idx=9 with a declared count of 5 is impossible.
         let mut frame = Vec::new();
+        frame.push(FRAME_VERSION); // GAP-5: version byte
         frame.extend_from_slice(&10u16.to_be_bytes());
         frame.extend_from_slice(&1u16.to_be_bytes());
         frame.push(9); // idx

@@ -188,6 +188,15 @@ impl TransportManager {
                 !t.capabilities().cost_class.is_expensive()
                     || req.priority <= MessagePriority::P2
             })
+            // MG-14: honour unicast vs broadcast capability — a unicast-only
+            // transport cannot serve broadcast (target_peer = None) and vice
+            // versa. Without this filter the capability flags are set but never
+            // consulted, so a BLE unicast link gets selected for a broadcast
+            // even though it cannot reach all peers.
+            .filter(|t| match &req.target_peer {
+                None => t.capabilities().supports_broadcast,
+                Some(_) => t.capabilities().supports_unicast,
+            })
             .map(|t| {
                 let score = score_transport(t.as_ref(), req);
                 RankedTransport {
@@ -420,7 +429,7 @@ mod tests {
     fn caps(max_size: usize, latency: u32, bw: u64) -> TransportCapabilities {
         TransportCapabilities {
             max_message_size: max_size,
-            supports_broadcast: false,
+            supports_broadcast: true,  // test transports support both modes
             supports_unicast: true,
             supports_multicast: false,
             range_m_min: 0,

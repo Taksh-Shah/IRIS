@@ -265,6 +265,66 @@ pub const LORA_COST: BatteryCostModel = BatteryCostModel {
     rx_ma_per_kbps: 1.5,
 };
 
+/// MG-17: EWMA goodput tracker.
+///
+/// Records actual bytes sent and maintains an exponential-weighted moving
+/// average of observed bandwidth. All transport `send()` implementations
+/// call `record_send(bytes)` so `cost_snapshot()` can return a live estimate
+/// rather than the compile-time constant that was there before.
+pub struct EwmaGoodput {
+    state: std::sync::Mutex<EwmaState>,
+}
+
+struct EwmaState {
+    /// EWMA of goodput in bytes/s. Starts at `None` until the first send.
+    ewma_bps: Option<f64>,
+    last_send: std::time::Instant,
+}
+
+impl EwmaGoodput {
+    /// α = 0.2 gives ~5-sample memory — quick to adapt, not too noisy.
+    const ALPHA: f64 = 0.2;
+
+    pub fn new() -> Self {
+        EwmaGoodput {
+            state: std::sync::Mutex::new(EwmaState {
+                ewma_bps: None,
+                last_send: std::time::Instant::now(),
+            }),
+        }
+    }
+
+    /// Call after each successful send. `bytes` is the frame byte count.
+    pub fn record_send(&self, bytes: usize) {
+        let Ok(mut s) = self.state.lock() else { return };
+        let now = std::time::Instant::now();
+        let elapsed = now.duration_since(s.last_send).as_secs_f64().max(1e-6);
+        let sample_bps = (bytes as f64 * 8.0) / elapsed; // bits/s for consistency with bps naming
+        s.ewma_bps = Some(match s.ewma_bps {
+            None => sample_bps,
+            Some(prev) => Self::ALPHA * sample_bps + (1.0 - Self::ALPHA) * prev,
+        });
+        s.last_send = now;
+    }
+
+    /// Returns the current EWMA goodput in bits/s, or `fallback_bps` if no
+    /// sends have been recorded yet.
+    pub fn bandwidth_bps(&self, fallback_bps: u64) -> u64 {
+        self.state
+            .lock()
+            .ok()
+            .and_then(|s| s.ewma_bps)
+            .map(|v| v as u64)
+            .unwrap_or(fallback_bps)
+    }
+}
+
+impl Default for EwmaGoodput {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Events delivered to the routing engine (`docs/routing`).
 #[derive(Debug, Clone)]
 pub enum TopologyEvent {

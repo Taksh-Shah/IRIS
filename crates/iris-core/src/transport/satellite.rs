@@ -44,7 +44,7 @@ use crate::message::{
     SendReceipt, SerializedMessage, TransportLink,
 };
 use crate::transport::{
-    AtomicState, BatteryCostModel, Transport, TransportCapabilities, TransportCost,
+    AtomicState, BatteryCostModel, EwmaGoodput, Transport, TransportCapabilities, TransportCost,
     TransportCostClass, TransportId, TransportState, TransportStateEvent,
 };
 use crate::TransportError;
@@ -1000,6 +1000,8 @@ pub struct SatelliteTransport {
     last_priority: AtomicU8,
     shutdown_flag: AtomicBool,
     confirm_hook: tokio::sync::RwLock<ConfirmHook>,
+    /// MG-17: EWMA goodput tracker.
+    ewma: EwmaGoodput,
 }
 
 // SYS-2: deadline constants for satellite adapter calls.
@@ -1037,6 +1039,7 @@ impl SatelliteTransport {
             last_priority: AtomicU8::new(MessagePriority::P4.as_u8()),
             shutdown_flag: AtomicBool::new(false),
             confirm_hook: tokio::sync::RwLock::new(None),
+            ewma: EwmaGoodput::new(),
         }
     }
 
@@ -1241,9 +1244,11 @@ impl SatelliteTransport {
             priority = %msg.priority,
             "satellite tx admitted"
         );
+        let bytes_sent = msg.payload.len();
+        self.ewma.record_send(bytes_sent); // MG-17
         Ok(SendReceipt {
             peer_id: *peer,
-            bytes_sent: msg.payload.len(),
+            bytes_sent,
             sent_at: Instant::now(),
         })
     }
@@ -1455,8 +1460,10 @@ impl Transport for SatelliteTransport {
         TransportCost {
             estimated_battery_ma: SAT_COST.connected_idle_ma,
             monetary_cost_per_kb: sat_est_cost_per_kb(),
-            bandwidth_available_bps: (SatelliteProvider::IridiumSbd.raw_rate_bps() as f32
-                * headroom) as u64,
+            // MG-17: observed EWMA goodput; fall back to headroom-weighted rate.
+            bandwidth_available_bps: self.ewma.bandwidth_bps(
+                (SatelliteProvider::IridiumSbd.raw_rate_bps() as f32 * headroom) as u64,
+            ),
             congestion_level: 0.0,
         }
     }
@@ -1991,7 +1998,9 @@ mod tests {
         ));
 
         let req_ok = TransportSelectionRequest {
-            target_peer: None,
+            // MG-14: satellite is unicast-only (supports_broadcast = false),
+            // so selection requires a target_peer to consult supports_unicast.
+            target_peer: Some(PeerId([0u8; 32])),
             message_size: 200,
             priority: MessagePriority::P1,
             max_latency_ms: None,

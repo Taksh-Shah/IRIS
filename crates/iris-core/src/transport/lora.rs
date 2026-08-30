@@ -44,8 +44,8 @@ use crate::message::{
 };
 use crate::protocol::MessageId;
 use crate::transport::{
-    AtomicState, Transport, TransportCapabilities, TransportCost, TransportCostClass, TransportId,
-    TransportState, TransportStateEvent, LORA_COST,
+    AtomicState, EwmaGoodput, Transport, TransportCapabilities, TransportCost, TransportCostClass,
+    TransportId, TransportState, TransportStateEvent, LORA_COST,
 };
 use crate::TransportError;
 
@@ -1702,6 +1702,8 @@ pub struct LoRaTransport {
     /// RF-11: consecutive tx() failures; resets on success. Demotes to
     /// Degraded at threshold so the manager stops ranking a dead link first.
     consecutive_tx_failures: AtomicU32,
+    /// MG-17: EWMA goodput tracker.
+    ewma: EwmaGoodput,
 }
 
 // SYS-2: deadline constants for LoRa adapter calls.
@@ -1731,6 +1733,7 @@ impl LoRaTransport {
             shutdown_flag: AtomicBool::new(false),
             last_configured_profile: Mutex::new(None),
             consecutive_tx_failures: AtomicU32::new(0),
+            ewma: EwmaGoodput::new(),
         }
     }
 
@@ -2032,9 +2035,11 @@ impl LoRaTransport {
             profile_sf = profile.sf,
             "lora tx admitted"
         );
+        let bytes_sent = encoded.len();
+        self.ewma.record_send(bytes_sent); // MG-17
         Ok(SendReceipt {
             peer_id: *peer,
-            bytes_sent: encoded.len(),
+            bytes_sent,
             sent_at: Instant::now(),
         })
     }
@@ -2232,10 +2237,12 @@ impl Transport for LoRaTransport {
 
     fn cost_snapshot(&self) -> TransportCost {
         let duty = self.tracker.duty_cycle_remaining_fraction();
+        let duty_bps = (raw_rate_bps(&DEFAULT_RADIO_PROFILE) as f32 * duty) as u64;
         TransportCost {
             estimated_battery_ma: LORA_COST.connected_idle_ma,
             monetary_cost_per_kb: 0.0,
-            bandwidth_available_bps: (raw_rate_bps(&DEFAULT_RADIO_PROFILE) as f32 * duty) as u64,
+            // MG-17: use observed EWMA goodput; fall back to duty-cycle estimate.
+            bandwidth_available_bps: self.ewma.bandwidth_bps(duty_bps),
             congestion_level: 0.0,
         }
     }
