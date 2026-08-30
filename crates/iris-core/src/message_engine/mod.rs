@@ -733,9 +733,14 @@ impl MessageEngine {
     /// the broadcast group, otherwise enqueue for relay.
     async fn deliver_or_relay(
         &self,
-        mut envelope: Envelope,
+        envelope: Envelope,
         _via: PeerId,
     ) -> Result<InboundOutcome, MsgEngineError> {
+        // PM-1: node-local scheduling priority, separate from the wire priority.
+        // Defaults to the wire value; the emergency gate may set it to P3 for a
+        // downgraded SOS without touching the signed envelope field.
+        let mut sched_priority = envelope.priority;
+
         // EMERG-001 receive-path gate (AC-8/AC-10): when armed, emergency
         // content is classified BEFORE delivery/relay. Unverifiable
         // `EmergencyAlert` is dropped without reply (anti-probing), a
@@ -791,12 +796,19 @@ impl MessageEngine {
                     // delivered per AC-5 (degraded delivery), but at P3 so the
                     // degrade policy applies route-wide. Audit + metrics here
                     // (the gate's log line stays content-free).
+                    //
+                    // PM-1 fix: priority field 5 is inside the Ed25519 signing
+                    // scope. Mutating it on the wire envelope breaks signature
+                    // verification at the next hop. Carry the downgrade as
+                    // node-local scheduling metadata via `sched_priority` so the
+                    // relay forwards a byte-identical, verifiable envelope while
+                    // the queue still orders it as P3.
                     self.metrics
                         .emergency_sos_rate_limited
                         .fetch_add(1, Ordering::Relaxed);
                     self.telemetry
                         .increment(metric::MESSAGES_EMERGENCY_SOS_RATE_LIMITED_TOTAL);
-                    envelope.priority = MessagePriority::P3;
+                    sched_priority = MessagePriority::P3;
                 }
             }
         }
@@ -810,9 +822,14 @@ impl MessageEngine {
         // primary emergency use case. Broadcasts are now delivered locally AND
         // forwarded (subject to the same hop cap and dedup as any relay).
         if mine && broadcast {
-            let outcome = self.deliver_to_self(envelope.clone()).await?;
+            // Apply the scheduling priority to the local-delivery copy so the
+            // app layer observes the downgraded priority (AC-5) while the relay
+            // copy is byte-identical and verifiable.
+            let mut deliver_env = envelope.clone();
+            deliver_env.priority = sched_priority;
+            let outcome = self.deliver_to_self(deliver_env).await?;
             // A relay failure must not mask a successful local delivery.
-            if let Err(e) = self.enqueue_relay(envelope).await {
+            if let Err(e) = self.enqueue_relay(envelope, sched_priority).await {
                 tracing::debug!(
                     event = event::MSG_QUEUED,
                     error = %e,
@@ -823,9 +840,14 @@ impl MessageEngine {
         }
 
         if mine {
-            return self.deliver_to_self(envelope).await;
+            // Local delivery only — no relay, so showing the app the scheduling
+            // priority (which may differ from the wire priority after a downgrade)
+            // is safe and correct per AC-5.
+            let mut deliver_env = envelope;
+            deliver_env.priority = sched_priority;
+            return self.deliver_to_self(deliver_env).await;
         }
-        self.enqueue_relay(envelope).await
+        self.enqueue_relay(envelope, sched_priority).await
     }
 
     /// Deliver an envelope addressed to this node.
@@ -911,7 +933,16 @@ impl MessageEngine {
     }
 
     /// Enqueue an envelope for forwarding, enforcing the hop ceiling.
-    async fn enqueue_relay(&self, envelope: Envelope) -> Result<InboundOutcome, MsgEngineError> {
+    /// `sched_priority` is the node-local scheduling priority for the queued
+    /// item. It normally equals `envelope.priority` but may differ when the
+    /// emergency gate downgrades a SOS (PM-1): the wire envelope must stay
+    /// byte-identical for signature verification; only the queue ordering uses
+    /// the scheduling value.
+    async fn enqueue_relay(
+        &self,
+        envelope: Envelope,
+        sched_priority: MessagePriority,
+    ) -> Result<InboundOutcome, MsgEngineError> {
         // Nothing bounded hop count on this path before: the signed `max_hops`
         // field was decoded, stored and never read, and the per-priority flood
         // policy lives in the routing module, which the live path does not call.
@@ -922,7 +953,10 @@ impl MessageEngine {
         // The sender is authenticated by this point (signature verified in
         // `process_incoming`), so keying the limit on it is sound.
         let relay_sender = crate::identity::peer_short_from_sender(&envelope.sender_id);
-        let relay_class = crate::security::MessageClass::from(envelope.priority);
+        // Use the scheduling priority for rate-limit class so a downgraded SOS
+        // is metered as P3 rather than P0 (consistent with previous behaviour
+        // where the wire priority had already been mutated before this call).
+        let relay_class = crate::security::MessageClass::from(sched_priority);
         let policy = self
             .security
             .read()
@@ -964,7 +998,7 @@ impl MessageEngine {
         if q.len() >= self.config.max_queue_depth {
             return Err(MsgEngineError::QueueFull);
         }
-        let mut item = QueuedMessage::new(e);
+        let mut item = QueuedMessage::new(e).with_scheduling_priority(sched_priority);
         item.local = false;
         q.push(item);
         let depth = q.len();
@@ -2194,5 +2228,85 @@ mod tests {
         // 4th-in-window downgraded to P3 (EMERG-RT-002 / AC-5).
         assert_eq!(priorities[3], MessagePriority::P3);
         assert_eq!(engine.metrics().emergency_sos_rate_limited, 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn pm1_downgraded_sos_relayed_without_error() {
+        // PM-1 regression: the emergency gate used to set `envelope.priority =
+        // P3` in-place on the wire envelope. Priority is field 5 inside the
+        // Ed25519 signing scope; relaying a mutated envelope causes BadSignature
+        // at the next hop ("degraded delivery" silently became "no delivery").
+        //
+        // Fix: `sched_priority` carries the downgrade; `QueuedMessage::
+        // scheduling_priority` drives queue ordering while the wire envelope
+        // stays byte-identical and verifiable.
+        //
+        // Full wire-integrity verification (signature check after downgrade on a
+        // relay hop) requires IrisCryptoProvider — re-verify on Linux CI.
+        //
+        // This test verifies that the 4th SOS on the relay path (not
+        // deliver_to_self) completes successfully, and that exactly one
+        // downgrade is counted.
+        let engine = MessageEngine::new(
+            MessageEngineConfig {
+                node_id: [0u8; 32], // node is neither ALICE nor BOB
+                gc_interval_secs: 3600,
+                ..Default::default()
+            },
+            Arc::new(MemoryStorage::new()),
+            Arc::new(DevCryptoProvider::new()),
+            Arc::new(TransportManager::new()),
+        );
+        engine.set_emergency_provider(Arc::new(crate::emergency::EmergencyGateway::new(
+            crate::identity::trust_store::TrustStore::new(),
+            16,
+        )));
+
+        let sos_msg = crate::emergency::model::SosMessage {
+            format_version: 1,
+            latitude: 23_022_500,
+            longitude: 72_571_250,
+            accuracy_m: 10,
+            location_source: crate::emergency::model::LocationSource::Gps,
+            timestamp: 1_000,
+            kind: crate::emergency::model::SosKind::Sos,
+            original_message_id: None,
+            reason: Some(crate::emergency::model::SosReason::Injury),
+        };
+        let sos_payload = crate::emergency::encode_sos(&sos_msg).unwrap();
+
+        // Send 4 SOS addressed to BOB so all go through enqueue_relay (this
+        // node is [0u8; 32], not the recipient).
+        let mut outcomes = Vec::new();
+        for _ in 0..4 {
+            let mut env = envelope_for(BOB, MessagePriority::P0, &sos_payload);
+            env.sender_id = ALICE.to_vec();
+            env.payload_type = ContentType::Sos;
+            env.payload_size = sos_payload.len() as u64;
+            env.payload_hash = Envelope::compute_payload_hash(&sos_payload);
+            let outcome = engine
+                .process_incoming(IncomingMessage {
+                    payload: codec::encode(&env).unwrap(),
+                    peer_id: PeerId(ALICE),
+                    received_at: std::time::Instant::now(),
+                    transport_id: "sim".into(),
+                })
+                .await
+                .expect("process_incoming must not error on a downgraded SOS");
+            outcomes.push(outcome);
+        }
+
+        // All 4 must succeed (Relayed); the 4th was downgraded but still queued.
+        for (i, outcome) in outcomes.iter().enumerate() {
+            assert!(
+                matches!(outcome, InboundOutcome::Relayed),
+                "SOS {i} must be Relayed, got {outcome:?}"
+            );
+        }
+        assert_eq!(
+            engine.metrics().emergency_sos_rate_limited,
+            1,
+            "exactly one SOS must be rate-limited/downgraded"
+        );
     }
 }

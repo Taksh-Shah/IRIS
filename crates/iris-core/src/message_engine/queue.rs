@@ -39,6 +39,12 @@ pub struct QueuedMessage {
     pub next_retry: Option<Instant>,
     /// Whether this message originated locally (true) or is being relayed.
     pub local: bool,
+    /// Node-local scheduling priority. Defaults to `envelope.priority` but may
+    /// differ when the emergency gate downgrades a SOS beyond its P0 allowance
+    /// (PM-1): the wire envelope keeps its original, verifiable priority while
+    /// this field drives queue ordering, so the relay carries a byte-identical
+    /// and verifiable envelope.
+    pub scheduling_priority: MessagePriority,
 }
 
 impl QueuedMessage {
@@ -49,6 +55,7 @@ impl QueuedMessage {
             .as_ref()
             .and_then(|h| h.delivery_prob)
             .unwrap_or(0.5);
+        let scheduling_priority = envelope.priority;
         QueuedMessage {
             envelope,
             created_at: Instant::now(),
@@ -56,11 +63,18 @@ impl QueuedMessage {
             attempts: 0,
             next_retry: None,
             local: true,
+            scheduling_priority,
         }
     }
 
+    /// Override the scheduling priority without touching the wire envelope.
+    pub fn with_scheduling_priority(mut self, p: MessagePriority) -> Self {
+        self.scheduling_priority = p;
+        self
+    }
+
     pub fn priority(&self) -> MessagePriority {
-        self.envelope.priority
+        self.scheduling_priority
     }
 }
 
@@ -136,6 +150,10 @@ impl PriorityQueue {
 
     pub fn peek(&self) -> Option<&QueuedMessage> {
         self.heap.peek()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &QueuedMessage> {
+        self.heap.iter()
     }
 
     /// Pop the next message to dispatch.
