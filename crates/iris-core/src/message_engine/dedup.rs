@@ -302,13 +302,19 @@ impl DedupEngine {
 
         self.lru.check_and_insert(id);
 
-        if self.current.inserted() >= self.capacity {
-            // Retire the older generation rather than letting either saturate.
-            self.previous =
-                std::mem::replace(&mut self.current, BloomFilter::new(self.capacity, self.fpr));
-            self.rotations += 1;
+        // PM-8: only count and insert when the id is genuinely new to
+        // `current`. An unconditional insert() inflates inserted() on every
+        // call, driving rotation at call-rate rather than unique-id rate.
+        if !self.current.contains(digest) {
+            if self.current.inserted() >= self.capacity {
+                self.previous = std::mem::replace(
+                    &mut self.current,
+                    BloomFilter::new(self.capacity, self.fpr),
+                );
+                self.rotations += 1;
+            }
+            self.current.insert(digest);
         }
-        self.current.insert(digest);
         dup
     }
 
@@ -510,5 +516,23 @@ mod tests {
         assert!(!d.seen(mid(7)), "first arrival is new");
         assert!(d.seen(mid(7)), "second arrival is duplicate");
         assert!(!d.seen(mid(8)), "different id is new");
+    }
+
+    #[test]
+    fn replaying_id_does_not_rotate() {
+        // PM-8: duplicate calls must not increment inserted() and must not
+        // trigger rotation ahead of capacity.
+        let capacity = 4;
+        let mut d = DedupEngine::new(capacity, 0.01, 32);
+        assert!(!d.seen(mid(1))); // novel
+        assert!(d.seen(mid(1)));  // duplicate
+        assert!(d.seen(mid(1)));  // duplicate again
+        // Despite 3 calls, only 1 unique id was inserted — no rotation yet.
+        assert_eq!(d.rotations(), 0, "replayed id must not advance the rotation counter");
+        // Filling with unique ids does eventually rotate.
+        for i in 2..=(capacity as u16 + 1) {
+            d.seen(mid(i));
+        }
+        assert!(d.rotations() > 0, "unique ids do rotate at capacity");
     }
 }

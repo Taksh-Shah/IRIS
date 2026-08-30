@@ -1381,7 +1381,13 @@ impl MessageEngine {
             self.acks
                 .lock()
                 .await
-                .register_sent(id, priority, std::time::Instant::now());
+                .register_sent(
+                    id,
+                    priority,
+                    std::time::Instant::now(),
+                    item.envelope.timestamp,
+                    item.envelope.ttl_seconds,
+                );
             self.metrics.sent.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_SENT_TOTAL);
             tracing::info!(
@@ -1469,7 +1475,7 @@ impl MessageEngine {
                     .acks
                     .lock()
                     .await
-                    .due_retries(std::time::Instant::now());
+                    .due_retries(std::time::Instant::now(), unix_now());
                 for id in due {
                     // Re-queue a retry for the stored envelope.
                     let env = this.storage.load(&id).await.ok().flatten();
@@ -1495,7 +1501,16 @@ impl MessageEngine {
                     {
                         continue; // acknowledged concurrently
                     }
-                    this.requeue_for_retry(env).await.ok();
+                    // PM-3: surface TtlExpired instead of silently swallowing it.
+                    // If the message TTL lapsed between due_retries and here,
+                    // stop tracking it so it doesn't remain permanently due.
+                    match this.requeue_for_retry(env).await {
+                        Ok(()) => {}
+                        Err(MsgEngineError::TtlExpired) => {
+                            this.acks.lock().await.forget(id);
+                        }
+                        Err(_) => {}
+                    }
                 }
                 let failed: Vec<_> = this.acks.lock().await.exhausted();
                 for (id, _attempts) in failed {
@@ -1545,6 +1560,13 @@ impl MessageEngine {
                 }
                 // Expire + quota in storage.
                 this.storage.evict_expired(now).await.ok();
+                // PM-3: remove ACK entries whose wire TTL has expired. P0
+                // messages never exhaust their attempt budget so without this
+                // sweep they accumulate in the pending map indefinitely.
+                let ack_expired = this.acks.lock().await.drain_expired(now);
+                for id in ack_expired {
+                    this.fail_message(id).await;
+                }
                 if let Ok(usage) = this.storage.usage_bytes().await {
                     if usage > this.config.storage_quota_bytes {
                         this.storage
@@ -1888,7 +1910,13 @@ mod tests {
             .acks
             .lock()
             .await
-            .register_sent(id, MessagePriority::P1, std::time::Instant::now());
+            .register_sent(
+                id,
+                MessagePriority::P1,
+                std::time::Instant::now(),
+                original.timestamp,
+                original.ttl_seconds,
+            );
 
         // CAROL is not the recipient — her ACK must be ignored.
         alice.consume_ack(id, CAROL.as_ref()).await;

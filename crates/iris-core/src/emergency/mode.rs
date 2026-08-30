@@ -78,19 +78,37 @@ pub struct ModeTransition {
     pub reason: &'static str,
 }
 
+fn any_trigger_active(t: &Triggers) -> bool {
+    t.sos_density_per_km2 >= Triggers::SOS_DENSITY_THRESHOLD
+        || t.gateway_capacity_share <= Triggers::GATEWAY_CAPACITY_MIN_SHARE
+        || t.inbound_rate_multiplier >= Triggers::INBOUND_RATE_THRESHOLD
+}
+
+fn escalation_reason(t: &Triggers) -> &'static str {
+    if t.sos_density_per_km2 >= Triggers::SOS_DENSITY_THRESHOLD {
+        "sos-density"
+    } else if t.gateway_capacity_share <= Triggers::GATEWAY_CAPACITY_MIN_SHARE {
+        "gateway-capacity"
+    } else {
+        "inbound-rate"
+    }
+}
+
 /// Guarded transition decision.
 ///
 /// * Authority deactivation wins immediately (bypasses hold).
-/// * Escalation requires `last_transition_at` ≥ `ESCALATION_HOLD_SECS` ago
-///   (or no prior transition).
-/// * De-escalation (Crisis → …) follows the ladder only after the hold.
+/// * Escalation (Normal → Emergency, Emergency → Crisis) requires the hold to
+///   have elapsed AND at least one trigger above its threshold (anti-flap).
+/// * De-escalation (Crisis → Degraded → Normal) follows the ladder only after
+///   the hold; Crisis → Degraded requires triggers to be inactive.
 pub fn guarded_transition(
     current: DisasterMode,
     last_transition_at_unix: Option<u64>,
     now_unix: u64,
     authority_deactivate: bool,
+    triggers: &Triggers,
 ) -> Option<ModeTransition> {
-    // Crises only clear via verified authority deactivate (or manual).
+    // Authority deactivation wins immediately (no hold required).
     if authority_deactivate && current != DisasterMode::Normal {
         return Some(ModeTransition {
             from: current,
@@ -99,24 +117,57 @@ pub fn guarded_transition(
             reason: "authority-deactivate",
         });
     }
-    // De-escalation path from a settled Crisis/Degraded also needs the hold.
-    if current == DisasterMode::Degraded
-        && now_unix.saturating_sub(last_transition_at_unix.unwrap_or(0)) >= ESCALATION_HOLD_SECS
-    {
-        // Degraded → Normal once service is restored (engine re-sets triggers).
-        return Some(ModeTransition {
+
+    let hold_elapsed =
+        now_unix.saturating_sub(last_transition_at_unix.unwrap_or(0)) >= ESCALATION_HOLD_SECS;
+    let triggered = any_trigger_active(triggers);
+
+    match current {
+        // Escalation path (PM-7: was missing).
+        DisasterMode::Normal if hold_elapsed && triggered => Some(ModeTransition {
+            from: current,
+            to: DisasterMode::Emergency,
+            at_unix: now_unix,
+            reason: escalation_reason(triggers),
+        }),
+        DisasterMode::Emergency if hold_elapsed && triggered => Some(ModeTransition {
+            from: current,
+            to: DisasterMode::Crisis,
+            at_unix: now_unix,
+            reason: escalation_reason(triggers),
+        }),
+        // De-escalation path.
+        DisasterMode::Crisis if hold_elapsed && !triggered => Some(ModeTransition {
+            from: current,
+            to: DisasterMode::Degraded,
+            at_unix: now_unix,
+            reason: "de-escalation",
+        }),
+        DisasterMode::Degraded if hold_elapsed => Some(ModeTransition {
             from: current,
             to: DisasterMode::Normal,
             at_unix: now_unix,
             reason: "recovery",
-        });
+        }),
+        _ => None,
     }
-    None
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const NO_TRIGGERS: Triggers = Triggers {
+        sos_density_per_km2: 0.0,
+        gateway_capacity_share: 1.0,
+        inbound_rate_multiplier: 1.0,
+    };
+
+    const HIGH_TRIGGERS: Triggers = Triggers {
+        sos_density_per_km2: Triggers::SOS_DENSITY_THRESHOLD,
+        gateway_capacity_share: Triggers::GATEWAY_CAPACITY_MIN_SHARE,
+        inbound_rate_multiplier: Triggers::INBOUND_RATE_THRESHOLD,
+    };
 
     #[test]
     fn wire_codes_round_trip() {
@@ -133,7 +184,7 @@ mod tests {
 
     #[test]
     fn deactivate_bypasses_hold() {
-        let t = guarded_transition(DisasterMode::Crisis, Some(1_000), 1_005, true);
+        let t = guarded_transition(DisasterMode::Crisis, Some(1_000), 1_005, true, &NO_TRIGGERS);
         assert_eq!(
             t,
             Some(ModeTransition {
@@ -148,14 +199,20 @@ mod tests {
     #[test]
     fn deactivate_only_when_not_normal() {
         assert_eq!(
-            guarded_transition(DisasterMode::Normal, Some(1_000), 1_005, true),
+            guarded_transition(DisasterMode::Normal, Some(1_000), 1_005, true, &NO_TRIGGERS),
             None
         );
     }
 
     #[test]
     fn degraded_recovers_after_hold() {
-        let t = guarded_transition(DisasterMode::Degraded, Some(1_000), 1_000 + 900, false);
+        let t = guarded_transition(
+            DisasterMode::Degraded,
+            Some(1_000),
+            1_000 + 900,
+            false,
+            &NO_TRIGGERS,
+        );
         assert!(matches!(
             t,
             Some(ModeTransition {
@@ -164,7 +221,113 @@ mod tests {
             })
         ));
         // Too early.
-        let t = guarded_transition(DisasterMode::Degraded, Some(1_000), 1_000 + 899, false);
+        let t = guarded_transition(
+            DisasterMode::Degraded,
+            Some(1_000),
+            1_000 + 899,
+            false,
+            &NO_TRIGGERS,
+        );
         assert!(t.is_none());
+    }
+
+    // PM-7: escalation paths were missing.
+    #[test]
+    fn escalation_normal_to_emergency_after_hold() {
+        let t = guarded_transition(
+            DisasterMode::Normal,
+            Some(0),
+            ESCALATION_HOLD_SECS,
+            false,
+            &HIGH_TRIGGERS,
+        );
+        assert_eq!(
+            t,
+            Some(ModeTransition {
+                from: DisasterMode::Normal,
+                to: DisasterMode::Emergency,
+                at_unix: ESCALATION_HOLD_SECS,
+                reason: "sos-density",
+            })
+        );
+        // Before hold: no transition even with active triggers.
+        let t = guarded_transition(
+            DisasterMode::Normal,
+            Some(0),
+            ESCALATION_HOLD_SECS - 1,
+            false,
+            &HIGH_TRIGGERS,
+        );
+        assert!(t.is_none(), "must not escalate before hold");
+    }
+
+    #[test]
+    fn escalation_emergency_to_crisis_after_hold() {
+        let t = guarded_transition(
+            DisasterMode::Emergency,
+            Some(0),
+            ESCALATION_HOLD_SECS,
+            false,
+            &HIGH_TRIGGERS,
+        );
+        assert_eq!(
+            t,
+            Some(ModeTransition {
+                from: DisasterMode::Emergency,
+                to: DisasterMode::Crisis,
+                at_unix: ESCALATION_HOLD_SECS,
+                reason: "sos-density",
+            })
+        );
+    }
+
+    #[test]
+    fn de_escalation_crisis_to_degraded_after_hold() {
+        let t = guarded_transition(
+            DisasterMode::Crisis,
+            Some(0),
+            ESCALATION_HOLD_SECS,
+            false,
+            &NO_TRIGGERS,
+        );
+        assert_eq!(
+            t,
+            Some(ModeTransition {
+                from: DisasterMode::Crisis,
+                to: DisasterMode::Degraded,
+                at_unix: ESCALATION_HOLD_SECS,
+                reason: "de-escalation",
+            })
+        );
+        // Active triggers block Crisis → Degraded.
+        let t = guarded_transition(
+            DisasterMode::Crisis,
+            Some(0),
+            ESCALATION_HOLD_SECS,
+            false,
+            &HIGH_TRIGGERS,
+        );
+        assert!(t.is_none(), "Crisis must not de-escalate while triggers are active");
+    }
+
+    #[test]
+    fn no_escalation_without_trigger() {
+        // Quiescent triggers must not escalate from any state.
+        let t = guarded_transition(
+            DisasterMode::Normal,
+            Some(0),
+            ESCALATION_HOLD_SECS,
+            false,
+            &NO_TRIGGERS,
+        );
+        assert!(t.is_none(), "Normal must not escalate without triggers");
+        let t = guarded_transition(
+            DisasterMode::Emergency,
+            Some(0),
+            ESCALATION_HOLD_SECS,
+            false,
+            &NO_TRIGGERS,
+        );
+        assert!(t.is_none(), "Emergency must not escalate without triggers");
     }
 }

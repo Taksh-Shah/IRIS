@@ -75,6 +75,11 @@ pub fn retry_policy(priority: MessagePriority) -> RetryPolicy {
     }
 }
 
+/// Hard cap on pending entries (PM-3: P0 messages have no max_attempts so
+/// they never exhaust; without a bound, a split-brain node accumulates entries
+/// forever).
+pub const MAX_PENDING_ACKS: usize = 8_192;
+
 /// A message awaiting acknowledgment.
 #[derive(Debug, Clone)]
 struct PendingAck {
@@ -82,6 +87,15 @@ struct PendingAck {
     attempts: u32,
     last_attempt_at: Instant,
     next_retry: Option<Instant>,
+    /// Wire timestamp and TTL stored so the tracker can filter TTL-expired
+    /// entries without touching storage (PM-3).
+    timestamp: u64,
+    ttl_seconds: u64,
+}
+
+/// Whether the wire TTL for a pending ACK has expired.
+fn ack_ttl_expired(timestamp: u64, ttl_seconds: u64, now_unix: u64) -> bool {
+    now_unix >= timestamp.saturating_add(ttl_seconds)
 }
 
 /// ACK/custody tracker: pending map + retry scheduling.
@@ -102,7 +116,28 @@ impl AckTracker {
     /// every retransmission goes through the delivery path, which re-registers
     /// on success, so a message with a finite cap would never exhaust it and
     /// would retry forever.
-    pub fn register_sent(&mut self, id: MessageId, priority: MessagePriority, sent_at: Instant) {
+    pub fn register_sent(
+        &mut self,
+        id: MessageId,
+        priority: MessagePriority,
+        sent_at: Instant,
+        timestamp: u64,
+        ttl_seconds: u64,
+    ) {
+        // PM-3: defense-in-depth cap. P0 messages (max_attempts = None) never
+        // exhaust their budget, so a network-split node would grow this map
+        // without bound. Evict the entry with the oldest last_attempt_at when
+        // inserting a genuinely new id that would push us over the cap.
+        if !self.pending.contains_key(&id) && self.pending.len() >= MAX_PENDING_ACKS {
+            if let Some(oldest_id) = self
+                .pending
+                .iter()
+                .min_by_key(|(_, p)| p.last_attempt_at)
+                .map(|(k, _)| *k)
+            {
+                self.pending.remove(&oldest_id);
+            }
+        }
         let policy = retry_policy(priority);
         let attempts = self.pending.get(&id).map(|p| p.attempts).unwrap_or(0);
         let next_retry = sent_at + policy.timeout_for_attempt(attempts);
@@ -113,6 +148,8 @@ impl AckTracker {
                 attempts,
                 last_attempt_at: sent_at,
                 next_retry: Some(next_retry),
+                timestamp,
+                ttl_seconds,
             },
         );
     }
@@ -152,15 +189,36 @@ impl AckTracker {
         self.pending.contains_key(id)
     }
 
-    /// All pending messages whose retry window has passed at `now`.
-    pub fn due_retries(&self, now: Instant) -> Vec<MessageId> {
+    /// All pending messages whose retry window has passed at `now` and whose
+    /// TTL has not yet expired at `now_unix`. Expired entries are excluded so
+    /// that P0 messages (no attempt cap) stop being retried when their wire TTL
+    /// has passed (PM-3).
+    pub fn due_retries(&self, now: Instant, now_unix: u64) -> Vec<MessageId> {
         self.pending
             .iter()
             .filter(|(_, p)| {
-                p.next_retry.map(|t| t <= now).unwrap_or(false) && p.max_attempts_remaining() > 0
+                !ack_ttl_expired(p.timestamp, p.ttl_seconds, now_unix)
+                    && p.next_retry.map(|t| t <= now).unwrap_or(false)
+                    && p.max_attempts_remaining() > 0
             })
             .map(|(id, _)| *id)
             .collect()
+    }
+
+    /// Remove and return the ids of all pending entries whose wire TTL has
+    /// expired at `now_unix` (PM-3). The GC task calls this so that TTL-dead
+    /// P0 entries do not accumulate in the pending map indefinitely.
+    pub fn drain_expired(&mut self, now_unix: u64) -> Vec<MessageId> {
+        let expired: Vec<MessageId> = self
+            .pending
+            .iter()
+            .filter(|(_, p)| ack_ttl_expired(p.timestamp, p.ttl_seconds, now_unix))
+            .map(|(id, _)| *id)
+            .collect();
+        for id in &expired {
+            self.pending.remove(id);
+        }
+        expired
     }
 
     /// Messages whose attempt budget is exhausted (candidates for
@@ -252,7 +310,7 @@ mod tests {
     fn ack_clears_pending() {
         let mut t = AckTracker::new();
         let now = Instant::now();
-        t.register_sent(id(1), MessagePriority::P1, now);
+        t.register_sent(id(1), MessagePriority::P1, now, 0, u64::MAX);
         assert!(t.is_pending(&id(1)));
         assert!(t.acknowledge(id(1)));
         assert!(!t.is_pending(&id(1)));
@@ -263,10 +321,10 @@ mod tests {
     fn due_retries_respects_initial_window_and_budget() {
         let mut t = AckTracker::new();
         let now = Instant::now();
-        t.register_sent(id(1), MessagePriority::P4, now); // 600 s window, max 2
-        assert!(t.due_retries(now).is_empty(), "not due at t=0");
+        t.register_sent(id(1), MessagePriority::P4, now, 0, u64::MAX); // 600 s window, max 2
+        assert!(t.due_retries(now, 0).is_empty(), "not due at t=0");
         assert!(t
-            .due_retries(now + Duration::from_secs(601))
+            .due_retries(now + Duration::from_secs(601), 0)
             .contains(&id(1)));
 
         // Simulate two retries → budget exhausted → no longer due.
@@ -275,7 +333,7 @@ mod tests {
         let t2 = t1 + Duration::from_secs(1201);
         t.record_retry(id(1), t2);
         assert!(
-            t.due_retries(t2 + Duration::from_secs(1)).is_empty(),
+            t.due_retries(t2 + Duration::from_secs(1), 0).is_empty(),
             "budget exhausted"
         );
         assert_eq!(t.exhausted().len(), 1);
@@ -289,16 +347,16 @@ mod tests {
         // forever.
         let mut t = AckTracker::new();
         let now = Instant::now();
-        t.register_sent(id(3), MessagePriority::P4, now); // max 2 attempts
+        t.register_sent(id(3), MessagePriority::P4, now, 0, u64::MAX); // max 2 attempts
 
         let t1 = now + Duration::from_secs(601);
         t.record_retry(id(3), t1);
         // The retry is dispatched and the delivery path re-registers it.
-        t.register_sent(id(3), MessagePriority::P4, t1);
+        t.register_sent(id(3), MessagePriority::P4, t1, 0, u64::MAX);
 
         let t2 = t1 + Duration::from_secs(1_201);
         t.record_retry(id(3), t2);
-        t.register_sent(id(3), MessagePriority::P4, t2);
+        t.register_sent(id(3), MessagePriority::P4, t2, 0, u64::MAX);
 
         assert_eq!(
             t.exhausted().len(),
@@ -306,7 +364,7 @@ mod tests {
             "budget must be reachable across re-sends"
         );
         assert!(
-            t.due_retries(t2 + Duration::from_secs(100_000)).is_empty(),
+            t.due_retries(t2 + Duration::from_secs(100_000), 0).is_empty(),
             "an exhausted message must stop being due"
         );
     }
@@ -318,26 +376,26 @@ mod tests {
         // id on every one-second tick — for every message ever sent.
         let mut t = AckTracker::new();
         let now = Instant::now();
-        t.register_sent(id(4), MessagePriority::P1, now); // 60 s window
+        t.register_sent(id(4), MessagePriority::P1, now, 0, u64::MAX); // 60 s window
 
         let due_at = now + Duration::from_secs(61);
-        assert!(t.due_retries(due_at).contains(&id(4)));
+        assert!(t.due_retries(due_at, 0).contains(&id(4)));
 
         t.record_retry(id(4), due_at);
         assert!(
-            t.due_retries(due_at + Duration::from_secs(1)).is_empty(),
+            t.due_retries(due_at + Duration::from_secs(1), 0).is_empty(),
             "backoff must push the next retry into the future"
         );
         // Second window is 120 s (60 s doubled).
         assert!(t
-            .due_retries(due_at + Duration::from_secs(121))
+            .due_retries(due_at + Duration::from_secs(121), 0)
             .contains(&id(4)));
     }
 
     #[test]
     fn forget_stops_tracking_without_acknowledging() {
         let mut t = AckTracker::new();
-        t.register_sent(id(5), MessagePriority::P2, Instant::now());
+        t.register_sent(id(5), MessagePriority::P2, Instant::now(), 0, u64::MAX);
         assert_eq!(t.pending_len(), 1);
         t.forget(id(5));
         assert_eq!(t.pending_len(), 0);
@@ -348,12 +406,60 @@ mod tests {
     fn p0_retries_never_exhaust() {
         let mut t = AckTracker::new();
         let now = Instant::now();
-        t.register_sent(id(2), MessagePriority::P0, now);
+        t.register_sent(id(2), MessagePriority::P0, now, 0, u64::MAX);
         for i in 0..5u32 {
             let at = now + Duration::from_secs(60 * (i + 1) as u64);
             let st = t.record_retry(id(2), at).unwrap();
             assert_eq!(st.max_attempts, None, "P0 has no attempt cap");
         }
         assert!(t.exhausted().is_empty(), "P0 must never be exhausted");
+    }
+
+    #[test]
+    fn p0_leak_stopped_by_ttl_drain() {
+        // PM-3: a P0 message (max_attempts = None) with an expired wire TTL
+        // must NOT appear in due_retries, and must be removed by drain_expired.
+        let mut t = AckTracker::new();
+        let now = Instant::now();
+        // timestamp=1000, ttl_seconds=3600 → expires at unix 4600.
+        t.register_sent(id(10), MessagePriority::P0, now, 1_000, 3_600);
+
+        // Before TTL: appears in due_retries once the retry window passes.
+        let past_retry = now + Duration::from_secs(31); // > 30 s initial P0 window
+        assert!(
+            t.due_retries(past_retry, 1_100).contains(&id(10)),
+            "non-expired P0 must be due for retry"
+        );
+
+        // After TTL (now_unix = 5000 > 4600): must not appear in due_retries.
+        let far_future = now + Duration::from_secs(100_000);
+        assert!(
+            !t.due_retries(far_future, 5_000).contains(&id(10)),
+            "TTL-expired P0 must not be retried"
+        );
+
+        // drain_expired removes the entry.
+        let drained = t.drain_expired(5_000);
+        assert!(drained.contains(&id(10)), "expired P0 must be drained");
+        assert_eq!(t.pending_len(), 0, "pending must be empty after drain");
+    }
+
+    #[test]
+    fn max_pending_cap_evicts_oldest() {
+        // PM-3: inserting MAX_PENDING_ACKS + 1 distinct ids must not grow the
+        // pending map past the cap.
+        let mut t = AckTracker::new();
+        let base = Instant::now();
+        for i in 0u64..=(MAX_PENDING_ACKS as u64) {
+            let mut key = [0u8; 16];
+            key[..8].copy_from_slice(&i.to_le_bytes());
+            let msg_id = MessageId::from_bytes(key);
+            let at = base + Duration::from_secs(i);
+            t.register_sent(msg_id, MessagePriority::P1, at, 0, u64::MAX);
+        }
+        assert!(
+            t.pending_len() <= MAX_PENDING_ACKS,
+            "pending map must not exceed MAX_PENDING_ACKS"
+        );
     }
 }
