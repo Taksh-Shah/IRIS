@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 20 | 0 | 105 | 1 | 0 | **IN PROGRESS 2026-08-30** — RF-6/8/11/18/19/20/21 fixed this run; 105/126 done, 20 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 27 | 0 | 98 | 1 | 0 | **IN PROGRESS 2026-08-30** — batch 1: RF-6/8/11/18/19/20/21; batch 2: MG-15/18/22/23/20, RF-25; tracker sync: RF-24, BLE-32. 98/126 done, 27 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **20** | **0** | **256** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **27** | **0** | **249** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -314,7 +314,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-29** | High | `wifiaware.rs:583-594` | Link death is classified by substring-matching the adapter's error text | ✅ `395fb03` (partial) |
 | **BLE-30** | High | `wifiaware.rs:172-173` | The two hot-path drains are infallible by signature, forcing every adapter error to be swallowed | ✅ `395fb03` (partial) |
 | **BLE-31** | Low | `wifiaware.rs:114-121` | `IncomingNdpData::ndp` is never resolved — real adapters attribute every frame to `PeerId([0;32])` | ✅ |
-| **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ⬜ |
+| **BLE-32** | Medium | `wifiaware.rs:915-929` | `start_advertising` discards the node's own `PeerId` — the published beacon identity is adapter-invented | ✅ `d4846c1` |
 | **BLE-33** | Medium | `wifiaware.rs:572-575` | `dropped_inbound` is write-only — the "counted, not silently swallowed" guarantee has no reader | ✅ |
 | **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ✅ |
 | **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ✅ (backfill) |
@@ -328,26 +328,26 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-3** | High | `lora.rs:161-175` | P0 SOS is refused on LoRa while 40 % of the legal budget sits unused | ⬜ |
 | **RF-4** | Medium | `lora.rs:1414-1421` | Airtime is refunded on *any* `tx()` error, including errors raised after the PA keyed up | ✅ `a405ec8` |
 | **RF-5** | Medium | `lora.rs:1403-1412` | `BudgetExhausted`'s next-legal-send-window is computed, then thrown away | ✅ `77236b2` |
-| **RF-6** | Medium | `lora.rs:264-293` | The monotonic guard is anchored to `Instant`, so device suspend silently redefines "one hour" | ⬜ |
+| **RF-6** | Medium | `lora.rs:264-293` | The monotonic guard is anchored to `Instant`, so device suspend silently redefines "one hour" | ✅ (partial) `2789b53` |
 | **RF-7** | Medium | `lora.rs:516-524` | No maximum per-transmission on-time — a single P0 frame is a 9.02 s continuous emission | ✅ `77236b2` |
-| **RF-8** | Medium | `lora.rs:74-84` | Pinned centre frequency 866.000 MHz is not in the documented IN865 channel plan, and duty is tracked globally rather than per sub-band | ⬜ |
+| **RF-8** | Medium | `lora.rs:74-84` | Pinned centre frequency 866.000 MHz is not in the documented IN865 channel plan, and duty is tracked globally rather than per sub-band | ✅ (partial) `2583ee7` |
 | **RF-9** | Medium | `lora.rs:1476-1512` | `poll_inbound` has an unbounded receive loop — a hostile in-range transmitter livelocks the poller | ✅ `6ee3f6b` |
 | **RF-10** | Medium | `lora.rs:151-159` | Spec says "P4+ never transmitted over LoRa"; the code gives P3–P7 a 5 % airtime share and the tests exercise it | ✅ `a405ec8` |
-| **RF-11** | Medium | `lora.rs:1562-1580` | LoRa (and satellite) never leave `Connected` on link failure and never report `Degraded`; `LinkStatus` telemetry is fetched and discarded | ⬜ |
+| **RF-11** | Medium | `lora.rs:1562-1580` | LoRa (and satellite) never leave `Connected` on link failure and never report `Degraded`; `LinkStatus` telemetry is fetched and discarded | ✅ (LoRa) `2583ee7` |
 | **RF-12** | Medium | `lora.rs:1441-1461` | `drain_backlog` swallows every error class identically (LoRa and satellite) | ✅ `6ee3f6b` |
 | **RF-13** | Medium | `lora.rs:1153-1219` | The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held | ✅ `2074518` |
 | **RF-14** | Low | `lora.rs:571-575` | LDRO condition omits SF12/BW250 — airtime is *under*-counted for that profile | ✅ `a405ec8` |
 | **RF-15** | Low | `lora.rs:1010-1077` | The whole link-budget model is unwired, and its distance clamp makes far links look reachable | ⬜ |
 | **RF-16** | Low | `lora.rs:373-389` | `DutyCycleTracker::refund` is a public de-billing API on a tracker documented as having "no runtime override" | ✅ `a405ec8` |
 | **RF-17** | Low | `lora.rs:1320-1327` | `close()` errors are discarded on every LoRa/satellite teardown path | ⬜ |
-| **RF-18** | High | `satellite.rs:387-417` | The satellite spend guard has **no** forward-clock-jump guard — the LoRa fix was never mirrored | ⬜ |
-| **RF-19** | High | `satellite.rs:1008-1016` | The `Expensive`-transport priority gate does not exist in the selector — P3+ can be selected onto satellite and then hard-fails with no fallback | ⬜ |
-| **RF-20** | High | `satellite.rs:1050-1068` | "User is warned before the satellite send" is a no-op — the hook has zero production callers and defaults to auto-approve | ⬜ |
-| **RF-21** | High | `satellite.rs:437-449` | P0 satellite sends are completely unmetered and unrecorded — unbounded spend and a lying spend meter | ⬜ |
+| **RF-18** | High | `satellite.rs:387-417` | The satellite spend guard has **no** forward-clock-jump guard — the LoRa fix was never mirrored | ✅ `9d9650e` |
+| **RF-19** | High | `satellite.rs:1008-1016` | The `Expensive`-transport priority gate does not exist in the selector — P3+ can be selected onto satellite and then hard-fails with no fallback | ✅ (subsumed by MG-9) |
+| **RF-20** | High | `satellite.rs:1050-1068` | "User is warned before the satellite send" is a no-op — the hook has zero production callers and defaults to auto-approve | ✅ `9d9650e` |
+| **RF-21** | High | `satellite.rs:437-449` | P0 satellite sends are completely unmetered and unrecorded — unbounded spend and a lying spend meter | ✅ `9d9650e` |
 | **RF-22** | Medium | `satellite.rs:523-530` | `record_mailbox_check` is unthrottled and can never be refused — ~44 polls exhaust the daily budget and lock out all P1/P2 | ⬜ |
 | **RF-23** | Low | `satellite.rs:56-59` | `RETRY_BASE_MS` / `RETRY_JITTER_FRACTION` are "pinned by a test" but no retry logic exists | ⬜ |
-| **RF-24** | Medium | `wifi_direct.rs:1032-1042` | `discovery_should_rearm()` never arms the window — it returns `true` on every call, so the 30 s cadence is dead code | ⬜ |
-| **RF-25** | High | `wifi_direct.rs:1049-1059` | `is_link_loss_error` matches strings that the real Android adapter never produces — a dead group is never torn down | ⬜ |
+| **RF-24** | Medium | `wifi_direct.rs:1032-1042` | `discovery_should_rearm()` never arms the window — it returns `true` on every call, so the 30 s cadence is dead code | ✅ `e538aaf` |
+| **RF-25** | High | `wifi_direct.rs:1049-1059` | `is_link_loss_error` matches strings that the real Android adapter never produces — a dead group is never torn down | ✅ `0bea3b8` |
 | **RF-26** | High | `wifi_direct.rs:98-100` | The default `GroupConfig` makes **both** peers Group Owners; GO intent is never negotiated and never reaches the platform | ⬜ |
 | **RF-27** | Medium | `wifi_direct.rs:196-197` | Two adapter-trait methods cannot report failure by signature, forcing the Android bridge to swallow every error | ⬜ |
 | **RF-28** | Medium | `wifi_direct.rs:947-982` | The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames | ⬜ |
@@ -382,15 +382,15 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-12** | Medium | `manager.rs:84-106` | No recovery-after-failure logic — no backoff, no retry, no `TransportPermanentFailure` | ⬜ |
 | **MG-13** | Medium | `manager.rs:38-43` | `RankedTransport` carries an id, not the `Arc` — TOCTOU re-lookup on every send | ✅ |
 | **MG-14** | Medium | `manager.rs:47-60` | `target_peer` is never read — spec selection rule 1 (reachability) is unimplemented, and broadcast/unicast capability flags are ignored | ⬜ |
-| **MG-15** | Medium | `manager.rs:52` | `max_latency_ms` is never read | ⬜ |
+| **MG-15** | Medium | `manager.rs:52` | `max_latency_ms` is never read | ✅ `ae1728a` |
 | **MG-16** | Medium | `manager.rs:209-226` | Battery cost model is entirely unwired — `cost_from_model`, `BLE_COST`, and cost accounting have no callers | ⬜ |
 | **MG-17** | Medium | `transport/mod.rs:192-203` | `TransportCost` is static — the "dynamic cost snapshot" never changes | ⬜ |
-| **MG-18** | Medium | `manager.rs:228-331` | `StubTransport` — a silent blackhole that reports success — ships in the public API | ⬜ |
+| **MG-18** | Medium | `manager.rs:228-331` | `StubTransport` — a silent blackhole that reports success — ships in the public API | ✅ (subsumed: already gated by `#[cfg(any(test, feature = "test-support"))]` from SYS-6) |
 | **MG-19** | Medium | `transport/mod.rs:181-190` | `TransportCostClass` variants carry no cost data, so the required cost warning cannot be built | ⬜ |
-| **MG-20** | Medium | `manager.rs:586-599` | Three tests would still pass with the logic inverted or deleted | ⬜ |
+| **MG-20** | Medium | `manager.rs:586-599` | Three tests would still pass with the logic inverted or deleted | ✅ `5bda806` |
 | **MG-21** | Medium | `transport/mod.rs:112-125` | `AtomicState` enforces no transitions and its inner field is public | ✅ (partial: inner field made pub(crate)) |
-| **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths | ⬜ |
-| **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa | ⬜ |
+| **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths | ✅ `ae1728a` |
+| **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa | ✅ (subsumed: trait has a default no-op body from MG-24 fix) |
 | **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable | ⬜ |
 | **MG-25** | High | `gateway/mod.rs:672-718` | The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation | ✅ `1038a83` |
 | **MG-26** | High | `gateway/mod.rs:393-401` | `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle | ✅ `1038a83` |
