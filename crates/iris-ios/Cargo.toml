@@ -20,10 +20,10 @@ serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-uniffi = "=0.31.2"
+uniffi.workspace = true
 
 [build-dependencies]
-uniffi_bindgen = "=0.31.2"
+uniffi_bindgen.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

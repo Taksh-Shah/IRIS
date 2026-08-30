@@ -21,7 +21,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-uniffi = "=0.31.2"
+uniffi.workspace = true
 
 # HW-3 debugging: forwards `tracing` events to Android logcat. Links against
 # the NDK's liblog, which only exists on an actual Android target — gated to
@@ -32,7 +32,7 @@ uniffi = "=0.31.2"
 paranoid-android = "0.2"
 
 [build-dependencies]
-uniffi_bindgen = "=0.31.2"
+uniffi_bindgen.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

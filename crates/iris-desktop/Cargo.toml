@@ -9,6 +9,12 @@ repository.workspace = true
 [lib]
 name = "iris_desktop"
 
+[features]
+# Gates dev-seam builder methods (with_node_id / with_transport) that use
+# DevCryptoProvider (fake crypto). These must never be reachable from a
+# production build — enable only for integration tests via --features test-seams.
+test-seams = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -25,6 +31,5 @@ iris-storage = { path = "../iris-storage" }
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
 tokio.workspace = true
-serde_json = "1"
 futures-util.workspace = true
-tempfile = "3"
+tempfile.workspace = true
