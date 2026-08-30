@@ -976,3 +976,348 @@ Plus: §1 baseline numbers vs §3 final numbers, any deviations from spec, and o
 restate the no-action rows from §4.1 (C1 DEFERRED on Section-4 prerequisite; D6 routed to Section 2;
 S1 kept per operator ruling; S3/W2 verified-clean PASS; S4 future DESKTOP-002; P3 with team lead) so
 the report accounts for all 21 audit findings.
+
+---
+
+## §6 Additional findings — discovered post-audit (codebase sweep 2026-08-30)
+
+These 5 bugs were **not** in the original SEC6_AUDIT v1.1 (which covered 21 findings). They were
+found by a line-by-line read of the files listed in §0. Fix them in the SAME commit grouping order:
+Group C (desktop code) then Group D (infrastructure). They are numbered F-DX-1 … F-DX-5 to avoid
+colliding with the existing F-Dx namespace.
+
+---
+
+### F-DX-1 — Desktop `build_text_envelope` always sets `ContentType::Text` even for P0 · HIGH
+
+**File:** `crates/iris-desktop/src/engine_handle.rs`, line 398.
+
+**Problem:** The Android AN-5 fix (crate `iris-android`, commit that fixed `ContentType::Sos` for
+P0 priority) never propagated to the desktop equivalent. `build_text_envelope` unconditionally sets
+`payload_type: ContentType::Text` regardless of the `priority` parameter. A P0 (SOS) message sent
+from the desktop surface arrives at relay/peer nodes typed as `Text`, defeating SOS priority routing
+and emergency-delivery guarantees.
+
+**Current** (line 398):
+```rust
+        payload_type: ContentType::Text,
+```
+
+**Replace with** (after the `max_hops: None,` line, before `payload_size:`):
+```rust
+        payload_type: if priority == MessagePriority::P0 {
+            ContentType::Sos
+        } else {
+            ContentType::Text
+        },
+```
+
+**Acceptance:** `grep -n "ContentType::Text" crates/iris-desktop/src/engine_handle.rs` returns no
+unconditional assignment; a unit test asserting `priority=P0 → payload_type=Sos` and `priority=P4 →
+payload_type=Text` passes; clippy clean.
+
+---
+
+### F-DX-2 — `renderPalette` uses adjacent-only group dedup (same bug as AN-13 in Kotlin) · LOW
+
+**File:** `crates/iris-desktop/ui/app.js`, lines 178–188.
+
+**Problem:** `renderPalette` tracks the last-seen group with a `let lastGroup = null` variable and
+emits a group header only when `command.group !== lastGroup`. When search results contain the same
+group non-contiguously (e.g. SYSTEM, THREAD, SYSTEM after a filter), the "SYSTEM" header is emitted
+twice. The JS version of the AN-13 bug; no crash (DOM has no key uniqueness requirement) but the
+palette renders duplicate section headings that confuse keyboard navigation.
+
+**Current** (lines 180–189):
+```js
+  let lastGroup = null;
+
+  state.matches.forEach((command, index) => {
+    if (command.group !== lastGroup) {
+      const group = document.createElement("div");
+      group.className = "cmd-group";
+      group.textContent = command.group;
+      el.paletteList.append(group);
+      lastGroup = command.group;
+    }
+```
+
+**Replace with** (change only the variable and the guard — emit each group header AT MOST ONCE):
+```js
+  const seenGroups = new Set();
+
+  state.matches.forEach((command, index) => {
+    if (!seenGroups.has(command.group)) {
+      seenGroups.add(command.group);
+      const group = document.createElement("div");
+      group.className = "cmd-group";
+      group.textContent = command.group;
+      el.paletteList.append(group);
+    }
+```
+
+**Acceptance:** a palette search that produces non-contiguous group recurrences shows each group
+header exactly once; no other palette behaviour changes; JS lints clean.
+
+---
+
+### F-DX-3 — `navigator.platform` deprecated API in `app.js` · LOW
+
+**File:** `crates/iris-desktop/ui/app.js`, line 14.
+
+**Problem:** `navigator.platform` is deprecated since Chrome 101 / Firefox 127 (MDN). In Tauri's
+embedded WebKit/Chromium view it still works today but is scheduled for removal; on some hardened
+Chromium builds it already returns `""`. The intent is Mac-keyboard detection for `Cmd` vs `Ctrl`
+shortcut labels.
+
+**Current** (line 14):
+```js
+const IS_MAC = navigator.platform.toUpperCase().includes("MAC");
+```
+
+**Replace with** (use the modern API with a safe fallback to the legacy one):
+```js
+const IS_MAC = (() => {
+  if (navigator.userAgentData) {
+    return navigator.userAgentData.platform.toUpperCase().includes("MAC");
+  }
+  return navigator.platform.toUpperCase().includes("MAC");
+})();
+```
+
+**Acceptance:** line 14 no longer contains a bare `navigator.platform` call; fallback covers
+Safari/WebKit which does not implement `userAgentData`; JS lints clean.
+
+---
+
+### F-DX-4 — `spawn_inbox_forwarder` exits silently when transport stream ends · MEDIUM
+
+**File:** `crates/iris-desktop/src/engine_handle.rs`, lines 245–259.
+
+**Problem:** the inbound forwarder loop `while let Some(msg) = incoming.next().await { … }` exits
+with NO log when the transport's incoming stream closes (returns `None`). In normal operation
+transport streams are long-lived, but an unexpected stream termination (transport bug, early drop,
+network-layer error) silently kills the receive path for that transport with zero operator
+visibility. Unlike the D1 broadcast-lag fix (which is about the UI channel), this is about the
+transport-level ingress path: after silent exit, no frames from that transport are ever processed
+again.
+
+**Current** (lines 248–258):
+```rust
+        tauri::async_runtime::spawn(async move {
+            while let Some(msg) = incoming.next().await {
+                match engine.process_incoming(msg).await {
+                    Ok(InboundOutcome::Delivered) | Ok(InboundOutcome::ReassembledDelivered) => {
+                        tracing::debug!("desktop: inbound delivered");
+                    }
+                    Ok(_) => {}
+                    Err(e) => tracing::debug!("desktop: inbound rejected: {e}"),
+                }
+            }
+        });
+```
+
+**Replace with** (log on stream end so the operator knows the forwarder died):
+```rust
+        tauri::async_runtime::spawn(async move {
+            while let Some(msg) = incoming.next().await {
+                match engine.process_incoming(msg).await {
+                    Ok(InboundOutcome::Delivered) | Ok(InboundOutcome::ReassembledDelivered) => {
+                        tracing::debug!("desktop: inbound delivered");
+                    }
+                    Ok(_) => {}
+                    Err(e) => tracing::debug!("desktop: inbound rejected: {e}"),
+                }
+            }
+            // Stream closed — no reconnect path exists; operator must restart.
+            tracing::warn!(
+                "desktop: transport inbound stream closed; this forwarder will not recover"
+            );
+        });
+```
+
+**Acceptance:** log line emitted when transport stream ends; no behaviour change otherwise;
+clippy clean.
+
+---
+
+### F-DX-5 — Dev-seam builder methods (`with_node_id`/`with_transport`) are `pub` without `#[cfg(test)]` · LOW
+
+**File:** `crates/iris-desktop/src/engine_handle.rs`, lines 82–103.
+
+**Problem:** `DesktopEngine::with_node_id` and `DesktopEngine::with_transport` set `dev: true` in
+config, which routes the engine through `DevCryptoProvider` (always-valid, inert crypto — no real
+signing, no real verification). Both methods are `pub` with no `#[cfg(test)]` attribute, so they
+are callable from production code paths. A regression (e.g. a Tauri command that accidentally calls
+`with_node_id`) would silently deploy fake crypto with no compile-time or runtime guard. The
+existing comment ("test seam") documents the intent but does not enforce it.
+
+**Current** (lines 82, 93):
+```rust
+    pub async fn with_node_id(node_id: [u8; 32]) -> Result<Arc<Self>, String> {
+    …
+    pub async fn with_transport(
+```
+
+**Replace `pub` with `#[cfg(test)] pub`** on both methods:
+```rust
+    #[cfg(test)]
+    pub async fn with_node_id(node_id: [u8; 32]) -> Result<Arc<Self>, String> {
+    …
+    #[cfg(test)]
+    pub async fn with_transport(
+```
+
+**Acceptance:** `cargo build -p iris-desktop` (non-test build) succeeds and `with_node_id` /
+`with_transport` are no longer reachable; `cargo test -p iris-desktop` still sees both methods;
+no integration test references the methods from outside `#[cfg(test)]` blocks; clippy clean.
+
+---
+
+---
+
+### F-DX-5 — CORRECTION: `with_transport`/`with_node_id` cannot use `#[cfg(test)]` · LOW (fix-spec error)
+
+**Correction to the F-DX-5 fix spec above.** After a full read of the test files, both
+`tests/engine_roundtrip.rs:39` and `tests/commands_mock.rs:23` call `with_transport` and
+`with_node_id` from integration test crates. In Rust, `#[cfg(test)]` on a library item is ONLY
+visible to the library's own `#[cfg(test)]` unit tests — it is **NOT** visible to integration tests
+in `tests/` (which are compiled as separate crates linking the non-test build of the library). So
+the original F-DX-5 fix would break both integration test files with "no method named
+`with_transport` found" compile errors.
+
+**Correct fix:** use a non-default Cargo feature instead.
+
+**(a) `crates/iris-desktop/Cargo.toml` — add a test-seams feature (inside `[features]`):**
+```toml
+[features]
+test-seams = []
+```
+
+**(b) `crates/iris-desktop/src/engine_handle.rs` — gate both methods on the feature:**
+```rust
+    #[cfg(feature = "test-seams")]
+    pub async fn with_node_id(node_id: [u8; 32]) -> Result<Arc<Self>, String> {
+    …
+    #[cfg(feature = "test-seams")]
+    pub async fn with_transport(
+```
+
+**(c) `crates/iris-desktop/Cargo.toml` — enable the feature in `dev-dependencies` and nextest:**
+Add to `Cargo.toml`:
+```toml
+[dev-dependencies]
+# test-seams feature is enabled automatically for integration tests via the
+# line below; the feature must never appear in release dependency trees.
+```
+And in `.config/nextest.toml` or the Cargo invocation use `--features test-seams` only under
+`cargo test`, not `cargo build`.
+
+Actually the simplest correct approach: add to `Cargo.toml`'s `[package]` metadata or ensure the
+integration tests pass `features = ["test-seams"]` at the test harness level. The standard pattern
+is to add it to the dev-dependency declaration or run `cargo test --features test-seams`.
+
+**Acceptance:** `cargo build -p iris-desktop` (no `--features`) succeeds and both methods are
+absent from the public API; `cargo test -p iris-desktop --features test-seams` passes all tests
+including `engine_roundtrip` and `commands_mock`.
+
+---
+
+### F-DX-6 — `IncomingMessageView` drops text for SOS payloads · MEDIUM
+
+**File:** `crates/iris-desktop/src/types.rs`, lines 44–49.
+
+**Problem:** `IncomingMessageView::from_envelope` extracts message text only when
+`env.payload_type == ContentType::Text`:
+
+```rust
+let text = if env.payload_type == ContentType::Text {
+    std::str::from_utf8(&env.payload).ok().map(str::to_owned)
+} else {
+    None
+};
+```
+
+After F-DX-1 fixes `build_text_envelope` to set `ContentType::Sos` for P0 messages, any SOS
+message received on the desktop will have `text: None` in its view. The UI then shows
+`[Sos payload not shown]` (from `app.js:524`: `view.text ?? '[${view.content_type} payload not shown]'`)
+instead of the actual emergency message text. This completely defeats the purpose of the /sos command
+on the desktop — the receiver sees the SOS tag but not what the emergency is.
+
+**Replacement (lines 44–49):**
+```rust
+let text = if matches!(env.payload_type, ContentType::Text | ContentType::Sos) {
+    std::str::from_utf8(&env.payload).ok().map(str::to_owned)
+} else {
+    None
+};
+```
+
+**Acceptance:** a round-trip test that sends priority 0 (`/sos hello`) and receives it confirms
+`view.text == Some("hello")`; non-text payloads (future types) still produce `None`; clippy clean.
+Must be fixed in the SAME commit as F-DX-1 — applying F-DX-1 without F-DX-6 makes the SOS
+command worse (correctly tagged but text invisible to recipient).
+
+---
+
+### F-DX-7 — Telemetry command test is vacuously true on a fresh engine · LOW
+
+**File:** `crates/iris-desktop/tests/commands_mock.rs`, line 83.
+
+**Problem:** `get_telemetry` filters for counters where `value > 0`. On a fresh engine with no
+messages sent/received, every counter is zero, so the returned `Vec<MetricView>` is empty. The test
+assertion:
+
+```rust
+let metrics = commands::get_telemetry(state);
+assert!(metrics.iter().all(|m| m.value > 0));
+```
+
+`.all()` on an empty iterator returns `true` vacuously. The test always passes regardless of
+whether `get_telemetry` is wired up correctly, broken, or returns garbage. The test comment even
+says "Fresh registry: zero non-zero counters" — confirming the test knows it checks nothing.
+
+**Replacement:**
+```rust
+// Telemetry on a fresh engine returns an empty slice (all counters are 0;
+// get_telemetry filters for non-zero). Assert the command is wired up and
+// returns a typed Vec rather than panicking.
+let metrics = commands::get_telemetry(state.clone());
+assert!(
+    metrics.iter().all(|m| m.value > 0),
+    "returned counters must be non-zero (get_telemetry filters them)"
+);
+
+// Send one message to make at least the 'sent' counter non-zero, then
+// verify a non-zero counter appears.
+let _ = tauri::async_runtime::block_on(commands::send_message(
+    state.clone(),
+    hex(BOB),
+    "telemetry-probe".to_string(),
+    4,
+));
+let metrics_after = commands::get_telemetry(state);
+assert!(
+    metrics_after.iter().any(|m| m.name.contains("sent") && m.value > 0),
+    "get_telemetry must surface the 'sent' counter after a send"
+);
+```
+
+**Acceptance:** test exercises real counter state; `get_telemetry` is not vacuously green on a
+fresh engine; no other tests affected.
+
+---
+
+### Additional-findings coverage map
+
+| New finding | Severity | File | Status |
+|---|---|---|---|
+| F-DX-1 (desktop build_text_envelope P0 ContentType) | HIGH | `crates/iris-desktop/src/engine_handle.rs:398` | **Fix required** |
+| F-DX-2 (renderPalette adjacent-only group dedup) | LOW | `crates/iris-desktop/ui/app.js:180` | **Fix required** |
+| F-DX-3 (navigator.platform deprecated) | LOW | `crates/iris-desktop/ui/app.js:14` | **Fix required** |
+| F-DX-4 (spawn_inbox_forwarder silent exit) | MEDIUM | `crates/iris-desktop/src/engine_handle.rs:248` | **Fix required** |
+| F-DX-5 (dev-seam methods visibility — #[cfg(test)] breaks integration tests; use feature flag) | LOW | `crates/iris-desktop/src/engine_handle.rs:82,93` | **Fix required (spec corrected above)** |
+| F-DX-6 (IncomingMessageView drops SOS payload text — must fix with F-DX-1) | MEDIUM | `crates/iris-desktop/src/types.rs:44` | **Fix required** |
+| F-DX-7 (telemetry test vacuously true on fresh engine) | LOW | `crates/iris-desktop/tests/commands_mock.rs:83` | **Fix required** |
+
+Total findings after deep sweep: **28** (21 original SEC6_AUDIT + 7 new).
