@@ -31,6 +31,7 @@ use iris_core::transport::ble::{
 use iris_core::transport::wifi_direct::{
     GroupConfig, GroupInfo, IncomingWifiDirectData, OperatingBand,
     PeerDiscovery as WdPeerDiscovery, PeerHandle as WdPeerHandle, WifiDirectAdapter,
+    WifiDirectError,
 };
 use iris_core::transport::wifiaware::{
     IncomingNdpData, NdpHandle, PeerDiscovery as WaPeerDiscovery, PeerHandle as WaPeerHandle,
@@ -537,11 +538,20 @@ impl WifiDirectAdapter for WifiDirectBridge {
             .map_err(|e| e.to_string())
     }
 
-    async fn p2p_send(&self, peer: WdPeerHandle, payload: &[u8]) -> Result<(), String> {
+    async fn p2p_send(&self, peer: WdPeerHandle, payload: &[u8]) -> Result<(), WifiDirectError> {
         self.ffi
             .p2p_send(peer.0, payload.to_vec())
             .await
-            .map_err(|e| e.to_string())
+            .map_err(|e| match e {
+                // RF-25: terminal — radio is definitively unreachable.
+                IrisFfiError::AdapterOff
+                | IrisFfiError::NotSupported
+                | IrisFfiError::PermissionDenied => WifiDirectError::Unavailable,
+                // RF-25: terminal — this specific peer is gone from the group.
+                IrisFfiError::DeviceNotFound => WifiDirectError::PeerGone,
+                // Everything else is transient congestion / timeout.
+                other => WifiDirectError::Transient(other.to_string()),
+            })
     }
 
     async fn incoming(&self) -> Vec<IncomingWifiDirectData> {

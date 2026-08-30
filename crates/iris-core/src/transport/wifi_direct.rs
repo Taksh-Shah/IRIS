@@ -182,6 +182,31 @@ pub struct IncomingWifiDirectData {
 // Platform adapter trait (FFI contract, DESIGN §5)
 // ---------------------------------------------------------------------------
 
+/// Typed error returned by [`WifiDirectAdapter::p2p_send`].
+///
+/// Classifying at the type level instead of substring-matching the message
+/// string makes the classifier immune to locale changes and message rewording
+/// in the Kotlin bridge (RF-25).
+#[derive(Debug)]
+pub enum WifiDirectError {
+    /// Radio off, permission denied, or adapter unrecoverable — link is dead.
+    Unavailable,
+    /// Peer is no longer reachable within the current P2P group — link is dead.
+    PeerGone,
+    /// Transient congestion or timeout — do not tear the link down.
+    Transient(String),
+}
+
+impl std::fmt::Display for WifiDirectError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WifiDirectError::Unavailable => write!(f, "wifi_direct adapter unavailable"),
+            WifiDirectError::PeerGone => write!(f, "peer no longer in group"),
+            WifiDirectError::Transient(msg) => write!(f, "transient error: {msg}"),
+        }
+    }
+}
+
 /// Platform bridge the Rust core depends on. Injected by the app: an Android
 /// adapter (Kotlin/JNI, `WifiP2pManager` + DNS-SD) on devices, the simulated
 /// adapter in tests.
@@ -237,7 +262,7 @@ pub trait WifiDirectAdapter: Send + Sync {
     async fn set_operating_band(&self, band: OperatingBand) -> Result<(), String>;
 
     /// Send a frame to a peer inside the current group (TCP-over-GO).
-    async fn p2p_send(&self, peer: PeerHandle, payload: &[u8]) -> Result<(), String>;
+    async fn p2p_send(&self, peer: PeerHandle, payload: &[u8]) -> Result<(), WifiDirectError>;
 
     /// Drain inbound group frames.
     async fn incoming(&self) -> Vec<IncomingWifiDirectData>;
@@ -717,13 +742,13 @@ impl WifiDirectAdapter for SimulatedWifiDirectAdapter {
         Ok(())
     }
 
-    async fn p2p_send(&self, peer: PeerHandle, payload: &[u8]) -> Result<(), String> {
+    async fn p2p_send(&self, peer: PeerHandle, payload: &[u8]) -> Result<(), WifiDirectError> {
         if !self.available.load(Ordering::Acquire) {
-            return Err("wifi_direct_unavailable".to_string());
+            return Err(WifiDirectError::Unavailable);
         }
         let my_tag = *self.tag.lock().unwrap_or_else(|p| p.into_inner());
         if !self.coordinator.in_same_group(my_tag, peer.0) {
-            return Err("peer not in group".to_string());
+            return Err(WifiDirectError::PeerGone);
         }
         self.coordinator.proxy_send(my_tag, peer.0, payload);
         Ok(())
@@ -1265,17 +1290,6 @@ impl WifiDirectTransport {
     }
 }
 
-/// Classify an adapter `p2p_send` error as terminal link loss. The FFI contract
-/// pins the markers for a dead path; anything else is transient congestion and
-/// must NOT tear the link down (reconnect-storm avoidance).
-fn is_link_loss_error(e: &str) -> bool {
-    let e = e.to_ascii_lowercase();
-    e.contains("not in group")
-        || e.contains("closed")
-        || e.contains("disconnect")
-        || e.contains("reset")
-        || e.contains("link lost")
-}
 
 #[async_trait]
 impl Transport for WifiDirectTransport {
@@ -1647,14 +1661,15 @@ impl Transport for WifiDirectTransport {
         let frame = encode_frame(message)?;
         let send_result = tokio::time::timeout(SEND_TIMEOUT, adapter.p2p_send(handle, &frame))
             .await
-            .unwrap_or(Err("p2p_send timed out".to_string()));
+            .unwrap_or(Err(WifiDirectError::Transient("p2p_send timed out".to_string())));
         match send_result {
             Ok(()) => {}
-            Err(e) => {
-                if is_link_loss_error(&e) {
-                    self.teardown_link(&adapter, handle).await;
-                    return Err(TransportError::NotConnected);
-                }
+            // RF-25: match typed variants instead of substrings — terminal errors tear down the link.
+            Err(WifiDirectError::Unavailable) | Err(WifiDirectError::PeerGone) => {
+                self.teardown_link(&adapter, handle).await;
+                return Err(TransportError::NotConnected);
+            }
+            Err(WifiDirectError::Transient(_)) => {
                 return Err(TransportError::Busy);
             }
         }
