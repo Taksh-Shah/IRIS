@@ -140,7 +140,12 @@ impl BloomFilter {
     /// bit was 1, so the call never returned — an unkillable hang in whichever
     /// task touched it, from three attacker-chosen fields.
     pub fn from_parts(m: usize, k: usize, bits: Vec<u8>) -> Option<Self> {
-        if m == 0 || k == 0 || k > MAX_BLOOM_PROBES || bits.len() != m.div_ceil(8) {
+        // PM-5: cap m at the bits needed for BLOOM_CAPACITY elements. Without
+        // this, a peer could send an arbitrarily large m, allocating up to
+        // usize::MAX / 8 bytes. The BLOOM_CAPACITY-derived ceiling matches the
+        // largest filter this crate generates itself.
+        let max_m = bloom_bits(BLOOM_CAPACITY, BLOOM_FPR);
+        if m == 0 || m > max_m || k == 0 || k > MAX_BLOOM_PROBES || bits.len() != m.div_ceil(8) {
             return None;
         }
         Some(BloomFilter {
@@ -483,6 +488,20 @@ mod tests {
         assert_eq!(ok.k(), 4);
         // And terminates.
         assert!(ok.contains([0u8; 16]));
+
+        // PM-5: m must not exceed the BLOOM_CAPACITY-derived ceiling.
+        let max_m = bloom_bits(BLOOM_CAPACITY, BLOOM_FPR);
+        let oversized_bits = vec![0u8; (max_m + 8).div_ceil(8)];
+        assert!(
+            BloomFilter::from_parts(max_m + 8, 4, oversized_bits).is_none(),
+            "m above BLOOM_CAPACITY ceiling must be rejected"
+        );
+        // Exactly at the ceiling is allowed.
+        let ok_bits = vec![0u8; max_m.div_ceil(8)];
+        assert!(
+            BloomFilter::from_parts(max_m, 4, ok_bits).is_some(),
+            "m exactly at ceiling must be accepted"
+        );
     }
 
     #[test]

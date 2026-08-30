@@ -84,7 +84,18 @@ impl Neighbor {
     }
 }
 
-/// Transport-agnostic peer registry with TTL eviction.
+/// Hard ceiling on concurrent tracked neighbors.
+///
+/// Without a bound, a flood of distinct peer identities grows `NeighborTable`
+/// at `rate × TTL × entry_size` with no ceiling. On eviction the
+/// least-recently-seen neighbor is removed.
+///
+/// **Section 3 coordination required**: the specific cap value and eviction
+/// key were chosen conservatively here; the routing layer must confirm they
+/// do not break path-selection correctness before this is considered final.
+pub const MAX_NEIGHBORS: usize = 512;
+
+/// Transport-agnostic peer registry with TTL eviction and capacity cap.
 ///
 /// All mutations return an optional `TopologyEvent` describing the resulting
 /// topology change so the caller can forward it to observers (the
@@ -119,6 +130,20 @@ impl NeighborTable {
         let now = Instant::now();
         match map.get_mut(&peer.peer_id) {
             None => {
+                // PM-5: enforce the neighbor cap before inserting a new entry.
+                // Evict the least-recently-seen neighbor (LRU-by-last_seen) so
+                // a flood of distinct peer identities cannot grow this table
+                // without bound. Section 3 must confirm this eviction key is
+                // sound for path selection.
+                if map.len() >= MAX_NEIGHBORS {
+                    if let Some(lru_id) = map
+                        .iter()
+                        .min_by_key(|(_, n)| n.last_seen)
+                        .map(|(id, _)| *id)
+                    {
+                        map.remove(&lru_id);
+                    }
+                }
                 let mut nb = Neighbor::new(peer);
                 nb.links.push(LinkRecord {
                     transport: transport.clone(),
@@ -439,6 +464,37 @@ mod tests {
         let events = t.sweep().await;
         assert_eq!(events.len(), 1);
         assert_eq!(t.len().await, 0);
+    }
+
+    // PM-5: the neighbor table must not grow past MAX_NEIGHBORS.
+    #[tokio::test]
+    async fn neighbor_cap_evicts_lru_on_overflow() {
+        let t = NeighborTable::new(Duration::from_secs(600));
+        let mk = |n: usize| {
+            let mut b = [0u8; 32];
+            let bytes = (n as u32).to_le_bytes();
+            b[..4].copy_from_slice(&bytes);
+            PeerInfo {
+                peer_id: PeerId::from_bytes(b),
+                addresses: vec![],
+                transport_addresses: vec![],
+                last_seen: None,
+            }
+        };
+        // Fill to cap.
+        for i in 0..MAX_NEIGHBORS {
+            t.upsert(&mk(i), &TransportId::from("sim"), LinkQuality::Good)
+                .await;
+        }
+        assert_eq!(t.len().await, MAX_NEIGHBORS);
+        // One more peer triggers eviction of the LRU; table stays at cap.
+        t.upsert(&mk(MAX_NEIGHBORS + 1), &TransportId::from("sim"), LinkQuality::Good)
+            .await;
+        assert_eq!(
+            t.len().await,
+            MAX_NEIGHBORS,
+            "table must not exceed MAX_NEIGHBORS after overflow insert"
+        );
     }
 
     #[tokio::test]

@@ -72,6 +72,12 @@ impl CapabilityBundle {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<CapabilityBundle, HandshakeError> {
+        // PM-5: mirror the send-side size guard on the receive side. Without
+        // this check a peer could send a 50× budget overrun payload that passes
+        // decode without complaint; only encode ever rejected it before.
+        if bytes.len() > CAPABILITY_MAX_BYTES {
+            return Err(HandshakeError::BudgetExceeded(bytes.len()));
+        }
         ciborium::from_reader(bytes).map_err(|_| HandshakeError::Decode)
     }
 
@@ -282,6 +288,16 @@ mod tests {
         b.capabilities = (0..200).map(|i| format!("tag-{i}-0123456789")).collect();
         let err = b.encode().unwrap_err();
         assert!(matches!(err, HandshakeError::BudgetExceeded(_)));
+    }
+
+    // PM-5: decode must enforce the 256 B budget (previously only encode did).
+    #[test]
+    fn decode_rejects_oversized_payload() {
+        let oversized = vec![0u8; CAPABILITY_MAX_BYTES + 1];
+        assert!(matches!(
+            CapabilityBundle::decode(&oversized),
+            Err(HandshakeError::BudgetExceeded(_))
+        ));
     }
 
     #[test]
