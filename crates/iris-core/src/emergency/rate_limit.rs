@@ -86,6 +86,10 @@ impl SosRateLimiter {
             window
                 .timestamps
                 .retain(|t| *t >= now_unix.saturating_sub(SOS_WINDOW_SECS));
+            // PM-6: cap to the decision horizon (defence-in-depth — record()
+            // applies the same cap, so this covers any state restored from an
+            // earlier version that did not yet enforce the count ceiling).
+            window.timestamps.truncate(SOS_P0_ALLOWANCE);
             if window.timestamps.len() < SOS_P0_ALLOWANCE {
                 RateLimitDecision::Allowed {
                     remaining: SOS_P0_ALLOWANCE - window.timestamps.len(),
@@ -112,6 +116,20 @@ impl SosRateLimiter {
                 .timestamps
                 .retain(|t| *t >= now_unix.saturating_sub(SOS_WINDOW_SECS));
             window.timestamps.push(now_unix);
+            // PM-6: bound the per-bucket Vec to the decision horizon.
+            // SOS_P0_ALLOWANCE timestamps is all we need: it determines
+            // Allowed/Downgraded and supplies the oldest for retry_after_secs.
+            // Without this cap, a sender flooding SOS at 1000 msg/s for one
+            // hour accumulates 3.6M entries (~29 MB per bucket), and the O(n)
+            // retain() on every check/record becomes O(n²) across the window.
+            //
+            // truncate() keeps the oldest SOS_P0_ALLOWANCE entries (the
+            // front of the Vec) and drops the excess tail. retain() preserves
+            // insertion order, so [0] is always the oldest in-window entry —
+            // this is the value used for retry_after_secs, so accuracy is kept.
+            if window.timestamps.len() > SOS_P0_ALLOWANCE {
+                window.timestamps.truncate(SOS_P0_ALLOWANCE);
+            }
         }
         self.touch(key);
     }
@@ -203,6 +221,29 @@ mod tests {
             rl.check(&b, 1_003),
             RateLimitDecision::Allowed { remaining: 3 }
         );
+    }
+
+    // PM-6: a single sender flooding SOS must not grow their timestamp Vec
+    // beyond SOS_P0_ALLOWANCE entries, regardless of how many messages arrive.
+    #[test]
+    fn timestamp_vec_bounded_under_flood() {
+        let mut rl = SosRateLimiter::new();
+        let sender = [9u8; 16];
+        // Simulate 10 000 SOS arrivals in the same window.
+        for i in 0u64..10_000 {
+            rl.record(&sender, 1_000 + i);
+        }
+        // The Vec inside the bucket must not exceed the decision horizon.
+        let bucket_len = rl.windows[&key_of(&sender)].timestamps.len();
+        assert!(
+            bucket_len <= SOS_P0_ALLOWANCE,
+            "timestamp vec grew to {bucket_len} > SOS_P0_ALLOWANCE = {SOS_P0_ALLOWANCE}"
+        );
+        // Decision is still correct (Downgraded after 3+ entries).
+        assert!(matches!(
+            rl.check(&sender, 1_000 + 10_000),
+            RateLimitDecision::Downgraded { .. }
+        ));
     }
 
     #[test]
