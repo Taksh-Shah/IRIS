@@ -12,7 +12,7 @@
 //! - `audit` for the AC-9 metadata ledger.
 
 use crate::emergency::audit::AuditEvent;
-use crate::emergency::sos::{classify_sos, SosOutcome};
+use crate::emergency::sos::{classify_sos, OriginalSos, SosOutcome};
 use crate::protocol::envelope::Envelope;
 
 use super::rate_limit::RateLimitDecision;
@@ -35,11 +35,17 @@ pub trait EmergencyProvider: Send + Sync {
     }
 
     /// Classify an incoming SOS payload (field 13) for a sender.
+    ///
+    /// `original` — the ledger record for the referenced original SOS (PM-2):
+    ///   resolved by the engine via `sos_original`; `None` → cancel rejected.
+    /// `cancel_sender_short` — 16-byte short ID of the cancel envelope's sender
+    ///   (PM-15 same-signer check); ignored for `Sos`/`Test` payloads.
     fn classify_sos(
         &self,
         payload: &[u8],
         now_unix: u64,
-        original_timestamp: Option<u64>,
+        original: Option<OriginalSos>,
+        cancel_sender_short: [u8; 16],
     ) -> Result<SosOutcome, crate::emergency::SosError>;
 
     /// Rate-limit decision for a sender's SOS (AC-5).
@@ -47,6 +53,18 @@ pub trait EmergencyProvider: Send + Sync {
 
     /// Record an accepted SOS for a sender (AC-5 bookkeeping).
     fn sos_record(&self, sender_id: &[u8], now_unix: u64);
+
+    /// Register an accepted SOS in the cancel ledger (PM-2).
+    /// Called by the engine after `classify_sos` returns `AcceptedSos`.
+    /// Default: no-op (unarmed provider stores nothing).
+    fn sos_register(&self, _message_id: [u8; 16], _timestamp: u64, _sender_id: &[u8]) {}
+
+    /// Look up a previously accepted SOS by its message_id (PM-2 cancel path).
+    /// Returns `None` when the id is unknown or the cancel window has expired.
+    /// Default: returns `None` (unarmed provider has no ledger).
+    fn sos_original(&self, _message_id: [u8; 16]) -> Option<OriginalSos> {
+        None
+    }
 
     /// Reset a sender's SOS window (verified CANCEL, AC-6).
     fn sos_reset(&self, sender_id: &[u8]);
@@ -82,7 +100,8 @@ impl EmergencyProvider for NoopEmergencyProvider {
         &self,
         _payload: &[u8],
         _now_unix: u64,
-        _original_timestamp: Option<u64>,
+        _original: Option<OriginalSos>,
+        _cancel_sender_short: [u8; 16],
     ) -> Result<SosOutcome, crate::emergency::SosError> {
         Ok(SosOutcome::AcceptedSos { cancel_deadline: 0 })
     }
@@ -119,6 +138,10 @@ pub struct EmergencyGateway {
     limiter: std::sync::Arc<std::sync::Mutex<super::SosRateLimiter>>,
     audit: std::sync::Arc<std::sync::Mutex<AuditLog>>,
     replay_guard: std::sync::Arc<std::sync::Mutex<BroadcastReplayGuard>>,
+    /// PM-2/PM-15: ledger of accepted SOS messages for cancel verification.
+    /// Keyed by message_id bytes; value is (timestamp, sender_short_id).
+    /// Entries are evicted when the 60-minute cancel window elapses.
+    sos_ledger: std::sync::Arc<std::sync::Mutex<SosLedger>>,
 }
 
 impl EmergencyGateway {
@@ -128,6 +151,7 @@ impl EmergencyGateway {
             limiter: std::sync::Arc::new(std::sync::Mutex::new(super::SosRateLimiter::new())),
             audit: std::sync::Arc::new(std::sync::Mutex::new(AuditLog::new(audit_capacity))),
             replay_guard: std::sync::Arc::new(std::sync::Mutex::new(BroadcastReplayGuard::new())),
+            sos_ledger: std::sync::Arc::new(std::sync::Mutex::new(SosLedger::new())),
         }
     }
 
@@ -149,9 +173,26 @@ impl EmergencyProvider for EmergencyGateway {
         &self,
         payload: &[u8],
         now_unix: u64,
-        original_timestamp: Option<u64>,
+        original: Option<OriginalSos>,
+        cancel_sender_short: [u8; 16],
     ) -> Result<SosOutcome, crate::emergency::SosError> {
-        classify_sos(payload, now_unix, original_timestamp)
+        classify_sos(payload, now_unix, original, cancel_sender_short)
+    }
+
+    fn sos_register(&self, message_id: [u8; 16], timestamp: u64, sender_id: &[u8]) {
+        let sender_short = crate::identity::peer_short_from_sender(sender_id);
+        let now = crate::message_engine::expiry::unix_now();
+        if let Ok(mut ledger) = self.sos_ledger.lock() {
+            ledger.insert(message_id, timestamp, sender_short, now);
+        }
+    }
+
+    fn sos_original(&self, message_id: [u8; 16]) -> Option<OriginalSos> {
+        let now = crate::message_engine::expiry::unix_now();
+        self.sos_ledger
+            .lock()
+            .ok()
+            .and_then(|mut ledger| ledger.lookup(message_id, now))
     }
 
     fn sos_rate(&self, sender_id: &[u8], now_unix: u64) -> RateLimitDecision {
@@ -246,6 +287,56 @@ fn short_of(id: &[u8], n: usize) -> [u8; 16] {
     out
 }
 
+/// PM-2/PM-15: bounded ledger of accepted SOS messages for cancel verification.
+///
+/// Keyed by the SOS envelope's `message_id` bytes (`[u8; 16]`).
+/// Value: `(timestamp, sender_short)` — the original SOS's UNIX timestamp and
+/// the 16-byte short sender derived via `peer_short_from_sender`.
+///
+/// Entries are evicted when the 60-minute cancel window elapses, bounded at
+/// `MAX_ENTRIES` for defence against a flood of unique SOS ids.
+#[derive(Debug, Default)]
+struct SosLedger {
+    entries: std::collections::HashMap<[u8; 16], (u64, [u8; 16])>,
+}
+
+impl SosLedger {
+    /// Hard cap — at 1 SOS/sec that is 1 hour of distinct senders.
+    const MAX_ENTRIES: usize = 3_600;
+
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn insert(&mut self, message_id: [u8; 16], timestamp: u64, sender_short: [u8; 16], now: u64) {
+        // Evict stale entries on every insert to keep the map bounded.
+        let cutoff = now.saturating_sub(super::sos::SOS_CANCEL_WINDOW_SECS);
+        self.entries.retain(|_, (ts, _)| *ts >= cutoff);
+        // Drop oldest entry if still at capacity (edge case: many messages in one second).
+        if self.entries.len() >= Self::MAX_ENTRIES {
+            // Remove an arbitrary entry — the map is already bounded; fairness
+            // is not a priority here.
+            if let Some(key) = self.entries.keys().next().copied() {
+                self.entries.remove(&key);
+            }
+        }
+        self.entries.insert(message_id, (timestamp, sender_short));
+    }
+
+    fn lookup(&mut self, message_id: [u8; 16], now: u64) -> Option<OriginalSos> {
+        let cutoff = now.saturating_sub(super::sos::SOS_CANCEL_WINDOW_SECS);
+        match self.entries.get(&message_id) {
+            Some(&(ts, sender_id)) if ts >= cutoff => Some(OriginalSos { timestamp: ts, sender_id }),
+            Some(_) => {
+                // Entry exists but is outside the cancel window — evict it.
+                self.entries.remove(&message_id);
+                None
+            }
+            None => None,
+        }
+    }
+}
+
 /// Bounded broadcast replay guard (EMERG-RT-006, MEDIUM): the engine's dedup
 /// drops same-message_id replays, but a hostile peer could re-encode a valid
 /// alert with a fresh message_id (same `broadcast_id` + chain) and flood the
@@ -320,7 +411,7 @@ mod tests {
             RateLimitDecision::Allowed { remaining: 3 }
         );
         assert!(matches!(
-            p.classify_sos(&[0xde, 0xad], 1_000, None),
+            p.classify_sos(&[0xde, 0xad], 1_000, None, [0u8; 16]),
             Ok(SosOutcome::AcceptedSos { .. })
         ));
     }

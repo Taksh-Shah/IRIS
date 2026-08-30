@@ -52,4 +52,4 @@ pub use model::{
 };
 pub use provider::{EmergencyGateway, EmergencyProvider, NoopEmergencyProvider};
 pub use rate_limit::{RateLimitDecision, SosRateLimiter};
-pub use sos::{classify_sos, SosError, SosOutcome};
+pub use sos::{classify_sos, OriginalSos, SosError, SosOutcome};

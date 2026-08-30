@@ -1626,47 +1626,77 @@ fn emergency_gate(
             VerifyOutcome::Relay { drill: false, .. } => EmergencyGateOutcome::EmergencyAlertRelay,
             VerifyOutcome::Drop(reason) => EmergencyGateOutcome::EmergencyDropped(reason),
         },
-        ContentType::Sos => match provider.classify_sos(&envelope.payload, now_unix, None) {
-            Ok(crate::emergency::SosOutcome::AcceptedSos { .. }) => {
-                // EMERG-RT-002: enforce the receive-side rate gate BEFORE
-                // recording. Within allowance → record + proceed; beyond →
-                // still deliver, but degraded to P3 (AC-5 4th-in-window rule,
-                // enforced here on the receive path, not only send-side).
-                match provider.sos_rate(&envelope.sender_id, now_unix) {
-                    crate::emergency::RateLimitDecision::Allowed { .. } => {
-                        provider.sos_record(&envelope.sender_id, now_unix);
-                        EmergencyGateOutcome::Proceed
-                    }
-                    crate::emergency::RateLimitDecision::Downgraded { retry_after_secs } => {
-                        provider.sos_record(&envelope.sender_id, now_unix);
-                        tracing::warn!(
-                            event = event::MSG_EMERGENCY_SOS_RATE_LIMITED,
-                            message_id = %envelope.message_id.short(),
-                            retry_after_secs,
-                            "SOS rate-limited (EMERG-RT-002): downgraded to P3 degraded delivery"
-                        );
-                        // Audit: metadata-only row (AC-9; no payload content).
-                        provider.audit(crate::emergency::EmergencyAuditRecord {
-                            timestamp: now_unix,
-                            event: crate::emergency::AuditEvent::SosRateLimited,
-                            subject: crate::emergency::authority::authority_short_id(
-                                &envelope.sender_id,
-                            ),
-                            note: Some(format!("sos_downgraded:{retry_after_secs}")),
-                        });
-                        EmergencyGateOutcome::SosDowngraded
+        ContentType::Sos => {
+            // PM-2 fix: look up the original SOS ledger for Cancel verification.
+            // Previously always passed None, so every CANCEL was dropped with
+            // UnknownOriginal — false alarms could never be withdrawn.
+            let sos_original = {
+                use crate::emergency::{decode_sos, SosKind};
+                decode_sos(&envelope.payload)
+                    .ok()
+                    .filter(|m| m.kind == SosKind::Cancel)
+                    .and_then(|m| m.original_message_id)
+                    .and_then(|id| provider.sos_original(id))
+            };
+            // PM-15: cancel sender short ID for same-signer check (AC-6).
+            let cancel_sender_short =
+                crate::identity::peer_short_from_sender(&envelope.sender_id);
+
+            match provider.classify_sos(
+                &envelope.payload,
+                now_unix,
+                sos_original,
+                cancel_sender_short,
+            ) {
+                Ok(crate::emergency::SosOutcome::AcceptedSos { .. }) => {
+                    // PM-2: register this accepted SOS so a later CANCEL can
+                    // look it up. Register before the rate-limit check so
+                    // even downgraded SOS can be cancelled (AC-6).
+                    provider.sos_register(
+                        envelope.message_id.0,
+                        envelope.timestamp,
+                        &envelope.sender_id,
+                    );
+                    // EMERG-RT-002: enforce the receive-side rate gate BEFORE
+                    // recording. Within allowance → record + proceed; beyond →
+                    // still deliver, but degraded to P3 (AC-5 4th-in-window rule,
+                    // enforced here on the receive path, not only send-side).
+                    match provider.sos_rate(&envelope.sender_id, now_unix) {
+                        crate::emergency::RateLimitDecision::Allowed { .. } => {
+                            provider.sos_record(&envelope.sender_id, now_unix);
+                            EmergencyGateOutcome::Proceed
+                        }
+                        crate::emergency::RateLimitDecision::Downgraded { retry_after_secs } => {
+                            provider.sos_record(&envelope.sender_id, now_unix);
+                            tracing::warn!(
+                                event = event::MSG_EMERGENCY_SOS_RATE_LIMITED,
+                                message_id = %envelope.message_id.short(),
+                                retry_after_secs,
+                                "SOS rate-limited (EMERG-RT-002): downgraded to P3 degraded delivery"
+                            );
+                            // Audit: metadata-only row (AC-9; no payload content).
+                            provider.audit(crate::emergency::EmergencyAuditRecord {
+                                timestamp: now_unix,
+                                event: crate::emergency::AuditEvent::SosRateLimited,
+                                subject: crate::emergency::authority::authority_short_id(
+                                    &envelope.sender_id,
+                                ),
+                                note: Some(format!("sos_downgraded:{retry_after_secs}")),
+                            });
+                            EmergencyGateOutcome::SosDowngraded
+                        }
                     }
                 }
+                Ok(crate::emergency::SosOutcome::AcceptedCancel) => {
+                    provider.sos_reset(&envelope.sender_id);
+                    EmergencyGateOutcome::Proceed
+                }
+                Err(e) => EmergencyGateOutcome::EmergencyDropped(e.to_string()),
+                Ok(crate::emergency::SosOutcome::Rejected(e)) => {
+                    EmergencyGateOutcome::EmergencyDropped(e.to_string())
+                }
             }
-            Ok(crate::emergency::SosOutcome::AcceptedCancel) => {
-                provider.sos_reset(&envelope.sender_id);
-                EmergencyGateOutcome::Proceed
-            }
-            Err(e) => EmergencyGateOutcome::EmergencyDropped(e.to_string()),
-            Ok(crate::emergency::SosOutcome::Rejected(e)) => {
-                EmergencyGateOutcome::EmergencyDropped(e.to_string())
-            }
-        },
+        }
         _ => EmergencyGateOutcome::Proceed,
     }
 }

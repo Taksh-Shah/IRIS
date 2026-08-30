@@ -26,6 +26,20 @@ pub enum SosError {
     CancelWindowExpired,
     #[error("sos: cancel missing original_message_id")]
     CancelMissingOriginal,
+    /// PM-15: cancel sender does not match the original SOS sender (AC-6).
+    #[error("sos: cancel sender does not match the original SOS sender (AC-6)")]
+    CancelSignerMismatch,
+}
+
+/// Ledger record for an accepted SOS — supplied by the engine so `classify_sos`
+/// can verify a subsequent CANCEL without storing state of its own (PM-2/PM-15).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OriginalSos {
+    /// UNIX timestamp of the original SOS (cancel-window check).
+    pub timestamp: u64,
+    /// 16-byte short sender ID of the original SOS, derived via
+    /// `identity::peer_short_from_sender` (same-signer check, AC-6/PM-15).
+    pub sender_id: [u8; 16],
 }
 
 /// Decision for an incoming SOS envelope payload.
@@ -44,13 +58,17 @@ pub enum SosOutcome {
 
 /// Decode + classify an SOS payload (the engine's incoming-hook core step).
 ///
-/// `now_unix` is the engine clock. `original_timestamp` is the `timestamp` of
-/// the original SOS (resolved by the engine from its dedup/ledger when
-/// `kind == Cancel`); a Cancel against an unknown original is rejected.
+/// `now_unix` is the engine clock.
+/// `original` is the ledger record for the referenced original SOS (resolved by
+/// the engine from its `EmergencyProvider` when `kind == Cancel`); a Cancel
+/// against an unknown original is rejected (PM-2).
+/// `cancel_sender_short` is the 16-byte short identity of the cancel envelope's
+/// sender (used for the AC-6 same-signer check, PM-15); ignored for Sos/Test.
 pub fn classify_sos(
     payload: &[u8],
     now_unix: u64,
-    original_timestamp: Option<u64>,
+    original: Option<OriginalSos>,
+    cancel_sender_short: [u8; 16],
 ) -> Result<SosOutcome, SosError> {
     let msg = decode_sos(payload).map_err(|e| SosError::Codec(e.to_string()))?;
     match msg.kind {
@@ -61,8 +79,14 @@ pub fn classify_sos(
             if msg.original_message_id.is_none() {
                 return Err(SosError::CancelMissingOriginal);
             }
-            match original_timestamp {
-                Some(t) if now_unix.saturating_sub(t) <= SOS_CANCEL_WINDOW_SECS => {
+            match original {
+                Some(orig) if now_unix.saturating_sub(orig.timestamp) <= SOS_CANCEL_WINDOW_SECS => {
+                    // PM-15: the Cancel must be signed by the same sender as the
+                    // original SOS. Without this check, any authenticated peer
+                    // could cancel another peer's active SOS (AC-6).
+                    if cancel_sender_short != orig.sender_id {
+                        return Err(SosError::CancelSignerMismatch);
+                    }
                     Ok(SosOutcome::AcceptedCancel)
                 }
                 Some(_) => Err(SosError::CancelWindowExpired),
@@ -87,6 +111,9 @@ mod tests {
     use super::*;
     use crate::emergency::model::{LocationSource, SosReason};
 
+    const SENDER_A: [u8; 16] = [0xAA; 16];
+    const SENDER_B: [u8; 16] = [0xBB; 16];
+
     fn sos(ts: u32, kind: SosKind) -> SosMessage {
         SosMessage {
             format_version: 1,
@@ -101,10 +128,14 @@ mod tests {
         }
     }
 
+    fn original(ts: u64, sender: [u8; 16]) -> OriginalSos {
+        OriginalSos { timestamp: ts, sender_id: sender }
+    }
+
     #[test]
     fn fresh_sos_accepted() {
         let p = encode(&sos(1_000, SosKind::Sos)).unwrap();
-        let out = classify_sos(&p, 1_000, None).unwrap();
+        let out = classify_sos(&p, 1_000, None, [0u8; 16]).unwrap();
         assert_eq!(
             out,
             SosOutcome::AcceptedSos {
@@ -119,7 +150,7 @@ mod tests {
         c.original_message_id = Some([7u8; 16]);
         let p = encode(&c).unwrap();
         assert_eq!(
-            classify_sos(&p, 1_100, Some(1_000)).unwrap(),
+            classify_sos(&p, 1_100, Some(original(1_000, SENDER_A)), SENDER_A).unwrap(),
             SosOutcome::AcceptedCancel
         );
     }
@@ -130,7 +161,12 @@ mod tests {
         c.original_message_id = Some([7u8; 16]);
         let p = encode(&c).unwrap();
         assert_eq!(
-            classify_sos(&p, 1_000 + SOS_CANCEL_WINDOW_SECS + 1, Some(1_000)),
+            classify_sos(
+                &p,
+                1_000 + SOS_CANCEL_WINDOW_SECS + 1,
+                Some(original(1_000, SENDER_A)),
+                SENDER_A
+            ),
             Err(SosError::CancelWindowExpired)
         );
     }
@@ -141,8 +177,29 @@ mod tests {
         c.original_message_id = Some([7u8; 16]);
         let p = encode(&c).unwrap();
         assert_eq!(
-            classify_sos(&p, 1_100, None),
+            classify_sos(&p, 1_100, None, SENDER_A),
             Err(SosError::UnknownOriginal)
+        );
+    }
+
+    #[test]
+    fn cancel_forgery_rejected_pm15() {
+        // PM-15: a cancel from a DIFFERENT sender than the original SOS sender
+        // must be rejected (AC-6 same-signer requirement).
+        let mut c = sos(1_100, SosKind::Cancel);
+        c.original_message_id = Some([7u8; 16]);
+        let p = encode(&c).unwrap();
+        // SENDER_B tries to cancel SENDER_A's SOS — within window but wrong signer.
+        assert_eq!(
+            classify_sos(&p, 1_100, Some(original(1_000, SENDER_A)), SENDER_B),
+            Err(SosError::CancelSignerMismatch),
+            "cancel from a different sender must be rejected (PM-15)"
+        );
+        // Same sender must still succeed.
+        assert_eq!(
+            classify_sos(&p, 1_100, Some(original(1_000, SENDER_B)), SENDER_B),
+            Ok(SosOutcome::AcceptedCancel),
+            "cancel from the original sender must succeed"
         );
     }
 
@@ -181,7 +238,7 @@ mod tests {
             out
         };
         assert!(matches!(
-            classify_sos(&wire, 1_100, Some(1_000)),
+            classify_sos(&wire, 1_100, Some(original(1_000, SENDER_A)), SENDER_A),
             Err(SosError::Codec(_))
         ));
     }
@@ -189,7 +246,7 @@ mod tests {
     #[test]
     fn garbage_payload_rejected() {
         assert!(matches!(
-            classify_sos(&[0xde, 0xad, 0xbe, 0xef], 1_000, None),
+            classify_sos(&[0xde, 0xad, 0xbe, 0xef], 1_000, None, [0u8; 16]),
             Err(SosError::Codec(_))
         ));
     }
