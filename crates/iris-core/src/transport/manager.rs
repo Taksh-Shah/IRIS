@@ -822,6 +822,38 @@ mod tests {
             "Connected must beat Degraded when otherwise equal"
         );
         assert!(selected[0].score > 0.0);
+
+        // MG-20: the 1 KB case above is blind to the bandwidth score (fires only
+        // above 10 KB). Add a large-message sub-case with a 1000× bandwidth gap
+        // to ensure the score term is actually exercised and cannot be deleted
+        // without breaking this test.
+        let mgr2 = TransportManager::new();
+        mgr2.register(Arc::new(StubTransport::new(
+            "narrowband",
+            free_caps(),
+            TransportState::Connected,
+            cost(3.0, 0.0, 100_000, 0.0),       // 100 Kbps
+        )))
+        .await
+        .unwrap();
+        mgr2.register(Arc::new(StubTransport::new(
+            "wideband",
+            free_caps(),
+            TransportState::Connected,
+            cost(3.0, 0.0, 100_000_000, 0.0),   // 100 Mbps — 1000× wider
+        )))
+        .await
+        .unwrap();
+
+        let selected2 = mgr2
+            .select_transports(&req(MessagePriority::P5, 20_000, false))
+            .await;
+        assert_eq!(selected2.len(), 1);
+        assert_eq!(
+            selected2[0].transport_id.as_str(),
+            "wideband",
+            "large-message (>10 KB) must prefer higher-bandwidth transport"
+        );
     }
 
     #[tokio::test]

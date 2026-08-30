@@ -225,6 +225,26 @@ async fn p0_multipath_includes_satellite_emergency_only() {
             "{prio} multipath must include satellite"
         );
     }
+    // MG-20: verify the MANAGER also rejects satellite for P4+, not just the
+    // transport layer. select_transports must return an empty candidate list.
+    for prio in [MessagePriority::P4, MessagePriority::P7] {
+        let picks = mgr
+            .select_transports(&TransportSelectionRequest {
+                target_peer: None,
+                message_size: 100,
+                priority: prio,
+                max_latency_ms: None,
+                prefer_low_cost: false,
+                multipath: false,
+                fragmentable: false,
+            })
+            .await;
+        assert!(
+            picks.is_empty(),
+            "{prio} manager selection must exclude satellite (Expensive, P3+)"
+        );
+    }
+
     // AC-5 enforcement is TRANSPORT-SIDE: even if the manager ranks the
     // satellite (sole registered link), a P4 send must be hard-rejected.
     for prio in [MessagePriority::P4, MessagePriority::P7] {
