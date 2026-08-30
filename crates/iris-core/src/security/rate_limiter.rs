@@ -1,7 +1,7 @@
 //! srTCM token-bucket rate limiter per (sender, class) — RES-0018 R1, RFC 2697/2698.
 //! P0/P1 drop-exempt; unknown-sender aggregate bucket bounded; silent drop on overflow.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
@@ -121,9 +121,26 @@ pub(crate) fn refill_tokens(tokens: u64, intervals: u64, rate_per_sec: u64, burs
         .min(burst)
 }
 
+/// Bucket map + insertion-order queue (GAP-3: FIFO eviction instead of random).
+struct BucketState {
+    map: HashMap<BucketKey, Bucket>,
+    /// Insertion order for FIFO eviction at capacity. Contains every key
+    /// currently in `map`; stale entries (removed keys) are skipped at eviction.
+    order: VecDeque<BucketKey>,
+}
+
+impl BucketState {
+    fn new(capacity: usize) -> Self {
+        BucketState {
+            map: HashMap::with_capacity(capacity),
+            order: VecDeque::new(),
+        }
+    }
+}
+
 /// srTCM-style token bucket rate limiter per (sender, class).
 pub struct RateLimiter {
-    buckets: RwLock<HashMap<BucketKey, Bucket>>,
+    buckets: RwLock<BucketState>,
     unknown_bucket: RwLock<Bucket>,
     config: RateLimiterConfig,
     metrics: RateLimiterMetrics,
@@ -157,7 +174,7 @@ impl RateLimiter {
     pub fn with_clock(config: RateLimiterConfig, clock: ClockFn) -> Self {
         let now = (clock)();
         RateLimiter {
-            buckets: RwLock::new(HashMap::with_capacity(1024)),
+            buckets: RwLock::new(BucketState::new(1024)),
             unknown_bucket: RwLock::new(Bucket {
                 tokens: config.unknown_sender_burst,
                 last_refill: now,
@@ -215,21 +232,25 @@ impl RateLimiter {
         let key = BucketKey { sender, class };
 
         // Use write lock to allow bucket mutation
-        let mut buckets = self.buckets.write().await;
+        let mut state = self.buckets.write().await;
 
-        // Enforce max buckets: evict oldest if at capacity
-        if buckets.len() >= self.config.max_sender_buckets {
-            // Simple eviction: remove a random entry (TODO: LRU)
-            if let Some(k) = buckets.keys().next().copied() {
-                buckets.remove(&k);
+        // GAP-3: FIFO eviction — evict the oldest bucket instead of a random one.
+        // Pop from the front of `order`, skipping any keys already removed.
+        if state.map.len() >= self.config.max_sender_buckets {
+            while let Some(oldest) = state.order.pop_front() {
+                if state.map.remove(&oldest).is_some() {
+                    break;
+                }
+                // key was already evicted/forgotten — keep popping
             }
         }
 
         let now = (self.clock)();
-        let bucket = buckets.entry(key).or_insert(Bucket {
-            tokens: self.config.burst,
-            last_refill: now,
-        });
+        if !state.map.contains_key(&key) {
+            state.map.insert(key, Bucket { tokens: self.config.burst, last_refill: now });
+            state.order.push_back(key);
+        }
+        let bucket = state.map.get_mut(&key).unwrap();
 
         let decision = Self::check_bucket(
             bucket,
@@ -247,6 +268,7 @@ impl RateLimiter {
             }
             _ => {}
         }
+        drop(state);
         decision
     }
 
@@ -322,7 +344,10 @@ impl RateLimiter {
 
     /// Reset all buckets (for testing).
     pub async fn reset(&self) {
-        self.buckets.write().await.clear();
+        let mut state = self.buckets.write().await;
+        state.map.clear();
+        state.order.clear();
+        drop(state);
         let mut unknown = self.unknown_bucket.write().await;
         unknown.tokens = self.config.unknown_sender_burst;
         unknown.last_refill = (self.clock)();

@@ -179,6 +179,8 @@ pub enum InboundOutcome {
     ReassembledDelivered,
     /// Unverifiable/rejected emergency content dropped without reply (AC-10).
     EmergencyDropped,
+    /// Dropped by inbound rate limiter (GAP-7: distinct from Expired/TTL).
+    RateLimited,
 }
 
 /// Engine counters for observability (acceptance #10).
@@ -414,6 +416,8 @@ impl MessageEngine {
         }
 
         // SEC-001: outbound rate limiting (per sender, per class)
+        // GAP-5: snapshot policy once before seal_outbound so both the
+        // rate-limit and quota checks use the same policy snapshot.
         let sender_short = self.sender_short_id();
         let class = crate::security::MessageClass::from(envelope.priority);
         let policy = self.security.read().unwrap().clone();
@@ -443,7 +447,7 @@ impl MessageEngine {
         // and its Rejected decision is honored, not discarded (SEC-RT-04).
         // On a later persist failure the reservation is refunded via
         // remove_message so accounting cannot leak.
-        let policy = self.security.read().unwrap().clone();
+        // (policy snapshot taken before seal_outbound above — GAP-5)
         let quota_decision = policy
             .add_message(
                 sender_short,
@@ -737,7 +741,7 @@ impl MessageEngine {
                     priority = envelope.priority.as_u8(),
                     "fragment dropped: sender rate limit (PM-4)"
                 );
-                return Ok(InboundOutcome::Expired);
+                return Ok(InboundOutcome::RateLimited);
             }
 
             let reassembled = {
@@ -1022,7 +1026,7 @@ impl MessageEngine {
                 priority = envelope.priority.as_u8(),
                 "relay dropped: sender rate limit"
             );
-            return Ok(InboundOutcome::Expired);
+            return Ok(InboundOutcome::RateLimited);
         }
 
         let cap = hop_cap(&envelope);
@@ -1560,7 +1564,16 @@ impl MessageEngine {
                         Err(MsgEngineError::TtlExpired) => {
                             this.acks.lock().await.forget(id);
                         }
-                        Err(_) => {}
+                        Err(MsgEngineError::QueueFull) => {
+                            // GAP-8: backoff 5 s instead of tight retry storm.
+                            let backoff = std::time::Instant::now()
+                                + std::time::Duration::from_secs(5);
+                            this.acks.lock().await.postpone(id, backoff);
+                        }
+                        Err(_) => {
+                            // Non-transient error: give up to avoid infinite loop.
+                            this.acks.lock().await.forget(id);
+                        }
                     }
                 }
                 let failed: Vec<_> = this.acks.lock().await.exhausted();

@@ -355,8 +355,11 @@ impl ReplayEngine {
             .as_secs();
 
         // Freshness window: too old?
-        let past_limit = now.saturating_add(self.config.per_source_skew_budget.as_secs());
-        let min_ts = past_limit.saturating_sub(self.config.freshness_window_past.as_secs());
+        // GAP-6: correct formula is now - window - skew (accept slow-clock senders).
+        // The old formula (now + skew - window) shrunk the past window by skew_budget.
+        let min_ts = now
+            .saturating_sub(self.config.freshness_window_past.as_secs())
+            .saturating_sub(self.config.per_source_skew_budget.as_secs());
         if ts < min_ts {
             self.metrics.too_old.fetch_add(1, Ordering::Relaxed);
             return ReplayDecision::TooOld;
@@ -439,7 +442,12 @@ impl ReplayEngine {
             .unwrap_or_default()
             .as_secs();
 
-        let min_ts = now.saturating_sub(self.config.freshness_window_past.as_secs());
+        // GAP-6: expand past window by skew_budget to accommodate slow-clock
+        // senders, matching check()'s corrected past cutoff.
+        // Future direction stays conservative for untrusted senders (no skew).
+        let min_ts = now
+            .saturating_sub(self.config.freshness_window_past.as_secs())
+            .saturating_sub(self.config.per_source_skew_budget.as_secs());
         if ts < min_ts {
             self.metrics.too_old.fetch_add(1, Ordering::Relaxed);
             return ReplayDecision::TooOld;

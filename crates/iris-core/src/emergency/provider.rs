@@ -393,12 +393,14 @@ impl BroadcastReplayGuard {
     /// window → suppress.
     pub fn check_and_record(&mut self, broadcast_id: [u8; 16], now_unix: u64) -> bool {
         let cutoff = now_unix.saturating_sub(self.retention_secs);
-        // Drop expired entries in place (amortized O(n); n ≤ MAX_IDS).
+        // GAP-2: use order-preserving remove() so that remove(0) below still
+        // evicts the oldest (first-inserted) entry. swap_remove() was O(1) but
+        // scrambled insertion order, breaking the remove(0) eviction invariant.
         let mut i = 0;
         while i < self.ids.len() {
             if self.seen_at[i] < cutoff {
-                self.ids.swap_remove(i);
-                self.seen_at.swap_remove(i);
+                self.ids.remove(i);
+                self.seen_at.remove(i);
             } else {
                 i += 1;
             }

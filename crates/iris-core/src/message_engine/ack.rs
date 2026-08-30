@@ -112,7 +112,9 @@ pub struct AckTracker {
     /// Min-heap: `Reverse<(deadline, id)>` so the nearest deadline is on top.
     retry_heap: BinaryHeap<Reverse<(Instant, MessageId)>>,
     /// Messages whose attempt budget is exhausted (PS-4 / PM-3).
-    failed: HashSet<MessageId>,
+    /// GAP-4: stores (id → final_attempt_count) so exhausted() can report
+    /// the actual number of retries made.
+    failed: HashMap<MessageId, u32>,
 }
 
 impl Default for AckTracker {
@@ -120,7 +122,7 @@ impl Default for AckTracker {
         Self {
             pending: HashMap::new(),
             retry_heap: BinaryHeap::new(),
-            failed: HashSet::new(),
+            failed: HashMap::new(),
         }
     }
 }
@@ -148,7 +150,7 @@ impl AckTracker {
         // PS-4: once a message is exhausted it is in `failed`; do not reset
         // its attempt count if the delivery path re-registers it after the
         // budget was reached.
-        if self.failed.contains(&id) {
+        if self.failed.contains_key(&id) {
             return;
         }
         // PM-3: defense-in-depth cap. P0 messages (max_attempts = None) never
@@ -213,9 +215,10 @@ impl AckTracker {
             attempts: entry.attempts,
             max_attempts: policy.max_attempts,
         };
-        if policy.max_attempts.map(|m| entry.attempts >= m).unwrap_or(false) {
+        let attempts = entry.attempts;
+        if policy.max_attempts.map(|m| attempts >= m).unwrap_or(false) {
             self.pending.remove(&id);
-            self.failed.insert(id);
+            self.failed.insert(id, attempts);
         } else {
             self.retry_heap.push(Reverse((next_retry, id)));
         }
@@ -288,8 +291,16 @@ impl AckTracker {
     /// PS-4: O(1) drain from the `failed` set instead of O(n) HashMap scan.
     /// `record_retry` moves exhausted entries here immediately.
     pub fn exhausted(&mut self) -> Vec<(MessageId, u32)> {
-        let ids: Vec<MessageId> = self.failed.drain().collect();
-        ids.into_iter().map(|id| (id, 0)).collect()
+        self.failed.drain().collect()
+    }
+
+    /// Defer a message's next retry to `new_due` (GAP-8: backoff on QueueFull).
+    /// No-op if the message is not pending.
+    pub fn postpone(&mut self, id: MessageId, new_due: std::time::Instant) {
+        if self.pending.contains_key(&id) {
+            self.retry_heap
+                .push(std::cmp::Reverse((new_due, id)));
+        }
     }
 
     /// Drop all tracking (e.g. on shutdown).

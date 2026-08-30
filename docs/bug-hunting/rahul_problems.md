@@ -21,10 +21,10 @@
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
 | 3 | Structural enhancements | 7 | 3 | 4 | 0 | 0 |
-| 4 | New audit findings (GAP-1..GAP-8) | 8 | 0 | 0 | 0 | 8 |
-| **Total** | | **33** | **21** | **4** | **0** | **8** |
+| 4 | New audit findings (GAP-1..GAP-8) | 8 | 8 | 0 | 0 | 0 |
+| **Total** | | **33** | **29** | **4** | **0** | **0** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 4 open (8 new findings from codebase audit; Tier 3 3 ✅, 4 🔒 blocked)
+**Last updated:** 2026-08-30 · **Active tier:** 4 complete (8/8 ✅); Tier 3 3 ✅, 4 🔒 blocked (awaiting Section 1/3 sign-off)
 
 ---
 
@@ -595,7 +595,7 @@ GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
 
 ### GAP-1 — `ForwardedCache` Bloom filter probes with raw message-id bytes (no keyed hash)
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/routing/dedup_cache.rs:97-98,112`
 - **Category:** security · **Severity:** High
 - **Tier:** 4
@@ -622,7 +622,7 @@ self.bloom_cur.insert(id.to_bytes());                                    // line
 
 ### GAP-2 — `BroadcastReplayGuard` mixes `swap_remove` (destroys order) with `remove(0)` (assumes order)
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/emergency/provider.rs:400-412`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 4
@@ -652,7 +652,7 @@ if self.ids.len() >= Self::MAX_IDS {
 
 ### GAP-3 — `RateLimiter` evicts an arbitrary sender bucket at capacity (adversarially exploitable)
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/security/rate_limiter.rs:221-225`
 - **Category:** security · **Severity:** Medium
 - **Tier:** 4
@@ -679,7 +679,7 @@ if buckets.len() >= self.config.max_sender_buckets {
 
 ### GAP-4 — `AckTracker::exhausted()` always reports attempt count 0
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/ack.rs:290-293`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 4
@@ -704,7 +704,7 @@ pub fn exhausted(&mut self) -> Vec<(MessageId, u32)> {
 
 ### GAP-5 — `send_message` reads the security policy twice with an `await` gap between reads
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:419,446`
 - **Category:** concurrency · **Severity:** Low
 - **Tier:** 4
@@ -730,7 +730,7 @@ let policy = self.security.read().unwrap().clone(); // line 446 — for quota (m
 
 ### GAP-6 — Replay freshness window sign error: `check()` shrinks the past window; `check_freshness_only()` ignores skew entirely
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/security/replay.rs:357-359,442`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 4
@@ -759,7 +759,7 @@ With default config (`window = 86400 s`, `skew = 300 s`): `check()` accepts mess
 
 ### GAP-7 — Rate-limited relay/fragment drops return `InboundOutcome::Expired`, poisoning metrics
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:740,1025`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 4
@@ -789,7 +789,7 @@ return Ok(InboundOutcome::Expired);   // same conflation
 
 ### GAP-8 — `spawn_ack_task` silently swallows `QueueFull` errors, creating a tight retry storm
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 4 · Run 8 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1558-1563`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 4

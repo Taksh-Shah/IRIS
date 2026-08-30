@@ -17,6 +17,31 @@ use std::time::{Duration, Instant};
 use crate::message_engine::dedup::{BloomFilter, BLOOM_FPR};
 use crate::protocol::MessageId;
 
+/// Per-process key for the routing-layer Bloom filter.
+///
+/// GAP-1: ForwardedCache previously passed raw `id.to_bytes()` directly to
+/// BloomFilter, which interprets them as a pre-hashed 128-bit digest. An
+/// attacker controlling MessageId bytes could target specific Bloom positions
+/// and censor victim IDs. Keying with a random per-process value makes probe
+/// positions unpredictable off-box.
+fn forwarded_hash_key() -> &'static [u8; 32] {
+    use std::sync::OnceLock;
+    static KEY: OnceLock<[u8; 32]> = OnceLock::new();
+    KEY.get_or_init(|| {
+        use rand::RngCore;
+        let mut k = [0u8; 32];
+        rand::rngs::OsRng.fill_bytes(&mut k);
+        k
+    })
+}
+
+fn forwarded_digest(id: &MessageId) -> [u8; 16] {
+    let full = blake3::keyed_hash(forwarded_hash_key(), &id.to_bytes());
+    let mut out = [0u8; 16];
+    out.copy_from_slice(&full.as_bytes()[..16]);
+    out
+}
+
 /// A point in time: either wall clock or the SIM virtual clock (ROUT-30;
 /// mirrors `prophet.rs`'s `TimePoint`). Entries store elapsed `Duration`
 /// since this clock's reference point rather than raw `Instant`s so a test
@@ -94,8 +119,8 @@ impl ForwardedCache {
     /// - Bloom hit but not in exact (1 h … 24 h ago) → treat as duplicate,
     ///   accepting the 0.1% FPR the design specifies.
     pub fn is_duplicate(&self, id: &MessageId) -> bool {
-        let bytes = id.to_bytes();
-        if !self.bloom_cur.contains(bytes) && !self.bloom_prev.contains(bytes) {
+        let h = forwarded_digest(id);
+        if !self.bloom_cur.contains(h) && !self.bloom_prev.contains(h) {
             return false;
         }
         if self.exact.contains(id) {
@@ -109,7 +134,7 @@ impl ForwardedCache {
     /// Record a forwarded message id. O(1) amortized.
     pub fn record(&mut self, id: MessageId) {
         self.rotate_bloom_if_due();
-        self.bloom_cur.insert(id.to_bytes());
+        self.bloom_cur.insert(forwarded_digest(&id));
         self.exact.insert(id);
         self.ring.push_back((id, self.clock.now()));
         self.evict_old();
@@ -250,7 +275,7 @@ mod tests {
         let mut cache = ForwardedCache::default();
         let id = MessageId::new_v7();
         // Insert directly into bloom_cur without adding to exact.
-        cache.bloom_cur.insert(id.to_bytes());
+        cache.bloom_cur.insert(forwarded_digest(&id));
         // exact does not contain it (simulates post-1h eviction).
         assert!(
             cache.is_duplicate(&id),
