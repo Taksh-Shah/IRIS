@@ -73,9 +73,9 @@ Full workspace test suite green after every commit across all fourteen wakes (69
 | **1** | Live surface hardening (timeouts, lag counter, lock poisoning, CI gap) | 11 | 0 | 0 | 11 | 0 | 0 | **✅ COMPLETE** — all 11 fixed this session |
 | **2** | Wiring-commit gates (routing, DTN, gateway, storage invariants) | 80 | 0 | 0 | 77 | 3 | 0 | **✅ FULLY CLOSED OUT 2026-08-27** (ROUT area: **✅ COMPLETE** — 33 ✅ + 3 🔒 [ROUT-23, ROUT-24, ROUT-26]; DTN area: **✅ COMPLETE** — 25/25; MG area: **✅ COMPLETE** — 18/18; TAK-2: **✅ Fixed**) |
 | **3** | Evidence-base fixes (simulator fidelity, ML leakage) | 32 | 0 | 0 | 32 | 0 | 0 | **✅ COMPLETE 2026-08-29** — Wake 12: SIM-1/2/3/4; Wake 13: SIM-5/6/11/17/18/31; Wake 14: SIM-19/20/29; Wake 15: SIM-10/12/30/32; Wake 16: SIM-13/14/15/16; Wake 17: SIM-21..28 (observability); Wake 18: SIM-9; Wake 19: SIM-7/SIM-8 — 32/32 ✅ |
-| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 27 | 0 | 98 | 1 | 0 | **IN PROGRESS 2026-08-30** — batch 1: RF-6/8/11/18/19/20/21; batch 2: MG-15/18/22/23/20, RF-25; tracker sync: RF-24, BLE-32. 98/126 done, 27 remaining, 1 blocked (TLS) |
+| **4** | Remaining Medium/Low (mechanical, batched by area) | 126 | 14 | 0 | 111 | 1 | 0 | **IN PROGRESS 2026-08-30** — batches 1+2 fixed RF-3/6/8/11/15/17/18/19/20/21/22/23/24/25, MG-15/18/20/22/23/24, BLE-32/37/38/39/40, GAP-1, RF-28/34; tracker sync corrected drift. 111/126 done, 14 remaining, 1 blocked (TLS) |
 | — | Not applicable (verified-clean, no fix) | 2 | — | — | — | — | — | — |
-| **Total** | | **284** | **27** | **0** | **249** | **5** | **0** | | ⬜ |
+| **Total** | | **284** | **14** | **0** | **262** | **5** | **0** | | ⬜ |
 
 Tiers 0, 1, 3, and 4 have no ordering dependency on each other and can in principle run in parallel once Tier -1 is closed — the loop runs them sequentially anyway (see the loop file for why: single-threaded git history, one thing reviewable at a time). Tier 2 is gated separately because it changes security/correctness invariants (routing loop prevention, gateway trust, storage exhaustion bounds) and needs a human — not just tests — to sign off before the loop is allowed to touch it.
 
@@ -319,13 +319,13 @@ All 284 findings, in report order. Severities are post-verification.
 | **BLE-34** | Medium | `wifiaware.rs:702-735` | `ensure_started` holds `connect_gate` across platform I/O and re-runs `start`+`subscribe` on every call | ✅ |
 | **BLE-35** | Medium | `wifiaware.rs:708-715` | No timeout on any Wi-Fi Aware adapter call | ✅ (backfill) |
 | **BLE-36** | Medium | `wifiaware.rs:906-913` | `stop_discovery` is a partial stop, and `shutdown` is irreversible | ⬜ |
-| **BLE-37** | Low | `wifiaware.rs:125-147` | `PublishConfig` is a constant — every field is dead configuration | ⬜ |
-| **BLE-38** | Low | `wifiaware.rs:98-103` | NAN RSSI is carried across the FFI and dropped at the bridge | ⬜ |
-| **BLE-39** | Low | `wifiaware.rs:945-950` | `connect()` trusts a caller-supplied peer handle with no cross-check against the beacon | ⬜ |
-| **BLE-40** | Low | `wifiaware.rs:276-293` | `SimMeshCoordinator` masks two real backpressure behaviours from every test | ⬜ |
+| **BLE-37** | Low | `wifiaware.rs:125-147` | `PublishConfig` is a constant — every field is dead configuration | ✅ `309cfa5` |
+| **BLE-38** | Low | `wifiaware.rs:98-103` | NAN RSSI is carried across the FFI and dropped at the bridge | ✅ `402276c` |
+| **BLE-39** | Low | `wifiaware.rs:945-950` | `connect()` trusts a caller-supplied peer handle with no cross-check against the beacon | ✅ `bda5a18` |
+| **BLE-40** | Low | `wifiaware.rs:276-293` | `SimMeshCoordinator` masks two real backpressure behaviours from every test | ✅ `f4bcef9` |
 | **RF-1** | High | `lora.rs:794-803` | The duty tracker bills a radio profile the module is never actually configured with | ✅ `77236b2` |
 | **RF-2** | High | `lora.rs:309-336` | The hourly duty budget is reset to 100 % by every process restart | ⬜ |
-| **RF-3** | High | `lora.rs:161-175` | P0 SOS is refused on LoRa while 40 % of the legal budget sits unused | ⬜ |
+| **RF-3** | High | `lora.rs:161-175` | P0 SOS is refused on LoRa while 40 % of the legal budget sits unused | ✅ `329743f` |
 | **RF-4** | Medium | `lora.rs:1414-1421` | Airtime is refunded on *any* `tx()` error, including errors raised after the PA keyed up | ✅ `a405ec8` |
 | **RF-5** | Medium | `lora.rs:1403-1412` | `BudgetExhausted`'s next-legal-send-window is computed, then thrown away | ✅ `77236b2` |
 | **RF-6** | Medium | `lora.rs:264-293` | The monotonic guard is anchored to `Instant`, so device suspend silently redefines "one hour" | ✅ (partial) `2789b53` |
@@ -337,26 +337,26 @@ All 284 findings, in report order. Severities are post-verification.
 | **RF-12** | Medium | `lora.rs:1441-1461` | `drain_backlog` swallows every error class identically (LoRa and satellite) | ✅ `6ee3f6b` |
 | **RF-13** | Medium | `lora.rs:1153-1219` | The backlog has no TTL and inverts priority at the cap — a P0 can be rejected while 256 P4s are held | ✅ `2074518` |
 | **RF-14** | Low | `lora.rs:571-575` | LDRO condition omits SF12/BW250 — airtime is *under*-counted for that profile | ✅ `a405ec8` |
-| **RF-15** | Low | `lora.rs:1010-1077` | The whole link-budget model is unwired, and its distance clamp makes far links look reachable | ⬜ |
+| **RF-15** | Low | `lora.rs:1010-1077` | The whole link-budget model is unwired, and its distance clamp makes far links look reachable | ✅ `31a3ec2` |
 | **RF-16** | Low | `lora.rs:373-389` | `DutyCycleTracker::refund` is a public de-billing API on a tracker documented as having "no runtime override" | ✅ `a405ec8` |
-| **RF-17** | Low | `lora.rs:1320-1327` | `close()` errors are discarded on every LoRa/satellite teardown path | ⬜ |
+| **RF-17** | Low | `lora.rs:1320-1327` | `close()` errors are discarded on every LoRa/satellite teardown path | ✅ `8eb375d` |
 | **RF-18** | High | `satellite.rs:387-417` | The satellite spend guard has **no** forward-clock-jump guard — the LoRa fix was never mirrored | ✅ `9d9650e` |
 | **RF-19** | High | `satellite.rs:1008-1016` | The `Expensive`-transport priority gate does not exist in the selector — P3+ can be selected onto satellite and then hard-fails with no fallback | ✅ (subsumed by MG-9) |
 | **RF-20** | High | `satellite.rs:1050-1068` | "User is warned before the satellite send" is a no-op — the hook has zero production callers and defaults to auto-approve | ✅ `9d9650e` |
 | **RF-21** | High | `satellite.rs:437-449` | P0 satellite sends are completely unmetered and unrecorded — unbounded spend and a lying spend meter | ✅ `9d9650e` |
-| **RF-22** | Medium | `satellite.rs:523-530` | `record_mailbox_check` is unthrottled and can never be refused — ~44 polls exhaust the daily budget and lock out all P1/P2 | ⬜ |
-| **RF-23** | Low | `satellite.rs:56-59` | `RETRY_BASE_MS` / `RETRY_JITTER_FRACTION` are "pinned by a test" but no retry logic exists | ⬜ |
+| **RF-22** | Medium | `satellite.rs:523-530` | `record_mailbox_check` is unthrottled and can never be refused — ~44 polls exhaust the daily budget and lock out all P1/P2 | ✅ `a0e6fce` |
+| **RF-23** | Low | `satellite.rs:56-59` | `RETRY_BASE_MS` / `RETRY_JITTER_FRACTION` are "pinned by a test" but no retry logic exists | ✅ `11c2b49` |
 | **RF-24** | Medium | `wifi_direct.rs:1032-1042` | `discovery_should_rearm()` never arms the window — it returns `true` on every call, so the 30 s cadence is dead code | ✅ `e538aaf` |
 | **RF-25** | High | `wifi_direct.rs:1049-1059` | `is_link_loss_error` matches strings that the real Android adapter never produces — a dead group is never torn down | ✅ `0bea3b8` |
 | **RF-26** | High | `wifi_direct.rs:98-100` | The default `GroupConfig` makes **both** peers Group Owners; GO intent is never negotiated and never reaches the platform | ⬜ |
 | **RF-27** | Medium | `wifi_direct.rs:196-197` | Two adapter-trait methods cannot report failure by signature, forcing the Android bridge to swallow every error | ⬜ |
-| **RF-28** | Medium | `wifi_direct.rs:947-982` | The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames | ⬜ |
+| **RF-28** | Medium | `wifi_direct.rs:947-982` | The inbound poller's backlog is an unbounded `VecDeque` of up-to-1-MiB frames | ✅ `b19c452` |
 | **RF-29** | Medium | `wifi_direct.rs:959-966` | Malformed, truncated and zero-length inbound frames are dropped with no counter and no log | ✅ |
 | **RF-30** | Medium | `wifi_direct.rs:1312-1329` | `shutdown()` never closes the incoming channel — `incoming_messages()` streams hang forever | ✅ |
 | **RF-31** | Low | `wifi_direct.rs:794-795` | `dropped_inbound` is write-only — the counter has no accessor | ✅ |
 | **RF-32** | Medium | `wifi_direct.rs:20-24` | The TCP-over-GO data plane described in the module docs is not implemented — `go_addr`, `group_info` and `set_operating_band` are never called | ⬜ |
 | **RF-33** | Low | `wifi_direct.rs:1095-1114` | `discover_peers` never checks the matched service name, ignores `DiscoveryConfig.timeout`, and truncates before filtering | ✅ |
-| **RF-34** | Low | `wifi_direct_serv.rs:109-112` | The TXT record's `freshness_minutes` is parsed and never used, and `peer_short` is fully attacker-chosen | ⬜ |
+| **RF-34** | Low | `wifi_direct_serv.rs:109-112` | The TXT record's `freshness_minutes` is parsed and never used, and `peer_short` is fully attacker-chosen | ✅ (partial) `dfcd827` |
 | **RF-35** | High | `internet.rs:1-13` | No TLS and no relay authentication — the transport is plaintext TCP, contradicting its own module docs and INTERNET.md | ✅ `2df2c9d` |
 | **RF-36** | High | `internet.rs:241-250` | `resolve_relay`'s fallback chain re-opens RED-0001-01 — a send for peer B goes out on peer A's relay | ✅ `c22b3b6` |
 | **RF-37** | High | `internet.rs:280-325` | A reader task resurrects a shut-down transport by unconditionally storing `Available` on EOF | ✅ `c9f28f0` |
@@ -391,7 +391,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **MG-21** | Medium | `transport/mod.rs:112-125` | `AtomicState` enforces no transitions and its inner field is public | ✅ (partial: inner field made pub(crate)) |
 | **MG-22** | Medium | `transport/mod.rs:294-332` | One global lag counter for both state and message streams; nothing reads it; a lagged state stream loses transport deaths | ✅ `ae1728a` |
 | **MG-23** | Low | `transport/mod.rs:386-387` | `set_send_priority_hint` is a no-op in every wireless transport except LoRa | ✅ (subsumed: trait has a default no-op body from MG-24 fix) |
-| **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable | ⬜ |
+| **MG-24** | Low | `transport/mod.rs:170-171` | `regulatory_band: Option<String>` is free text — compliance data is not machine-checkable | ✅ `c5c5ace` |
 | **MG-25** | High | `gateway/mod.rs:672-718` | The gateway *claim* is self-asserted — a verified peer can elect itself the mesh gateway without attestation | ✅ `1038a83` |
 | **MG-26** | High | `gateway/mod.rs:393-401` | `prune()` erases health state, so a blackhole clears all strikes by dropping off for one reconcile cycle | ✅ `1038a83` |
 | **MG-27** | Medium | `gateway/mod.rs:745-763` | `sanitize_capability` sanitises only the four float fields — bandwidth, latency, queue depth, `max_priority`, and `gateway_type` are unchecked attacker input | ✅ `1038a83` |
@@ -486,7 +486,7 @@ All 284 findings, in report order. Severities are post-verification.
 | **FFI-17** | Medium | `wifi_aware_adapter.rs:34-36` | RSSI is fabricated as 0 in Kotlin and then discarded by the bridge | ✅ `7542a83` |
 | **FFI-18** | Medium | `wifi_direct.rs:1273` | `peerHandleFor` uses non-atomic `getOrPut` on a `ConcurrentHashMap` — two handles for one device under concurrent callbacks | ✅ `f01135b` |
 | **FFI-19** | Medium | `wifi_direct_serv.rs:32-34` | Service-name constants disagree across the seam; `PublishConfig.service_name` and `PeerDiscovery.service_name` are both ignored | ✅ `0a916f3` |
-| **GAP-1** | High | `message_engine/mod.rs:1091-1140` | Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized | ⬜ |
+| **GAP-1** | High | `message_engine/mod.rs:1091-1140` | Fragmentation budgets the payload chunk against the transport MTU, ignoring the envelope it is re-wrapped in — every fragmented message is oversized | ✅ `1541276` |
 | **GAP-2** | High | `ble.rs:384` | `BleTransport::capabilities().max_message_size` advertises 65 535 B while the per-connection frame budget caps a message at ~3 KB | ✅ |
 | **GAP-3** | High | `ble.rs:866-871` | `shutdown()` is terminal for every live transport — a stop/start cycle permanently removes the radio from selection | ✅ (partial: start_advertising recovers Unavailable→Available) |
 | **GAP-4** | Critical | `engine.rs:210-224` | A single `Lagged` permanently terminates the user's inbox stream on all three platforms | ✅ `e15809a` |
