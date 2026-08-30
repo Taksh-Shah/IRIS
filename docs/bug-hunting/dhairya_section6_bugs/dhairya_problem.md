@@ -18,13 +18,13 @@
 
 | Tier | Name | Total | ✅ Fixed | 🔮 Future | 🔀 Routed | ⬜ Not started |
 |---|---|---|---|---|---|---|
-| 0 | High safety / security / emergency-path | 3 | 0 | 0 | 0 | 3 |
-| 1 | Medium correctness + protocol | 4 | 0 | 0 | 0 | 4 |
-| 2 | Low correctness, UX, build polish | 14 | 0 | 0 | 0 | 14 |
+| 0 | High safety / security / emergency-path | 3 | 3 | 0 | 0 | 0 |
+| 1 | Medium correctness + protocol | 4 | 4 | 0 | 0 | 0 |
+| 2 | Low correctness, UX, build polish | 14 | 14 | 0 | 0 | 0 |
 | N/A | Deferred / routed / pass / no action | 7 | 0 | 1 | 3 | 3 |
-| **Total** | | **28** | **0** | **1** | **3** | **24** |
+| **Total** | | **28** | **21** | **1** | **3** | **3** |
 
-**Last updated:** 2026-08-30 · **Active tier:** Tier 0 — not started.
+**Last updated:** 2026-08-30 · **Active tier:** Complete — all 21 actionable findings fixed.
 
 ---
 
@@ -52,7 +52,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-C2 — Align cargo-deny with cargo-audit suppressions
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 1 · 2026-08-30
 - **File(s):** `deny.toml` (advisories block)
 - **Category:** supply-chain security · **Severity:** HIGH
 - **Tier:** 0
@@ -72,7 +72,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-1 — Desktop `build_text_envelope` always sets `ContentType::Text` even for P0/SOS
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 1 · 2026-08-30
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:398`
 - **Category:** protocol / emergency-path · **Severity:** HIGH
 - **Tier:** 0
@@ -92,7 +92,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-6 — `IncomingMessageView` drops text payload for `ContentType::Sos` messages
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 1 · 2026-08-30
 - **File(s):** `crates/iris-desktop/src/types.rs:44`
 - **Category:** protocol / emergency-path · **Severity:** MEDIUM (coupled to HIGH F-DX-1)
 - **Tier:** 0
@@ -115,7 +115,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-C3 — Ubuntu CI jobs lack GTK/webkit system libraries
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 2 · 2026-08-30
 - **File(s):** `.github/workflows/ci.yml` (`test`, `lint`, `coverage` jobs)
 - **Category:** CI correctness · **Severity:** MEDIUM
 - **Tier:** 1
@@ -135,7 +135,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-D1 — Inbox stream dies silently on broadcast lag
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 2 · 2026-08-30
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:299–325` + new `tests/inbox_pump.rs`
 - **Category:** correctness · **Severity:** MEDIUM
 - **Tier:** 1
@@ -157,7 +157,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-P1 — SECURITY_POLICY key-storage annotation missing
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 2 · 2026-08-30
 - **File(s):** `engineering/SECURITY_POLICY.yaml` (key_storage area, after `rule:` line)
 - **Category:** policy annotation · **Severity:** MEDIUM-drift
 - **Tier:** 1
@@ -175,7 +175,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-4 — `spawn_inbox_forwarder` exits silently when transport stream ends
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 2 · 2026-08-30
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:248`
 - **Category:** correctness · **Severity:** MEDIUM
 - **Tier:** 1
@@ -197,7 +197,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-C4 — CI supply-chain hardening batch
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 3 · 2026-08-30 (SHA pins: TODO comments added — network unavailable at fix time)
 - **File(s):** `.github/workflows/ci.yml`
 - **Category:** CI hardening · **Severity:** LOW
 - **Tier:** 2
@@ -211,7 +211,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-C5 — nextest config comment contradicts `retries = 0`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 3 · 2026-08-30
 - **File(s):** `.config/nextest.toml:6`
 - **Category:** documentation · **Severity:** LOW
 - **Tier:** 2
@@ -225,7 +225,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-D2 — Subscription task lifecycle (abort previous on re-subscribe)
 
-- **Fix status:** ⬜ Not started (folded into F-D1)
+- **Fix status:** ✅ Fixed · Run 2 · 2026-08-30 (folded into F-D1)
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs`
 - **Category:** correctness · **Severity:** LOW
 - **Tier:** 2
@@ -239,7 +239,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-D3 — Size-cap copy says "64 KB" but constant is 60,000 bytes
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 3 · 2026-08-30
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:385–387`
 - **Category:** documentation / correctness · **Severity:** LOW
 - **Tier:** 2
@@ -253,7 +253,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-D7 — HTML `maxlength` counts UTF-16 units; Rust checks UTF-8 bytes
 
-- **Fix status:** ⬜ Not started (combined with F-D3)
+- **Fix status:** ✅ Fixed · Run 3 · 2026-08-30 (combined with F-D3)
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:385` + optional `ui/app.js`
 - **Category:** correctness · **Severity:** LOW
 - **Tier:** 2
@@ -267,7 +267,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-D4 — Malformed relay addresses dropped silently
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 3 · 2026-08-30
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:438–451`
 - **Category:** correctness · **Severity:** LOW
 - **Tier:** 2
@@ -281,7 +281,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-D5 — Peer-list click prefills an invalid-looking `/to` command
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 4 · 2026-08-30
 - **File(s):** `crates/iris-desktop/ui/app.js:494–498`
 - **Category:** UX · **Severity:** LOW
 - **Tier:** 2
@@ -295,7 +295,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-S2 — Windows manifest lacks `requestedExecutionLevel`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 4 · 2026-08-30
 - **File(s):** `crates/iris-desktop/windows-app-manifest.xml`
 - **Category:** security / correctness · **Severity:** LOW
 - **Tier:** 2
@@ -309,7 +309,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-W1 — Centralize uniffi/tempfile pins; remove dead `serde_json`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 4 · 2026-08-30 (android/ios Cargo.toml changes flagged per boundary #12)
 - **File(s):** `Cargo.toml` (workspace), `crates/iris-android/Cargo.toml`, `crates/iris-ios/Cargo.toml`, `crates/iris-desktop/Cargo.toml`
 - **Category:** build correctness · **Severity:** LOW
 - **Tier:** 2
@@ -323,7 +323,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-P2 — Reconcile the two license allowlists
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 4 · 2026-08-30
 - **File(s):** `deny.toml` (licenses block), `engineering/SECURITY_POLICY.yaml:99`
 - **Category:** policy correctness · **Severity:** LOW-drift
 - **Tier:** 2
@@ -337,7 +337,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-2 — `renderPalette` adjacent-only group dedup (JS version of AN-13)
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 5 · 2026-08-30
 - **File(s):** `crates/iris-desktop/ui/app.js:178–188`
 - **Category:** UX correctness · **Severity:** LOW
 - **Tier:** 2
@@ -351,7 +351,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-3 — `navigator.platform` deprecated API
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 5 · 2026-08-30
 - **File(s):** `crates/iris-desktop/ui/app.js:14`
 - **Category:** correctness · **Severity:** LOW
 - **Tier:** 2
@@ -365,7 +365,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-5 — Dev-seam builder methods accessible without a feature gate
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 5 · 2026-08-30 (test-seams feature gate; integration tests require --features test-seams or --all-features)
 - **File(s):** `crates/iris-desktop/src/engine_handle.rs:82,93` + `crates/iris-desktop/Cargo.toml`
 - **Category:** security / correctness · **Severity:** LOW
 - **Tier:** 2
@@ -379,7 +379,7 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (k
 
 ### F-DX-7 — Telemetry command test is vacuously true on a fresh engine
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Run 5 · 2026-08-30
 - **File(s):** `crates/iris-desktop/tests/commands_mock.rs:83`
 - **Category:** test correctness · **Severity:** LOW
 - **Tier:** 2
