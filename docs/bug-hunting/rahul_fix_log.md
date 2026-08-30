@@ -187,6 +187,30 @@ When all Tier 3 findings are ✅ or 🔒: Tier 3 checkpoint commit.
 
 ---
 
+## Run 8 — [DATE] — Tier 4 opened (GAP-1..GAP-8; fix in severity order)
+
+**Gate confirmation:** User said "start tier 4" + "audit the codebase for new findings" — explicit human go-ahead received 2026-08-30.
+
+Target findings (severity order): GAP-1 (High security), GAP-6 (Medium correctness), GAP-8 (Medium correctness), GAP-3 (Medium security), GAP-2 (Low correctness), GAP-4 (Low correctness), GAP-5 (Low concurrency), GAP-7 (Low correctness).
+GAP-1 and GAP-6 require Section 3 / Section 1 coordination confirmation before committing (see §2.3 of loop spec).
+
+**Drift notes:** _(fill in before starting run)_
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | GAP-1 | ⬜ | — | — |
+| 2 | GAP-6 | ⬜ | — | — |
+| 3 | GAP-8 | ⬜ | — | — |
+| 4 | GAP-3 | ⬜ | — | — |
+| 5 | GAP-2 | ⬜ | — | — |
+| 6 | GAP-4 | ⬜ | — | — |
+| 7 | GAP-5 | ⬜ | — | — |
+| 8 | GAP-7 | ⬜ | — | — |
+
+**Batch closeout:** `cargo test -p iris-core --lib` all pass.
+
+---
+
 *(Add further runs as needed — copy the template below)*
 
 ---

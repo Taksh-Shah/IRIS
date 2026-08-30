@@ -28,6 +28,8 @@ Run tiers **in this order**. Do not skip ahead.
 
 4. **Tier 3 — HARD STOP.** Before starting Tier 3, the loop must stop and require an explicit human go-ahead. Reason: Tier 3 findings are structural enhancements — they change architectural patterns (dispatch model, decode algorithm, caching model), are larger diffs with wider blast radii, and several have hard blockers on cross-section coordination (see §2.3). A wrong or premature architectural change here can cause regressions harder to find than the originals.
 
+5. **Tier 4** — after human go-ahead. These are new audit findings (GAP-1..GAP-8) added after the original 25-finding review. Tier 4 proceeds in the same per-finding protocol as Tiers 1–2 (§4). Fix GAP-1 (High security) and GAP-6/GAP-8 (Medium) before GAP-2/GAP-4/GAP-5/GAP-7 (Low).
+
 ### 2.3 Tier 3 coordination prerequisites
 
 Before the first Tier 3 commit, confirm the following with the relevant section owners:
@@ -56,7 +58,10 @@ PM-11, PM-13, PM-16, PM-17, PM-18
 **Tier 3** (7 findings — GATED):
 PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
-**Total: 6 + 7 + 5 + 7 = 25 findings.**
+**Tier 4** (8 findings — opened 2026-08-30 under explicit human go-ahead):
+GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
+
+**Total: 6 + 7 + 5 + 7 + 8 = 33 findings.**
 
 ---
 

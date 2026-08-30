@@ -21,9 +21,10 @@
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
 | 3 | Structural enhancements | 7 | 3 | 4 | 0 | 0 |
-| **Total** | | **25** | **21** | **4** | **0** | **0** |
+| 4 | New audit findings (GAP-1..GAP-8) | 8 | 0 | 0 | 0 | 8 |
+| **Total** | | **33** | **21** | **4** | **0** | **8** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 3 complete (3 ✅, 4 🔒 blocked — awaiting Section 1/3 cross-section sign-off)
+**Last updated:** 2026-08-30 · **Active tier:** 4 open (8 new findings from codebase audit; Tier 3 3 ✅, 4 🔒 blocked)
 
 ---
 
@@ -41,9 +42,12 @@ PM-11, PM-13, PM-16, PM-17, PM-18
 **Tier 3 — GATED** (7 structural enhancements — requires explicit human go-ahead before any commit):
 PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
+**Tier 4** (8 findings from codebase audit — opened 2026-08-30 under explicit human go-ahead):
+GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
+
 **Not applicable:** none.
 
-**Total: 6 + 7 + 5 + 7 = 25 findings.**
+**Total: 6 + 7 + 5 + 7 + 8 = 33 findings.**
 
 ---
 
@@ -585,6 +589,232 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ---
 
+## Tier 4 — New audit findings (opened 2026-08-30)
+
+---
+
+### GAP-1 — `ForwardedCache` Bloom filter probes with raw message-id bytes (no keyed hash)
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/routing/dedup_cache.rs:97-98,112`
+- **Category:** security · **Severity:** High
+- **Tier:** 4
+
+**What:** `ForwardedCache.is_duplicate()` and `record()` pass `id.to_bytes()` (raw 16-byte UUID) directly to `BloomFilter::contains()` and `BloomFilter::insert()`, which interpret those bytes as a pre-hashed 128-bit digest. An attacker who controls or predicts `MessageId` bytes can craft IDs that hit specific Bloom positions, enabling targeted Bloom poisoning (false duplicate suppression for victim IDs). `DedupEngine` fixed this exact class of attack via `dedup_digest()` (`blake3::keyed_hash`) — `ForwardedCache` was not updated.
+
+**Evidence:**
+```rust
+// is_duplicate():
+let bytes = id.to_bytes();                                               // line 97
+if !self.bloom_cur.contains(bytes) && !self.bloom_prev.contains(bytes) { // line 98
+
+// record():
+self.bloom_cur.insert(id.to_bytes());                                    // line 112
+```
+
+**Root cause:** `ForwardedCache` was written before (or not updated alongside) `DedupEngine`'s BLAKE3-keyed Bloom probing. Both import `BloomFilter` from `dedup.rs` but only `DedupEngine` uses `dedup_digest()`.
+
+**Fix:** Derive or import a per-process routing-layer Bloom key (same pattern as `dedup_hash_key()` in `dedup.rs`), then probe with `blake3::keyed_hash(&FORWARDED_BLOOM_KEY, &id.to_bytes()).as_bytes()[..16]` in both `is_duplicate` and `record`.
+
+**Dependencies / blast radius:** Only `routing/dedup_cache.rs`. No API change — internal detail. The test at line 252 (`bloom_cur.insert(id.to_bytes())`) will need updating to use the keyed helper.
+
+---
+
+### GAP-2 — `BroadcastReplayGuard` mixes `swap_remove` (destroys order) with `remove(0)` (assumes order)
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/emergency/provider.rs:400-412`
+- **Category:** correctness · **Severity:** Low
+- **Tier:** 4
+
+**What:** The expiry loop uses `swap_remove` (O(1), moves last element to position `i`), which destroys insertion order. The capacity-eviction path then calls `remove(0)` assuming position 0 is the oldest entry — but after any prior `swap_remove` that assumption is broken. Under a hostile flood that triggers both expiry and capacity eviction, an arbitrary non-oldest entry is evicted, potentially freeing a slot for the attacker's ID while retaining old entries.
+
+**Evidence:**
+```rust
+// expiry loop — destroys insertion order:
+self.ids.swap_remove(i);     // line 400
+self.seen_at.swap_remove(i); // line 401
+
+// capacity eviction — assumes insertion order:
+if self.ids.len() >= Self::MAX_IDS {
+    self.ids.remove(0);      // line 411 — element 0 is no longer oldest
+    self.seen_at.remove(0);  // line 412
+}
+```
+
+**Root cause:** The two Vec mutation strategies are incompatible — `swap_remove` is O(1) but scrambles order; `remove(0)` is correct only when insertion order is preserved.
+
+**Fix:** Replace `swap_remove` with order-preserving `remove(i)` (O(n), acceptable since `MAX_IDS = 1024` and expiry runs amortized). Alternatively, track oldest via explicit timestamp comparison at eviction time.
+
+**Dependencies / blast radius:** Only `emergency/provider.rs:BroadcastReplayGuard`. The existing `replay_guard_bounded_at_max` test doesn't check eviction order, so it will still pass — add a regression test that confirms the oldest entry is evicted.
+
+---
+
+### GAP-3 — `RateLimiter` evicts an arbitrary sender bucket at capacity (adversarially exploitable)
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/security/rate_limiter.rs:221-225`
+- **Category:** security · **Severity:** Medium
+- **Tier:** 4
+
+**What:** When the per-sender bucket table reaches `max_sender_buckets`, the evicted entry is chosen by `HashMap::keys().next()` — effectively random per build/platform. An adversary can flood with throwaway sender IDs to fill the table, probabilistically evicting a target sender's bucket and resetting its rate-limit window. The code's own TODO acknowledges LRU as the correct fix.
+
+**Evidence:**
+```rust
+if buckets.len() >= self.config.max_sender_buckets {
+    // Simple eviction: remove a random entry (TODO: LRU)
+    if let Some(k) = buckets.keys().next().copied() {   // line 223
+        buckets.remove(&k);
+    }
+}
+```
+
+**Root cause:** `HashMap` iteration order is unspecified; without a timestamp or insertion-order side structure there is no way to select the least-recently-used bucket.
+
+**Fix:** Add a `VecDeque<SenderShort>` insertion-order side structure; on eviction pop from the front. On access (hit or new insertion), move the sender to the back. This gives O(1) amortized LRU eviction without changing the `HashMap` lookup semantics.
+
+**Dependencies / blast radius:** Only `security/rate_limiter.rs`. Config type unchanged. The existing `rate_limiter_max_sender_buckets_eviction` test exercises the eviction path and should be extended to verify LRU (not arbitrary) order.
+
+---
+
+### GAP-4 — `AckTracker::exhausted()` always reports attempt count 0
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/message_engine/ack.rs:290-293`
+- **Category:** correctness · **Severity:** Low
+- **Tier:** 4
+
+**What:** `exhausted()` maps every drained `MessageId` to attempt count `0` regardless of how many retries were made. The `failed` set stores only `MessageId`, discarding the attempt count that `record_retry` computed when transitioning the entry. Callers receive `(id, 0)` tuples and cannot distinguish immediate failure (0 retries) from full-budget exhaustion.
+
+**Evidence:**
+```rust
+pub fn exhausted(&mut self) -> Vec<(MessageId, u32)> {
+    let ids: Vec<MessageId> = self.failed.drain().collect();
+    ids.into_iter().map(|id| (id, 0)).collect()  // attempt count hardcoded to 0
+}
+```
+
+**Root cause:** `failed` was implemented as `HashSet<MessageId>` (PS-4 fix), discarding the count. The return type `Vec<(MessageId, u32)>` promises it but the value is always 0.
+
+**Fix:** Change `failed: HashSet<MessageId>` to `failed: HashMap<MessageId, u32>`. In `record_retry`, insert `(id, attempts)` instead of just `id` when moving to `failed`. In `exhausted()`, drain entries as `(id, count)`.
+
+**Dependencies / blast radius:** Only `message_engine/ack.rs`. The `spawn_ack_task` caller already ignores the count (`for (id, _attempts) in failed`), so behavior is unchanged there — this is a correctness/observability fix.
+
+---
+
+### GAP-5 — `send_message` reads the security policy twice with an `await` gap between reads
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/message_engine/mod.rs:419,446`
+- **Category:** concurrency · **Severity:** Low
+- **Tier:** 4
+
+**What:** `send_message` takes two separate read-lock snapshots of `self.security` with `seal_outbound` (an `await` point) between them. A concurrent `set_security_policy` call can replace the policy between the two reads, so the rate-limit check and the quota check may execute against different policy objects.
+
+**Evidence:**
+```rust
+let policy = self.security.read().unwrap().clone(); // line 419 — for rate-limit
+// ...
+self.seal_outbound(&mut envelope).await?;           // line 438 — async gap
+// ...
+let policy = self.security.read().unwrap().clone(); // line 446 — for quota (may differ)
+```
+
+**Root cause:** `security` is an `RwLock<Arc<dyn SecurityPolicy>>` that gives snapshot-on-clone semantics. The two reads were added independently and not coalesced.
+
+**Fix:** Clone the policy once before `seal_outbound`, reuse the single snapshot for both checks. At worst, one outbound message is rate-limited / quota-checked against an evicted policy version — acceptable since policy updates are rare.
+
+**Dependencies / blast radius:** Only `message_engine/mod.rs:send_message`. No API change.
+
+---
+
+### GAP-6 — Replay freshness window sign error: `check()` shrinks the past window; `check_freshness_only()` ignores skew entirely
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/security/replay.rs:357-359,442`
+- **Category:** correctness · **Severity:** Medium
+- **Tier:** 4
+
+**What:** `check()` computes the past cutoff as `min_ts = (now + skew_budget) - window`, which equals `now - (window - skew_budget)`. Because `skew_budget > 0`, this **shrinks** the acceptance window for old messages by `skew_budget` seconds — the opposite of the intended behaviour (accommodating senders with slow clocks). `check_freshness_only()` omits the skew adjustment entirely (`min_ts = now - window`), so the two methods differ by `skew_budget` at the past cutoff.
+
+**Evidence:**
+```rust
+// check(): skew added to now BEFORE subtracting window — shrinks past window
+let past_limit = now.saturating_add(self.config.per_source_skew_budget.as_secs()); // line 358
+let min_ts = past_limit.saturating_sub(self.config.freshness_window_past.as_secs()); // line 359
+
+// check_freshness_only(): no skew adjustment — full window, no tolerance
+let min_ts = now.saturating_sub(self.config.freshness_window_past.as_secs()); // line 442
+```
+
+With default config (`window = 86400 s`, `skew = 300 s`): `check()` accepts messages from at most 86100 s ago; `check_freshness_only()` accepts up to 86400 s ago — 300 s gap.
+
+**Root cause:** Sign error: adding `skew_budget` to `now` before subtracting `window` reduces the effective window. The correct formula for a slow-clock tolerance is `min_ts = now - window - skew_budget`.
+
+**Fix:** In both methods, compute `min_ts = now.saturating_sub(window).saturating_sub(skew_budget)`. The future cutoff (`max_ts = now + window + skew_budget`) is already correct in both paths and should not be changed.
+
+**Dependencies / blast radius:** Only `security/replay.rs`. Existing tests (`replay_freshness_too_old`, `replay_freshness_too_future`) use `per_source_skew_budget = 60 s` and `window = 3600 s` — the "too old" test sets `ts = now - 3601` which is below both `now - 3600` (current) and `now - 3660` (fixed), so the test still passes. Add a regression test at `now - (window + skew_budget - 1)` asserting `Accepted` and `now - (window + skew_budget + 1)` asserting `TooOld`.
+
+---
+
+### GAP-7 — Rate-limited relay/fragment drops return `InboundOutcome::Expired`, poisoning metrics
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/message_engine/mod.rs:740,1025`
+- **Category:** correctness · **Severity:** Low
+- **Tier:** 4
+
+**What:** When the inbound rate limiter drops a fragment (line 740) or a relay candidate (line 1025), both sites return `Ok(InboundOutcome::Expired)`. The outcome is mapped to `MessageStatus::Expired` further up the call chain, so rate-limited drops are silently counted as TTL expirations in both the engine metrics and the message store.
+
+**Evidence:**
+```rust
+// fragment path (line 733-740):
+self.telemetry.increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+// ...
+return Ok(InboundOutcome::Expired);   // misleading — this is a rate-limit drop
+
+// relay path (line 1017-1025):
+self.telemetry.increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+// ...
+return Ok(InboundOutcome::Expired);   // same conflation
+```
+
+**Root cause:** `InboundOutcome` has no `RateLimited` variant; the placeholder `Expired` was used because it terminates processing without delivering.
+
+**Fix:** Add `InboundOutcome::RateLimited` to the enum. Return it from both sites. In the caller, map `RateLimited` to a no-op status update (message was never accepted, so no `MessageStatus` transition is needed). Update the single-digit downstream `match` arms.
+
+**Dependencies / blast radius:** `message_engine/mod.rs` and the `InboundOutcome` enum (in `mod.rs` or a shared types file). Grep for all `InboundOutcome::` match arms and add the new variant.
+
+---
+
+### GAP-8 — `spawn_ack_task` silently swallows `QueueFull` errors, creating a tight retry storm
+
+- **Fix status:** ⬜ Not started
+- **File(s):** `crates/iris-core/src/message_engine/mod.rs:1558-1563`
+- **Category:** correctness · **Severity:** Medium
+- **Tier:** 4
+
+**What:** When `requeue_for_retry` fails with `QueueFull` (or any non-`TtlExpired` error), the `Err(_) => {}` arm silently does nothing. The `AckTracker` entry remains in `pending` with its deadline already passed, so the very next ACK tick fires another `requeue_for_retry` call. Under sustained queue pressure this creates a tight retry storm: every pending-ACK message hammers `requeue_for_retry` on every 1-second tick until the queue drains.
+
+**Evidence:**
+```rust
+match this.requeue_for_retry(env).await {
+    Ok(()) => {}
+    Err(MsgEngineError::TtlExpired) => {
+        this.acks.lock().await.forget(id); // correctly cleans up
+    }
+    Err(_) => {}   // line 1563 — QueueFull and all other errors swallowed
+}
+```
+
+**Root cause:** The non-TTL error arm was left as a no-op; there is no backoff or failure-count tracking for the retry path.
+
+**Fix:** On `Err(MsgEngineError::QueueFull)`, bump the entry's deadline by `Duration::from_secs(5)` via a new `AckTracker::postpone(id, deadline)` method (push a new heap entry), so the next attempt is at least 5 seconds later. For other non-transient errors (unknown variants), call `forget(id)` and increment a `delivery_failed` metric rather than looping forever.
+
+**Dependencies / blast radius:** `message_engine/ack.rs` (needs `postpone` method), `message_engine/mod.rs` (call site). No API change to callers of `spawn_ack_task`.
+
+---
+
 ## Cross-section coordination summary
 
 | Finding | Section | What they must decide |
@@ -604,6 +834,8 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 | PS-1 | Sec 3 | Whether transport adapters are re-entrant under concurrent `send()` — per-adapter answer required. Also LoRa duty-cycle bounds. |
 | PS-3 | Sec 1 | How revocation and key rotation invalidate a cached `VerifiedAuthority` — **blocks PS-3**. |
 | PS-5 | Sec 3 | Whether concurrent discovery scans contend for shared radio hardware — **verify before implementing**. |
+| GAP-1 | Sec 3 | `ForwardedCache` lives in `routing/` — confirm with Section 3 that the same `dedup_hash_key()` pattern is appropriate for the routing Bloom, or whether a separate key derivation is needed. |
+| GAP-6 | Sec 1 | Replay window sign fix changes which old messages are accepted — confirm with Section 1 that the corrected `now - window - skew_budget` cutoff matches the protocol spec intent. |
 
 ---
 
@@ -636,3 +868,11 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 | PS-5 | architecture | — | Discovery scans transports serially (sum of timeouts vs. max) |
 | PS-6 | architecture | — | Audit "ring" is shifting Vec — O(n) memmove per append at steady state |
 | PS-7 | architecture | — | `serialize_for_transport` returns Envelopes — triple encode per outbound message |
+| GAP-1 | security | High | `ForwardedCache` Bloom probes raw UUID bytes — no keyed hash, Bloom-poisoning risk |
+| GAP-2 | correctness | Low | `BroadcastReplayGuard` mixes `swap_remove` (scrambles order) with `remove(0)` (assumes order) |
+| GAP-3 | security | Medium | `RateLimiter` evicts arbitrary bucket at capacity — adversary can probabilistically reset target's window |
+| GAP-4 | correctness | Low | `AckTracker::exhausted()` always returns attempt count 0, discarding retry history |
+| GAP-5 | concurrency | Low | `send_message` reads security policy twice around an `await` — TOCTOU between rate-limit and quota checks |
+| GAP-6 | correctness | Medium | Replay `check()` sign error shrinks past window by `skew_budget`; `check_freshness_only()` ignores skew entirely |
+| GAP-7 | correctness | Low | Rate-limited drops return `InboundOutcome::Expired`, conflating rate-limit and TTL-expiry in metrics |
+| GAP-8 | correctness | Medium | `spawn_ack_task` swallows `QueueFull` silently — pending entry stays due, creating tight retry storm |
