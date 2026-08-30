@@ -42,7 +42,7 @@ pub struct IncomingMessageView {
 
 impl IncomingMessageView {
     pub fn from_envelope(env: &Envelope) -> Self {
-        let text = if env.payload_type == ContentType::Text {
+        let text = if matches!(env.payload_type, ContentType::Text | ContentType::Sos) {
             std::str::from_utf8(&env.payload).ok().map(str::to_owned)
         } else {
             None

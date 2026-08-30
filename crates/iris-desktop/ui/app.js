@@ -11,7 +11,12 @@
  */
 
 const tauri = window.__TAURI__?.core ?? null;
-const IS_MAC = navigator.platform.toUpperCase().includes("MAC");
+const IS_MAC = (() => {
+  if (navigator.userAgentData) {
+    return navigator.userAgentData.platform.toUpperCase().includes("MAC");
+  }
+  return navigator.platform.toUpperCase().includes("MAC");
+})();
 
 const el = {
   transcript: document.getElementById("transcript"),
@@ -177,15 +182,15 @@ function system(title, lines = [], status = null, error = false) {
 
 function renderPalette() {
   el.paletteList.replaceChildren();
-  let lastGroup = null;
+  const seenGroups = new Set();
 
   state.matches.forEach((command, index) => {
-    if (command.group !== lastGroup) {
+    if (!seenGroups.has(command.group)) {
+      seenGroups.add(command.group);
       const group = document.createElement("div");
       group.className = "cmd-group";
       group.textContent = command.group;
       el.paletteList.append(group);
-      lastGroup = command.group;
     }
 
     const row = document.createElement("button");
@@ -490,9 +495,10 @@ function renderPeers() {
 
       row.append(name, sub);
       // A short id is a display truncation, not an addressable PeerId — the
-      // full 64-hex id has to come from /to, so selecting only prefills.
+      // full 64-hex id has to come from /to, so selecting only prefills a
+      // placeholder hint (@short:) rather than something pasteable-looking.
       row.addEventListener("click", () => {
-        el.input.value = `/to ${id}`;
+        el.input.value = `/to @short:${id}`;
         el.input.focus();
         syncInput();
       });

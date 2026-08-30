@@ -64,6 +64,10 @@ pub struct DesktopEngine {
     manager: Arc<TransportManager>,
     transports: Vec<TransportId>,
     identity: Option<Arc<DesktopIdentity>>,
+    /// Active UI inbox pump (SEC6_AUDIT D2): repeated `subscribe_inbox` IPC calls
+    /// (webview reloads) previously accumulated dormant forwarder tasks forever;
+    /// the newest subscription now aborts the previous one.
+    inbox_task: std::sync::Mutex<Option<tokio::task::AbortHandle>>,
     /// GAP-7: owns the background scan loop that calls `Transport::connect()`
     /// on first contact with a peer — without it, `InternetTransport` in
     /// particular never leaves `Unavailable` (nothing else ever connects it)
@@ -79,6 +83,7 @@ impl DesktopEngine {
     }
 
     /// Build the engine host with an explicit node id (tests / determinism).
+    #[cfg(feature = "test-seams")]
     pub async fn with_node_id(node_id: [u8; 32]) -> Result<Arc<Self>, String> {
         Self::with_config(DesktopEngineConfig {
             node_id,
@@ -90,6 +95,7 @@ impl DesktopEngine {
 
     /// Build the engine host over a caller-provided transport (loopback test
     /// wiring: two engines sharing one `SimulatedTransport` form a wire).
+    #[cfg(feature = "test-seams")]
     pub async fn with_transport(
         node_id: [u8; 32],
         transport: Arc<dyn Transport>,
@@ -223,6 +229,7 @@ impl DesktopEngine {
             manager,
             transports,
             identity,
+            inbox_task: std::sync::Mutex::new(None),
             discovery: discovery.clone(),
         });
 
@@ -255,6 +262,10 @@ impl DesktopEngine {
                     Err(e) => tracing::debug!("desktop: inbound rejected: {e}"),
                 }
             }
+            // Stream closed — no reconnect path exists; operator must restart.
+            tracing::warn!(
+                "desktop: transport inbound stream closed; this forwarder will not recover"
+            );
         });
     }
 
@@ -297,31 +308,20 @@ impl DesktopEngine {
     }
 
     /// Stream delivered messages to a Tauri IPC Channel (D5).
+    ///
+    /// Lag-tolerant by design (SEC6_AUDIT D1): a broadcast `Lagged` burst SKIPS
+    /// the lost envelopes and keeps pumping — the receive path must never die
+    /// quietly on a busy mesh. Ends only when the engine shuts down or the
+    /// webview goes away. Re-subscribing aborts the previous pump (D2).
     pub fn subscribe_inbox(&self, channel: tauri::ipc::Channel<IncomingMessageView>) {
-        let mut rx = self.engine.delivered_messages();
-        tauri::async_runtime::spawn(async move {
-            // GAP-4: `Lagged` is recoverable and must not be treated as
-            // `Closed` — doing so silently and permanently kills the user's
-            // inbox with no error surfaced.
-            loop {
-                match rx.recv().await {
-                    Ok(env) => {
-                        let view = IncomingMessageView::from_envelope(&env);
-                        if channel.send(view).is_err() {
-                            break; // webview gone
-                        }
-                    }
-                    Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                        tracing::warn!(
-                            event = "inbox.lagged",
-                            skipped,
-                            "inbox listener fell behind; delivered messages were dropped"
-                        );
-                    }
-                    Err(broadcast::error::RecvError::Closed) => break,
-                }
-            }
-        });
+        let rx = self.engine.delivered_messages();
+        let handle =
+            tokio::task::spawn(pump_inbox(rx, move |view| channel.send(view).is_ok()));
+        let mut slot = self.inbox_task.lock().expect("inbox slot poisoned");
+        if let Some(prev) = slot.as_ref() {
+            prev.abort();
+        }
+        *slot = Some(handle.abort_handle());
     }
 
     /// The node's 32-byte PeerId for outbound messages.
@@ -382,8 +382,17 @@ pub fn build_text_envelope(
     text: &str,
     priority: MessagePriority,
 ) -> Result<Envelope, String> {
-    if text.len() > 60_000 {
-        return Err("text too large for a single Text envelope (64 KB max)".to_string());
+    // Enforced post-deserialization: the Tauri IPC layer materializes the
+    // String before this check runs (SECURITY_POLICY prefers validate-before-
+    // allocate). Accepted for v1 because ui/index.html caps chars at 60000 and
+    // iris-core re-validates envelope sizes. NOTE (D7): HTML maxlength counts
+    // UTF-16 code units while this measures UTF-8 bytes, so multibyte input
+    // can pass the front-end guard and land here — intentional backstop.
+    const MAX_TEXT_BYTES: usize = 60_000;
+    if text.len() > MAX_TEXT_BYTES {
+        return Err(format!(
+            "text too large for a single Text envelope ({MAX_TEXT_BYTES} bytes max)"
+        ));
     }
     let mut env = Envelope {
         version: PROTOCOL_VERSION,
@@ -395,7 +404,11 @@ pub fn build_text_envelope(
         timestamp: iris_core::message_engine::expiry::unix_now(),
         hop_count: 0,
         max_hops: None,
-        payload_type: ContentType::Text,
+        payload_type: if priority == MessagePriority::P0 {
+            ContentType::Sos
+        } else {
+            ContentType::Text
+        },
         payload_size: text.len() as u64,
         payload_hash: [0u8; 32],
         payload: text.as_bytes().to_vec(),
@@ -435,17 +448,125 @@ fn default_node_id() -> [u8; 32] {
     b
 }
 
-/// `IRIS_RELAY_ADDR` = comma-separated `SocketAddr`s.
+/// `IRIS_RELAY_ADDR` = comma-separated `SocketAddr`s. Invalid entries are
+/// logged and skipped (never silent — a vanished relay looks like a network
+/// outage; SEC6_AUDIT D4).
 fn parse_relay_env() -> Vec<SocketAddr> {
-    std::env::var("IRIS_RELAY_ADDR")
-        .ok()
-        .into_iter()
-        .flat_map(|v| {
-            v.split(',')
-                .map(str::trim)
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        })
-        .filter_map(|s| s.parse().ok())
-        .collect()
+    let raw = match std::env::var("IRIS_RELAY_ADDR") {
+        Ok(v) => v,
+        Err(_) => return Vec::new(),
+    };
+    let mut out = Vec::new();
+    for entry in raw.split(',') {
+        let s = entry.trim();
+        if s.is_empty() {
+            continue;
+        }
+        match s.parse::<SocketAddr>() {
+            Ok(addr) => out.push(addr),
+            Err(e) => tracing::warn!("IRIS_RELAY_ADDR: ignoring invalid endpoint '{s}': {e}"),
+        }
+    }
+    out
+}
+
+/// Forward delivered envelopes from the engine's broadcast channel to `send`.
+///
+/// `Lagged(n)` (receiver fell behind the ring buffer) logs and CONTINUES — the
+/// skipped envelopes are gone but the stream lives (SEC6_AUDIT D1). `Closed`
+/// (engine dropped its sender) or a `false` from `send` (webview gone) ends
+/// the pump. Split out from `subscribe_inbox` so the lag contract has a
+/// windowless regression test.
+pub async fn pump_inbox(
+    mut rx: broadcast::Receiver<Envelope>,
+    mut send: impl FnMut(IncomingMessageView) -> bool,
+) {
+    loop {
+        match rx.recv().await {
+            Ok(env) => {
+                if !send(IncomingMessageView::from_envelope(&env)) {
+                    return; // consumer (webview) gone
+                }
+            }
+            Err(broadcast::error::RecvError::Lagged(n)) => {
+                tracing::warn!("desktop inbox lagged: {n} delivered envelope(s) skipped");
+            }
+            Err(broadcast::error::RecvError::Closed) => return,
+        }
+    }
+}
+
+/// Test hooks for the D1/D2 pump contract (integration tests construct
+/// envelopes and observe pump termination without a Tauri runtime).
+#[doc(hidden)]
+pub mod pump_test_hooks {
+    use iris_core::protocol::{ContentType, Envelope, MessageId, PROTOCOL_VERSION};
+
+    pub fn make_envelope() -> Envelope {
+        let mut env = Envelope {
+            version: PROTOCOL_VERSION,
+            message_id: MessageId::new_v7(),
+            sender_id: vec![0xAA; 32],
+            recipient_id: vec![0xBB; 32],
+            priority: iris_core::message::MessagePriority::P4,
+            ttl_seconds: 3600,
+            timestamp: iris_core::message_engine::expiry::unix_now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type: ContentType::Text,
+            payload_size: 4,
+            payload_hash: [0u8; 32],
+            payload: b"ping".to_vec(),
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: None,
+        };
+        env.payload_hash = Envelope::compute_payload_hash(&env.payload);
+        env
+    }
+}
+
+/// Test-only wrapper around [`pump_inbox`] that signals termination via an
+/// atomic flag (SEC6_AUDIT D1 integration test support).
+#[doc(hidden)]
+pub async fn pump_inbox_for_tests(
+    rx: broadcast::Receiver<Envelope>,
+    send: impl FnMut(IncomingMessageView) -> bool,
+    ended: std::sync::Arc<std::sync::atomic::AtomicBool>,
+) {
+    pump_inbox(rx, send).await;
+    ended.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[cfg(test)]
+mod d2_lifecycle {
+    use super::*;
+
+    #[tokio::test]
+    async fn resubscribe_aborts_previous_pump() {
+        let (_tx, rx) = broadcast::channel::<Envelope>(4);
+        let task1 = tokio::spawn(pump_inbox(rx, |_| true));
+        let first = task1.abort_handle();
+        let first_check = first.clone();
+
+        let (_tx2, rx2) = broadcast::channel::<Envelope>(4);
+        let task2 = tokio::spawn(pump_inbox(rx2, |_| true));
+        let second = task2.abort_handle();
+        let second_check = second.clone();
+
+        // Mirror of the swap performed inside subscribe_inbox.
+        let mut slot: Option<tokio::task::AbortHandle> = Some(first);
+        if let Some(prev) = slot.as_ref() {
+            prev.abort();
+        }
+        slot = Some(second);
+
+        // Give the aborted task a beat to observe cancellation.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(first_check.is_aborted(), "previous pump must be aborted on re-subscribe");
+        assert!(!second_check.is_aborted(), "current pump must stay live");
+        let _ = slot;
+    }
 }

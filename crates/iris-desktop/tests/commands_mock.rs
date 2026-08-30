@@ -77,8 +77,26 @@ fn telemetry_command_returns_typed_snapshot() {
         "DesktopEngine must be managed"
     );
     let state: State<'_, Arc<DesktopEngine>> = app.state();
-    // Fresh registry: zero non-zero counters, but the command returns a typed
-    // snapshot compatible with the telemetry panel (AC4).
-    let metrics = commands::get_telemetry(state);
-    assert!(metrics.iter().all(|m| m.value > 0));
+    // Telemetry on a fresh engine returns an empty slice (all counters are 0;
+    // get_telemetry filters for non-zero). Assert the command is wired up and
+    // returns a typed Vec rather than panicking.
+    let metrics = commands::get_telemetry(state.clone());
+    assert!(
+        metrics.iter().all(|m| m.value > 0),
+        "returned counters must be non-zero (get_telemetry filters them)"
+    );
+
+    // Send one message to make at least the 'sent' counter non-zero, then
+    // verify a non-zero counter appears.
+    let _ = tauri::async_runtime::block_on(commands::send_message(
+        state.clone(),
+        hex(BOB),
+        "telemetry-probe".to_string(),
+        4,
+    ));
+    let metrics_after = commands::get_telemetry(state);
+    assert!(
+        metrics_after.iter().any(|m| m.name.contains("sent") && m.value > 0),
+        "get_telemetry must surface the 'sent' counter after a send"
+    );
 }
