@@ -44,7 +44,10 @@ use crate::message::{IncomingMessage, MessagePriority, PeerId, SerializedMessage
 use crate::message_engine::ack::AckTracker;
 use crate::message_engine::crypto::{message_kdf_info, CryptoProvider};
 use crate::message_engine::dedup::DedupEngine;
-use crate::message_engine::expiry::{check_ttl_before_insert, is_expired, unix_now};
+use crate::message_engine::expiry::{
+    check_ttl_before_insert, expiry_reason, is_expired, is_expired_from_arrival, unix_now,
+    ExpiryReason,
+};
 use crate::message_engine::fragment::{
     encode_fragment, is_fragmentable, split_payload, FragmentAssembler,
 };
@@ -529,7 +532,15 @@ impl MessageEngine {
         }
 
         let now = unix_now();
-        if is_expired(envelope.timestamp, envelope.ttl_seconds, now) {
+        // PM-9: use is_expired_from_arrival so a device with a genuinely wrong
+        // RTC (skew-suspect timestamp) gets its full TTL measured from when we
+        // first saw the message, rather than being silently dropped on arrival.
+        // At ingress arrived_at_unix == now_unix, so the skew fallback becomes
+        // `now + ttl > now` which is always false (not expired at arrival) —
+        // the message survives until its TTL actually elapses.
+        if is_expired_from_arrival(envelope.timestamp, envelope.ttl_seconds, now, now) {
+            let reason = expiry_reason(envelope.timestamp, envelope.ttl_seconds, now)
+                .unwrap_or(ExpiryReason::WallClock);
             let _ = self.dedup.lock().await.seen(envelope.message_id); // tombstone
             self.metrics.expired.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_EXPIRED_TOTAL);
@@ -538,6 +549,7 @@ impl MessageEngine {
                 message_id = %envelope.message_id.short(),
                 priority = envelope.priority.as_u8(),
                 age_ms = now.saturating_sub(envelope.timestamp) * 1000,
+                expiry_reason = ?reason,
                 "message expired before processing"
             );
             return Ok(InboundOutcome::Expired);
@@ -1056,6 +1068,17 @@ impl MessageEngine {
     async fn requeue_for_retry(&self, envelope: Envelope) -> Result<(), MsgEngineError> {
         let now = unix_now();
         if is_expired(envelope.timestamp, envelope.ttl_seconds, now) {
+            // Log the reason (ClockSkewSuspect for skew-suspect messages that
+            // slipped through ingress on their arrival-time TTL but whose
+            // creation timestamp remains permanently suspect on retry).
+            let reason = expiry_reason(envelope.timestamp, envelope.ttl_seconds, now)
+                .unwrap_or(ExpiryReason::WallClock);
+            tracing::debug!(
+                event = "msg.retry_ttl_expired",
+                message_id = %envelope.message_id.short(),
+                expiry_reason = ?reason,
+                "message TTL elapsed before retry could land"
+            );
             return Err(MsgEngineError::TtlExpired);
         }
         let mut q = self.queue.lock().await;
@@ -1167,10 +1190,20 @@ impl MessageEngine {
         // encoded fragment fits within the transport MTU.  Without the codec
         // margin the chunk fills the raw MTU leaving no room for the ~250B of
         // CBOR envelope fields, causing send() to return MessageTooLarge.
+        //
+        // PM-10: never floor the budget with `.max(64)` — that silently
+        // overrides the transport MTU and produces a fragment that exceeds the
+        // link capacity (e.g. LoRa 237 B).  Return BadEnvelope explicitly when
+        // the overhead alone consumes the entire transport window.
         let usable = max_mtu
             .saturating_sub(fragment::FRAGMENT_HEADER_LEN)
             .saturating_sub(fragment::ENVELOPE_CODEC_OVERHEAD);
-        let parts = split_payload(&envelope.payload, usable.max(64));
+        if usable == 0 {
+            return Err(MsgEngineError::BadEnvelope(
+                "MTU too small for a single fragment chunk (transport overhead exceeds capacity)",
+            ));
+        }
+        let parts = split_payload(&envelope.payload, usable);
         if parts.len() > fragment::MAX_FRAGMENTS as usize {
             return Err(MsgEngineError::BadEnvelope(
                 "payload needs >2 fragments (R8)",

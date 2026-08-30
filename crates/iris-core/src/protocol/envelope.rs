@@ -67,7 +67,9 @@ pub struct Envelope {
     pub payload: Vec<u8>,
     /// 14: fragment reference id — original message id when fragmented.
     pub payload_ref: Option<MessageId>,
-    /// 15: Ed25519 signature over fields 1–7,9–14 (excludes hop_count per ADR-0011).
+    /// 15: Ed25519 signature over fields 1–7, 9–14, 16, 18 (excludes hop_count
+    ///     and routing_hints; includes encryption_hdr and auth_cert_chain —
+    ///     see codec.rs module doc for the security rationale).
     pub signature: Option<[u8; 64]>,
     /// 16: X25519 encryption header (present when payload encrypted).
     pub encryption_hdr: Option<EncryptionHdr>,

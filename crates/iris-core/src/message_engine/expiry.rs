@@ -65,7 +65,8 @@ pub fn compute_expiry(created_at_unix: u64, ttl_seconds: u64, now_unix: u64) -> 
 /// Prefer [`is_expired_from_arrival`] wherever the caller knows when the
 /// message actually arrived; it keeps skew-suspect messages alive for a real,
 /// bounded TTL instead of dropping them, which matters for a device whose RTC
-/// is genuinely wrong rather than forged.
+/// is genuinely wrong rather than forged.  Always use it at ingress
+/// (`process_incoming`) where the arrival time equals `now_unix`.
 pub fn is_expired(created_at_unix: u64, ttl_seconds: u64, now_unix: u64) -> bool {
     match compute_expiry(created_at_unix, ttl_seconds, now_unix) {
         Some(expiry) => expiry <= now_unix,
@@ -99,8 +100,12 @@ pub fn is_skew_suspect(created_at_unix: u64, now_unix: u64) -> bool {
 /// Reason-based expiry decision used by the engine when it decides to expire a
 /// message (also recorded in observability).
 ///
-/// A skew-suspect message is never wall-clock expired (its lifetime is judged
-/// from arrival per RFC 9171 §4.4.2) — it yields `None` here.
+/// Skew-suspect messages (creation time beyond the future skew budget) cannot
+/// have a wall-clock expiry basis — their lifetime is judged from the recorded
+/// arrival instant instead.  When a suspect message is being dropped (e.g. on
+/// the retry path where no arrival instant is available) this returns
+/// `Some(ExpiryReason::ClockSkewSuspect)` so the reason is observable.
+/// Consistent with `is_expired` failing closed for suspect clocks.
 pub fn expiry_reason(
     created_at_unix: u64,
     ttl_seconds: u64,
@@ -108,6 +113,7 @@ pub fn expiry_reason(
 ) -> Option<ExpiryReason> {
     match compute_expiry(created_at_unix, ttl_seconds, now_unix) {
         Some(expiry) if expiry <= now_unix => Some(ExpiryReason::WallClock),
+        None => Some(ExpiryReason::ClockSkewSuspect),
         _ => None,
     }
 }
@@ -230,14 +236,19 @@ mod tests {
     }
 
     #[test]
-    fn reason_reports_wall_clock_and_none_for_suspect() {
+    fn reason_reports_wall_clock_and_skew_suspect() {
         assert_eq!(
             expiry_reason(NOW - 100, 50, NOW),
             Some(ExpiryReason::WallClock)
         );
-        // Skew-suspect messages (created far beyond budget) are judged from
-        // arrival → never wall-clock expired.
-        assert_eq!(expiry_reason(NOW + 20_000, 1, NOW + 10_001), None);
+        // Skew-suspect messages (created far beyond budget): compute_expiry
+        // returns None → expiry_reason returns ClockSkewSuspect so the drop
+        // reason is observable in logs (consistent with is_expired failing closed).
+        assert_eq!(
+            expiry_reason(NOW + 20_000, 1, NOW + 10_001),
+            Some(ExpiryReason::ClockSkewSuspect)
+        );
+        // Not yet expired (within TTL and within skew budget) → None.
         assert_eq!(expiry_reason(NOW, 300, NOW), None);
     }
 }

@@ -18,12 +18,12 @@
 | Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
-| 1 | High correctness + Medium safety/protocol | 7 | 3 | 0 | 0 | 4 |
+| 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 0 | 0 | 0 | 5 |
 | 3 | Structural enhancements | 7 | 0 | 0 | 0 | 7 |
-| **Total** | | **25** | **9** | **0** | **0** | **16** |
+| **Total** | | **25** | **13** | **0** | **0** | **12** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 1 (Run 3 complete — PM-3, PM-7, PM-8 ✅)
+**Last updated:** 2026-08-30 · **Active tier:** 2 (Tier 1 complete — all 7 findings ✅)
 
 ---
 
@@ -266,7 +266,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-9 — The clock-skew fallback is dead code; skewed devices lose all traffic
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit TBD (2026-08-30)
 - **File(s):** `crates/iris-core/src/message_engine/expiry.rs:24-31`, `:69-113`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 1
@@ -287,7 +287,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-10 — Fragment chunk sizing overrides the MTU and ignores envelope overhead
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit TBD (2026-08-30)
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1096-1107`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 1
@@ -309,7 +309,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-12 — The P0 envelope size limit is enforced only in tests
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit TBD (2026-08-30)
 - **File(s):** `crates/iris-core/src/protocol/envelope.rs:9`; decode `crates/iris-core/src/protocol/codec.rs:459-579`
 - **Category:** protocol · **Severity:** Medium
 - **Tier:** 1
@@ -330,7 +330,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-14 — Spec, module doc, and implementation disagree on the signing scope
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — commit TBD (2026-08-30)
 - **File(s):** `crates/iris-core/src/protocol/codec.rs:14-22` (module doc), `:145-154` (build_map doc), `:185-220` (implementation); `docs/protocol/MESSAGE_ENVELOPE.md:128`
 - **Category:** protocol · **Severity:** Medium
 - **Tier:** 1

@@ -13,13 +13,19 @@
 //!
 //! ## Signature scope (ADR-0011)
 //!
-//! `encode_for_signing()` serializes fields **1–7 and 9–14**:
+//! `encode_for_signing()` serializes fields **1–7, 9–14, 16, and 18**:
 //! - field 8 (`hop_count`) is **excluded** — relays increment it without the
 //!   sender's key (ADR-0011 Open Issue 1; MESSAGE_ENVELOPE.md relay section),
 //! - field 15 (`signature`) is the signature itself,
-//! - fields 16+ (`encryption_hdr`, `routing_hints`, `auth_cert_chain`) are
-//!   unsigned extensions appended after the signature (PROTOCOL_TEST_VECTORS
-//!   Vector 4) and are **not** covered.
+//! - field 17 (`routing_hints`) is **excluded** — a mutable relay-scheduling
+//!   hint that may be updated in transit without re-signing,
+//! - fields 16 (`encryption_hdr`) and 18 (`auth_cert_chain`) are **included**:
+//!   excluding them was exploitable — a relay could flip the ephemeral public
+//!   key (field 16) and the message would still verify but fail to decrypt on
+//!   every subsequent path, silently destroying multi-path redundancy; similarly,
+//!   stripping field 18 let any relay suppress authority emergency alerts by
+//!   deleting the ACL chain while the signature still verified. See the inline
+//!   comments in `build_map` for full details.
 //!
 //! ## AEAD associated-data scope (CRYPTO-001)
 //!
@@ -41,7 +47,7 @@ use thiserror::Error;
 use crate::message::MessagePriority;
 
 use super::content_type::ContentType;
-use super::envelope::{EncryptionHdr, Envelope, RoutingHints};
+use super::envelope::{EncryptionHdr, Envelope, RoutingHints, P0_MAX_ENVELOPE_BYTES};
 use super::message_id::MessageId;
 use super::PROTOCOL_VERSION;
 
@@ -245,10 +251,13 @@ pub fn encode(env: &Envelope) -> Result<Vec<u8>, EnvelopeError> {
     write_map(build_map(env, Scope::Full))
 }
 
-/// Encode the signature-scope bytes: fields 1–7 and 9–14.
+/// Encode the signature-scope bytes: fields 1–7, 9–14, 16, and 18.
 ///
 /// These are the exact bytes an Ed25519 signature must cover
-/// (ADR-0011 / MESSAGE_ENVELOPE.md signing procedure).
+/// (ADR-0011 / MESSAGE_ENVELOPE.md signing procedure). Field 8
+/// (hop_count) and field 17 (routing_hints) are excluded; fields 16
+/// (encryption_hdr) and 18 (auth_cert_chain) are included — see the
+/// module-level "Signature scope" section for the security rationale.
 pub fn encode_for_signing(env: &Envelope) -> Result<Vec<u8>, EnvelopeError> {
     write_map(build_map(env, Scope::Signing))
 }
@@ -484,6 +493,16 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
     )
     .ok_or(EnvelopeError::InvalidPriority(priority_code))?;
 
+    // PM-12: enforce P0 envelope size budget at decode.  An oversized P0 is
+    // un-evictable (INV-ROUTE-003), rate-limit exempt, and structurally unable
+    // to traverse LoRa — the transport it is designed for.  Reject before it
+    // enters storage or the ACK tracker.
+    if priority == MessagePriority::P0 && bytes.len() > P0_MAX_ENVELOPE_BYTES {
+        return Err(EnvelopeError::InvalidField(
+            "P0 SOS envelope exceeds P0_MAX_ENVELOPE_BYTES (255 B)",
+        ));
+    }
+
     let ttl_seconds = get_u64(map, 6)?;
     let timestamp = get_u64(map, 7)?;
     let hop_count = u8::try_from(get_u64(map, 8)?)
@@ -585,6 +604,7 @@ pub fn decode(bytes: &[u8]) -> Result<Envelope, EnvelopeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol::envelope::{EncryptionHdr, RoutingHints};
     use crate::protocol::Envelope;
 
     const MID: [u8; 16] = hex_literal::hex!("018f1a2b3c4d5e6f708192a3b4c5d6e7");
@@ -999,5 +1019,62 @@ mod tests {
         env.payload_size = env.payload.len() as u64;
         env.payload_hash = Envelope::compute_payload_hash(&env.payload);
         assert!(encode(&env).unwrap().len() > crate::protocol::envelope::P0_MAX_ENVELOPE_BYTES);
+    }
+
+    // PM-12: oversized P0 must be rejected by decode, not just by the encode test.
+    #[test]
+    fn p0_oversized_envelope_rejected_on_decode() {
+        // Build a P0 envelope whose encoded form exceeds 255 bytes.
+        let mut env = p0_sos_envelope();
+        env.payload = vec![0x42u8; 85]; // encode gives > 255 B
+        env.payload_size = env.payload.len() as u64;
+        env.payload_hash = Envelope::compute_payload_hash(&env.payload);
+        let bytes = encode(&env).unwrap();
+        assert!(bytes.len() > P0_MAX_ENVELOPE_BYTES, "test precondition");
+        let err = decode(&bytes).unwrap_err();
+        assert!(
+            matches!(err, EnvelopeError::InvalidField(_)),
+            "expected InvalidField for oversized P0, got {err:?}"
+        );
+    }
+
+    // PM-14: signing scope must cover field 16 and field 18, but not field 17.
+    #[test]
+    fn signing_scope_covers_fields_16_and_18_not_17() {
+        let env = p0_sos_envelope();
+
+        // Field 16 (encryption_hdr): changing it must change the signing bytes.
+        let mut with_hdr = env.clone();
+        with_hdr.encryption_hdr = Some(EncryptionHdr {
+            ephemeral_pubkey: [1u8; 32],
+            nonce: [2u8; 12],
+            key_id: None,
+        });
+        assert_ne!(
+            encode_for_signing(&env).unwrap(),
+            encode_for_signing(&with_hdr).unwrap(),
+            "field 16 (encryption_hdr) must be in the signing scope"
+        );
+
+        // Field 18 (auth_cert_chain): changing it must change the signing bytes.
+        let mut with_chain = env.clone();
+        with_chain.auth_cert_chain = Some(vec![vec![3u8; 32]]);
+        assert_ne!(
+            encode_for_signing(&env).unwrap(),
+            encode_for_signing(&with_chain).unwrap(),
+            "field 18 (auth_cert_chain) must be in the signing scope"
+        );
+
+        // Field 17 (routing_hints): changing it must NOT change the signing bytes.
+        let mut with_hints = env.clone();
+        with_hints.routing_hints = Some(RoutingHints {
+            last_known_region: Some("EU".into()),
+            ..Default::default()
+        });
+        assert_eq!(
+            encode_for_signing(&env).unwrap(),
+            encode_for_signing(&with_hints).unwrap(),
+            "field 17 (routing_hints) must NOT be in the signing scope"
+        );
     }
 }
