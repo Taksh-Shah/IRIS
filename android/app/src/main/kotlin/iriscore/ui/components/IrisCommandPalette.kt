@@ -70,8 +70,18 @@ fun IrisCommandPalette(
         val listState = rememberLazyListState()
 
         // Keep the keyboard selection on screen as it moves past the fold.
-        LaunchedEffect(selectedIndex) {
-            if (selectedIndex >= 0) listState.animateScrollToItem(selectedIndex)
+        // AN-13: selectedIndex is an index into `commands`, but LazyColumn items
+        // include group headers too. Count the headers that appear before the
+        // selected command and add them to get the real LazyColumn item position.
+        LaunchedEffect(selectedIndex, commands) {
+            if (selectedIndex >= 0 && selectedIndex < commands.size) {
+                val seen = mutableSetOf<CommandGroup>()
+                var headersBefore = 0
+                for (i in 0..selectedIndex) {
+                    if (seen.add(commands[i].group)) headersBefore++
+                }
+                listState.animateScrollToItem(selectedIndex + headersBefore)
+            }
         }
 
         IrisGlassSurface(

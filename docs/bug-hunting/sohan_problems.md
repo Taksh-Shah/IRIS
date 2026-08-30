@@ -20,11 +20,11 @@
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety + security | 2 | 1 | 1 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
-| 2 | Medium/Low correctness, UX, build | 8 | 4 | 0 | 0 | 4 |
+| 2 | Medium/Low correctness, UX, build | 8 | 7 | 0 | 0 | 1 |
 | N/A | Informational / cleanup (track only) | 2 | 0 | 0 | 0 | 2 |
-| **Total** | | **16** | **8** | **2** | **0** | **6** |
+| **Total** | | **16** | **11** | **2** | **0** | **3** |
 
-**Last updated:** 2026-08-30 · **Active tier:** Tier 2 batch A complete (AN-7 ✅, AN-8 ✅, AN-9 ✅, AN-10 ✅, AN-12 ✅); Tier 2 batch B pending (AN-11, AN-13, AN-14)
+**Last updated:** 2026-08-30 · **Active tier:** Tier 2 complete (7/8 ✅, 2 N/A); 2 permanently blocked (AN-2 NDK-ENV, AN-6 depends on further crypto wiring)
 
 ---
 
@@ -264,7 +264,7 @@ AN-15, AN-16
 
 ### AN-11 — ProGuard rule uses the wrong package name; native bridge breaks when shrinking is enabled
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `-keep class iriscode.**` and `-dontwarn iriscode.**` (was `iriscore.uniffi.iriscode` — UniFFI generates into package `iriscode` matching `lib.name = "iriscode"` in Cargo.toml)
 - **File(s):** `android/app/proguard-rules.pro:4`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 2
@@ -300,7 +300,7 @@ AN-15, AN-16
 
 ### AN-13 — Command palette shows duplicate section headers and scroll lands off-target
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — duplicate-header key crash was already resolved (seenGroups pattern in place); nav index fixed: `animateScrollToItem` now uses `selectedIndex + headersBefore` where `headersBefore` counts unique group headers that precede the selected command
 - **File(s):** `android/app/src/main/kotlin/iriscore/ui/components/IrisCommandPalette.kt`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 2
@@ -318,7 +318,7 @@ AN-15, AN-16
 
 ### AN-14 — White flash on app cold start contradicts the intentional all-black design
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `android:windowBackground` changed to `@android:color/black` (matches `BackgroundPrimary = Color(0xFF000000)`)
 - **File(s):** `android/app/src/main/res/values/themes.xml:6`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 2

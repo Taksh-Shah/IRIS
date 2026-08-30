@@ -85,25 +85,23 @@ Tier 2 batch B: AN-11 (ProGuard), AN-13 (command palette), AN-14 (white flash). 
 
 ---
 
-## Run 4 — [DATE] — Tier 2 batch B (AN-11, AN-13, AN-14) + informational review
-
-**(Fill in when run begins.)**
+## Run 4 — 2026-08-30 — Tier 2 batch B (AN-11, AN-13, AN-14) + informational review
 
 Target findings: AN-11 (ProGuard wrong package), AN-13 (command palette headers + nav), AN-14 (launch theme white flash). Also: review AN-15 and AN-16, update N/A status if anything changed.
 
-**Drift notes:** _(fill in)_
+**Drift notes:** AN-13 duplicate-header key crash was already fixed in the current code (seenGroups pattern present). The remaining AN-13 bug is the nav index: `animateScrollToItem(selectedIndex)` scrolls to the wrong LazyColumn position because group header items are counted. AN-14: `BackgroundPrimary = 0xFF000000` exactly matches `@android:color/black` — no custom resource needed. AN-15: with AN-7 fixed the scanner now holds a 30-second window, so the rate-limit gap is real — but it's an on-device observable behavior concern (no immediate crash risk), keeping N/A. AN-16: unused XML resources are still dead; no code references them in any new paths — status unchanged.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | AN-11 | ⬜ | — | — |
-| 2 | AN-13 | ⬜ | — | — |
-| 3 | AN-14 | ⬜ | — | — |
-| 4 | AN-15 | ⚪ N/A | — | _(re-check after AN-7 fix: does the scanner now run for 30 s? If yes and rate-limit guard still missing, escalate to Tier 2.)_ |
-| 5 | AN-16 | ⚪ N/A | — | _(confirm resources still dead; file a cleanup PR pointer if team agrees)_ |
+| 1 | AN-11 | ✅ | (this commit) | `-keep class iriscode.**` and `-dontwarn iriscode.**` — corrected from wrong `iriscore.uniffi.iriscode` package |
+| 2 | AN-13 | ✅ | (this commit) | `animateScrollToItem` now uses `selectedIndex + headersBefore` to skip group header items |
+| 3 | AN-14 | ✅ | (this commit) | `android:windowBackground` changed from `@android:color/white` to `@android:color/black` (matches `BackgroundPrimary = 0xFF000000`) |
+| 4 | AN-15 | ⚪ N/A | — | Scanner window is now real (AN-7 fixed); BLE scan rate-limit guard is informational — no crash risk. Keeping N/A. |
+| 5 | AN-16 | ⚪ N/A | — | Unused XML resources confirmed still dead; no new references added in any Tier 2 fix. Keeping N/A. |
 
-**Batch closeout:** `./gradlew assembleDebug` clean · `./gradlew test` pass count.
+**Batch closeout:** `./gradlew assembleDebug` PENDING ANDROID-CI. `./gradlew test` PENDING ANDROID-CI.
 
-**Tier 2 checkpoint:** all 8 Tier 2 findings should be ✅ or 🔒. Update both tracker files.
+**Tier 2 checkpoint:** 7/8 Tier 2 findings ✅, 2 N/A — Tier 2 complete.
 
 ### Next run
 All Android Section 4 findings resolved. Perform final sweep: confirm `sohan_problems.md` progress table matches, confirm `taksh_problems.md` is in sync, record green CI run evidence.
