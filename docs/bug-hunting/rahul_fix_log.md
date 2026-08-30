@@ -110,26 +110,26 @@ Advance to Tier 2: PM-11 (LRU O(capacity)), PM-13 (queue bytes), PM-16 (split_pa
 
 ---
 
-## Run 5 — [DATE] — Tier 2 (PM-11, PM-13, PM-16, PM-17, PM-18)
-
-**(Fill in when run begins.)**
+## Run 5 — 2026-08-30 — Tier 2 (PM-11, PM-13, PM-16, PM-17, PM-18)
 
 Target findings: all five Tier 2 findings — PM-11 (dedup LRU perf), PM-13 (queue byte accounting),
 PM-16 (split_payload zero hang), PM-17 (NaN delivery_prob), PM-18 (SOS check/record race).
 
-**Drift notes:** _(fill in)_
+**Drift notes:** All five bug locations confirmed present against HEAD before any edits (see prior context). PM-11 at `dedup.rs:220-222`, PM-13 at `queue.rs:139`, PM-16 at `fragment.rs:64`, PM-17 at `codec.rs:425`, PM-18 at `mod.rs:1748-1754` + `provider.rs:198-206`.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PM-11 | ⬜ | — | — |
-| 2 | PM-13 | ⬜ | — | — |
-| 3 | PM-16 | ⬜ | — | — |
-| 4 | PM-17 | ⬜ | — | — |
-| 5 | PM-18 | ⬜ | — | — |
+| 1 | PM-16 | ✅ Fixed | Run 5 commit | `let max_chunk = max_chunk.max(1)` at top of `split_payload`; infinite loop on zero chunk eliminated. 733 lib tests pass. PENDING LINUX-CI (Kani harness). |
+| 2 | PM-17 | ✅ Fixed | Run 5 commit | `is_finite() \|\| !(0.0..=1.0).contains(f)` guard in `decode_routing_hints`; NaN/Inf/out-of-range rejects with `InvalidField`. 733 lib tests pass. PENDING LINUX-CI. |
+| 3 | PM-11 | ✅ Fixed | Run 5 commit | Removed O(n) `VecDeque::iter().position()` + `remove` re-arm from `check_and_insert` (duplicate branch now returns true immediately). Eviction is FIFO. `lru_rearms_recency` test updated to `lru_eviction_is_fifo_after_pm11_fix`. 733 lib tests pass. |
+| 4 | PM-18 | ✅ Fixed | Run 5 commit | Added `sos_check_and_record` to `EmergencyProvider` trait (default: two-call; `EmergencyGateway` override: single lock). Call site in `mod.rs` updated to use the new method; separate `sos_record` call removed. 733 lib tests pass. PENDING LINUX-CI. |
+| 5 | PM-13 | ✅ Fixed | Run 5 commit | Added `queued_bytes()` (O(n) heap scan) to `PriorityQueue`; added `max_queue_bytes: usize` (default 32 MB) to `MessageEngineConfig`; byte-cap check added at all 3 `push` sites alongside existing count check. Fairness gate O(n) deferred to PS-2 refactor. 733 lib tests pass. PENDING LINUX-CI. |
 
-**Batch closeout:** full workspace build + sweep.
+**Pre-existing failures (not introduced):** `protocol_conformance` tests `corrupted_frame_length_byte_bounded_recovery` and `capture_all_pdus_until_parse_end` were already failing on the baseline before Run 5 edits (confirmed by `git stash` + re-run).
 
-**Tier 2 checkpoint:** all 5 Tier 2 findings should be ✅ or 🔒.
+**Batch closeout:** `cargo build -p iris-core` (GNU toolchain) clean, 17 pre-existing warnings, 0 errors. `cargo test -p iris-core --lib` 733/733 passed.
+
+**Tier 2 checkpoint:** ✅ All 5 Tier 2 findings fixed (PM-11, PM-13, PM-16, PM-17, PM-18). HARD STOP before Tier 3.
 
 ### Next run
 **HARD STOP before Tier 3.** Tier 3 (structural enhancements PS-1..PS-7) requires an explicit

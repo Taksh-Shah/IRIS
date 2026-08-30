@@ -140,6 +140,11 @@ impl PriorityQueue {
         self.heap.push(item);
     }
 
+    /// Total payload bytes currently queued (PM-13).
+    pub fn queued_bytes(&self) -> usize {
+        self.heap.iter().map(|m| m.envelope.payload.len()).sum()
+    }
+
     pub fn len(&self) -> usize {
         self.heap.len()
     }

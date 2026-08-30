@@ -58,6 +58,8 @@ pub fn is_fragmentable(envelope: &Envelope) -> bool {
 
 /// Split a frame payload into chunks of at most `mtu-effective` bytes.
 pub fn split_payload(payload: &[u8], max_chunk: usize) -> Vec<Vec<u8>> {
+    // PM-16: max_chunk=0 caused rest.len().min(0)=0 → no progress → infinite loop.
+    let max_chunk = max_chunk.max(1);
     let mut out = Vec::new();
     let mut rest = payload;
     while !rest.is_empty() {

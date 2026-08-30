@@ -214,13 +214,13 @@ impl LruCache {
     }
 
     /// Returns `true` if `id` was already present (duplicate).
+    ///
+    /// Eviction is FIFO (insertion order). Re-arming recency on a duplicate hit
+    /// was O(capacity) — `VecDeque::iter().position()` + `remove()` — and
+    /// unnecessary: exact LRU ordering is not a correctness requirement here
+    /// (the Bloom tier bounds long-term false-positive rate independently).
     pub fn check_and_insert(&mut self, id: MessageId) -> bool {
         if self.set.contains(&id) {
-            // Re-arm recency by moving to the back.
-            if let Some(pos) = self.order.iter().position(|x| *x == id) {
-                self.order.remove(pos);
-                self.order.push_back(id);
-            }
             return true;
         }
         self.set.insert(id);
@@ -379,15 +379,17 @@ mod tests {
     }
 
     #[test]
-    fn lru_rearms_recency() {
+    fn lru_eviction_is_fifo_after_pm11_fix() {
+        // PM-11: re-arm was removed (was O(capacity)); eviction is now FIFO.
         let mut c = LruCache::new(2);
         c.check_and_insert(mid(1));
         c.check_and_insert(mid(2));
-        // Touch 1 → 2 becomes oldest
+        // Hitting mid(1) again is a duplicate but does NOT re-arm it.
         assert!(c.check_and_insert(mid(1)), "repeat is duplicate");
+        // Next new insert evicts mid(1) (first inserted) not mid(2).
         c.check_and_insert(mid(3));
-        assert!(c.contains(&mid(1)), "recently touched survives");
-        assert!(!c.contains(&mid(2)), "untouched oldest evicted");
+        assert!(!c.contains(&mid(1)), "fifo: first inserted evicted first");
+        assert!(c.contains(&mid(2)), "second inserted survives");
     }
 
     /// Deterministic distinct ids for saturation testing.

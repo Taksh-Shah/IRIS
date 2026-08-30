@@ -19,11 +19,11 @@
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
-| 2 | Medium/Low correctness, performance, protocol | 5 | 0 | 0 | 0 | 5 |
+| 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
 | 3 | Structural enhancements | 7 | 0 | 0 | 0 | 7 |
-| **Total** | | **25** | **13** | **0** | **0** | **12** |
+| **Total** | | **25** | **18** | **0** | **0** | **7** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 2 (Tier 1 complete — all 7 findings ✅)
+**Last updated:** 2026-08-30 · **Active tier:** 3 (Tier 2 complete — all 5 findings ✅; Tier 3 GATED — awaiting human go-ahead)
 
 ---
 
@@ -356,7 +356,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-11 — Duplicate dedup hits are O(capacity) on the receive hot path
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 2 · Run 5 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/dedup.rs:212-233`
 - **Category:** performance · **Severity:** Medium
 - **Tier:** 2
@@ -375,7 +375,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-13 — Queue depth is bounded by message count, not bytes; fairness gate is O(n)
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (byte cap) · Tier 2 · Run 5 · 2026-08-30 · PENDING LINUX-CI · fairness gate O(n) deferred to PS-2 refactor
 - **File(s):** `crates/iris-core/src/message_engine/queue.rs:125-128`, `:147-201`; config `crates/iris-core/src/message_engine/mod.rs:96`
 - **Category:** performance · **Severity:** Medium
 - **Tier:** 2
@@ -395,7 +395,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-16 — `split_payload` loops forever on a zero chunk budget
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 2 · Run 5 · 2026-08-30 · PENDING LINUX-CI (Kani harness re-verification)
 - **File(s):** `crates/iris-core/src/message_engine/fragment.rs:60-72`; proof `crates/iris-core/src/kani_proofs.rs:79-107`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 2
@@ -416,7 +416,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-17 — `delivery_prob` accepts NaN/±∞ from an untrusted relay and wins every queue tiebreak
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 2 · Run 5 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/protocol/codec.rs:414-419`; consumption `crates/iris-core/src/message_engine/queue.rs:47-51`, `:93`
 - **Category:** protocol · **Severity:** Low
 - **Tier:** 2
@@ -432,7 +432,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-18 — SOS allowance check and record are not atomic
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 2 · Run 5 · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1509-1515`; provider `crates/iris-core/src/emergency/provider.rs:157-165`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 2

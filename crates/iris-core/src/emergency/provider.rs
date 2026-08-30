@@ -54,6 +54,15 @@ pub trait EmergencyProvider: Send + Sync {
     /// Record an accepted SOS for a sender (AC-5 bookkeeping).
     fn sos_record(&self, sender_id: &[u8], now_unix: u64);
 
+    /// Atomically check the rate limit and record in a single lock acquisition
+    /// (PM-18). Default delegates to `sos_rate` + `sos_record` (two locks, safe
+    /// for implementations without a shared mutex).
+    fn sos_check_and_record(&self, sender_id: &[u8], now_unix: u64) -> RateLimitDecision {
+        let decision = self.sos_rate(sender_id, now_unix);
+        self.sos_record(sender_id, now_unix);
+        decision
+    }
+
     /// Register an accepted SOS in the cancel ledger (PM-2).
     /// Called by the engine after `classify_sos` returns `AcceptedSos`.
     /// Default: no-op (unarmed provider stores nothing).
@@ -203,6 +212,16 @@ impl EmergencyProvider for EmergencyGateway {
     fn sos_record(&self, sender_id: &[u8], now_unix: u64) {
         let mut limiter = self.limiter.lock().unwrap_or_else(|e| e.into_inner());
         limiter.record(&short_of(sender_id, 16), now_unix);
+    }
+
+    /// PM-18: single lock acquisition for check+record to eliminate the
+    /// TOCTOU race where two concurrent SOS from the same sender could both
+    /// see `Allowed` before either records.
+    fn sos_check_and_record(&self, sender_id: &[u8], now_unix: u64) -> RateLimitDecision {
+        let mut limiter = self.limiter.lock().unwrap_or_else(|e| e.into_inner());
+        let decision = limiter.check(&short_of(sender_id, 16), now_unix);
+        limiter.record(&short_of(sender_id, 16), now_unix);
+        decision
     }
 
     fn sos_reset(&self, sender_id: &[u8]) {

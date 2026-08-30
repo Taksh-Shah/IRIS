@@ -422,7 +422,15 @@ fn decode_routing_hints(m: &[(Value, Value)]) -> Result<RoutingHints, EnvelopeEr
     }
     if let Some(v) = get(m, 3) {
         match v {
-            Value::Float(f) => rh.delivery_prob = Some(*f),
+            Value::Float(f) => {
+                // PM-17: reject NaN / Inf / out-of-range delivery_prob values.
+                if !f.is_finite() || !(0.0..=1.0).contains(f) {
+                    return Err(EnvelopeError::InvalidField(
+                        "routing_hints.delivery_prob (must be finite 0.0–1.0)",
+                    ));
+                }
+                rh.delivery_prob = Some(*f);
+            }
             _ => return Err(EnvelopeError::InvalidField("routing_hints.delivery_prob")),
         }
     }

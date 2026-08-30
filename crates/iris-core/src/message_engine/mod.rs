@@ -76,6 +76,8 @@ pub fn broadcast_peer() -> PeerId {
 pub struct MessageEngineConfig {
     /// Max queued envelopes (default 50 000).
     pub max_queue_depth: usize,
+    /// Max total payload bytes across all queued envelopes (PM-13; default 32 MB).
+    pub max_queue_bytes: usize,
     /// P0 consecutive-dispatch budget before the fairness gate admits one
     /// lower-priority message (default 60).
     pub starvation_p0_budget: u64,
@@ -97,6 +99,7 @@ impl Default for MessageEngineConfig {
     fn default() -> Self {
         MessageEngineConfig {
             max_queue_depth: 50_000,
+            max_queue_bytes: 32 * 1024 * 1024,
             starvation_p0_budget: 60,
             fragment_timeout_secs: 30,
             gc_interval_secs: 60,
@@ -463,7 +466,9 @@ impl MessageEngine {
 
         {
             let mut q = self.queue.lock().await;
-            if q.len() >= self.config.max_queue_depth {
+            if q.len() >= self.config.max_queue_depth
+                || q.queued_bytes() + envelope.payload.len() > self.config.max_queue_bytes
+            {
                 policy
                     .remove_message(sender_short, envelope.payload.len() as u64)
                     .await;
@@ -1036,7 +1041,9 @@ impl MessageEngine {
         let mut e = envelope.clone();
         e.hop_count = e.hop_count.saturating_add(1);
         let mut q = self.queue.lock().await;
-        if q.len() >= self.config.max_queue_depth {
+        if q.len() >= self.config.max_queue_depth
+            || q.queued_bytes() + e.payload.len() > self.config.max_queue_bytes
+        {
             return Err(MsgEngineError::QueueFull);
         }
         let mut item = QueuedMessage::new(e).with_scheduling_priority(sched_priority);
@@ -1082,7 +1089,9 @@ impl MessageEngine {
             return Err(MsgEngineError::TtlExpired);
         }
         let mut q = self.queue.lock().await;
-        if q.len() >= self.config.max_queue_depth {
+        if q.len() >= self.config.max_queue_depth
+            || q.queued_bytes() + envelope.payload.len() > self.config.max_queue_bytes
+        {
             return Err(MsgEngineError::QueueFull);
         }
         q.push(QueuedMessage::new(envelope));
@@ -1745,13 +1754,13 @@ fn emergency_gate(
                     // recording. Within allowance → record + proceed; beyond →
                     // still deliver, but degraded to P3 (AC-5 4th-in-window rule,
                     // enforced here on the receive path, not only send-side).
-                    match provider.sos_rate(&envelope.sender_id, now_unix) {
+                    // PM-18: use sos_check_and_record (single lock) to close the
+                    // TOCTOU race where two concurrent SOS could both see Allowed.
+                    match provider.sos_check_and_record(&envelope.sender_id, now_unix) {
                         crate::emergency::RateLimitDecision::Allowed { .. } => {
-                            provider.sos_record(&envelope.sender_id, now_unix);
                             EmergencyGateOutcome::Proceed
                         }
                         crate::emergency::RateLimitDecision::Downgraded { retry_after_secs } => {
-                            provider.sos_record(&envelope.sender_id, now_unix);
                             tracing::warn!(
                                 event = event::MSG_EMERGENCY_SOS_RATE_LIMITED,
                                 message_id = %envelope.message_id.short(),
