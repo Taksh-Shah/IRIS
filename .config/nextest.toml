@@ -3,7 +3,7 @@
 # limitation, nexte.st issue #16) -> CI runs a SEPARATE `cargo test --doc` step.
 
 [profile.default]
-# Retry a test up to 2 times on failure (flaky-detection).
+# Retries disabled: failures must be reproducible (the ci profile also runs retries = 0).
 retries = 0
 # Fail fast: keep running other tests when one fails (CI reports full picture).
 fail-fast = false
