@@ -96,10 +96,10 @@ PM-12 (Medium, P0 envelope size enforcement), PM-14 (Medium, signing scope docs)
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PM-9 | ✅ Fixed | TBD | `is_expired_from_arrival(now, now)` used at `process_incoming`; `expiry_reason` emits `ClockSkewSuspect` for suspect clocks; import extended; `expiry_reason` called at `requeue_for_retry` to make `ClockSkewSuspect` live on retry path; test updated. PENDING LINUX-CI. |
-| 2 | PM-10 | ✅ Fixed | TBD | `.max(64)` floor removed; explicit `BadEnvelope` when `usable == 0`. PENDING LINUX-CI. |
-| 3 | PM-12 | ✅ Fixed | TBD | Size check in `codec::decode` after priority decoded: P0 > 255 B → `InvalidField`. New test `p0_oversized_envelope_rejected_on_decode`. PENDING LINUX-CI. |
-| 4 | PM-14 | ✅ Fixed | TBD | Module doc corrected to state actual scope (1–7, 9–14, 16, 18); `encode_for_signing` doc updated; `envelope.rs` field 15 comment fixed. Test `signing_scope_covers_fields_16_and_18_not_17`. No runtime change. PENDING LINUX-CI. |
+| 1 | PM-9 | ✅ Fixed | 78c6e91 | `is_expired_from_arrival(now, now)` used at `process_incoming`; `expiry_reason` emits `ClockSkewSuspect` for suspect clocks; import extended; `expiry_reason` called at `requeue_for_retry` to make `ClockSkewSuspect` live on retry path; test updated. PENDING LINUX-CI. |
+| 2 | PM-10 | ✅ Fixed | 78c6e91 | `.max(64)` floor removed; explicit `BadEnvelope` when `usable == 0`. PENDING LINUX-CI. |
+| 3 | PM-12 | ✅ Fixed | 78c6e91 | Size check in `codec::decode` after priority decoded: P0 > 255 B → `InvalidField`. New test `p0_oversized_envelope_rejected_on_decode`. PENDING LINUX-CI. |
+| 4 | PM-14 | ✅ Fixed | 78c6e91 | Module doc corrected to state actual scope (1–7, 9–14, 16, 18); `encode_for_signing` doc updated; `envelope.rs` field 15 comment fixed. Test `signing_scope_covers_fields_16_and_18_not_17`. No runtime change. PENDING LINUX-CI. |
 
 **Batch B closeout:** cargo build/test PENDING (cargo not in shell PATH this session). All changes code-reviewed manually. PENDING LINUX-CI.
 
