@@ -215,12 +215,26 @@ impl FragmentSet {
 /// distinct `message_id`.
 const MAX_ACTIVE_SETS: usize = 256;
 
+/// PM-4: per-sender cap on concurrent partial fragment sets.
+///
+/// Without this, one sender could claim all 256 slots with distinct original_ids
+/// that never complete, starving every other sender of reassembly capacity.
+const MAX_SETS_PER_SENDER: usize = 4;
+
 /// Reassembly tracker: original message_id → fragment set.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FragmentAssembler {
     active: HashMap<MessageId, FragmentSet>,
     /// Default reassembly window.
     timeout: Duration,
+    /// PM-4: per-sender open-set counter (sender_id bytes → count).
+    per_sender: HashMap<Vec<u8>, usize>,
+}
+
+impl Default for FragmentAssembler {
+    fn default() -> Self {
+        Self::new(DEFAULT_FRAGMENT_TIMEOUT)
+    }
 }
 
 impl FragmentAssembler {
@@ -228,6 +242,17 @@ impl FragmentAssembler {
         FragmentAssembler {
             active: HashMap::new(),
             timeout,
+            per_sender: HashMap::new(),
+        }
+    }
+
+    fn decrement_sender(&mut self, sender: &[u8]) {
+        if let Some(count) = self.per_sender.get_mut(sender) {
+            if *count <= 1 {
+                self.per_sender.remove(sender);
+            } else {
+                *count -= 1;
+            }
         }
     }
 
@@ -265,6 +290,34 @@ impl FragmentAssembler {
         self.gc_expired(now);
         let deadline = now + self.timeout;
 
+        let is_new_set = !self.active.contains_key(&hdr.original_id);
+
+        // PM-4 part 1: per-sender quota. Before a new set is opened, check
+        // whether this sender is at their per-sender cap. If so, evict their
+        // oldest (nearest-deadline) set first rather than the global victim —
+        // a sender that floods only hurts themselves, not other senders.
+        if is_new_set {
+            let sender_count =
+                self.per_sender.get(&fragment.sender_id).copied().unwrap_or(0);
+            if sender_count >= MAX_SETS_PER_SENDER {
+                if let Some(victim) = self
+                    .active
+                    .iter()
+                    .filter(|(_, s)| {
+                        s.sender.as_deref() == Some(fragment.sender_id.as_slice())
+                    })
+                    .min_by_key(|(_, s)| s.deadline)
+                    .map(|(id, _)| *id)
+                {
+                    let victim_sender = self.active[&victim].sender.clone();
+                    self.active.remove(&victim);
+                    if let Some(s) = victim_sender {
+                        self.decrement_sender(&s);
+                    }
+                }
+            }
+        }
+
         // Bound the partial-set table. `original_id` is attacker-chosen, so a
         // peer streaming distinct first-fragments — each opening a new set that
         // never completes — grew this map at `rate x timeout x MTU` bytes with
@@ -281,22 +334,40 @@ impl FragmentAssembler {
                 .min_by_key(|(_, s)| s.deadline)
                 .map(|(id, _)| *id)
             {
+                let victim_sender = self.active[&victim].sender.clone();
                 self.active.remove(&victim);
+                // PM-4: keep per_sender in sync when the global cap evicts a set.
+                if let Some(s) = victim_sender {
+                    self.decrement_sender(&s);
+                }
             }
         }
 
-        let set = self
-            .active
-            .entry(hdr.original_id)
-            .or_insert_with(|| FragmentSet::new(hdr.total, deadline));
-        if !set.bind_sender(&fragment.sender_id) {
-            return None; // RED-0007: mixed-signer fragment set refused
-        }
-        if set.total != hdr.total {
-            return None; // inconsistent total across fragments
+        // Scope the `set` borrow so self.per_sender can be accessed below.
+        let complete_payload = {
+            let set = self
+                .active
+                .entry(hdr.original_id)
+                .or_insert_with(|| FragmentSet::new(hdr.total, deadline));
+            if !set.bind_sender(&fragment.sender_id) {
+                return None; // RED-0007: mixed-signer fragment set refused
+            }
+            if set.total != hdr.total {
+                return None; // inconsistent total across fragments
+            }
+            set.add(hdr.index, chunk.to_vec())
+            // `set` borrow ends here at block close
+        };
+
+        // PM-4: track the new set after the borrow of self.active has ended.
+        // A fresh set always binds (sender was None), so is_new_set → increment
+        // is always reached when is_new_set = true.
+        if is_new_set {
+            *self.per_sender.entry(fragment.sender_id.clone()).or_insert(0) += 1;
         }
 
-        let mut payload = set.add(hdr.index, chunk.to_vec())?;
+        let mut payload = complete_payload?; // None → FragmentBuffered (per_sender updated)
+
         // Reconstruct the original (sealed) envelope: restore message_id,
         // payload_type, payload_ref (never set on a fragment), payload_size,
         // payload_hash AND the original whole-ADU signature (RED-0004 part 3 /
@@ -311,13 +382,25 @@ impl FragmentAssembler {
         original.payload_size = original.payload.len() as u64;
         original.payload_hash = Envelope::compute_payload_hash(&original.payload);
         self.active.remove(&hdr.original_id);
+        // PM-4: set is complete and removed — decrement sender counter.
+        self.decrement_sender(&fragment.sender_id);
         Some(original)
     }
 
     /// Drop fragment sets past their deadline; returns how many were dropped.
     pub fn gc_expired(&mut self, now: Instant) -> usize {
         let before = self.active.len();
+        // PM-4: collect senders of expiring sets before retain() removes them.
+        let expired_senders: Vec<Vec<u8>> = self
+            .active
+            .values()
+            .filter(|s| s.deadline <= now)
+            .filter_map(|s| s.sender.clone())
+            .collect();
         self.active.retain(|_, s| s.deadline > now);
+        for sender in expired_senders {
+            self.decrement_sender(&sender);
+        }
         before - self.active.len()
     }
 }
@@ -472,6 +555,56 @@ mod tests {
         let dropped = a.gc_expired(Instant::now() + Duration::from_secs(31));
         assert_eq!(dropped, 1);
         assert_eq!(a.active.len(), 0);
+    }
+
+    // PM-4: a single sender cannot hold more than MAX_SETS_PER_SENDER concurrent
+    // reassembly slots; other senders are not affected.
+    #[test]
+    fn per_sender_quota_evicts_own_oldest_set() {
+        let mut a = FragmentAssembler::new(Duration::from_secs(30));
+        let id = |n: u8| MessageId::from_bytes([n; 16]);
+
+        let mut mk = |sender: u8, orig: u8, index: u16| {
+            let mut e = mk_fragment(index, 2, id(orig), b"x");
+            e.sender_id = vec![sender];
+            e
+        };
+
+        // Sender A opens MAX_SETS_PER_SENDER sets (first fragments only)
+        for n in 0..MAX_SETS_PER_SENDER as u8 {
+            assert!(a.feed(mk(0xAA, n, 0)).is_none());
+        }
+        assert_eq!(a.per_sender.get(&vec![0xAA]).copied().unwrap_or(0), MAX_SETS_PER_SENDER);
+
+        // Opening one more set from sender A evicts A's oldest (not any other sender's)
+        assert!(a.feed(mk(0xAA, 0xFF, 0)).is_none());
+        // Sender A still at cap (evicted one, added one)
+        assert_eq!(a.per_sender.get(&vec![0xAA]).copied().unwrap_or(0), MAX_SETS_PER_SENDER);
+
+        // Sender B is unaffected — can still open sets
+        assert!(a.feed(mk(0xBB, 0x10, 0)).is_none());
+        assert_eq!(a.per_sender.get(&vec![0xBB]).copied().unwrap_or(0), 1);
+    }
+
+    // PM-4: completing a set decrements the per-sender counter.
+    #[test]
+    fn per_sender_counter_decrements_on_completion() {
+        let mut a = FragmentAssembler::new(Duration::from_secs(30));
+        let orig_id = MessageId::from_bytes([0xCC; 16]);
+        let payload = orig_payload();
+        let parts = split_payload(&payload, 260);
+
+        let mut f0 = mk_fragment(0, 2, orig_id, &parts[0]);
+        f0.sender_id = vec![0xCC];
+        let mut f1 = mk_fragment(1, 2, orig_id, &parts[1]);
+        f1.sender_id = vec![0xCC];
+
+        assert!(a.feed(f0).is_none());
+        assert_eq!(a.per_sender.get(&vec![0xCC]).copied().unwrap_or(0), 1);
+        let done = a.feed(f1).expect("should reassemble");
+        assert_eq!(done.payload, payload);
+        // Counter must be zero after completion
+        assert_eq!(a.per_sender.get(&vec![0xCC]).copied().unwrap_or(0), 0);
     }
 
     #[test]

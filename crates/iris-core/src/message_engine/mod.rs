@@ -694,6 +694,35 @@ impl MessageEngine {
 
         // Fragment reassembly path (R8).
         if envelope.payload_type == ContentType::Fragment {
+            // PM-4: meter fragment arrivals. Previously unmetered: the fragment
+            // path returned FragmentBuffered before reaching `enqueue_relay` (the
+            // only prior rate-limit site), so a sender could exhaust all 256
+            // reassembly slots at zero rate-limit cost. Apply the same
+            // rate_limit_with_claim gate here so each fragment envelope is
+            // counted — after the emergency ACL check to preserve Section 1
+            // ordering (emergency content is exempt via emergency_claim anyway).
+            let frag_class = crate::security::MessageClass::from(envelope.priority);
+            let frag_policy = self
+                .security
+                .read()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone();
+            if matches!(
+                frag_policy
+                    .rate_limit_with_claim(sender_short, frag_class, emergency_claim(&envelope))
+                    .await,
+                crate::security::RateLimitDecision::SilentDrop
+            ) {
+                self.telemetry.increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+                tracing::debug!(
+                    event = event::MSG_RATE_LIMITED,
+                    message_id = %envelope.message_id.short(),
+                    priority = envelope.priority.as_u8(),
+                    "fragment dropped: sender rate limit (PM-4)"
+                );
+                return Ok(InboundOutcome::Expired);
+            }
+
             let reassembled = {
                 let mut f = self.fragments.lock().await;
                 f.feed(envelope)
