@@ -20,11 +20,11 @@
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety + security | 2 | 1 | 1 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
-| 2 | Medium/Low correctness, UX, build | 8 | 0 | 0 | 0 | 8 |
+| 2 | Medium/Low correctness, UX, build | 8 | 4 | 0 | 0 | 4 |
 | N/A | Informational / cleanup (track only) | 2 | 0 | 0 | 0 | 2 |
-| **Total** | | **16** | **4** | **2** | **0** | **10** |
+| **Total** | | **16** | **8** | **2** | **0** | **6** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 0 complete (1 ✅, 1 🔒), Tier 1 complete (3 ✅, 1 🔒)
+**Last updated:** 2026-08-30 · **Active tier:** Tier 2 batch A complete (AN-7 ✅, AN-8 ✅, AN-9 ✅, AN-10 ✅, AN-12 ✅); Tier 2 batch B pending (AN-11, AN-13, AN-14)
 
 ---
 
@@ -192,7 +192,7 @@ AN-15, AN-16
 
 ### AN-7 — Background BLE scanner stops immediately after starting; burns battery for nothing
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — added `if (found) delay(ScanRestartPolicy.WINDOW_ON_MS)` between `startOneWindow` and `stopScanWindow` in `BleScanSession.start` coroutine loop
 - **File(s):** `android/app/src/main/kotlin/iriscore/service/BleScanSession.kt`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 2
@@ -210,7 +210,7 @@ AN-15, AN-16
 
 ### AN-8 — Engine initialization blocks the main (UI) thread on cold start
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `MeshRepository` now takes `dagger.Lazy<IrisEngine>`; `engine.get()` first called inside `startMesh()` on `Dispatchers.Default`, keeping the blocking FFI constructor off the main thread
 - **File(s):** `android/app/src/main/kotlin/iriscore/di/IrisCoreModule.kt`, `crates/iris-android/src/engine.rs`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 2
@@ -228,7 +228,7 @@ AN-15, AN-16
 
 ### AN-9 — Unexpected mesh-start failures crash the app instead of showing an error
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `startMesh()` catch broadened from `IrisFfiException` to `Exception`; stop/send catches remain narrow (intentional)
 - **File(s):** `android/app/src/main/kotlin/iriscore/ui/MeshViewModel.kt`, `android/app/src/main/kotlin/iriscore/data/MeshRepository.kt`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 2
@@ -246,7 +246,7 @@ AN-15, AN-16
 
 ### AN-10 — No reconnect or leave-mesh button; only fix after failure is full app restart
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `reconnectMesh()` added to `MeshViewModel` (calls `stopMesh()` then `ensureStarted()`); `RetryNotice` composable added to `ConsoleScreen` shown when `status == UNAVAILABLE`
 - **File(s):** `android/app/src/main/kotlin/iriscore/ui/MeshViewModel.kt`, `android/app/src/main/kotlin/iriscore/ui/screens/ConsoleScreen.kt`
 - **Category:** correctness · **Severity:** Medium
 - **Tier:** 2
@@ -282,7 +282,7 @@ AN-15, AN-16
 
 ### AN-12 — Unsynchronized access to scan state in the secondary BLE scanner
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed — `@Volatile` added to `activeWindow` in `BleScanSession`; single writer (coroutine), multiple readers (external `isScanActive`) so `@Volatile` is sufficient
 - **File(s):** `android/app/src/main/kotlin/iriscore/service/BleScanSession.kt`
 - **Category:** correctness · **Severity:** Low
 - **Tier:** 2

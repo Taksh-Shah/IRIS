@@ -1,6 +1,7 @@
 package iriscore.data
 
 import android.util.Log
+import dagger.Lazy
 import iriscode.FfiInboxListener
 import iriscode.FfiIncomingMessage
 import iriscode.IrisEngine
@@ -30,7 +31,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class MeshRepository @Inject constructor(
-    private val engine: IrisEngine,
+    private val engine: Lazy<IrisEngine>,
     @NodeId private val nodeId: ByteArray,
     private val outbox: RelayOutbox,
     private val keystore: KeystoreEd25519,
@@ -54,14 +55,12 @@ class MeshRepository @Inject constructor(
     /** Bring the three transports up (BLE + Wi-Fi Aware + Wi-Fi Direct). */
     fun startMesh() {
         try {
-            engine.startAll()
+            engine.get().startAll()
             _uiState.update { it.copy(status = MeshStatus.RUNNING) }
-        } catch (e: IrisFfiException) {
-            // Was a bare `catch (_: IrisFfiException)` — the actual failure
-            // reason was discarded, so "the mesh won't start" gave no signal
-            // beyond a status flag. There is no Rust-side tracing bridge to
-            // logcat either, so this was the only place this information
-            // could surface at all.
+        } catch (e: Exception) {
+            // AN-9: broadened from IrisFfiException — any unexpected exception
+            // (ClassCastException, NullPointerException, etc.) would otherwise
+            // escape into the SupervisorJob coroutine and crash the process.
             Log.w(TAG, "startMesh: engine.startAll() failed", e)
             _uiState.update { it.copy(status = MeshStatus.UNAVAILABLE) }
         }
@@ -69,7 +68,7 @@ class MeshRepository @Inject constructor(
 
     fun stopMesh() {
         try {
-            engine.stopAll()
+            engine.get().stopAll()
         } catch (_: IrisFfiException) {
             // Teardown is best-effort. This used to be try/finally with no
             // catch, so an FFI error propagated into a bare `launch` on a
@@ -90,7 +89,7 @@ class MeshRepository @Inject constructor(
      */
     fun subscribeInbox() {
         if (!inboxSubscribed.compareAndSet(false, true)) return
-        engine.subscribeInbox(object : FfiInboxListener {
+        engine.get().subscribeInbox(object : FfiInboxListener {
             override fun onMessage(message: FfiIncomingMessage) {
                 val ui = message.toUi()
                 scope.launch {
@@ -120,7 +119,7 @@ class MeshRepository @Inject constructor(
         }
         _uiState.update { it.copy(lastError = null) }
         return try {
-            engine.sendText(normalized, text, priority)
+            engine.get().sendText(normalized, text, priority)
             // HW-2: this used to be the whole success path — nothing added
             // the sent message to _uiState.messages, so it never appeared in
             // the console at all: no error (this path never throws), no
@@ -151,7 +150,7 @@ class MeshRepository @Inject constructor(
     suspend fun drainRelayOutbox(): Int {
         val sent = outbox.drain { queued ->
             try {
-                engine.sendText(queued.recipientHex, queued.text, queued.priority)
+                engine.get().sendText(queued.recipientHex, queued.text, queued.priority)
                 true
             } catch (_: IrisFfiException) {
                 false

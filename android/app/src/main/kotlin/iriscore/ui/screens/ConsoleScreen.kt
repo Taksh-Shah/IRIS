@@ -152,6 +152,9 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                     },
                 )
             }
+            if (state.status == MeshStatus.UNAVAILABLE) {
+                RetryNotice(onRetry = { viewModel.reconnectMesh() })
+            }
 
             LazyColumn(
                 state = listState,
@@ -332,5 +335,32 @@ private fun PermissionNotice(onGrant: () -> Unit) {
         }
         Spacer(Modifier.width(IrisSpacing.MD))
         Text(text = "GRANT", style = IrisType.Label.copy(color = IrisColors.AccentPrimary))
+    }
+}
+
+@Composable
+private fun RetryNotice(onRetry: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = IrisSpacing.Gutter, vertical = IrisSpacing.SM)
+            .background(IrisColors.SurfacePrimary, iriscore.designsystem.IrisRadius.MD)
+            .clickable(onClick = onRetry)
+            .padding(IrisSpacing.MD),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = "RADIO UNAVAILABLE",
+                style = IrisType.Label.copy(color = IrisColors.AccentCritical),
+            )
+            Spacer(Modifier.height(IrisSpacing.XXS))
+            Text(
+                text = "Tap to retry mesh connection.",
+                style = IrisType.Secondary,
+            )
+        }
+        Spacer(Modifier.width(IrisSpacing.MD))
+        Text(text = "RETRY", style = IrisType.Label.copy(color = IrisColors.AccentPrimary))
     }
 }

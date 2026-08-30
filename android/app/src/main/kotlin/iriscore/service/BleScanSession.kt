@@ -37,7 +37,7 @@ class BleScanSession(private val context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var job: Job? = null
     private var consecutiveEmpties = 0
-    private var activeWindow = false
+    @Volatile private var activeWindow = false
 
     /** PendingIntent of the current scan window (same REQ_CODE + intent identity for stop). */
     private var scanPendingIntent: android.app.PendingIntent? = null
@@ -64,6 +64,7 @@ class BleScanSession(private val context: Context) {
                 }
                 activeWindow = true
                 val found = startOneWindow(guarded)
+                if (found) delay(ScanRestartPolicy.WINDOW_ON_MS)
                 activeWindow = false
                 stopScanWindow(guarded)
                 if (!found) consecutiveEmpties = (consecutiveEmpties + 1)

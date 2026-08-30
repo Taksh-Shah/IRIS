@@ -63,22 +63,22 @@ Advance to Tier 2: AN-7+AN-12 (BLE scanner — fix together), AN-8 (main-thread 
 
 ---
 
-## Run 3 — [DATE] — Tier 2 batch A (AN-7+AN-12, AN-8, AN-9, AN-10)
-
-**(Fill in when run begins.)**
+## Run 3 — 2026-08-30 — Tier 2 batch A (AN-7+AN-12, AN-8, AN-9, AN-10)
 
 Target findings: AN-7+AN-12 (BLE scanner timing + sync — fix together), AN-8 (engine init on main thread), AN-9 (exception crash), AN-10 (no reconnect).
 
-**Drift notes:** _(fill in)_
+**Drift notes:** No description drift. AN-12 fixed with `@Volatile` (single writer, multiple readers pattern). AN-8 uses `dagger.Lazy<IrisEngine>` so construction is deferred until first `engine.get()` inside `startMesh()` on `Dispatchers.Default`. AN-9 broadened to `catch (e: Exception)` only in `startMesh()`; `stopMesh` and `send` catches remain narrow (intentional — FFI-only teardown / relay spooling). AN-10: `reconnectMesh()` relies on `stopMesh()` already resetting `started`; both paths go through `meshMutex` so teardown completes before restart.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | AN-7 + AN-12 | ⬜ | — | — |
-| 2 | AN-8 | ⬜ | — | — |
-| 3 | AN-9 | ⬜ | — | — |
-| 4 | AN-10 | ⬜ | — | — |
+| 1 | AN-7 + AN-12 | ✅ | (this commit) | `delay(WINDOW_ON_MS)` added between start and stop when scan started; `@Volatile` added to `activeWindow` |
+| 2 | AN-8 | ✅ | (this commit) | `dagger.Lazy<IrisEngine>` in `MeshRepository`; all call-sites use `engine.get()`; construction now deferred off main thread |
+| 3 | AN-9 | ✅ | (this commit) | `startMesh` catch broadened from `IrisFfiException` to `Exception` |
+| 4 | AN-10 | ✅ | (this commit) | `reconnectMesh()` added to `MeshViewModel`; `RetryNotice` composable added to `ConsoleScreen` when `status == UNAVAILABLE` |
 
-**Batch closeout:** `./gradlew assembleDebug` clean · `./gradlew test` pass count. Update both tracker files.
+**Batch closeout:** `./gradlew assembleDebug` PENDING ANDROID-CI. `./gradlew test` PENDING ANDROID-CI.
+
+**Tier 2 batch A checkpoint:** 4/4 ✅ — all four findings fixed.
 
 ### Next run
 Tier 2 batch B: AN-11 (ProGuard), AN-13 (command palette), AN-14 (white flash). Informational review: AN-15, AN-16.

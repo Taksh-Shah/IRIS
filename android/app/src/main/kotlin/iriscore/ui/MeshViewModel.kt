@@ -284,4 +284,15 @@ class MeshViewModel @Inject constructor(
         IrisBleService.stop(appContext)
         started.set(false)
     }
+
+    /**
+     * AN-10: reconnect after an UNAVAILABLE failure.
+     *
+     * [stopMesh] resets [started] so [ensureStarted] can re-enter; both paths go
+     * through [meshMutex] so teardown completes before the restart acquires the lock.
+     */
+    fun reconnectMesh() {
+        stopMesh()
+        ensureStarted()
+    }
 }
