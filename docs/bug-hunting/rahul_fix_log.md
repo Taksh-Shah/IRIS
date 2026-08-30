@@ -45,24 +45,22 @@ PM-2 + PM-15 (CANCEL rejection + same-signer check — must ship together).
 
 ---
 
-## Run 2 — [DATE] — Tier 0 batch B (PM-4, PM-5, PM-6)
-
-**(Fill in when run begins.)**
+## Run 2 — 2026-08-30 — Tier 0 batch B (PM-4, PM-5, PM-6)
 
 Target findings: PM-4 (security, fragment reassembly unmetered), PM-5 (security, handshake
 decode ignores budget + neighbor table uncapped), PM-6 (security, SOS timestamps unbounded).
 
-**Drift notes:** _(fill in)_
+**Drift notes:** All cited line numbers confirmed accurate against HEAD before edits.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | PM-4 | ⬜ | — | — |
-| 2 | PM-5 | ⬜ | — | — |
-| 3 | PM-6 | ⬜ | — | — |
+| 1 | PM-4 | ✅ Fixed | 8e35628 | Per-sender cap MAX_SETS_PER_SENDER=4 in FragmentAssembler + rate_limit_with_claim at fragment path entry in process_incoming (after ACL check). Two new unit tests. PENDING Section 1 coordination. |
+| 2 | PM-5 | ✅ Fixed | f213dce | decode() size check added; BloomFilter::from_parts m ceiling from bloom_bits(BLOOM_CAPACITY, BLOOM_FPR); MAX_NEIGHBORS=512 cap + LRU eviction in NeighborTable::upsert. Three new tests. PENDING Section 3 coordination. |
+| 3 | PM-6 | ✅ Fixed | 0f2d45b | timestamps.truncate(SOS_P0_ALLOWANCE) in record() and check(); O(n²) attack surface eliminated; new timestamp_vec_bounded_under_flood test. PENDING LINUX-CI. |
 
-**Batch B closeout:** full workspace build + sweep.
+**Batch B closeout:** ✅ Complete — PM-4, PM-5, PM-6 all fixed.
 
-**Tier 0 checkpoint:** all 6 Tier 0 findings should be ✅ or 🔒 after Runs 1–2.
+**Tier 0 checkpoint:** ✅ All 6 Tier 0 findings fixed (PM-1, PM-2+PM-15, PM-4, PM-5, PM-6). Advancing to Tier 1.
 
 ### Next run
 Advance to Tier 1: PM-3 (ACK tracker leak), PM-7 (mode ladder), PM-8 (dedup rotation).

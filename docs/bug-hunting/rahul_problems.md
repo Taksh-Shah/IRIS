@@ -17,13 +17,13 @@
 
 | Tier | Name | Total | ✅ Fixed | 🔒 Blocked | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
-| 0 | Critical/High safety+security | 6 | 3 | 0 | 0 | 3 |
+| 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 7 | 0 | 0 | 0 | 7 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 0 | 0 | 0 | 5 |
 | 3 | Structural enhancements | 7 | 0 | 0 | 0 | 7 |
-| **Total** | | **25** | **3** | **0** | **0** | **22** |
+| **Total** | | **25** | **6** | **0** | **0** | **19** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 0
+**Last updated:** 2026-08-30 · **Active tier:** 1 (Tier 0 ✅ COMPLETE)
 
 ---
 
@@ -101,7 +101,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-4 — Fragment reassembly runs before rate limiting, with no per-sender quota
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 0 · commit 8e35628 · 2026-08-30 · PENDING Section 1 coordination (rate_limit_with_claim position vs emergency ACL order)
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:695-726` (fragment path) vs `:913-945` (rate limit); `crates/iris-core/src/message_engine/fragment.rs:207`, `:268-277`
 - **Category:** security · **Severity:** High
 - **Tier:** 0
@@ -126,7 +126,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-5 — Handshake decode ignores the size budget encode enforces; neighbor table uncapped
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 0 · commit f213dce · 2026-08-30 · PENDING Section 3 coordination (MAX_NEIGHBORS cap value and eviction key)
 - **File(s):** `crates/iris-core/src/discovery/handshake.rs:65-76`, `:136-148`; `crates/iris-core/src/discovery/neighbor_table.rs:73-77`
 - **Category:** security · **Severity:** High
 - **Tier:** 0
@@ -150,7 +150,7 @@ PS-1, PS-2, PS-3, PS-4, PS-5, PS-6, PS-7
 
 ### PM-6 — SOS rate-limiter timestamps are unbounded within the window
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 0 · commit 0f2d45b · 2026-08-30 · PENDING LINUX-CI
 - **File(s):** `crates/iris-core/src/emergency/rate_limit.rs:36-39`, `:82-117`; exemption `crates/iris-core/src/message_engine/mod.rs:1430-1436`
 - **Category:** security · **Severity:** High
 - **Tier:** 0
