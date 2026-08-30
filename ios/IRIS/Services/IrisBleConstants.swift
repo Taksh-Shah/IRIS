@@ -15,13 +15,13 @@ public enum IrisBleConstants {
     public static let serviceUUIDHex = "01000000000000000000000000000000"
     /// DEC-BLE-002-0002 connect-to-identify characteristic UUID (hex).
     public static let identifyCharacteristicHex = "02000000000000000000000000000000"
-    /// Control/write characteristic the core writes frames to (BLE-002 §5,
-    /// `BleTransport::send` uses IRIS_SERVICE_UUID as the control char).
-    public static let controlCharacteristicHex = "01000000000000000000000000000000"
+    /// Control/write characteristic the core writes frames to (BLE-002 §5).
+    /// Must be distinct from serviceUUID — collision breaks GATT routing.
+    public static let controlCharacteristicHex = "03000000000000000000000000000000"
 
     public static let serviceUUID: CBUUID = CBUUID(string: "01000000-0000-0000-0000-000000000000")
     public static let identifyUUID: CBUUID = CBUUID(string: "02000000-0000-0000-0000-000000000000")
-    public static let controlUUID: CBUUID = CBUUID(string: "01000000-0000-0000-0000-000000000000")
+    public static let controlUUID: CBUUID = CBUUID(string: "03000000-0000-0000-0000-000000000000")
 
     /// DEC-BLE-002-0005 restoration identifiers (stable, never per-session).
     public static let centralRestoreIdentifier = "IrisCentralManager"

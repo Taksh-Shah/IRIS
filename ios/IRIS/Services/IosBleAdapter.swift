@@ -76,6 +76,8 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
 
     /// BLE-RT-C003 outstanding connect-to-identify reads (keyed by token).
     private var pendingReads: [String: PendingIdentifyRead] = [:]
+    /// Bug #7+#8: outstanding gattWrite completions (keyed by token, one per peer).
+    private var pendingWrites: [String: PendingWrite] = [:]
 
     // MARK: - Per-peer record
 
@@ -100,6 +102,15 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         let semaphore = DispatchSemaphore(value: 0)
         var stage: ReadStage = .pendingConnect
         var result: Result<Data, IrisFfiError>?
+        let deadline: DispatchTime
+        init(timeout: TimeInterval) {
+            deadline = DispatchTime.now() + timeout
+        }
+    }
+
+    private final class PendingWrite {
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: Result<Void, IrisFfiError>?
         let deadline: DispatchTime
         init(timeout: TimeInterval) {
             deadline = DispatchTime.now() + timeout
@@ -174,7 +185,7 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
     }
 
     public func connectGatt(address: String) throws -> UInt64 {
-        let cleaned = address.filter { $0 != ":" && $0 != "-" }.lowercased()
+        let cleaned = address.filter { $0 != ":" && $0 != "-" }.uppercased()
         guard let peer = lock.withLock({ peers[cleaned] }) else {
             throw IrisFfiError.deviceNotFound
         }
@@ -224,12 +235,30 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         guard peer.connected else {
             throw IrisFfiError.gattFailure("peer not connected")
         }
+        let pending = PendingWrite(timeout: gattReadTimeout)
+        let installed: Bool = lock.withLock {
+            guard pendingWrites[token] == nil else { return false }
+            pendingWrites[token] = pending
+            return true
+        }
+        guard installed else {
+            throw IrisFfiError.gattFailure("gatt_write already in flight for this peer")
+        }
         central.writeValue(
             identifier: peer.identifier,
             characteristicUuid: uuid,
             data: data,
             withResponse: true
         )
+        let outcome = pending.semaphore.wait(timeout: pending.deadline)
+        lock.withLock { pendingWrites[token] = nil }
+        switch outcome {
+        case .timedOut:
+            throw IrisFfiError.timeout
+        case .success:
+            guard let result = pending.result else { throw IrisFfiError.timeout }
+            return try result.get()
+        }
     }
 
     public func gattRead(handle: UInt64, charUuid: String) throws -> Data {
@@ -425,6 +454,17 @@ extension IosBleAdapter: BleCentralSeamDelegate {
               let data
         else { return }
         pending.result = .success(data)
+        pending.semaphore.signal()
+    }
+
+    public func centralSeam(_ seam: BleCentralSeam, didWriteValue identifier: UUID, characteristicUuid: CBUUID, error: Error?) {
+        let token = IrisBleConstants.token(for: identifier)
+        guard let pending = lock.withLock({ pendingWrites[token] }) else { return }
+        if let error {
+            pending.result = .failure(.gattFailure(error.localizedDescription))
+        } else {
+            pending.result = .success(())
+        }
         pending.semaphore.signal()
     }
 

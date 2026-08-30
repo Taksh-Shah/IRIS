@@ -77,6 +77,8 @@ public protocol BleCentralSeamDelegate: AnyObject {
     func centralSeam(_ seam: BleCentralSeam, didCompleteServiceDiscovery identifier: UUID, services: [CBUUID], error: Error?)
     func centralSeam(_ seam: BleCentralSeam, didCompleteCharacteristicDiscovery identifier: UUID, serviceUuid: CBUUID, characteristics: [CBUUID], error: Error?)
     func centralSeam(_ seam: BleCentralSeam, didRead identifier: UUID, characteristicUuid: CBUUID, data: Data?, error: Error?)
+    /// Bug #7+#8: write-response completion from peripheral(_:didWriteValueFor:error:).
+    func centralSeam(_ seam: BleCentralSeam, didWriteValue identifier: UUID, characteristicUuid: CBUUID, error: Error?)
     /// willRestoreState projection: previously-connected peer identifiers.
     func centralSeam(_ seam: BleCentralSeam, didRestore identifiers: [UUID])
 }

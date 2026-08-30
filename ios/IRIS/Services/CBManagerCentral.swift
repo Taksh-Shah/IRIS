@@ -230,4 +230,13 @@ extension RealBleCentralSeam: CBPeripheralDelegate {
             error: error
         )
     }
+
+    public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+        delegate?.centralSeam(
+            self,
+            didWriteValue: peripheral.identifier,
+            characteristicUuid: characteristic.uuid,
+            error: error
+        )
+    }
 }

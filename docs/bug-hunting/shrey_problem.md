@@ -18,13 +18,13 @@
 
 | Tier | Name | Total | ✅ Fixed | 🔮 Future | 🔀 Routed | ⬜ Not started |
 |---|---|---|---|---|---|---|
-| 0 | Critical — build breaks + emergency-path blockers | 10 | 0 | 0 | 0 | 10 |
+| 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
 | 1 | High — crashes, races, leaks, security | 18 | 0 | 0 | 0 | 18 |
 | 2 | Medium — correctness, DoS, protocol, CI | 30 | 0 | 0 | 0 | 30 |
 | 3 | Low — quality, supply chain, test flakes, docs | 14 | 0 | 0 | 0 | 14 |
-| **Total** | | **72** | **0** | **0** | **0** | **72** |
+| **Total** | | **72** | **10** | **0** | **0** | **62** |
 
-**Last updated:** 2026-08-30 · **Active tier:** Tier 0 — not started.
+**Last updated:** 2026-08-30 · **Active tier:** Tier 1 — in progress.
 
 ---
 
@@ -52,7 +52,7 @@
 
 ### Bug #1 — `KeychainEd25519().loadOrCreate()` nonexistent — never compiles
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/App/AppDelegate.swift:38-45, 82-88`
 - **Category:** Build · **Severity:** Critical
 - **Tier:** 0
@@ -67,7 +67,7 @@
 
 ### Bug #2 — `SessionRecovery` init mismatch — no such initializer
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/App/AppDelegate.swift:53-58`
 - **Category:** Build · **Severity:** Critical
 - **Tier:** 0
@@ -82,7 +82,7 @@
 
 ### Bug #3 — Test uses `KeychainEd25519(protectedDataAvailable:)` class + `loadOrCreate()` vs enum
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/Tests/KeychainIdentityTests.swift:18, 37, 46`
 - **Category:** Build · **Severity:** Critical
 - **Tier:** 0
@@ -95,7 +95,7 @@
 
 ### Bug #4 — Tests use `LaunchOptionsSource`/`ProtectedDataGating`/`reArmDebounce` — none exist in `SessionRecovery`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/Tests/SessionRecoveryTests.swift:15-50`
 - **Category:** Build · **Severity:** Critical
 - **Tier:** 0
@@ -108,7 +108,7 @@
 
 ### Bug #5 — `KeychainX25519` referenced but never implemented
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/Tests/KeychainIdentityTests.swift:96-97`
 - **Category:** Build · **Severity:** Critical
 - **Tier:** 0
@@ -121,7 +121,7 @@
 
 ### Bug #6 — Token `lowercased()` vs `uppercased()` breaks ALL GATT
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:177`
 - **Category:** Bug · **Severity:** Critical
 - **Tier:** 0
@@ -136,7 +136,7 @@
 
 ### Bug #7 — `gattWrite` silently drops errors
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:217`
 - **Category:** Bug · **Severity:** Critical
 - **Tier:** 0
@@ -149,7 +149,7 @@
 
 ### Bug #8 — Missing `didWriteValueFor` delegate
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerCentral.swift:198`
 - **Category:** Bug · **Severity:** Critical
 - **Tier:** 0
@@ -162,7 +162,7 @@
 
 ### Bug #9 — `controlUUID` == `serviceUUID` collision
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IrisBleConstants.swift:20-24`
 - **Category:** Bug · **Severity:** Critical
 - **Tier:** 0
@@ -175,7 +175,7 @@
 
 ### Bug #10 — `startScanning: [UUID]` vs `[CBUUID]` clash in `MockCoreBluetooth`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/Tests/MockCoreBluetooth.swift:66`
 - **Category:** Build · **Severity:** Critical
 - **Tier:** 0

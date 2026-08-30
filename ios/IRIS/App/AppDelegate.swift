@@ -35,35 +35,33 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         self.adapter = adapter
 
         // ---- Identity (AC-12): identity.v1 provision/load; no biometric flag.
-        let identity = KeychainEd25519()
-        guard let key = try? identity.loadOrCreate() else {
+        guard let pair = try? KeychainEd25519.identity() else {
             // Protected data unavailable at pre-warm: retry on didBecomeActive
             // (recorded limitation; never hang-on-launch).
             return true
         }
         // IDENT_DESIGN D1: node PeerId = Ed25519 public-key bytes (32 B).
-        let nodeId = key.publicKey.rawRepresentation
+        let nodeId = pair.verifyingKeyRaw
         if let engine = try? IrisEngine(ble: adapter, nodeId: nodeId) {
             self.engine = engine
         } else {
             return true
         }
 
-        // ---- SessionRecovery (AC-10/AC-11).
+        // ---- BGTask registration (AC-14) happens once at startup.
+        let wiring = BGTaskWiring(maintenance: BestEffortMaintenance(engine: self.engine))
+        wiring.register()
+        self.bgTaskWiring = wiring
+
+        // ---- SessionRecovery (AC-10/AC-11). Shares the single BGTaskWiring instance.
         let recovery = SessionRecovery(
             launchOptions: UIKitLaunchOptionsSource(launchOptions),
             protectedData: UIKitProtectedDataGate(),
-            taskResubmitter: BGTaskWiring(maintenance: BestEffortMaintenance(engine: self.engine)),
+            taskResubmitter: wiring,
             bleLifecycle: BleRestorationTarget(engine: self.engine)
         )
         self.sessionRecovery = recovery
         recovery.run()
-
-        // ---- BGTask registration (AC-14) happens once at startup.
-        let wiring = BGTaskWiring(maintenance: BestEffortMaintenance(engine: self.engine))
-        wiring.register()
-        wiring.resubmitAll()
-        self.bgTaskWiring = wiring
 
         // ---- Notifications (standard + critical-alert fallback).
         Task {
@@ -83,8 +81,8 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         // Pre-warm retry: if first-unlock data arrived after launch, bring the
         // engine up now.
         guard engine == nil else { return }
-        guard let key = try? KeychainEd25519().loadOrCreate() else { return }
-        let nodeId = key.publicKey.rawRepresentation
+        guard let pair = try? KeychainEd25519.identity() else { return }
+        let nodeId = pair.verifyingKeyRaw
         if let adapter = self.adapter, let e = try? IrisEngine(ble: adapter, nodeId: nodeId) {
             self.engine = e
             try? e.startAll()
@@ -105,6 +103,24 @@ public final class BestEffortMaintenance: IrisMaintenanceWork {
         // this slot is where periodic maintenance kicks would surface. Always
         // complete the token so the BG task never hangs.
         token()
+    }
+}
+
+// MARK: - UIKit-backed seam adapters (LaunchOptionsSource / ProtectedDataGating)
+
+struct UIKitLaunchOptionsSource: LaunchOptionsSource {
+    private let options: [UIApplication.LaunchOptionsKey: Any]?
+    init(_ options: [UIApplication.LaunchOptionsKey: Any]?) { self.options = options }
+    func launchOptions() -> [String: Any] {
+        var result: [String: Any] = [:]
+        options?.forEach { key, value in result[key.rawValue] = value }
+        return result
+    }
+}
+
+struct UIKitProtectedDataGate: ProtectedDataGating {
+    var isProtectedDataAvailable: Bool {
+        UIApplication.shared.isProtectedDataAvailable
     }
 }
 

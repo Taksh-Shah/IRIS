@@ -63,7 +63,7 @@ public final class MockBleSeam: BleCentralSeam, BlePeripheralSeam {
 
     // MARK: - Central side (BleCentralSeam)
 
-    public func startScanning(serviceUuids: [UUID], options: [String: Any]) {
+    public func startScanning(serviceUuids: [CBUUID], options: [String: Any]) {
         lock.lock(); defer { lock.unlock() }
         startScanRecords.append((serviceUuids, options))
     }
@@ -137,8 +137,16 @@ public final class MockBleSeam: BleCentralSeam, BlePeripheralSeam {
     }
 
     public func writeValue(identifier: UUID, characteristicUuid: CBUUID, data: Data, withResponse: Bool) {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
         writeValueRecords.append((identifier, characteristicUuid, data, withResponse))
+        let del = delegate
+        lock.unlock()
+        if withResponse {
+            // Synchronous delivery mirrors connectPeripheral: gattWrite blocks on
+            // a semaphore waiting for this ACK, so the mock must reply on the
+            // same thread rather than deferring to a queue.
+            del?.centralSeam(self, didWriteValue: identifier, characteristicUuid: characteristicUuid, error: nil)
+        }
     }
 
     public func maximumWriteValueLength(identifier: UUID) -> Int {

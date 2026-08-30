@@ -15,51 +15,88 @@
 import Foundation
 import BackgroundTasks
 
-enum LaunchKind {
-    case foreground
-    case bluetoothRelaunch        // CoreBluetooth restored a link
-    case backgroundTask           // BGAppRefreshTask fired
-    case userForceQuit            // no relaunch; nothing to do
-    case cold                     // first install / explicit home-screen launch
+// MARK: - Seam protocols (AC-10/AC-11; faked in unit tests, UIKit-backed in prod)
+
+public protocol LaunchOptionsSource {
+    func launchOptions() -> [String: Any]
 }
 
+public protocol ProtectedDataGating {
+    var isProtectedDataAvailable: Bool { get }
+}
+
+public protocol BackgroundTaskResubmitting {
+    func resubmitAll()
+}
+
+public protocol BleLifecycleRecovering {
+    func reArmAfterRestore()
+}
+
+// MARK: - Launch classification
+
+public enum LaunchReason: Equatable {
+    case user
+    case bleRestoration
+    case backgroundTask
+}
+
+/// Stable string keys for UIApplication launchOptions dictionary.
+public enum IrisLaunchOptionKeys {
+    /// UIApplicationLaunchOptionsBluetoothCentralsKey — present when CB restored a link.
+    public static let bluetoothCentrals = "UIApplicationLaunchOptionsBluetoothCentralsKey"
+    /// Present when the system wakes the app for a registered BGTask.
+    public static let backgroundTask = "UIApplicationLaunchOptionsBackgroundTaskKey"
+}
+
+// MARK: - SessionRecovery
+
 final class SessionRecovery {
-    /// Pure classifier — trivially testable.
-    static func classify(
-        launchedForConnection: Bool,
-        restoredStateProvided: Bool,
-        wasUserInitiated: Bool
-    ) -> LaunchKind {
-        if wasUserInitiated { return launchedForConnection ? .bluetoothRelaunch : .cold }
-        if restoredStateProvided { return .bluetoothRelaunch }
-        if launchedForConnection { return .backgroundTask }
-        return .foreground
+
+    private let launchOptions: LaunchOptionsSource
+    private let protectedData: ProtectedDataGating
+    private let taskResubmitter: BackgroundTaskResubmitting
+    private let bleLifecycle: BleLifecycleRecovering
+    private let reArmDebounce: TimeInterval
+    private var lastReArm: Date?
+
+    init(
+        launchOptions: LaunchOptionsSource,
+        protectedData: ProtectedDataGating,
+        taskResubmitter: BackgroundTaskResubmitting,
+        bleLifecycle: BleLifecycleRecovering,
+        reArmDebounce: TimeInterval = 30
+    ) {
+        self.launchOptions = launchOptions
+        self.protectedData = protectedData
+        self.taskResubmitter = taskResubmitter
+        self.bleLifecycle = bleLifecycle
+        self.reArmDebounce = reArmDebounce
     }
 
-    /// WillRestoreState entry point (AC-10): re-arm what CB never auto-resumes.
-    func willRestoreState(state: [String: Any], adapter: IosBleAdapter?, completion: @escaping () -> Void) {
-        let kind = Self.classify(
-            launchedForConnection: true,
-            restoredStateProvided: true,
-            wasUserInitiated: false
-        )
-        switch kind {
-        case .bluetoothRelaunch:
-            // Re-arm scan + advertise through the adapter's handles.
-            _ = adapter
-            completion()
-        case .userForceQuit:
-            break // no-op (AC-11)
-        default:
-            completion()
+    /// Classify why the app was launched based on launch-options keys (AC-11).
+    func classifyLaunchReason() -> LaunchReason {
+        let opts = launchOptions.launchOptions()
+        if opts[IrisLaunchOptionKeys.backgroundTask] != nil { return .backgroundTask }
+        if opts[IrisLaunchOptionKeys.bluetoothCentrals] != nil { return .bleRestoration }
+        return .user
+    }
+
+    /// AC-11 entry point: re-submit BG tasks on every launch; re-arm BLE only on
+    /// restoration launches with protected-data available (DEC-BLE-002-0005).
+    func run() {
+        taskResubmitter.resubmitAll()
+        guard protectedData.isProtectedDataAvailable else { return }
+        if classifyLaunchReason() == .bleRestoration {
+            bleLifecycle.reArmAfterRestore()
         }
     }
 
-    /// AC-14: re-submit BGTaskScheduler refresh on every launch so a kill/reboot
-    /// never leaves the relay permanently dormant.
-    static func resubmitBackgroundRefresh(identifier: String) throws {
-        let request = BGAppRefreshTaskRequest(identifier: identifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
-        try BGTaskScheduler.shared.submit(request)
+    /// AC-10: debounced BLE re-arm (relaunch-crash-loop guard, DEC-BLE-002-0005).
+    func reArmWithDebounce() {
+        let now = Date()
+        if let last = lastReArm, now.timeIntervalSince(last) < reArmDebounce { return }
+        lastReArm = now
+        bleLifecycle.reArmAfterRestore()
     }
 }

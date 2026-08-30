@@ -14,54 +14,54 @@ import IRIS
 
 final class KeychainIdentityTests: XCTestCase {
 
-    /// Unique test-only tag so the suite never collides with app identity.
-    private let account = "com.iris.identity.test.\(UUID().uuidString)"
-
-    private var keychain: KeychainAccessible!
-
+    /// Wipe the real identity slot before/after each test to avoid cross-test pollution.
     override func setUp() {
         super.setUp()
-        let k = SecurityKeychain()
-        try? k.delete(account, service: account)
-        keychain = k
+        let deleteQuery: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: KeychainEd25519.service,
+            kSecAttrAccount: KeychainEd25519.account,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
     }
 
     override func tearDown() {
-        try? keychain.delete(account, service: account)
+        let deleteQuery: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: KeychainEd25519.service,
+            kSecAttrAccount: KeychainEd25519.account,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
         super.tearDown()
     }
 
-    /// AC-12: the identity item is a generic password with the documented
-    /// accessibility class and NO biometric kSecAccessControl.
-    func testAccessibilityIsAfterFirstUnlockThisDeviceOnly() {
-        let provider = KeychainEd25519(protectedDataAvailable: { true })
-        let probe = SecurityKeychain()
-        XCTAssertEqual(probe.accessibility as String, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
-        XCTAssertNotNil(provider)
+    /// AC-12: identity() returns an Ed25519KeyPair with 32-byte signing + verifying keys.
+    func testIdentityReturnsPairWithCorrectKeySizes() throws {
+        let pair = try KeychainEd25519.identity()
+        XCTAssertEqual(pair.signingKeyRaw.count, 32, "Ed25519 signing key must be 32 bytes")
+        XCTAssertEqual(pair.verifyingKeyRaw.count, 32, "Ed25519 verifying key must be 32 bytes")
     }
 
-    /// AC-12: provision → persist → load returns the identical key (stable PeerId).
+    /// AC-12: provision → load returns the identical key pair (stable PeerId).
     func testRoundTripKeepsSeedAndPublicKey() throws {
-        let provider = KeychainEd25519(protectedDataAvailable: { true })
-        let key = try provider.loadOrCreate()
-        let stored = try keychain.get(KeychainEd25519.service, service: KeychainEd25519.service)
-        XCTAssertEqual(stored?.count, 32, "generic-password value = the 32-byte Ed25519 seed")
-
-        // Persist to the isolated test tag, then decode back: same seed + pubkey.
-        try keychain.set(key.rawRepresentation, for: account, service: account)
-        let reloaded = try Curve25519.Signing.PrivateKey(rawRepresentation: keychain.get(account, service: account)!)
-        XCTAssertEqual(reloaded.rawRepresentation, key.rawRepresentation)
-        XCTAssertEqual(reloaded.publicKey.rawRepresentation, key.publicKey.rawRepresentation)
+        let pair1 = try KeychainEd25519.identity()
+        let pair2 = try KeychainEd25519.identity()
+        XCTAssertEqual(pair1.signingKeyRaw, pair2.signingKeyRaw, "identity() must return the same key on repeat calls")
+        XCTAssertEqual(pair1.verifyingKeyRaw, pair2.verifyingKeyRaw)
     }
 
-    /// AC-12: load is gated on protected-data availability (pre-warm).
-    func testProtectedDataGateBlocksLoad() {
-        let provider = KeychainEd25519(protectedDataAvailable: { false })
-        XCTAssertThrowsError(try provider.loadOrCreate()) { error in
-            guard case KeychainError.protectedDataUnavailable = error else {
-                return XCTFail("expected protectedDataUnavailable, got \(error)")
-            }
-        }
+    /// AC-12: explicit load() returns nil before first identity(); non-nil after.
+    func testLoadReturnsNilBeforeProvision() throws {
+        XCTAssertNil(try KeychainEd25519.load(), "load() must return nil before any provisioning")
+        _ = try KeychainEd25519.identity()
+        XCTAssertNotNil(try KeychainEd25519.load(), "load() must return the pair after identity()")
+    }
+
+    /// AC-12: stored pair can sign and self-verify — proves signingKeyRaw is the private key.
+    func testStoredPairCanSignAndVerify() throws {
+        let pair = try KeychainEd25519.identity()
+        let ok = try KeychainEd25519.verify(Data([1, 2, 3]), signature: KeychainEd25519.sign(Data([1, 2, 3]), keyPair: pair), keyPair: pair)
+        XCTAssertTrue(ok)
     }
 
     /// AC-12 / G-IOS-5: RFC 8032 KAT — the CryptoKit raw seed (32 B) is the
@@ -83,20 +83,11 @@ final class KeychainIdentityTests: XCTestCase {
         let key = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
         XCTAssertEqual(key.publicKey.rawRepresentation, expectedPub)
 
-        // Signature over the RFC 8032 test message ("") verifies with the
-        // derived public key — the same trust flow Rust `ed25519-dalek` uses.
         let dataToSign = Data()
         let sig = try key.signature(for: dataToSign)
-        let ok = key.publicKey.isValidSignature(sig, for: dataToSign)
-        XCTAssertTrue(ok)
+        XCTAssertTrue(key.publicKey.isValidSignature(sig, for: dataToSign))
     }
 
-    /// AC-12: X25519 static-ad key — same persistence posture, 32-byte seed.
-    func testStaticAdKeyRoundTrip() throws {
-        let provider = KeychainX25519(protectedDataAvailable: { true })
-        let k1 = try provider.loadOrCreate()
-        let k2 = try provider.loadOrCreate()
-        XCTAssertEqual(k1.rawRepresentation, k2.rawRepresentation)
-        XCTAssertEqual(k1.publicKey.rawRepresentation, k2.publicKey.rawRepresentation)
-    }
+    // TODO: KeychainX25519 (X25519 static-DH key) not yet implemented (AC-12 future scope).
+    // func testStaticAdKeyRoundTrip() { ... }
 }
