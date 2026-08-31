@@ -84,7 +84,7 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — revision 2: second pass added PRY-31…PRY-36 (36 findings total), 0 fixed.
+**Last updated:** 2026-08-31 — Run 1: Tier 0 worked. PRY-5, PRY-14, PRY-19, PRY-22, PRY-31 fixed; PRY-28 ⚪ not applicable (premise disproved); PRY-7 doc+test fixed, behavioural half re-tiered to Tier 2. 6 ✅ + 1 ⚪ of the 7 Tier-0 items.
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -93,10 +93,12 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 
 | Tier | Name | Findings | ⬜ | 🔵 | ✅/🟢 | 🔒 | ❌ | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
-| **0** | Invariant-correct, no cross-section dependency | 7 | 7 | 0 | 0 | 0 | 0 | none — start here |
+| **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
 | **1** | Hardening & hygiene (bounded, self-contained) | 17 | 17 | 0 | 0 | 0 | 0 | Tier 0 complete |
-| **2** | **HARD STOP** — changes accept/deny security semantics | 12 | 12 | 0 | 0 | 0 | 0 | explicit human sign-off (§2.3 of loop) + Section 2 / EMERG-001 owner agreement on the flagged findings |
-| **Total** | | **36** | **36** | **0** | **0** | **0** | **0** | |
+| **2** | **HARD STOP** — changes accept/deny security semantics | 12 (+PRY-7 tail) | 12 | 0 | 0 | 1 | 0 | explicit human sign-off (§2.3 of loop) + Section 2 / EMERG-001 owner agreement on the flagged findings |
+| **Total** | | **36** | **29** | **0** | **6** | **1** | **0** | |
+
+Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
 ### Authoritative tier membership
 
@@ -422,7 +424,7 @@ cadence wiring touches the engine (Section 2).
 ### PRY-5 — `diffie_hellman` does not reject small-order peer keys
 
 - **Severity:** High
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ✅ Fixed · Tier 0 · commit 67a2b0a · 2026-08-31
 - **Confidence:** Certain (the check is absent); Medium (production reachability)
 - **Location:** `crates/iris-core/src/crypto/x25519.rs:18-29`
 
@@ -534,7 +536,7 @@ engine-flow change and needs that owner. The freshness-only early check can stay
 ### PRY-7 — `sequence_hint()` is not a per-sender monotonic counter
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ◐ Partial · doc + regression test ✅ (commit bdac72b · 2026-08-31); behavioural fix **re-tiered to Tier 2** (widens an accept path, touches Section 2 `message_id`) — 🔒 pending sign-off
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/protocol/message_id.rs:47-51` (Section 2, read-only); consumed at `crates/iris-core/src/message_engine/mod.rs:598`; assumed-contract in `crates/iris-core/src/security/replay.rs:44-65`, `:346-351`
 
@@ -857,7 +859,7 @@ used.
 ### PRY-14 — Sub-second `refill_interval` permanently bricks the rate limiter
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ✅ Fixed · Tier 0 · commit 7471a56 · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/rate_limiter.rs:306-316` (`check_bucket`), `:330-343` (`refill`)
 
@@ -1101,7 +1103,7 @@ TRUST_MODEL.md).
 ### PRY-19 — Reputation eviction panics on a NaN score
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ✅ Fixed · Tier 0 · commit 0095c8d · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/reputation.rs:168-176`, config `:20-44`, `routing_weight` clamp `:152-155`
 
@@ -1226,7 +1228,7 @@ oldest. Regression test mirroring `stale_highwater_marks_are_evicted_before_live
 ### PRY-22 — The un-claimed rate-limit path re-opens the P0 starvation primitive
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ✅ Fixed · Tier 0 · commit 7471a56 (+ test 443b7a2) · 2026-08-31 · CI grep-guard deferred (touches `.github/workflows/`, out of Section 1 scope)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/rate_limiter.rs:202-205`; `crates/iris-core/src/security/mod.rs:39-42`
 
@@ -1457,7 +1459,7 @@ treatment, which already includes skew for untrusted.
 ### PRY-28 — Rate-limiter FIFO `order` deque leaks tombstones
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ⚪ Not applicable · 2026-08-31 — premise does not hold against current code. Below the bucket cap `map` and `order` grow **together** 1:1 (nothing removes from `map` until eviction); at/above the cap the eviction `while` loop pops every dead front entry, so `order.len() == map.len()` always (verified by simulation: `max(order − map) == 0` over a 64-identity × 40-cycle churn through an 8-bucket cap). No unbounded growth relative to the (cap-bounded) `map`. If the eviction loop is ever changed, revisit.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/rate_limiter.rs:124-139`, `:239-252`
 
@@ -1578,7 +1580,7 @@ flag to that owner.
 ### PRY-31 — The RED-0011 small-order blocklist is corrupted, incomplete, and unverified
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 0
+- **Fix status:** ✅ Fixed · Tier 0 · commit 67a2b0a · 2026-08-31
 - **Confidence:** High (the list is wrong and incomplete); Medium (exploitability — the `to_edwards` fallback provides partial cover)
 - **Location:** `crates/iris-core/src/identity/small_order.rs:27-47` (`SMALL_ORDER_U`), `:53-64` (`is_small_order`), `:71-90` (tests)
 

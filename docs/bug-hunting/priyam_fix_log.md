@@ -117,13 +117,77 @@ Total now **36** (Tier 0: 7 · Tier 1: 17 · Tier 2: 12).
 
 ---
 
-## Run 1 — (not yet executed)
+## Run 1 — 2026-08-31 — Tier 0
 
-_Target: Tier 0 (7) — PRY-19 panic guard → PRY-22 API default → PRY-28 deque compaction →
-PRY-31 small-order constants (replace with vetted values + cross-check test) → PRY-14 refill
-arithmetic → PRY-5 DH small-order check → PRY-7 replay sequence semantics. PRY-5 and PRY-31
-should land together (both touch the small-order guard)._
+**Branch:** `main` (per explicit user instruction — the loop's default-branch guard was
+waived; all teammates' bug-hunt work lands on `main` in this repo). Baseline commit `86009dd`.
+
+**Environment:** `cargo 1.97.1` / `rustc 1.97.1` on PATH — build + test gates ran for real
+(not PENDING). Baseline `cargo build -p iris-core` clean (23 warnings, pre-existing).
+`cargo test -p iris-core` baseline: 741 lib tests pass; **2 pre-existing failures** in
+`tests/protocol_conformance.rs` (`corrupted_frame_length_byte_bounded_recovery`,
+`capture_all_pdus_until_parse_end`) — verified present on clean `86009dd` via `git stash`;
+protocol/framing, outside Section 1 scope (§8), not touched by this run.
+
+### Drift notes
+
+- **PRY-3 stub in loop plan** ("deque compaction") — dropped. After reading the eviction
+  loop + a Python simulation (64 identities × 40 cycles through an 8-bucket cap), `order` and
+  `map` grow/shrink together 1:1 (`max(order − map) == 0`). The "unbounded" premise does not
+  hold; below the cap `map` grows identically (nothing evicts). Marked **⚪ Not applicable**.
+- **PRY-7** — the good fixes (real counter / bounded seen-set) all **widen** the replay
+  accept path and touch `message_id` (Section 2). Per loop §4 step 4 the behavioural fix is
+  **re-tiered to Tier 2** (🔒, needs Section 2 sign-off). Only the honest-doc + pinning-test
+  part landed under Tier 0.
+- **PRY-5** — new `CryptoError::SmallOrderPeerKey` forced a one-line match-arm in
+  `message_engine/crypto.rs` `From<PrimCryptoError>` to keep the tree green. This is a
+  mechanical compile-glue change placing the variant in the **same rejection group** as
+  `AllZeroSharedSecret` (→ `CryptoError::Codec`). It changes **no** accept/deny decision and
+  does not widen. Flagged here for the Section 2 owner's awareness; not treated as a §8 stop.
+- **PRY-31** — correct `SMALL_ORDER_U[2]` bytes obtained from
+  `curve25519_dalek::constants::EIGHT_TORSION[1].to_montgomery()` via a throwaway test (added,
+  run, removed), not hand-transcribed. Value matches the report's stated canonical LE
+  encoding exactly.
+
+### Tests that encoded old behaviour (§8 — rewritten, called out here)
+
+- `rate_limiter::tests::p0_p1_exempt_from_drops` — asserted bare `check(P0/P1) == Exempt`.
+  Rewritten to assert exemption via `check_with_claim(Emergency)` + that bare `check(P0)` is
+  now metered.
+- `rate_limiter::tests::rate_limiter_respects_exempt_p0_p1` (proptest) — same, rewritten to
+  `check_with_claim(Emergency)`.
+- `sysval_security_flood::p0_never_dropped_even_under_full_throttle` — same, rewritten.
+
+### Per-finding results
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| — | — | — | — | _pending first wake_ |
+| 1 | PRY-19 | ✅ Fixed · Tier 0 | `0095c8d` | `sanitize_config` (non-finite → default), finite-guard after update + decay, `total_cmp` eviction. New `nan_config_does_not_panic_reputation_engine` (discriminates: pre-fix `min_by(partial_cmp().unwrap())` panics on NaN). `cargo test -p iris-core --lib security::reputation` green. |
+| 2 | PRY-14 | ✅ Fixed · Tier 0 | `7471a56` | Nanosecond refill arithmetic in `check_bucket` + `refill`. New `sub_second_refill_interval_actually_refills` (discriminates: pre-fix `intervals == 0` at 600 ms → still `SilentDrop`). |
+| 3 | PRY-22 | ✅ Fixed · Tier 0 | `7471a56` (+ test `443b7a2`) | `RateLimiter::check` now passes `EmergencyClaim::Ordinary`. New `check_treats_content_as_ordinary_not_emergency`. 3 old-behaviour tests rewritten. CI grep-guard **deferred** — `.github/workflows/` is outside Section 1 scope (§8). |
+| 4 | PRY-5 | ✅ Fixed · Tier 0 | `67a2b0a` | `is_small_order(peer_public)` is the first line of `diffie_hellman`; new `CryptoError::SmallOrderPeerKey`. New `diffie_hellman_rejects_every_eight_torsion_point` + non-canonical case. `--test crypto_e2e` + full `security::`/`crypto::`/`identity::` green (174 lib tests). |
+| 5 | PRY-31 | ✅ Fixed · Tier 0 | `67a2b0a` | `SMALL_ORDER_U[2]` corrected from `EIGHT_TORSION`; canonical-form guard (`u >= p` → reject) catches `p`/`p+1`; new `small_order_constants_are_genuine` (decompress-and-verify, defeats the tautological old test) + `non_canonical_identity_encodings_are_rejected`. |
+| 6 | PRY-7 | ◐ Partial ✅ / 🔒 | `bdac72b` | Doc comments on `HighWaterMark` + `check()` corrected; new `same_timestamp_lower_seq_is_rejected_after_higher` pins current (wrong) behaviour. Behavioural fix **re-tiered to Tier 2** — widens accept path, needs Section 2 `message_id` owner. |
+| — | PRY-28 | ⚪ Not applicable | — | Premise disproved (see Drift notes + finding entry). No code change. |
+
+### Batch closeout
+
+- `cargo build -p iris-core --all-targets`: clean (pre-existing warnings only).
+- `cargo test -p iris-core`: 741 lib + all security/crypto/identity integration tests pass;
+  8 new regression tests pass; the only 2 failures are the pre-existing
+  `protocol_conformance.rs` framing tests (baseline, out of scope).
+- `cargo clippy` / `cargo fmt --check`: not yet run this wake — deferred to the Tier 0
+  checkpoint / next wake.
+
+### Tier 0 status
+
+6 ✅ + 1 ⚪ of 7. **Materially complete.** PRY-7's remaining behavioural work is now a Tier 2
+gated item. Next wake: run `cargo clippy -p iris-core -- -D warnings` + `cargo fmt --check`,
+make the Tier 0 checkpoint commit, then begin **Tier 1** (smallest-first: PRY-27, PRY-30,
+PRY-20, PRY-21, PRY-13, PRY-26 …). **Do NOT enter Tier 2** without the §2.3 sign-off.
+
+### Tier 2 sign-off tracker — addition
+
+| Finding | Owner needed | Sign-off recorded? |
+|---|---|---|
+| PRY-7 (behavioural) | Section 2 (`message_id` — real per-sender counter vs bounded per-`(sender,ts)` seen-set; inbound engine path) | ⬜ |
