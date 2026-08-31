@@ -58,11 +58,27 @@ pub enum SpamDecision {
 }
 
 /// Per-sender spam statistics.
+///
+/// PRY-16: `last_content_hash` compared only the immediately-preceding message
+/// and is dead weight under E2EE — a fresh per-message ephemeral X25519 key
+/// makes identical plaintext hash differently every time. We keep a short ring
+/// of recent hashes (still useful for the local/unencrypted case) and add a
+/// **content-agnostic** signal — repeated payload *size* — which survives
+/// encryption because AEAD overhead is fixed, so equal plaintext length ⇒
+/// equal ciphertext length.
 #[derive(Clone, Debug, Default)]
 struct SenderSpamStats {
     message_count: u64,
     spam_hits: u64,
-    last_content_hash: Option<[u8; 32]>,
+    recent_hashes: std::collections::VecDeque<[u8; 32]>,
+    /// (payload size, recipient short) for the last N messages — the
+    /// content-agnostic fan-out signal.
+    recent_size_dst: std::collections::VecDeque<(usize, [u8; 8])>,
+}
+
+impl SenderSpamStats {
+    const RECENT_HASHES_CAP: usize = 8;
+    const RECENT_SIZE_DST_CAP: usize = 16;
 }
 
 /// Spam scoring engine (receiver-side only).
@@ -154,14 +170,43 @@ impl SpamEngine {
             score += self.config.high_volume_penalty;
         }
 
-        // Duplicate content detection (simple hash check)
+        // Duplicate-content detection.
+        // (a) Exact-hash repeat against a short ring — catches plaintext floods
+        //     including A,B,A,B. Inert on E2EE ciphertext (see SenderSpamStats).
         let content_hash = compute_content_hash(&envelope.payload);
-        if let Some(last_hash) = stat.last_content_hash {
-            if last_hash == content_hash {
+        if stat.recent_hashes.contains(&content_hash) {
+            score += self.config.duplicate_content_penalty;
+        }
+        stat.recent_hashes.push_back(content_hash);
+        while stat.recent_hashes.len() > SenderSpamStats::RECENT_HASHES_CAP {
+            stat.recent_hashes.pop_front();
+        }
+        // (b) Content-agnostic fan-out signal: many recent messages of the
+        //     *same size* sent to *different* recipients (ABUSE_PREVENTION.md
+        //     §216). Survives encryption (fixed AEAD overhead ⇒ equal plaintext
+        //     length ⇒ equal ciphertext length). Requires both a size-majority
+        //     AND recipient diversity, so a burst of retransmits to one peer
+        //     (legitimate) does not trip it.
+        let mut dst = [0u8; 8];
+        let n = envelope.recipient_id.len().min(8);
+        dst[..n].copy_from_slice(&envelope.recipient_id[..n]);
+        if stat.recent_size_dst.len() >= SenderSpamStats::RECENT_SIZE_DST_CAP {
+            let this_size = envelope.payload.len();
+            let same_size = stat
+                .recent_size_dst
+                .iter()
+                .filter(|(s, _)| *s == this_size)
+                .count();
+            let distinct_dsts: std::collections::HashSet<_> =
+                stat.recent_size_dst.iter().map(|(_, d)| *d).collect();
+            if same_size * 4 >= stat.recent_size_dst.len() * 3 && distinct_dsts.len() >= 4 {
                 score += self.config.duplicate_content_penalty;
             }
         }
-        stat.last_content_hash = Some(content_hash);
+        stat.recent_size_dst.push_back((envelope.payload.len(), dst));
+        while stat.recent_size_dst.len() > SenderSpamStats::RECENT_SIZE_DST_CAP {
+            stat.recent_size_dst.pop_front();
+        }
 
         self.metrics.scored.fetch_add(1, Ordering::Relaxed);
 
@@ -463,6 +508,50 @@ mod tests {
 
         // Second message: same content -> duplicate penalty (0.5) -> likely spam
         assert_eq!(se.score(sender, &env).await, SpamDecision::LikelySpam);
+    }
+
+    /// PRY-16: the content-agnostic fan-out signal — same size to many distinct
+    /// recipients — must flag even when payloads differ (the E2EE-ciphertext
+    /// case). A same-size burst to ONE recipient must NOT trip it.
+    #[tokio::test]
+    async fn spam_same_size_fanout_flags_but_single_recipient_does_not() {
+        let config = SpamConfig {
+            min_payload_for_scoring: 10,
+            spam_threshold: 0.5,
+            prior_spam_prob: 0.1,
+            unknown_sender_penalty: 0.0,
+            high_volume_penalty: 0.0,
+            duplicate_content_penalty: 0.5,
+            ..Default::default()
+        };
+        let se = SpamEngine::new(config);
+        let blaster = [0xB1u8; 16];
+
+        // 20 messages, each 100 bytes of DISTINCT random-ish content, each to a
+        // different recipient — a classic broadcast-spam fan-out.
+        let mut last = SpamDecision::Clean;
+        for i in 0u8..20 {
+            let mut e = test_envelope(MessagePriority::P4, &vec![i; 100]);
+            e.recipient_id = vec![i; 32];
+            last = se.score(blaster, &e).await;
+        }
+        assert_eq!(
+            last, SpamDecision::LikelySpam,
+            "same-size fan-out to many recipients must be flagged"
+        );
+
+        // Same size, distinct content, but all to ONE recipient (legit retransmit).
+        let steady = [0x5Eu8; 16];
+        let mut last2 = SpamDecision::Clean;
+        for i in 0u8..20 {
+            let mut e = test_envelope(MessagePriority::P4, &vec![i; 100]);
+            e.recipient_id = vec![9u8; 32];
+            last2 = se.score(steady, &e).await;
+        }
+        assert_eq!(
+            last2, SpamDecision::Clean,
+            "a same-size burst to a single recipient must not be flagged"
+        );
     }
 
     #[tokio::test]
