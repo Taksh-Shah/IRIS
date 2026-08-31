@@ -371,6 +371,36 @@ docs). Commit: `3d269d0`. `cargo 1.97.1`. All §8 boundaries waived (Operator au
 
 ---
 
+## Run 6 — 2026-08-31 — Tier 1 tail + Tier 2 (batch 3)
+
+**Branch:** `main`. Baseline `91644f8` (Run 5 docs pushed). Commit `780f242`. `cargo 1.97.1`
+(GNU toolchain). All §8 file boundaries waived (Operator auth & scope). Budget: 6 pts
+(Tier 2 = 2 pts, Tier 1 = 1 pt) → PRY-3 (2) + PRY-30 (1) + PRY-34 (2) = 5 pts.
+
+### Per-finding results
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | PRY-3 | ✅ Fixed · Tier 2 (operator-delegated eng. call) | `780f242` | Deleted `select_eviction_candidates` (no production caller, priority-blind, 1-byte amounts); deleted 2 associated tests; updated quota module doc to "admission only — eviction owned by Section 3 (`iris-storage` / `routing/scf_eviction.rs`)." |
+| 2 | PRY-30 | ✅ Fixed · Tier 1 (§8 waived) | `780f242` | Deleted `evict_amount` (its only caller was deleted in PRY-3); deleted Kani proof `quota_eviction_bounded_and_positive` and its import from `kani_proofs.rs`; updated Kani module doc scope comment. |
+| 3 | PRY-34 | ✅ Fixed · Tier 2 | `780f242` | Added `policy.add_message(relay_sender, relay_size, sched_priority).await` to `enqueue_relay` after the rate-limit gate. `Rejected` → `InboundOutcome::RateLimited` + `MESSAGES_QUOTA_EXCEEDED_TOTAL` metric increment + debug log. Updated stale relay-path comment. |
+| + | PRY-33 test fallout | — | `780f242` | Discovered during Run 6 testing. Two sub-issues: (1) 3 message-engine tests + 1 routing test called `send_message(envelope_for(BOB,...))` with no key directory — PRY-33's fail-closed fix now returns `KeyUnavailable`. Fix: added `MemoryKeyDirectory` with fake `BOB=[0xBB;32]` key to all affected test engines. (2) `seal_outbound` pre-set `payload_size = sealed_len = n+16` but `DevCryptoProvider.encrypt()` returns plaintext unchanged (n bytes, no AEAD tag) — `codec::encode` rejected the envelope with `PayloadSizeMismatch`. Fix: set `envelope.payload_size = ciphertext.len() as u64` after `encrypt()` returns (no-op for real AEAD where `sealed_len == ciphertext.len()`). |
+
+### Batch closeout
+
+- `cargo +stable-x86_64-pc-windows-gnu test -p iris-core --lib`: **754 lib tests pass, 0 fail** (finished in 21.09s).
+- Only the 2 pre-existing `protocol_conformance.rs` framing failures remain (baseline, out of scope).
+- 4 files changed, 58 insertions(+), 126 deletions(-).
+- `cargo fmt --check`: crate-wide pre-existing failure (unchanged).
+
+### Tier 2 status after Run 6
+
+**7 ✅ / 4 ⬜ / 2 🔒 (PRY-7 tail, PRY-11).** Remaining ⬜: PRY-2, PRY-4, PRY-6, PRY-32.
+Tier 1 tail: PRY-30 → ✅ (was 🔒). PRY-13 remains 🔒 (concurrency/lock refactor).
+Overall: 29 ✅, 4 ⬜, 3 🔒. Not pushed — waiting on explicit go-signal.
+
+---
+
 ## Operator authorization & scope note — 2026-08-31 (docs-only, no code)
 
 Recorded in `priyam_problems.md` → *Operator authorization & scope*. Summary:

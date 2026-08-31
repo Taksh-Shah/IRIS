@@ -84,8 +84,8 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 5 fixed **PRY-29** (Tier 1, unblocked by §8 waiver — `RootRequirement` threading), **PRY-9** (Tier 2 — `KeyRotation→Drill` mismap removed from ACL + engine routing), **PRY-33** (Tier 2 — `seal_outbound` fail-closed). Commit `3d269d0`.
-**Next session:** PRY-2, PRY-3, PRY-4, PRY-6, PRY-32, PRY-34 (and PRY-30 unblocked; PRY-7 tail). PRY-11 🔒 product-scope deferred.
+**Last updated:** 2026-08-31 — Run 6 fixed **PRY-3** (Tier 2 — deleted `select_eviction_candidates`; quota layer = admission only), **PRY-30** (Tier 1, §8 waived — deleted `evict_amount` + Kani proof), **PRY-34** (Tier 2 — `add_message` quota accounting added to relay path in `enqueue_relay`); also fixed PRY-33 test fallout (4 tests: missing key directory + `payload_size` mismatch). Commit `780f242`.
+**Next session:** PRY-2, PRY-4, PRY-6, PRY-32 (and PRY-7 tail). PRY-11 🔒 product-scope deferred.
 
 ---
 
@@ -131,9 +131,9 @@ on the operator's explicit go-signal.**
 | Tier | Name | Findings | ⬜ | 🔵 | ✅/🟢 | 🔒 | ❌ | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
-| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 15 | 2 | 0 | Tier 0 complete |
-| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 5 | 0 | 6 | 2 | 0 | authorized in full; work starts on operator go-signal. SOS-only findings (PRY-11) deferred by product scope |
-| **Total** | | **36** | **5** | **0** | **26** | **4** | **0** | |
+| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 16 | 1 | 0 | Tier 0 complete |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 4 | 0 | 7 | 2 | 0 | authorized in full; work starts on operator go-signal. SOS-only findings (PRY-11) deferred by product scope |
+| **Total** | | **36** | **4** | **0** | **29** | **3** | **0** | |
 
 Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, still
 disproportionate); **PRY-29** & **PRY-30** were 🔒 on the §8 file boundary — that boundary is
@@ -373,7 +373,7 @@ and what "reject a P0" means end to end. Do not fix in isolation.
 ### PRY-3 — Quota eviction is entirely unimplemented and priority-blind
 
 - **Severity:** High
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `780f242` · 2026-08-31 (§8 waived, operator-delegated engineering call) — deleted `select_eviction_candidates`, its two tests (`quota_eviction_min_ttl_and_break`, `eviction_candidates_oldest_first`), and updated the module doc to state "admission only." Section 3 (`iris-storage` / `routing/scf_eviction.rs`) owns physical eviction with full per-message priority knowledge. Resolved together with PRY-30 and the Kani proof.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/quota.rs:225-263` (`select_eviction_candidates`)
 
@@ -1580,7 +1580,7 @@ and their tests. EMERG-001 owner should review.
 ### PRY-30 — `evict_amount` returns 1 byte for a below-quota account
 
 - **Severity:** Low
-- **Fix status:** 🔒 Blocked · Tier 1 · 2026-08-31 — coupled to Tier-2 PRY-3 (the `select_eviction_candidates` caller) and requires updating the Kani proof `quota_eviction_bounded_and_positive` in `kani_proofs.rs`, which is Section 2-owned (§8). Fix `evict_amount` + PRY-3 + the proof together under a Section 2 agreement.
+- **Fix status:** ✅ Fixed · Tier 1 · commit `780f242` · 2026-08-31 (§8 waived) — deleted `evict_amount` (its only caller `select_eviction_candidates` was deleted in PRY-3) and the Kani proof `quota_eviction_bounded_and_positive` (which targeted the deleted function). Updated `kani_proofs.rs` module doc scope comment. Resolved together with PRY-3.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/quota.rs:63-72`
 
@@ -1788,7 +1788,7 @@ regression, so it is worth the coordination.
 ### PRY-34 — Relayed traffic bypasses per-sender storage quota accounting
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `780f242` · 2026-08-31 (§8 waived) — added `policy.add_message(relay_sender, relay_size, sched_priority)` to `enqueue_relay` after the rate-limit gate; `Rejected` → `InboundOutcome::RateLimited` with metric increment and debug log. Updated the stale inline comment on the relay path.
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/message_engine/mod.rs:995-1030` (relay path, Section 2); `crates/iris-core/src/security/quota.rs` (Section 1)
 
