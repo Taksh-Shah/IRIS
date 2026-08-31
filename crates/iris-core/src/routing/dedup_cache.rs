@@ -14,7 +14,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use crate::message_engine::dedup::{BloomFilter, BLOOM_FPR};
+use crate::message_engine::dedup::BloomFilter;
 use crate::protocol::MessageId;
 
 /// Per-process key for the routing-layer Bloom filter.
@@ -67,8 +67,12 @@ const EXACT_WINDOW: Duration = Duration::from_secs(3600);
 /// Bloom generation lifetime — rotate every 24 h.
 const BLOOM_WINDOW: Duration = Duration::from_secs(24 * 3600);
 
-/// Per-generation capacity: 200 k message ids, 0.1% FPR → ~351 KB.
-const WINDOW_CAPACITY: usize = 200_000;
+// ROUT-26 fix (2026-08-31): REQ-ROUTE-NF-004 mandates 64 KB per bloom generation.
+// 64 KB = 512,000 bits; at 1% FPR (k=7) that supports ≈53,000 IDs per window.
+// The requirement's "400k IDs in 64 KB" is mathematically inconsistent (requires
+// ~470 KB); the memory bound wins. Both generations stay within the 128 KB total.
+const WINDOW_CAPACITY: usize = 53_000;
+const FORWARD_BLOOM_FPR: f64 = 0.01;
 
 /// Recently-forwarded message window.
 #[derive(Debug)]
@@ -89,8 +93,8 @@ impl Default for ForwardedCache {
     fn default() -> Self {
         let clock = TimePoint::Wall(Instant::now());
         ForwardedCache {
-            bloom_cur: BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
-            bloom_prev: BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
+            bloom_cur: BloomFilter::new(WINDOW_CAPACITY, FORWARD_BLOOM_FPR),
+            bloom_prev: BloomFilter::new(WINDOW_CAPACITY, FORWARD_BLOOM_FPR),
             bloom_rotated_at: clock.now(),
             exact: HashSet::new(),
             ring: VecDeque::new(),
@@ -117,7 +121,7 @@ impl ForwardedCache {
     /// - Not in either bloom generation → definitely not a duplicate.
     /// - In exact (≤ 1 h ago) → confirmed duplicate.
     /// - Bloom hit but not in exact (1 h … 24 h ago) → treat as duplicate,
-    ///   accepting the 0.1% FPR the design specifies.
+    ///   accepting the 1% FPR at the 64 KB budget (REQ-ROUTE-NF-004, ROUT-26 fix).
     pub fn is_duplicate(&self, id: &MessageId) -> bool {
         let h = forwarded_digest(id);
         if !self.bloom_cur.contains(h) && !self.bloom_prev.contains(h) {
@@ -157,7 +161,7 @@ impl ForwardedCache {
         if now.saturating_sub(self.bloom_rotated_at) >= BLOOM_WINDOW {
             self.bloom_prev = std::mem::replace(
                 &mut self.bloom_cur,
-                BloomFilter::new(WINDOW_CAPACITY, BLOOM_FPR),
+                BloomFilter::new(WINDOW_CAPACITY, FORWARD_BLOOM_FPR),
             );
             self.bloom_rotated_at = now;
         }

@@ -59,7 +59,10 @@ const BACKOFF_JITTER: f64 = 0.25;
 /// Static capability set for the Internet transport.
 pub fn internet_capabilities() -> TransportCapabilities {
     TransportCapabilities {
-        max_message_size: MAX_FRAME_BYTES,
+        // PS-7 fix: report payload capacity (frame minus 5-byte header), not total frame size.
+        // lora.rs reports MAX_PAYLOAD_BYTES = 237 (payload only); both now report the same
+        // semantic: max bytes of IRIS message content, excluding the wire frame header.
+        max_message_size: MAX_FRAME_BYTES - FRAME_HEADER_LEN,
         supports_broadcast: false,
         supports_unicast: true,
         supports_multicast: false,

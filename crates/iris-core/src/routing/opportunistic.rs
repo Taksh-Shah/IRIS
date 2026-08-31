@@ -21,9 +21,14 @@ use crate::message::{MessagePriority, PeerId};
 use crate::protocol::MessageId;
 use crate::routing::prophet::{DeliveryPredictability, ProphetConfig};
 
-/// Default binary spray budget (≈10–15% of M=50–100, Spyropoulos ToN 2008;
-/// EXP-ROUTE-002 validated).
-pub const DEFAULT_SPRAY_L: u32 = 8;
+/// Default binary spray budget for P1 (highest-priority spray class).
+///
+/// Resolution of ROUT-23 (2026-08-31): OPPORTUNISTIC_ROUTING.md §3.1 is the
+/// authoritative spec (P1=5, P2=3, P3=2, P4+=1 direct-only). ROUTE2_DESIGN.md's
+/// generic "P1 = L, P2 = L" (where L=8 was cited) conflated the per-priority
+/// column with the constant; ROUTE2_DESIGN.md has been updated to match.
+/// DEFAULT_SPRAY_L is now the P1 value (5), which is reachable.
+pub const DEFAULT_SPRAY_L: u32 = 5;
 
 /// Maximum number of (message_id, destination) entries in `max_dp_seen`
 /// (ROUT-14 capacity bound). Matches the PRoPHET table limit.
@@ -67,21 +72,20 @@ impl SprayBudget {
         }
     }
 
-    /// L per priority band: P0 → epidemic (unlimited), P1–P2 → L,
-    /// P3 → half-L floor 2, P4–P6 → 3 (IRIS standard multi-hop class — PAL
-    /// L0 `max_hops_for_priority` is 3, so direct-only would strand the
-    /// store-carry class), P7 → 1. Tied to hop budgets: copies never exceed
-    /// the L0 priority hop budget.
-    pub fn l_for_priority(p: MessagePriority, hop_budget: u8) -> u32 {
+    /// L per priority band per OPPORTUNISTIC_ROUTING.md §3.1 (ROUT-23 fix):
+    ///   P0 → epidemic (unlimited), P1 → 5, P2 → 3, P3 → 2, P4+ → 1 (direct-only).
+    /// Both spec tables agree P4+ is direct-only; the previous code shipped 3
+    /// for P4–P6, causing 3× overhead regression on the bulk traffic class.
+    /// `hop_budget` is kept for API compatibility but no longer caps L since
+    /// the per-priority values are already at or below their hop-budget ceiling.
+    pub fn l_for_priority(p: MessagePriority, _hop_budget: u8) -> u32 {
         match p {
-            MessagePriority::P0 => return u32::MAX, // epidemic semantics
-            MessagePriority::P1 | MessagePriority::P2 => DEFAULT_SPRAY_L,
-            MessagePriority::P3 => 4,
-            MessagePriority::P4 | MessagePriority::P5 | MessagePriority::P6 => 3,
-            MessagePriority::P7 => 1,
+            MessagePriority::P0 => u32::MAX, // epidemic semantics
+            MessagePriority::P1 => 5,
+            MessagePriority::P2 => 3,
+            MessagePriority::P3 => 2,
+            _ => 1, // P4–P7: direct-only (both spec tables agree)
         }
-        .min(hop_budget.max(1) as u32)
-        .max(1)
     }
 
     /// Binary handoff: `give = floor(remaining/2)` when still spraying.
@@ -359,17 +363,14 @@ mod tests {
     }
 
     #[test]
-    fn spray_l_by_priority_respects_hop_budget() {
-        assert_eq!(
-            SprayBudget::l_for_priority(MessagePriority::P0, 3),
-            u32::MAX
-        );
+    fn spray_l_by_priority_matches_spec() {
+        // ROUT-23 fix: values now match OPPORTUNISTIC_ROUTING.md §3.1.
+        assert_eq!(SprayBudget::l_for_priority(MessagePriority::P0, 3), u32::MAX);
         assert_eq!(SprayBudget::l_for_priority(MessagePriority::P1, 5), 5);
-        assert_eq!(SprayBudget::l_for_priority(MessagePriority::P3, 5), 4);
-        assert_eq!(SprayBudget::l_for_priority(MessagePriority::P4, 3), 3);
+        assert_eq!(SprayBudget::l_for_priority(MessagePriority::P2, 5), 3);
+        assert_eq!(SprayBudget::l_for_priority(MessagePriority::P3, 5), 2);
+        assert_eq!(SprayBudget::l_for_priority(MessagePriority::P4, 3), 1);
         assert_eq!(SprayBudget::l_for_priority(MessagePriority::P7, 3), 1);
-        // Budget never exceeds hop budget.
-        assert!(SprayBudget::l_for_priority(MessagePriority::P1, 2) <= 2);
     }
 
     #[test]
@@ -557,8 +558,7 @@ mod tests {
 
     #[test]
     fn rout25_spray_fallback_shares_one_budget_across_calls() {
-        // l_for_priority(P1, hop_budget=5) = min(DEFAULT_SPRAY_L=8, 5) = 5
-        // (ROUT-23, still open, means the hop budget clamps L here).
+        // ROUT-23 fixed: l_for_priority(P1, _) = 5 (OPPORTUNISTIC_ROUTING.md §3.1).
         // SprayBudget::new(5).handoff() sequence: 5->3 (give 2), 3->2
         // (give 1), 2->1 (give 1), then wait phase (remaining<=1) — three
         // successful handoffs to three distinct contacts, then the fourth

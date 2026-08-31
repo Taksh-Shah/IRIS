@@ -62,11 +62,12 @@ force symmetry (RES-0011 §b9).
 - On contact with a fresh node: **binary** handoff `give = floor(remaining/2)`
   (keep `remaining − give`); in wait phase (`remaining ≤ 1`) only deliver
   directly to the recipient.
-- `L = 8` default (≈10–15% of M=50–100, ToN 2008; EXP-ROUTE-002 validated).
+- `DEFAULT_SPRAY_L = 5` (P1 budget; ROUT-23 resolution 2026-08-31 — authoritative
+  source is OPPORTUNISTIC_ROUTING.md §3.1; EXP-ROUTE-002 validated at L=5).
 - Per-priority spray cap: P0 → unlimited (epidemic semantics unchanged),
-  P1 = L, P2 = L, P3 = max(4, …), P4+ = 1 (direct-only), default L row used
-  when no history. Ties spray cap to hop budgets where `L > budget` (no more
-  than `budget` distinct hops).
+  P1 = 5, P2 = 3, P3 = 2, P4+ = 1 (direct-only). Values are per-priority
+  constants; hop-budget capping removed (all values already ≤ their priority
+  hop-budget ceiling).
 
 ## State budget
 
@@ -111,9 +112,9 @@ exchange, `TOP_N_DP = 32`).
 3. Delivery ratio improves or matches L0 in SIM sparse-mobility →
    `community_ferry` scenario: opportunistic delivery ≥ baseline; overhead
    ratio lower.
-4. Bounded overhead (no duplicate explosion) → spray cap L=8 + GTMX+;
-   `overhead_ratio` measured; property test: copies never exceed L×2 across
-   a 50-node random contact graph.
+4. Bounded overhead (no duplicate explosion) → per-priority spray caps (P1=5,
+   P2=3, P3=2, P4+=1) + GTMX+; `overhead_ratio` measured; property test:
+   copies never exceed L×2 across a 50-node random contact graph.
 5. Graceful fallback to L0 when no history → empty DP table returns
    `NoAdvantage` → L0 Flood/Store unchanged; `P_first_threshold` gating;
    cold-start spray path tested.

@@ -89,7 +89,7 @@ Where P_init = 0.75, β = 0.25 (IRIS defaults, configurable).
 
 **REQ-ROUTE-NF-003:** The bundle store MUST enforce a configurable storage limit (default: 256 MB on RPi Zero). When the limit is reached, bundles are evicted lowest-priority-first, oldest-first within same priority. P0 bundles are never evicted.
 
-**REQ-ROUTE-NF-004:** The Bloom filter for deduplication MUST be bounded at 64 KB, providing < 1% false positive rate for 400,000 bundle IDs (k=7 hash functions, m=512,000 bits).
+**REQ-ROUTE-NF-004:** The Bloom filter for deduplication MUST be bounded at 64 KB per generation (two generations → 128 KB total), providing < 1% false positive rate. Implemented at ≈53,000 IDs per generation (k=7, m=512,000 bits) to meet the memory bound. **Note (ROUT-26, 2026-08-31):** The original "400,000 IDs at <1% FPR in 64 KB" is mathematically inconsistent — 400k IDs at 1% FPR requires ≈470 KB, not 64 KB. Resolution: the 64 KB memory constraint is authoritative; capacity is set to ≈53,000 per window.
 
 ### 3.2 Latency Budgets
 

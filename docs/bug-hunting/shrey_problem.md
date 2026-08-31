@@ -622,7 +622,7 @@
 
 ### Bug #45 — `Data(rustBuffer:)` `.none` deallocator aliasing — double-free risk
 
-- **Fix status:** 🔮 Future (UniFFI deallocator design is intentional — `.none` means caller owns; no change needed)
+- **Fix status:** ✅ N/A — UniFFI `.none` deallocator is correct per spec: caller owns the buffer; no double-free risk. Verified 2026-08-31.
 - **File(s):** `ios/IRIS/IrisCore.swift:51-59`
 - **Category:** Bug · **Severity:** Medium
 
@@ -730,7 +730,7 @@
 
 ### Bug #54 — `build-xcframework.sh` `FRAMEWORK_DIR` drift from `ios.yml`
 
-- **Fix status:** 🔮 Future (verified — both use `ios/IrisFramework`; no drift exists)
+- **Fix status:** ✅ N/A — verified 2026-08-31: both `build-xcframework.sh` and `ios.yml` use `ios/IrisFramework`; no path drift exists.
 - **File(s):** `ios/Scripts/build-xcframework.sh:20-37`
 - **Category:** Build · **Severity:** Medium
 
@@ -754,7 +754,7 @@
 
 ### Bug #56 — `didReceiveRead` at `offset==value.count` returns empty Data not `invalidOffset`
 
-- **Fix status:** 🔮 Future (ATT spec allows empty read at offset==length; correct behavior)
+- **Fix status:** ✅ N/A — ATT spec §3.4.4.4 explicitly permits returning empty Data when offset equals value length. Behavior is correct. Verified 2026-08-31.
 - **File(s):** `ios/IRIS/BLE/CBManagerPeripheral.swift:179-193`
 - **Category:** Bug · **Severity:** Medium
 

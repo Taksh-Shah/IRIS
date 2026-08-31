@@ -307,7 +307,7 @@ GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
 
 **Dependencies / blast radius:**
 - More payloads will legitimately exceed the two-fragment limit on small-MTU links — confirm against `MSG_DESIGN.md` R8.
-- **Section 3 coordination (most important):** `max_message_size` is reported inconsistently: `lora.rs` gives a payload ceiling (237), `internet.rs` gives a frame total (1 MB). Must be reconciled before any MTU-budget fix is correct.
+- **Section 3 coordination (most important):** `max_message_size` inconsistency fixed 2026-08-31 — `internet.rs` now reports payload ceiling (`MAX_FRAME_BYTES - FRAME_HEADER_LEN`), matching `lora.rs`'s `MAX_PAYLOAD_BYTES` (237 B) semantic.
 
 ---
 
@@ -571,7 +571,7 @@ GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
 
 ### PS-7 — `serialize_for_transport` returns `Envelope`s, forcing triple encode per outbound message
 
-- **Fix status:** 🔒 Blocked · Section 3 max_message_size inconsistency (lora.rs payload ceiling vs internet.rs frame total) must be reconciled first
+- **Fix status:** ⬜ Unblocked 2026-08-31 — `internet.rs` now reports `MAX_FRAME_BYTES - FRAME_HEADER_LEN` (payload ceiling), matching `lora.rs`'s `MAX_PAYLOAD_BYTES` semantic. PS-7 implementation (return-type change to `Vec<(MessageId, Vec<u8>)>`) is ready to proceed.
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1091`, `:1188`, `:1239`
 - **Category:** architecture · **Priority:** Would help, not urgent — implement as part of PM-10's fix
 - **Tier:** 3
