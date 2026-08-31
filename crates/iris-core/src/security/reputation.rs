@@ -147,7 +147,10 @@ impl ReputationEngine {
             (&mut c.decay_factor, d.decay_factor),
             (&mut c.positive_weight, d.positive_weight),
             (&mut c.negative_weight, d.negative_weight),
-            (&mut c.secondhand_positive_weight, d.secondhand_positive_weight),
+            (
+                &mut c.secondhand_positive_weight,
+                d.secondhand_positive_weight,
+            ),
             (&mut c.audit_weight, d.audit_weight),
         ] {
             if !field.is_finite() {
@@ -194,10 +197,7 @@ impl ReputationEngine {
         // Enforce max peers
         if peers.len() >= self.config.max_peers && !peers.contains_key(&peer) {
             // Evict lowest score peer (simple)
-            if let Some((k, _)) = peers
-                .iter()
-                .min_by(|a, b| a.1.score.total_cmp(&b.1.score))
-            {
+            if let Some((k, _)) = peers.iter().min_by(|a, b| a.1.score.total_cmp(&b.1.score)) {
                 let k = *k;
                 peers.remove(&k);
             }
@@ -272,7 +272,12 @@ impl ReputationEngine {
         // SEC-RT-07: admission into the verified registry is the gate for
         // second-hand positives — recorded separately from per-peer scores so
         // the CORE rule check is real (not a per-target lockout list).
-        self.verified_peers.write().await.insert(peer);
+        // PRY-20: the registry insert is idempotent, but the +0.1 trust bump
+        // must only apply on the *first* registration — `HashSet::insert`
+        // returns false if the peer was already verified. Re-running
+        // provisioning, or any network-driven re-registration, previously
+        // pumped the target's routing weight to `max_score` for free.
+        let newly_verified = self.verified_peers.write().await.insert(peer);
         let mut peers = self.peers.write().await;
         let rep = peers.entry(peer).or_insert_with(|| PeerReputation {
             score: self.config.initial_score,
@@ -280,8 +285,10 @@ impl ReputationEngine {
             last_update: Instant::now(),
             verified_vouchers: Vec::new(),
         });
-        // Verified peers start with slightly higher trust
-        rep.score = (rep.score + 0.1).min(self.config.max_score);
+        if newly_verified {
+            // Verified peers start with slightly higher trust.
+            rep.score = (rep.score + 0.1).min(self.config.max_score);
+        }
     }
 
     /// Periodic decay toward initial_score (call from GC task).
@@ -670,6 +677,42 @@ mod tests {
         re.reset().await;
         assert_eq!(re.routing_weight(peer).await, 0.5);
         assert!(re.all_scores().await.is_empty());
+    }
+
+    /// PRY-20: the +0.1 trust bump must apply once, not on every call.
+    #[tokio::test]
+    async fn repeated_register_verified_peer_does_not_stack_bonus() {
+        let re = ReputationEngine::new(ReputationConfig {
+            min_observations: 1,
+            ..Default::default()
+        });
+        let peer = [16u8; 16];
+
+        re.register_verified_peer(peer).await;
+        let after_first = re
+            .all_scores()
+            .await
+            .into_iter()
+            .find(|(p, _, _)| *p == peer)
+            .map(|(_, s, _)| s)
+            .unwrap();
+
+        for _ in 0..20 {
+            re.register_verified_peer(peer).await;
+        }
+        let after_many = re
+            .all_scores()
+            .await
+            .into_iter()
+            .find(|(p, _, _)| *p == peer)
+            .map(|(_, s, _)| s)
+            .unwrap();
+
+        assert_eq!(
+            after_first, after_many,
+            "re-registration must not pump score (was {after_first} -> {after_many})"
+        );
+        assert!(after_many < 1.0, "score not driven to max by repeat calls");
     }
 
     #[tokio::test]
