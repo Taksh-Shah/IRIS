@@ -44,6 +44,18 @@ impl Default for ReplayConfig {
 
 /// High-water mark for a sender: (timestamp, sequence).
 /// Strictly increasing (ts,seq) pairs accepted; <= high-water = replay.
+///
+/// PRY-7 (known limitation): the engine currently supplies `seq` as
+/// [`crate::protocol::MessageId::sequence_hint`] — the first 8 bytes of a
+/// UUIDv7-style id, i.e. a millisecond timestamp followed by ~16 random bits.
+/// It is **not** a per-sender monotonic counter: two honest messages minted in
+/// the same millisecond and arriving in the same wall-clock second are ordered
+/// by a random tiebreak, so the numerically-smaller one is rejected as
+/// `Replay` regardless of send order. A burst sender (SOS retransmit train,
+/// multi-part status, re-fragmented ADUs) loses ~50 % of any millisecond
+/// collision. Fixing this correctly means either carrying a real counter or
+/// switching to a bounded per-`(sender, ts)` seen-set — both **widen** an
+/// accept path and are gated (Tier 2, needs the Section 2 `message_id` owner).
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HighWaterMark {
     pub timestamp: u64, // DTN-time (monotonic or wall-clock)
@@ -346,7 +358,10 @@ impl ReplayEngine {
     /// Check freshness window and high-water for an inbound message.
     /// `sender` = 16-byte sender short ID.
     /// `ts` = message timestamp (DTN-time, unix seconds).
-    /// `seq` = message sequence (per-sender monotonic counter).
+    /// `seq` = message sequence. See [`HighWaterMark`] — PRY-7: this is
+    ///   currently `MessageId::sequence_hint()`, an id-derived value that is
+    ///   only *roughly* monotonic across milliseconds, not a true per-sender
+    ///   counter.
     /// Returns ReplayDecision.
     pub async fn check(&self, sender: SenderShort, ts: u64, seq: u64) -> ReplayDecision {
         let now = SystemTime::now()
@@ -516,6 +531,27 @@ pub struct ReplayMetricsSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// PRY-7 (documents current behaviour, not desired behaviour): because
+    /// `seq` is an id-derived hint rather than a real counter, two same-second
+    /// messages presented out of `seq` order — exactly what a millisecond
+    /// collision on `MessageId::sequence_hint()` produces — reject the second
+    /// one as `Replay` even though it is a distinct honest message. A future
+    /// Tier 2 fix that carries a true counter must consciously flip this
+    /// assertion (it widens an accept path — see `HighWaterMark` docs).
+    #[test]
+    fn same_timestamp_lower_seq_is_rejected_after_higher() {
+        let mut hw = HighWaterMark::default();
+        assert!(hw.check_and_advance(1_000, 500), "first message accepted");
+        assert!(
+            !hw.check_and_advance(1_000, 400),
+            "same ts, lower seq — currently Replay (PRY-7 false reject)"
+        );
+        assert!(
+            hw.check_and_advance(1_001, 1),
+            "next second always wins regardless of seq"
+        );
+    }
 
     #[tokio::test]
     async fn replay_freshness_too_old() {
