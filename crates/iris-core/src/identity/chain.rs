@@ -50,6 +50,8 @@ pub enum ChainError {
     Expired(usize),
     #[error("chain: final identity does not match envelope sender_id")]
     SenderMismatch,
+    #[error("chain: envelope sender_id is {0} bytes (expected 16 abbreviated or 32 full)")]
+    BadSenderIdLength(usize),
     #[error("chain: element {0} is revoked")]
     RevokedElement(usize),
     #[error("chain: root element's certified key differs from the trust store's entry for the root — stale certificate")]
@@ -164,8 +166,18 @@ pub fn verify_chain(
     }
 
     // Rule 6: final element anchors the message signer.
+    // PRY-35: `identity_pubkey` is always 32 bytes; P0 abbreviated envelopes
+    // carry a 16-byte `sender_id` (= SHA-256(pubkey)[..16]). A raw slice
+    // compare against a 16-byte id is *always* unequal, so every abbreviated
+    // emergency broadcast that carries a chain was rejected before any real
+    // check ran. Compare against the correct representation for each length.
     let final_ad = ads.last().expect("non-empty by the Empty check");
-    if final_ad.identity_pubkey.as_slice() != sender_id {
+    let matches = match sender_id.len() {
+        32 => final_ad.identity_pubkey.as_slice() == sender_id,
+        16 => crate::identity::peer_id::peer_short(&final_ad.identity_pubkey).as_slice() == sender_id,
+        other => return Err(ChainError::BadSenderIdLength(other)),
+    };
+    if !matches {
         return Err(ChainError::SenderMismatch);
     }
 
@@ -417,6 +429,29 @@ mod tests {
         assert_eq!(
             verify_chain(&chain, &trust, &wrong),
             Err(ChainError::SenderMismatch)
+        );
+    }
+
+    /// PRY-35: an abbreviated (16-byte) `sender_id` must be compared against
+    /// `peer_short(identity_pubkey)`, not raw-sliced (always unequal). Pre-fix
+    /// every abbreviated emergency broadcast carrying a chain was `SenderMismatch`.
+    #[test]
+    fn abbreviated_sender_id_matches_via_peer_short() {
+        let (trust, root, x) = trusted_root();
+        let chain = vec![ser(&ad(&root, &x, 0, 0))];
+
+        let short = crate::identity::peer_id::peer_short(&root.verifying_bytes());
+        assert_eq!(verify_chain(&chain, &trust, &short), Ok(()));
+
+        // A wrong 16-byte id still mismatches.
+        assert_eq!(
+            verify_chain(&chain, &trust, &[0x00u8; 16]),
+            Err(ChainError::SenderMismatch)
+        );
+        // Any other length is an explicit error, not an incidental mismatch.
+        assert_eq!(
+            verify_chain(&chain, &trust, &[0u8; 20]),
+            Err(ChainError::BadSenderIdLength(20))
         );
     }
 }
