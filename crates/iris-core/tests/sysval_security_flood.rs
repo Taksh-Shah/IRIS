@@ -116,9 +116,14 @@ async fn p0_never_dropped_even_under_full_throttle() {
     let s = sender(9);
     for _ in 0..50 {
         assert_eq!(
-            rl.check(s, MessageClass::P0).await,
+            rl.check_with_claim(
+                s,
+                MessageClass::P0,
+                iris_core::security::EmergencyClaim::Emergency,
+            )
+            .await,
             iris_core::security::rate_limiter::RateLimitDecision::Exempt,
-            "P0 is exempt everywhere, always"
+            "genuine P0 emergency content is exempt everywhere, always"
         );
     }
 }
