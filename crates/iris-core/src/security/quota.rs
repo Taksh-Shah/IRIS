@@ -68,6 +68,10 @@ impl Default for QuotaConfig {
 #[derive(Clone, Debug, Default)]
 struct SenderAccount {
     used_bytes: u64,
+    /// PRY-2: of `used_bytes`, how many were admitted through the P0/P1
+    /// reserved pool. Lets `remove_message` return pool capacity without the
+    /// caller having to thread the priority through.
+    priority_used_bytes: u64,
     message_count: u64,
     oldest_message: Option<Instant>,
     last_activity: Option<Instant>,
@@ -91,6 +95,11 @@ pub struct QuotaManager {
     metrics: QuotaMetrics,
     /// Total bytes across all senders.
     total_bytes: AtomicU64,
+    /// PRY-2: bytes currently held by P0/P1 messages, bounded by
+    /// `config.priority_reserved_pool_bytes`. Previously the reserved pool was
+    /// a config field read by nothing — a single sender marking traffic P0
+    /// could drive accounting to `u64::MAX`.
+    priority_bytes: AtomicU64,
 }
 
 #[derive(Default, Debug)]
@@ -109,6 +118,7 @@ impl QuotaManager {
             config,
             metrics: QuotaMetrics::default(),
             total_bytes: AtomicU64::new(0),
+            priority_bytes: AtomicU64::new(0),
         }
     }
 
@@ -136,14 +146,33 @@ impl QuotaManager {
 
         let used = account.map(|a| a.used_bytes).unwrap_or(0);
         let new_total = used.saturating_add(message_size);
+        let grand_total = self
+            .total_bytes
+            .load(Ordering::Relaxed)
+            .saturating_add(message_size);
 
-        // P0/P1 always accepted (priority-reserved pool)
+        // PRY-2: P0/P1 draw from the reserved pool — exempt from the per-sender
+        // quota, but NOT unbounded. Once the pool or the global ceiling is full
+        // a P0/P1 message is Rejected (it must fail loudly to the sender's
+        // engine, not silently inflate accounting).
         if matches!(priority, MessagePriority::P0 | MessagePriority::P1) {
-            return QuotaDecision::PriorityExempt;
+            let new_priority = self
+                .priority_bytes
+                .load(Ordering::Relaxed)
+                .saturating_add(message_size);
+            if new_priority <= self.config.priority_reserved_pool_bytes
+                && grand_total <= self.config.total_quota_bytes
+            {
+                return QuotaDecision::PriorityExempt;
+            }
+            return QuotaDecision::Rejected;
         }
 
-        // Check per-sender quota
-        if new_total > self.config.default_sender_quota_bytes {
+        // Check per-sender quota + the global ceiling (PRY-2: previously
+        // `total_quota_bytes` was read by nothing).
+        if new_total > self.config.default_sender_quota_bytes
+            || grand_total > self.config.total_quota_bytes
+        {
             return QuotaDecision::Rejected;
         }
 
@@ -160,29 +189,46 @@ impl QuotaManager {
     ) -> QuotaDecision {
         let mut accounts = self.accounts.write().await;
         let account = accounts.entry(sender).or_insert_with(|| SenderAccount {
-            used_bytes: 0,
-            message_count: 0,
-            oldest_message: None,
             last_activity: Some(Instant::now()),
+            ..Default::default()
         });
 
         let new_total = account.used_bytes.saturating_add(message_size);
+        let grand_total = self
+            .total_bytes
+            .load(Ordering::Relaxed)
+            .saturating_add(message_size);
 
-        // P0/P1 always accepted via priority pool
+        // PRY-2: P0/P1 via the reserved pool — bounded by
+        // `priority_reserved_pool_bytes` and the global `total_quota_bytes`.
         if matches!(priority, MessagePriority::P0 | MessagePriority::P1) {
+            let new_priority = self
+                .priority_bytes
+                .load(Ordering::Relaxed)
+                .saturating_add(message_size);
+            if new_priority > self.config.priority_reserved_pool_bytes
+                || grand_total > self.config.total_quota_bytes
+            {
+                self.metrics.rejected.fetch_add(1, Ordering::Relaxed);
+                return QuotaDecision::Rejected;
+            }
             account.used_bytes = new_total;
+            account.priority_used_bytes = account.priority_used_bytes.saturating_add(message_size);
             account.message_count += 1;
             account.last_activity = Some(Instant::now());
             if account.oldest_message.is_none() {
                 account.oldest_message = Some(Instant::now());
             }
             atomic_saturating_add(&self.total_bytes, message_size);
+            atomic_saturating_add(&self.priority_bytes, message_size);
             self.metrics.priority_exempt.fetch_add(1, Ordering::Relaxed);
             return QuotaDecision::PriorityExempt;
         }
 
-        // Check per-sender quota
-        if new_total > self.config.default_sender_quota_bytes {
+        // Check per-sender quota + the global ceiling.
+        if new_total > self.config.default_sender_quota_bytes
+            || grand_total > self.config.total_quota_bytes
+        {
             self.metrics.rejected.fetch_add(1, Ordering::Relaxed);
             return QuotaDecision::Rejected;
         }
@@ -205,6 +251,12 @@ impl QuotaManager {
             account.used_bytes = account.used_bytes.saturating_sub(message_size);
             account.message_count = account.message_count.saturating_sub(1);
             atomic_saturating_sub(&self.total_bytes, message_size);
+            // PRY-2: attribute the freed bytes to the reserved pool first (the
+            // caller does not pass priority here). Conservative — frees pool
+            // capacity no later than it should, never over-releases.
+            let freed_priority = account.priority_used_bytes.min(message_size);
+            account.priority_used_bytes -= freed_priority;
+            atomic_saturating_sub(&self.priority_bytes, freed_priority);
             // Clean up empty accounts
             if account.message_count == 0 {
                 accounts.remove(&sender);
@@ -229,6 +281,7 @@ impl QuotaManager {
     pub async fn reset(&self) {
         self.accounts.write().await.clear();
         self.total_bytes.store(0, Ordering::Relaxed);
+        self.priority_bytes.store(0, Ordering::Relaxed);
     }
 }
 
@@ -338,16 +391,78 @@ mod tests {
         // Account bookkeeping must not grow from the rejected huge add.
         assert_eq!(qm.sender_usage(sender).await, Some((0, 0)));
 
-        // P0 priority-exempt path must saturate without panic; total_bytes
-        // must not wrap around.
+        // PRY-2: a P0 message larger than the reserved pool must saturate
+        // without panic AND be Rejected (previously it was PriorityExempt and
+        // drove total_usage to u64::MAX — the test used to codify that).
         let d = qm.add_message(sender, u64::MAX, MessagePriority::P0).await;
-        assert_eq!(d, QuotaDecision::PriorityExempt);
-        assert_eq!(qm.total_usage(), u64::MAX);
+        assert_eq!(d, QuotaDecision::Rejected);
+        assert_eq!(qm.total_usage(), 0);
+        assert_eq!(qm.sender_usage(sender).await, Some((0, 0)));
 
         // Removing a huge size must not underflow.
         qm.remove_message(sender, u64::MAX).await;
         assert_eq!(qm.total_usage(), 0);
-        assert!(qm.sender_usage(sender).await.is_none());
+    }
+
+    /// PRY-2: the P0/P1 reserved pool is bounded — once full, a P0/P1 message
+    /// is Rejected, not silently accepted.
+    #[tokio::test]
+    async fn quota_p0_rejected_when_reserved_pool_full() {
+        let config = QuotaConfig {
+            default_sender_quota_bytes: 1024,
+            priority_reserved_pool_bytes: 4096,
+            total_quota_bytes: 1024 * 1024,
+            ..Default::default()
+        };
+        let qm = QuotaManager::new(config);
+        let sender = [0x1u8; 16];
+        for _ in 0..4 {
+            assert_eq!(
+                qm.add_message(sender, 1024, MessagePriority::P0).await,
+                QuotaDecision::PriorityExempt
+            );
+        }
+        // Pool is exactly full (4 * 1024) — the next P0/P1 is rejected.
+        assert_eq!(
+            qm.add_message(sender, 1, MessagePriority::P0).await,
+            QuotaDecision::Rejected
+        );
+        assert_eq!(
+            qm.add_message(sender, 1, MessagePriority::P1).await,
+            QuotaDecision::Rejected
+        );
+        // Freeing a P0 message returns pool capacity.
+        qm.remove_message(sender, 1024).await;
+        assert_eq!(
+            qm.add_message(sender, 1024, MessagePriority::P0).await,
+            QuotaDecision::PriorityExempt
+        );
+    }
+
+    /// PRY-2: the global `total_quota_bytes` ceiling now applies to every class.
+    #[tokio::test]
+    async fn total_quota_ceiling_enforced_for_all_classes() {
+        let config = QuotaConfig {
+            default_sender_quota_bytes: 1024 * 1024,
+            priority_reserved_pool_bytes: 1024 * 1024,
+            total_quota_bytes: 4096,
+            ..Default::default()
+        };
+        let qm = QuotaManager::new(config);
+        assert_eq!(
+            qm.add_message([1u8; 16], 3072, MessagePriority::P4).await,
+            QuotaDecision::Accepted
+        );
+        // 3072 + 2048 > 4096 global ceiling — rejected even though the sender
+        // and the pool both have room.
+        assert_eq!(
+            qm.add_message([2u8; 16], 2048, MessagePriority::P4).await,
+            QuotaDecision::Rejected
+        );
+        assert_eq!(
+            qm.add_message([2u8; 16], 2048, MessagePriority::P0).await,
+            QuotaDecision::Rejected
+        );
     }
 
     #[tokio::test]
@@ -468,28 +583,34 @@ mod proptest_tests {
             }
         }
 
+        // PRY-2: P0/P1 are exempt from the per-sender quota but bounded by the
+        // reserved pool. This used to assert `PriorityExempt` for an unbounded
+        // number of P0/P1 messages — it codified the unbounded-pool vuln.
         #[test]
-        fn quota_p0_p1_priority_exempt(
+        fn quota_p0_p1_exempt_within_reserved_pool(
             sender in any::<[u8; 16]>(),
-            quota in 1024..10_000u64,
-            n_ops in 1..50usize,
+            pool in 4096..40_000u64,
+            size in 512..2048u64,
         ) {
             let config = QuotaConfig {
-                default_sender_quota_bytes: quota,
-                priority_reserved_pool_bytes: quota * 10,
-                total_quota_bytes: quota * 100,
+                default_sender_quota_bytes: 1024,
+                priority_reserved_pool_bytes: pool,
+                total_quota_bytes: pool.saturating_mul(1000),
                 min_ttl_for_eviction: Duration::from_secs(60),
             };
             let qm = QuotaManager::new(config);
-            // Fill quota with P4
-            for _ in 0..(quota / 1024 + 1) {
-                let _ = block_on(qm.add_message(sender, 1024, MessagePriority::P4));
+            let mut priority_used = 0u64;
+            for _ in 0..500 {
+                match block_on(qm.add_message(sender, size, MessagePriority::P0)) {
+                    QuotaDecision::PriorityExempt => priority_used += size,
+                    QuotaDecision::Rejected => {
+                        prop_assert!(priority_used.saturating_add(size) > pool);
+                        break;
+                    }
+                    other => prop_assert!(false, "unexpected {:?}", other),
+                }
             }
-            // P0/P1 should still be accepted (priority-exempt)
-            for _ in 0..n_ops {
-                prop_assert_eq!(block_on(qm.add_message(sender, 1024, MessagePriority::P0)), QuotaDecision::PriorityExempt);
-                prop_assert_eq!(block_on(qm.add_message(sender, 1024, MessagePriority::P1)), QuotaDecision::PriorityExempt);
-            }
+            prop_assert!(priority_used <= pool);
         }
 
         #[test]
