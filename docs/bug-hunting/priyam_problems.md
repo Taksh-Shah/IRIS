@@ -84,11 +84,8 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — docs-only: recorded **Operator authorization & scope** (all §8
-file boundaries waived; SOS service + LoRa transport deferred to a future update; PRY-11 → 🔒
-product-scope). No code changed. Prior: Run 4 (Tier 2 batch 1) fixed PRY-1, PRY-10, PRY-17.
-**Next session (on operator go-signal):** PRY-2, PRY-3, PRY-4, PRY-6, PRY-9 (broadcast side),
-PRY-32 (broadcast side), PRY-33, PRY-34, PRY-7 tail, plus the now-unblocked PRY-29 / PRY-30.
+**Last updated:** 2026-08-31 — Run 5 fixed **PRY-29** (Tier 1, unblocked by §8 waiver — `RootRequirement` threading), **PRY-9** (Tier 2 — `KeyRotation→Drill` mismap removed from ACL + engine routing), **PRY-33** (Tier 2 — `seal_outbound` fail-closed). Commit `3d269d0`.
+**Next session:** PRY-2, PRY-3, PRY-4, PRY-6, PRY-32, PRY-34 (and PRY-30 unblocked; PRY-7 tail). PRY-11 🔒 product-scope deferred.
 
 ---
 
@@ -134,9 +131,9 @@ on the operator's explicit go-signal.**
 | Tier | Name | Findings | ⬜ | 🔵 | ✅/🟢 | 🔒 | ❌ | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
-| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 14 | 3 | 0 | Tier 0 complete |
-| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 8 | 0 | 3 | 2 | 0 | authorized in full; work starts on operator go-signal. SOS-only findings (PRY-11) deferred by product scope |
-| **Total** | | **36** | **8** | **0** | **23** | **5** | **0** | |
+| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 15 | 2 | 0 | Tier 0 complete |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 5 | 0 | 6 | 2 | 0 | authorized in full; work starts on operator go-signal. SOS-only findings (PRY-11) deferred by product scope |
+| **Total** | | **36** | **5** | **0** | **26** | **4** | **0** | |
 
 Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, still
 disproportionate); **PRY-29** & **PRY-30** were 🔒 on the §8 file boundary — that boundary is
@@ -681,7 +678,7 @@ suite; add `sybil_flood_does_not_flush_in_window_victim`.
 ### PRY-9 — `ContentType::KeyRotation` routed through the emergency authority ACL as "Drill"
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `3d269d0` · 2026-08-31 — removed `ContentType::KeyRotation => AlertClass::Drill` from `acl.rs::check`; removed `KeyRotation` from the engine's `check_emergency_acl` routing set (`EmergencyAlert | Sos` only). Tests updated: `armed_empty_allowlist_denies_broadcast_and_medical` now asserts `InvalidAuthority` on `P3+KeyRotation` (hits SOS → unsigned → `InvalidAuthority`); proptest `acl_armed_empty_allowlist_class_decision` updated. Drills need a dedicated content-type or payload marker (EMERG-001 follow-up).
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/acl.rs:121-149`; `crates/iris-core/src/message_engine/mod.rs:666-714`
 
@@ -1547,7 +1544,7 @@ churn workload.
 ### PRY-29 — `verify_chain` accepts a TOFU root; only the caller's extra check stops EMERG-RT-001
 
 - **Severity:** Low
-- **Fix status:** 🔒 Blocked · Tier 1 · 2026-08-31 — the `RootRequirement` parameter must be threaded through both callers of `verify_chain`, one of which is `emergency/authority.rs` — outside Section 1 file ownership (§8). Needs the EMERG-001 owner. Both current callers already apply an `is_authority_root` gate, so there is no live bypass.
+- **Fix status:** ✅ Fixed · Tier 1 · commit `3d269d0` · 2026-08-31 (§8 boundary lifted) — added `RootRequirement` enum (`AnyTrusted` / `AuthorityRoot`) as 4th parameter to `verify_chain`. Both callers (`acl.rs::check_authority_chain`, `emergency/authority.rs`) pass `AuthorityRoot`; redundant `is_authority_root` post-checks removed. `emergency/authority.rs` maps `ChainError::NotAuthorityRoot → AuthorityError::UntrustedAuthorityRoot`. New regression test `authority_root_requirement_rejects_tofu_root` (16 chain tests green). All existing callers updated to pass `RootRequirement::AnyTrusted`.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/chain.rs:82-89`; `crates/iris-core/src/identity/trust_store.rs:321-326` (`is_trusted_root`)
 
@@ -1743,7 +1740,7 @@ and whether `verify_authoritative` currently runs on the engine inbound path for
 ### PRY-33 — `seal_outbound` sends plaintext when the recipient key is missing (fail-open)
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `3d269d0` · 2026-08-31 (§8 boundary lifted) — `seal_outbound`'s absent-key `else` branch now returns `Err(MsgEngineError::Crypto(CryptoError::KeyUnavailable))` instead of logging `MSG_SENT_UNENCRYPTED` and proceeding plaintext. P0 SOS broadcast (intentionally plaintext, returns early before the key-directory lookup) unaffected.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/message_engine/mod.rs:353-409` (`seal_outbound`, Section 2); `crates/iris-core/src/crypto/key_directory.rs:41-46` (`require_key`, Section 1, unused)
 

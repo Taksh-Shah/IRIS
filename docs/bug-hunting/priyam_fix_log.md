@@ -345,6 +345,32 @@ fixed right. Next wake: draft those plans; do not guess another owner's intent.
 
 ---
 
+## Run 5 — 2026-08-31 — Tier 1 tail + Tier 2 (batch 2)
+
+**Branch:** `main`. Baseline `a91fd8b` (pulled from remote after operator pushed Run 4 + scope
+docs). Commit: `3d269d0`. `cargo 1.97.1`. All §8 boundaries waived (Operator auth & scope).
+
+### Per-finding results
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | PRY-29 | ✅ Fixed · Tier 1 (§8 waived) | `3d269d0` | `RootRequirement` enum added to `identity/chain.rs`; both callers (`acl.rs`, `emergency/authority.rs`) pass `AuthorityRoot`; redundant `is_authority_root` post-checks removed. `ChainError::NotAuthorityRoot` → `AuthorityError::UntrustedAuthorityRoot` mapping preserves existing test assertions. All existing `verify_chain` call sites updated (`replace_all`). New regression test `authority_root_requirement_rejects_tofu_root` (TOFU-only root fails `AuthorityRoot`; after `register_authority_root` passes). 16 `identity::chain` tests green. |
+| 2 | PRY-9 | ✅ Fixed · Tier 2 | `3d269d0` | Removed `ContentType::KeyRotation => AlertClass::Drill` arm from `acl.rs::check`. Removed `ContentType::KeyRotation` from `message_engine/mod.rs` emergency-ACL routing set (`EmergencyAlert \| Sos` only). `KeyRotation` envelopes now skip the emergency ACL entirely and fall through to the priority-class dispatch. `armed_empty_allowlist_denies_broadcast_and_medical` and proptest `acl_armed_empty_allowlist_class_decision` updated. 14 `security::acl` tests green. |
+| 3 | PRY-33 | ✅ Fixed · Tier 2 | `3d269d0` | `seal_outbound` absent-key `else` branch now returns `Err(MsgEngineError::Crypto(CryptoError::KeyUnavailable))`. `Some(rkey)` branch gets explicit `return self.crypto.sign(envelope).await...`. P0 broadcast early-return unaffected. Build fix: type-mismatch on `()` resolved by adding the explicit return inside `Some`. Tests: GNU toolchain (`stable-x86_64-pc-windows-gnu`) — MSVC link.exe systemic failure on this machine. 75 `identity`, 14 `security::acl`, 16 `identity::chain` lib tests green. |
+
+### Batch closeout
+
+- `cargo +stable-x86_64-pc-windows-gnu test -p iris-core --lib -- identity security`: green (75 + 14 + 16 + message engine compile).
+- MSVC toolchain has a systemic `link.exe "extra operand"` failure on build scripts (serde, thiserror, getrandom, proc-macro2 …) — pre-existing, not caused by these changes.
+- 4 files changed, 138 insertions, 65 deletions.
+- `cargo fmt --check`: crate-wide pre-existing failure (unchanged).
+
+### Tier 2 status after Run 5
+
+**6 ✅ / 5 ⬜ / 2 🔒 (PRY-7 tail, PRY-11).** Remaining ⬜: PRY-2, PRY-3, PRY-4, PRY-6, PRY-32, PRY-34. Unblocked Tier-1 tail: PRY-30. Next wake: PRY-30 + PRY-2/3/4 quota/reputation/eviction (cross-section calls delegated to agent; draft per-finding plans).
+
+---
+
 ## Operator authorization & scope note — 2026-08-31 (docs-only, no code)
 
 Recorded in `priyam_problems.md` → *Operator authorization & scope*. Summary:
