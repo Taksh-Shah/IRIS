@@ -11,6 +11,10 @@ use tokio::sync::RwLock;
 /// 16-byte sender short ID.
 pub type SenderShort = [u8; 16];
 
+/// Current on-disk `ReplaySnapshot` format version. `load_snapshot` refuses
+/// any other value rather than misinterpreting a future layout as v1 (PRY-15).
+pub const SNAPSHOT_VERSION: u32 = 1;
+
 /// Replay protection configuration.
 #[derive(Clone, Debug)]
 pub struct ReplayConfig {
@@ -113,7 +117,7 @@ impl ReplaySnapshot {
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
-            version: 1,
+            version: SNAPSHOT_VERSION,
         }
     }
 
@@ -294,10 +298,45 @@ mod proptest_tests {
     }
 }
 
+/// Per-sender high-water table plus the local, **unforgeable** registration
+/// order used for adversary-resistant eviction (PRY-8). `first_seen` is a
+/// monotonic local counter — unlike a mark's `timestamp`, an attacker cannot
+/// backdate it to dodge eviction.
+#[derive(Default)]
+struct HighwaterTable {
+    marks: HashMap<SenderShort, HighWaterMark>,
+    first_seen: HashMap<SenderShort, u64>,
+    next_gen: u64,
+}
+
+impl HighwaterTable {
+    fn from_marks(marks: HashMap<SenderShort, HighWaterMark>) -> Self {
+        let mut next_gen = 0u64;
+        let first_seen = marks
+            .keys()
+            .map(|k| {
+                let g = next_gen;
+                next_gen += 1;
+                (*k, g)
+            })
+            .collect();
+        HighwaterTable {
+            marks,
+            first_seen,
+            next_gen,
+        }
+    }
+
+    fn remove(&mut self, sender: &SenderShort) {
+        self.marks.remove(sender);
+        self.first_seen.remove(sender);
+    }
+}
+
 /// Replay protection engine.
 pub struct ReplayEngine {
     /// Per-sender high-water marks (in-memory, hot path).
-    highwater: RwLock<HashMap<SenderShort, HighWaterMark>>,
+    highwater: RwLock<HighwaterTable>,
     config: ReplayConfig,
     metrics: ReplayMetrics,
     /// Pending snapshot for batched persistence.
@@ -325,7 +364,7 @@ impl ReplayEngine {
     /// Create a new replay engine with default configuration.
     pub fn new(config: ReplayConfig) -> Self {
         ReplayEngine {
-            highwater: RwLock::new(HashMap::with_capacity(1024)),
+            highwater: RwLock::new(HighwaterTable::default()),
             config,
             metrics: ReplayMetrics::default(),
             pending_snapshot: RwLock::new(None),
@@ -336,7 +375,7 @@ impl ReplayEngine {
     /// Create from a persisted snapshot (cross-reboot restore).
     pub fn from_snapshot(snapshot: ReplaySnapshot, config: ReplayConfig) -> Self {
         ReplayEngine {
-            highwater: RwLock::new(snapshot.into_internal()),
+            highwater: RwLock::new(HighwaterTable::from_marks(snapshot.into_internal())),
             config,
             metrics: ReplayMetrics::default(),
             pending_snapshot: RwLock::new(None),
@@ -403,35 +442,53 @@ impl ReplayEngine {
             // (self-deadlock on the default config after one persistence
             // interval). Snapshot scheduling now runs after this block drops
             // the write guard.
-            let mut highwater = self.highwater.write().await;
+            let mut table = self.highwater.write().await;
 
-            // Enforce max senders.
-            //
-            // `HashMap::keys().next()` was used here, which is arbitrary order
-            // and not adversary-resistant: minting an Ed25519 identity is free
-            // (a node id *is* its public key), so an attacker could register
-            // `max_sender_highwater` throwaway senders and flush any victim's
-            // high-water mark, after which an old replayed message read as a
+            // Enforce max senders (PRY-8). Minting an Ed25519 identity is free
+            // (a node id *is* its public key), so an attacker can register
+            // `max_sender_highwater` throwaway senders and try to flush a
+            // victim's mark — after which an old replayed message reads as a
             // first sighting.
             //
-            // Prefer evicting marks that are already outside the freshness
-            // window — those are safe to drop, because the window alone now
-            // rejects anything they were protecting. Only if none are stale do
-            // we fall back to the oldest mark.
-            if highwater.len() >= self.config.max_sender_highwater {
-                let victim = highwater
+            //  1. Prefer evicting marks already outside the freshness window
+            //     (stale) — the window alone rejects whatever they protected.
+            //  2. Otherwise evict the sender with the highest `first_seen`
+            //     generation: the *most recently registered*. `first_seen` is
+            //     a local monotonic counter, so — unlike a mark's `timestamp`,
+            //     which the attacker can backdate — the flood's own entries
+            //     are always the newest and get evicted first. A genuine
+            //     long-lived sender's in-window mark is preserved.
+            if table.marks.len() >= self.config.max_sender_highwater
+                && !table.marks.contains_key(&sender)
+            {
+                let victim = table
+                    .marks
                     .iter()
                     .filter(|(_, hw)| hw.timestamp < min_ts)
                     .min_by_key(|(_, hw)| hw.timestamp)
-                    .or_else(|| highwater.iter().min_by_key(|(_, hw)| hw.timestamp))
-                    .map(|(k, _)| *k);
+                    .map(|(k, _)| *k)
+                    .or_else(|| {
+                        table
+                            .first_seen
+                            .iter()
+                            .max_by_key(|(_, gen)| **gen)
+                            .map(|(k, _)| *k)
+                    });
                 if let Some(k) = victim {
-                    highwater.remove(&k);
+                    table.remove(&k);
                 }
             }
 
-            let hw = highwater.entry(sender).or_default();
-            hw.check_and_advance(stored_ts, seq)
+            if !table.marks.contains_key(&sender) {
+                let gen = table.next_gen;
+                table.next_gen += 1;
+                table.first_seen.insert(sender, gen);
+            }
+            table
+                .marks
+                .entry(sender)
+                .or_default()
+                .check_and_advance(stored_ts, seq)
         };
 
         if accepted {
@@ -486,13 +543,13 @@ impl ReplayEngine {
 
     /// Get current high-water for a sender (for debugging/monitoring).
     pub async fn get_highwater(&self, sender: SenderShort) -> Option<HighWaterMark> {
-        self.highwater.read().await.get(&sender).copied()
+        self.highwater.read().await.marks.get(&sender).copied()
     }
 
     /// Generate a snapshot for cross-reboot persistence (AC-5).
     /// Returns the snapshot to be persisted by the caller (storage layer).
     pub async fn generate_snapshot(&self) -> ReplaySnapshot {
-        let highwater = self.highwater.read().await.clone();
+        let highwater = self.highwater.read().await.marks.clone();
         let snapshot = ReplaySnapshot::new(highwater);
         *self.pending_snapshot.write().await = Some(snapshot.clone());
         *self.last_persist.write().await = Instant::now();
@@ -501,9 +558,37 @@ impl ReplayEngine {
     }
 
     /// Load a persisted snapshot (cross-reboot restore).
+    ///
+    /// PRY-15: this is a `pub` runtime method, not a boot-only one. It must
+    /// never *regress* anti-replay state: a blind `*highwater = ...` would
+    /// discard every mark accumulated since boot (replay window reopens for all
+    /// tracked senders) and, fed a stale snapshot, would roll marks backward
+    /// (every message since that snapshot becomes replayable). So: reject an
+    /// unknown `version`, and **merge** by taking the per-sender max of
+    /// stored vs incoming `(ts, seq)` — advance, never rewind.
     pub async fn load_snapshot(&self, snapshot: ReplaySnapshot) {
-        let mut highwater = self.highwater.write().await;
-        *highwater = snapshot.into_internal();
+        if snapshot.version != SNAPSHOT_VERSION {
+            tracing::warn!(
+                version = snapshot.version,
+                expected = SNAPSHOT_VERSION,
+                "replay: ignoring snapshot with unrecognised version"
+            );
+            return;
+        }
+        let incoming = snapshot.into_internal();
+        let mut table = self.highwater.write().await;
+        for (sender, mark) in incoming {
+            if !table.marks.contains_key(&sender) {
+                let gen = table.next_gen;
+                table.next_gen += 1;
+                table.first_seen.insert(sender, gen);
+            }
+            table
+                .marks
+                .entry(sender)
+                .or_default()
+                .check_and_advance(mark.timestamp, mark.sequence);
+        }
     }
 
     /// Maybe schedule a snapshot if interval elapsed.
@@ -512,7 +597,7 @@ impl ReplayEngine {
         if last.elapsed() >= self.config.persistence_interval {
             // In a real implementation, this would trigger an async persist task
             // For now, we just update the pending snapshot
-            let highwater = self.highwater.read().await.clone();
+            let highwater = self.highwater.read().await.marks.clone();
             *self.pending_snapshot.write().await = Some(ReplaySnapshot::new(highwater));
             *self.last_persist.write().await = Instant::now();
         }
@@ -520,7 +605,7 @@ impl ReplayEngine {
 
     /// Reset all state (for testing).
     pub async fn reset(&self) {
-        self.highwater.write().await.clear();
+        *self.highwater.write().await = HighwaterTable::default();
         *self.pending_snapshot.write().await = None;
         *self.last_persist.write().await = Instant::now();
     }
@@ -737,6 +822,42 @@ mod tests {
         );
     }
 
+    /// PRY-8: the all-fresh Sybil flood — every attacker mark is inside the
+    /// freshness window (none stale), so eviction falls to the tiebreak. It
+    /// must evict the *newest* mark (an attacker's), never the victim's
+    /// slightly-older but still-in-window mark.
+    #[tokio::test]
+    async fn sybil_flood_does_not_flush_in_window_victim() {
+        let cfg = ReplayConfig {
+            max_sender_highwater: 8,
+            ..Default::default()
+        };
+        let re = ReplayEngine::new(cfg);
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // Victim spoke 5 s ago — well inside the window.
+        let victim = [0xAB_u8; 16];
+        assert_eq!(re.check(victim, now - 5, 100).await, ReplayDecision::Accepted);
+
+        // Flood: 40 throwaway identities, every mark fresh (ts == now).
+        for i in 0..40u32 {
+            let mut attacker = [0u8; 16];
+            attacker[..4].copy_from_slice(&i.to_le_bytes());
+            attacker[15] = 0xFF; // keep clear of the victim key
+            let _ = re.check(attacker, now, 1).await;
+        }
+
+        // Victim's mark survived — replaying its old message is still Replay.
+        assert_eq!(
+            re.check(victim, now - 5, 100).await,
+            ReplayDecision::Replay,
+            "an all-fresh Sybil flood must not flush the victim's in-window mark"
+        );
+    }
+
     #[tokio::test]
     async fn replay_out_of_order_accepted() {
         let re = ReplayEngine::default();
@@ -837,6 +958,51 @@ mod tests {
         assert!(re.get_highwater(sender).await.is_none());
         re.load_snapshot(snapshot).await;
         assert_eq!(re.get_highwater(sender).await.unwrap().sequence, 5);
+    }
+
+    /// PRY-15: a runtime `load_snapshot` must not roll a live mark backward.
+    #[tokio::test]
+    async fn load_snapshot_never_regresses_a_live_mark() {
+        let re = ReplayEngine::default();
+        let sender = [0x5Au8; 16];
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // Mark advances to seq 10 at `now`.
+        assert_eq!(re.check(sender, now, 10).await, ReplayDecision::Accepted);
+        let stale = re.generate_snapshot().await; // captures seq 10
+        assert_eq!(re.check(sender, now, 25).await, ReplayDecision::Accepted); // live seq 25
+
+        // Re-applying the older snapshot must NOT drop the mark back to 10.
+        re.load_snapshot(stale).await;
+        assert_eq!(re.get_highwater(sender).await.unwrap().sequence, 25);
+        // And a replay of seq 20 (< 25) is still rejected.
+        assert_eq!(re.check(sender, now, 20).await, ReplayDecision::Replay);
+    }
+
+    /// PRY-15: an unrecognised snapshot version is ignored, not loaded as v1.
+    #[tokio::test]
+    async fn load_snapshot_rejects_unknown_version() {
+        let re = ReplayEngine::default();
+        let sender = [0x77u8; 16];
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        re.check(sender, now, 7).await;
+
+        let mut snap = re.generate_snapshot().await;
+        snap.version = 999;
+        snap.highwater
+            .insert(hex::encode([0xAB; 16]), HighWaterMark { timestamp: now, sequence: 1 });
+
+        re.load_snapshot(snap).await;
+        // Nothing from the bad-version snapshot was applied.
+        assert!(re.get_highwater([0xAB; 16]).await.is_none());
+        // The pre-existing live mark is untouched.
+        assert_eq!(re.get_highwater(sender).await.unwrap().sequence, 7);
     }
 
     #[tokio::test]
