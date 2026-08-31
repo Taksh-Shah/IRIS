@@ -9,8 +9,10 @@ import CryptoKit
 @MainActor
 public final class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    /// System-context singleton the UI shells read (engine, identity, recovery).
-    public static let shared = AppDelegate()
+    /// Bug #25: UIKit creates the real AppDelegate via the app lifecycle — creating
+    /// a second instance via `let shared = AppDelegate()` leaves its adapter nil,
+    /// so callers get a useless object. Use UIApplication.shared.delegate instead.
+    public static var shared: AppDelegate { UIApplication.shared.delegate as! AppDelegate }
 
     public private(set) var engine: IrisEngine?
     public private(set) var adapter: IosBleAdapter?
@@ -58,7 +60,7 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
             launchOptions: UIKitLaunchOptionsSource(launchOptions),
             protectedData: UIKitProtectedDataGate(),
             taskResubmitter: wiring,
-            bleLifecycle: BleRestorationTarget(engine: self.engine)
+            bleLifecycle: BleRestorationTarget(engine: self.engine, adapter: adapter)
         )
         self.sessionRecovery = recovery
         recovery.run()
@@ -129,9 +131,11 @@ struct UIKitProtectedDataGate: ProtectedDataGating {
 public final class BleRestorationTarget: BleLifecycleRecovering {
     private weak var engine: IrisEngine?
     private weak var adapter: IosBleAdapter?
-    public init(engine: IrisEngine?) {
+    // Bug #25: inject adapter directly — reading AppDelegate.shared.adapter during
+    // init() could reference a dummy second instance created by the old `static let`.
+    public init(engine: IrisEngine?, adapter: IosBleAdapter?) {
         self.engine = engine
-        self.adapter = AppDelegate.shared.adapter
+        self.adapter = adapter
     }
     public func reArmAfterRestore() {
         // The CoreBluetooth managers re-drive willRestoreState internally

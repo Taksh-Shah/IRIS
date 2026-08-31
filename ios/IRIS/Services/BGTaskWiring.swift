@@ -11,6 +11,7 @@
 // tests the pure `MaintenanceGate` logic + resubmit seam instead.
 import Foundation
 import BackgroundTasks
+import os.log
 
 public protocol IrisMaintenanceWork {
     /// Best-effort maintenance: routing tables, message expiry, metric flush.
@@ -28,10 +29,11 @@ public protocol BackgroundTaskScheduling {
 public final class RealBackgroundTaskScheduler: BackgroundTaskScheduling {
     public init() {}
     public func registerRefresh(id: String, handler: @escaping (BGTask) -> Void) {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: id, using: nil, launchHandler: handler)
+        // Bug #24: use background queue so the handler never runs on main
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: id, using: DispatchQueue.global(qos: .background), launchHandler: handler)
     }
     public func registerProcessing(id: String, handler: @escaping (BGTask) -> Void) {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: id, using: nil, launchHandler: handler)
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: id, using: DispatchQueue.global(qos: .background), launchHandler: handler)
     }
     public func submit(_ request: BGTaskRequest) throws {
         try BGTaskScheduler.shared.submit(request)
@@ -70,21 +72,32 @@ public final class BGTaskWiring: BackgroundTaskResubmitting {
     public func resubmitAll() {
         let refresh = BGAppRefreshTaskRequest(identifier: Self.refreshIdentifier)
         refresh.earliestBeginDate = now().addingTimeInterval(15 * 60)
-        try? scheduler.submit(refresh)
+        do { try scheduler.submit(refresh) } catch {
+            // Bug #24: log instead of silently swallowing (TooManyPending, unavailable after force-quit)
+            os_log("ios: BG refresh submit failed: %@", type: .error, error.localizedDescription)
+        }
 
         let processing = BGProcessingTaskRequest(identifier: Self.processingIdentifier)
         processing.requiresNetworkConnectivity = false
         processing.earliestBeginDate = now().addingTimeInterval(30 * 60)
-        try? scheduler.submit(processing)
+        do { try scheduler.submit(processing) } catch {
+            os_log("ios: BG processing submit failed: %@", type: .error, error.localizedDescription)
+        }
     }
 
     /// Expiration handler + setTaskCompleted on EVERY path (AC-14).
     private func handle(_ task: BGTask) {
-        task.expirationHandler = {
-            task.setTaskCompleted(success: false)
+        // Bug #14: guard against double setTaskCompleted (expiration + maintenance
+        // token both firing causes a fatal BGTask crash).
+        var completed = false
+        let lock = NSLock()
+        func complete(_ success: Bool) {
+            lock.lock(); defer { lock.unlock() }
+            guard !completed else { return }
+            completed = true
+            task.setTaskCompleted(success: success)
         }
-        maintenance.run(token: {
-            task.setTaskCompleted(success: true)
-        })
+        task.expirationHandler = { complete(false) }
+        maintenance.run(token: { complete(true) })
     }
 }

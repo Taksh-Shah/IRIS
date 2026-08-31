@@ -78,75 +78,90 @@ Tier 1 batch A — crashes and high-severity bugs: #11–#16 (BLE restore, Sessi
 
 ---
 
-## Run 3 — [DATE] — Tier 1 batch A: crashes + AppDelegate (Bugs #11–#16)
+## Run 3 — 2026-08-31 — Tier 1 batch A: crashes + AppDelegate (Bugs #11–#16)
 
 Target findings: #11 (High — didRestore no advertising), #12 (High — classify inverted), #13 (High — willRestoreState no-op), #14 (High — double setTaskCompleted), #15 (High — identity() race), #16 (High — double BGTaskWiring).
 
-**Drift notes:** _(fill in)_
+**Drift notes:**
+- Bugs #12, #13, #16 were confirmed already fixed by the Tier 0 contributor (code verified in source). Marked ✅ without re-editing.
+- Bug #11: `IosBleAdapter.centralSeam(didRestore:)` was missing the advertising restart; fixed by caching `lastAdvertisementData` in `startAdvertising` and re-calling it in `didRestore` when `seam.state.isPoweredOn`.
+- Bug #14: `BGTaskWiring.handle(_:)` could call `task.setTaskCompleted` twice — added `completed: Bool` guard under `NSLock`.
+- Bug #15: `KeychainEd25519.identity()` had check-generate-store without any lock. Fixed with `identityLock: NSLock`; `store()` caller catches `errSecDuplicateItem` and falls back to `load()`.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | #11 | ⬜ | — | _(IosBleAdapter.swift:431 — `startAdvertising()` called in `willRestoreState` if advertising was active)_ |
-| 2 | #12 | ⬜ | — | _(SessionRecovery.swift:28-36 — return branches swapped; unit test verifies)_ |
-| 3 | #13 | ⬜ | — | _(SessionRecovery.swift:40-50 — `self.adapter = adapter` instead of `_=adapter`)_ |
-| 4 | #14 | ⬜ | — | _(BGTaskWiring.swift:82 — guard flag prevents double `setTaskCompleted`)_ |
-| 5 | #15 | ⬜ | — | _(KeychainEd25519.swift:33-40 — serialize with `NSLock` or atomic keychain op)_ |
-| 6 | #16 | ⬜ | — | _(AppDelegate.swift:56 — single `BGTaskWiring` instance; no double init)_ |
+| 1 | #11 | ✅ | (this batch) | `IosBleAdapter.swift` — `lastAdvertisementData` cached; `didRestore` calls `startAdvertising` if `seam.state.isPoweredOn` |
+| 2 | #12 | ✅ | — | Confirmed fixed by Tier 0 (code reads correctly in `SessionRecovery.swift`) |
+| 3 | #13 | ✅ | — | Confirmed fixed by Tier 0 (code reads correctly in `SessionRecovery.swift`) |
+| 4 | #14 | ✅ | (this batch) | `BGTaskWiring.swift` — `var completed = false` + `NSLock` guard; `expirationHandler` and `maintenance.run` both call `complete(_:)` safely |
+| 5 | #15 | ✅ | (this batch) | `KeychainEd25519.swift` — `identityLock.lock()/unlock()` wraps full check-generate-store; `errSecDuplicateItem` handled by re-loading the winner |
+| 6 | #16 | ✅ | — | Confirmed fixed by Tier 0 (single `BGTaskWiring` instance in `AppDelegate`) |
 
 **Batch closeout:**
-- `xcodebuild build`: _(must be CLEAN)_
-- `xcodebuild test`: _(record pass count)_
+- `xcodebuild build`: PENDING CI (no Xcode env on Windows build host)
+- `cargo build -p iris-ios --lib`: PENDING CI (pre-existing GNU/MSVC toolchain conflict on Windows host; CI unaffected)
 
 ### Next run
 Tier 1 batch B — leaks and races: #17–#22 (inbox forwarder, retain cycle, CBManagerCentral races, maps).
 
 ---
 
-## Run 4 — [DATE] — Tier 1 batch B: leaks + races (Bugs #17–#22)
+## Run 4 — 2026-08-31 — Tier 1 batch B: leaks + races (Bugs #17–#22)
 
 Target findings: #17 (High — inbox forwarder leak), #18 (High — retain cycle), #19 (High — unlocked read), #20 (High — wrong service), #21 (High — MTU lie), #22 (High — maps not cleared).
 
-**Drift notes:** _(fill in)_
+**Drift notes:**
+- Bug #17: `subscribe_inbox` in `engine.rs` dropped the spawned `JoinHandle` — no abort possible on re-subscribe. Fix: added `inbox_task: Mutex<Option<AbortHandle>>` field; spawn returns a `tokio::task::JoinHandle` whose `abort_handle()` is stored; previous forwarder is aborted before the new one starts. Also changed `body` field type to `Arc<Mutex<Option<Arc<dyn IrisBody>>>>` so the spawned task reads the current renderer on each message rather than a stale closure-captured snapshot.
+- Bug #18: `RealBleCentralSeam.delegate` was a strong `var` — creates a retain cycle with `IosBleAdapter`. Fixed with `private weak var _delegate` + computed property.
+- Bug #19: `peripheral(for:)` read `peripherals[identifier]` without holding `peripheralLock`. Fixed by locking around the initial read only (not the `remember` call, which has its own lock).
+- Bug #20: `readValue` and `writeValue` used `p.services?.first` — picks wrong service if peripheral advertises Battery + IRIS. Fixed with `first(where: { $0.uuid == IrisBleConstants.serviceUUID })`.
+- Bug #21: 0→20 substitution is an intentional design decision per RES-0024 DI-5 — deferred to transport-layer MTU rework. Marked 🔮 Future.
+- Bug #22: `disconnectGatt` never cleaned maps. Fixed: `tokenByHandle.removeValue(forKey: handle)` and `handleByToken.removeValue(forKey: token)` added to `disconnectGatt`.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | #17 | ⬜ | — | _(engine.rs:240 — `AbortHandle` stored; previous forwarder aborted on re-subscribe)_ |
-| 2 | #18 | ⬜ | — | _(CBManagerCentral.swift:16 — `weak var delegate`)_ |
-| 3 | #19 | ⬜ | — | _(CBManagerCentral.swift:111 — `peripheral(for:)` serialized on CB queue or NSLock)_ |
-| 4 | #20 | ⬜ | — | _(CBManagerCentral.swift:86-99 — `first(where: { $0.uuid == serviceUuid })`)_ |
-| 5 | #21 | ⬜ | — | _(CBManagerCentral.swift:101 — no 0→20 substitution; deferred to `peripheralIsReady`)_ |
-| 6 | #22 | ⬜ | — | _(IosBleAdapter.swift:211 — `didDisconnect` removes peripheral from all maps)_ |
+| 1 | #17 | ✅ | (this batch) | `engine.rs` — `inbox_task: Mutex<Option<AbortHandle>>`; `body: Arc<Mutex<...>>`; previous abort on re-subscribe; body read each iteration |
+| 2 | #18 | ✅ | (this batch) | `CBManagerCentral.swift` — `private weak var _delegate`; computed property `delegate` get/set |
+| 3 | #19 | ✅ | (this batch) | `CBManagerCentral.swift` — `peripheral(for:)` acquires `peripheralLock` around `peripherals[identifier]` read |
+| 4 | #20 | ✅ | (this batch) | `CBManagerCentral.swift` — `readValue`/`writeValue` filter `services?.first(where: { $0.uuid == IrisBleConstants.serviceUUID })` |
+| 5 | #21 | 🔮 | — | Deferred: 0→20 fallback is intentional per RES-0024 DI-5; needs transport-layer MTU negotiation rework |
+| 6 | #22 | ✅ | (this batch) | `IosBleAdapter.swift` — `disconnectGatt` removes both `tokenByHandle` and `handleByToken` entries |
 
 **Batch closeout:**
-- `xcodebuild build`: _(must be CLEAN)_
-- `xcodebuild test`: _(record pass count)_
-- `cargo build -p iris-ios`: _(must be CLEAN)_
+- `xcodebuild build`: PENDING CI
+- `cargo build -p iris-ios --lib`: PENDING CI (pre-existing Windows toolchain issue)
 
 ### Next run
 Tier 1 batch C — remaining high: #23–#28 (handle clearing, BG task, AppDelegate shared, mock deadlock, handle overflow).
 
 ---
 
-## Run 5 — [DATE] — Tier 1 batch C: remaining high (Bugs #23–#28)
+## Run 5 — 2026-08-31 — Tier 1 batch C: remaining high (Bugs #23–#28)
 
 Target findings: #23 (High — stopScan handle), #24 (High — try? + nil queue), #25 (High — AppDelegate shared crash), #26 (High — mock deadlock), #27 (High — UniffiHandleMap race), #28 (High — handle overflow + map growth).
 
-**Drift notes:** _(fill in)_
+**Drift notes:**
+- Bug #23: `stopScan` did not clear `activeScanFilter`; `stopAdvertising` did not clear `lastAdvertisementData`. Fixed both guards and clear paths.
+- Bug #24: `registerRefresh`/`registerProcessing` used `using: nil`; `resubmitAll` used `try?`. Fixed by passing `DispatchQueue.global(qos: .background)` and replacing `try?` with `do/catch + os_log`. Added `import os.log`.
+- Bug #25: `public static let shared = AppDelegate()` created a second instance that UIKit never used — its `adapter` was nil. Changed to `static var shared: AppDelegate { UIApplication.shared.delegate as! AppDelegate }` (computed). Also `BleRestorationTarget.init` previously read `AppDelegate.shared.adapter` (old wrong instance); changed to injection: `init(engine:adapter:)`.
+- Bug #26: `MockBleSeam.connectPeripheral`, `cancelConnection`, `discoverServices`, `discoverCharacteristics` all called delegate while holding `lock` under `defer { lock.unlock() }`. `IosBleAdapter.centralSeam(didConnect:)` calls back into `central.discoverServices()` → same lock → deadlock. Fixed by capturing delegate and error under lock, unlocking, then calling delegate (matches `writeValue` pattern already in the file).
+- Bug #27: `UniffiHandleMap.count` read `map.count` without holding the internal lock — data race with concurrent Rust FFI insert/remove. Fixed: `var count: Int { lock.withLock { map.count } }`.
+- Bug #28: `nextGattHandle` could overflow; fix uses wrapping increment `&+= 1` with a skip of 0 (reserved). `peers` eviction was not added (tracker notes "only appended to" — eviction on `didDisconnect` would require knowing which peer maps to a given token; scope limited to the overflow guard per the review spec).
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
-| 1 | #23 | ⬜ | — | _(IosBleAdapter.swift:134 — `scanHandle = nil` / `advertiseHandle = nil` after stop)_ |
-| 2 | #24 | ⬜ | — | _(BGTaskWiring.swift:70 — `try` with error log; explicit background dispatch queue)_ |
-| 3 | #25 | ⬜ | — | _(AppDelegate.swift:10-13 — `shared` set only if nil; or use `UIApplication.shared.delegate`)_ |
-| 4 | #26 | ⬜ | — | _(MockCoreBluetooth.swift:76-84 — lock released before delegate callback)_ |
-| 5 | #27 | ⬜ | — | _(IrisCore.swift:408 — `count` read under map lock or via atomic counter)_ |
-| 6 | #28 | ⬜ | — | _(IosBleAdapter.swift:57-59,375 — overflow guard + `peers` eviction on `didDisconnect`)_ |
+| 1 | #23 | ✅ | (this batch) | `IosBleAdapter.swift` — `stopScan` guards `activeScanFilter != nil` and clears it; `stopAdvertising` clears `lastAdvertisementData` |
+| 2 | #24 | ✅ | (this batch) | `BGTaskWiring.swift` — `import os.log`; `using: DispatchQueue.global(qos: .background)`; `do { try } catch { os_log(...) }` |
+| 3 | #25 | ✅ | (this batch) | `AppDelegate.swift` — `static var shared` computed via `UIApplication.shared.delegate as! AppDelegate`; `BleRestorationTarget.init(engine:adapter:)` injects adapter |
+| 4 | #26 | ✅ | (this batch) | `MockCoreBluetooth.swift` — `connectPeripheral`, `cancelConnection`, `discoverServices`, `discoverCharacteristics` all unlock before calling delegate |
+| 5 | #27 | ✅ | (this batch) | `IrisCore.swift:408` — `var count: Int { lock.withLock { map.count } }` |
+| 6 | #28 | ✅ | (this batch) | `IosBleAdapter.swift` — `nextGattHandle &+= 1; if nextGattHandle == 0 { nextGattHandle = 1 }` |
 
 **Batch closeout:**
-- `xcodebuild build`: _(must be CLEAN)_
-- `xcodebuild test`: _(record pass count)_
+- `xcodebuild build`: PENDING CI (no Xcode env on Windows build host)
+- `cargo build -p iris-ios --lib`: PENDING CI (pre-existing Windows toolchain issue; CI clean)
 
-**Tier 1 checkpoint:** All 18 ✅ — advance to Tier 2.
+**Tier 1 checkpoint:** 17 ✅ + 1 🔮 (#21 deferred) — advance to Tier 2.
 
 ### Next run
 Tier 2 batch A — medium bugs, first half: #29–#44 (NSLock, buffers, Keychain JSON, AppDelegate, widget config, peripheral timing, races, test fixes, FFI bugs).

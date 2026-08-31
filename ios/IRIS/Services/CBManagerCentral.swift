@@ -14,7 +14,12 @@ import Foundation
 import CoreBluetooth
 
 public final class RealBleCentralSeam: NSObject, BleCentralSeam, Sendable {
-    public var delegate: BleCentralSeamDelegate?
+    // Bug #18: weak to break the adapter→seam→adapter retain cycle
+    private weak var _delegate: BleCentralSeamDelegate?
+    public var delegate: BleCentralSeamDelegate? {
+        get { _delegate }
+        set { _delegate = newValue }
+    }
     public private(set) var state: IOSBleCentralState = .unknown
 
     private let restoreIdentifier: String?
@@ -83,16 +88,19 @@ public final class RealBleCentralSeam: NSObject, BleCentralSeam, Sendable {
     }
 
     public func readValue(identifier: UUID, characteristicUuid: CBUUID) {
+        // Bug #20: filter by IRIS serviceUUID, not services?.first (wrong when
+        // the peripheral exposes multiple services, e.g. Battery + IRIS).
         guard let p = peripheral(for: identifier),
-              let service = p.services?.first,
+              let service = p.services?.first(where: { $0.uuid == IrisBleConstants.serviceUUID }),
               let characteristic = service.characteristics?.first(where: { $0.uuid == characteristicUuid })
         else { return }
         p.readValue(for: characteristic)
     }
 
     public func writeValue(identifier: UUID, characteristicUuid: CBUUID, data: Data, withResponse: Bool) {
+        // Bug #20: same UUID filter as readValue.
         guard let p = peripheral(for: identifier),
-              let service = p.services?.first,
+              let service = p.services?.first(where: { $0.uuid == IrisBleConstants.serviceUUID }),
               let characteristic = service.characteristics?.first(where: { $0.uuid == characteristicUuid })
         else { return }
         p.writeValue(data, for: characteristic, type: withResponse ? .withResponse : .withoutResponse)
@@ -109,9 +117,12 @@ public final class RealBleCentralSeam: NSObject, BleCentralSeam, Sendable {
     // MARK: - helpers
 
     private func peripheral(for identifier: UUID) -> CBPeripheral? {
-        // Unregistered identifiers can still appear (restored peripherals);
-        // re-retrieve so connectGatt can drive them.
-        if let p = peripherals[identifier] { return p }
+        // Bug #19: hold peripheralLock for the initial read — CB delegate
+        // callbacks mutate peripherals under the lock on the CB queue.
+        peripheralLock.lock()
+        let existing = peripherals[identifier]
+        peripheralLock.unlock()
+        if let p = existing { return p }
         if let p = manager.retrievePeripherals(withIdentifiers: [identifier]).first {
             remember(p)
             return p

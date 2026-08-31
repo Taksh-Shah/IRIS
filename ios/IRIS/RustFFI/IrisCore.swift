@@ -406,9 +406,9 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     }
 
     var count: Int {
-        get {
-            map.count
-        }
+        // Bug #27: map.count must be read under the lock — concurrent insert/remove
+        // from the Rust FFI thread causes a data race on the Dictionary.
+        get { lock.withLock { map.count } }
     }
 }
 

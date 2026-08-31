@@ -13,6 +13,7 @@
 //! installed via `set_body_renderer`.
 
 use std::sync::{Arc, Mutex};
+use tokio::task::AbortHandle;
 
 use futures_util::StreamExt;
 use tokio::runtime::{Handle, Runtime};
@@ -65,7 +66,12 @@ pub struct IrisEngine {
     engine: Arc<MessageEngine>,
     transports: Vec<TransportId>,
     node_id: [u8; 32],
-    body: Mutex<Option<Arc<dyn IrisBody>>>,
+    // Arc so subscribe_inbox can clone it into the spawned task and always read
+    // the current renderer, not a stale snapshot captured at subscription time.
+    body: Arc<Mutex<Option<Arc<dyn IrisBody>>>>,
+    // Bug #17: abort handle for the active inbox forwarder so a second call to
+    // subscribe_inbox cancels the stale forwarder rather than running two.
+    inbox_task: Mutex<Option<AbortHandle>>,
     /// GAP-7: owns the background scan loop that calls `Transport::connect()`
     /// on first contact with a peer — without it every send() fails
     /// NotConnected forever, since nothing else in the engine connects.
@@ -135,7 +141,8 @@ impl IrisEngine {
             engine,
             transports,
             node_id,
-            body: Mutex::new(None),
+            body: Arc::new(Mutex::new(None)),
+            inbox_task: Mutex::new(None),
             discovery,
         }))
     }
@@ -205,8 +212,12 @@ impl IrisEngine {
     pub fn subscribe_inbox(&self, listener: Arc<dyn FfiInboxListener>) -> Result<(), IrisFfiError> {
         let mut rx = self.engine.delivered_messages();
         let listener = listener.clone();
-        let body: Option<Arc<dyn IrisBody>> = self.body.lock().unwrap().clone();
-        self.runtime.spawn(async move {
+        // Bug #17: pass the Arc<Mutex<...>> so the task reads the *current*
+        // renderer on each message, not a stale snapshot from subscription time.
+        let body = self.body.clone();
+        // Bug #17: abort the previous forwarder so two calls don't fan-out the
+        // same message to two tasks (duplicate delivery, resource leak).
+        let handle = self.runtime.spawn(async move {
             // GAP-4: `Lagged` is recoverable and must not be treated as
             // `Closed` — doing so silently and permanently kills the user's
             // inbox with no error surfaced (subscribe_inbox already returned
@@ -229,7 +240,7 @@ impl IrisEngine {
                             priority: env.priority.as_u8(),
                             received_at_ms: unix_now().saturating_mul(1000),
                         };
-                        if let Some(renderer) = &body {
+                        if let Some(renderer) = body.lock().unwrap().clone() {
                             let proj = FfiIrisEnvelope {
                                 message_id: view.message_id.clone(),
                                 sender_id: view.sender_id.clone(),
@@ -253,6 +264,12 @@ impl IrisEngine {
                 }
             }
         });
+        // Abort previous forwarder and store the new abort handle.
+        let mut slot = self.inbox_task.lock().unwrap();
+        if let Some(prev) = slot.take() {
+            prev.abort();
+        }
+        *slot = Some(handle.abort_handle());
         Ok(())
     }
 

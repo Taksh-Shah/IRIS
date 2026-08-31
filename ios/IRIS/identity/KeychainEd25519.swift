@@ -29,13 +29,21 @@ enum KeychainEd25519 {
     static let service = "com.iris.identity.v1"
     static let account = "ed25519-signing-pair"
 
+    // Bug #15: serialize check-generate-store to prevent concurrent callers
+    // (main + extension) both seeing "no key" and racing to store.
+    private static let identityLock = NSLock()
+
     /// Provision (or load) the node identity. Create-on-first-run, then load.
     static func identity() throws -> Ed25519KeyPair {
-        if let existing = try load() {
-            return existing
-        }
+        identityLock.lock(); defer { identityLock.unlock() }
+        if let existing = try load() { return existing }
         let new = Self.generate()
-        try store(new)
+        do {
+            try store(new)
+        } catch let err as NSError where err.code == Int(errSecDuplicateItem) {
+            // Concurrent store from another process (widget extension) — load the winner
+            if let winner = try load() { return winner }
+        }
         return new
     }
 

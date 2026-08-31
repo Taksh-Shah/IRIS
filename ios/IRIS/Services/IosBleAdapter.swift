@@ -66,6 +66,8 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
     private var handleByToken: [String: UInt64] = [:]
     /// The last accepted scan filter (re-applied from willRestoreState, AC-10).
     private var activeScanFilter: FfiScanFilter?
+    /// Bug #11: last advertisement data (re-applied from willRestoreState).
+    private var lastAdvertisementData: FfiAdvertisementData?
 
     private var scanResultBuffer: [FfiScanResult] = []
     private var gattWriteBuffer: [FfiGattWriteEvent] = []
@@ -143,7 +145,9 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
     }
 
     public func stopScan(handle: UInt64) {
+        guard lock.withLock({ activeScanFilter != nil }) else { return }
         central.stopScanning()
+        lock.withLock { activeScanFilter = nil } // Bug #23: clear so didRestore knows scan is stopped
     }
 
     public func startAdvertising(data: FfiAdvertisementData) throws -> UInt64 {
@@ -154,6 +158,7 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         let handle = lock.withLock { () -> UInt64 in
             let h = nextAdvHandle
             nextAdvHandle += 1
+            lastAdvertisementData = data // Bug #11: cache for willRestoreState re-arm
             return h
         }
         peripheral.addService(
@@ -181,6 +186,7 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
     }
 
     public func stopAdvertising(handle: UInt64) {
+        lock.withLock { lastAdvertisementData = nil } // Bug #23: clear so didRestore won't restart
         peripheral.stopAdvertising()
     }
 
@@ -210,7 +216,9 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         }
         let handle = lock.withLock { () -> UInt64 in
             let h = nextGattHandle
-            nextGattHandle += 1
+            // Bug #28: wrap-guard — handle 0 is the sentinel for unknown in bridge
+            nextGattHandle &+= 1
+            if nextGattHandle == 0 { nextGattHandle = 1 }
             tokenByHandle[h] = cleaned
             handleByToken[cleaned] = h
             return h
@@ -220,8 +228,11 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
     }
 
     public func disconnectGatt(handle: UInt64) {
-        let token = lock.withLock { tokenByHandle[handle] }
-        guard let token, let peer = lock.withLock({ peers[token] }) else { return }
+        // Bug #22: remove stale map entries so reconnects get fresh handles
+        let token = lock.withLock { tokenByHandle.removeValue(forKey: handle) }
+        guard let token else { return }
+        lock.withLock { handleByToken.removeValue(forKey: token) }
+        guard let peer = lock.withLock({ peers[token] }) else { return }
         central.cancelConnection(identifier: peer.identifier)
     }
 
@@ -469,17 +480,20 @@ extension IosBleAdapter: BleCentralSeamDelegate {
     }
 
     public func centralSeam(_ seam: BleCentralSeam, didRestore identifiers: [UUID]) {
-        // AC-10 willRestoreState re-arm: re-discover restored peers and restart
-        // the last accepted scan filter (no auto-resume of the adapter).
-        let filter = lock.withLock { activeScanFilter }
-        guard let filter else { return }
+        // AC-10 willRestoreState re-arm: re-discover restored peers, restart last
+        // scan filter, and restart advertising if it was active (Bug #11).
         for id in identifiers {
             let token = IrisBleConstants.token(for: id)
             lock.withLock {
                 if peers[token] == nil { peers[token] = PeerRecord(identifier: id) }
             }
         }
-        try? startScan(filter: filter)
+        if let filter = lock.withLock({ activeScanFilter }) {
+            try? startScan(filter: filter)
+        }
+        if let adv = lock.withLock({ lastAdvertisementData }), seam.state.isPoweredOn {
+            _ = try? startAdvertising(data: adv)
+        }
     }
 }
 

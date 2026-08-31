@@ -74,20 +74,26 @@ public final class MockBleSeam: BleCentralSeam, BlePeripheralSeam {
     }
 
     public func connectPeripheral(identifier: UUID, options: [String: Any]?) {
-        lock.lock(); defer { lock.unlock() }
+        // Bug #26: unlock before calling delegate — didConnect → discoverServices
+        // re-enters this lock, causing deadlock on non-reentrant NSLock.
+        lock.lock()
         connectRecords.append(identifier)
         peers[identifier]?.connected = true
+        let del = delegate
+        lock.unlock()
         // Synchronous delegate delivery: the adapter's gatt_read blocks on a
         // semaphore while driving connect->discover->read, so the mock must
         // reply on the caller thread (no main-queue coupling).
-        delegate?.centralSeam(self, didConnect: identifier)
+        del?.centralSeam(self, didConnect: identifier)
     }
 
     public func cancelConnection(identifier: UUID) {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
         cancelConnectionRecords.append(identifier)
         peers[identifier]?.connected = false
-        delegate?.centralSeam(self, didDisconnect: identifier, error: nil)
+        let del = delegate
+        lock.unlock()
+        del?.centralSeam(self, didDisconnect: identifier, error: nil)
     }
 
     public func retrievePeripherals(identifiers: [UUID]) {
@@ -95,22 +101,29 @@ public final class MockBleSeam: BleCentralSeam, BlePeripheralSeam {
     }
 
     public func discoverServices(identifier: UUID, uuids: [CBUUID]?) {
-        lock.lock(); defer { lock.unlock() }
+        // Bug #26: unlock before calling delegate — same re-entrancy risk as connectPeripheral.
+        lock.lock()
         discoverServicesRecords.append((identifier, uuids))
         let services = [IrisBleConstants.serviceUUID]
-        delegate?.centralSeam(
+        let del = delegate
+        let err = serviceDiscoveryError
+        lock.unlock()
+        del?.centralSeam(
             self,
             didCompleteServiceDiscovery: identifier,
             services: services,
-            error: serviceDiscoveryError
+            error: err
         )
     }
 
     public func discoverCharacteristics(identifier: UUID, characteristicUuids: [CBUUID]?, serviceUuid: CBUUID) {
-        lock.lock(); defer { lock.unlock() }
+        // Bug #26: unlock before calling delegate — same re-entrancy risk as connectPeripheral.
+        lock.lock()
         discoverCharacteristicsRecords.append((identifier, characteristicUuids, serviceUuid))
         let chars = [IrisBleConstants.identifyUUID, IrisBleConstants.controlUUID]
-        delegate?.centralSeam(
+        let del = delegate
+        lock.unlock()
+        del?.centralSeam(
             self,
             didCompleteCharacteristicDiscovery: identifier,
             serviceUuid: serviceUuid,

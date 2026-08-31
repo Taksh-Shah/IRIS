@@ -19,12 +19,12 @@
 | Tier | Name | Total | ✅ Fixed | 🔮 Future | 🔀 Routed | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
-| 1 | High — crashes, races, leaks, security | 18 | 0 | 0 | 0 | 18 |
+| 1 | High — crashes, races, leaks, security | 18 | 17 | 1 | 0 | 0 |
 | 2 | Medium — correctness, DoS, protocol, CI | 30 | 0 | 0 | 0 | 30 |
 | 3 | Low — quality, supply chain, test flakes, docs | 14 | 0 | 0 | 0 | 14 |
-| **Total** | | **72** | **10** | **0** | **0** | **62** |
+| **Total** | | **72** | **27** | **1** | **0** | **44** |
 
-**Last updated:** 2026-08-30 · **Active tier:** Tier 1 — in progress.
+**Last updated:** 2026-08-31 · **Active tier:** Tier 1 — complete. Next: Tier 2.
 
 ---
 
@@ -192,7 +192,7 @@
 
 ### Bug #11 — `didRestore` no advertising restart
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:431`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -205,7 +205,7 @@
 
 ### Bug #12 — `classify` inverted
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (confirmed fixed by Tier 0 contributor)
 - **File(s):** `ios/IRIS/Session/SessionRecovery.swift:28-36`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -218,7 +218,7 @@
 
 ### Bug #13 — `willRestoreState` no-op `_=adapter`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (confirmed fixed by Tier 0 contributor)
 - **File(s):** `ios/IRIS/Session/SessionRecovery.swift:40-50`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -231,7 +231,7 @@
 
 ### Bug #14 — Double `setTaskCompleted` kill
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/Background/BGTaskWiring.swift:82`
 - **Category:** Crash · **Severity:** High
 - **Tier:** 1
@@ -244,7 +244,7 @@
 
 ### Bug #15 — Race `identity()` duplicate crash
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/Keychain/KeychainEd25519.swift:33-40`
 - **Category:** Security · **Severity:** High
 - **Tier:** 1
@@ -257,7 +257,7 @@
 
 ### Bug #16 — Double `BGTaskWiring` instance
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (confirmed fixed by Tier 0 contributor)
 - **File(s):** `ios/IRIS/App/AppDelegate.swift:56`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -270,7 +270,7 @@
 
 ### Bug #17 — Leaked inbox forwarder + stale body snapshot
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `crates/iris-ios/src/engine.rs:240`
 - **Category:** Leak · **Severity:** High
 - **Tier:** 1
@@ -283,7 +283,7 @@
 
 ### Bug #18 — Strong `delegate` retain cycle
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerCentral.swift:16`
 - **Category:** Leak · **Severity:** High
 - **Tier:** 1
@@ -296,7 +296,7 @@
 
 ### Bug #19 — `peripheral(for:)` unlocked read
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerCentral.swift:111`
 - **Category:** Race · **Severity:** High
 - **Tier:** 1
@@ -309,7 +309,7 @@
 
 ### Bug #20 — `services?.first` ignores `serviceUuid`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerCentral.swift:86-99`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -322,7 +322,7 @@
 
 ### Bug #21 — `maximumWriteValueLength` 0→20 lie
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (intentional design per RES-0024 DI-5; deferred to transport-layer MTU negotiation rework)
 - **File(s):** `ios/IRIS/BLE/CBManagerCentral.swift:101`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -335,7 +335,7 @@
 
 ### Bug #22 — `disconnectGatt` never removes maps
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:211`
 - **Category:** Leak · **Severity:** High
 - **Tier:** 1
@@ -348,7 +348,7 @@
 
 ### Bug #23 — `stopScan`/`stopAdvertising` ignore handle
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:134`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -361,7 +361,7 @@
 
 ### Bug #24 — `try?` swallows error + `using:nil` blocks main
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/Background/BGTaskWiring.swift:70`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -374,7 +374,7 @@
 
 ### Bug #25 — `shared` duplicate AppDelegate crash
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/App/AppDelegate.swift:10-13`
 - **Category:** Crash · **Severity:** High
 - **Tier:** 1
@@ -387,7 +387,7 @@
 
 ### Bug #26 — Mock holds lock across `delegate?.didConnect` — deadlock
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/Tests/MockCoreBluetooth.swift:76-84`
 - **Category:** DoS · **Severity:** High
 - **Tier:** 1
@@ -400,7 +400,7 @@
 
 ### Bug #27 — `UniffiHandleMap.count` unlocked race
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/IrisCore.swift:408`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
@@ -413,7 +413,7 @@
 
 ### Bug #28 — `next*Handle` overflow never checked + `peers` never evicted
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:57-59, 375`
 - **Category:** Logic · **Severity:** High
 - **Tier:** 1
