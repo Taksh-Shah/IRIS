@@ -12,9 +12,42 @@ use iris_core::message::MessagePriority;
 use iris_core::message_engine::lifecycle::MessageStatus;
 use iris_core::message_engine::storage::{MessageStorage, StorageError};
 use iris_core::protocol::{codec, Envelope, MessageId};
+use tokio_postgres_rustls::MakeRustlsConnect;
 
 use crate::eviction::{delete_expired, evict_lowest_priority, usage_bytes};
 use crate::seal::{NoSealer, RowSealer};
+
+/// Whether TLS is required for the PostgreSQL connection (TAK-6).
+///
+/// Defaults to `Require`. `Disable` is permitted only when the configured
+/// host resolves to loopback; attempting to connect to a remote host without
+/// TLS returns `StorageError::Backend` at startup rather than leaking the
+/// DB password and message CBOR in cleartext.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SslMode {
+    /// Enforce TLS (default). The connector uses the platform's native root
+    /// CA bundle via webpki-roots to verify the server certificate.
+    Require,
+    /// Disable TLS. Only permitted for loopback hosts (`127.0.0.1`, `::1`,
+    /// `localhost`). Any other host causes `connect` to fail immediately.
+    Disable,
+}
+
+/// True when `host` is unambiguously loopback — TLS overhead is unnecessary
+/// and server-cert verification against a loopback address is meaningless.
+fn host_is_loopback(host: &str) -> bool {
+    matches!(host, "127.0.0.1" | "::1" | "localhost")
+}
+
+/// Build a rustls `MakeRustlsConnect` backed by the bundled Mozilla root set.
+fn make_tls_connector() -> Result<MakeRustlsConnect, StorageError> {
+    let mut roots = rustls::RootCertStore::empty();
+    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let tls_config = rustls::ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+    Ok(MakeRustlsConnect::new(tls_config))
+}
 
 /// Connection + quota configuration for [`PgStorage`].
 ///
@@ -41,6 +74,9 @@ pub struct PgStorageConfig {
     /// provided. Deliberately carried in config rather than widening the
     /// Section-2-owned `MessageStorage::persist` signature.
     pub node_id: Option<[u8; 32]>,
+    /// TAK-6: TLS mode for the PostgreSQL connection. Defaults to `Require`;
+    /// set via `IRIS_PG_SSLMODE=disable` for local / loopback-only deployments.
+    pub ssl_mode: SslMode,
 }
 
 impl std::fmt::Debug for PgStorageConfig {
@@ -53,6 +89,7 @@ impl std::fmt::Debug for PgStorageConfig {
             .field("password", &"[redacted]")
             .field("max_storage_bytes", &self.max_storage_bytes)
             .field("eviction_threshold", &self.eviction_threshold)
+            .field("ssl_mode", &self.ssl_mode)
             .finish()
     }
 }
@@ -79,6 +116,10 @@ impl PgStorageConfig {
                 .ok()
                 .as_deref()
                 .and_then(parse_node_id),
+            ssl_mode: match std::env::var("IRIS_PG_SSLMODE").as_deref() {
+                Ok("disable") => SslMode::Disable,
+                _ => SslMode::Require,
+            },
         }
     }
 }
@@ -171,13 +212,30 @@ fn next_backoff_ms(current_ms: u64) -> u64 {
 /// every schema migration. Used both for the initial `connect` and by the
 /// supervisor on every reconnect, so a new connection is always fully
 /// migrated before it becomes visible to callers.
+///
+/// TAK-6: when `ssl_mode` is `Require` the connection uses rustls; when it
+/// is `Disable` the caller must have already verified the host is loopback.
 async fn establish(
     pg: &tokio_postgres::Config,
+    host: &str,
+    ssl_mode: &SslMode,
 ) -> Result<Arc<tokio_postgres::Client>, StorageError> {
-    let (client, connection) = pg
-        .connect(tokio_postgres::NoTls)
-        .await
-        .map_err(|e| StorageError::Backend(format!("pg connect: {e}")))?;
+    // TAK-6: refuse non-loopback connections with TLS disabled.
+    if *ssl_mode == SslMode::Disable && !host_is_loopback(host) {
+        return Err(StorageError::Backend(
+            "TLS required for non-loopback Postgres — set IRIS_PG_SSLMODE=require or use a loopback host".into(),
+        ));
+    }
+    let (client, connection) = if *ssl_mode == SslMode::Require {
+        let tls = make_tls_connector()?;
+        pg.connect(tls)
+            .await
+            .map_err(|e| StorageError::Backend(format!("pg connect (tls): {e}")))?
+    } else {
+        pg.connect(tokio_postgres::NoTls)
+            .await
+            .map_err(|e| StorageError::Backend(format!("pg connect: {e}")))?
+    };
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             tracing::debug!("pg connection driver ended: {e}");
@@ -209,6 +267,8 @@ async fn connection_is_alive(client: &tokio_postgres::Client) -> bool {
 /// migrations on every fresh connection.
 fn spawn_connection_supervisor(
     pg: tokio_postgres::Config,
+    host: String,
+    ssl_mode: SslMode,
     client_slot: Arc<tokio::sync::RwLock<Option<Arc<tokio_postgres::Client>>>>,
 ) {
     tokio::spawn(async move {
@@ -220,7 +280,7 @@ fn spawn_connection_supervisor(
             while client_slot.read().await.is_some() {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             }
-            match establish(&pg).await {
+            match establish(&pg, &host, &ssl_mode).await {
                 Ok(client) => {
                     backoff_ms = initial_backoff_ms();
                     tracing::info!("pg connected");
@@ -344,13 +404,13 @@ impl PgStorage {
 
         // Initial establishment happens inline so callers see real connection
         // errors at startup; afterwards the supervisor owns reconnection.
-        let client = establish(&pg).await.map_err(|e| {
+        let client = establish(&pg, &config.host, &config.ssl_mode).await.map_err(|e| {
             tracing::error!(error = %e, "initial pg connection failed");
             e
         })?;
 
         let client_slot = Arc::new(tokio::sync::RwLock::new(Some(client)));
-        spawn_connection_supervisor(pg, client_slot.clone());
+        spawn_connection_supervisor(pg, config.host.clone(), config.ssl_mode.clone(), client_slot.clone());
 
         Ok(Self {
             client_slot,

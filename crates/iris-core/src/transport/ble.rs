@@ -259,6 +259,17 @@ pub trait BleAdapter: Send + Sync + 'static {
     fn accepted_connections(&self) -> Vec<AcceptedConnection> {
         Vec::new()
     }
+    /// BLE-1: drain handles the OS has disconnected since the last call.
+    ///
+    /// Real platform bridges push each handle into an internal queue as the
+    /// OS fires its link-down callback (CBCentralManager `didDisconnect` on
+    /// iOS, `onConnectionStateChange(DISCONNECTED)` on Android). The accept
+    /// poller drains this once per tick and tears down the corresponding peer
+    /// entry so the manager stops routing to a dead link. Default returns
+    /// empty so all existing implementors keep compiling unchanged.
+    fn drain_disconnected_handles(&self) -> Vec<GattHandle> {
+        Vec::new()
+    }
 }
 
 /// In-memory BLE adapter for tests and simulation. No hardware involved.
@@ -301,6 +312,10 @@ pub struct SimulatedBleAdapter {
     /// BLE-24: maps each allocated GattHandle back to the BleAddress it was
     /// opened for, so `gatt_read` can serve the right per-peer beacon.
     handle_to_address: std::sync::Mutex<std::collections::HashMap<GattHandle, BleAddress>>,
+    /// BLE-1: queue of handles the simulated OS has disconnected — drained by
+    /// `drain_disconnected_handles`. Tests call `simulate_disconnect` to inject
+    /// a link-down event exactly as a real OS bridge would.
+    disconnected: std::sync::Mutex<Vec<GattHandle>>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -319,6 +334,17 @@ impl SimulatedBleAdapter {
     /// discovery beacon) that `gatt_read` serves for `IRIS_IDENTIFY_CHARACTERISTIC`.
     pub fn inject_identify_read(&self, data: Vec<u8>) {
         *self.identify_data.lock().unwrap_or_else(|p| p.into_inner()) = data;
+    }
+    /// BLE-1: inject a simulated OS disconnect event for `handle`. The next
+    /// `drain_disconnected_handles` call will return it, causing the accept
+    /// poller to tear down the peer — exactly as a real platform bridge would
+    /// when `didDisconnect`/`onConnectionStateChange(DISCONNECTED)` fires.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn simulate_disconnect(&self, handle: GattHandle) {
+        self.disconnected
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(handle);
     }
     /// BLE-24: inject a per-address identify beacon. When a GATT connection is
     /// opened to `addr`, `gatt_read` will serve `data` instead of the global
@@ -434,6 +460,13 @@ impl BleAdapter for SimulatedBleAdapter {
         Ok(h)
     }
     fn disconnect_gatt(&self, _handle: GattHandle) {}
+    /// BLE-1: override so the accept poller actually sees simulated link-down
+    /// events. Drains the queue injected by `simulate_disconnect`.
+    fn drain_disconnected_handles(&self) -> Vec<GattHandle> {
+        std::mem::take(
+            &mut *self.disconnected.lock().unwrap_or_else(|p| p.into_inner()),
+        )
+    }
     fn gatt_write(
         &self,
         handle: GattHandle,
@@ -847,6 +880,34 @@ impl BleTransport {
                     );
                     if let Some(prev) = pollers.write().unwrap_or_else(|p| p.into_inner()).insert(peer_id, abort) {
                         prev.abort();
+                    }
+                }
+                // BLE-1: drain OS link-down events. A vanished peer's handle is
+                // reported here (via `didDisconnect`/`onConnectionStateChange`) so
+                // the manager stops routing to a dead connection. We find the PeerId
+                // by scanning `connections` (O(peers) — small) and tear it down by
+                // aborting its poller and removing its connection entry. We do NOT
+                // call `disconnect_gatt` — the OS already closed the link.
+                for dead in adapter.drain_disconnected_handles() {
+                    spawned.remove(&dead);
+                    let peer_id = connections
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner())
+                        .iter()
+                        .find(|(_, (h, _, _))| *h == dead)
+                        .map(|(p, _)| *p);
+                    if let Some(pid) = peer_id {
+                        connections
+                            .lock()
+                            .unwrap_or_else(|p| p.into_inner())
+                            .remove(&pid);
+                        if let Some(abort) = pollers
+                            .write()
+                            .unwrap_or_else(|p| p.into_inner())
+                            .remove(&pid)
+                        {
+                            abort.abort();
+                        }
                     }
                 }
             }

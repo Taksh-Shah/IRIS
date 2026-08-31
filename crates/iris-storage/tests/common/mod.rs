@@ -35,6 +35,8 @@ fn cfg_db(dbname: &str) -> PgStorageConfig {
 /// Ensure the scratch database exists (created against the maintenance DB).
 pub async fn ensure_db() {
     let cfg = cfg_db("postgres");
+    // TAK-6: maintenance connection is always loopback (test DB is local);
+    // NoTls is permitted for loopback by `establish`'s own enforcement.
     let (client, conn) = tokio_postgres::connect(
         &format!(
             "host={} port={} user={} password={} dbname=postgres",

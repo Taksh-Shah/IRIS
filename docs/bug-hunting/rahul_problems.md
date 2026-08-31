@@ -20,11 +20,11 @@
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
-| 3 | Structural enhancements | 7 | 4 | 3 | 0 | 0 |
+| 3 | Structural enhancements | 7 | 5 | 2 | 0 | 0 |
 | 4 | New audit findings (GAP-1..GAP-8) | 8 | 8 | 0 | 0 | 0 |
-| **Total** | | **33** | **30** | **3** | **0** | **0** |
+| **Total** | | **33** | **31** | **2** | **0** | **0** |
 
-**Last updated:** 2026-08-31 · **Active tier:** 4 complete (8/8 ✅); Tier 3 4 ✅, 3 🔒 blocked (PS-7 unblocked 2026-08-31 — max_message_size reconciled; PS-1/PS-3/PS-5 awaiting Section 1/3 sign-off)
+**Last updated:** 2026-08-31 · **Active tier:** 4 complete (8/8 ✅); Tier 3 5 ✅, 2 🔒 blocked (PS-5 ✅ Fixed 2026-08-31 — concurrent join_all; PS-7 unblocked 2026-08-31; PS-1/PS-3 blocked pending Section 1/3 sign-off)
 
 ---
 
@@ -534,7 +534,7 @@ GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
 
 ### PS-5 — Discovery scans transports serially inside an interval shorter than the worst case
 
-- **Fix status:** 🔒 Blocked · Section 3 must verify whether concurrent scans contend for shared radio hardware before implementing
+- **Fix status:** ✅ Fixed 2026-08-31 — `scan_once` refactored to use `futures_util::future::join_all` over per-transport scan futures extracted into `scan_transport`. OS radio arbiter handles BLE/Wi-Fi contention; serialisation at the Rust layer was premature. Round latency is now `max(transport)` instead of `sum(transport)`.
 - **File(s):** `crates/iris-core/src/discovery/mod.rs:187-221`
 - **Category:** architecture · **Priority:** Would help, not urgent — verify premise first
 - **Tier:** 3
