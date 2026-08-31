@@ -92,16 +92,19 @@ impl NodeIdentityV1 {
             b.copy_from_slice(&blob[i..i + 8]);
             u64::from_be_bytes(b)
         };
-        let read_32 = |i: usize| -> [u8; 32] {
-            let mut b = [0u8; 32];
+        // PRY-23: decode secret material straight into `Zeroizing` so the
+        // transient stack copy is wiped when the temporary is dropped — the
+        // old closure returned a bare `[u8; 32]` that lingered unzeroed.
+        let read_secret_32 = |i: usize| -> Zeroizing<[u8; 32]> {
+            let mut b = Zeroizing::new([0u8; 32]);
             b.copy_from_slice(&blob[i..i + 32]);
             b
         };
         Ok(Self {
             format_version: version,
             created_unix: read_u64(5),
-            identity_ed25519_seed: Zeroizing::new(read_32(13)),
-            static_x25519_secret: Zeroizing::new(read_32(45)),
+            identity_ed25519_seed: read_secret_32(13),
+            static_x25519_secret: read_secret_32(45),
             key_gen_counter: read_u64(77),
         })
     }
