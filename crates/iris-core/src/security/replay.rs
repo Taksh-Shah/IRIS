@@ -459,7 +459,12 @@ impl ReplayEngine {
 
         // GAP-6: expand past window by skew_budget to accommodate slow-clock
         // senders, matching check()'s corrected past cutoff.
-        // Future direction stays conservative for untrusted senders (no skew).
+        // PRY-27: apply the same skew budget to the FUTURE bound too. Untrusted
+        // senders (a stranger's phone in a disaster) are the population least
+        // likely to have an NTP-synced clock; a clock fast by < skew_budget was
+        // hard-dropped `TooFuture` here while the identical device is accepted
+        // once it becomes a tracked sender. A future-dated message is not a
+        // replay, and this path never advances durable state.
         let min_ts = now
             .saturating_sub(self.config.freshness_window_past.as_secs())
             .saturating_sub(self.config.per_source_skew_budget.as_secs());
@@ -468,7 +473,9 @@ impl ReplayEngine {
             return ReplayDecision::TooOld;
         }
 
-        let max_ts = now.saturating_add(self.config.freshness_window_future.as_secs());
+        let max_ts = now
+            .saturating_add(self.config.freshness_window_future.as_secs())
+            .saturating_add(self.config.per_source_skew_budget.as_secs());
         if ts > max_ts {
             self.metrics.too_future.fetch_add(1, Ordering::Relaxed);
             return ReplayDecision::TooFuture;
@@ -764,8 +771,9 @@ mod tests {
             re.check(sender, now - 108000, 1).await,
             ReplayDecision::TooOld
         );
+        // PRY-27: future bound is now future_window (300) + skew_budget (300).
         assert_eq!(
-            re.check_freshness_only(now + 600).await,
+            re.check_freshness_only(now + 601).await,
             ReplayDecision::TooFuture
         );
 
@@ -909,8 +917,18 @@ mod tests {
             re.check_freshness_only(now - 108000).await,
             ReplayDecision::TooOld
         );
+        // PRY-27: the future bound now includes per_source_skew_budget (default
+        // 300s future window + 300s skew = 600s). A clock fast by 7.5 min — an
+        // unsynced stranger's phone, the population this path serves — is now
+        // accepted (was a hard TooFuture drop).
         assert_eq!(
-            re.check_freshness_only(now + 600).await,
+            re.check_freshness_only(now + 450).await,
+            ReplayDecision::Accepted,
+            "within future_window + skew_budget"
+        );
+        // Still bounded: past the combined budget is TooFuture.
+        assert_eq!(
+            re.check_freshness_only(now + 601).await,
             ReplayDecision::TooFuture
         );
     }
