@@ -196,11 +196,18 @@ impl RateLimiter {
         }
     }
 
-    /// Check rate limit for a sender and class.
-    /// Returns Allowed / SilentDrop / Exempt.
-    /// P0/P1 are exempt from rate-limit drops (queue-priority only) per DEC-SEC-0001.
+    /// Check rate limit for a sender and class, treating the content as
+    /// **ordinary**. Callers that have validated the payload as genuine
+    /// emergency content must use [`check_with_claim`] with
+    /// [`EmergencyClaim::Emergency`].
+    ///
+    /// PRY-22: this previously hard-coded `EmergencyClaim::Emergency`, so any
+    /// caller reaching for the shorter name granted the P0/P1 rate-limit
+    /// exemption to *all* content on a sender-chosen priority — the exact
+    /// free network-starvation primitive `check_with_claim` was built to close.
+    /// The safe default is `Ordinary`.
     pub async fn check(&self, sender: SenderShort, class: MessageClass) -> RateLimitDecision {
-        self.check_with_claim(sender, class, EmergencyClaim::Emergency)
+        self.check_with_claim(sender, class, EmergencyClaim::Ordinary)
             .await
     }
 
@@ -305,10 +312,15 @@ impl RateLimiter {
     ) -> RateLimitDecision {
         let elapsed = now.duration_since(bucket.last_refill);
         if elapsed >= refill_interval {
-            // SEC-RT-11: guard refill_interval < 1s (as_secs() == 0) against
-            // division-by-zero panic.
-            let period_secs = refill_interval.as_secs().max(1);
-            let intervals = elapsed.as_secs() / period_secs;
+            // PRY-14: do the refill arithmetic in nanoseconds. The old
+            // whole-seconds math (`elapsed.as_secs() / period_secs` with
+            // `period_secs = as_secs().max(1)`) yielded `intervals == 0` for the
+            // entire first second under any sub-second `refill_interval`, so the
+            // bucket only ever drained — a self-inflicted total DoS after the
+            // first burst. SEC-RT-11's div-by-zero guard is preserved by
+            // `.max(1)` on the nanosecond period.
+            let period_nanos = refill_interval.as_nanos().max(1);
+            let intervals = u64::try_from(elapsed.as_nanos() / period_nanos).unwrap_or(u64::MAX);
             if intervals > 0 {
                 bucket.tokens = refill_tokens(bucket.tokens, intervals, rate_per_sec, burst);
                 bucket.last_refill = now;
@@ -331,10 +343,9 @@ impl RateLimiter {
         let now = (self.clock)();
         let elapsed = now.duration_since(bucket.last_refill);
         if elapsed >= self.config.refill_interval {
-            // SEC-RT-11: guard refill_interval < 1s (as_secs() == 0) against
-            // division-by-zero panic.
-            let period_secs = self.config.refill_interval.as_secs().max(1);
-            let intervals = elapsed.as_secs() / period_secs;
+            // PRY-14: nanosecond refill arithmetic (see `check_bucket`).
+            let period_nanos = self.config.refill_interval.as_nanos().max(1);
+            let intervals = u64::try_from(elapsed.as_nanos() / period_nanos).unwrap_or(u64::MAX);
             if intervals > 0 {
                 bucket.tokens = refill_tokens(bucket.tokens, intervals, rate_per_sec, burst);
                 bucket.last_refill = now;
@@ -443,8 +454,16 @@ mod proptest_tests {
             };
             let rl = frozen_limiter(config);
             for _ in 0..n_checks {
-                prop_assert_eq!(block_on(rl.check(sender, MessageClass::P0)), RateLimitDecision::Exempt);
-                prop_assert_eq!(block_on(rl.check(sender, MessageClass::P1)), RateLimitDecision::Exempt);
+                // PRY-22: the P0/P1 exemption is for genuine emergency content
+                // (`EmergencyClaim::Emergency`), never for class alone.
+                prop_assert_eq!(
+                    block_on(rl.check_with_claim(sender, MessageClass::P0, EmergencyClaim::Emergency)),
+                    RateLimitDecision::Exempt
+                );
+                prop_assert_eq!(
+                    block_on(rl.check_with_claim(sender, MessageClass::P1, EmergencyClaim::Emergency)),
+                    RateLimitDecision::Exempt
+                );
             }
         }
 
@@ -578,14 +597,21 @@ mod tests {
         let rl = frozen_limiter(config);
         let sender = [2u8; 16];
 
-        // P0 exempt
+        // PRY-22: the exemption is for genuine emergency *content*, expressed
+        // via `check_with_claim`. P0/P1 emergency content is exempt from drops.
         assert_eq!(
-            rl.check(sender, MessageClass::P0).await,
+            rl.check_with_claim(sender, MessageClass::P0, EmergencyClaim::Emergency)
+                .await,
             RateLimitDecision::Exempt
         );
-        // P1 exempt
         assert_eq!(
-            rl.check(sender, MessageClass::P1).await,
+            rl.check_with_claim(sender, MessageClass::P1, EmergencyClaim::Emergency)
+                .await,
+            RateLimitDecision::Exempt
+        );
+        // The bare `check` (content = ordinary) does NOT grant P0/P1 exemption.
+        assert_ne!(
+            rl.check(sender, MessageClass::P0).await,
             RateLimitDecision::Exempt
         );
         // P2 not exempt, burst=1 so first allowed, second dropped
@@ -682,6 +708,37 @@ mod tests {
         );
     }
 
+    /// PRY-22: the short-named `check` must not be a strict downgrade of the
+    /// safe `check_with_claim` — it previously hard-coded
+    /// `EmergencyClaim::Emergency`, re-opening the P0 starvation primitive for
+    /// any future caller that used it. `check` now treats content as ordinary.
+    #[tokio::test]
+    async fn check_treats_content_as_ordinary_not_emergency() {
+        let config = RateLimiterConfig {
+            rate_per_sec: 1,
+            burst: 2,
+            refill_interval: Duration::from_secs(1),
+            exempt_p0_p1: true,
+            max_sender_buckets: 100,
+            unknown_sender_rate_per_sec: 1,
+            unknown_sender_burst: 1,
+        };
+        let rl = frozen_limiter(config);
+        let attacker = [0x33u8; 16];
+
+        let mut dropped = false;
+        for _ in 0..8 {
+            if rl.check(attacker, MessageClass::P0).await == RateLimitDecision::SilentDrop {
+                dropped = true;
+                break;
+            }
+        }
+        assert!(
+            dropped,
+            "check() on a P0 class must be metered, not P0-exempt"
+        );
+    }
+
     #[tokio::test]
     async fn rate_limiter_metrics_unknown_and_exempt() {
         let config = RateLimiterConfig {
@@ -757,6 +814,49 @@ mod tests {
         assert_eq!(
             rl.check_unknown(MessageClass::P4).await,
             RateLimitDecision::Allowed
+        );
+    }
+
+    /// PRY-14: a sub-second `refill_interval` must actually refill. Pre-fix the
+    /// whole-seconds arithmetic (`elapsed.as_secs() / period_secs`) produced
+    /// `intervals == 0` for the whole first second, so the bucket drained once
+    /// and then `SilentDrop`ped every subsequent check forever.
+    #[tokio::test]
+    async fn sub_second_refill_interval_actually_refills() {
+        use std::sync::Arc;
+        let offset_ns = Arc::new(AtomicU64::new(0));
+        let epoch = Instant::now();
+        let oc = offset_ns.clone();
+        let config = RateLimiterConfig {
+            rate_per_sec: 5,
+            burst: 1,
+            refill_interval: Duration::from_millis(500),
+            exempt_p0_p1: true,
+            max_sender_buckets: 100,
+            unknown_sender_rate_per_sec: 1,
+            unknown_sender_burst: 1,
+        };
+        let rl = RateLimiter::with_clock(
+            config,
+            Box::new(move || epoch + Duration::from_nanos(oc.load(Ordering::Relaxed))),
+        );
+        let sender = [7u8; 16];
+
+        assert_eq!(
+            rl.check(sender, MessageClass::P4).await,
+            RateLimitDecision::Allowed
+        );
+        assert_eq!(
+            rl.check(sender, MessageClass::P4).await,
+            RateLimitDecision::SilentDrop
+        );
+
+        // 600 ms later — one full 500 ms interval has elapsed.
+        offset_ns.store(600_000_000, Ordering::Relaxed);
+        assert_eq!(
+            rl.check(sender, MessageClass::P4).await,
+            RateLimitDecision::Allowed,
+            "a 500ms refill_interval must refill after 600ms, not stay wedged"
         );
     }
 
