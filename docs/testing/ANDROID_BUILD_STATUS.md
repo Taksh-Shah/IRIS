@@ -2,6 +2,15 @@
 
 **Date**: 2026-08-22 | **Finding**: 66 pre-existing Kotlin compilation errors
 
+> **Update 2026-08-31:** the 66 Kotlin errors were fixed and BLE/Wi-Fi Direct
+> delivery was demonstrated once on a bench, but there is still **no CI leg that
+> builds or tests the Android app** (`cargo test -p iris-android` does not even
+> compile — its test module calls `IrisEngine::new` with the wrong arity), and
+> field reliability is poor. The hardware verification pass in
+> `docs/bug-hunting/hardware_verification/` (HV-1, HV-2) adds a real CI gate plus
+> a Mobly host-driven multi-device test harness. Until then, "the APK builds" is
+> a manual, point-in-time fact.
+
 ## What happened
 
 The ANDROID-001 node was ACCEPTED with env-gated builds (no Android SDK was

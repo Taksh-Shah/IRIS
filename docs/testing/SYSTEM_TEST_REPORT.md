@@ -167,6 +167,7 @@ project artifact.
 | Limitation | Gate | Reactivation |
 |---|---|---|
 | Physical-device BLE/Wi-Fi tests (real radios) | BLK-0005 | Operator provides Android hardware |
+| **Physical-device reliability** — the one bench session that showed BLE/Wi-Fi Direct delivery was *not* a reliability result; field use is intermittent | tracked in `docs/bug-hunting/hardware_verification/` (81 findings, opened 2026-08-31) | that pass re-verifies each transport with a Mobly multi-device harness + `btsnoop` evidence |
 | Real-modem LoRa/SAT link benchmarks | BLK-0005 | Hardware procurement (EXP-LORA-001 Month 8) |
 | India field activation of TX-capable units | DEC-SAT-0006 legal gate | Legal sign-off + authorized channel |
 | Battery measurement on real hardware | EXP-003 | Physical-device phase |
