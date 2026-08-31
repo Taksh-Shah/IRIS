@@ -301,6 +301,8 @@ impl IrisEngine {
 
 /// Parse a 64-hex node id into a `PeerId`.
 fn parse_peer_id_hex(hex: &str) -> Result<PeerId, IrisFfiError> {
+    // Bug #67: exact-length guard catches odd-length strings (they ≠ 64) before
+    // chunks(2) can produce a partial pair, so no separate parity check is needed.
     if hex.len() != 64 {
         return Err(IrisFfiError::InvalidArgument(
             "peer id must be 64 hex characters".into(),

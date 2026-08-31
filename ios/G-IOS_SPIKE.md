@@ -48,6 +48,12 @@ Swift-5 pin is ever dropped.
 the `.v6` pin can be restored); `ios.yml` runs `swiftc -swift-version 5` over
 the generated file + the `FfiConformanceTests` target.
 
+**Note (Bug #63)**: `swiftc -swift-version 5` is available only on Xcode 16.4+.
+`IPHONEOS_DEPLOYMENT_TARGET 18.0` in `ios/project.yml` requires Xcode 16.4 or
+later. The `ios.yml` CI runner is pinned to `macos-15` with `XCODE_VERSION:
+"16.4"` (see `env:` block). Any CI image upgrade must preserve Xcode ≥ 16.4 or
+the Swift-5-mode compile step will fail.
+
 ## 3. `@unchecked Sendable` usage points (foreign-trait adapters)
 
 The generated protocols are `Sendable`; every Rust-side `Arc<dyn Ffi…>` bound
@@ -91,7 +97,7 @@ workaround — same as DEC-AND-0002/G-AND-3 — is applied in `crates/iris-ios`:
 | `cargo test -p iris-ios` | **11 passed / 0 failed** (0.02 s) |
 | `cargo clippy -p iris-ios --all-targets --all-features` | PASS, 0 warnings |
 | `cargo fmt --all -- --check` | PASS |
-| `cargo build -p iris-ios` | PASS (cdylib + staticlib + rlib) |
+| `cargo build -p iris-ios` | PASS (cdylib + staticlib; rlib removed in Bug #64) |
 | `uniffi-bindgen generate --library target/debug/IrisCore.dll --language swift --out-dir ios/IRIS/RustFFI` | PASS → `IrisCore.swift` (96.7 KB), `IrisCoreFFI.h`, `IrisCoreFFI.modulemap` committed |
 
 Crate-level spike tests (G-IOS-1/2/5 Rust leg): `projection_trait_drives_ops`,

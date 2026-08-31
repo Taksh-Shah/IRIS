@@ -21,10 +21,10 @@
 | 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
 | 1 | High — crashes, races, leaks, security | 18 | 17 | 1 | 0 | 0 |
 | 2 | Medium — correctness, DoS, protocol, CI | 30 | 22 | 7 | 0 | 1 |
-| 3 | Low — quality, supply chain, test flakes, docs | 14 | 0 | 0 | 0 | 14 |
-| **Total** | | **72** | **49** | **8** | **0** | **15** |
+| 3 | Low — quality, supply chain, test flakes, docs | 14 | 12 | 2 | 0 | 0 |
+| **Total** | | **72** | **61** | **10** | **0** | **1** |
 
-**Last updated:** 2026-08-31 · **Active tier:** Tier 2 — complete. Next: Tier 3.
+**Last updated:** 2026-08-31 · **Active tier:** Tier 3 — complete. All tiers done (#43 deferred).
 
 ---
 
@@ -794,7 +794,7 @@
 
 ### Bug #59 — `ios.yml` wrong `cargo install uniffi` bin + missing `modulemap` + `|| true` swallow
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (cargo install uniffi-bindgen; || true removed from build step)
 - **File(s):** `.github/workflows/ios.yml:51, 93, 134`
 - **Category:** CI · **Severity:** Low
 
@@ -806,7 +806,7 @@
 
 ### Bug #60 — `SWIFT_STRICT_CONCURRENCY: minimal` hides Sendable violations
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (upgrade to `targeted` requires Swift compiler + build verification; deferred)
 - **File(s):** `ios/project.yml:13`
 - **Category:** Quality · **Severity:** Low
 
@@ -818,7 +818,7 @@
 
 ### Bug #61 — `IRISApp.swift` uses wrong `AppDelegate` instance
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/IRISApp.swift:28`
 - **Category:** Quality · **Severity:** Low
 
@@ -830,7 +830,7 @@
 
 ### Bug #62 — `IrisWidgetExtension/Info.plist` missing `NSExtensionPrincipalClass`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (comment added explaining @main reliance)
 - **File(s):** `ios/IrisWidgetExtension/Info.plist:5-10`
 - **Category:** Config · **Severity:** Low
 
@@ -842,7 +842,7 @@
 
 ### Bug #63 — Spike claims `swiftc -swift-version 5` passes but deployment target requires Xcode 16.4
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (G-IOS_SPIKE.md updated with Xcode 16.4 requirement note)
 - **File(s):** `ios/G-IOS_SPIKE.md:89-95`
 - **Category:** Style · **Severity:** Low
 
@@ -854,7 +854,7 @@
 
 ### Bug #64 — `crate-type ["cdylib","staticlib","rlib"]` builds unused `rlib` on iOS
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (rlib removed from Cargo.toml)
 - **File(s):** `crates/iris-ios/Cargo.toml:9-13`
 - **Category:** Supply · **Severity:** Low
 
@@ -866,7 +866,7 @@
 
 ### Bug #65 — `hex_to_uuid` allocates new `String` per call on hot path
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (requires arrayvec dep or complex refactor; not worth the complexity at Tier 3)
 - **File(s):** `crates/iris-ios/src/ffi/bridge.rs:40-50`
 - **Category:** Perf · **Severity:** Low
 
@@ -878,7 +878,7 @@
 
 ### Bug #66 — `vtablePtr` never deallocated (intentional process-lifetime design)
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (process-lifetime comment added to all 3 vtablePtr allocations)
 - **File(s):** `ios/IRIS/IrisCore.swift:1109`
 - **Category:** Quality · **Severity:** Low
 
@@ -890,7 +890,7 @@
 
 ### Bug #67 — `parse_peer_id_hex` no odd-length guard
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (comment added; len() != 64 already guards odd-length inputs)
 - **File(s):** `crates/iris-ios/src/engine.rs:256-271`
 - **Category:** Quality · **Severity:** Low
 
@@ -902,7 +902,7 @@
 
 ### Bug #68 — `GattFailure(String)` leaks OS error string to Rust logs
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (sanitizedBleError() helper uses domain+code only; all localizedDescription calls replaced)
 - **File(s):** `crates/iris-ios/src/ffi/error.rs:21`
 - **Category:** Quality · **Severity:** Low
 
@@ -914,7 +914,7 @@
 
 ### Bug #69 — `token(for:)` truncates to 12 hex — collision probability undocumented
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (birthday collision P < 2⁻³³ for ≤8 peers documented in comment)
 - **File(s):** `ios/IRIS/BLE/IrisBleConstants.swift:34-37`
 - **Category:** Docs · **Severity:** Low
 
@@ -926,7 +926,7 @@
 
 ### Bug #70 — `Thread.sleep(forTimeInterval:0.2)` on XCTest main thread — flaky
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (sleep extended to 500ms with explanation comment)
 - **File(s):** `ios/Tests/IosBleAdapterTests.swift:166`
 - **Category:** Test · **Severity:** Low
 
@@ -938,7 +938,7 @@
 
 ### Bug #71 — `runs-on: macos-15` pinned with no auto-bump bot
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (runner image update policy comment added to ios.yml)
 - **File(s):** `.github/workflows/ios.yml:36`
 - **Category:** CI · **Severity:** Low
 
@@ -950,7 +950,7 @@
 
 ### Bug #72 — `NSLocationWhenInUse` in `Info.plist` — no encryption-at-rest note for location + key link
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (PrivacyInfo.xcprivacy created with location usage + data type declarations)
 - **File(s):** `ios/IRIS/Resources/Info.plist:39-40`
 - **Category:** Privacy · **Severity:** Low
 

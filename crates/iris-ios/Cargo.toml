@@ -10,7 +10,7 @@ repository.workspace = true
 # `IrisCore.swift` + `IrisCoreFFI.h` under ios/IRIS/RustFFI/ (IOS_DESIGN.md §3).
 [lib]
 name = "IrisCore"
-crate-type = ["cdylib", "staticlib", "rlib"]
+crate-type = ["cdylib", "staticlib"]  # rlib removed — unused on iOS (Bug #64)
 
 [dependencies]
 async-trait.workspace = true

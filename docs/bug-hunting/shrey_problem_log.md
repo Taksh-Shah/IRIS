@@ -350,3 +350,37 @@ Target findings: #31, #32, #33, #34, #35, #36, #37, #40, #43, #48, #51, #53, #54
 
 ### Next run
 Tier 3 (Bugs #59–#72) — 14 low-severity findings: CI hardening, quality, supply chain, test flakes.
+
+---
+
+## Run 8 — 2026-08-31 — Tier 3: CI hardening, quality, supply chain, privacy
+
+Target findings: #59–#72 (all 14 Tier 3 bugs)
+
+**Drift notes:** #60 deferred (needs Swift compiler for validation). #65 deferred (new dep required). #67 — len() != 64 already guards; comment added. #62 — Xcode injects NSExtensionPrincipalClass from @main; comment added. #66 — 3 vtablePtr allocations (not 1 as noted in report). #72 — PrivacyInfo.xcprivacy created (new file, added to IRIS/Resources/).
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| #59 | cargo install uniffi → uniffi-bindgen; remove || true | ✅ Fixed | pending | ios.yml lines 51, 134 updated |
+| #60 | SWIFT_STRICT_CONCURRENCY: minimal | 🔮 Deferred | — | needs Swift compiler to verify no new errors |
+| #61 | IRISApp.swift wrong AppDelegate access | ✅ Fixed | pending | AppDelegate.shared → (UIApplication.shared.delegate as? AppDelegate)? |
+| #62 | Info.plist missing NSExtensionPrincipalClass | ✅ Fixed | pending | comment explaining @main reliance added |
+| #63 | Spike doc missing Xcode 16.4 requirement | ✅ Fixed | pending | G-IOS_SPIKE.md note added |
+| #64 | rlib in crate-type | ✅ Fixed | pending | removed from Cargo.toml |
+| #65 | hex_to_uuid hot-path allocation | 🔮 Deferred | — | would require arrayvec dep; low impact |
+| #66 | vtablePtr process-lifetime comment | ✅ Fixed | pending | comment added to all 3 allocations in IrisCore.swift |
+| #67 | parse_peer_id_hex odd-length | ✅ Fixed | pending | already safe; clarifying comment added |
+| #68 | GattFailure leaks OS error string | ✅ Fixed | pending | sanitizedBleError() helper; localizedDescription removed from all 5 sites |
+| #69 | token(for:) collision probability | ✅ Fixed | pending | P < 2⁻³³ documented in IrisBleConstants.swift |
+| #70 | Thread.sleep 200ms flaky | ✅ Fixed | pending | extended to 500ms with comment |
+| #71 | macos-15 runner pin no policy | ✅ Fixed | pending | update policy comment added to ios.yml |
+| #72 | NSLocationWhenInUse no privacy manifest | ✅ Fixed | pending | PrivacyInfo.xcprivacy created |
+
+**Batch closeout:** 12 Tier 3 findings fixed; 2 deferred (#60, #65). All 72 findings processed.
+
+**Final summary across all tiers:**
+- Tier 0: 10 ✅
+- Tier 1: 17 ✅, 1 🔮
+- Tier 2: 22 ✅, 7 🔮, 1 ⬜ (#43)
+- Tier 3: 12 ✅, 2 🔮
+- **Total: 61 ✅, 10 🔮, 1 ⬜ out of 72 findings**

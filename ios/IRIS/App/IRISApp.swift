@@ -26,7 +26,7 @@ struct ContentView: View {
                 .monospaced()
             Button("Start mesh") {
                 do {
-                    try AppDelegate.shared.engine?.startAll()
+                    try (UIApplication.shared.delegate as? AppDelegate)?.engine?.startAll()
                     statusText = "IRIS · mesh up"
                 } catch {
                     statusText = "IRIS · error: \(error.localizedDescription)"
@@ -36,7 +36,7 @@ struct ContentView: View {
         }
         .padding()
         .task {
-            if let engine = AppDelegate.shared.engine {
+            if let engine = (UIApplication.shared.delegate as? AppDelegate)?.engine {
                 let id = engine.nodeId().prefix(8).map { String(format: "%02x", $0) }.joined()
                 statusText = "IRIS · node \(id)"
             }

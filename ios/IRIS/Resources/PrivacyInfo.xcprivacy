@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  IOS-001 / Bug #72 — IRIS Privacy Manifest (PrivacyInfo.xcprivacy).
+
+  Required by App Store review for apps using location or device-identifying APIs.
+  Documents that:
+    1. Location is accessed only when the user chooses to include it in an
+       emergency broadcast (NSLocationWhenInUse) — it is NEVER accessed in
+       the background and is NOT linked to the node's persistent Ed25519 identity
+       stored in the Keychain (KeychainEd25519, DEC-IOS-0001).
+    2. No location data is stored beyond the single broadcast payload; it is
+       discarded after the message is delivered to the network.
+    3. No third-party SDKs access location on behalf of IRIS.
+-->
+<plist version="1.0">
+<dict>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryLocationWhenInUse</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- CA92.1: Used to include an optional, user-consented location
+                     in emergency broadcast messages only. The location is not
+                     stored persistently, not linked to user identity, and not
+                     shared with any third party. -->
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePreciseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+    <key>NSPrivacyTracking</key>
+    <false/>
+</dict>
+</plist>

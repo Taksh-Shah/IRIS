@@ -33,8 +33,9 @@ public enum IrisBleConstants {
 
     /// 12-hex token for an identity UUID: the first 6 bytes of the identifier
     /// (48 bits). Round-trips through `crate::bridge`'s 6-byte BleAddress hex
-    /// conversion (`ble_addr_to_hex` emits 12 uppercase hex chars); collision
-    /// risk over 2^48 with a ~8-peer bound (§4) is negligible.
+    /// conversion (`ble_addr_to_hex` emits 12 uppercase hex chars).
+    /// Birthday collision P ≈ n²/2^49 < 2⁻³³ for n ≤ 8 peers — negligible at
+    /// mesh scale. (Bug #69: collision probability now documented.)
     public static func token(for identifier: UUID) -> String {
         let hex = identifier.uuidString.replacingOccurrences(of: "-", with: "")
         return String(hex.prefix(12)).uppercased()

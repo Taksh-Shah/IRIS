@@ -33,7 +33,10 @@ jobs:
   # committed XCFramework.
   rust-bindings:
     name: staticlibs + bindings + xcframework
-    runs-on: macos-15 # arm64; G-IOS-6 pin — re-validate on monthly image updates
+    # Bug #71: macos-15 is pinned; GitHub refreshes runner images monthly.
+    # Review on each Xcode release — check maxim-lobanov/setup-xcode@v1 changelog
+    # and update XCODE_VERSION + re-run xcbeautify compatibility check.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Pin Xcode (G-IOS-6)
@@ -48,7 +51,8 @@ jobs:
         with:
           cache-on-failure: true
       - name: Install uniffi-bindgen (pin 0.31.2)
-        run: cargo install uniffi --features cli --version ${{ env.UNIFFI_VERSION }} --locked
+        # Bug #59: the `uniffi` crate has no CLI — the binary is in `uniffi-bindgen`.
+        run: cargo install uniffi-bindgen --version ${{ env.UNIFFI_VERSION }} --locked
       - name: Build device staticlib (aarch64-apple-ios)
         run: cargo build -p iris-ios --release --target aarch64-apple-ios
       - name: Build simulator staticlibs
@@ -131,7 +135,7 @@ jobs:
             -scheme IRIS \
             -destination 'generic/platform=iOS' \
             -configuration Release \
-            build | xcbeautify || true
+            build | xcbeautify
 
   # ------------------------------------------------- macOS-host unit tests
   # IOS-CoreBluetooth-Mock based tests (central-side adapter logic; the iOS

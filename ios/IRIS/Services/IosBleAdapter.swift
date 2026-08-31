@@ -409,7 +409,7 @@ extension IosBleAdapter: BleCentralSeamDelegate {
     }
 
     public func centralSeam(_ seam: BleCentralSeam, didFailToConnect identifier: UUID, error: Error?) {
-        failRead(token: IrisBleConstants.token(for: identifier), with: .gattFailure(error?.localizedDescription ?? "connect failed"))
+        failRead(token: IrisBleConstants.token(for: identifier), with: .gattFailure(error.map { sanitizedBleError($0) } ?? "connect failed"))
     }
 
     public func centralSeam(_ seam: BleCentralSeam, didDisconnect identifier: UUID, error: Error?) {
@@ -419,13 +419,13 @@ extension IosBleAdapter: BleCentralSeamDelegate {
             peers[token]?.servicesDiscovered = false
             peers[token]?.characteristicsDiscovered = false
         }
-        failRead(token: token, with: .gattFailure(error?.localizedDescription ?? "disconnected"))
+        failRead(token: token, with: .gattFailure(error.map { sanitizedBleError($0) } ?? "disconnected"))
     }
 
     public func centralSeam(_ seam: BleCentralSeam, didCompleteServiceDiscovery identifier: UUID, services: [CBUUID], error: Error?) {
         let token = IrisBleConstants.token(for: identifier)
         if let error {
-            failRead(token: token, with: .gattFailure(error.localizedDescription))
+            failRead(token: token, with: .gattFailure(sanitizedBleError(error)))
             return
         }
         lock.withLock {
@@ -447,7 +447,7 @@ extension IosBleAdapter: BleCentralSeamDelegate {
     public func centralSeam(_ seam: BleCentralSeam, didCompleteCharacteristicDiscovery identifier: UUID, serviceUuid: CBUUID, characteristics: [CBUUID], error: Error?) {
         let token = IrisBleConstants.token(for: identifier)
         if let error {
-            failRead(token: token, with: .gattFailure(error.localizedDescription))
+            failRead(token: token, with: .gattFailure(sanitizedBleError(error)))
             return
         }
         lock.withLock {
@@ -465,7 +465,7 @@ extension IosBleAdapter: BleCentralSeamDelegate {
     public func centralSeam(_ seam: BleCentralSeam, didRead identifier: UUID, characteristicUuid: CBUUID, data: Data?, error: Error?) {
         let token = IrisBleConstants.token(for: identifier)
         if let error {
-            failRead(token: token, with: .gattFailure(error.localizedDescription))
+            failRead(token: token, with: .gattFailure(sanitizedBleError(error)))
             return
         }
         guard let pending = lock.withLock({ pendingReads[token] }),
@@ -480,7 +480,7 @@ extension IosBleAdapter: BleCentralSeamDelegate {
         let token = IrisBleConstants.token(for: identifier)
         guard let pending = lock.withLock({ pendingWrites[token] }) else { return }
         if let error {
-            pending.result = .failure(.gattFailure(error.localizedDescription))
+            pending.result = .failure(.gattFailure(sanitizedBleError(error)))
         } else {
             pending.result = .success(())
         }
@@ -543,6 +543,13 @@ extension IosBleAdapter: BlePeripheralSeamDelegate {
 // MARK: - Internals
 
 extension IosBleAdapter {
+    // Bug #68: localizedDescription may contain peripheral names; use only the
+    // numeric CB error code so logs contain no device-identifying strings.
+    private func sanitizedBleError(_ error: Error) -> String {
+        let ns = error as NSError
+        return "\(ns.domain) \(ns.code)"
+    }
+
     private func advance(token: String, to stage: ReadStage) {
         lock.withLock { pendingReads[token]?.stage = stage }
     }

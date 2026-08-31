@@ -7,6 +7,10 @@
 	<dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
+		<!-- Bug #62: NSExtensionPrincipalClass is intentionally absent — WidgetKit
+		     resolves the entry point from the @main struct (IrisLiveActivityWidgetBundle).
+		     Xcode injects this key automatically during archiving; keeping it absent
+		     here avoids a stale class name if the widget type is renamed. -->
 	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

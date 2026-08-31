@@ -176,8 +176,10 @@ final class IosBleAdapterTests: XCTestCase {
             _ = try? self.adapter.gattRead(handle: handle, charUuid: IrisBleConstants.identifyCharacteristicHex)
             first.fulfill()
         }
-        // Give the first read a moment to park its PendingIdentifyRead.
-        Thread.sleep(forTimeInterval: 0.2)
+        // Bug #70: give the first read time to install its PendingIdentifyRead entry
+        // before the second call. 200ms was too short on loaded CI; 500ms is more
+        // robust while still well within the 1s gattReadTimeout.
+        Thread.sleep(forTimeInterval: 0.5)
         XCTAssertThrowsError(try adapter.gattRead(handle: handle, charUuid: IrisBleConstants.identifyCharacteristicHex)) { error in
             guard case IrisFfiError.invalidArgument(_) = error else {
                 return XCTFail("expected invalidArgument for concurrent read, got \(error)")

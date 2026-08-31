@@ -1110,6 +1110,7 @@ fileprivate struct UniffiCallbackInterfaceFfiBleAdapter {
     nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceFfiBleAdapter> = {
         let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceFfiBleAdapter>.allocate(capacity: 1)
         ptr.initialize(to: vtable)
+        // Bug #66: process-lifetime allocation — intentionally never freed.
         return UnsafePointer(ptr)
     }()
 }
@@ -1315,6 +1316,7 @@ fileprivate struct UniffiCallbackInterfaceFfiInboxListener {
     nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceFfiInboxListener> = {
         let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceFfiInboxListener>.allocate(capacity: 1)
         ptr.initialize(to: vtable)
+        // Bug #66: process-lifetime allocation — intentionally never freed.
         return UnsafePointer(ptr)
     }()
 }
@@ -1601,6 +1603,7 @@ fileprivate struct UniffiCallbackInterfaceIrisBody {
     nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceIrisBody> = {
         let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceIrisBody>.allocate(capacity: 1)
         ptr.initialize(to: vtable)
+        // Bug #66: process-lifetime allocation — intentionally never freed.
         return UnsafePointer(ptr)
     }()
 }
