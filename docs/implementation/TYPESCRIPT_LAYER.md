@@ -1,8 +1,12 @@
 # TypeScript / Tauri Desktop Layer
 
-**Status:** Draft  
-**Last updated:** 2026-08-11  
-**Owner:** Desktop team  
+**Status:** Aspirational Architecture (Draft)
+**Last updated:** 2026-08-11
+**Owner:** Desktop team
+**Scope:** Planned future architecture — describes the intended TypeScript/React/Zustand desktop
+layer. The current implementation uses plain JavaScript (`crates/iris-desktop/ui/app.js`) without
+TypeScript, React, or Zustand. This document is retained as the authoritative design spec for the
+upcoming desktop v2 rewrite. Do not treat it as a description of what is deployed today.
 
 ---
 

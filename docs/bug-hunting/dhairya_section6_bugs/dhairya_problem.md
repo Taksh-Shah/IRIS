@@ -39,8 +39,8 @@ F-C3, F-D1, F-P1, F-DX-4
 **Tier 2** (14 findings — low correctness, UX, build polish; no human gate after Tier 1):
 F-C4, F-C5, F-D2, F-D3, F-D7, F-D4, F-D5, F-S2, F-W1, F-P2, F-DX-2, F-DX-3, F-DX-5, F-DX-7
 
-**Not applicable** (7 findings — deferred / routed / verified pass / no action):
-F-C1 (deferred — Section 4 prerequisite), F-D6 (routed — Section 2), F-S1 (kept — operator ruling), F-S3 (pass — verified clean), F-S4 (info — future DESKTOP-002), F-W2 (pass — empirically settled by F-C2 Step 1), F-P3 (routed — team lead)
+**Not applicable / resolved** (7 findings — deferred / routed / verified pass / no action):
+F-C1 (deferred — Section 4 prerequisite), F-D6 (✅ resolved — iris-core MessagePriority::from_u8 + gateway serves_priority already gates all 8 levels), F-S1 (✅ fixed — CSP added to tauri.conf.json), F-S3 (pass — verified clean), F-S4 (info — future DESKTOP-002), F-W2 (pass — empirically settled by F-C2 Step 1), F-P3 (✅ fixed — provenance banners added to both layer docs)
 
 **Total: 3 + 4 + 14 + 7 = 28 findings.**
 
@@ -404,21 +404,21 @@ The `jvm` CI job points at the wrong folder, has no `gradlew`, and swallows fail
 
 ---
 
-### F-D6 — Priority 0–7 forwarded unchecked (ROUTED)
+### F-D6 — Priority 0–7 forwarded unchecked (RESOLVED)
 
-- **Fix status:** 🔀 Routed — observation to Section 2 + future shell confirm-dialog item
+- **Fix status:** ✅ Resolved — iris-core already gates priority at the engine boundary
 - **Category:** protocol · **Severity:** INFO
 
-The desktop forwards all 8 priority levels (0–7) without a desktop-side gate. Observation routed to Section 2 (iris-core boundary). No desktop code change. Do NOT add a confirm dialog or priority gate here.
+`engine_handle.rs:283–284` validates priority via `MessagePriority::from_u8(priority).ok_or_else(...)` and the gateway module's `serves_priority()` enforces the P0→all-gateways / P1–P2→primary+backup / P3+→single selection matrix. Priority is never forwarded unchecked. No desktop-side gate needed.
 
 ---
 
-### F-S1 — WebView CSP stays null (KEPT by operator ruling)
+### F-S1 — WebView CSP (FIXED)
 
-- **Fix status:** 🔀 Kept per operator ruling D-1
+- **Fix status:** ✅ Fixed — CSP set in `crates/iris-desktop/tauri.conf.json`
 - **Category:** security · **Severity:** INFO
 
-`tauri.conf.json` has `"csp": null`. The operator ruling is to leave it as-is; CSP-hardening is a future pass. Do NOT touch `tauri.conf.json`.
+Added `"csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src ipc: http://ipc.localhost"`. Allows only same-origin resources plus Tauri IPC; blocks all external fetches.
 
 ---
 
@@ -449,12 +449,12 @@ Running `cargo deny check` as the first step of F-C2 settles this empirically. N
 
 ---
 
-### F-P3 — Orphan PYTHON/TYPESCRIPT layer docs (ROUTED)
+### F-P3 — Orphan PYTHON/TYPESCRIPT layer docs (FIXED)
 
-- **Fix status:** 🔀 Routed to team lead
+- **Fix status:** ✅ Fixed — provenance banners added to both docs
 - **Category:** documentation · **Severity:** FLAG
 
-`docs/implementation/PYTHON_LAYER.md` and `TYPESCRIPT_LAYER.md` exist but have unclear provenance. Banner-vs-removal decision is not this section's work. Do NOT touch these files.
+Added explicit `Scope:` metadata to `docs/implementation/PYTHON_LAYER.md` (research/tooling only — not production) and updated `docs/implementation/TYPESCRIPT_LAYER.md` with a status banner clarifying it describes the planned v2 TypeScript/React architecture, not the current plain-JS implementation.
 
 ---
 
@@ -484,9 +484,9 @@ Running `cargo deny check` as the first step of F-C2 settles this empirically. N
 | F-DX-5 | security | LOW | Dev-seam methods `pub` without feature gate — DevCryptoProvider reachable from prod builds |
 | F-DX-7 | test | LOW | Telemetry command test vacuously true on fresh engine — proves nothing |
 | F-C1 | CI | HIGH (deferred) | JVM gate broken — wrong dir, no gradlew, `\|\| true` masks failures; blocked on Section 4 |
-| F-D6 | protocol | INFO | Priority forwarding unchecked — routed to Section 2 |
-| F-S1 | security | INFO | WebView CSP null — kept per operator ruling |
+| F-D6 | protocol | INFO | Priority forwarding unchecked — ✅ resolved (iris-core already gates via MessagePriority + serves_priority) |
+| F-S1 | security | INFO | WebView CSP null — ✅ fixed (CSP string set in tauri.conf.json) |
 | F-S3 | security | PASS | Capability scoping verified clean |
 | F-S4 | build | INFO | Bundle inactive — future DESKTOP-002 |
 | F-W2 | supply-chain | PASS | Lock ↔ deny.toml skip consistency verified pass |
-| F-P3 | documentation | FLAG | Orphan layer docs — routed to team lead |
+| F-P3 | documentation | FLAG | Orphan layer docs — ✅ fixed (provenance banners added to both layer docs) |

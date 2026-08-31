@@ -1,8 +1,11 @@
 # Python Layer
 
-**Status:** Approved  
-**Last updated:** 2026-08-11  
-**Owner:** Research / Engineering  
+**Status:** Approved
+**Last updated:** 2026-08-11
+**Owner:** Research / Engineering
+**Scope:** Research, simulation, ML training, and test tooling only — not production code.
+Python is never used at runtime in any IRIS production system (Android app, iOS app, desktop,
+gateway firmware, or edge server).
 
 ---
 
