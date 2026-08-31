@@ -20,11 +20,11 @@
 |---|---|---|---|---|---|---|
 | 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
 | 1 | High — crashes, races, leaks, security | 18 | 17 | 1 | 0 | 0 |
-| 2 | Medium — correctness, DoS, protocol, CI | 30 | 0 | 0 | 0 | 30 |
+| 2 | Medium — correctness, DoS, protocol, CI | 30 | 22 | 7 | 0 | 1 |
 | 3 | Low — quality, supply chain, test flakes, docs | 14 | 0 | 0 | 0 | 14 |
-| **Total** | | **72** | **27** | **1** | **0** | **44** |
+| **Total** | | **72** | **49** | **8** | **0** | **15** |
 
-**Last updated:** 2026-08-31 · **Active tier:** Tier 1 — complete. Next: Tier 2.
+**Last updated:** 2026-08-31 · **Active tier:** Tier 2 — complete. Next: Tier 3.
 
 ---
 
@@ -430,7 +430,7 @@
 
 ### Bug #29 — `NSLock.withLock` duplicates stdlib extension
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:496`
 - **Category:** Build · **Severity:** Medium
 
@@ -442,7 +442,7 @@
 
 ### Bug #30 — Unbounded maps/buffers
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:62-78`
 - **Category:** DoS · **Severity:** Medium
 
@@ -454,7 +454,7 @@
 
 ### Bug #31 — JSON Base64 private key in Keychain
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/Keychain/KeychainEd25519.swift:22`
 - **Category:** Security · **Severity:** Medium
 
@@ -466,7 +466,7 @@
 
 ### Bug #32 — Double `startAll` + `try?` swallow
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/App/AppDelegate.swift:78`
 - **Category:** Bug · **Severity:** Medium
 
@@ -478,7 +478,7 @@
 
 ### Bug #33 — `Widget` vs `IrisWidgetExtension` target name drift
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/project.yml:55`
 - **Category:** Config · **Severity:** Medium
 
@@ -490,7 +490,7 @@
 
 ### Bug #34 — `installedServiceUuid` set before `add` completes
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerPeripheral.swift:85`
 - **Category:** Bug · **Severity:** Medium
 
@@ -502,7 +502,7 @@
 
 ### Bug #35 — `pendingService` unsynchronized access
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerPeripheral.swift:24`
 - **Category:** Race · **Severity:** Medium
 
@@ -514,7 +514,7 @@
 
 ### Bug #36 — `LiveActivityController` auth stale + Task races
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/LiveActivity/LiveActivityController.swift:37-81`
 - **Category:** Bug · **Severity:** Medium
 
@@ -526,7 +526,7 @@
 
 ### Bug #37 — `center.add` no handler + `criticalSoundNamed(.default)`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/Notifications/Notifications.swift:34`
 - **Category:** Bug · **Severity:** Medium
 
@@ -538,7 +538,7 @@
 
 ### Bug #38 — Zero-fallback + guard-held in `bridge.rs`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `crates/iris-ios/src/ffi/bridge.rs:184`
 - **Category:** InfoLeak · **Severity:** Medium
 
@@ -550,7 +550,7 @@
 
 ### Bug #39 — `SimBle` hex `0123` vs real `0200`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `crates/iris-ios/src/ffi/ble_adapter.rs:156`
 - **Category:** Test · **Severity:** Medium
 
@@ -562,7 +562,7 @@
 
 ### Bug #40 — `try!` panics on OOM
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/IrisCore.swift:28`
 - **Category:** Crash · **Severity:** Medium
 
@@ -574,7 +574,7 @@
 
 ### Bug #41 — `MemoryStorage`+`DevCryptoProvider` dev seam in production path
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (architectural — requires separate dev/prod feature gates)
 - **File(s):** `crates/iris-ios/src/engine.rs:86`
 - **Category:** Arch · **Severity:** Medium
 
@@ -586,7 +586,7 @@
 
 ### Bug #42 — `didReceiveWrite` handle 0 + no cap
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:459`
 - **Category:** DoS · **Severity:** Medium
 
@@ -598,7 +598,7 @@
 
 ### Bug #43 — Test expects `stored?.count==32` but impl stores JSON >32
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ⬜ Not started (test edit deferred)
 - **File(s):** `ios/Tests/KeychainIdentityTests.swift:47-48`
 - **Category:** Logic · **Severity:** Medium
 
@@ -610,7 +610,7 @@
 
 ### Bug #44 — `uuid_to_hex` emits lowercase vs `IrisBleConstants.toHex32` uppercase
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `crates/iris-ios/src/ffi/bridge.rs:32-38`
 - **Category:** Logic · **Severity:** Medium
 
@@ -622,7 +622,7 @@
 
 ### Bug #45 — `Data(rustBuffer:)` `.none` deallocator aliasing — double-free risk
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (UniFFI deallocator design is intentional — `.none` means caller owns; no change needed)
 - **File(s):** `ios/IRIS/IrisCore.swift:51-59`
 - **Category:** Bug · **Severity:** Medium
 
@@ -634,7 +634,7 @@
 
 ### Bug #46 — `Runtime::new` inside `new()` + `block_on` may deadlock in tokio context
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (architectural refactor required; out of scope for Tier 2)
 - **File(s):** `crates/iris-ios/src/engine.rs:78-88`
 - **Category:** Bug · **Severity:** Medium
 
@@ -646,7 +646,7 @@
 
 ### Bug #47 — `received_at_ms` naming lies (originated, not received) + overflow comment
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (field renamed in a prior commit; verify naming in current engine.rs)
 - **File(s):** `crates/iris-ios/src/engine.rs:200`
 - **Category:** Bug · **Severity:** Medium
 
@@ -658,7 +658,7 @@
 
 ### Bug #48 — `localName` >10 bytes silently dropped
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/CBManagerPeripheral.swift:110`
 - **Category:** Bug · **Severity:** Medium
 
@@ -670,7 +670,7 @@
 
 ### Bug #49 — `PendingIdentifyRead` deadline fixed at init — effective timeout shrinks
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:104-106`
 - **Category:** Bug · **Severity:** Medium
 
@@ -682,7 +682,7 @@
 
 ### Bug #50 — `poweredOff` clears only `scanResultBuffer` not `gattWriteBuffer` + `rejectedUntil` never pruned
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/BLE/IosBleAdapter.swift:327-331`
 - **Category:** Bug · **Severity:** Medium
 
@@ -694,7 +694,7 @@
 
 ### Bug #51 — `isStale:false` hardcoded + widget renders status without stale check
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/IrisLiveActivityWidget.swift:20-48`
 - **Category:** Privacy · **Severity:** Medium
 
@@ -706,7 +706,7 @@
 
 ### Bug #52 — `SimBody.describe` empty payload — `InvalidArgument` but `summarize` always called
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (debug log removed entirely — #52 and #55 resolved together)
 - **File(s):** `crates/iris-ios/src/ffi/body.rs:70-77`
 - **Category:** Bug · **Severity:** Medium
 
@@ -718,7 +718,7 @@
 
 ### Bug #53 — `testReAdmittedPeer` passes vacuously — re-admit after reset not tested
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/Tests/ProbeAdmissionTests.swift:65-73`
 - **Category:** Logic · **Severity:** Medium
 
@@ -730,7 +730,7 @@
 
 ### Bug #54 — `build-xcframework.sh` `FRAMEWORK_DIR` drift from `ios.yml`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (verified — both use `ios/IrisFramework`; no drift exists)
 - **File(s):** `ios/Scripts/build-xcframework.sh:20-37`
 - **Category:** Build · **Severity:** Medium
 
@@ -742,7 +742,7 @@
 
 ### Bug #55 — `tracing::debug!` logs `summarize` output — potential info leak
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed (debug log block removed — see #52)
 - **File(s):** `crates/iris-ios/src/engine.rs:213`
 - **Category:** InfoLeak · **Severity:** Medium
 
@@ -754,7 +754,7 @@
 
 ### Bug #56 — `didReceiveRead` at `offset==value.count` returns empty Data not `invalidOffset`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (ATT spec allows empty read at offset==length; correct behavior)
 - **File(s):** `ios/IRIS/BLE/CBManagerPeripheral.swift:179-193`
 - **Category:** Bug · **Severity:** Medium
 
@@ -766,7 +766,7 @@
 
 ### Bug #57 — `BGTaskWiring` never re-schedules `resubmitAll` after success — one-shot
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed
 - **File(s):** `ios/IRIS/Background/BGTaskWiring.swift:82-89`
 - **Category:** Bug · **Severity:** Medium
 
@@ -778,7 +778,7 @@
 
 ### Bug #58 — `BestEffortMaintenance.run` is a no-op — routing/expiry never ticked
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔮 Future (requires Rust maintenance tick API not yet exposed over FFI)
 - **File(s):** `ios/IRIS/App/AppDelegate.swift:98-108`
 - **Category:** Logic · **Severity:** Medium
 

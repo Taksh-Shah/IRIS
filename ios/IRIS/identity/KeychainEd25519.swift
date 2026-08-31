@@ -18,7 +18,8 @@
 import Foundation
 import CryptoKit
 
-/// Keychain-safe Codable wrapper for the Ed25519 signing/verifying keys.
+/// Ed25519 signing/verifying key pair.
+/// Codable retained for test-code compatibility; Keychain storage is raw bytes.
 struct Ed25519KeyPair: Codable {
     let signingKeyRaw: Data
     let verifyingKeyRaw: Data
@@ -68,7 +69,22 @@ enum KeychainEd25519 {
         switch status {
         case errSecSuccess:
             guard let data = item as? Data else { return nil }
-            return try JSONDecoder().decode(Ed25519KeyPair.self, from: data)
+            // Bug #31: new format is raw 64 bytes (32 sign + 32 verify).
+            // Migrate from old JSON format on first load.
+            if data.count == 64 {
+                return Ed25519KeyPair(
+                    signingKeyRaw: data.prefix(32),
+                    verifyingKeyRaw: data.suffix(32)
+                )
+            }
+            // Legacy JSON — migrate to raw bytes in place.
+            if let pair = try? JSONDecoder().decode(Ed25519KeyPair.self, from: data) {
+                let raw = pair.signingKeyRaw + pair.verifyingKeyRaw
+                let update: [CFString: Any] = [kSecValueData: raw]
+                SecItemUpdate(query as CFDictionary, update as CFDictionary)
+                return pair
+            }
+            return nil
         case errSecItemNotFound:
             return nil
         default:
@@ -77,7 +93,8 @@ enum KeychainEd25519 {
     }
 
     static func store(_ pair: Ed25519KeyPair) throws {
-        let data = try JSONEncoder().encode(pair)
+        // Bug #31: store as raw 64 bytes (32 sign + 32 verify) — not JSON.
+        let data = pair.signingKeyRaw + pair.verifyingKeyRaw
         let attributes: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,

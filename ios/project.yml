@@ -52,7 +52,7 @@ targets:
     type: app-extension
     platform: iOS
     sources:
-      - path: Widget
+      - path: IrisWidgetExtension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: in.iris.mesh.liveactivity

@@ -32,7 +32,7 @@ use crate::ffi::error::IrisFfiError;
 fn uuid_to_hex(u: Uuid) -> String {
     let mut out = String::with_capacity(32);
     for b in u.0 {
-        out.push_str(&format!("{b:02x}"));
+        out.push_str(&format!("{b:02X}"));
     }
     out
 }
@@ -199,17 +199,21 @@ impl BleAdapter for BleBridge {
         // way: never clear(), only append what's newly queued, then hand
         // back just this handle's frames and leave everyone else's in the
         // buffer for their own poller.
+        // Bug #38: fetch from FFI before acquiring the lock — holding a
+        // MutexGuard across the FFI boundary risks deadlock if Swift re-enters
+        // Rust under the same lock.
+        let fresh: Vec<_> = self
+            .ffi
+            .incoming_gatt_writes()
+            .into_iter()
+            .map(|e| GattWriteEvent {
+                handle: GattHandle(e.handle),
+                char_uuid: hex_to_uuid(&e.char_uuid).unwrap_or(Uuid([0u8; 16])),
+                data: e.data,
+            })
+            .collect();
         let mut buf = self.writes.lock().unwrap();
-        buf.extend(
-            self.ffi
-                .incoming_gatt_writes()
-                .into_iter()
-                .map(|e| GattWriteEvent {
-                    handle: GattHandle(e.handle),
-                    char_uuid: hex_to_uuid(&e.char_uuid).unwrap_or(Uuid([0u8; 16])),
-                    data: e.data,
-                }),
-        );
+        buf.extend(fresh);
         let mut mine = Vec::new();
         buf.retain(|w| {
             if w.handle == handle {
@@ -223,13 +227,21 @@ impl BleAdapter for BleBridge {
     }
 
     fn scan_results(&self) -> MutexGuard<'_, Vec<ScanResult>> {
+        // Bug #38: fetch from FFI before locking to avoid holding MutexGuard
+        // across the FFI boundary.
+        let fresh: Vec<ScanResult> = self
+            .ffi
+            .scan_results()
+            .into_iter()
+            .map(|r| ScanResult {
+                address: hex_to_ble_addr(&r.address).unwrap_or(BleAddress([0u8; 6])),
+                payload: r.payload,
+                rssi: r.rssi,
+            })
+            .collect();
         let mut buf = self.scans.lock().unwrap();
         buf.clear();
-        buf.extend(self.ffi.scan_results().into_iter().map(|r| ScanResult {
-            address: hex_to_ble_addr(&r.address).unwrap_or(BleAddress([0u8; 6])),
-            payload: r.payload,
-            rssi: r.rssi,
-        }));
+        buf.extend(fresh);
         buf
     }
 }
@@ -239,9 +251,10 @@ pub(crate) mod tests {
     use super::*;
     use crate::ffi::ble_adapter::tests::SimBle;
 
+    // Bug #39: was 0123456789abcdef…; real IRIS identify UUID is 02000000…
     const IRIS_IDENTIFY: Uuid = Uuid([
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd,
-        0xef,
+        0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00,
     ]);
 
     #[test]

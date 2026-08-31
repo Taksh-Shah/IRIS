@@ -153,7 +153,8 @@ pub(crate) mod tests {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             // The identify-characteristic contract (DEC-BLE-002-0015): the
             // read is only valid for IRIS_IDENTIFY_CHARACTERISTIC.
-            assert_eq!(char_uuid, "0123456789abcdef0123456789abcdef");
+            // Bug #39: real IRIS identify UUID is 02000000… not 0123456789abcdef…
+            assert_eq!(char_uuid, "02000000000000000000000000000000");
             Ok(self.identify_value.lock().unwrap().clone())
         }
         fn set_mtu(&self, _h: u64, mtu: u16) -> Result<u16, IrisFfiError> {
@@ -195,7 +196,7 @@ pub(crate) mod tests {
         let beacon = b"\x00\x01iris-beacon-22-bytes".to_vec();
         a.inject_identify_read(beacon.clone());
         let got = a
-            .gatt_read(11, "0123456789abcdef0123456789abcdef".into())
+            .gatt_read(11, "02000000000000000000000000000000".into())
             .expect("identify read succeeds");
         assert_eq!(got, beacon);
         assert_eq!(a.gatt_reads.load(std::sync::atomic::Ordering::Relaxed), 1);

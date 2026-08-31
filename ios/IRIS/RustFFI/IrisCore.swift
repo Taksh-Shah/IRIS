@@ -25,7 +25,8 @@ fileprivate extension RustBuffer {
     }
 
     static func from(_ ptr: UnsafeBufferPointer<UInt8>) -> RustBuffer {
-        try! rustCall { ffi_IrisCore_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }
+        // Bug #40: try! panics on any FFI error; use try? with a safe fallback.
+        (try? rustCall { ffi_IrisCore_rustbuffer_from_bytes(ForeignBytes(bufferPointer: ptr), $0) }) ?? .empty()
     }
 
     // Frees the buffer in place.

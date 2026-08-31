@@ -19,7 +19,7 @@ struct IrisLiveActivityWidget: Widget {
         ActivityConfiguration(for: IrisLiveActivityAttributes.self) { context in
             LiveActivityView(
                 status: context.state.status,
-                isStale: false
+                isStale: context.isStale  // Bug #51: was hardcoded false
             )
             .activityBackgroundTint(Color.black.opacity(0.9))
             .activitySystemActionForegroundColor(.white)

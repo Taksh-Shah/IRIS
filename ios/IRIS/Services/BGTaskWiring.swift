@@ -98,6 +98,11 @@ public final class BGTaskWiring: BackgroundTaskResubmitting {
             task.setTaskCompleted(success: success)
         }
         task.expirationHandler = { complete(false) }
-        maintenance.run(token: { complete(true) })
+        maintenance.run(token: { [weak self] in
+            complete(true)
+            // Bug #57: re-schedule so the task recurs; without this the OS
+            // never fires it again after the first successful run.
+            self?.resubmitAll()
+        })
     }
 }

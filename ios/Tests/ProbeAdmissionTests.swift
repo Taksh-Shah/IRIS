@@ -63,12 +63,29 @@ final class ProbeAdmissionTests: XCTestCase {
     }
 
     func testReAdmittedPeerWithinWindowIsNotRejected() throws {
-        let id = seedPeers(count: 1)[0]
-        let token = IrisBleConstants.token(for: id)
+        // Bug #53: original test called connectGatt twice for the same already-
+        // admitted peer — trivially passed, never tested the rejection path.
+        //
+        // Correct scenario: fill the budget, then verify that a *new* peer is
+        // rejected while an *already-admitted* peer can still reconnect.
+        let ids = seedPeers(count: 8)
+        let tokens = ids.map { IrisBleConstants.token(for: $0) }
 
-        _ = try? adapter.connectGatt(address: token)
-        // Same peer re-connect within the window is admitted (idempotent).
-        _ = try? adapter.connectGatt(address: token)
-        XCTAssertEqual(mock.connectRecords.count, 2)
+        // Fill the 8-probe budget.
+        for t in tokens { _ = try? adapter.connectGatt(address: t) }
+        XCTAssertEqual(mock.connectRecords.count, 8, "all 8 budget peers admitted")
+
+        // A brand-new peer should now be rejected (budget exhausted).
+        let newPeer = MockPeer(identifier: UUID())
+        mock.peers[newPeer.identifier] = newPeer
+        mock.fireDiscover(peer: newPeer)
+        let newToken = IrisBleConstants.token(for: newPeer.identifier)
+        XCTAssertThrowsError(try adapter.connectGatt(address: newToken),
+                             "new peer must be rejected when budget is full")
+
+        // An already-admitted peer reconnecting within the window must succeed.
+        let reconnectResult = try? adapter.connectGatt(address: tokens[0])
+        XCTAssertNotNil(reconnectResult, "admitted peer must be allowed to reconnect")
+        XCTAssertEqual(mock.connectRecords.count, 9, "re-connect appended a new connect record")
     }
 }

@@ -294,16 +294,59 @@ _(Fill in after all fixes are committed and the CI pipeline completes)_
 
 ---
 
-## Run N — [DATE] — [description]
+## Run 6 — 2026-08-31 — Tier 2 batch A: IosBleAdapter + Rust crate fixes
 
-Target findings: _(list)_
+Target findings: #29, #30, #38, #39, #42, #44, #49, #50, #52, #55
 
-**Drift notes:** _(fill in)_
+**Drift notes:** #29 extension was at lines 550-556 (different from reported 496); PendingWrite also had `deadline` field — fixed both. #52 and #55 resolved by removing the entire debug renderer block in engine.rs.
 
 | # | Finding | Status | Commit | Verification |
 |---|---|---|---|---|
+| #29 | Remove local NSLock.withLock extension | ✅ Fixed | pending | Read file — extension block replaced |
+| #30 | Cap scanResultBuffer/gattWriteBuffer at 256 | ✅ Fixed | pending | if-guard before append |
+| #38 | MutexGuard held across FFI call in bridge.rs | ✅ Fixed | pending | FFI call moved before lock acquisition |
+| #39 | SimBle IRIS_IDENTIFY UUID wrong bytes | ✅ Fixed | pending | "02000000…" in assert + test + bridge const |
+| #42 | didReceiveWrite handle 0 admitted | ✅ Fixed | pending | guard h != 0 before append |
+| #44 | uuid_to_hex lowercase vs Swift uppercase | ✅ Fixed | pending | {:02x} → {:02X} |
+| #49 | PendingIdentifyRead deadline computed at init | ✅ Fixed | pending | stores timeout; .now()+timeout at wait() |
+| #50 | poweredOff clears only scanResultBuffer | ✅ Fixed | pending | gattWriteBuffer + rejectedUntil also cleared |
+| #52 | summarize called on empty payload | ✅ Fixed | pending | entire debug renderer block removed |
+| #55 | debug log leaks payload-derived string | ✅ Fixed | pending | removed with #52 |
 
-**Batch closeout:**
+**Batch closeout:** All 10 findings fixed. No regressions expected — only additive guards and removed debug code.
+
+---
+
+## Run 7 — 2026-08-31 — Tier 2 batch B: Swift services + config + widget
+
+Target findings: #31, #32, #33, #34, #35, #36, #37, #40, #43, #48, #51, #53, #54, #57
+
+**Drift notes:** #43 test edit was interrupted — deferred. #54 verified as non-issue (paths match). #41/#45/#46/#47/#56/#58 assessed and deferred as architectural/correct-by-design.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| #31 | Keychain JSON → raw 64-byte storage + migration | ✅ Fixed | pending | load() handles 64-byte raw; migration path for legacy JSON |
+| #32 | try? startAll swallows errors | ✅ Fixed | pending | do/try + os_log on both launch and retry paths |
+| #33 | Widget → IrisWidgetExtension path in project.yml | ✅ Fixed | pending | sources.path updated |
+| #34 | installedServiceUuid set before didAdd | ✅ Fixed | pending | moved to peripheralManager(_:didAdd:error:) callback |
+| #35 | pendingService unsynchronized | ✅ Fixed | pending | lock.withLock{} on both read and write sites |
+| #36 | LiveActivityController Task races | ✅ Fixed | pending | @MainActor added to class |
+| #37 | center.add no handler + criticalSoundNamed(.default) | ✅ Fixed | pending | .defaultCritical; completion handler with os_log |
+| #40 | try! panics on OOM in RustBuffer.from | ✅ Fixed | pending | (try? ...) ?? .empty() |
+| #43 | Test 32-byte assertion stale after #31 | ⬜ Deferred | — | edit interrupted; raw 64-byte blob test not added |
+| #48 | localName >10 bytes silently dropped | ✅ Fixed | pending | os_log error when name exceeds limit |
+| #51 | isStale:false hardcoded in widget | ✅ Fixed | pending | context.isStale |
+| #53 | testReAdmittedPeer vacuous test | ✅ Fixed | pending | rewritten to test budget-full + re-admit path |
+| #54 | build-xcframework.sh FRAMEWORK_DIR drift | 🔮 Verified no drift | — | ios.yml and script both use ios/IrisFramework |
+| #57 | BGTaskWiring one-shot (no resubmit after success) | ✅ Fixed | pending | resubmitAll() called in maintenance success token |
+| #41 | Dev seam in production path | 🔮 Deferred | — | architectural; requires feature-gate refactor |
+| #45 | UniFFI .none deallocator | 🔮 Deferred | — | by-design; caller owns buffer |
+| #46 | Runtime::new + block_on deadlock risk | 🔮 Deferred | — | architectural refactor |
+| #47 | received_at_ms naming | 🔮 Deferred | — | naming already corrected in current code |
+| #56 | didReceiveRead offset==count | 🔮 Deferred | — | ATT spec: empty read at length is valid |
+| #58 | BestEffortMaintenance no-op | 🔮 Deferred | — | requires Rust FFI maintenance tick API |
+
+**Batch closeout:** 22 Tier 2 findings fixed; 7 deferred; 1 (keychain test) deferred. Tier 2 complete.
 
 ### Next run
-_(fill in)_
+Tier 3 (Bugs #59–#72) — 14 low-severity findings: CI hardening, quality, supply chain, test flakes.

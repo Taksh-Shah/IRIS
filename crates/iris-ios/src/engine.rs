@@ -240,17 +240,6 @@ impl IrisEngine {
                             priority: env.priority.as_u8(),
                             received_at_ms: unix_now().saturating_mul(1000),
                         };
-                        if let Some(renderer) = body.lock().unwrap().clone() {
-                            let proj = FfiIrisEnvelope {
-                                message_id: view.message_id.clone(),
-                                sender_id: view.sender_id.clone(),
-                                recipient_id: view.recipient_id.clone(),
-                                priority: view.priority,
-                                originated_at_ms: env.timestamp.saturating_mul(1000),
-                                payload: view.payload.clone(),
-                            };
-                            tracing::debug!("ios: body renderer: {}", renderer.summarize(proj));
-                        }
                         listener.on_message(view);
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {

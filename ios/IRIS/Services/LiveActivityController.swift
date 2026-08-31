@@ -21,6 +21,7 @@ public struct IrisLiveActivityAttributes: ActivityAttributes {
 }
 
 @available(iOS 16.1, *)
+@MainActor
 public final class LiveActivityController {
     public enum AuthState {
         case enabled

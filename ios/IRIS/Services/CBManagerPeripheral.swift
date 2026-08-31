@@ -14,6 +14,7 @@
 // SessionRecovery re-arms advertising (no auto-resume — RES-0025 RQ-4).
 import Foundation
 import CoreBluetooth
+import os.log
 
 public final class RealBlePeripheralSeam: NSObject, BlePeripheralSeam, Sendable {
     public var delegate: BlePeripheralSeamDelegate?
@@ -79,10 +80,11 @@ public final class RealBlePeripheralSeam: NSObject, BlePeripheralSeam, Sendable 
         // beacon state above is refreshed; the live server keeps serving.
         let alreadyInstalled = lock.withLock { installedServiceUuid == serviceUuid }
         guard !alreadyInstalled else { return }
-        pendingService = (serviceUuid, cbCharacteristics)
+        // Bug #35: guard pendingService writes under lock.
+        lock.withLock { pendingService = (serviceUuid, cbCharacteristics) }
         // The manager may not be powered on yet (app cold-start); queue.
         guard state.isPoweredOn else { return }
-        lock.withLock { installedServiceUuid = serviceUuid }
+        // Bug #34: don't set installedServiceUuid here; wait for didAdd success.
         manager.add(service)
     }
 
@@ -115,8 +117,14 @@ public final class RealBlePeripheralSeam: NSObject, BlePeripheralSeam, Sendable 
         var dict: [String: Any] = [
             CBAdvertisementDataServiceUUIDsKey: [ad.serviceUuid],
         ]
-        if let name = ad.localName, name.utf8.count <= IrisBleConstants.localNameMaxBytes {
-            dict[CBAdvertisementDataLocalNameKey] = name
+        if let name = ad.localName {
+            if name.utf8.count <= IrisBleConstants.localNameMaxBytes {
+                dict[CBAdvertisementDataLocalNameKey] = name
+            } else {
+                // Bug #48: warn rather than silently dropping the local name.
+                os_log("ios: localName (%d bytes) exceeds limit (%d) — not advertised",
+                       type: .error, name.utf8.count, IrisBleConstants.localNameMaxBytes)
+            }
         }
         manager.startAdvertising(dict)
     }
@@ -146,12 +154,12 @@ extension RealBlePeripheralSeam: CBPeripheralManagerDelegate {
         synchronizeState(peripheral.state)
         guard peripheral.state == .poweredOn else { return }
         // Re-apply queued configuration from the cold-start window.
-        if let (uuid, chars) = pendingService, lock.withLock({ installedServiceUuid != uuid }) {
+        // Bug #35: read pendingService under lock.
+        // Bug #34: don't set installedServiceUuid; wait for didAdd callback.
+        let queued = lock.withLock { pendingService }
+        if let (uuid, chars) = queued, lock.withLock({ installedServiceUuid != uuid }) {
             let service = CBMutableService(type: uuid, primary: true)
             service.characteristics = chars
-            lock.lock()
-            installedServiceUuid = uuid
-            lock.unlock()
             manager.add(service)
         }
         doStartAdvertising()
@@ -159,6 +167,13 @@ extension RealBlePeripheralSeam: CBPeripheralManagerDelegate {
 
     public func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
         delegate?.peripheralSeam(self, didStartAdvertising: error)
+    }
+
+    public func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService, error: Error?) {
+        // Bug #34: only mark the service as installed after CoreBluetooth confirms success.
+        if error == nil {
+            lock.withLock { installedServiceUuid = service.uuid }
+        }
     }
 
     public func peripheralManager(

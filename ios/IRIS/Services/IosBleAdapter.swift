@@ -104,18 +104,20 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         let semaphore = DispatchSemaphore(value: 0)
         var stage: ReadStage = .pendingConnect
         var result: Result<Data, IrisFfiError>?
-        let deadline: DispatchTime
+        // Bug #49: store timeout, not a pre-computed deadline — deadline computed
+        // at wait() call so queue backlog doesn't silently shrink the window.
+        let timeout: TimeInterval
         init(timeout: TimeInterval) {
-            deadline = DispatchTime.now() + timeout
+            self.timeout = timeout
         }
     }
 
     private final class PendingWrite {
         let semaphore = DispatchSemaphore(value: 0)
         var result: Result<Void, IrisFfiError>?
-        let deadline: DispatchTime
+        let timeout: TimeInterval
         init(timeout: TimeInterval) {
-            deadline = DispatchTime.now() + timeout
+            self.timeout = timeout
         }
     }
 
@@ -261,7 +263,7 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
             data: data,
             withResponse: true
         )
-        let outcome = pending.semaphore.wait(timeout: pending.deadline)
+        let outcome = pending.semaphore.wait(timeout: .now() + pending.timeout)
         lock.withLock { pendingWrites[token] = nil }
         switch outcome {
         case .timedOut:
@@ -310,7 +312,7 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
 
         // BLE-RT-C003: hard wait; on timeout -> typed error + connection cancel
         // (no hang, no leaked task — DEC-IOS-0007).
-        let outcome = pending.semaphore.wait(timeout: pending.deadline)
+        let outcome = pending.semaphore.wait(timeout: .now() + pending.timeout)
         lock.withLock { pendingReads[token] = nil }
 
         switch outcome {
@@ -367,7 +369,11 @@ extension IosBleAdapter: BleCentralSeamDelegate {
     public func centralSeamDidUpdateState(_ seam: BleCentralSeam, state: IOSBleCentralState) {
         lock.withLock { self.state = state }
         if state == .poweredOff {
-            lock.withLock { scanResultBuffer.removeAll(keepingCapacity: true) }
+            lock.withLock {
+                scanResultBuffer.removeAll(keepingCapacity: true)
+                gattWriteBuffer.removeAll(keepingCapacity: true)  // Bug #50: stale writes
+                rejectedUntil.removeAll()                          // Bug #50: stale bans
+            }
         }
     }
 
@@ -379,9 +385,11 @@ extension IosBleAdapter: BleCentralSeamDelegate {
             }
             // RES-0024 DI-1: advertisementData carries NO IRIS service data on
             // iOS — payload stays empty; RSSI + identity only.
-            scanResultBuffer.append(
-                FfiScanResult(address: token, payload: Data(), rssi: Int32(rssi))
-            )
+            if scanResultBuffer.count < 256 {
+                scanResultBuffer.append(
+                    FfiScanResult(address: token, payload: Data(), rssi: Int32(rssi))
+                )
+            }
         }
     }
 
@@ -513,13 +521,17 @@ extension IosBleAdapter: BlePeripheralSeamDelegate {
     public func peripheralSeam(_ seam: BlePeripheralSeam, didReceiveWrite centralIdentifier: UUID, characteristicUuid: CBUUID, data: Data) {
         let token = IrisBleConstants.token(for: centralIdentifier)
         lock.withLock {
-            gattWriteBuffer.append(
-                FfiGattWriteEvent(
-                    handle: handleByToken[token] ?? 0,
-                    charUuid: IrisBleConstants.toHex32(characteristicUuid),
-                    data: data
+            let h = handleByToken[token] ?? 0
+            guard h != 0 else { return }  // Bug #42: unregistered peer — no handle yet
+            if gattWriteBuffer.count < 256 {
+                gattWriteBuffer.append(
+                    FfiGattWriteEvent(
+                        handle: h,
+                        charUuid: IrisBleConstants.toHex32(characteristicUuid),
+                        data: data
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -547,10 +559,6 @@ extension IosBleAdapter {
     }
 }
 
-extension NSLock {
-    func withLock<T>(_ body: () throws -> T) rethrows -> T {
-        lock()
-        defer { unlock() }
-        return try body()
-    }
-}
+// Bug #29: removed local NSLock.withLock extension — Foundation provides it
+// since iOS 16.0 / Swift 5.7; keeping a local copy causes an ambiguity error
+// on Xcode 16+ (Swift 5.10 stdlib ships the same signature).

@@ -5,6 +5,7 @@
 // BGTask re-submit), register BGTaskWiring, and request notification auth.
 import UIKit
 import CryptoKit
+import os.log
 
 @MainActor
 public final class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -75,7 +76,12 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
             self.liveActivity = LiveActivityController()
         }
 
-        try? engine.startAll()
+        // Bug #32: log startAll errors rather than swallowing them.
+        do {
+            try engine.startAll()
+        } catch {
+            os_log("ios: engine.startAll failed: %@", type: .error, error.localizedDescription)
+        }
         return true
     }
 
@@ -87,7 +93,12 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         let nodeId = pair.verifyingKeyRaw
         if let adapter = self.adapter, let e = try? IrisEngine(ble: adapter, nodeId: nodeId) {
             self.engine = e
-            try? e.startAll()
+            // Bug #32: log errors on retry path too.
+            do {
+                try e.startAll()
+            } catch {
+                os_log("ios: engine.startAll (retry) failed: %@", type: .error, error.localizedDescription)
+            }
         }
     }
 }
