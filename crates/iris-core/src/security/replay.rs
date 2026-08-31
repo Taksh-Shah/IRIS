@@ -49,17 +49,16 @@ impl Default for ReplayConfig {
 /// High-water mark for a sender: (timestamp, sequence).
 /// Strictly increasing (ts,seq) pairs accepted; <= high-water = replay.
 ///
-/// PRY-7 (known limitation): the engine currently supplies `seq` as
+/// PRY-7: the engine supplies `seq` as
 /// [`crate::protocol::MessageId::sequence_hint`] — the first 8 bytes of a
-/// UUIDv7-style id, i.e. a millisecond timestamp followed by ~16 random bits.
-/// It is **not** a per-sender monotonic counter: two honest messages minted in
-/// the same millisecond and arriving in the same wall-clock second are ordered
-/// by a random tiebreak, so the numerically-smaller one is rejected as
-/// `Replay` regardless of send order. A burst sender (SOS retransmit train,
-/// multi-part status, re-fragmented ADUs) loses ~50 % of any millisecond
-/// collision. Fixing this correctly means either carrying a real counter or
-/// switching to a bounded per-`(sender, ts)` seen-set — both **widen** an
-/// accept path and are gated (Tier 2, needs the Section 2 `message_id` owner).
+/// UUIDv7-style id (a millisecond timestamp + ~16 random bits), **not** a
+/// per-sender monotonic counter. So `ReplayEngine::check` does NOT order by
+/// `seq` within a second: it advances `HighWaterMark` across seconds and, for
+/// the current second, deduplicates against a bounded exact seen-set of
+/// `sequence_hint` values (`HighwaterTable::admit` / `recent_seqs`, cap
+/// [`MAX_SEEN_SEQ_PER_SECOND`]). `check_and_advance` below keeps the strict
+/// `(ts, seq)` comparison and is used only for the cross-reboot snapshot merge
+/// (`load_snapshot`), where exact-set state is not carried.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HighWaterMark {
     pub timestamp: u64, // DTN-time (monotonic or wall-clock)
@@ -287,8 +286,14 @@ mod proptest_tests {
             let re2 = ReplayEngine::from_snapshot(snapshot, config);
             let hw = block_on(re2.get_highwater(sender)).unwrap();
             prop_assert_eq!(hw.sequence, base_seq + n_msgs as u64 - 1);
-            // Replay of old should be rejected
-            prop_assert_eq!(block_on(re2.check(sender, base_ts, base_seq)), ReplayDecision::Replay);
+            // PRY-7: the same-second exact seen-set is transient (not in the
+            // snapshot), so a same-second replay right after reboot is accepted
+            // by design. The cross-second guarantee is what matters and is
+            // preserved — an earlier-second replay is still rejected.
+            prop_assert_eq!(
+                block_on(re2.check(sender, base_ts.saturating_sub(1), base_seq)),
+                ReplayDecision::Replay
+            );
             // Strictly newer (ts, seq) should be accepted
             prop_assert_eq!(
                 block_on(re2.check(sender, base_ts + n_msgs as u64, base_seq + n_msgs as u64)),
@@ -307,7 +312,18 @@ struct HighwaterTable {
     marks: HashMap<SenderShort, HighWaterMark>,
     first_seen: HashMap<SenderShort, u64>,
     next_gen: u64,
+    /// PRY-7: bounded exact seen-set of `sequence_hint` values for the current
+    /// second, per sender. `sequence_hint` is not a monotonic counter (random
+    /// per-millisecond tail), so within one second we *dedup* rather than
+    /// *order*. Transient — never serialized into a snapshot.
+    recent_seqs: HashMap<SenderShort, (u64, Vec<u64>)>,
 }
+
+/// PRY-7: cap on distinct same-second `sequence_hint` values tracked per
+/// sender. Beyond this a same-second message is accepted (a >64-message
+/// same-second burst is not a replay; `message_id` dedup still catches exact
+/// message replays).
+const MAX_SEEN_SEQ_PER_SECOND: usize = 64;
 
 impl HighwaterTable {
     fn from_marks(marks: HashMap<SenderShort, HighWaterMark>) -> Self {
@@ -324,12 +340,51 @@ impl HighwaterTable {
             marks,
             first_seen,
             next_gen,
+            recent_seqs: HashMap::new(),
         }
     }
 
     fn remove(&mut self, sender: &SenderShort) {
         self.marks.remove(sender);
         self.first_seen.remove(sender);
+        self.recent_seqs.remove(sender);
+    }
+
+    /// PRY-7: timestamp-primary acceptance. Advance across seconds; within the
+    /// current second dedup `seq` against a bounded exact seen-set instead of
+    /// requiring strict `seq` ordering (which false-rejects same-millisecond
+    /// honest bursts, since `sequence_hint` has a random per-ms tail).
+    fn admit(&mut self, sender: SenderShort, ts: u64, seq: u64) -> bool {
+        let hw = self.marks.entry(sender).or_default();
+        let hw_ts = hw.timestamp;
+        if ts > hw_ts {
+            hw.timestamp = ts;
+            hw.sequence = seq;
+            self.recent_seqs.insert(sender, (ts, vec![seq]));
+            true
+        } else if ts == hw_ts {
+            if seq > hw.sequence {
+                hw.sequence = seq;
+            }
+            let (rt, seen) = self
+                .recent_seqs
+                .entry(sender)
+                .or_insert_with(|| (ts, Vec::new()));
+            if *rt != ts {
+                *rt = ts;
+                seen.clear();
+            }
+            if seen.contains(&seq) {
+                false // exact (ts, seq) already seen this second — replay
+            } else {
+                if seen.len() < MAX_SEEN_SEQ_PER_SECOND {
+                    seen.push(seq);
+                }
+                true
+            }
+        } else {
+            false // ts < high-water — stale
+        }
     }
 }
 
@@ -397,10 +452,9 @@ impl ReplayEngine {
     /// Check freshness window and high-water for an inbound message.
     /// `sender` = 16-byte sender short ID.
     /// `ts` = message timestamp (DTN-time, unix seconds).
-    /// `seq` = message sequence. See [`HighWaterMark`] — PRY-7: this is
-    ///   currently `MessageId::sequence_hint()`, an id-derived value that is
-    ///   only *roughly* monotonic across milliseconds, not a true per-sender
-    ///   counter.
+    /// `seq` = `MessageId::sequence_hint()` — id-derived, not a true per-sender
+    ///   counter. Within a second it is used for exact dedup, not ordering
+    ///   (PRY-7 — see [`HighWaterMark`]).
     /// Returns ReplayDecision.
     pub async fn check(&self, sender: SenderShort, ts: u64, seq: u64) -> ReplayDecision {
         let now = SystemTime::now()
@@ -484,11 +538,7 @@ impl ReplayEngine {
                 table.next_gen += 1;
                 table.first_seen.insert(sender, gen);
             }
-            table
-                .marks
-                .entry(sender)
-                .or_default()
-                .check_and_advance(stored_ts, seq)
+            table.admit(sender, stored_ts, seq)
         };
 
         if accepted {
@@ -741,11 +791,14 @@ mod tests {
         // Clamped poison still dominates the CURRENT second (seq = u64::MAX).
         // A message in the same second is (correctly) Replay; once the wall
         // clock crosses into a new second the clamp releases and a legitimate
-        // message is accepted again — a ≤1s outage, not a 10-minute one.
+        // PRY-7 bonus: because same-second acceptance is now an exact seen-set
+        // (not `seq` ordering), a crafted `seq = u64::MAX` no longer dominates
+        // the second — a distinct legitimate message in the same second is
+        // still accepted. The SEC-RT-03 clamp still bounds any ts-poison to ≤1s.
         assert_eq!(
             re.check(sender, now + 1, 1).await,
-            ReplayDecision::Replay,
-            "within the poisoned second, seq u64::MAX still dominates"
+            ReplayDecision::Accepted,
+            "a distinct same-second message is not blocked by a seq-poison"
         );
 
         // Cross a second boundary, then replayability must be restored.
@@ -775,12 +828,55 @@ mod tests {
 
         // First message
         assert_eq!(re.check(sender, now, 5).await, ReplayDecision::Accepted);
-        // Replay same (ts,seq) -> Replay
+        // Replay of the EXACT same (ts, seq) -> Replay (seen-set dedup)
         assert_eq!(re.check(sender, now, 5).await, ReplayDecision::Replay);
-        // Lower seq at same ts -> Replay
+        // PRY-7: a DISTINCT seq in the same second is a distinct message id,
+        // not a replay — `sequence_hint` is not a real counter, so the old
+        // "lower seq at same ts -> Replay" rule dropped ~50% of honest
+        // same-millisecond bursts.
+        assert_eq!(re.check(sender, now, 4).await, ReplayDecision::Accepted);
+        // ...but replaying that one again IS caught.
         assert_eq!(re.check(sender, now, 4).await, ReplayDecision::Replay);
-        // Lower ts -> Replay
+        // An earlier second is still a stale replay.
         assert_eq!(re.check(sender, now - 1, 10).await, ReplayDecision::Replay);
+    }
+
+    /// PRY-7: a same-second burst whose `sequence_hint` values arrive in
+    /// descending order (the random per-millisecond tail can do this) must NOT
+    /// lose the numerically-smaller ones as false `Replay`.
+    #[tokio::test]
+    async fn same_second_descending_seq_burst_all_accepted() {
+        let re = ReplayEngine::default();
+        let sender = [0xC7u8; 16];
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        let mut accepted = 0;
+        for seq in (1..=50u64).rev() {
+            if re.check(sender, now, seq).await == ReplayDecision::Accepted {
+                accepted += 1;
+            }
+        }
+        assert_eq!(accepted, 50, "every distinct same-second message is accepted");
+        // Replaying any of them is still caught.
+        assert_eq!(re.check(sender, now, 25).await, ReplayDecision::Replay);
+    }
+
+    /// PRY-7: the per-second seen-set is bounded — a >64-message same-second
+    /// burst does not grow memory without limit, and still accepts.
+    #[tokio::test]
+    async fn same_second_seen_set_is_bounded() {
+        let re = ReplayEngine::default();
+        let sender = [0xC8u8; 16];
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        for seq in 0..200u64 {
+            assert_eq!(re.check(sender, now, seq).await, ReplayDecision::Accepted);
+        }
     }
 
     #[tokio::test]
@@ -867,14 +963,17 @@ mod tests {
             .unwrap_or_default()
             .as_secs();
 
-        // Message 5 arrives first
+        // PRY-7: same-second messages are deduplicated by exact seq, not
+        // ordered — out-of-order delivery within a second is normal and all
+        // distinct message ids are accepted; only exact repeats are rejected.
         assert_eq!(re.check(sender, now, 5).await, ReplayDecision::Accepted);
-        // Message 3 arrives later -> Replay (3 < 5 at same ts)
-        assert_eq!(re.check(sender, now, 3).await, ReplayDecision::Replay);
-        // Message 7 arrives -> Accepted (7 > 5)
+        assert_eq!(re.check(sender, now, 3).await, ReplayDecision::Accepted);
         assert_eq!(re.check(sender, now, 7).await, ReplayDecision::Accepted);
-        // Message 6 arrives -> Replay (6 < 7)
-        assert_eq!(re.check(sender, now, 6).await, ReplayDecision::Replay);
+        assert_eq!(re.check(sender, now, 6).await, ReplayDecision::Accepted);
+        // Every one of those, replayed, is caught.
+        for s in [5u64, 3, 7, 6] {
+            assert_eq!(re.check(sender, now, s).await, ReplayDecision::Replay);
+        }
     }
 
     #[tokio::test]
@@ -978,8 +1077,11 @@ mod tests {
         // Re-applying the older snapshot must NOT drop the mark back to 10.
         re.load_snapshot(stale).await;
         assert_eq!(re.get_highwater(sender).await.unwrap().sequence, 25);
-        // And a replay of seq 20 (< 25) is still rejected.
-        assert_eq!(re.check(sender, now, 20).await, ReplayDecision::Replay);
+        // A replay of a seq already seen this second is still rejected...
+        assert_eq!(re.check(sender, now, 10).await, ReplayDecision::Replay);
+        assert_eq!(re.check(sender, now, 25).await, ReplayDecision::Replay);
+        // ...and an earlier-second replay is still rejected.
+        assert_eq!(re.check(sender, now - 1, 5).await, ReplayDecision::Replay);
     }
 
     /// PRY-15: an unrecognised snapshot version is ignored, not loaded as v1.
@@ -1062,10 +1164,20 @@ mod tests {
         assert_eq!(hw.sequence, 11);
         assert_eq!(hw.timestamp, now);
 
-        // Replay of old message should be rejected
+        // A replay from an EARLIER second is still rejected — the cross-second
+        // guarantee (a day-old message can't be replayed) is fully preserved.
+        assert_eq!(
+            re2.check(sender, now - 5, 10).await,
+            ReplayDecision::Replay
+        );
+        // PRY-7 tradeoff: the same-second exact seen-set is transient (not in
+        // the snapshot), so immediately after a reboot a distinct same-second
+        // message is accepted regardless of its `seq` — an extremely narrow
+        // window (reboot within one second of the original) that option (2)
+        // of the finding explicitly accepts.
+        assert_eq!(re2.check(sender, now, 10).await, ReplayDecision::Accepted);
+        // Once seen post-reboot, replaying it is caught again.
         assert_eq!(re2.check(sender, now, 10).await, ReplayDecision::Replay);
-        // New message should be accepted
-        assert_eq!(re2.check(sender, now, 12).await, ReplayDecision::Accepted);
     }
 
     #[tokio::test]
