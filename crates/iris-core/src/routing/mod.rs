@@ -825,6 +825,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn m6_scf_carries_through_partition_and_delivers_on_contact() {
+        use crate::crypto::key_directory::MemoryKeyDirectory;
         use crate::message_engine::storage::MemoryStorage;
         use crate::message_engine::MessageEngine;
         use crate::routing::scf::{ScfConfig, ScfEngine};
@@ -874,6 +875,10 @@ mod tests {
             Arc::new(crate::message_engine::crypto::DevCryptoProvider::new()),
             Arc::new(crate::transport::TransportManager::new()),
         ));
+        // PRY-33: seal_outbound now fails closed when no recipient key exists.
+        let mut dir = MemoryKeyDirectory::new();
+        dir.insert(bob, [0xBB; 32]);
+        engine.set_key_directory(Arc::new(dir));
 
         // 1. MSG-001: Alice sends a P4 message to Bob.
         let env = envelope_for(bob, crate::message::MessagePriority::P4, b"carry me");

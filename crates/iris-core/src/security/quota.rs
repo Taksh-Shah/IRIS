@@ -1,6 +1,10 @@
 //! Per-sender storage quota + priority-reserved pool — RES-0018 R2, RFC 9171 lifetime.
 //! Extends the emergency reserved pool (EMERG-001) to P0/P1 per-sender.
-//! P0/P1 never evicted by quota action; eviction by lifetime/TTL + quota violation order.
+//!
+//! **Admission only.** This layer decides whether a new message is accepted or rejected;
+//! it does not drive eviction. Physical eviction (removing stored messages to reclaim space)
+//! is owned by Section 3 (`iris-storage` / `routing/scf_eviction.rs`), which has full
+//! knowledge of message priority and per-message sizes. See PRY-3 in the bug-hunt report.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -58,17 +62,6 @@ impl Default for QuotaConfig {
             min_ttl_for_eviction: Duration::from_secs(60),
         }
     }
-}
-
-/// Pure eviction-amount arithmetic (Kani proof target — TEST-001 AC-3).
-///
-/// Number of bytes to evict from one sender account: the excess over quota,
-/// floor 1 so a below-quota account still yields one byte when the global
-/// quota forces eviction, never more than the account actually holds.
-/// No wraparound: an attacker-controlled `used == u64::MAX` saturates.
-pub(crate) fn evict_amount(used: u64, quota: u64) -> u64 {
-    let excess = used.saturating_sub(quota);
-    excess.max(1).min(used)
 }
 
 /// Per-sender storage accounting.
@@ -217,49 +210,6 @@ impl QuotaManager {
                 accounts.remove(&sender);
             }
         }
-    }
-
-    /// Evict messages to make room (lifetime/TTL + quota violation order).
-    /// Returns list of (sender, message_size) pairs to evict.
-    /// This is called by the GC task; actual eviction is done by storage layer.
-    pub async fn select_eviction_candidates(
-        &self,
-        target_bytes: u64,
-        now: Instant,
-        min_ttl: Duration,
-    ) -> Vec<(SenderShort, u64)> {
-        let accounts = self.accounts.read().await;
-        let mut candidates = Vec::new();
-
-        // Priority: oldest messages first (by TTL/lifetime), then quota violators
-        let mut senders: Vec<_> = accounts.iter().filter(|(_, a)| a.used_bytes > 0).collect();
-
-        // Sort by oldest activity first (FIFO-ish), then by quota excess
-        senders.sort_by(|a, b| {
-            let a_oldest = a.1.oldest_message.or(a.1.last_activity);
-            let b_oldest = b.1.oldest_message.or(b.1.last_activity);
-            a_oldest.cmp(&b_oldest)
-        });
-
-        let mut freed = 0u64;
-        for (sender, account) in senders {
-            if freed >= target_bytes {
-                break;
-            }
-            // Only evict if message is past minimum TTL
-            if let Some(oldest) = account.oldest_message {
-                if now.duration_since(oldest) < min_ttl {
-                    continue;
-                }
-            }
-            // Evict up to the excess over quota, or all if total quota exceeded
-            let to_evict = evict_amount(account.used_bytes, self.config.default_sender_quota_bytes);
-            candidates.push((*sender, to_evict));
-            // SEC-RT-12: saturating add — freed must never overflow u64.
-            freed = freed.saturating_add(to_evict);
-        }
-
-        candidates
     }
 
     /// Get per-sender usage for monitoring.
@@ -442,28 +392,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn quota_eviction_min_ttl_and_break() {
-        let qm = QuotaManager::default();
-        let sender1 = [9u8; 16];
-        let sender2 = [0x0A; 16];
-
-        qm.add_message(sender1, 1024, MessagePriority::P4).await;
-        qm.add_message(sender2, 1024, MessagePriority::P4).await;
-
-        // min_ttl in the future relative to newest -> accounts skipped (continue).
-        let far_ttl = qm
-            .select_eviction_candidates(1024, Instant::now(), Duration::from_secs(3600))
-            .await;
-        assert!(far_ttl.is_empty());
-
-        // target_bytes already exceeded by first candidate -> break.
-        let small_target = qm
-            .select_eviction_candidates(1, Instant::now(), Duration::from_secs(0))
-            .await;
-        assert_eq!(small_target.len(), 1);
-    }
-
-    #[tokio::test]
     async fn quota_reset() {
         let qm = QuotaManager::default();
         let sender = [0x0B; 16];
@@ -507,22 +435,6 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn eviction_candidates_oldest_first() {
-        let qm = QuotaManager::default();
-        let sender1 = [5u8; 16];
-        let sender2 = [6u8; 16];
-
-        // sender1 added first
-        qm.add_message(sender1, 1024, MessagePriority::P4).await;
-        qm.add_message(sender2, 1024, MessagePriority::P4).await;
-
-        let candidates = qm
-            .select_eviction_candidates(2048, Instant::now(), Duration::from_secs(0))
-            .await;
-        // sender1 should be first (oldest)
-        assert_eq!(candidates[0].0, sender1);
-    }
 }
 
 #[cfg(all(test, feature = "proptest"))]

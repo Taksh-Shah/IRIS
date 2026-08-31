@@ -373,9 +373,10 @@ impl MessageEngine {
             guard.as_ref().and_then(|d| d.x25519_pubkey(&node_id))
         };
         if let Some(rkey) = recipient_key {
-            // Field 11 (payload_size) is in the AAD scope and is
-            // ciphertext-dependent — set it to the sealed length BEFORE
-            // deriving the AAD (AEAD output is length-preserving).
+            // Field 11 (payload_size) is in the AAD scope. Set it to the
+            // expected sealed length before deriving the AAD so the receiver
+            // can recompute the same bytes (AEAD output is length-preserving
+            // for real crypto: ciphertext = plaintext + AEAD_TAG_SIZE).
             let sealed_len = crate::crypto::aead::sealed_len(envelope.payload.len());
             envelope.payload_size = sealed_len as u64;
             let info = message_kdf_info(envelope.message_id);
@@ -384,6 +385,10 @@ impl MessageEngine {
                 .crypto
                 .encrypt(&info, &aad, &envelope.payload, &rkey)
                 .await?;
+            // Use the actual ciphertext length so codec::encode validates cleanly.
+            // For real AEAD this equals sealed_len; for dev/test providers it
+            // may differ (they return the plaintext unchanged, no tag appended).
+            envelope.payload_size = ciphertext.len() as u64;
             envelope.payload = ciphertext;
             envelope.encryption_hdr = Some(hdr);
             envelope.payload_hash = Envelope::compute_payload_hash(&envelope.payload);
@@ -1007,8 +1012,8 @@ impl MessageEngine {
         // policy lives in the routing module, which the live path does not call.
         // Loop termination rested entirely on per-node dedup.
         // Relayed traffic was governed by nothing at all: neither `rate_limit`
-        // nor `add_message` runs on this path, so a remote peer's flood cost it
-        // nothing and consumed this node's queue and airtime without limit.
+        // `add_message` now runs on this path (PRY-34); rate-limit was already
+        // wired. Both gates operate on the authenticated sender_id.
         // The sender is authenticated by this point (signature verified in
         // `process_incoming`), so keying the limit on it is sound.
         let relay_sender = crate::identity::peer_short_from_sender(&envelope.sender_id);
@@ -1034,6 +1039,25 @@ impl MessageEngine {
                 message_id = %envelope.message_id.short(),
                 priority = envelope.priority.as_u8(),
                 "relay dropped: sender rate limit"
+            );
+            return Ok(InboundOutcome::RateLimited);
+        }
+
+        // SEC-001 RES-0018: relayed traffic counts against the originator's per-sender
+        // storage quota just like locally-originated traffic. Without this, a remote
+        // peer could flood this node's queue and airtime at zero quota cost (PRY-34).
+        let relay_size = envelope.payload.len() as u64;
+        if matches!(
+            policy.add_message(relay_sender, relay_size, sched_priority).await,
+            crate::security::QuotaDecision::Rejected
+        ) {
+            self.telemetry
+                .increment(metric::MESSAGES_QUOTA_EXCEEDED_TOTAL);
+            tracing::debug!(
+                event = event::MSG_QUOTA_EXCEEDED,
+                message_id = %envelope.message_id.short(),
+                priority = envelope.priority.as_u8(),
+                "relay dropped: sender quota exceeded"
             );
             return Ok(InboundOutcome::RateLimited);
         }
@@ -1828,6 +1852,7 @@ fn emergency_gate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::crypto::key_directory::MemoryKeyDirectory;
     use crate::message_engine::crypto::DevCryptoProvider;
     use crate::message_engine::storage::MemoryStorage;
     use crate::transport::simulated::{SimConfig, SimulatedTransport};
@@ -1876,15 +1901,18 @@ mod tests {
             gc_interval_secs: 3600, // keep GC out of the way in tests
             ..Default::default()
         };
-        (
-            MessageEngine::new(
-                cfg,
-                Arc::new(MemoryStorage::new()),
-                Arc::new(DevCryptoProvider::new()),
-                manager,
-            ),
-            transport,
-        )
+        let engine = MessageEngine::new(
+            cfg,
+            Arc::new(MemoryStorage::new()),
+            Arc::new(DevCryptoProvider::new()),
+            manager,
+        );
+        // PRY-33: seal_outbound now fails closed when no recipient key exists.
+        // Register a fake key for BOB so DevCryptoProvider (identity encrypt) can proceed.
+        let mut dir = MemoryKeyDirectory::new();
+        dir.insert(BOB, [0xBB; 32]);
+        engine.set_key_directory(Arc::new(dir));
+        (engine, transport)
     }
 
     /// Drain one inbound message from a SimulatedTransport stream and feed it
@@ -2119,6 +2147,9 @@ mod tests {
             Arc::new(DevCryptoProvider::new()),
             manager,
         );
+        let mut dir = MemoryKeyDirectory::new();
+        dir.insert(BOB, [0xBB; 32]);
+        engine.set_key_directory(Arc::new(dir));
         let env = envelope_for(BOB, MessagePriority::P4, b"retry me");
         let env_id = env.message_id;
         engine.send_message(env).await.unwrap();

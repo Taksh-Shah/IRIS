@@ -11,9 +11,8 @@
 //!     (wire codes 1..=16 / 0..=7 round-trip; out-of-range rejected).
 //!  2. fragment arithmetic — `fragment::split_payload` (chunk ≤ budget +
 //!     byte-conservation reassembly).
-//!  3. quota/rate-limiter arithmetic — `rate_limiter::refill_tokens`
-//!     (saturating, capped ≤ burst) and `quota::evict_amount`
-//!     (bounded ≤ used, ≥ 1 when the account holds bytes; no wraparound).
+//!  3. rate-limiter arithmetic — `rate_limiter::refill_tokens`
+//!     (saturating, capped ≤ burst).
 //!  4. PRoPHET invariant — `prophet::floor_intervals` (floor division,
 //!     zero-interval guard, no u128->u64 truncation).
 //!
@@ -27,7 +26,7 @@ use crate::message::MessagePriority;
 use crate::message_engine::fragment::split_payload;
 use crate::protocol::{content_type::ContentType, message_id::MessageId};
 use crate::routing::prophet::floor_intervals;
-use crate::security::{quota::evict_amount, rate_limiter::refill_tokens};
+use crate::security::rate_limiter::refill_tokens;
 
 /// Proof 1a — `MessageId::from_slice` is an exact 16-byte gate: `Some` iff the
 /// slice length is exactly 16, no panic on longer/shorter transient buffers.
@@ -119,21 +118,6 @@ fn rate_limiter_refill_never_exceeds_burst() {
         out >= tokens.min(burst),
         "monotone non-decreasing toward burst",
     );
-}
-
-/// Proof 3b — quota eviction amount: bounded by `used`, and strictly positive
-/// whenever the account holds bytes (no zero/overshoot eviction).
-#[kani::proof]
-fn quota_eviction_bounded_and_positive() {
-    let used: u64 = kani::any();
-    let quota: u64 = kani::any();
-    let out = evict_amount(used, quota);
-    kani::assert(out <= used, "evict at most what the account holds");
-    if used > 0 {
-        kani::assert(out >= 1, "non-empty account always yields >= 1 byte");
-    } else {
-        kani::assert(out == 0, "empty account evicts nothing");
-    }
 }
 
 /// Proof 4 — PRoPHET aging `floor_intervals` is exact floor division when the
