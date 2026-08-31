@@ -58,11 +58,18 @@ pub enum ChainError {
 
 /// Validate a key-anchored chain terminating in a trusted root (§9).
 ///
-/// `sender_id` is the envelope field 3. On success the final identity is
-/// registered into the trust store (TOFU for derived peers) and its certified
-/// X25519 key resolves for encryption. `verify_chain` is **stateless** — it
-/// never mutates the caller's trust store; the caller decides whether to adopt
-/// the outcome (see [`TrustStore::adopt_advertisement`]).
+/// `sender_id` is the envelope field 3.
+///
+/// **`verify_chain` is stateless** — it only *reads* `trust` and never mutates
+/// it. On `Ok(())` the chain is cryptographically valid and anchored, but the
+/// derived peer's certified X25519 key is **not** yet resolvable for
+/// encryption: the caller must explicitly call
+/// [`TrustStore::adopt_advertisement`] with the final chain element to bind it
+/// (TOFU for derived peers). A caller that skips that step and then encrypts to
+/// the peer will get `KeyUnavailable` / a `None` from the key directory.
+///
+/// PRY-26: an earlier revision *did* register on success; the doc's first
+/// sentence was left describing that behaviour after it was removed.
 pub fn verify_chain(
     chain: &[Vec<u8>],
     trust: &TrustStore,
