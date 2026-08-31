@@ -81,6 +81,7 @@ impl From<PrimCryptoError> for CryptoError {
             PrimCryptoError::KeyUnavailable => CryptoError::KeyUnavailable,
             PrimCryptoError::Decrypt
             | PrimCryptoError::AllZeroSharedSecret
+            | PrimCryptoError::SmallOrderPeerKey
             | PrimCryptoError::DiffieHellman
             | PrimCryptoError::InvalidPublicKeyLen(_)
             | PrimCryptoError::InvalidPayloadLen(_)

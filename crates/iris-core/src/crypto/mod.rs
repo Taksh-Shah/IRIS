@@ -40,6 +40,8 @@ pub enum CryptoError {
     InvalidPublicKeyLen(usize),
     #[error("crypto: all-zero X25519 shared secret rejected (RFC 7748 §6.1)")]
     AllZeroSharedSecret,
+    #[error("crypto: small-order X25519 peer public key rejected (RED-0011)")]
+    SmallOrderPeerKey,
     #[error("crypto: X25519 operation failed")]
     DiffieHellman,
     #[error("crypto: Ed25519 signing failed")]
