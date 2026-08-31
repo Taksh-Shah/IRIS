@@ -452,9 +452,12 @@ mod tests {
             .await;
         assert_eq!(policy.routing_weight(peer).await, 0.5);
         assert_eq!(policy.score_spam(sender, &env).await, SpamDecision::Clean);
+        // PRY-10: an armed policy's SOS path now requires a valid envelope
+        // signature; this unsigned test envelope is rejected. (PRY-1 similarly
+        // tightened the Broadcast/Medical empty-allowlist path.)
         assert_eq!(
             policy.check_emergency_acl(&env, now).await,
-            AclDecision::Authorized
+            AclDecision::InvalidAuthority
         );
         let snapshot = policy.generate_replay_snapshot().await.expect("snapshot");
         assert!(policy.armed());

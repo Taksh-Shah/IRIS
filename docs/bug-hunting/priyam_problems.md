@@ -84,7 +84,7 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 3: **Tier 1 complete** — 14 ✅, 3 🔒 (PRY-13 concurrency refactor, PRY-29/PRY-30 out-of-Section-1 files). Run 3 fixed PRY-8, PRY-12, PRY-15, PRY-16, PRY-18, PRY-24, PRY-35, PRY-36. PRY-35 widens (abbreviated chains) — under operator sign-off. Next: Tier 2 (operator gate lifted; per-finding §8 file check still applies).
+**Last updated:** 2026-08-31 — Run 4: **Tier 2 batch 1** — fixed PRY-1 (armed empty allowlist → InvalidAuthority), PRY-10 (SOS ACL self-verifies envelope signature), PRY-17 (chain rule 5: anti-replay vs trust-store recorded counter, not cross-identity). PRY-1/PRY-10 narrow; PRY-17 widens (operator sign-off). 755 lib tests green + touched proptests. Remaining Tier 2: PRY-2, PRY-3, PRY-4, PRY-9, PRY-11, PRY-32 (Section-1 portions) + PRY-6, PRY-33, PRY-34 (🔒 §8 message_engine).
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -95,8 +95,8 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
 | **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 14 | 3 | 0 | Tier 0 complete |
-| **2** | changes accept/deny security semantics — operator gate **LIFTED** (see fix log Run 2); per-finding file-boundary still applies | 12 (+PRY-7 tail) | 12 | 0 | 0 | 1 | 0 | operator sign-off recorded; findings whose fix edits `message_engine/` / `emergency/` / `kani_proofs.rs` still 🔒 until that owner acts |
-| **Total** | | **36** | **12** | **0** | **20** | **4** | **0** | |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** (see fix log Run 2); per-finding file-boundary still applies | 12 (+PRY-7 tail) | 9 | 0 | 3 | 1 | 0 | operator sign-off recorded; findings whose fix edits `message_engine/` / `emergency/` / `kani_proofs.rs` still 🔒 until that owner acts |
+| **Total** | | **36** | **9** | **0** | **23** | **4** | **0** | |
 
 Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, disproportionate),
 **PRY-29** & **PRY-30** (fix must edit `emergency/authority.rs` / `kani_proofs.rs` — outside
@@ -216,7 +216,7 @@ second pass (revision 2).
 ### PRY-1 — Armed `FullSecurityPolicy` authorizes every emergency broadcast
 
 - **Severity:** High
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · 2026-08-31 (operator gate lifted)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/acl.rs:159-164`, `:109-115`, `:85-96`; `crates/iris-core/src/security/mod.rs:162-179`
 
@@ -688,7 +688,7 @@ mechanism.
 ### PRY-10 — SOS ACL trusts the raw sender_id and performs no signature check
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · 2026-08-31 (option (a): ACL self-verifies the envelope signature)
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/acl.rs:242-277`
 
@@ -1001,7 +1001,7 @@ crafted configs — verify they still hold with a size-based signal.
 ### PRY-17 — Chain rule 5 requires monotonically increasing counters *down* the chain
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · 2026-08-31 (option (b): vs trust-store recorded counter — WIDENS, operator sign-off)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/chain.rs:138-141`
 

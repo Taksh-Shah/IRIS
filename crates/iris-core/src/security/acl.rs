@@ -173,10 +173,38 @@ impl EmergencyAcl {
         _now_unix: u64,
     ) -> AclDecision {
         let allowed = self.config.allowlists.get(&class);
-        // Noop mode: empty allowlist = permissive (AC-12: un-armed engine unchanged)
-        if allowed.is_none() || allowed.unwrap().is_empty() {
-            self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
-            return AclDecision::Authorized;
+        let allowlist_empty = allowed.map_or(true, |v| v.is_empty());
+
+        if allowlist_empty {
+            match class {
+                // PRY-1: reaching this code path means the policy is ARMED — an
+                // un-armed `FullSecurityPolicy` and `NoopSecurityPolicy` both
+                // short-circuit to `Authorized` *before* the ACL is consulted
+                // (`security/mod.rs::check_emergency_acl`). An armed node with
+                // no configured authorities cannot verify a public-safety
+                // broadcast, so it must drop it — the old `empty => Authorized`
+                // conflated "un-armed" with "armed but unconfigured" and let a
+                // spoofed P0 broadcast straight through.
+                AlertClass::Broadcast | AlertClass::Medical => {
+                    tracing::warn!(
+                        event = "ACL_ARMED_NO_AUTHORITIES",
+                        class = ?class,
+                        "armed policy has no configured authorities — dropping broadcast"
+                    );
+                    self.metrics
+                        .invalid_authority
+                        .fetch_add(1, Ordering::Relaxed);
+                    return AclDecision::InvalidAuthority;
+                }
+                // Drill stays permissive-on-empty: `ContentType::KeyRotation`
+                // is currently (mis)mapped to `Drill` (PRY-9), so tightening
+                // here would drop every routine key-rotation envelope
+                // mesh-wide. Revisit once PRY-9 gives drills their own marker.
+                _ => {
+                    self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
+                    return AclDecision::Authorized;
+                }
+            }
         }
 
         let chain_raw = match &envelope.auth_cert_chain {
@@ -254,6 +282,26 @@ impl EmergencyAcl {
         AclDecision::Authorized
     }
 
+    /// PRY-10: verify `envelope` carries a valid Ed25519 signature by
+    /// `identity_pubkey` (the self-authenticating 32-byte identity). Returns
+    /// `false` on a missing signature, an unparseable key, an encoding error,
+    /// or a `verify_strict` rejection.
+    fn envelope_signature_valid(&self, envelope: &Envelope, identity_pubkey: &[u8; 32]) -> bool {
+        let Some(sig) = envelope.signature else {
+            return false;
+        };
+        let Ok(vk) = ed25519_dalek::VerifyingKey::from_bytes(identity_pubkey) else {
+            return false;
+        };
+        let Ok(signable) = crate::protocol::codec::encode_for_signing(envelope) else {
+            return false;
+        };
+        matches!(
+            crate::crypto::ed25519::verify_strict(&vk, &signable, &sig),
+            Ok(true)
+        )
+    }
+
     /// Verify SOS sender has verified identity (TrustStore Verified tier).
     async fn check_sos_identity(&self, envelope: &Envelope, _now_unix: u64) -> AclDecision {
         // Need to get the full 32-byte pubkey to check trust level
@@ -264,6 +312,23 @@ impl EmergencyAcl {
         }
         let mut pubkey = [0u8; 32];
         pubkey.copy_from_slice(&envelope.sender_id);
+
+        // PRY-10: the ACL is a security gate — it must not authorize on a
+        // claimed `sender_id` alone (an attacker sets it to any known
+        // `Verified` peer's key). `sender_id` IS the 32-byte Ed25519 identity
+        // key (self-authenticating), so verify the envelope is actually signed
+        // by it here rather than trusting a signature check elsewhere in the
+        // pipeline that this function cannot see the result of.
+        if !self.envelope_signature_valid(envelope, &pubkey) {
+            tracing::warn!(
+                event = "ACL_SOS_BAD_SIGNATURE",
+                "SOS envelope signature missing or invalid — rejecting"
+            );
+            self.metrics
+                .invalid_authority
+                .fetch_add(1, Ordering::Relaxed);
+            return AclDecision::InvalidAuthority;
+        }
 
         let trust = self.trust_store.level(&pubkey);
         let store_empty = self.trust_store.is_empty();
@@ -370,6 +435,12 @@ mod tests {
         let x = X25519Keypair::generate();
         let ad = KeyAdvertisementV1::build(&root, x.public_bytes(), 0, 0).unwrap();
         (root, x, ad)
+    }
+
+    /// PRY-10: sign `env` in place so it passes the SOS ACL's signature gate.
+    fn sign_env(env: &mut Envelope, kp: &IdentityKeypair) {
+        let signable = crate::protocol::codec::encode_for_signing(env).unwrap();
+        env.signature = Some(crate::crypto::ed25519::sign(kp, &signable).unwrap());
     }
 
     #[tokio::test]
@@ -497,11 +568,49 @@ mod tests {
 
     #[tokio::test]
     async fn acl_sos_empty_store_authorized() {
-        // Empty trust store = Noop permissive (AC-12) even in SOS path.
+        // Empty trust store = Noop permissive (AC-12) even in SOS path — but
+        // PRY-10: a *validly signed* envelope is still required.
         let store = Arc::new(TrustStore::new());
         let acl = EmergencyAcl::default(store);
-        let env = test_env(MessagePriority::P2, ContentType::Sos, vec![1u8; 32], None);
+        let kp = IdentityKeypair::generate();
+        let mut env = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            kp.verifying_bytes().to_vec(),
+            None,
+        );
+        sign_env(&mut env, &kp);
         assert_eq!(acl.check(&env, now()).await, AclDecision::Authorized);
+    }
+
+    /// PRY-10: an attacker sets `sender_id` to a known Verified peer's key but
+    /// cannot produce that peer's signature — the SOS gate must reject.
+    #[tokio::test]
+    async fn acl_sos_spoofed_verified_sender_without_signature_rejected() {
+        let store = Arc::new(TrustStore::new());
+        let (victim, _vx, victim_ad) = root_ad();
+        store.register_authority_root(&victim_ad, now()).unwrap();
+        let acl = EmergencyAcl::default(store);
+
+        // No signature at all.
+        let env = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            victim.verifying_bytes().to_vec(),
+            None,
+        );
+        assert_eq!(acl.check(&env, now()).await, AclDecision::InvalidAuthority);
+
+        // Signature by the ATTACKER, not the victim.
+        let attacker = IdentityKeypair::generate();
+        let mut env2 = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            victim.verifying_bytes().to_vec(),
+            None,
+        );
+        sign_env(&mut env2, &attacker);
+        assert_eq!(acl.check(&env2, now()).await, AclDecision::InvalidAuthority);
     }
 
     #[tokio::test]
@@ -513,12 +622,17 @@ mod tests {
         store.register_authority_root(&ad, now()).unwrap();
         let acl = EmergencyAcl::default(store);
 
-        let env = test_env(
+        // PRY-10: unknown + unsigned self-asserted sender — rejected. (The
+        // signature gate now fires first: InvalidAuthority rather than
+        // Unauthorized, but an unknown armed-store sender still cannot pass.)
+        let unknown = IdentityKeypair::generate();
+        let mut env = test_env(
             MessagePriority::P2,
             ContentType::Sos,
-            vec![0x42u8; 32],
+            unknown.verifying_bytes().to_vec(),
             None,
         );
+        sign_env(&mut env, &unknown);
         assert_eq!(acl.check(&env, now()).await, AclDecision::Unauthorized);
         assert_eq!(acl.metrics().unauthorized, 1);
     }
@@ -526,16 +640,17 @@ mod tests {
     #[tokio::test]
     async fn acl_sos_verified_authorized() {
         let store = Arc::new(TrustStore::new());
-        let (_root, _x, ad) = root_ad();
+        let (root, _x, ad) = root_ad();
         store.register_authority_root(&ad, now()).unwrap();
         let acl = EmergencyAcl::default(store);
 
-        let env = test_env(
+        let mut env = test_env(
             MessagePriority::P2,
             ContentType::Sos,
             ad.identity_pubkey.to_vec(),
             None,
         );
+        sign_env(&mut env, &root);
         assert_eq!(acl.check(&env, now()).await, AclDecision::Authorized);
     }
 
@@ -552,7 +667,7 @@ mod tests {
         // Level falls outside Verified/AuthorityRoot/Unknown/Unverified (e.g.
         // Revoked) -> rejected by the catch-all arm.
         let store = Arc::new(TrustStore::new());
-        let (_root, _x, ad) = root_ad();
+        let (root, _x, ad) = root_ad();
         store.adopt_advertisement(&ad, now());
         store.revoke(&ad.identity_pubkey);
         // Populate the store further so it is not empty (armed Noop is gated).
@@ -560,12 +675,15 @@ mod tests {
         store.register_authority_root(&ad2, now()).unwrap();
         let acl = EmergencyAcl::default(store);
 
-        let env = test_env(
+        // PRY-10: sign it so it passes the signature gate and actually reaches
+        // the revocation check (the catch-all `_ => Unauthorized` arm).
+        let mut env = test_env(
             MessagePriority::P2,
             ContentType::Sos,
             ad.identity_pubkey.to_vec(),
             None,
         );
+        sign_env(&mut env, &root);
         assert_eq!(acl.check(&env, now()).await, AclDecision::Unauthorized);
     }
 
@@ -595,10 +713,53 @@ mod tests {
             auth_cert_chain: None,
         };
 
-        // With no trust store configured (Noop), all classes are Authorized
+        // PRY-1: an armed ACL (this is the only kind — `EmergencyAcl` is never
+        // reached un-armed) with no configured authorities must DROP a P0
+        // broadcast, not authorize it.
         assert_eq!(
             acl.check(&envelope, crate::message_engine::expiry::unix_now())
                 .await,
+            AclDecision::InvalidAuthority
+        );
+    }
+
+    /// PRY-1: armed policy, empty allowlist — Broadcast/Medical are dropped,
+    /// but SOS (empty store) and Drill stay permissive.
+    #[tokio::test]
+    async fn armed_empty_allowlist_denies_broadcast_and_medical() {
+        let acl = EmergencyAcl::default(Arc::new(TrustStore::new()));
+        let env = |p: MessagePriority, ct: ContentType| Envelope {
+            version: crate::protocol::PROTOCOL_VERSION,
+            message_id: crate::protocol::MessageId::new_v7(),
+            sender_id: vec![1u8; 32],
+            recipient_id: vec![],
+            priority: p,
+            ttl_seconds: 3600,
+            timestamp: crate::message_engine::expiry::unix_now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type: ct,
+            payload_size: 0,
+            payload_hash: [0; 32],
+            payload: vec![],
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: None,
+        };
+        let t = crate::message_engine::expiry::unix_now();
+        assert_eq!(
+            acl.check(&env(MessagePriority::P0, ContentType::EmergencyAlert), t).await,
+            AclDecision::InvalidAuthority
+        );
+        assert_eq!(
+            acl.check(&env(MessagePriority::P1, ContentType::EmergencyAlert), t).await,
+            AclDecision::InvalidAuthority
+        );
+        // Drill (KeyRotation) still permissive-on-empty pending PRY-9.
+        assert_eq!(
+            acl.check(&env(MessagePriority::P3, ContentType::KeyRotation), t).await,
             AclDecision::Authorized
         );
     }
@@ -651,29 +812,35 @@ mod proptest_tests {
         }
 
         #[test]
-        fn acl_noop_default_authorized(
+        fn acl_armed_empty_allowlist_class_decision(
             priority in any::<MessagePriority>(),
             payload_type in any::<ContentType>(),
         ) {
+            // PRY-1: armed ACL, empty allowlist. Broadcast/Medical (P0/P1
+            // emergency) are dropped as InvalidAuthority; every other class is
+            // still permissive-on-empty (SOS via the empty-store Noop path,
+            // Drill pending PRY-9).
             let trust_store = Arc::new(TrustStore::new());
             let acl = EmergencyAcl::default(trust_store);
             let envelope = test_envelope(priority, payload_type);
-            prop_assert_eq!(block_on(acl.check(&envelope, crate::message_engine::expiry::unix_now())), AclDecision::Authorized);
-        }
-
-        #[test]
-        fn acl_unauthorized_when_no_allowlist(
-            priority in any::<MessagePriority>(),
-            payload_type in any::<ContentType>(),
-        ) {
-            let trust_store = Arc::new(TrustStore::new());
-            let acl = EmergencyAcl::default(trust_store);
-            // No authorities added
-            let envelope = test_envelope(priority, payload_type);
-            // With no trust store configured (Noop), all classes are Authorized
-            // This test verifies the current behavior
             let decision = block_on(acl.check(&envelope, crate::message_engine::expiry::unix_now()));
-            prop_assert!(matches!(decision, AclDecision::Authorized | AclDecision::Unauthorized));
+            let is_broadcast_or_medical = match payload_type {
+                ContentType::EmergencyAlert => true,
+                ContentType::Sos | ContentType::KeyRotation => false,
+                _ => matches!(priority, MessagePriority::P0 | MessagePriority::P1),
+            };
+            if is_broadcast_or_medical {
+                prop_assert_eq!(decision, AclDecision::InvalidAuthority);
+            } else {
+                // SOS may also be InvalidAuthority now (PRY-10: unsigned
+                // envelopes fail the signature gate); Drill stays permissive.
+                prop_assert!(matches!(
+                    decision,
+                    AclDecision::Authorized
+                        | AclDecision::Unauthorized
+                        | AclDecision::InvalidAuthority
+                ));
+            }
         }
     }
 }

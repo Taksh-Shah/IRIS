@@ -301,3 +301,44 @@ still got its own build + targeted-test + regression test.
 Advancing to **Tier 2**. The operator lifted the §2.3 gate (Run 2). Per-finding §8 file-scope
 check still applies: PRY-32/33/34 and PRY-6/9/10 (call sites) will likely block on
 `message_engine/` / `emergency/`; PRY-1/2/3/4/11/17 need per-finding assessment.
+
+---
+
+## Run 4 — 2026-08-31 — Tier 2 (batch 1)
+
+**Branch:** `main`. Baseline `62b60eb` (Tier 1 complete). `cargo 1.97.1`. Operator lifted the
+§2.3 gate (Run 2). This wake: 3 Tier-2 findings, all **fully Section-1 file-scoped** (no
+`message_engine/` / `emergency/` edits). Each got build + targeted tests + touched proptests.
+
+### Per-finding results
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | PRY-17 | ✅ Fixed · Tier 2 · **WIDENS** | `<pending>` | `chain.rs` rule 5 no longer compares `key_gen_counter` across adjacent (different-identity) elements — it now rejects only an element naming an **older** generation than `TrustStore::recorded_counter()` has already seen for that same identity (real stale-chain replay). New `TrustStore::recorded_counter`. Rewrote `stale_counter_link_rejected` (now: store sees child@5, replayed chain carries child@3 → `StaleCounter(1)`); new `multilevel_chain_with_low_child_counter_passes` (root@2 certifies fresh child@0 — the exact case the old rule broke). Widens (multi-level org chains newly validate) — operator sign-off. EMERG-001 should still confirm intended chain semantics. |
+| 2 | PRY-1 | ✅ Fixed · Tier 2 · narrows | `<pending>` | `check_authority_chain`: an **empty/missing allowlist on `Broadcast`/`Medical`** now returns `InvalidAuthority`, not `Authorized`. Reaching the ACL at all means the policy is armed (`security/mod.rs::check_emergency_acl` short-circuits un-armed + Noop). `Drill` stays permissive-on-empty (PRY-9: `KeyRotation`→`Drill` mis-map would otherwise drop all routine rotations). Rewrote `acl_noop_default_authorized` (unit + proptest — they encoded the vuln: "verifies the current behavior"); new `armed_empty_allowlist_denies_broadcast_and_medical`. `full_policy_armed_routes_to_engines` / `security::mod` assertion updated (unsigned P4→SOS now `InvalidAuthority`). |
+| 3 | PRY-10 | ✅ Fixed · Tier 2 · narrows | `<pending>` | `check_sos_identity` now calls `envelope_signature_valid()` (Ed25519 `verify_strict` over `encode_for_signing`, key = the self-authenticating 32-byte `sender_id`) **before** the trust-level match — a missing/wrong/invalid signature → `InvalidAuthority`. Option (a) from the finding (option (b) needs a Section-2 `sender_authenticated` bool). SOS test envelopes now signed via new `sign_env` helper; new `acl_sos_spoofed_verified_sender_without_signature_rejected` (spoofed `sender_id` + no sig / attacker sig → rejected). |
+
+### Not done this wake (remaining Tier 2)
+
+| Finding | Why |
+|---|---|
+| PRY-11 | **Not a code-gate call** — "authorize any signed SOS regardless of `TrustLevel`" is a life-safety product decision against `SAFETY_CHARTER.md` / `EMERGENCY_GOVERNANCE.md`. The operator lifted the *procedural* gate but cannot stand in for the safety / EMERG-001 owner on who may originate an SOS. 🔒 needs safety-owner sign-off. |
+| PRY-9 | `acl.rs` half (drop `ContentType::KeyRotation → AlertClass::Drill`) is doable, but the clean fix removes `KeyRotation` from the engine's `check_emergency_acl` routing set (`message_engine/mod.rs`, §8). Partial-only here would leave `Drill` unreachable-by-content and is risky without the engine half. Deferred to a wake that can coordinate the Section 2 edit. |
+| PRY-2 / PRY-3 / PRY-4 | `quota.rs` / `reputation.rs` portions are Section-1, but each needs a Section-3 (`iris-storage`) or Section-2 (GC cadence) decision on ownership/semantics to fix correctly rather than guess. Next wake — read fully + draft per-finding plan. |
+| PRY-32 | `acl.rs` half (enforce authority-meta: geo scope / severity cap / drill discipline / validity window) requires decoding the emergency payload — the authoritative path is `emergency/authority.rs::verify_authoritative` (§8). Needs EMERG-001 on which path is canonical. |
+| PRY-6 / PRY-33 / PRY-34 | Fix lands in `message_engine/mod.rs` — §8 hard file boundary. 🔒 Section 2. |
+| PRY-7 (tail) | 🔒 Section 2 (`message_id`). |
+
+### Batch closeout
+
+- `cargo build -p iris-core`: clean (pre-existing warnings only).
+- `cargo test -p iris-core --lib`: **755 pass, 0 fail** (752 + 3 net new regression tests).
+- `cargo test -p iris-core --features proptest --lib -- security::replay security::acl identity::chain`: **54 pass, 0 fail**.
+- `cargo test -p iris-core --test sysval_security_flood --test crypto_e2e`: pass.
+- `cargo fmt --check`: crate-wide pre-existing failure (unchanged); my hunks kept consistent.
+
+### Tier 2 status
+
+**3 ✅ / 9 ⬜ / 1 🔒 (PRY-7 tail).** Of the 9: PRY-11 is really 🔒 (safety owner); PRY-6/33/34
+are 🔒 (§8); PRY-2/3/4/9/32 need a per-finding cross-section decision before they can be
+fixed right. Next wake: draft those plans; do not guess another owner's intent.
