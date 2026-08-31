@@ -1655,6 +1655,13 @@ impl MessageEngine {
                         "message expired by GC sweep"
                     );
                 }
+                // PRY-4: tick reputation decay toward neutral so a peer floored
+                // by transient drops recovers. The policy self-throttles to its
+                // configured decay_interval, so calling every GC sweep is safe.
+                let policy = this.security.read().unwrap().clone();
+                policy.decay_reputation().await;
+                drop(policy);
+
                 // Expire + quota in storage.
                 this.storage.evict_expired(now).await.ok();
                 // PM-3: remove ACK entries whose wire TTL has expired. P0

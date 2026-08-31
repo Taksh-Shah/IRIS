@@ -3,7 +3,8 @@
 //! Module layout: security/{rate_limiter,quota,replay,reputation,spam,acl}.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use crate::message::MessagePriority;
 use crate::protocol::Envelope;
@@ -132,6 +133,11 @@ pub trait SecurityPolicy: Send + Sync {
     /// Load replay snapshot (cross-reboot restore).
     async fn load_replay_snapshot(&self, _snapshot: ReplaySnapshot) {}
 
+    /// PRY-4: tick reputation decay toward neutral. The engine GC loop calls
+    /// this every sweep; the implementation self-throttles to the configured
+    /// `decay_interval`. Default = no-op (Noop policy has no reputation state).
+    async fn decay_reputation(&self) {}
+
     /// Whether this policy is armed (non-Noop).
     fn armed(&self) -> bool {
         false
@@ -155,6 +161,9 @@ pub struct FullSecurityPolicy {
     spam: Arc<SpamEngine>,
     acl: Arc<EmergencyAcl>,
     armed: AtomicBool,
+    /// PRY-4: last time `decay_reputation` actually ran a decay tick — used to
+    /// throttle the GC-driven calls to the configured `decay_interval`.
+    last_decay: Mutex<Instant>,
 }
 
 impl FullSecurityPolicy {
@@ -175,6 +184,7 @@ impl FullSecurityPolicy {
             spam,
             acl,
             armed: AtomicBool::new(true),
+            last_decay: Mutex::new(Instant::now()),
         }
     }
 
@@ -195,6 +205,7 @@ impl FullSecurityPolicy {
             spam: Arc::new(spam),
             acl: Arc::new(acl),
             armed: AtomicBool::new(true),
+            last_decay: Mutex::new(Instant::now()),
         }
     }
 
@@ -351,6 +362,23 @@ impl SecurityPolicy for FullSecurityPolicy {
         if self.armed.load(Ordering::Relaxed) {
             self.replay.load_snapshot(snapshot).await;
         }
+    }
+
+    async fn decay_reputation(&self) {
+        if !self.armed.load(Ordering::Relaxed) {
+            return;
+        }
+        // PRY-4: self-throttle to the configured cadence so a fast GC interval
+        // does not over-decay. A peer floored by ~5 LocalDrop events had
+        // routing_weight stuck at 0.0 forever because nothing called decay().
+        {
+            let mut last = self.last_decay.lock().unwrap();
+            if last.elapsed() < self.reputation.decay_interval() {
+                return;
+            }
+            *last = Instant::now();
+        }
+        self.reputation.decay().await;
     }
 
     fn armed(&self) -> bool {

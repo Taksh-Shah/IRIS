@@ -174,6 +174,14 @@ impl ReputationEngine {
         }
     }
 
+    /// PRY-4: a low-reputation peer is *deprioritised* for routing, never
+    /// categorically excluded (AC-9). A routing layer that multiplies candidate
+    /// scores by `routing_weight` treats an exact `0.0` as "never select" —
+    /// indistinguishable from a blackhole on a sparse mesh, and (with no decay
+    /// caller — see `spawn_decay_task`) permanent. Floor the *selection* weight
+    /// at a small epsilon.
+    pub const SELECTION_FLOOR: f64 = 0.05;
+
     /// Get routing weight for a peer (0.0 to 1.0).
     /// Only returns meaningful weight after min_observations (AC-8).
     pub async fn routing_weight(&self, peer: PeerShort) -> f64 {
@@ -182,7 +190,8 @@ impl ReputationEngine {
             if rep.observations >= self.config.min_observations {
                 return rep
                     .score
-                    .clamp(self.config.min_score, self.config.max_score);
+                    .clamp(self.config.min_score, self.config.max_score)
+                    .max(Self::SELECTION_FLOOR);
             }
         }
         // Unknown or insufficient observations = neutral
@@ -291,6 +300,12 @@ impl ReputationEngine {
         }
     }
 
+    /// The configured decay cadence — the GC driver ticks `decay()` this often
+    /// (PRY-4).
+    pub fn decay_interval(&self) -> Duration {
+        self.config.decay_interval
+    }
+
     /// Periodic decay toward initial_score (call from GC task).
     pub async fn decay(&self) {
         let mut peers = self.peers.write().await;
@@ -378,7 +393,10 @@ mod proptest_tests {
                 block_on(re.update(peer, ReputationEvent::LocalDrop));
             }
             let weight = block_on(re.routing_weight(peer));
-            prop_assert_eq!(weight, 0.0);
+            // PRY-4: the internal score floors at min_score (0.0) but the
+            // SELECTION weight floors at SELECTION_FLOOR — the peer is
+            // deprioritised, never categorically excluded (AC-9).
+            prop_assert_eq!(weight, ReputationEngine::SELECTION_FLOOR);
         }
 
         #[test]
@@ -548,9 +566,9 @@ mod tests {
             re.update(peer, ReputationEvent::LocalDrop).await;
         }
 
-        // Should floor at 0.0 (never negative propagation)
+        // PRY-4: score floors at min_score; selection weight floors at epsilon.
         let weight = re.routing_weight(peer).await;
-        assert_eq!(weight, 0.0);
+        assert_eq!(weight, ReputationEngine::SELECTION_FLOOR);
     }
 
     #[tokio::test]
@@ -726,12 +744,53 @@ mod tests {
             re.update(peer, ReputationEvent::LocalDrop).await;
         }
 
-        // Routing weight should be 0.0 but still usable
+        // PRY-4: deprioritised but never zero — a routing layer that multiplies
+        // candidate scores by this must still be able to select the peer.
         let weight = re.routing_weight(peer).await;
-        assert_eq!(weight, 0.0);
+        assert_eq!(weight, ReputationEngine::SELECTION_FLOOR);
+        assert!(weight > 0.0);
+    }
 
-        // The peer is still a valid route (routing layer decides)
-        // This is tested at integration level
+    /// PRY-4: a peer floored by transient drops recovers once `decay()` runs.
+    #[tokio::test]
+    async fn floored_peer_recovers_after_decay_intervals() {
+        let config = ReputationConfig {
+            decay_factor: 0.5,
+            min_observations: 1,
+            negative_weight: 0.5,
+            ..Default::default()
+        };
+        let re = ReputationEngine::new(config);
+        let peer = [0x9u8; 16];
+        for _ in 0..10 {
+            re.update(peer, ReputationEvent::LocalDrop).await;
+        }
+        let floored = re.routing_weight(peer).await;
+        for _ in 0..5 {
+            re.decay().await;
+        }
+        let recovered = re.routing_weight(peer).await;
+        assert!(
+            recovered > floored,
+            "decay must lift a floored peer: {floored} -> {recovered}"
+        );
+    }
+
+    /// PRY-4: `routing_weight` never returns exactly 0.0.
+    #[tokio::test]
+    async fn routing_weight_never_returns_exactly_zero() {
+        let config = ReputationConfig {
+            min_score: 0.0,
+            negative_weight: 1.0,
+            min_observations: 1,
+            ..Default::default()
+        };
+        let re = ReputationEngine::new(config);
+        let peer = [0xAu8; 16];
+        for _ in 0..20 {
+            re.update(peer, ReputationEvent::LocalDrop).await;
+        }
+        assert!(re.routing_weight(peer).await > 0.0);
     }
 
     #[tokio::test]
