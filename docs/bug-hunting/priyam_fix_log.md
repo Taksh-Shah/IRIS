@@ -419,3 +419,43 @@ Recorded in `priyam_problems.md` → *Operator authorization & scope*. Summary:
 - **Tier 1 PRY-29 / PRY-30**: the §8 block is lifted — cleared for the next session.
 - **Work has NOT started.** Next fix session begins only on the operator's explicit
   go-signal. Roll-up now: Tier 2 = 3 ✅ / 8 ⬜ / 2 🔒 (PRY-7 tail, PRY-11).
+
+---
+
+## Run 7 — 2026-08-31 — Tier 2 (batch 4) — **Tier 2 complete**
+
+**Branch:** `main`. Baseline `91f6ca4` (Run 6 pushed). `cargo 1.97.1` MSVC (the Run 5/6
+`link.exe` failure did not recur — MSVC builds cleanly this session). All §8 boundaries
+waived. Operator: "complete the whole tier." 4 findings + the PRY-7 tail.
+
+### Per-finding results
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | PRY-2 | ✅ Fixed · Tier 2 | `6a9ef0b` | `QuotaManager` gets `priority_bytes: AtomicU64` + per-account `priority_used_bytes`. `check`/`add_message` P0/P1 branch: `PriorityExempt` only while `priority_bytes + size <= priority_reserved_pool_bytes` AND `total_bytes + size <= total_quota_bytes`; else `Rejected`. Global ceiling now also applies to ordinary classes. `remove_message` attributes freed bytes to the pool first. **Tests rewritten (§8):** `huge_message_size_no_overflow` (asserted `total_usage()==u64::MAX` after a P0 add — the vuln) and proptest `quota_p0_p1_priority_exempt` (unbounded P0/P1). New `quota_p0_rejected_when_reserved_pool_full`, `total_quota_ceiling_enforced_for_all_classes`, `quota_p0_p1_exempt_within_reserved_pool` (proptest). |
+| 2 | PRY-4 | ✅ Fixed · Tier 2 | `ed43068` | `routing_weight` → `.max(SELECTION_FLOOR)` (0.05) on the returned selection weight (internal score still floors at `min_score`). New `SecurityPolicy::decay_reputation` (Noop no-op); `FullSecurityPolicy` self-throttles to `reputation.decay_interval()` via a `Mutex<Instant>`; engine `spawn_gc_task` ticks it every sweep. **Tests rewritten (§8):** `reputation_negative_floored_at_zero` (unit + proptest), `reputation_not_a_gate` — all asserted `routing_weight == 0.0`. New `floored_peer_recovers_after_decay_intervals`, `routing_weight_never_returns_exactly_zero`. |
+| 3 | PRY-6 | ✅ Fixed (subsumed) · Tier 2 | `42eabb5` | Re-audit: `process_incoming` runs `self.crypto.verify(&envelope)` at mod.rs:545 **before** `check_replay` at mod.rs:596. The only `check_replay` caller is that one site. So the high-water is only ever advanced for a signature-verified `sender_id` — the "advance on attacker-spoofed sender_id + garbage sig" exploit is structurally closed (engine drift since the Run 0 audit, which cited an older line layout). The unclamped-`seq` half is subsumed by PRY-7. |
+| 4 | PRY-7 (tail) | ✅ Fixed · Tier 2 · **WIDENS** | `42eabb5` | `HighwaterTable::admit`: timestamp-primary acceptance. Advance `HighWaterMark` across seconds; within the current second dedup `sequence_hint` against a bounded exact seen-set (`recent_seqs`, cap `MAX_SEEN_SEQ_PER_SECOND = 64`) instead of strict `seq` ordering — an honest same-millisecond burst is no longer ~50 % false-`Replay`. `check_and_advance` kept for the `load_snapshot` merge only. **Tests rewritten (§8):** `replay_highwater_replay_detection`, `replay_out_of_order_accepted`, `replay_future_poison_is_bounded_not_persistent`, `replay_cross_reboot_persistence`, `load_snapshot_never_regresses_a_live_mark`, proptest `replay_cross_reboot_restores_highwater` — all encoded strict same-second ordering. New `same_second_descending_seq_burst_all_accepted`, `same_second_seen_set_is_bounded`. Cross-second replay protection fully preserved; a same-second replay in the ≤1 s window right after a reboot is accepted by design (option 2's stated tradeoff). |
+| 5 | PRY-32 | ✅ Fixed · Tier 2 | `b1d3a61` | `check_authority_chain` for Broadcast/Medical decodes the `EmergencyBroadcast` payload and runs `emergency::authority::verify_authoritative` — geo scope, functional scope, `max_severity` cap, drill discipline, validity window. Closes the "SEC-001 armed, EMERG-001 provider not armed" gap (the engine's `emergency_gate` runs the same check but only when the EMERG-001 provider is armed — a separate flag). Non-emergency payloads keep the anchor-only result (fail closed on the engine path when armed). Existing acl tests use empty payloads → unaffected. New `acl_rejects_out_of_geo_scope_broadcast` (geo mismatch + over-cap severity). |
+
+PRY-11 → 🔒 Deferred (product scope — SOS service is a future update; the safety-charter
+authorization decision defers with it).
+
+### Batch closeout
+
+- `cargo build -p iris-core --all-targets`: clean (pre-existing warnings only).
+- `cargo test -p iris-core`: **761 lib tests pass** + all integration; only the 2 pre-existing
+  `protocol_conformance.rs` framing failures remain (baseline, out of Section 1 scope).
+- `cargo test -p iris-core --features proptest --lib -- security::`: **119 passed, 0 failed** (200s).
+- `cargo test -p iris-core --test sysval_security_flood --test crypto_e2e`: pass.
+- `cargo fmt --check`: crate-wide pre-existing failure (unchanged); my hunks kept consistent.
+
+### Final state — 34 of 36 findings resolved
+
+- **Tier 0:** 6 ✅ + 1 ⚪ (PRY-28 premise disproved).
+- **Tier 1:** 16 ✅ + 1 🔒 (**PRY-13** — concurrency/lock refactor, needs benchmarking + loom; disproportionate to a hygiene pass).
+- **Tier 2:** 11 ✅ + 1 🔒 (**PRY-11** — SOS service is a future update, product-scope deferral).
+- **Total: 33 ✅ · 2 🔒 · 1 ⚪.**
+
+No further autonomous work: both 🔒 items need either a dedicated performance effort (PRY-13)
+or the SOS service to ship (PRY-11).

@@ -84,8 +84,8 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 6 fixed **PRY-3** (Tier 2 — deleted `select_eviction_candidates`; quota layer = admission only), **PRY-30** (Tier 1, §8 waived — deleted `evict_amount` + Kani proof), **PRY-34** (Tier 2 — `add_message` quota accounting added to relay path in `enqueue_relay`); also fixed PRY-33 test fallout (4 tests: missing key directory + `payload_size` mismatch). Commit `780f242`.
-**Next session:** PRY-2, PRY-4, PRY-6, PRY-32 (and PRY-7 tail). PRY-11 🔒 product-scope deferred.
+**Last updated:** 2026-08-31 — Run 7 (**Tier 2 complete**): fixed **PRY-2** (`6a9ef0b` — bounded P0/P1 reserved pool + global ceiling), **PRY-4** (`ed43068` — `SELECTION_FLOOR` + GC-driven `decay_reputation`), **PRY-6**+**PRY-7** (`42eabb5` — replay same-second dedup not ordering; verify-before-advance confirmed), **PRY-32** (`b1d3a61` — ACL runs `verify_authoritative` for the authority profile). 761 lib tests green; only the 2 pre-existing `protocol_conformance.rs` framing failures remain.
+**Remaining:** PRY-11 🔒 (product scope — SOS deferred), PRY-13 🔒 (concurrency refactor). Everything else ✅ or ⚪.
 
 ---
 
@@ -132,15 +132,18 @@ on the operator's explicit go-signal.**
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
 | **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 16 | 1 | 0 | Tier 0 complete |
-| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 4 | 0 | 7 | 2 | 0 | authorized in full; work starts on operator go-signal. SOS-only findings (PRY-11) deferred by product scope |
-| **Total** | | **36** | **4** | **0** | **29** | **3** | **0** | |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 0 | 0 | 11 | 1 | 0 | **Tier 2 complete** — 11 ✅, PRY-11 🔒 (SOS product-scope deferral). PRY-7 tail also ✅. |
+| **Total** | | **36** | **0** | **0** | **33** | **2** | **0** | |
 
-Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, still
-disproportionate); **PRY-29** & **PRY-30** were 🔒 on the §8 file boundary — that boundary is
-now **waived** (see *Operator authorization & scope*), so both are cleared to fix in the next
-session (PRY-29: thread `RootRequirement` through both `verify_chain` callers incl.
-`emergency/authority.rs`; PRY-30: fix `evict_amount` + PRY-3 + the `kani_proofs.rs` assertion
-together).
+**Only 2 findings remain unfixed, both 🔒 with a recorded reason:**
+- **PRY-13** (Tier 1) — shard-by-prefix / lock-free-atomics across all four security engines
+  + a `benches/` concurrency benchmark + a loom model. The finding says measure first, and
+  `FullSecurityPolicy` is not yet wired into the platform engines. A dedicated performance
+  pass, not a hygiene fix.
+- **PRY-11** (Tier 2) — deferred by **product scope**: the SOS service is a future update
+  (see *Operator authorization & scope*). The safety-charter call it hinges on defers with it.
+
+PRY-29 & PRY-30 were fixed in Run 5 / Run 6 once the §8 boundary was waived.
 
 Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
@@ -316,7 +319,7 @@ coordinate with EMERG-001 owner.
 ### PRY-2 — P0/P1 storage accounting is unbounded
 
 - **Severity:** High
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `6a9ef0b` · 2026-08-31 — reserved-pool (`priority_reserved_pool_bytes`) + global ceiling (`total_quota_bytes`) now enforced for P0/P1 and all classes; a P0 that cannot be stored is `Rejected`. Admission side only — Section 3 owns physical eviction end-to-end.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/quota.rs:147-158` (`check`), `:178-189` (`add_message`), `:52-61` (config defaults)
 
@@ -422,7 +425,7 @@ those must be resolved together or the mesh gets two disagreeing eviction polici
 ### PRY-4 — Reputation has no decay caller: a floored peer never recovers
 
 - **Severity:** High
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `ed43068` · 2026-08-31 — `routing_weight` floors the *selection* weight at `SELECTION_FLOOR` (0.05, AC-9); new `SecurityPolicy::decay_reputation` ticked every engine GC sweep, self-throttled to `decay_interval`. Epsilon value is the operator-delegated call.
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/reputation.rs:253-261` (`decay`), `:146-159` (`routing_weight`), `:194-198` (`LocalDrop`)
 
@@ -527,7 +530,7 @@ case). No wire-format impact.
 ### PRY-6 — Replay high-water runs on unauthenticated sender_id, before signature check
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed (subsumed) · Tier 2 · commit `42eabb5` · 2026-08-31 — re-audited: `process_incoming` now runs `crypto.verify()` (mod.rs:545) **before** `check_replay` (mod.rs:596), so the high-water only ever advances for a signature-verified `sender_id` — the "advance on unverified bytes" exploit is structurally closed (drift since Run 0). The unclamped-`seq` concern is subsumed by PRY-7 (a crafted `seq` is now one entry in a bounded exact set, not a dominator).
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/replay.rs:351-436`; `crates/iris-core/src/message_engine/mod.rs:584-600`
 
@@ -580,7 +583,7 @@ engine-flow change and needs that owner. The freshness-only early check can stay
 ### PRY-7 — `sequence_hint()` is not a per-sender monotonic counter
 
 - **Severity:** Medium
-- **Fix status:** ◐ Partial · doc + regression test ✅ (commit bdac72b · 2026-08-31); behavioural fix **re-tiered to Tier 2** (widens an accept path, touches Section 2 `message_id`) — 🔒 pending sign-off
+- **Fix status:** ✅ Fixed · Tier 2 · commit `42eabb5` · 2026-08-31 — behavioural fix landed (option 2): same-second acceptance is a bounded exact seen-set of `sequence_hint` values (`HighwaterTable::admit`, cap 64/sender/sec), not `seq` ordering — an honest same-millisecond burst is no longer ~50 % false-`Replay`. `check_and_advance` kept for the cross-reboot snapshot merge only. Widens an accept path (distinct same-second messages) — under operator sign-off.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/protocol/message_id.rs:47-51` (Section 2, read-only); consumed at `crates/iris-core/src/message_engine/mod.rs:598`; assumed-contract in `crates/iris-core/src/security/replay.rs:44-65`, `:346-351`
 
@@ -1691,7 +1694,7 @@ change only *adds* rejected values.
 ### PRY-32 — The SEC-001 emergency ACL enforces none of the authority-meta constraints
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** ✅ Fixed · Tier 2 · commit `b1d3a61` · 2026-08-31 — `check_authority_chain` decodes the `EmergencyBroadcast` payload and runs `emergency::authority::verify_authoritative` for Broadcast/Medical (geo scope, functional scope, `max_severity` cap, drill discipline, validity window). Closes the "SEC-001 armed without EMERG-001" gap where the engine's `emergency_gate` (the other path) does not run.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/acl.rs:153-239` (`check_authority_chain`); contrast `crates/iris-core/src/emergency/authority.rs:99-202` (`verify_authoritative`, called from `emergency/broadcast.rs:48`)
 
