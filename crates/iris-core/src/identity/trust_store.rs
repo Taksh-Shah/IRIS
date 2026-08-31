@@ -191,7 +191,14 @@ impl TrustStore {
                     e.key_gen_counter = ad.key_gen_counter;
                     e.valid_until = ad.valid_until;
                     e.static_x25519_pubkey = ad.static_x25519_pubkey;
-                    if e.level == TrustLevel::KeyChanged {
+                    // PRY-18: the static key just changed. A `Verified` badge
+                    // certifies "this exact key was confirmed out of band via
+                    // QR/pairing" — that no longer holds, so drop to
+                    // `Unverified` and let the UI re-prompt. (An attacker who
+                    // steals only the Ed25519 signing key could otherwise push
+                    // a rotation and keep the victim's "Verified" badge while
+                    // contacts encrypt to the attacker's key.)
+                    if matches!(e.level, TrustLevel::KeyChanged | TrustLevel::Verified) {
                         e.level = TrustLevel::Unverified;
                     }
                     AdoptionOutcome::RotationAdopted
@@ -243,7 +250,10 @@ impl TrustStore {
     /// otherwise permanent — this is the operator-initiated recovery path when
     /// the revocation was a mistake (e.g. wrong node null-rotated). The entry
     /// stays non-promoted and must be re-verified out-of-band before use.
-    pub fn un_revoke(&self, identity_pubkey: &[u8; 32]) {
+    ///
+    /// PRY-36: `pub(crate)` — this self-authenticates nothing. The caller MUST
+    /// be an explicit, logged operator-recovery action, never a network handler.
+    pub(crate) fn un_revoke(&self, identity_pubkey: &[u8; 32]) {
         let mut m = self.inner.lock().expect("trust store lock");
         if let Some(e) = m.get_mut(identity_pubkey) {
             if e.level == TrustLevel::Revoked {
@@ -257,7 +267,10 @@ impl TrustStore {
     }
 
     /// Apply a revocation (null-rotation): mark `Revoked`, remove the key.
-    pub fn revoke(&self, identity_pubkey: &[u8; 32]) {
+    ///
+    /// PRY-36: `pub(crate)` — no signature check here. The caller (`rotate::apply`)
+    /// MUST have verified the revocation event's signature + monotonic counter.
+    pub(crate) fn revoke(&self, identity_pubkey: &[u8; 32]) {
         let mut m = self.inner.lock().expect("trust store lock");
         if let Some(e) = m.get_mut(identity_pubkey) {
             e.level = TrustLevel::Revoked;
@@ -269,10 +282,14 @@ impl TrustStore {
     /// the static key, bump the counter, keep the trust level. Applied only
     /// after the rotation event's signature + monotonicity have been checked.
     ///
-    /// RT-013: re-checks RED-0011 small-order inside (defense-in-depth: this is
-    /// a public API and must never install a low-order enc key, regardless of
-    /// which caller gate validated the event).
-    pub fn adopt_rotation(
+    /// RT-013: re-checks RED-0011 small-order inside (defense-in-depth: must
+    /// never install a low-order enc key, regardless of which caller gate
+    /// validated the event).
+    ///
+    /// PRY-36: `pub(crate)` — the caller MUST have verified the rotation
+    /// event's signature + counter monotonicity + expiry (that is
+    /// `rotate::apply`'s job).
+    pub(crate) fn adopt_rotation(
         &self,
         identity_pubkey: &[u8; 32],
         new_static_x25519_pubkey: [u8; 32],
@@ -288,6 +305,11 @@ impl TrustStore {
                 e.static_x25519_pubkey = new_static_x25519_pubkey;
                 e.key_gen_counter = key_gen_counter;
                 e.valid_until = valid_until;
+                // PRY-18: key changed — a `Verified` entry is no longer
+                // key-confirmed. Drop it so the operator re-verifies.
+                if e.level == TrustLevel::Verified {
+                    e.level = TrustLevel::Unverified;
+                }
                 return Ok(true);
             }
         }
@@ -348,8 +370,17 @@ impl TrustStore {
         }
         let mut m = self.inner.lock().expect("trust store lock");
         let id = ad.identity_pubkey;
-        if m.get(&id).map(|e| e.level) == Some(TrustLevel::Revoked) {
-            return Err("authority root is revoked");
+        if let Some(existing) = m.get(&id) {
+            if existing.level == TrustLevel::Revoked {
+                return Err("authority root is revoked");
+            }
+            // PRY-36: never overwrite a known identity with an OLDER rotation
+            // generation — that would re-open a rotation-replay window (an
+            // attacker replaying a stale provisioning advertisement to reset
+            // the counter). Equal or newer counters promote/refresh.
+            if ad.key_gen_counter < existing.key_gen_counter {
+                return Err("authority root advertisement has a stale rotation counter");
+            }
         }
         m.insert(
             id,
@@ -503,6 +534,70 @@ mod tests {
             store.resolve_x25519(&id.verifying_bytes()),
             Some(x2.public_bytes())
         );
+    }
+
+    /// PRY-18: a rotation that changes the static key must knock a `Verified`
+    /// peer back to `Unverified` — the QR/pairing confirmation was of the *old*
+    /// key. The message still decrypts (new key resolves) but the badge is honest.
+    #[test]
+    fn verified_peer_drops_to_unverified_on_rotation() {
+        let id = IdentityKeypair::generate();
+        let x1 = X25519Keypair::generate();
+        let x2 = X25519Keypair::generate();
+        let store = TrustStore::new();
+        store.adopt_advertisement(&ad_for(&id, &x1, 0, 0), now());
+        assert!(store
+            .verify_peer(&id.verifying_bytes(), &x1.public_bytes())
+            .is_ok());
+        assert_eq!(store.level(&id.verifying_bytes()), TrustLevel::Verified);
+
+        // Rotation via advertisement path.
+        assert_eq!(
+            store.adopt_advertisement(&ad_for(&id, &x2, 5, 0), now()),
+            AdoptionOutcome::RotationAdopted
+        );
+        assert_eq!(
+            store.level(&id.verifying_bytes()),
+            TrustLevel::Unverified,
+            "Verified must not survive a key change"
+        );
+        assert_eq!(
+            store.resolve_x25519(&id.verifying_bytes()),
+            Some(x2.public_bytes()),
+            "new key still resolves for encryption"
+        );
+
+        // And via the direct adopt_rotation path.
+        assert!(store
+            .verify_peer(&id.verifying_bytes(), &x2.public_bytes())
+            .is_ok());
+        let x3 = X25519Keypair::generate();
+        store
+            .adopt_rotation(&id.verifying_bytes(), x3.public_bytes(), 9, 0)
+            .unwrap();
+        assert_eq!(store.level(&id.verifying_bytes()), TrustLevel::Unverified);
+    }
+
+    /// PRY-36: `register_authority_root` must refuse a stale rotation counter.
+    #[test]
+    fn register_authority_root_refuses_stale_counter() {
+        let id = IdentityKeypair::generate();
+        let x = X25519Keypair::generate();
+        let store = TrustStore::new();
+        store
+            .register_authority_root(&ad_for(&id, &x, 5, 0), now())
+            .unwrap();
+        assert_eq!(
+            store.register_authority_root(&ad_for(&id, &x, 3, 0), now()),
+            Err("authority root advertisement has a stale rotation counter")
+        );
+        // Equal or newer is fine.
+        assert!(store
+            .register_authority_root(&ad_for(&id, &x, 5, 0), now())
+            .is_ok());
+        assert!(store
+            .register_authority_root(&ad_for(&id, &x, 6, 0), now())
+            .is_ok());
     }
 
     #[test]
