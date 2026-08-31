@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use crate::message::MessagePriority;
-use tokio::sync::RwLock;
+use crate::security::sharded::ShardedLocks;
 
 /// Saturating add for atomic byte accounting (no wrap-around accounting corrupt).
 fn atomic_saturating_add(counter: &AtomicU64, amount: u64) {
@@ -90,7 +90,10 @@ pub enum QuotaDecision {
 
 /// Per-sender storage quota + priority pool manager.
 pub struct QuotaManager {
-    accounts: RwLock<HashMap<SenderShort, SenderAccount>>,
+    /// PRY-13: per-sender accounts sharded so quota admission does not
+    /// serialise every inbound message on one lock. The byte totals stay in
+    /// lock-free atomics.
+    accounts: ShardedLocks<HashMap<SenderShort, SenderAccount>>,
     config: QuotaConfig,
     metrics: QuotaMetrics,
     /// Total bytes across all senders.
@@ -114,7 +117,7 @@ impl QuotaManager {
     /// Create a new quota manager with default configuration.
     pub fn new(config: QuotaConfig) -> Self {
         QuotaManager {
-            accounts: RwLock::new(HashMap::with_capacity(1024)),
+            accounts: ShardedLocks::default(),
             config,
             metrics: QuotaMetrics::default(),
             total_bytes: AtomicU64::new(0),
@@ -141,7 +144,7 @@ impl QuotaManager {
         message_size: u64,
         priority: MessagePriority,
     ) -> QuotaDecision {
-        let accounts = self.accounts.read().await;
+        let accounts = self.accounts.shard_for(&sender).read().await;
         let account = accounts.get(&sender);
 
         let used = account.map(|a| a.used_bytes).unwrap_or(0);
@@ -187,7 +190,7 @@ impl QuotaManager {
         message_size: u64,
         priority: MessagePriority,
     ) -> QuotaDecision {
-        let mut accounts = self.accounts.write().await;
+        let mut accounts = self.accounts.shard_for(&sender).write().await;
         let account = accounts.entry(sender).or_insert_with(|| SenderAccount {
             last_activity: Some(Instant::now()),
             ..Default::default()
@@ -246,7 +249,7 @@ impl QuotaManager {
 
     /// Remove a message from sender's quota (e.g., on delivery/eviction).
     pub async fn remove_message(&self, sender: SenderShort, message_size: u64) {
-        let mut accounts = self.accounts.write().await;
+        let mut accounts = self.accounts.shard_for(&sender).write().await;
         if let Some(account) = accounts.get_mut(&sender) {
             account.used_bytes = account.used_bytes.saturating_sub(message_size);
             account.message_count = account.message_count.saturating_sub(1);
@@ -266,7 +269,7 @@ impl QuotaManager {
 
     /// Get per-sender usage for monitoring.
     pub async fn sender_usage(&self, sender: SenderShort) -> Option<(u64, u64)> {
-        let accounts = self.accounts.read().await;
+        let accounts = self.accounts.shard_for(&sender).read().await;
         accounts
             .get(&sender)
             .map(|a| (a.used_bytes, a.message_count))
@@ -279,7 +282,9 @@ impl QuotaManager {
 
     /// Reset all accounts (for testing).
     pub async fn reset(&self) {
-        self.accounts.write().await.clear();
+        for shard in self.accounts.shards() {
+            shard.write().await.clear();
+        }
         self.total_bytes.store(0, Ordering::Relaxed);
         self.priority_bytes.store(0, Ordering::Relaxed);
     }

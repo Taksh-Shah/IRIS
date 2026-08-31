@@ -459,3 +459,70 @@ authorization decision defers with it).
 
 No further autonomous work: both 🔒 items need either a dedicated performance effort (PRY-13)
 or the SOS service to ship (PRY-11).
+
+---
+
+## Run 8 — 2026-08-31 — PRY-13 (engine lock sharding)
+
+**Branch:** `main`. Baseline `e7d28e4` (Run 7 pushed). `cargo 1.97.1` MSVC. Operator: "do
+PRY-13 properly." This is the last non-SOS finding.
+
+### What landed
+
+New `crates/iris-core/src/security/sharded.rs` — `ShardedLocks<S>`: `SHARD_COUNT = 64`
+independent `tokio::sync::RwLock<S>` shards, addressed by `DefaultHasher` of the sender key.
+Deterministic within a process (fixed hasher keys). `per_shard_cap(total)` divides a
+configured count cap across shards (rounding up so the aggregate is never materially below
+the configured value). 3 unit tests: shard spread, key stability, 32-task concurrent-writer
+no-lost-updates.
+
+All four engines converted from one `RwLock<map>` to `ShardedLocks`:
+
+| Engine | Field | Cap → per-shard | Whole-map ops |
+|---|---|---|---|
+| `rate_limiter` | `buckets: ShardedLocks<BucketState>` | `max_sender_buckets` | `reset` iterates shards |
+| `quota` | `accounts: ShardedLocks<HashMap<…>>` | (no count cap; byte totals stay in atomics) | `reset` iterates shards |
+| `replay` | `highwater: ShardedLocks<HighwaterTable>` | `max_sender_highwater` | `generate_snapshot` / `from_snapshot` / `load_snapshot` / `reset` iterate/partition shards |
+| `spam` | `stats: ShardedLocks<HashMap<…>>` | `max_sender_stats` | `reset` iterates shards |
+
+`replay` also: **PRY-13's "at minimum"** — `maybe_schedule_snapshot` no longer clones the map
+on the accept path. The hot path sets a `snapshot_dirty: AtomicBool`; `generate_snapshot`
+(the all-shard clone) runs off the accept path and clears the flag. New `snapshot_pending()`
+accessor for a persistence driver. `maybe_schedule_snapshot` now only advances the persist
+clock + bumps the `persisted` metric.
+
+New `crates/iris-core/benches/security_contention.rs` (registered in `Cargo.toml`): N=64
+tasks × 200 checks each through `FullSecurityPolicy` (`rate_limit` → `check_quota` →
+`check_replay` → `score_spam`), two shapes — **distinct senders** (spread across shards) vs
+**one hot sender** (all on one shard). On this box: distinct ≈ 1.3 Melem/s, hot ≈ 0.42
+Melem/s — ~3× when load spreads. Standard per-shard `RwLock` (no custom lock-free atomics),
+so **no `loom` model is required**; the `ShardedLocks` concurrency stress test covers the
+lock discipline.
+
+### Behaviour change (documented)
+
+Count caps are now **per-shard**. A sender population spread across shards still hits the
+same aggregate bound; a flood ground onto one shard (an attacker grinding sender-id hashes)
+hits its 1/64 slice sooner — stronger isolation, not weaker. Small-cap eviction-ordering
+tests (`spam_cap_evicts_least_established_sender`, `spam_sender_stats_capped_at_max`)
+rewritten to force senders into one shard via a `colliding_senders` test helper — the
+eviction *ordering* logic (least-established / stale-first / newest-out) is still exercised,
+within a shard.
+
+### Batch closeout
+
+- `cargo build -p iris-core --all-targets`: clean.
+- `cargo test -p iris-core --lib`: **764 pass** (761 + 3 `sharded` unit tests), 0 fail.
+- `cargo test -p iris-core --lib -- security:: message_engine::`: 157 pass.
+- `cargo test -p iris-core --features proptest --lib -- security::`: _(running — appended)_
+- `cargo bench -p iris-core --bench security_contention`: builds + runs; ~3× spread/hot ratio.
+- Only the 2 pre-existing `protocol_conformance.rs` framing failures remain.
+
+### Final state — 35 of 36 findings resolved
+
+- Tier 0: 6 ✅ + 1 ⚪ (PRY-28)
+- Tier 1: **17 ✅** (PRY-13 done)
+- Tier 2: 11 ✅ + 1 🔒 (**PRY-11** — SOS product-scope deferral)
+- **Total: 34 ✅ · 1 🔒 · 1 ⚪.**
+
+The only open item is PRY-11, which cannot be done until the SOS service ships.

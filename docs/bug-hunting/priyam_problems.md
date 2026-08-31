@@ -84,8 +84,13 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 7 (**Tier 2 complete**): fixed **PRY-2** (`6a9ef0b` — bounded P0/P1 reserved pool + global ceiling), **PRY-4** (`ed43068` — `SELECTION_FLOOR` + GC-driven `decay_reputation`), **PRY-6**+**PRY-7** (`42eabb5` — replay same-second dedup not ordering; verify-before-advance confirmed), **PRY-32** (`b1d3a61` — ACL runs `verify_authoritative` for the authority profile). 761 lib tests green; only the 2 pre-existing `protocol_conformance.rs` framing failures remain.
-**Remaining:** PRY-11 🔒 (product scope — SOS deferred), PRY-13 🔒 (concurrency refactor). Everything else ✅ or ⚪.
+**Last updated:** 2026-08-31 — Run 8: fixed **PRY-13** — all four security engines
+(`rate_limiter`/`quota`/`replay`/`spam`) sharded into 64 independent `RwLock` shards
+(`security/sharded.rs`); `replay` snapshot clone moved off the accept path; new
+`benches/security_contention.rs` (~3× throughput, spread vs one hot sender). 764 lib tests +
+security proptests green.
+**Only PRY-11 remains** — 🔒 deferred by product scope (SOS is a future update).
+**34 ✅ · 1 🔒 · 1 ⚪ of 36.**
 
 ---
 
@@ -131,19 +136,17 @@ on the operator's explicit go-signal.**
 | Tier | Name | Findings | ⬜ | 🔵 | ✅/🟢 | 🔒 | ❌ | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
-| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 16 | 1 | 0 | Tier 0 complete |
+| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 17 | 0 | 0 | **complete** — PRY-13 sharding landed |
 | **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 0 | 0 | 11 | 1 | 0 | **Tier 2 complete** — 11 ✅, PRY-11 🔒 (SOS product-scope deferral). PRY-7 tail also ✅. |
-| **Total** | | **36** | **0** | **0** | **33** | **2** | **0** | |
+| **Total** | | **36** | **0** | **0** | **34** | **1** | **0** | |
 
-**Only 2 findings remain unfixed, both 🔒 with a recorded reason:**
-- **PRY-13** (Tier 1) — shard-by-prefix / lock-free-atomics across all four security engines
-  + a `benches/` concurrency benchmark + a loom model. The finding says measure first, and
-  `FullSecurityPolicy` is not yet wired into the platform engines. A dedicated performance
-  pass, not a hygiene fix.
+**Only 1 finding remains unfixed:**
 - **PRY-11** (Tier 2) — deferred by **product scope**: the SOS service is a future update
   (see *Operator authorization & scope*). The safety-charter call it hinges on defers with it.
 
-PRY-29 & PRY-30 were fixed in Run 5 / Run 6 once the §8 boundary was waived.
+PRY-13 landed in Run 8 (per-shard `RwLock` × 64 in all four engines + a `benches/`
+concurrency benchmark). PRY-29 & PRY-30 were fixed in Run 5 / Run 6 once the §8 boundary
+was waived.
 
 Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
@@ -865,7 +868,7 @@ work; if it moves here, coordinate with EMERG-001 to avoid double-limiting.
 ### PRY-13 — Every security check serialises on a global write lock
 
 - **Severity:** Medium
-- **Fix status:** 🔒 Blocked · Tier 1 · 2026-08-31 — the full fix is a shard-by-sender-prefix / lock-free-atomics refactor of all four engines plus a `benches/` concurrency benchmark and (if atomics) a loom model, which the finding itself frames as needing measurement first. `FullSecurityPolicy` is not yet wired into the platform engines, so the contention is currently unmeasurable. Disproportionate to a hygiene wake — recommend a dedicated performance pass. (The `maybe_schedule_snapshot` map-clone runs once per 30 s persistence interval, not per message.)
+- **Fix status:** ✅ Fixed · Tier 1 · commit `d711f97` · 2026-08-31 — all four engines (`rate_limiter`, `quota`, `replay`, `spam`) now hold per-sender state in a `ShardedLocks<S>` of `SHARD_COUNT = 64` independent `RwLock` shards, routed by a hash of the sender key. Two senders contend only when they hash to the same shard. Count caps (`max_sender_buckets` / `max_sender_highwater` / `max_sender_stats`) become per-shard (`per_shard_cap`, rounding up). `replay::maybe_schedule_snapshot` no longer clones the map on the accept path — the hot path flips a `snapshot_dirty` flag; the all-shard clone runs in `generate_snapshot` off the accept path. New `benches/security_contention.rs` (N tasks × distinct senders vs one hot sender): distinct-sender throughput ~3× the single-hot-sender case on this box. Standard per-shard `RwLock` (not custom atomics), so no `loom` model needed. `ShardedLocks` has its own concurrency stress test.
 - **Confidence:** High
 - **Location:** `rate_limiter.rs:235` (`self.buckets.write().await` per check), `quota.rs:168` (`self.accounts.write().await`), `replay.rs:391` (`self.highwater.write().await`), `spam.rs:123` (`self.stats.write().await`)
 

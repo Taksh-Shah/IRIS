@@ -3,10 +3,12 @@
 //! Promotes WP-2 deferred dedup persistence to a security requirement (AC-3/4/5).
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tokio::sync::RwLock;
+
+use crate::security::sharded::{per_shard_cap, shard_index_for, ShardedLocks, SHARD_COUNT};
 
 /// 16-byte sender short ID.
 pub type SenderShort = [u8; 16];
@@ -390,14 +392,20 @@ impl HighwaterTable {
 
 /// Replay protection engine.
 pub struct ReplayEngine {
-    /// Per-sender high-water marks (in-memory, hot path).
-    highwater: RwLock<HighwaterTable>,
+    /// Per-sender high-water marks (in-memory, hot path). PRY-13: sharded so
+    /// two senders contend only when they hash to the same shard. Per-shard
+    /// eviction + `max_sender_highwater` cap (see `per_shard_cap`).
+    highwater: ShardedLocks<HighwaterTable>,
     config: ReplayConfig,
     metrics: ReplayMetrics,
     /// Pending snapshot for batched persistence.
     pending_snapshot: RwLock<Option<ReplaySnapshot>>,
     /// Last persistence time.
     last_persist: RwLock<Instant>,
+    /// PRY-13: set when a mark has advanced since the last snapshot. The
+    /// hot path only flips this flag; the actual (all-shard) snapshot clone
+    /// happens off the accept path in `generate_snapshot`.
+    snapshot_dirty: AtomicBool,
 }
 
 #[derive(Default, Debug)]
@@ -419,22 +427,31 @@ impl ReplayEngine {
     /// Create a new replay engine with default configuration.
     pub fn new(config: ReplayConfig) -> Self {
         ReplayEngine {
-            highwater: RwLock::new(HighwaterTable::default()),
+            highwater: ShardedLocks::default(),
             config,
             metrics: ReplayMetrics::default(),
             pending_snapshot: RwLock::new(None),
             last_persist: RwLock::new(Instant::now()),
+            snapshot_dirty: AtomicBool::new(false),
         }
     }
 
     /// Create from a persisted snapshot (cross-reboot restore).
     pub fn from_snapshot(snapshot: ReplaySnapshot, config: ReplayConfig) -> Self {
+        // Partition the restored marks across shards (sync — no lock yet).
+        let mut buckets: Vec<HashMap<SenderShort, HighWaterMark>> =
+            (0..SHARD_COUNT).map(|_| HashMap::new()).collect();
+        for (sender, mark) in snapshot.into_internal() {
+            buckets[shard_index_for(&sender)].insert(sender, mark);
+        }
+        let shards = buckets.into_iter().map(HighwaterTable::from_marks).collect();
         ReplayEngine {
-            highwater: RwLock::new(HighwaterTable::from_marks(snapshot.into_internal())),
+            highwater: ShardedLocks::from_shards(shards),
             config,
             metrics: ReplayMetrics::default(),
             pending_snapshot: RwLock::new(None),
             last_persist: RwLock::new(Instant::now()),
+            snapshot_dirty: AtomicBool::new(false),
         }
     }
 
@@ -496,7 +513,8 @@ impl ReplayEngine {
             // (self-deadlock on the default config after one persistence
             // interval). Snapshot scheduling now runs after this block drops
             // the write guard.
-            let mut table = self.highwater.write().await;
+            let mut table = self.highwater.shard_for(&sender).write().await;
+            let shard_cap = per_shard_cap(self.config.max_sender_highwater);
 
             // Enforce max senders (PRY-8). Minting an Ed25519 identity is free
             // (a node id *is* its public key), so an attacker can register
@@ -512,9 +530,7 @@ impl ReplayEngine {
             //     which the attacker can backdate — the flood's own entries
             //     are always the newest and get evicted first. A genuine
             //     long-lived sender's in-window mark is preserved.
-            if table.marks.len() >= self.config.max_sender_highwater
-                && !table.marks.contains_key(&sender)
-            {
+            if table.marks.len() >= shard_cap && !table.marks.contains_key(&sender) {
                 let victim = table
                     .marks
                     .iter()
@@ -544,9 +560,11 @@ impl ReplayEngine {
         if accepted {
             self.metrics.accepted.fetch_add(1, Ordering::Relaxed);
 
-            // Schedule snapshot persistence (batched, crash-safe). Runs after
-            // the write guard is dropped — no reentrant-read deadlock (SEC-RT-01).
+            // PRY-13: the hot path only flips a flag. A dedicated persistence
+            // task (or the engine GC loop) calls `generate_snapshot` on the
+            // interval — the all-shard clone never runs under the accept path.
             if self.config.persistence_enabled {
+                self.snapshot_dirty.store(true, Ordering::Relaxed);
                 self.maybe_schedule_snapshot().await;
             }
 
@@ -593,18 +611,38 @@ impl ReplayEngine {
 
     /// Get current high-water for a sender (for debugging/monitoring).
     pub async fn get_highwater(&self, sender: SenderShort) -> Option<HighWaterMark> {
-        self.highwater.read().await.marks.get(&sender).copied()
+        self.highwater
+            .shard_for(&sender)
+            .read()
+            .await
+            .marks
+            .get(&sender)
+            .copied()
     }
 
     /// Generate a snapshot for cross-reboot persistence (AC-5).
     /// Returns the snapshot to be persisted by the caller (storage layer).
+    /// PRY-13: this is the *off-hot-path* all-shard clone — call it from the
+    /// persistence task / GC loop, not from `check`.
     pub async fn generate_snapshot(&self) -> ReplaySnapshot {
-        let highwater = self.highwater.read().await.marks.clone();
-        let snapshot = ReplaySnapshot::new(highwater);
+        let mut all: HashMap<SenderShort, HighWaterMark> = HashMap::new();
+        for shard in self.highwater.shards() {
+            for (k, v) in shard.read().await.marks.iter() {
+                all.insert(*k, *v);
+            }
+        }
+        let snapshot = ReplaySnapshot::new(all);
         *self.pending_snapshot.write().await = Some(snapshot.clone());
         *self.last_persist.write().await = Instant::now();
+        self.snapshot_dirty.store(false, Ordering::Relaxed);
         self.metrics.persisted.fetch_add(1, Ordering::Relaxed);
         snapshot
+    }
+
+    /// PRY-13: whether a mark has advanced since the last `generate_snapshot`.
+    /// A persistence driver polls this to decide when to snapshot.
+    pub fn snapshot_pending(&self) -> bool {
+        self.snapshot_dirty.load(Ordering::Relaxed)
     }
 
     /// Load a persisted snapshot (cross-reboot restore).
@@ -625,9 +663,8 @@ impl ReplayEngine {
             );
             return;
         }
-        let incoming = snapshot.into_internal();
-        let mut table = self.highwater.write().await;
-        for (sender, mark) in incoming {
+        for (sender, mark) in snapshot.into_internal() {
+            let mut table = self.highwater.shard_for(&sender).write().await;
             if !table.marks.contains_key(&sender) {
                 let gen = table.next_gen;
                 table.next_gen += 1;
@@ -641,23 +678,25 @@ impl ReplayEngine {
         }
     }
 
-    /// Maybe schedule a snapshot if interval elapsed.
+    /// Maybe schedule a snapshot if the interval elapsed. PRY-13: this only
+    /// advances the persistence clock and bumps the metric — it does NOT clone
+    /// the map (that is `generate_snapshot`, off the hot path).
     async fn maybe_schedule_snapshot(&self) {
         let last = *self.last_persist.read().await;
         if last.elapsed() >= self.config.persistence_interval {
-            // In a real implementation, this would trigger an async persist task
-            // For now, we just update the pending snapshot
-            let highwater = self.highwater.read().await.marks.clone();
-            *self.pending_snapshot.write().await = Some(ReplaySnapshot::new(highwater));
             *self.last_persist.write().await = Instant::now();
+            self.metrics.persisted.fetch_add(1, Ordering::Relaxed);
         }
     }
 
     /// Reset all state (for testing).
     pub async fn reset(&self) {
-        *self.highwater.write().await = HighwaterTable::default();
+        for shard in self.highwater.shards() {
+            *shard.write().await = HighwaterTable::default();
+        }
         *self.pending_snapshot.write().await = None;
         *self.last_persist.write().await = Instant::now();
+        self.snapshot_dirty.store(false, Ordering::Relaxed);
     }
 }
 

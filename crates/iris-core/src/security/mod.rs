@@ -15,6 +15,7 @@ pub mod quota;
 pub mod rate_limiter;
 pub mod replay;
 pub mod reputation;
+mod sharded;
 pub mod spam;
 
 use crate::identity::TrustStore;

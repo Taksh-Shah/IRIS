@@ -72,6 +72,11 @@ harness = false
 name = "fragment"
 harness = false
 
+# PRY-13: concurrency benchmark — N tasks hammering one node's security seam.
+[[bench]]
+name = "security_contention"
+harness = false
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(loom)'] }
 

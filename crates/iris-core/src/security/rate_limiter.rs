@@ -8,6 +8,8 @@ use std::time::{Duration, Instant};
 use crate::MessagePriority;
 use tokio::sync::RwLock;
 
+use crate::security::sharded::{per_shard_cap, ShardedLocks};
+
 /// 16-byte sender short ID (SHA-256(pubkey)[..16], per IDENT-001 / AC-4).
 pub type SenderShort = [u8; 16];
 
@@ -140,7 +142,9 @@ impl BucketState {
 
 /// srTCM-style token bucket rate limiter per (sender, class).
 pub struct RateLimiter {
-    buckets: RwLock<BucketState>,
+    /// PRY-13: per-sender bucket state sharded so a flood contends only
+    /// within one shard, not across every inbound message.
+    buckets: ShardedLocks<BucketState>,
     unknown_bucket: RwLock<Bucket>,
     config: RateLimiterConfig,
     metrics: RateLimiterMetrics,
@@ -174,7 +178,7 @@ impl RateLimiter {
     pub fn with_clock(config: RateLimiterConfig, clock: ClockFn) -> Self {
         let now = (clock)();
         RateLimiter {
-            buckets: RwLock::new(BucketState::new(1024)),
+            buckets: ShardedLocks::with(|| BucketState::new(64)),
             unknown_bucket: RwLock::new(Bucket {
                 tokens: config.unknown_sender_burst,
                 last_refill: now,
@@ -238,12 +242,13 @@ impl RateLimiter {
 
         let key = BucketKey { sender, class };
 
-        // Use write lock to allow bucket mutation
-        let mut state = self.buckets.write().await;
+        // Use write lock to allow bucket mutation (PRY-13: one shard only).
+        let mut state = self.buckets.shard_for(&sender).write().await;
+        let shard_cap = per_shard_cap(self.config.max_sender_buckets);
 
         // GAP-3: FIFO eviction — evict the oldest bucket instead of a random one.
         // Pop from the front of `order`, skipping any keys already removed.
-        if state.map.len() >= self.config.max_sender_buckets {
+        if state.map.len() >= shard_cap {
             while let Some(oldest) = state.order.pop_front() {
                 if state.map.remove(&oldest).is_some() {
                     break;
@@ -355,10 +360,11 @@ impl RateLimiter {
 
     /// Reset all buckets (for testing).
     pub async fn reset(&self) {
-        let mut state = self.buckets.write().await;
-        state.map.clear();
-        state.order.clear();
-        drop(state);
+        for shard in self.buckets.shards() {
+            let mut state = shard.write().await;
+            state.map.clear();
+            state.order.clear();
+        }
         let mut unknown = self.unknown_bucket.write().await;
         unknown.tokens = self.config.unknown_sender_burst;
         unknown.last_refill = (self.clock)();

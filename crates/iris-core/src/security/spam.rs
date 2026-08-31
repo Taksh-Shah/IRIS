@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::message::MessagePriority;
 use crate::protocol::Envelope;
-use tokio::sync::RwLock;
+use crate::security::sharded::{per_shard_cap, ShardedLocks};
 
 /// 16-byte sender short ID.
 pub type SenderShort = [u8; 16];
@@ -83,7 +83,9 @@ impl SenderSpamStats {
 
 /// Spam scoring engine (receiver-side only).
 pub struct SpamEngine {
-    stats: RwLock<HashMap<SenderShort, SenderSpamStats>>,
+    /// PRY-13: per-sender stats sharded so scoring does not serialise every
+    /// inbound message on one lock.
+    stats: ShardedLocks<HashMap<SenderShort, SenderSpamStats>>,
     config: SpamConfig,
     metrics: SpamMetrics,
 }
@@ -100,7 +102,7 @@ impl SpamEngine {
     /// Create a new spam engine with default configuration.
     pub fn new(config: SpamConfig) -> Self {
         SpamEngine {
-            stats: RwLock::new(HashMap::with_capacity(1024)),
+            stats: ShardedLocks::default(),
             config,
             metrics: SpamMetrics::default(),
         }
@@ -136,15 +138,17 @@ impl SpamEngine {
             return SpamDecision::Clean;
         }
 
-        let mut stats = self.stats.write().await;
+        let mut stats = self.stats.shard_for(&sender).write().await;
         // SEC-RT-06: bound the per-sender map so unbounded sender-spoofing
-        // cannot grow memory without limit.
+        // cannot grow memory without limit. PRY-13: the cap is per-shard.
         // PRY-21: evict the least-established sender (lowest `message_count`)
         // rather than `HashMap::keys().next()` — arbitrary hash order is not
         // adversary-resistant (the exact pattern `replay.rs` was hardened away
         // from). A spoofed one-shot sender has count 1 and is evicted first;
         // genuine established senders are protected.
-        if stats.len() >= self.config.max_sender_stats && !stats.contains_key(&sender) {
+        if stats.len() >= per_shard_cap(self.config.max_sender_stats)
+            && !stats.contains_key(&sender)
+        {
             if let Some(k) = stats
                 .iter()
                 .min_by_key(|(_, s)| s.message_count)
@@ -222,13 +226,15 @@ impl SpamEngine {
 
     /// Get per-sender spam stats for monitoring.
     pub async fn sender_stats(&self, sender: SenderShort) -> Option<(u64, u64)> {
-        let stats = self.stats.read().await;
+        let stats = self.stats.shard_for(&sender).read().await;
         stats.get(&sender).map(|s| (s.message_count, s.spam_hits))
     }
 
     /// Reset all state (for testing).
     pub async fn reset(&self) {
-        self.stats.write().await.clear();
+        for shard in self.stats.shards() {
+            shard.write().await.clear();
+        }
     }
 }
 
@@ -623,17 +629,18 @@ mod tests {
 
     #[tokio::test]
     async fn spam_sender_stats_capped_at_max() {
-        // SEC-RT-06: at max_sender_stats, a new sender evicts an old one.
+        use crate::security::sharded::{colliding_senders, SHARD_COUNT};
+        // SEC-RT-06: at the cap, a new sender evicts an old one. PRY-13: the
+        // cap is per-shard — force the three senders into one shard.
         let config = SpamConfig {
             min_payload_for_scoring: 10,
-            max_sender_stats: 2,
+            max_sender_stats: SHARD_COUNT * 2,
             ..Default::default()
         };
         let se = SpamEngine::new(config);
         let payload = b"x".to_vec();
-        let a = [9u8; 16];
-        let b = [0x0A; 16];
-        let c = [0x0B; 16];
+        let s = colliding_senders(3);
+        let (a, b, c) = (s[0], s[1], s[2]);
         let env = |sender: SenderShort| -> Envelope {
             let mut e = test_envelope(MessagePriority::P4, &payload);
             e.sender_id = sender.to_vec();
@@ -656,16 +663,19 @@ mod tests {
     /// one-shot sender is evicted before an established one.
     #[tokio::test]
     async fn spam_cap_evicts_least_established_sender() {
+        use crate::security::sharded::{colliding_senders, SHARD_COUNT};
+        // PRY-13: the cap is per-shard, and eviction is within the shard the
+        // new sender hits — force all three senders into one shard so the
+        // per-shard cap (= 2) actually triggers.
         let config = SpamConfig {
             min_payload_for_scoring: 1,
-            max_sender_stats: 2,
+            max_sender_stats: SHARD_COUNT * 2,
             ..Default::default()
         };
         let se = SpamEngine::new(config);
         let payload = b"xx".to_vec();
-        let established = [0xE1u8; 16];
-        let one_shot = [0x01u8; 16];
-        let newcomer = [0x0Cu8; 16];
+        let s = colliding_senders(3);
+        let (established, one_shot, newcomer) = (s[0], s[1], s[2]);
         let env = |s: SenderShort| {
             let mut e = test_envelope(MessagePriority::P4, &payload);
             e.sender_id = s.to_vec();
