@@ -124,12 +124,40 @@ pub struct ReputationMetrics {
 impl ReputationEngine {
     /// Create a new reputation engine with default configuration.
     pub fn new(config: ReputationConfig) -> Self {
+        let config = Self::sanitize_config(config);
         ReputationEngine {
             peers: RwLock::new(HashMap::with_capacity(1024)),
             verified_peers: RwLock::new(std::collections::HashSet::with_capacity(128)),
             config,
             metrics: ReputationMetrics::default(),
         }
+    }
+
+    /// PRY-19: `ReputationConfig` has public `f64` fields and is constructible
+    /// from untrusted config. A non-finite score field (NaN/±inf) propagates
+    /// into `rep.score` and the next capacity eviction (`min_by` on
+    /// `partial_cmp().unwrap()`) panics. Replace any non-finite field with its
+    /// default and repair an inverted min/max so downstream clamps are sane.
+    fn sanitize_config(mut c: ReputationConfig) -> ReputationConfig {
+        let d = ReputationConfig::default();
+        for (field, def) in [
+            (&mut c.max_score, d.max_score),
+            (&mut c.min_score, d.min_score),
+            (&mut c.initial_score, d.initial_score),
+            (&mut c.decay_factor, d.decay_factor),
+            (&mut c.positive_weight, d.positive_weight),
+            (&mut c.negative_weight, d.negative_weight),
+            (&mut c.secondhand_positive_weight, d.secondhand_positive_weight),
+            (&mut c.audit_weight, d.audit_weight),
+        ] {
+            if !field.is_finite() {
+                *field = def;
+            }
+        }
+        if c.min_score > c.max_score {
+            std::mem::swap(&mut c.min_score, &mut c.max_score);
+        }
+        c
     }
 
     /// Get metrics snapshot.
@@ -168,7 +196,7 @@ impl ReputationEngine {
             // Evict lowest score peer (simple)
             if let Some((k, _)) = peers
                 .iter()
-                .min_by(|a, b| a.1.score.partial_cmp(&b.1.score).unwrap())
+                .min_by(|a, b| a.1.score.total_cmp(&b.1.score))
             {
                 let k = *k;
                 peers.remove(&k);
@@ -227,6 +255,12 @@ impl ReputationEngine {
             }
         }
 
+        // PRY-19: a non-finite intermediate (e.g. inf - inf from a poisoned
+        // decay) must not survive into stored state — reset to neutral first,
+        // then clamp.
+        if !rep.score.is_finite() {
+            rep.score = self.config.initial_score;
+        }
         // Clamp
         rep.score = rep
             .score
@@ -257,6 +291,10 @@ impl ReputationEngine {
             // Exponential decay toward initial_score
             let diff = rep.score - self.config.initial_score;
             rep.score = self.config.initial_score + diff * self.config.decay_factor;
+            // PRY-19: keep stored scores finite even if a prior state was poisoned.
+            if !rep.score.is_finite() {
+                rep.score = self.config.initial_score;
+            }
         }
     }
 
@@ -432,6 +470,33 @@ pub struct ReputationMetricsSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// PRY-19: a poisoned `ReputationConfig` (NaN score field) must not be able
+    /// to panic the engine on the capacity-eviction path. Pre-fix this panicked
+    /// at `min_by(partial_cmp().unwrap())` once the map hit `max_peers`.
+    #[tokio::test]
+    async fn nan_config_does_not_panic_reputation_engine() {
+        let config = ReputationConfig {
+            initial_score: f64::NAN,
+            max_score: f64::INFINITY,
+            min_score: f64::NAN,
+            decay_factor: f64::NAN,
+            max_peers: 2,
+            min_observations: 1,
+            ..Default::default()
+        };
+        let re = ReputationEngine::new(config);
+        // Fill past capacity so eviction (the old panic site) runs.
+        for i in 0..8u8 {
+            re.update([i; 16], ReputationEvent::LocalForward).await;
+            re.update([i; 16], ReputationEvent::LocalDrop).await;
+        }
+        re.decay().await;
+        // Every stored score stayed finite.
+        for (_, score, _) in re.all_scores().await {
+            assert!(score.is_finite(), "score must be finite, got {score}");
+        }
+    }
 
     #[tokio::test]
     async fn reputation_routing_weight_neutral_for_unknown() {
