@@ -387,25 +387,28 @@ impl MessageEngine {
             envelope.payload = ciphertext;
             envelope.encryption_hdr = Some(hdr);
             envelope.payload_hash = Envelope::compute_payload_hash(&envelope.payload);
+            return self.crypto.sign(envelope).await.map_err(MsgEngineError::Crypto);
         } else {
-            // RED-0002: addressed unicast with an unresolvable recipient key
-            // FAILS OPEN — the message transits relays unwrapped. v1 policy:
-            // never silently. Emit a high-visibility warning + a dedicated
-            // metric so the downgrade is always observable and reportable.
-            // (P0 SOS broadcast is intentionally plaintext and returns above;
-            // this path is addressed mail only.) IDENT-001 supplies keys.
-            self.telemetry
-                .increment(metric::MESSAGES_SENT_UNENCRYPTED_TOTAL);
+            // PRY-33 / RED-0002: addressed unicast with no recipient X25519 key
+            // in the directory MUST fail closed — sending plaintext breaks
+            // CRYPTO-001 confidentiality for addressed mail. The old behaviour
+            // (log + proceed) silently relayed unencrypted messages. Return an
+            // error so the caller can surface "encryption pending, retry later"
+            // to the UI (Sections 4/5). `require_key` in key_directory.rs is
+            // the typed helper for this contract; we inline the same semantics
+            // here because the call-site already holds the lock guard.
+            // (P0 SOS broadcast is intentionally plaintext and returns early above;
+            // this path is addressed mail only. IDENT-001 supplies keys.)
             tracing::warn!(
                 event = event::MSG_SENT_UNENCRYPTED,
                 message_id = %envelope.message_id.short(),
-                "addressed message sent WITHOUT encryption: recipient key absent from key directory",
+                "addressed message send aborted: recipient key absent from key directory \
+                 — refusing to send plaintext (RED-0002 / PRY-33)",
             );
+            return Err(MsgEngineError::Crypto(
+                crate::message_engine::crypto::CryptoError::KeyUnavailable,
+            ));
         }
-        self.crypto
-            .sign(envelope)
-            .await
-            .map_err(MsgEngineError::Crypto)
     }
 
     /// Enqueue an outbound envelope. Errors on TTL-expired / full queue.
@@ -661,11 +664,17 @@ impl MessageEngine {
             // Note: we do NOT drop here — only annotate for UI (AC-10)
         }
 
-        // SEC-001: emergency ACL check (for emergency content)
-        // This complements EMERG-001 emergency_gate by checking authorization data
+        // SEC-001: emergency ACL check (for emergency content).
+        // PRY-9: ContentType::KeyRotation is intentionally excluded here.
+        // KeyRotation carries routine key-rotation and advertisement envelopes
+        // for every mesh node — it is NOT an emergency type. Routing it through
+        // check_emergency_acl would drop all rotations once a Drill allowlist is
+        // populated (since KeyRotation was mapped to AlertClass::Drill). The
+        // identity/rotation path (rotate::apply, TrustStore::adopt_advertisement)
+        // does its own signature + monotonicity + small-order validation.
         if matches!(
             envelope.payload_type,
-            ContentType::EmergencyAlert | ContentType::Sos | ContentType::KeyRotation
+            ContentType::EmergencyAlert | ContentType::Sos
         ) {
             let now_unix = unix_now();
             let policy = self.security.read().unwrap().clone();

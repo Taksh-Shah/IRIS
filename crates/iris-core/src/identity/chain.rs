@@ -29,6 +29,22 @@ use crate::identity::trust_store::{TrustLevel, TrustStore};
 /// Cap on chain length (deep-chain DoS guard, §9).
 pub const MAX_CHAIN_LEN: usize = 8;
 
+/// What kind of root the caller requires at element[0] of the chain.
+///
+/// PRY-29: threading this through `verify_chain` ensures every call site
+/// explicitly commits to its authority requirement rather than relying on a
+/// separate caller-side `is_authority_root` post-check that a future caller
+/// could forget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RootRequirement {
+    /// Any trusted root (TOFU / Verified / AuthorityRoot) may anchor the chain.
+    /// Use for peer-tree validation where a TOFU root is acceptable.
+    AnyTrusted,
+    /// Only an explicitly provisioned authority root (EMERG-RT-001) may anchor.
+    /// Use for emergency broadcast / ACL paths where TOFU is insufficient.
+    AuthorityRoot,
+}
+
 /// Why a chain failed validation.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum ChainError {
@@ -56,6 +72,9 @@ pub enum ChainError {
     RevokedElement(usize),
     #[error("chain: root element's certified key differs from the trust store's entry for the root — stale certificate")]
     RootKeyMismatch,
+    /// PRY-29: root is trusted but is not a provisioned authority root.
+    #[error("chain: root is not a provisioned authority root (EMERG-RT-001)")]
+    NotAuthorityRoot,
 }
 
 /// Validate a key-anchored chain terminating in a trusted root (§9).
@@ -76,6 +95,7 @@ pub fn verify_chain(
     chain: &[Vec<u8>],
     trust: &TrustStore,
     sender_id: &[u8],
+    root_req: RootRequirement,
 ) -> Result<(), ChainError> {
     if chain.is_empty() {
         return Err(ChainError::Empty);
@@ -95,6 +115,15 @@ pub fn verify_chain(
     }
     if trust.level(&root.identity_pubkey) == TrustLevel::Revoked {
         return Err(ChainError::RevokedElement(0));
+    }
+    // PRY-29: if the caller requires a provisioned authority root, enforce it
+    // here rather than relying on every caller to add a separate post-check.
+    // A TOFU-adopted peer that simply advertised itself cannot anchor an
+    // emergency chain (EMERG-RT-001 / AC-2).
+    if root_req == RootRequirement::AuthorityRoot
+        && !trust.is_authority_root(&root.identity_pubkey)
+    {
+        return Err(ChainError::NotAuthorityRoot);
     }
     // Rule 2b (RT-011): the chain's root element must be *consistent* with the
     // store's certified key for that root. A stale certificate that still names
@@ -265,7 +294,7 @@ mod tests {
         let (trust, root, x) = trusted_root();
         let chain = vec![ser(&ad(&root, &x, 0, 0))];
         assert_eq!(
-            verify_chain(&chain, &trust, &root.verifying_bytes()),
+            verify_chain(&chain, &trust, &root.verifying_bytes(), RootRequirement::AnyTrusted),
             Ok(()),
             "trusted root on its own chain must pass"
         );
@@ -284,7 +313,7 @@ mod tests {
 
         let chain = vec![ser(&root_ad), ser(&child_cert)];
         assert_eq!(
-            verify_chain(&chain, &trust, &child.verifying_bytes()),
+            verify_chain(&chain, &trust, &child.verifying_bytes(), RootRequirement::AnyTrusted),
             Ok(()),
             "root-authorized child chain must pass"
         );
@@ -298,7 +327,7 @@ mod tests {
         let x = X25519Keypair::generate();
         let chain = vec![ser(&ad(&leaf, &x, 0, 0))];
         assert_eq!(
-            verify_chain(&chain, &trust, &leaf.verifying_bytes()),
+            verify_chain(&chain, &trust, &leaf.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::UntrustedRoot)
         );
     }
@@ -317,7 +346,7 @@ mod tests {
 
         let chain = vec![ser(&root_ad), ser(&child_cert)];
         assert_eq!(
-            verify_chain(&chain, &trust, &child.verifying_bytes()),
+            verify_chain(&chain, &trust, &child.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::BrokenLink(1))
         );
     }
@@ -340,7 +369,7 @@ mod tests {
         let child_cert = authorizing_cert(&root, &stale_child);
         let chain = vec![ser(&root_ad), ser(&child_cert)];
         assert_eq!(
-            verify_chain(&chain, &trust, &child.verifying_bytes()),
+            verify_chain(&chain, &trust, &child.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::StaleCounter(1))
         );
     }
@@ -363,7 +392,7 @@ mod tests {
         let child_cert = authorizing_cert(&root, &child_ad);
         let chain = vec![ser(&root_ad), ser(&child_cert)];
         assert_eq!(
-            verify_chain(&chain, &trust, &child.verifying_bytes()),
+            verify_chain(&chain, &trust, &child.verifying_bytes(), RootRequirement::AnyTrusted),
             Ok(())
         );
     }
@@ -372,7 +401,7 @@ mod tests {
     fn empty_chain_rejected() {
         let trust = TrustStore::new();
         assert_eq!(
-            verify_chain(&[], &trust, &[0u8; 32]),
+            verify_chain(&[], &trust, &[0u8; 32], RootRequirement::AnyTrusted),
             Err(ChainError::Empty)
         );
     }
@@ -382,7 +411,7 @@ mod tests {
         let trust = TrustStore::new();
         let chain: Vec<Vec<u8>> = vec![vec![1u8; 90]; MAX_CHAIN_LEN + 1];
         assert!(matches!(
-            verify_chain(&chain, &trust, &[0u8; 32]),
+            verify_chain(&chain, &trust, &[0u8; 32], RootRequirement::AnyTrusted),
             Err(ChainError::TooLong(_))
         ));
     }
@@ -392,7 +421,7 @@ mod tests {
         let trust = TrustStore::new();
         let chain = vec![vec![0xAAu8; 16]];
         assert!(matches!(
-            verify_chain(&chain, &trust, &[0u8; 32]),
+            verify_chain(&chain, &trust, &[0u8; 32], RootRequirement::AnyTrusted),
             Err(ChainError::Undecodable(0, _))
         ));
     }
@@ -408,7 +437,7 @@ mod tests {
         let root_ad = ad(&root, &root_x, 0, 0);
         let chain = vec![ser(&root_ad), ser(&leaf_cert)];
         assert_eq!(
-            verify_chain(&chain, &trust, &leaf.verifying_bytes()),
+            verify_chain(&chain, &trust, &leaf.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::Expired(1))
         );
     }
@@ -426,7 +455,7 @@ mod tests {
         let child_cert = authorizing_cert(&root, &child_ad);
         let chain = vec![ser(&forged_root_ad), ser(&child_cert)];
         assert_eq!(
-            verify_chain(&chain, &trust, &child.verifying_bytes()),
+            verify_chain(&chain, &trust, &child.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::RootKeyMismatch)
         );
     }
@@ -444,7 +473,7 @@ mod tests {
         let leaf_cert = authorizing_cert(&root, &leaf_ad);
         let chain = vec![ser(&root_ad), ser(&leaf_cert)];
         assert!(matches!(
-            verify_chain(&chain, &trust, &leaf.verifying_bytes()),
+            verify_chain(&chain, &trust, &leaf.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::Verdict(1, _))
         ));
     }
@@ -458,18 +487,50 @@ mod tests {
         crafted.static_x25519_pubkey = small;
         let chain = vec![ser(&crafted)];
         assert!(matches!(
-            verify_chain(&chain, &trust, &root.verifying_bytes()),
+            verify_chain(&chain, &trust, &root.verifying_bytes(), RootRequirement::AnyTrusted),
             Err(ChainError::Verdict(0, _))
         ));
     }
 
     #[test]
+    /// PRY-29: `RootRequirement::AuthorityRoot` must reject a TOFU root that is
+    /// only `adopt_advertisement`-ed (not `register_authority_root`-ed), while
+    /// `RootRequirement::AnyTrusted` accepts the same chain.
+    #[test]
+    fn authority_root_requirement_rejects_tofu_root() {
+        // trusted_root() calls adopt_advertisement — TOFU level, NOT authority root.
+        let (trust, root, x) = trusted_root();
+        let chain = vec![ser(&ad(&root, &x, 0, 0))];
+
+        assert_eq!(
+            verify_chain(&chain, &trust, &root.verifying_bytes(), RootRequirement::AnyTrusted),
+            Ok(()),
+            "AnyTrusted must accept a TOFU root"
+        );
+        assert_eq!(
+            verify_chain(&chain, &trust, &root.verifying_bytes(), RootRequirement::AuthorityRoot),
+            Err(ChainError::NotAuthorityRoot),
+            "AuthorityRoot must reject a TOFU root"
+        );
+
+        // After register_authority_root the same chain passes both requirements.
+        let trust2 = TrustStore::new();
+        let root_ad = ad(&root, &x, 0, 0);
+        trust2.register_authority_root(&root_ad, now()).unwrap();
+        let chain2 = vec![ser(&root_ad)];
+        assert_eq!(
+            verify_chain(&chain2, &trust2, &root.verifying_bytes(), RootRequirement::AuthorityRoot),
+            Ok(()),
+            "provisioned authority root must pass AuthorityRoot requirement"
+        );
+    }
+
     fn sender_mismatch_rejected() {
         let (trust, root, x) = trusted_root();
         let chain = vec![ser(&ad(&root, &x, 0, 0))];
         let wrong = IdentityKeypair::generate().verifying_bytes();
         assert_eq!(
-            verify_chain(&chain, &trust, &wrong),
+            verify_chain(&chain, &trust, &wrong, RootRequirement::AnyTrusted),
             Err(ChainError::SenderMismatch)
         );
     }
@@ -483,16 +544,16 @@ mod tests {
         let chain = vec![ser(&ad(&root, &x, 0, 0))];
 
         let short = crate::identity::peer_id::peer_short(&root.verifying_bytes());
-        assert_eq!(verify_chain(&chain, &trust, &short), Ok(()));
+        assert_eq!(verify_chain(&chain, &trust, &short, RootRequirement::AnyTrusted), Ok(()));
 
         // A wrong 16-byte id still mismatches.
         assert_eq!(
-            verify_chain(&chain, &trust, &[0x00u8; 16]),
+            verify_chain(&chain, &trust, &[0x00u8; 16], RootRequirement::AnyTrusted),
             Err(ChainError::SenderMismatch)
         );
         // Any other length is an explicit error, not an incidental mismatch.
         assert_eq!(
-            verify_chain(&chain, &trust, &[0u8; 20]),
+            verify_chain(&chain, &trust, &[0u8; 20], RootRequirement::AnyTrusted),
             Err(ChainError::BadSenderIdLength(20))
         );
     }

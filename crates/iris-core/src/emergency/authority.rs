@@ -24,7 +24,7 @@
 //!   9. validity: `now ∈ [issued_at, expires_at)`.
 
 use crate::identity::advertise::KeyAdvertisementV1;
-use crate::identity::chain::verify_chain;
+use crate::identity::chain::{verify_chain, ChainError, RootRequirement};
 use crate::identity::trust_store::TrustStore;
 
 use super::model::{AlertMessageType, AuthorityMeta, EmergencyBroadcast, Severity};
@@ -112,23 +112,16 @@ pub fn verify_authoritative(
         return Err(AuthorityError::ChainTooLong(chain_blobs.len()));
     }
     // Step 3: RED-0008 chain verification (root trusted, links valid, final
-    // identity == sender_id).
-    verify_chain(chain_blobs, trust, sender_id)
-        .map_err(|e| AuthorityError::Chain(format!("{e}")))?;
-
-    // Step 3b (EMERG-RT-001): the chain ROOT must be a *provisioned authority
-    // root*, never merely a TOFU-adopted mesh peer. `verify_chain` accepts any
-    // trusted root (Unverified/Verified/AuthorityRoot); the emergency contract
-    // requires the explicit authority anchor (EMERG_DESIGN §3 "preloaded NDMA
-    // root"). A peer that simply advertised itself cannot anchor an emergency
-    // chain — otherwise any mesh member could self-issue a "verified" CRITICAL
-    // alert (the RT-001 collapse).
-    let root_bytes = chain_blobs.first().expect("non-empty after NoChain");
-    let root_ad = KeyAdvertisementV1::from_bytes(root_bytes)
-        .map_err(|e| AuthorityError::LeafDecode(e.to_string()))?;
-    if !trust.is_authority_root(&root_ad.identity_pubkey) {
-        return Err(AuthorityError::UntrustedAuthorityRoot);
-    }
+    // identity == sender_id). PRY-29: pass AuthorityRoot so verify_chain
+    // enforces the EMERG-RT-001 anchor requirement directly — the separate
+    // is_authority_root post-check below is no longer needed.
+    verify_chain(chain_blobs, trust, sender_id, RootRequirement::AuthorityRoot)
+        .map_err(|e| match e {
+            // Map NotAuthorityRoot to the typed variant so callers and tests
+            // that assert UntrustedAuthorityRoot keep working.
+            ChainError::NotAuthorityRoot => AuthorityError::UntrustedAuthorityRoot,
+            other => AuthorityError::Chain(format!("{other}")),
+        })?;
 
     // Step 4: leaf binding — decode the leaf advertisement and bind its
     // identity to the payload's authority_peer_short.

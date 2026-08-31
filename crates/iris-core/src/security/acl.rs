@@ -142,7 +142,13 @@ impl EmergencyAcl {
             _ => AlertClass::Sos,
         };
 
-        // Determine alert class from payload type if available
+        // Determine alert class from payload type if available.
+        // PRY-9: ContentType::KeyRotation is NO LONGER mapped to AlertClass::Drill.
+        // Key rotation is a routine identity-hygiene operation for every node, not
+        // a drill; overloading the same type caused a populated Drill allowlist to
+        // drop all mesh-wide key rotations. Drills need their own content-type
+        // marker (EMERG-001 follow-up). KeyRotation envelopes are no longer routed
+        // through check_emergency_acl by the engine (message_engine/mod.rs).
         let class = match envelope.payload_type {
             ContentType::EmergencyAlert => {
                 if matches!(envelope.priority, MessagePriority::P0) {
@@ -152,7 +158,6 @@ impl EmergencyAcl {
                 }
             }
             ContentType::Sos => AlertClass::Sos,
-            ContentType::KeyRotation => AlertClass::Drill, // Drills use KeyRotation type
             _ => alert_class,
         };
 
@@ -228,9 +233,14 @@ impl EmergencyAcl {
         // Full RED-0008 verification (chain.rs): structural decode, root trusted,
         // parent-certifies-child signatures (verify_strict), small-order, monotonic
         // counters, sender binding, expiry, length cap, revocation severing.
-        if let Err(e) =
-            crate::identity::chain::verify_chain(chain_raw, &self.trust_store, &envelope.sender_id)
-        {
+        if let Err(e) = crate::identity::chain::verify_chain(
+            chain_raw,
+            &self.trust_store,
+            &envelope.sender_id,
+            // PRY-29: enforce authority-root requirement inside verify_chain so
+            // the `is_authority_root` post-check below is no longer needed.
+            crate::identity::chain::RootRequirement::AuthorityRoot,
+        ) {
             tracing::warn!(
                 event = "ACL_CHAIN_REJECTED",
                 class = ?class,
@@ -265,13 +275,9 @@ impl EmergencyAcl {
                 return AclDecision::InvalidAuthority;
             }
         };
+        // PRY-29: is_authority_root check is now enforced inside verify_chain
+        // (RootRequirement::AuthorityRoot above). Only the allowlist check remains.
         if !allowed.unwrap().contains(&root.authority_short_id()) {
-            self.metrics
-                .invalid_authority
-                .fetch_add(1, Ordering::Relaxed);
-            return AclDecision::InvalidAuthority;
-        }
-        if !self.trust_store.is_authority_root(&root.identity_pubkey) {
             self.metrics
                 .invalid_authority
                 .fetch_add(1, Ordering::Relaxed);
@@ -757,10 +763,12 @@ mod tests {
             acl.check(&env(MessagePriority::P1, ContentType::EmergencyAlert), t).await,
             AclDecision::InvalidAuthority
         );
-        // Drill (KeyRotation) still permissive-on-empty pending PRY-9.
+        // PRY-9: KeyRotation no longer maps to Drill; it falls through to the
+        // priority-based class. P3 KeyRotation → Sos class → empty store →
+        // InvalidAuthority (PRY-10 signature gate fires first on unsigned env).
         assert_eq!(
             acl.check(&env(MessagePriority::P3, ContentType::KeyRotation), t).await,
-            AclDecision::Authorized
+            AclDecision::InvalidAuthority
         );
     }
 }
@@ -824,9 +832,11 @@ mod proptest_tests {
             let acl = EmergencyAcl::default(trust_store);
             let envelope = test_envelope(priority, payload_type);
             let decision = block_on(acl.check(&envelope, crate::message_engine::expiry::unix_now()));
+            // PRY-9: KeyRotation no longer has a special arm; it falls into `_`
+            // and is treated like any other type (priority-based class).
             let is_broadcast_or_medical = match payload_type {
                 ContentType::EmergencyAlert => true,
-                ContentType::Sos | ContentType::KeyRotation => false,
+                ContentType::Sos => false,
                 _ => matches!(priority, MessagePriority::P0 | MessagePriority::P1),
             };
             if is_broadcast_or_medical {
