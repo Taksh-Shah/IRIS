@@ -20,11 +20,11 @@
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
-| 3 | Structural enhancements | 7 | 3 | 4 | 0 | 0 |
+| 3 | Structural enhancements | 7 | 4 | 3 | 0 | 0 |
 | 4 | New audit findings (GAP-1..GAP-8) | 8 | 8 | 0 | 0 | 0 |
-| **Total** | | **33** | **29** | **4** | **0** | **0** |
+| **Total** | | **33** | **30** | **3** | **0** | **0** |
 
-**Last updated:** 2026-08-30 · **Active tier:** 4 complete (8/8 ✅); Tier 3 3 ✅, 4 🔒 blocked (awaiting Section 1/3 sign-off)
+**Last updated:** 2026-08-31 · **Active tier:** 4 complete (8/8 ✅); Tier 3 4 ✅, 3 🔒 blocked (PS-7 unblocked 2026-08-31 — max_message_size reconciled; PS-1/PS-3/PS-5 awaiting Section 1/3 sign-off)
 
 ---
 
