@@ -113,6 +113,18 @@ impl TrustStore {
             .unwrap_or(TrustLevel::Unknown)
     }
 
+    /// The highest `key_gen_counter` this store has recorded for
+    /// `identity_pubkey` (`None` when unseen). PRY-17: chain validation uses
+    /// this as the anti-replay reference for an element's *own* rotation
+    /// generation — an element naming an older generation than we have already
+    /// seen for that identity is a stale-chain replay.
+    pub fn recorded_counter(&self, identity_pubkey: &[u8; 32]) -> Option<u64> {
+        self.inner
+            .lock()
+            .ok()
+            .and_then(|m| m.get(identity_pubkey).map(|e| e.key_gen_counter))
+    }
+
     /// The certified X25519 key for a PeerId (the engine's encrypt target).
     /// RED-0011 is enforced at the read boundary too: a small-order key is never
     /// resolved, even from a corrupt/stale entry.

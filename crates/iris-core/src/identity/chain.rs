@@ -144,9 +144,22 @@ pub fn verify_chain(
         if trust.level(&ad.identity_pubkey) == TrustLevel::Revoked {
             return Err(ChainError::RevokedElement(i));
         }
-        // Rule 5: monotonic counter (strictly increasing per hop).
-        if i > 0 && ad.key_gen_counter <= ads[i - 1].key_gen_counter {
-            return Err(ChainError::StaleCounter(i));
+        // Rule 5 (PRY-17): anti-replay on each element's OWN rotation
+        // generation. The old check required `ad.key_gen_counter` to strictly
+        // increase between *adjacent* elements — but that field counts how many
+        // times *that identity* has rotated its X25519 key; two different
+        // identities' rotation counts have no ordering relationship. A
+        // freshly-provisioned district authority (counter 0) certified by a
+        // twice-rotated NDMA root (counter 2) failed `0 <= 2` → every
+        // legitimate multi-level chain was rejected. The real property is:
+        // an element must not name an OLDER generation than the trust store has
+        // already recorded for that same identity. Whole-chain freshness is
+        // already covered by per-element `valid_until` (rule 7) and by each
+        // link's signature being over the child's current advertisement.
+        if let Some(seen) = trust.recorded_counter(&ad.identity_pubkey) {
+            if ad.key_gen_counter < seen {
+                return Err(ChainError::StaleCounter(i));
+            }
         }
 
         // Rule 3: parent certifies child (`verify_strict(prev.key, ad.key,
@@ -311,18 +324,47 @@ mod tests {
 
     #[test]
     fn stale_counter_link_rejected() {
+        // PRY-17: rule 5 now rejects an element naming an OLDER rotation
+        // generation than the store has already recorded for that identity
+        // (a stale-chain replay) — not a cross-identity adjacent comparison.
         let (trust, root, root_x) = trusted_root();
         let child = IdentityKeypair::generate();
         let child_x = X25519Keypair::generate();
 
-        let root_ad = ad(&root, &root_x, 0, 0);
-        let child_ad = ad(&child, &child_x, 0, 0); // non-increasing counter
-        let child_cert = authorizing_cert(&root, &child_ad);
+        // Store has already seen `child` at generation 5.
+        trust.adopt_advertisement(&ad(&child, &child_x, 5, 0), now());
 
+        // A replayed chain carries a stale generation-3 element for `child`.
+        let root_ad = ad(&root, &root_x, 0, 0);
+        let stale_child = ad(&child, &child_x, 3, 0);
+        let child_cert = authorizing_cert(&root, &stale_child);
         let chain = vec![ser(&root_ad), ser(&child_cert)];
         assert_eq!(
             verify_chain(&chain, &trust, &child.verifying_bytes()),
             Err(ChainError::StaleCounter(1))
+        );
+    }
+
+    #[test]
+    fn multilevel_chain_with_low_child_counter_passes() {
+        // PRY-17 regression: a freshly-provisioned authority (counter 0)
+        // certified by a root that has already rotated twice (counter 2) is a
+        // legitimate chain. The old adjacent-counter rule rejected it because
+        // `0 <= 2` → StaleCounter(1).
+        let trust = TrustStore::new();
+        let root = IdentityKeypair::generate();
+        let root_x = X25519Keypair::generate();
+        trust.adopt_advertisement(&ad(&root, &root_x, 2, 0), now());
+
+        let child = IdentityKeypair::generate();
+        let child_x = X25519Keypair::generate();
+        let root_ad = ad(&root, &root_x, 2, 0);
+        let child_ad = ad(&child, &child_x, 0, 0);
+        let child_cert = authorizing_cert(&root, &child_ad);
+        let chain = vec![ser(&root_ad), ser(&child_cert)];
+        assert_eq!(
+            verify_chain(&chain, &trust, &child.verifying_bytes()),
+            Ok(())
         );
     }
 
