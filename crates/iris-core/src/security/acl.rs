@@ -175,7 +175,7 @@ impl EmergencyAcl {
         &self,
         envelope: &Envelope,
         class: AlertClass,
-        _now_unix: u64,
+        now_unix: u64,
     ) -> AclDecision {
         let allowed = self.config.allowlists.get(&class);
         let allowlist_empty = allowed.map_or(true, |v| v.is_empty());
@@ -282,6 +282,40 @@ impl EmergencyAcl {
                 .invalid_authority
                 .fetch_add(1, Ordering::Relaxed);
             return AclDecision::InvalidAuthority;
+        }
+
+        // PRY-32: the chain + allowlist + anchor check above is only half the
+        // SEC-001 authority model. The payload-level profile constraints — geo
+        // scope, functional scope, `max_severity` cap, drill discipline and the
+        // `issued_at`/`expires_at` validity window — live in
+        // `emergency::authority::verify_authoritative`. The engine also runs
+        // that (via `emergency_gate`), but ONLY when the EMERG-001 provider is
+        // armed, which is a *separate* flag from the security policy's. Run it
+        // here too so a deployment that arms SEC-001 without EMERG-001 still
+        // enforces the full profile for Broadcast/Medical. A non-emergency
+        // payload (no decodable `EmergencyBroadcast`) keeps the anchor-only
+        // result — the engine's emergency path fails those closed when armed.
+        if matches!(class, AlertClass::Broadcast | AlertClass::Medical) {
+            if let Ok(broadcast) = crate::emergency::decode_broadcast(&envelope.payload) {
+                if let Err(e) = crate::emergency::verify_authoritative(
+                    chain_raw,
+                    &self.trust_store,
+                    &envelope.sender_id,
+                    &broadcast,
+                    now_unix,
+                ) {
+                    tracing::warn!(
+                        event = "ACL_AUTHORITY_META_REJECTED",
+                        class = ?class,
+                        error = %e,
+                        "emergency authority profile check failed (geo/severity/drill/validity)"
+                    );
+                    self.metrics
+                        .invalid_authority
+                        .fetch_add(1, Ordering::Relaxed);
+                    return AclDecision::InvalidAuthority;
+                }
+            }
         }
 
         self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
@@ -447,6 +481,101 @@ mod tests {
     fn sign_env(env: &mut Envelope, kp: &IdentityKeypair) {
         let signable = crate::protocol::codec::encode_for_signing(env).unwrap();
         env.signature = Some(crate::crypto::ed25519::sign(kp, &signable).unwrap());
+    }
+
+    /// PRY-32: a single-element authority-root chain + the sender_id it anchors.
+    fn authority_root_chain() -> (Arc<TrustStore>, [u8; 32], Vec<Vec<u8>>, [u8; 16]) {
+        let store = Arc::new(TrustStore::new());
+        let root = IdentityKeypair::generate();
+        let root_x = X25519Keypair::generate();
+        let ad = KeyAdvertisementV1::build(&root, root_x.public_bytes(), 0, 0).unwrap();
+        store.register_authority_root(&ad, now()).unwrap();
+        let sender = root.verifying_bytes();
+        (
+            store,
+            sender,
+            vec![ad.to_bytes()],
+            ad.authority_short_id(),
+        )
+    }
+
+    /// PRY-32: the ACL now enforces the payload-level authority profile
+    /// (geo scope / severity cap / drill / validity) — not just the chain
+    /// anchor. Pre-fix a district authority capped at `IN-GJ` could push a
+    /// nationwide alert and the ACL returned Authorized.
+    #[tokio::test]
+    async fn acl_rejects_out_of_geo_scope_broadcast() {
+        use crate::emergency::model::{
+            AlertMessageType, AuthorityMeta, Certainty, EmergencyBroadcast, Severity,
+        };
+        let (store, sender, chain, root_short) = authority_root_chain();
+        let mut config = AclConfig::default();
+        config
+            .allowlists
+            .insert(AlertClass::Broadcast, vec![root_short]);
+        let acl = EmergencyAcl::new(config, store);
+
+        let mk = |area: &str, scope: &str| EmergencyBroadcast {
+            format_version: 1,
+            broadcast_id: [1u8; 16],
+            republish_id: None,
+            issued_at: now() - 60,
+            expires_at: now() + 3600,
+            severity: Severity::Severe,
+            certainty: Certainty::Observed,
+            message_type: AlertMessageType::Alert,
+            area_code: area.into(),
+            language: "en".into(),
+            headline: "x".into(),
+            instructions: None,
+            authority: AuthorityMeta {
+                issuer_name: None,
+                geo_scope: Some(scope.into()),
+                functional_scope: None,
+                max_severity: 4,
+            },
+            authority_peer_short: Some(crate::emergency::authority::authority_short_id(&sender)),
+            drill: false,
+        };
+
+        let env = |b: &EmergencyBroadcast| Envelope {
+            version: crate::protocol::PROTOCOL_VERSION,
+            message_id: crate::protocol::MessageId::new_v7(),
+            sender_id: sender.to_vec(),
+            recipient_id: vec![],
+            priority: MessagePriority::P0,
+            ttl_seconds: 3600,
+            timestamp: now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type: ContentType::EmergencyAlert,
+            payload_size: 0,
+            payload_hash: [0; 32],
+            payload: crate::emergency::encode_broadcast(b).unwrap(),
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: Some(chain.clone()),
+        };
+
+        // In scope: authorized.
+        assert_eq!(
+            acl.check(&env(&mk("IN-GJ", "IN-GJ")), now()).await,
+            AclDecision::Authorized
+        );
+        // Out of geo scope: district scoped IN-GJ pushing an IN-MH alert.
+        assert_eq!(
+            acl.check(&env(&mk("IN-MH", "IN-GJ")), now()).await,
+            AclDecision::InvalidAuthority
+        );
+        // Severity above the profile cap (Severe=3 vs a max_severity of 2).
+        let mut over = mk("IN-GJ", "IN-GJ");
+        over.authority.max_severity = 2;
+        assert_eq!(
+            acl.check(&env(&over), now()).await,
+            AclDecision::InvalidAuthority
+        );
     }
 
     #[tokio::test]
