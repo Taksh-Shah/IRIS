@@ -121,10 +121,19 @@ impl SpamEngine {
         }
 
         let mut stats = self.stats.write().await;
-        // SEC-RT-06: bound the per-sender map. Evict one entry (any) at the cap
-        // so unbounded sender-spoofing cannot grow memory without limit.
+        // SEC-RT-06: bound the per-sender map so unbounded sender-spoofing
+        // cannot grow memory without limit.
+        // PRY-21: evict the least-established sender (lowest `message_count`)
+        // rather than `HashMap::keys().next()` — arbitrary hash order is not
+        // adversary-resistant (the exact pattern `replay.rs` was hardened away
+        // from). A spoofed one-shot sender has count 1 and is evicted first;
+        // genuine established senders are protected.
         if stats.len() >= self.config.max_sender_stats && !stats.contains_key(&sender) {
-            if let Some(k) = stats.keys().next().copied() {
+            if let Some(k) = stats
+                .iter()
+                .min_by_key(|(_, s)| s.message_count)
+                .map(|(k, _)| *k)
+            {
                 stats.remove(&k);
             }
         }
@@ -550,6 +559,43 @@ mod tests {
             se.sender_stats(a).await.is_none()
                 || se.sender_stats(b).await.is_none()
                 || se.sender_stats(c).await.is_none()
+        );
+    }
+
+    /// PRY-21: at the cap, eviction removes the least-established sender (lowest
+    /// `message_count`), not an arbitrary `HashMap::keys().next()`. A spoofed
+    /// one-shot sender is evicted before an established one.
+    #[tokio::test]
+    async fn spam_cap_evicts_least_established_sender() {
+        let config = SpamConfig {
+            min_payload_for_scoring: 1,
+            max_sender_stats: 2,
+            ..Default::default()
+        };
+        let se = SpamEngine::new(config);
+        let payload = b"xx".to_vec();
+        let established = [0xE1u8; 16];
+        let one_shot = [0x01u8; 16];
+        let newcomer = [0x0Cu8; 16];
+        let env = |s: SenderShort| {
+            let mut e = test_envelope(MessagePriority::P4, &payload);
+            e.sender_id = s.to_vec();
+            e
+        };
+
+        for _ in 0..8 {
+            se.score(established, &env(established)).await;
+        }
+        se.score(one_shot, &env(one_shot)).await; // map now at cap (2)
+        se.score(newcomer, &env(newcomer)).await; // triggers eviction
+
+        assert!(
+            se.sender_stats(established).await.is_some(),
+            "established sender (count 8) must survive eviction"
+        );
+        assert!(
+            se.sender_stats(one_shot).await.is_none(),
+            "least-established sender (count 1) must be the one evicted"
         );
     }
 
