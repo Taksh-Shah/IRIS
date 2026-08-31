@@ -84,7 +84,7 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 2: Tier 1 batch 1. PRY-20, PRY-21, PRY-23, PRY-25, PRY-26, PRY-27 fixed (6/17). PRY-27 widens an accept path — landed under the operator's Tier-2 sign-off (fix log Run 2). Tier 1 remaining: PRY-8, PRY-12, PRY-13, PRY-15, PRY-16, PRY-18, PRY-24, PRY-29, PRY-30, PRY-35, PRY-36 (PRY-29/PRY-30 will likely block on out-of-Section-1 files).
+**Last updated:** 2026-08-31 — Run 3: **Tier 1 complete** — 14 ✅, 3 🔒 (PRY-13 concurrency refactor, PRY-29/PRY-30 out-of-Section-1 files). Run 3 fixed PRY-8, PRY-12, PRY-15, PRY-16, PRY-18, PRY-24, PRY-35, PRY-36. PRY-35 widens (abbreviated chains) — under operator sign-off. Next: Tier 2 (operator gate lifted; per-finding §8 file check still applies).
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -94,9 +94,13 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 | Tier | Name | Findings | ⬜ | 🔵 | ✅/🟢 | 🔒 | ❌ | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
-| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 11 | 0 | 6 | 0 | 0 | Tier 0 complete |
+| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 14 | 3 | 0 | Tier 0 complete |
 | **2** | changes accept/deny security semantics — operator gate **LIFTED** (see fix log Run 2); per-finding file-boundary still applies | 12 (+PRY-7 tail) | 12 | 0 | 0 | 1 | 0 | operator sign-off recorded; findings whose fix edits `message_engine/` / `emergency/` / `kani_proofs.rs` still 🔒 until that owner acts |
-| **Total** | | **36** | **23** | **0** | **12** | **1** | **0** | |
+| **Total** | | **36** | **12** | **0** | **20** | **4** | **0** | |
+
+Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, disproportionate),
+**PRY-29** & **PRY-30** (fix must edit `emergency/authority.rs` / `kani_proofs.rs` — outside
+Section 1 file ownership, §8). All have documented reasons in their entries + fix log Run 3.
 
 Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
@@ -582,7 +586,7 @@ engine's inbound path. Report the mismatch to the Section 2 owner; the Section 1
 ### PRY-8 — Per-sender high-water table is not Sybil-resistant
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit e748a12 · 2026-08-31 (first-seen-generation eviction; parts 2/3 of the finding — registration rate-limit, time-bucketing — deferred as larger)
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/replay.rs:404-416`
 
@@ -778,7 +782,7 @@ primary abuse control and must be confirmed to be actually enforced.
 ### PRY-12 — `EmergencyAcl` is immutable and half its config is dead
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit f6f36e9 · 2026-08-31 (documented the unwired surface; interior-mutable wiring tracked under PRY-1, gated)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/acl.rs:108-115` (`add_authority`), `:283-285` (`reset`), `:36-53` (config), `:56-66` (`AclDecision::SosRateLimited`)
 
@@ -818,7 +822,7 @@ work; if it moves here, coordinate with EMERG-001 to avoid double-limiting.
 ### PRY-13 — Every security check serialises on a global write lock
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** 🔒 Blocked · Tier 1 · 2026-08-31 — the full fix is a shard-by-sender-prefix / lock-free-atomics refactor of all four engines plus a `benches/` concurrency benchmark and (if atomics) a loom model, which the finding itself frames as needing measurement first. `FullSecurityPolicy` is not yet wired into the platform engines, so the contention is currently unmeasurable. Disproportionate to a hygiene wake — recommend a dedicated performance pass. (The `maybe_schedule_snapshot` map-clone runs once per 30 s persistence interval, not per message.)
 - **Confidence:** High
 - **Location:** `rate_limiter.rs:235` (`self.buckets.write().await` per check), `quota.rs:168` (`self.accounts.write().await`), `replay.rs:391` (`self.highwater.write().await`), `spam.rs:123` (`self.stats.write().await`)
 
@@ -908,7 +912,7 @@ input). Worth adding a proof that `check_bucket` advances `last_refill` whenever
 ### PRY-15 — `load_snapshot` blindly replaces the high-water map, no version/time check
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit e748a12 · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/replay.rs:481-485`; `ReplaySnapshot` `version` / `snapshot_timestamp` fields `:80-90`
 
@@ -957,7 +961,7 @@ the merge semantics regardless.
 ### PRY-16 — Spam duplicate-content detection is inert under E2EE
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit c9d545f · 2026-08-31
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/spam.rs:148-155`, `:352-358` (`compute_content_hash`)
 
@@ -1050,7 +1054,7 @@ behaviour).
 ### PRY-18 — A signed rotation advertisement silently swaps a `Verified` peer's key
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit 9786826 · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/trust_store.rs:186-197`
 
@@ -1308,7 +1312,7 @@ decode into the struct fields in place. Trivial.
 ### PRY-24 — Windows key files fall back to CWD with no permission control
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit 0ef2c02 · 2026-08-31 (Windows resolver; unix/macOS `.` fallbacks left — out of this finding's scope)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/store.rs:75-98` (`app_data_dir`), `:239-256` (`set_user_only` / `check_user_only` non-unix), `:171-179` (`with_header_stripped`)
 
@@ -1500,7 +1504,7 @@ churn workload.
 ### PRY-29 — `verify_chain` accepts a TOFU root; only the caller's extra check stops EMERG-RT-001
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** 🔒 Blocked · Tier 1 · 2026-08-31 — the `RootRequirement` parameter must be threaded through both callers of `verify_chain`, one of which is `emergency/authority.rs` — outside Section 1 file ownership (§8). Needs the EMERG-001 owner. Both current callers already apply an `is_authority_root` gate, so there is no live bypass.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/chain.rs:82-89`; `crates/iris-core/src/identity/trust_store.rs:321-326` (`is_trusted_root`)
 
@@ -1536,7 +1540,7 @@ and their tests. EMERG-001 owner should review.
 ### PRY-30 — `evict_amount` returns 1 byte for a below-quota account
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** 🔒 Blocked · Tier 1 · 2026-08-31 — coupled to Tier-2 PRY-3 (the `select_eviction_candidates` caller) and requires updating the Kani proof `quota_eviction_bounded_and_positive` in `kani_proofs.rs`, which is Section 2-owned (§8). Fix `evict_amount` + PRY-3 + the proof together under a Section 2 agreement.
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/quota.rs:63-72`
 
@@ -1785,7 +1789,7 @@ Reconcile all three so relay traffic is accounted exactly once.
 ### PRY-35 — Chain rule 6 can never match an abbreviated (16-byte) sender_id
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit 56eec04 · 2026-08-31 · WIDENS (abbreviated chains now validate) — under operator sign-off
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/chain.rs:159-163`
 
@@ -1829,7 +1833,7 @@ abbreviated authority broadcasts are a real requirement.
 ### PRY-36 — Trust-mutating `TrustStore` methods are `pub` and self-authenticate nothing
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit 9786826 · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/trust_store.rs:246-257` (`un_revoke`), `:259-266` (`revoke`), `:275-295` (`adopt_rotation`), `:334-366` (`register_authority_root`)
 

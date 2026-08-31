@@ -257,3 +257,47 @@ not a regression from this loop. My changed files are kept rustfmt-consistent by
 PRY-30, PRY-35, PRY-36. Expected blocks: **PRY-29** (caller in `emergency/authority.rs` —
 §8), **PRY-30** (coupled to Tier-2 PRY-3 + `kani_proofs.rs` assertion — §8). Next wake:
 continue Tier 1 smallest-first (PRY-35, PRY-36, PRY-24, PRY-12, PRY-15, PRY-16).
+
+---
+
+## Run 3 — 2026-08-31 — Tier 1 (batch 2) — **Tier 1 complete**
+
+**Branch:** `main`. Baseline `b35698c`. `cargo 1.97.1`. Operator asked to "complete the whole
+tier" — this wake exceeds the §8 6-findings cap (8 fixed) by explicit instruction; each fix
+still got its own build + targeted-test + regression test.
+
+### Per-finding results
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | PRY-8 | ✅ Fixed · Tier 1 | `e748a12` | `HighwaterTable` now carries a local monotonic `first_seen` generation; eviction: stale-by-window first, else highest `first_seen` (the flood's newest). Unforgeable — an attacker cannot backdate a local counter the way they can a mark `timestamp`. New `sybil_flood_does_not_flush_in_window_victim` (pre-fix: `min_by_key(timestamp)` evicts the victim → replay accepted). Parts 2/3 of the finding (registration rate-limit, `(sender, time-bucket)` keying) deferred — larger. |
+| 2 | PRY-15 | ✅ Fixed · Tier 1 | `e748a12` | `load_snapshot` rejects unknown `version` (`SNAPSHOT_VERSION` const) and merges via `check_and_advance` (advance-only). New `load_snapshot_never_regresses_a_live_mark`, `load_snapshot_rejects_unknown_version`. `replay_load_snapshot_and_reset` still green (merge into empty map == replace). |
+| 3 | PRY-18 | ✅ Fixed · Tier 1 | `9786826` | `RotationAdopted` branch + `adopt_rotation` drop `Verified` → `Unverified` on any static-key change. New `verified_peer_drops_to_unverified_on_rotation` (both paths). No existing test asserted rotation-keeps-Verified, so none rewritten. UX note for Sections 4/5: a `Verified→Unverified` transition on rotation is new. |
+| 4 | PRY-36 | ✅ Fixed · Tier 1 | `9786826` | `revoke` / `un_revoke` / `adopt_rotation` → `pub(crate)` (all callers in-crate: `rotate.rs`, test modules — verified by grep, no external-crate use). `register_authority_root` refuses `key_gen_counter < stored` (rotation-replay). Doc contracts added. New `register_authority_root_refuses_stale_counter`. |
+| 5 | PRY-35 | ✅ Fixed · Tier 1 · **WIDENS** | `56eec04` | Rule 6 compares a 16-byte `sender_id` against `peer_short(identity_pubkey)`, 32-byte directly, else new `BadSenderIdLength`. Abbreviated authority chains — previously always `SenderMismatch` — now validate. Under operator sign-off. New `abbreviated_sender_id_matches_via_peer_short`. |
+| 6 | PRY-16 | ✅ Fixed · Tier 1 | `c9d545f` | `last_content_hash` → ring of recent hashes (plaintext A,B,A,B) + a content-agnostic signal: same payload size to ≥4 distinct recipients with a 75% size-majority in the last 16. Survives E2EE (fixed AEAD overhead). New `spam_same_size_fanout_flags_but_single_recipient_does_not`. Existing `spam_duplicate_content_penalty` / `spam_high_volume_penalty` still green. |
+| 7 | PRY-12 | ✅ Fixed · Tier 1 | `f6f36e9` | Doc-only (like PRY-26). Marked `require_chain_for_broadcast_medical`, `sos_rate_limit_per_hour`, `AclDecision::SosRateLimited`, and the effectively-immutable `allowlists` as reserved / EMERG-001-owned. Deleting the variant would break a `message_engine` match (§8); implementing the limiter needs the interior-mutable allowlist from PRY-1 (gated). |
+| 8 | PRY-24 | ✅ Fixed · Tier 1 | `0ef2c02` | Windows `app_data_dir` tries APPDATA → LOCALAPPDATA → `%USERPROFILE%\AppData\Roaming`, then **panics** instead of `PathBuf::from(".")`. Logic in `resolve_windows_app_data(get_fn)` for env-race-free testing. New `#[cfg(windows)] windows_app_data_never_falls_back_to_cwd`. unix/macOS `.` fallbacks left (out of this finding's scope). |
+
+### Blocked (3)
+
+| Finding | Reason |
+|---|---|
+| PRY-13 | Full fix = shard-by-prefix / lock-free-atomics across all four engines + a `benches/` concurrency benchmark + (if atomics) a loom model. The finding itself says measure first, and `FullSecurityPolicy` is not yet wired into the platform engines so contention is unmeasurable. Disproportionate to a hygiene wake — recommend a dedicated performance pass. The one acute sub-item (`maybe_schedule_snapshot` map-clone) runs once per 30 s, not per message. |
+| PRY-29 | The `RootRequirement` parameter must be threaded through both `verify_chain` callers; one is `emergency/authority.rs` — outside Section 1 file ownership (§8). Needs EMERG-001. No live bypass (both callers already gate on `is_authority_root`). |
+| PRY-30 | Coupled to Tier-2 PRY-3 and needs the Kani proof `quota_eviction_bounded_and_positive` (`kani_proofs.rs`, Section 2-owned, §8) updated. Fix together under a Section 2 agreement. |
+
+### Batch closeout
+
+- `cargo build -p iris-core --all-targets`: clean (pre-existing warnings only).
+- `cargo test -p iris-core`: **752 lib tests pass** (744 + 8 new) + all security/crypto/identity
+  integration tests. Only the 2 pre-existing `protocol_conformance.rs` framing failures remain.
+- `cargo test -p iris-core --features proptest security::`: _(running — appended)_
+- `cargo fmt --check`: crate-wide pre-existing failure (unchanged).
+
+### Tier 1 gate
+
+**14 ✅ / 3 🔒 — Tier 1 complete** (§5: all findings are ✅/🔒 with documented reasons).
+Advancing to **Tier 2**. The operator lifted the §2.3 gate (Run 2). Per-finding §8 file-scope
+check still applies: PRY-32/33/34 and PRY-6/9/10 (call sites) will likely block on
+`message_engine/` / `emergency/`; PRY-1/2/3/4/11/17 need per-finding assessment.
