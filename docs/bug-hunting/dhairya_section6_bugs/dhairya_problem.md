@@ -16,15 +16,17 @@
 
 ## Progress Tracker
 
-| Tier | Name | Total | ✅ Fixed | 🔮 Future | 🔀 Routed | ⬜ Not started |
+| Tier | Name | Total | ✅ Fixed/Resolved | 🔮 Future | 🔒 Blocked | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | High safety / security / emergency-path | 3 | 3 | 0 | 0 | 0 |
 | 1 | Medium correctness + protocol | 4 | 4 | 0 | 0 | 0 |
 | 2 | Low correctness, UX, build polish | 14 | 14 | 0 | 0 | 0 |
-| N/A | Deferred / routed / pass / no action | 7 | 0 | 1 | 3 | 3 |
-| **Total** | | **28** | **21** | **1** | **3** | **3** |
+| N/A | Deferred / routed / pass / no action | 7 | 5 | 1 | 1 | 0 |
+| **Total** | | **28** | **26** | **1** | **1** | **0** |
 
-**Last updated:** 2026-08-30 · **Active tier:** Complete — all 21 actionable findings fixed.
+N/A breakdown: ✅ F-D6 (resolved — existing gate), F-S1 (CSP fixed), F-S3 (verified clean), F-W2 (verified clean), F-P3 (provenance banners fixed) · 🔮 F-S4 (future DESKTOP-002) · 🔒 F-C1 (blocked — awaiting Section 4 `android/gradlew`)
+
+**Last updated:** 2026-08-31 · **Active tier:** Complete — all 21 actionable tier findings fixed; 5/7 N/A findings resolved.
 
 ---
 
