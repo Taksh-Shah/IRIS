@@ -32,13 +32,26 @@ pub enum AlertClass {
 }
 
 /// ACL-1 configuration.
+///
+/// PRY-12 — reserved but not yet wired:
+/// - `require_chain_for_broadcast_medical` and `sos_rate_limit_per_hour` are
+///   **not read by any code path** in this crate. Setting them has no effect.
+///   `check_sos_identity` does not rate-limit (SOS rate limiting is owned by
+///   EMERG-001), and Medical is currently validated identically to Broadcast.
+/// - `allowlists` is fixed at construction: `add_authority` / `reset` need
+///   `&mut EmergencyAcl` but the ACL only exists as `Arc<EmergencyAcl>` in
+///   `FullSecurityPolicy`. Making it interior-mutable and wiring the SOS
+///   limiter is tracked under PRY-1 (gated).
 #[derive(Clone, Debug)]
 pub struct AclConfig {
     /// Allowlist: alert_class -> list of authorized authority short IDs.
+    /// PRY-12: effectively read-only after construction (see struct docs).
     pub allowlists: HashMap<AlertClass, Vec<AuthorityShort>>,
-    /// Require full chain verification for Broadcast/Medical.
+    /// PRY-12: **not currently read** — reserved. Chain verification for
+    /// Broadcast/Medical happens unconditionally in `check_authority_chain`.
     pub require_chain_for_broadcast_medical: bool,
-    /// SOS rate limit (per sender, per hour) - from EMERG-001.
+    /// PRY-12: **not currently read** — reserved. SOS rate limiting is enforced
+    /// by EMERG-001, not this ACL.
     pub sos_rate_limit_per_hour: u32,
 }
 
@@ -60,6 +73,9 @@ pub enum AclDecision {
     /// Not authorized — silent drop (no error/NAK).
     Unauthorized,
     /// SOS rate limited — degraded delivery (P3).
+    /// PRY-12: **never returned by this crate** — `check_sos_identity` does not
+    /// rate-limit. Kept because `message_engine` matches on it; the actual SOS
+    /// per-hour limit lives in EMERG-001.
     SosRateLimited,
     /// Authority chain invalid/expired/revoked/replayed.
     InvalidAuthority,
