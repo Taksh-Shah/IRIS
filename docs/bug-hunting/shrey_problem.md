@@ -20,11 +20,11 @@
 |---|---|---|---|---|---|---|
 | 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
 | 1 | High — crashes, races, leaks, security | 18 | 17 | 1 | 0 | 0 |
-| 2 | Medium — correctness, DoS, protocol, CI | 30 | 22 | 7 | 0 | 1 |
+| 2 | Medium — correctness, DoS, protocol, CI | 30 | 23 | 7 | 0 | 0 |
 | 3 | Low — quality, supply chain, test flakes, docs | 14 | 12 | 2 | 0 | 0 |
-| **Total** | | **72** | **61** | **10** | **0** | **1** |
+| **Total** | | **72** | **62** | **10** | **0** | **0** |
 
-**Last updated:** 2026-08-31 · **Active tier:** Tier 3 — complete. All tiers done (#43 deferred).
+**Last updated:** 2026-08-31 · **Active tier:** All tiers complete. 62 ✅ / 10 🔮 (deferred with rationale).
 
 ---
 
@@ -598,7 +598,7 @@
 
 ### Bug #43 — Test expects `stored?.count==32` but impl stores JSON >32
 
-- **Fix status:** ⬜ Not started (test edit deferred)
+- **Fix status:** ✅ Fixed (new `testStoredBlobIsRaw64BytesNotJSON` pins the post-#31 raw format)
 - **File(s):** `ios/Tests/KeychainIdentityTests.swift:47-48`
 - **Category:** Logic · **Severity:** Medium
 

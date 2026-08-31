@@ -384,3 +384,23 @@ Target findings: #59–#72 (all 14 Tier 3 bugs)
 - Tier 2: 22 ✅, 7 🔮, 1 ⬜ (#43)
 - Tier 3: 12 ✅, 2 🔮
 - **Total: 61 ✅, 10 🔮, 1 ⬜ out of 72 findings**
+
+---
+
+## Run 9 — 2026-08-31 — Tier 2 cleanup: Bug #43 (coupled to #31)
+
+Target findings: #43 (Medium Logic — keychain storage-format test assertion).
+
+**Drift notes:**
+- The `stored?.count == 32` assertion at `KeychainIdentityTests.swift:47-48` from the review snapshot **no longer exists** — Run 1 (#3) rewrote the whole file to the static API and dropped it. So the fix is to *add* a positive test that pins the post-#31 storage format, per loop §6 (Keychain storage format: "#31 first; update #43 assertion in same commit" — #31 landed in Run 7).
+- `KeychainEd25519.store` writes `signingKeyRaw + verifyingKeyRaw` → raw 64 bytes (verified in `ios/IRIS/identity/KeychainEd25519.swift:95-110`). New test asserts exactly that.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | #43 | ✅ | pending | `KeychainIdentityTests.swift` — new `testStoredBlobIsRaw64BytesNotJSON`: provisions via `identity()`, reads the raw Keychain blob via `SecItemCopyMatching`, asserts `count == 64`, first byte ≠ `{`, `prefix(32) == signingKeyRaw`, `suffix(32) == verifyingKeyRaw`. Assertion now matches `store()` (raw 64B concat), not the old JSON envelope. |
+
+**Batch closeout:**
+- `xcodebuild test`: PENDING CI (no Xcode/Simulator on Windows host). Logic verified by source inspection: test assertions align byte-for-byte with `KeychainEd25519.store` output.
+- No production code changed — test-only edit. No regression surface.
+
+**Final checkpoint:** 62 ✅ / 10 🔮 / 0 ⬜ — all 72 findings resolved or deferred with rationale. Section 5 iOS closed.

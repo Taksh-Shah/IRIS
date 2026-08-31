@@ -57,6 +57,31 @@ final class KeychainIdentityTests: XCTestCase {
         XCTAssertNotNil(try KeychainEd25519.load(), "load() must return the pair after identity()")
     }
 
+    /// Bug #31 / #43: the Keychain blob is the raw 64-byte concatenation
+    /// (32 signing ‖ 32 verifying) — NOT a JSON/Base64 envelope. The pre-#31
+    /// test asserted `count == 32` (a bare seed) and would have failed against
+    /// the JSON store; this pins the current raw format and guards regression.
+    func testStoredBlobIsRaw64BytesNotJSON() throws {
+        let pair = try KeychainEd25519.identity()
+
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: KeychainEd25519.service,
+            kSecAttrAccount: KeychainEd25519.account,
+            kSecReturnData: kCFBooleanTrue as Any,
+            kSecMatchLimit: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        XCTAssertEqual(status, errSecSuccess, "identity() must have persisted the pair")
+        let stored = try XCTUnwrap(item as? Data, "Keychain value must be Data")
+
+        XCTAssertEqual(stored.count, 64, "raw store is 32 signing + 32 verifying bytes")
+        XCTAssertNotEqual(stored.first, UInt8(ascii: "{"), "must not be a JSON envelope")
+        XCTAssertEqual(stored.prefix(32), pair.signingKeyRaw, "first 32 bytes are the signing key")
+        XCTAssertEqual(stored.suffix(32), pair.verifyingKeyRaw, "last 32 bytes are the verifying key")
+    }
+
     /// AC-12: stored pair can sign and self-verify — proves signingKeyRaw is the private key.
     func testStoredPairCanSignAndVerify() throws {
         let pair = try KeychainEd25519.identity()
