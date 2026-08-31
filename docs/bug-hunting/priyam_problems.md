@@ -84,7 +84,47 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 4: **Tier 2 batch 1** — fixed PRY-1 (armed empty allowlist → InvalidAuthority), PRY-10 (SOS ACL self-verifies envelope signature), PRY-17 (chain rule 5: anti-replay vs trust-store recorded counter, not cross-identity). PRY-1/PRY-10 narrow; PRY-17 widens (operator sign-off). 755 lib tests green + touched proptests. Remaining Tier 2: PRY-2, PRY-3, PRY-4, PRY-9, PRY-11, PRY-32 (Section-1 portions) + PRY-6, PRY-33, PRY-34 (🔒 §8 message_engine).
+**Last updated:** 2026-08-31 — docs-only: recorded **Operator authorization & scope** (all §8
+file boundaries waived; SOS service + LoRa transport deferred to a future update; PRY-11 → 🔒
+product-scope). No code changed. Prior: Run 4 (Tier 2 batch 1) fixed PRY-1, PRY-10, PRY-17.
+**Next session (on operator go-signal):** PRY-2, PRY-3, PRY-4, PRY-6, PRY-9 (broadcast side),
+PRY-32 (broadcast side), PRY-33, PRY-34, PRY-7 tail, plus the now-unblocked PRY-29 / PRY-30.
+
+---
+
+### Operator authorization & scope (2026-08-31)
+
+The operator (repo owner) has recorded the following. **No code has been changed on the
+strength of this block — it is authorization for the *next* work session, which starts only
+on the operator's explicit go-signal.**
+
+**1. Full authorization — all §8 boundaries lifted.**
+- The loop's file-ownership boundary (`priyam_problems_loop.md` §8 — "never modify files
+  outside `crates/iris-core/src/{crypto,identity,security}/`") is **waived**. The fix agent
+  may edit `message_engine/`, `emergency/`, `message.rs`, `error.rs`, `kani_proofs.rs`,
+  `Cargo.toml`, and any other file a Tier-2 fix genuinely requires.
+- The widen-an-accept-path gate (§1 second invariant) remains **lifted** (recorded Run 2).
+- Cross-section "needs another owner's sign-off" items (PRY-2/3/4 storage & GC-cadence
+  questions, PRY-9 engine routing, PRY-32 canonical authority path) are **delegated to the
+  fix agent to decide on engineering merit** — the operator is the sole owner here.
+- This unblocks, for the next session: **PRY-2, PRY-3, PRY-4, PRY-6, PRY-9, PRY-32, PRY-33,
+  PRY-34**, and the **PRY-7 behavioural tail** (real per-sender counter / bounded seen-set in
+  `message_id` + the inbound engine path).
+
+**2. Product scope — SOS and LoRa are FUTURE, not now.**
+- **In scope now:** Wi-Fi Direct, Wi-Fi Aware, Bluetooth, Internet transports only.
+- **Deferred to a future update:** the **SOS service** (originating / relaying / ACL-gating
+  user SOS messages) and the **LoRa** transport. Not being built in this cycle.
+- Effect on this report:
+  - **PRY-11** (armed node rejects unpaired peers' SOS) → **🔒 Deferred · product scope:
+    SOS service is a future update.** Revisit when SOS ships; the safety-charter decision
+    ("any correctly-signed SOS is authorized regardless of trust tier") is deferred with it.
+  - **PRY-10** (SOS ACL signature check) — **already fixed** (`ccee0fc`); kept as defensive
+    hardening, but the SOS delivery path it guards is dormant until the SOS service ships.
+  - **PRY-9 / PRY-32** — the emergency-**broadcast** (P0/P1 authority) path is still in
+    scope; only the user-**SOS** path is deferred. Fix the broadcast side; leave SOS-only
+    branches marked future.
+  - No LoRa-specific findings exist in this report (Section 1 is transport-agnostic).
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -95,12 +135,15 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
 | **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 14 | 3 | 0 | Tier 0 complete |
-| **2** | changes accept/deny security semantics — operator gate **LIFTED** (see fix log Run 2); per-finding file-boundary still applies | 12 (+PRY-7 tail) | 9 | 0 | 3 | 1 | 0 | operator sign-off recorded; findings whose fix edits `message_engine/` / `emergency/` / `kani_proofs.rs` still 🔒 until that owner acts |
-| **Total** | | **36** | **9** | **0** | **23** | **4** | **0** | |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 8 | 0 | 3 | 2 | 0 | authorized in full; work starts on operator go-signal. SOS-only findings (PRY-11) deferred by product scope |
+| **Total** | | **36** | **8** | **0** | **23** | **5** | **0** | |
 
-Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, disproportionate),
-**PRY-29** & **PRY-30** (fix must edit `emergency/authority.rs` / `kani_proofs.rs` — outside
-Section 1 file ownership, §8). All have documented reasons in their entries + fix log Run 3.
+Tier 1 blocked (3): **PRY-13** (concurrency refactor — needs benchmarking, still
+disproportionate); **PRY-29** & **PRY-30** were 🔒 on the §8 file boundary — that boundary is
+now **waived** (see *Operator authorization & scope*), so both are cleared to fix in the next
+session (PRY-29: thread `RootRequirement` through both `verify_chain` callers incl.
+`emergency/authority.rs`; PRY-30: fix `evict_amount` + PRY-3 + the `kani_proofs.rs` assertion
+together).
 
 Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
@@ -729,7 +772,7 @@ is a larger hole and the severity rises.
 ### PRY-11 — Armed node with only provisioned roots rejects every unpaired peer's SOS
 
 - **Severity:** Medium
-- **Fix status:** ⬜ Not started · Tier 2 (GATED)
+- **Fix status:** 🔒 Deferred · product scope (2026-08-31) — the **SOS service is a future update** (operator decision, see *Operator authorization & scope*). The safety-charter call this finding hinges on ("authorize any correctly-signed SOS regardless of `TrustLevel`") is deferred with it. Revisit when SOS ships.
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/acl.rs:252-276`
 

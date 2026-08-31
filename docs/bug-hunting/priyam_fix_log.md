@@ -342,3 +342,24 @@ check still applies: PRY-32/33/34 and PRY-6/9/10 (call sites) will likely block 
 **3 ✅ / 9 ⬜ / 1 🔒 (PRY-7 tail).** Of the 9: PRY-11 is really 🔒 (safety owner); PRY-6/33/34
 are 🔒 (§8); PRY-2/3/4/9/32 need a per-finding cross-section decision before they can be
 fixed right. Next wake: draft those plans; do not guess another owner's intent.
+
+---
+
+## Operator authorization & scope note — 2026-08-31 (docs-only, no code)
+
+Recorded in `priyam_problems.md` → *Operator authorization & scope*. Summary:
+
+- **All §8 file boundaries waived.** The fix agent may now edit `message_engine/`,
+  `emergency/`, `kani_proofs.rs`, `Cargo.toml`, etc. Widen-accept gate stays lifted.
+  Cross-section ownership calls (PRY-2/3/4/9/32) delegated to the fix agent on engineering
+  merit — operator is sole owner.
+- **SOS service + LoRa transport = FUTURE update, out of scope this cycle.** In scope:
+  Wi-Fi Direct, Wi-Fi Aware, Bluetooth, Internet.
+  - **PRY-11** → 🔒 Deferred (product scope). Safety-charter SOS-authorization call deferred
+    with it.
+  - **PRY-10** stays ✅ (defensive; guarded path dormant until SOS ships).
+  - **PRY-9 / PRY-32**: fix the emergency-**broadcast** (P0/P1 authority) side; leave
+    user-**SOS**-only branches marked future.
+- **Tier 1 PRY-29 / PRY-30**: the §8 block is lifted — cleared for the next session.
+- **Work has NOT started.** Next fix session begins only on the operator's explicit
+  go-signal. Roll-up now: Tier 2 = 3 ✅ / 8 ⬜ / 2 🔒 (PRY-7 tail, PRY-11).
