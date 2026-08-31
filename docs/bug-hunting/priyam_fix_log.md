@@ -526,3 +526,45 @@ within a shard.
 - **Total: 34 ✅ · 1 🔒 · 1 ⚪.**
 
 The only open item is PRY-11, which cannot be done until the SOS service ships.
+
+---
+
+## Run 9 — 2026-08-31 — out-of-scope test cleanup (operator-authorized)
+
+**Branch:** `main`. Baseline `435200a` (Run 8 pushed). Operator lifted the section boundary
+to fix the "2 pre-existing `protocol_conformance.rs` framing failures" the earlier batch
+closeouts had been carrying.
+
+### What landed
+
+Both failures were **stale tests, not code bugs**. `transport::internet`'s frame header
+gained a leading version byte (GAP-5): it is now `[version:1][len:u32-LE][payload]` =
+`FRAME_HEADER_LEN` (5) bytes, and `frame_payload_len` rejects a wrong version / zero /
+over-`MAX_FRAME_BYTES` length. The two tests still assumed a bare 4-byte length prefix:
+
+| Test | Was | Now |
+|---|---|---|
+| `corrupted_frame_length_byte_bounded_recovery` | `assert_eq!(frame.len(), 4 + 64)`, `&bad[..4]`, `total = 4 + len`, `tainted = [4 bytes]` | `FRAME_HEADER_LEN + 64`, `&bad[..FRAME_HEADER_LEN]`, iterate `0..FRAME_HEADER_LEN` corrupting version + every length byte |
+| `capture_all_pdus_until_parse_end` | `frame_payload_len(&frame[..4]).expect(..)` → panicked (`4 < FRAME_HEADER_LEN` → `None`) | `&frame[..FRAME_HEADER_LEN]`, slice `&frame[FRAME_HEADER_LEN..FRAME_HEADER_LEN + len]` |
+
+No production code changed. `protocol_conformance` is now **10/10 green**.
+
+### Newly discovered (NOT fixed — flagged separately)
+
+`sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only` fails
+deterministically — `TransportManager::select_transports` does not include a freshly
+`attach_adapter`-ed `SatelliteTransport` in the P0/P1 multipath set (likely the transport is
+not in an `Available`/`Connected` state after attach in this fixture). Verified it fails
+identically on `91f6ca4` (pre-session), is a Section 6 (transport) concern, and is unrelated
+to Section 1 or the framing fix. Recorded as its own task.
+
+### Batch closeout
+
+- `cargo test -p iris-core --lib`: 764 pass.
+- `cargo test -p iris-core --test protocol_conformance`: **10 pass, 0 fail** (was 8/2).
+- `cargo test -p iris-core`: the only remaining failure is the pre-existing
+  `p0_multipath_includes_satellite_emergency_only` (Section 6, flagged above).
+
+### Priyam final state (unchanged by this run)
+
+34 ✅ · 1 🔒 (PRY-11, SOS product-scope) · 1 ⚪ (PRY-28) of 36.

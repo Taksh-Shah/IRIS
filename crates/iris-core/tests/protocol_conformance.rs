@@ -27,7 +27,9 @@ use iris_core::protocol::codec::{decode, encode};
 use iris_core::protocol::{ContentType, Envelope, MessageId};
 use iris_core::routing::dedup_cache::ForwardedCache;
 use iris_core::transport::ble_advert::{CapabilityBits, DiscoveryBeacon};
-use iris_core::transport::internet::{encode_frame, frame_payload_len};
+use iris_core::transport::internet::{
+    encode_frame, frame_payload_len, FRAME_HEADER_LEN, FRAME_VERSION,
+};
 
 // ---------------------------------------------------------------------------
 // (a) RFC 8949 §4.2 / RFC 9562 / RFC 9171 shared-primitive vectors
@@ -197,41 +199,42 @@ fn corrupted_frame_length_byte_bounded_recovery() {
         payload: vec![0x55; 64],
     };
     let frame = encode_frame(&msg).expect("frame encodes");
-    assert_eq!(frame.len(), 4 + 64);
-    // Flip a length byte to a huge value: the receiver must REJECT the frame
-    // (bounded recovery), and every byte walked must stay inside the buffer.
-    let tainted = [0xff, 0xff, 0xff, 0x7f];
-    for (i, b) in tainted.iter().enumerate() {
+    // Wire layout (GAP-5): [version:1][len:u32-LE][payload:len].
+    assert_eq!(frame.len(), FRAME_HEADER_LEN + 64);
+    assert_eq!(frame[0], FRAME_VERSION);
+    // Corrupt each header byte to a value that must be rejected: the version
+    // byte to a wrong version, and every length byte to make the declared
+    // length absurd. `frame_payload_len` must reject (bounded recovery), and
+    // every byte walked must stay inside the buffer.
+    for i in 0..FRAME_HEADER_LEN {
         let mut bad = frame.clone();
-        bad[i] = *b;
-        // frame_payload_len returns None for lengths over MAX_FRAME_BYTES.
+        bad[i] = if i == 0 { FRAME_VERSION.wrapping_add(0x7f) } else { 0xff };
+        // frame_payload_len returns None for a bad version or a length that is
+        // zero / over MAX_FRAME_BYTES.
         assert!(
-            frame_payload_len(&bad[..4]).is_none()
-                || frame_payload_len(&bad[..4]).unwrap() > bad.len(),
-            "oversized declared length must not be accepted for buffer of len {}",
+            frame_payload_len(&bad[..FRAME_HEADER_LEN]).is_none()
+                || frame_payload_len(&bad[..FRAME_HEADER_LEN]).unwrap() > bad.len(),
+            "corrupt header byte {i} must not yield an in-bounds length for a \
+             buffer of len {}",
             bad.len()
         );
-        // No panic, no OOB: our scan never reads past bad.len().
+        // No panic, no OOB: the resync scan never reads past bad.len().
         let mut rest = &bad[..];
         let mut consumed = 0;
-        while !rest.is_empty() {
-            if rest.len() >= 4 {
-                if let Some(len) = frame_payload_len(&rest[..4]) {
-                    let total = 4 + len;
-                    if total > rest.len() {
-                        break; // truncated tail — reject cleanly, stop.
-                    }
-                    rest = &rest[total..];
-                    consumed += total;
-                } else {
-                    // Unparseable header: advance one byte (bounded resync).
-                    rest = &rest[1..];
-                    consumed += 1;
-                    // Resync must converge quickly: never scan more than 512 B.
-                    assert!(consumed <= 512, "resync consumed >512 B");
+        while rest.len() >= FRAME_HEADER_LEN {
+            if let Some(len) = frame_payload_len(&rest[..FRAME_HEADER_LEN]) {
+                let total = FRAME_HEADER_LEN + len;
+                if total > rest.len() {
+                    break; // truncated tail — reject cleanly, stop.
                 }
+                rest = &rest[total..];
+                consumed += total;
             } else {
-                break;
+                // Unparseable header: advance one byte (bounded resync).
+                rest = &rest[1..];
+                consumed += 1;
+                // Resync must converge quickly: never scan more than 512 B.
+                assert!(consumed <= 512, "resync consumed >512 B");
             }
         }
     }
@@ -298,11 +301,12 @@ fn capture_all_pdus_until_parse_end() {
         payload: cde.clone(),
     })
     .expect("frame encodes");
-    // Sniffer dissects: [len][PDU]...
-    let len = frame_payload_len(&frame[..4]).expect("frame header parseable");
+    // Sniffer dissects: [version:1][len:u32-LE][PDU]...
+    let len =
+        frame_payload_len(&frame[..FRAME_HEADER_LEN]).expect("frame header parseable");
     assert_eq!(len, cde.len());
-    assert_eq!(&frame[4..4 + len], &cde[..]);
-    let extracted = &frame[4..4 + len];
+    assert_eq!(&frame[FRAME_HEADER_LEN..FRAME_HEADER_LEN + len], &cde[..]);
+    let extracted = &frame[FRAME_HEADER_LEN..FRAME_HEADER_LEN + len];
     let decoded = decode(extracted).expect("capture PDU must decode cleanly");
     assert_eq!(decoded, env);
 }

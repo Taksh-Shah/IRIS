@@ -150,6 +150,24 @@ was waived.
 
 Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
+### Out-of-scope test cleanup (Run 9 — operator-authorized)
+
+The Run 1–8 batch closeouts reported "2 pre-existing `protocol_conformance.rs` framing
+failures, out of Section 1 scope." Run 9 (operator lifted the section boundary for this)
+fixed them — they were **stale tests**, not code bugs: `transport::internet`'s frame header
+gained a leading version byte (GAP-5), so it is now 5 bytes (`FRAME_HEADER_LEN`), but
+`corrupted_frame_length_byte_bounded_recovery` and `capture_all_pdus_until_parse_end` still
+sliced `&frame[..4]` and asserted `frame.len() == 4 + payload`. Updated both to
+`FRAME_HEADER_LEN` / `FRAME_VERSION`; no production code touched — the framing codec's
+bounded-recovery / version-gate / reject-oversize behaviour is correct.
+
+A **third** pre-existing failure surfaced during the full-suite run —
+`sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only` (transport
+selection: the manager does not include a freshly-attached `SatelliteTransport` in the P0
+multipath set). It fails identically on `91f6ca4` (before any of this session's work), is
+unrelated to Section 1 or to the framing fix, and lives in Section 6 territory. Flagged as a
+separate task, not fixed here.
+
 ### Authoritative tier membership
 
 - **Tier 0** (7): PRY-5, PRY-7, PRY-14, PRY-19, PRY-22, PRY-28, PRY-31
