@@ -32,7 +32,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-x25519-dalek = { workspace = true, features = ["static_secrets"] }
+x25519-dalek = { workspace = true, features = ["static_secrets", "zeroize"] }
 zeroize.workspace = true
 proptest = { version = "1", optional = true }
 

@@ -96,4 +96,35 @@ mod tests {
         let c = IdentityKeypair::from_seed([0x43u8; 32]);
         assert_ne!(a.verifying_bytes(), c.verifying_bytes());
     }
+
+    /// PRY-25: `X25519Keypair` is `Clone` and has no explicit `Drop` — it
+    /// relies entirely on `x25519-dalek`'s `zeroize` cargo feature to wipe the
+    /// static secret on drop. This test fails if that feature is ever dropped
+    /// (e.g. a `default-features = false` or a dependency bump), which is why
+    /// `Cargo.toml` now pins `x25519-dalek` with `features = [..., "zeroize"]`.
+    /// Same alloc/drop_in_place/read technique as
+    /// `provision::tests::seeds_are_zeroized_on_drop`.
+    #[test]
+    fn x25519_static_secret_is_zeroized_on_drop() {
+        use std::alloc::{self, Layout};
+        use x25519_dalek::StaticSecret;
+
+        let layout = Layout::new::<StaticSecret>();
+        let ptr = unsafe { alloc::alloc(layout) } as *mut StaticSecret;
+        assert!(!ptr.is_null(), "alloc failed");
+        unsafe { ptr.write(StaticSecret::from([0x5Au8; 32])) };
+
+        let view = ptr as *const u8;
+        let before = unsafe { std::slice::from_raw_parts(view, 32) };
+        assert!(before.iter().any(|&b| b != 0), "secret should be non-zero");
+
+        unsafe { std::ptr::drop_in_place(ptr) };
+        let after = unsafe { std::slice::from_raw_parts(view, 32) }.to_vec();
+        unsafe { alloc::dealloc(ptr as *mut u8, layout) };
+
+        assert!(
+            after.iter().all(|&b| b == 0),
+            "X25519 static secret must be zeroed by Drop (zeroize feature missing?)"
+        );
+    }
 }
