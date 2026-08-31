@@ -191,3 +191,69 @@ PRY-20, PRY-21, PRY-13, PRY-26 …). **Do NOT enter Tier 2** without the §2.3 s
 | Finding | Owner needed | Sign-off recorded? |
 |---|---|---|
 | PRY-7 (behavioural) | Section 2 (`message_id` — real per-sender counter vs bounded per-`(sender,ts)` seen-set; inbound engine path) | ⬜ |
+
+---
+
+## Run 2 — 2026-08-31 — Tier 1 (batch 1)
+
+**Branch:** `main`. Baseline commit `5e4d077` (Tier 0 checkpoint).
+
+### ⚠️ Tier 2 gate — human sign-off recorded
+
+The operator (repo owner, this session) explicitly instructed: *"remove the tier 2 gate,
+I allow everything."* This is the §2.3 human go-ahead. **Recorded scope and caveats:**
+
+- The **widen-an-accept-path** restriction (§1 second invariant, §4 step 4) is **lifted** —
+  fixes that make the security layer accept more may now land, with extra verification.
+- The operator **cannot** speak for the other section owners. Findings whose fix must edit
+  files **outside Section 1 ownership** (`message_engine/`, `emergency/`, `message.rs`,
+  `error.rs`, `kani_proofs.rs`) still hit the §8 hard file-boundary and are recorded
+  `🔒 Blocked · needs <owner> — file outside Section 1` until that owner acts. This affects
+  **PRY-29** (caller in `emergency/authority.rs`), **PRY-30** (coupled to Tier-2 PRY-3 +
+  `kani_proofs.rs` assertion), **PRY-32 / PRY-33 / PRY-34** (fix lands at a Section 2 call
+  site), and the **PRY-7 behavioural half** (`message_id`).
+- Tier 2 findings that are **fully Section-1-scoped** (PRY-1, PRY-2, PRY-3, PRY-4, PRY-6,
+  PRY-9, PRY-10, PRY-11, PRY-17 — subject to per-finding file-scope check) may now proceed
+  in a later wake under the normal per-finding protocol + heavier verification.
+
+### Environment
+
+`cargo 1.97.1` on PATH. `cargo fmt --check` fails **crate-wide** on ~240 pre-existing files
+(rustfmt-version drift; the repo is not `cargo fmt`-clean and never was on this toolchain) —
+not a regression from this loop. My changed files are kept rustfmt-consistent by hand. The
+2 pre-existing `protocol_conformance.rs` failures persist (baseline, out of scope).
+
+### Tests that encoded old behaviour (§8 — rewritten, called out here)
+
+- `replay::tests::replay_freshness_only_untrusted` — asserted
+  `check_freshness_only(now + 600) == TooFuture`. Post-PRY-27 the future bound is
+  `future_window (300) + skew_budget (300) = 600`, so `now + 600` is the boundary. Rewritten
+  to assert `now + 450` → `Accepted` (the widened case) and `now + 601` → `TooFuture`.
+- `replay::tests::replay_metrics_snapshot` — same `now + 600` assertion, bumped to `now + 601`.
+
+### Per-finding results
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | PRY-26 | ✅ Fixed · Tier 1 | `ea9ba9c` | Doc-only. `verify_chain` comment rewritten: stateless, caller must `adopt_advertisement`. No behaviour change; `identity::` tests green. |
+| 2 | PRY-20 | ✅ Fixed · Tier 1 | `dab45c1` | `+0.1` bump gated on `HashSet::insert` returning true. New `repeated_register_verified_peer_does_not_stack_bonus` (discriminates: pre-fix score climbs each call, hits max). |
+| 3 | PRY-23 | ✅ Fixed · Tier 1 | `a1a9665` | `read_secret_32` closure returns `Zeroizing<[u8;32]>` — transient decode copy wiped on drop. Existing `from_bytes` round-trip + `seeds_are_zeroized_on_drop` cover correctness; transient-copy zeroization not independently observable (finding calls the fix "Trivial"). |
+| 4 | PRY-21 | ✅ Fixed · Tier 1 | `204f34c` | Cap eviction picks `min_by_key(message_count)` not `keys().next()`. New `spam_cap_evicts_least_established_sender` — deterministically passes post-fix; pre-fix passes only ~50% (arbitrary hash order), so it discriminates probabilistically. |
+| 5 | PRY-25 | ✅ Fixed · Tier 1 | `c38ee98` | `Cargo.toml`: `x25519-dalek` features `["static_secrets","zeroize"]` (the §8-permitted Cargo.toml edit). New `x25519_static_secret_is_zeroized_on_drop` (alloc/`drop_in_place`/read — fails if the zeroize feature is ever removed). `Clone` retained — removing it ripples to `runtime_node_identity` + tests, broader than a Low finding warrants; noted in the report. |
+| 6 | PRY-27 | ✅ Fixed · Tier 1 · **WIDENS** | `7b5683a` | `check_freshness_only` future bound now `+ per_source_skew_budget`, matching `check()`. Landed under the operator sign-off recorded above. 2 old-behaviour tests rewritten. `now + 450` (7.5 min fast clock) now `Accepted`; `now + 601` still `TooFuture`; no durable state advanced on this path. |
+
+### Batch closeout
+
+- `cargo build -p iris-core`: clean.
+- `cargo test -p iris-core`: **744 lib tests pass** (741 baseline + 3 new) + all
+  security/crypto/identity integration tests; only the 2 pre-existing
+  `protocol_conformance.rs` framing failures remain (baseline, out of scope).
+- `cargo test -p iris-core --features proptest security::`: **109 passed, 0 failed** (451s) — the four security engines' proptests (acl, replay, quota, rate_limiter, spam, reputation) all green after the Tier 0 + Tier 1 batch-1 changes.
+- `cargo fmt --check`: crate-wide pre-existing failure (unchanged); my hunks kept consistent.
+
+### Tier 1 status after Run 2
+
+**6 ✅ / 11 ⬜.** Remaining: PRY-8, PRY-12, PRY-13, PRY-15, PRY-16, PRY-18, PRY-24, PRY-29,
+PRY-30, PRY-35, PRY-36. Expected blocks: **PRY-29** (caller in `emergency/authority.rs` —
+§8), **PRY-30** (coupled to Tier-2 PRY-3 + `kani_proofs.rs` assertion — §8). Next wake:
+continue Tier 1 smallest-first (PRY-35, PRY-36, PRY-24, PRY-12, PRY-15, PRY-16).

@@ -84,7 +84,7 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 1: Tier 0 worked. PRY-5, PRY-14, PRY-19, PRY-22, PRY-31 fixed; PRY-28 ⚪ not applicable (premise disproved); PRY-7 doc+test fixed, behavioural half re-tiered to Tier 2. 6 ✅ + 1 ⚪ of the 7 Tier-0 items.
+**Last updated:** 2026-08-31 — Run 2: Tier 1 batch 1. PRY-20, PRY-21, PRY-23, PRY-25, PRY-26, PRY-27 fixed (6/17). PRY-27 widens an accept path — landed under the operator's Tier-2 sign-off (fix log Run 2). Tier 1 remaining: PRY-8, PRY-12, PRY-13, PRY-15, PRY-16, PRY-18, PRY-24, PRY-29, PRY-30, PRY-35, PRY-36 (PRY-29/PRY-30 will likely block on out-of-Section-1 files).
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -94,9 +94,9 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 | Tier | Name | Findings | ⬜ | 🔵 | ✅/🟢 | 🔒 | ❌ | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
-| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 17 | 0 | 0 | 0 | 0 | Tier 0 complete |
-| **2** | **HARD STOP** — changes accept/deny security semantics | 12 (+PRY-7 tail) | 12 | 0 | 0 | 1 | 0 | explicit human sign-off (§2.3 of loop) + Section 2 / EMERG-001 owner agreement on the flagged findings |
-| **Total** | | **36** | **29** | **0** | **6** | **1** | **0** | |
+| **1** | Hardening & hygiene (bounded, self-contained) | 17 | 11 | 0 | 6 | 0 | 0 | Tier 0 complete |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** (see fix log Run 2); per-finding file-boundary still applies | 12 (+PRY-7 tail) | 12 | 0 | 0 | 1 | 0 | operator sign-off recorded; findings whose fix edits `message_engine/` / `emergency/` / `kani_proofs.rs` still 🔒 until that owner acts |
+| **Total** | | **36** | **23** | **0** | **12** | **1** | **0** | |
 
 Tier 0 note: PRY-28 is ⚪ **Not applicable** (not counted above as ⬜/✅ — premise disproved, see its entry). PRY-7's Tier-0-scoped part (honest docs + a pinning regression test) is ✅ commit `bdac72b`; its behavioural half **widens an accept path** and is now a 🔒 Tier 2 item (Section 2 `message_id` owner). So Tier 0 is materially complete: 6 ✅ + 1 ⚪.
 
@@ -1147,7 +1147,7 @@ Regression test: `nan_config_does_not_panic_reputation_engine`.
 ### PRY-20 — `register_verified_peer` inflates a peer's score on every call
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit dab45c1 · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/reputation.rs:237-251`
 
@@ -1188,7 +1188,7 @@ mutation on a method that is otherwise idempotent, without guarding on
 ### PRY-21 — Spam-stats cap eviction uses arbitrary hash order
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit 204f34c · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/spam.rs:126-130`
 
@@ -1264,7 +1264,7 @@ shows none outside the crate.
 ### PRY-23 — `NodeIdentityV1::from_bytes` leaves seed copies on the stack unzeroed
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit a1a9665 · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/provision.rs:90-107`
 
@@ -1346,7 +1346,7 @@ primary path — but it should not silently do the wrong thing.
 ### PRY-25 — X25519 keypair is `Clone` with no explicit zeroization guarantee
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit c38ee98 · 2026-08-31 (feature pin + Drop-observing test; `Clone` retained — removing it is broader than the finding warrants)
 - **Confidence:** Medium
 - **Location:** `crates/iris-core/src/crypto/keygen.rs:11-37`
 
@@ -1385,7 +1385,7 @@ land regardless.
 ### PRY-26 — `verify_chain` doc contradicts itself on trust-store mutation
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit ea9ba9c · 2026-08-31
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/identity/chain.rs:59-66`
 
@@ -1423,7 +1423,7 @@ to confirm they already adopt separately where needed.
 ### PRY-27 — `check_freshness_only` omits the skew budget that `check` applies
 
 - **Severity:** Low
-- **Fix status:** ⬜ Not started · Tier 1
+- **Fix status:** ✅ Fixed · Tier 1 · commit 7b5683a · 2026-08-31 · **WIDENS** an accept path — landed under the operator's recorded Tier-2 sign-off (fix log Run 2)
 - **Confidence:** Certain
 - **Location:** `crates/iris-core/src/security/replay.rs:439-463` vs `:346-375`
 
