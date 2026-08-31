@@ -72,12 +72,36 @@ pub struct FileKeyStore {
     master_key_path: PathBuf,
 }
 
+/// Resolve the Windows app-data directory from an env accessor.
+///
+/// PRY-24: on Windows the key files hold the raw Ed25519 seed / X25519 secret,
+/// and `set_user_only` is a documented no-op there. The old
+/// `unwrap_or_else(|| ".")` fallback silently wrote those secrets into whatever
+/// directory the process started in (often group/other-readable) when `APPDATA`
+/// was unset — a stripped service account, a misconfigured container. Try the
+/// documented locations, then **fail**: the operator must set a data dir.
+#[cfg(target_os = "windows")]
+fn resolve_windows_app_data(get: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<PathBuf> {
+    if let Some(v) = get("APPDATA") {
+        return Some(PathBuf::from(v));
+    }
+    if let Some(v) = get("LOCALAPPDATA") {
+        return Some(PathBuf::from(v));
+    }
+    get("USERPROFILE").map(|p| PathBuf::from(p).join("AppData").join("Roaming"))
+}
+
 fn app_data_dir() -> PathBuf {
     #[cfg(target_os = "windows")]
     {
-        std::env::var_os("APPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."))
+        resolve_windows_app_data(|k| std::env::var_os(k)).unwrap_or_else(|| {
+            panic!(
+                "iris: cannot locate a Windows app-data directory (APPDATA / \
+                 LOCALAPPDATA / USERPROFILE all unset). Refusing to write key \
+                 material to the current directory — set a data directory \
+                 explicitly (FileKeyStore::at)."
+            )
+        })
     }
     #[cfg(target_os = "macos")]
     {
@@ -301,6 +325,31 @@ mod tests {
     fn temp_store() -> (FileKeyStore, tempfile::TempDir) {
         let dir = tempfile::tempdir().expect("tempdir");
         (FileKeyStore::at(dir.path()), dir)
+    }
+
+    /// PRY-24: the Windows resolver must never fall back to the current dir.
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_app_data_never_falls_back_to_cwd() {
+        use std::ffi::OsString;
+
+        // APPDATA set -> used.
+        assert_eq!(
+            resolve_windows_app_data(|k| (k == "APPDATA").then(|| OsString::from("D:\\roaming"))),
+            Some(PathBuf::from("D:\\roaming"))
+        );
+        // APPDATA unset, LOCALAPPDATA set -> used.
+        assert_eq!(
+            resolve_windows_app_data(|k| (k == "LOCALAPPDATA").then(|| OsString::from("D:\\local"))),
+            Some(PathBuf::from("D:\\local"))
+        );
+        // Only USERPROFILE -> Roaming under it.
+        assert_eq!(
+            resolve_windows_app_data(|k| (k == "USERPROFILE").then(|| OsString::from("D:\\users\\a"))),
+            Some(PathBuf::from("D:\\users\\a").join("AppData").join("Roaming"))
+        );
+        // Nothing set -> None (caller panics rather than using ".").
+        assert_eq!(resolve_windows_app_data(|_| None), None);
     }
 
     #[test]
