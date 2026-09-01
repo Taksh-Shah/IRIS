@@ -510,6 +510,7 @@ mod tests {
             bloom_m: 64,
             bloom_k: 3,
             timestamp: 0,
+            dp_snapshot: Vec::new(),
         };
         t.set_capabilities(&peer(1).peer_id, caps.clone()).await;
         let nb = t.get(&peer(1).peer_id).await.unwrap();
