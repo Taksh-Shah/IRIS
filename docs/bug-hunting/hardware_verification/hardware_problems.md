@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 5 | 7 | 0 | 1 | 1 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 14 | 0 | 0 | 0 | 0 | 14 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,7 +69,7 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **89** | **5** | **7** | **0** | **1** | **76** |
+| **Total** | | **91** | **5** | **7** | **0** | **1** | **78** |
 
 **Last updated:** 2026-09-01 (Session 05 — HV-86 `🟢`; HV-83 `🔒` deferred
 as satellite is post-v1). **Tier 0: only HV-2 remains.** · **Active tier:** 0
@@ -457,6 +457,73 @@ alias, rebuilt `libiriscode.so` for all 3 ABIs.
 
 *This is the "sometimes works, sometimes not" core. Two phones, one hop, one
 message. It must be 10/10 before anything else is trusted.*
+
+### HV-89 — Android has no key directory / key-exchange; since PRY-33 every addressed send fails closed
+
+- **Fix status:** ⬜ (found Session 06, HV-2 Step 0) · **prerequisite for the
+  Tier-0→Tier-1 gate** (no Android↔Android delivery is possible without it)
+- **Area:** `crates/iris-android/src/engine.rs` (no `set_key_directory`),
+  `crates/iris-core/src/discovery/{mod,handshake}.rs` (handshake carries no key
+  ad), `crates/iris-core/src/identity/{advertise,trust_store}.rs` (the reusable
+  pieces), `android/.../identity/X25519StaticAd.kt`
+- **Severity:** Critical · **HW gate:** 2 phones (a message actually delivers)
+
+**What:** `MessageEngine::seal_outbound` was made **fail-closed** by PRY-33 /
+RED-0002 (commit `3d269d0`): an addressed unicast whose 32-byte recipient has no
+X25519 key in the engine's `key_directory` returns
+`MsgEngineError::Crypto(KeyUnavailable)` — it no longer falls through to
+plaintext. The **Android engine never calls `set_key_directory`** (the only call
+is the `#[cfg(test)] register_test_key` helper), and the discovery handshake
+(`CapabilityBundle`) carries **no** `KeyAdvertisementV1` — so `key_directory` is
+`None` forever and *every* real Android→Android message dies at `seal_outbound`
+with `KeyUnavailable`. Confirmed live: `/to <peer>` + `/send` on P1 → the Android
+`RelayOutbox` `QUEUED` chip, core counters stay zero. **The old "BLE 3-way
+confirmed working" claim predates PRY-33** — back then addressed sends delivered
+plaintext-signed.
+
+**What exists to reuse:** `identity::advertise::KeyAdvertisementV1` (signed
+`identity_pubkey → static_x25519_pubkey` binding), `TrustStore::adopt_advertisement`,
+`TrustKeyDirectory` (a `KeyDirectory` over the trust store — desktop wires
+exactly this in `engine_handle.rs:215`). AN-6 gave Android
+`FfiX25519KeyProvider::static_public_key()`. Missing: (1) a `build_with_signer`
+on `KeyAdvertisementV1` (Android's ed25519 key is in the Keystore, reached only
+via `FfiCryptoSigner`), (2) a field on `CapabilityBundle` (or the first
+post-connect frame) to carry the serialized ad, (3) `DiscoveryManager` adopting
+received ads into a `TrustStore` + exposing `trust_key_directory()`, (4) the
+Android engine calling `set_key_directory(...)`.
+
+**Interim for the HV-2 smoke:** an FFI `register_peer_key(peer_hex, x25519_hex)`
++ snippet `staticX25519()` lets the harness wire keys out-of-band (the same
+shape as HV-1's `register_test_key`), so the BLE single-hop delivery path can be
+tested while the real handshake exchange is built.
+
+---
+
+### HV-90 — BLE GATT connection never establishes on the bench phones (status 255 / 257)
+
+- **Fix status:** ⬜ (observed Session 06, HV-2 Step 0)
+- **Area:** `AndroidBleTransportAdapter.connectGatt` / `onConnectionStateChange`,
+  `ble.rs` connect path; interacts with HV-13, HV-33, HV-7
+- **Severity:** Critical · **HW gate:** 2 phones
+
+**What:** with both apps running side by side, **BLE discovery works** —
+`peers_seen=2` on P2 (vivo 2004, Android 12). But **every GATT connection
+fails**:
+- P2: `disconnected before connect completed, status=257` (`0x101` =
+  `GATT_CONN_FAIL_ESTABLISH` / cancelled), `elapsed_ms=11..27` — fails instantly.
+- P1 (V2205, Android 14): `bta_gattc_open_fail: Cannot establish Connection …
+  GATT_Status(255)` (`0xFF` generic), then a 30 s timeout
+  (`connection failed elapsed_ms=30002`).
+- The discovered peer ids carry the `…ffffffffffffffff` tail —
+  `synthesize_unknown_peer_id` (HV-13): the connect fires before the beacon
+  parse resolves the real id.
+
+This is the core Tier-1 blocker and the direct cause of the operator's "BLE
+sometimes works." Needs the HV-2 harness + `btsnoop` to diagnose the ATT-level
+timeline. Candidate mechanisms: HV-33 (status not classified/retried), HV-13
+(connecting to a synthetic id / stale address), connect issued off the main
+thread, RPA address rotation (HV-17), or the accept-poller / GATT-server
+interaction. **First Tier-1 finding to work.**
 
 ### HV-7 — Every real message is fragmented into many ATT writes, each a blocking round-trip, and one failure tears the whole link down
 
