@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 9 | 0 | 4 | 0 | 0 | 5 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 10 | 1 | 4 | 0 | 0 | 5 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **84** | **0** | **4** | **0** | **0** | **80** |
+| **Total** | | **85** | **1** | **4** | **0** | **0** | **80** |
 
-**Last updated:** 2026-09-01 (Session 02 — HV-81, HV-82 `✅ Fixed`;
-HV-81/82/83 added to Tier 0) · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 03 — HV-84 `🟢` — first APK build in days,
+runs on both phones) · **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -295,6 +295,48 @@ emergency traffic) panics on a clean `fc720d5`. Not from the hardware deep-dive;
 found while running the loop's narrow test gate for HV-82. Likely fallout from a
 transport-selection / `RadioConflictGroup` change (cf. HV-46). Needs its own
 look; blocks a fully-green `cargo test -p iris-core`.
+
+---
+
+### HV-84 — The debug APK has not built since 2026-08-30: stale UniFFI Kotlin bindings + missing `api.kt` facade alias
+
+- **Fix status:** 🟢 HW-verified · commit _pending_ · 2026-09-01 · APK builds,
+  installs, and the engine starts on P1=V2205 + P2=vivo 2004 · Session 03
+- **Area:** `kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt`
+  (generated), `kotlin/src/main/kotlin/iriscode/api.kt` (facade),
+  `android/app/src/main/jniLibs/*/libiriscode.so`
+- **Severity:** Critical (nothing downstream — HV-2, all of Tier 1+ — can run
+  without an installable APK) · **HW gate:** APK install + engine start on 2 phones
+
+**What:** `bde5c8e` ("AN-1 — replace DevCryptoProvider with real
+AndroidCryptoProvider", 2026-08-30) added the `FfiCryptoSigner` uniffi trait on
+the Rust side and `import iriscode.FfiCryptoSigner` + an anonymous impl in
+`IrisCoreModule.kt`, but did **not**: (a) regenerate the committed
+`uniffi/iriscode/iriscode.kt` bindings (still had no `FfiCryptoSigner`), nor
+(b) add `typealias FfiCryptoSigner = uniffi.iriscode.FfiCryptoSigner` to the
+`iriscode` facade `api.kt`. Result: `./gradlew :app:assembleDebug` fails at
+`:app:kspDebugKotlin` — Hilt's `KspAggregatedDepsProcessor` reports
+`'FfiCryptoSigner' could not be resolved` across every `IrisCoreModule`
+provider. Same root cause as HV-1 (that commit broke several things at once).
+`docs/testing/ANDROID_BUILD_STATUS.md` is also stale (describes a 66-error
+state from an earlier build attempt).
+
+**Also required (toolchain, one-time):** the machine had only JDK 25, which
+Gradle 8.9 rejects ("What went wrong: 25.0.2"). Installed **Temurin JDK 21**
+(`C:/Program Files/Eclipse Adoptium/jdk-21.0.12.101-hotspot`); gradle is invoked
+with `-Dorg.gradle.java.home=<jdk21>` (there is no `gradlew` script — only
+`gradle/wrapper/gradle-wrapper.jar`, run via
+`java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain`).
+`Cargo.lock` was also stale — missing the `rustls`/`ring`/`aws-lc-rs` tree that
+`iris-storage`'s TLS path pulls in — and is regenerated here.
+
+**Resolution:** `uniffi-bindgen 0.31.2 generate --library target/debug/iriscode.dll
+--language kotlin` → replaced `iriscode.kt`; added the `FfiCryptoSigner` alias to
+`api.kt`; rebuilt `libiriscode.so` for all three ABIs via `cargo ndk`; committed
+the refreshed `Cargo.lock`. `:app:assembleDebug` → **BUILD SUCCESSFUL**; APK
+installs on both phones; app launches, loads the `.so`, engine starts, BLE comes
+up (Wi-Fi Aware "not supported on this device" — expected, no NAN hardware;
+Wi-Fi Direct hits `reason=2`/BUSY on P2 — that is HV-23, tracked separately).
 
 ---
 

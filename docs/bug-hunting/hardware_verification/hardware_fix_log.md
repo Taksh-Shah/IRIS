@@ -616,3 +616,99 @@ correct before Tier 4.
   `assembleDebug` + `installDebug` on both phones; (2) decide HV-3's FFI
   struct shape together (it locks HV-2's RPC surface); (3) then the agent
   builds HV-3 + HV-2 and the operator runs the 2-phone smoke.
+
+---
+
+## Session 03 — 2026-09-01 — Get the APK building + on both phones (HV-84)
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`) · P2 = vivo 2004 (`b2fbcd39`) — both
+on USB, `adb`-reachable. **Used this session** (APK install + engine-start smoke).
+**Build under test:** `ab09ffe` → HEAD (main)
+**Session goal:** stand up the Android build toolchain and get a debug APK
+running on both phones — the hard prerequisite for HV-2 (the Mobly harness) and
+every hardware finding after it.
+
+---
+
+### HV-84 — The debug APK has not built since 2026-08-30
+
+**Phase R.**
+- `./gradlew :app:assembleDebug` (via
+  `java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain`)
+  fails at `:app:kspDebugKotlin`:
+  ```
+  e: [ksp] ModuleProcessingStep was unable to process 'iriscore.di.IrisCoreModule'
+     because 'FfiCryptoSigner' could not be resolved.
+  e: [ksp] BindingMethodProcessingStep ... 'provideFfiCryptoSigner(...)' ...
+  > KSP failed with exit code: PROCESSING_ERROR
+  ```
+- `bde5c8e` (AN-1, 2026-08-30) added the `FfiCryptoSigner` uniffi trait
+  (`crates/iris-android/src/ffi/crypto_signer.rs`) and, on the Kotlin side,
+  `import iriscode.FfiCryptoSigner` + `provideFfiCryptoSigner` in
+  `IrisCoreModule.kt`. It did not regenerate the committed uniffi bindings
+  (`kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt` — no
+  `FfiCryptoSigner` symbol, `grep -c` = 0) and did not add the facade alias to
+  `kotlin/src/main/kotlin/iriscode/api.kt`. Hilt's KSP processor then can't
+  resolve the type referenced by every `IrisCoreModule` provider. Same failure
+  family as HV-1 — one commit, several un-propagated edits.
+- Toolchain gap: the machine had only **JDK 25**; Gradle 8.9 aborts on it
+  (opaque `* What went wrong: 25.0.2`). AGP 8.7.3 + Gradle 8.9 want JDK 17–21.
+- `Cargo.lock` was stale: missing the `rustls` / `ring` / `aws-lc-rs` / `bcder`
+  tree that `iris-storage`'s `tokio-postgres-rustls` path resolves — every
+  `cargo build` silently rewrote it, and a `--locked` CI build would fail.
+
+**Phase D.**
+- Installed **Temurin JDK 21** (`winget install EclipseAdoptium.Temurin.21.JDK`
+  → `C:/Program Files/Eclipse Adoptium/jdk-21.0.12.101-hotspot`). Gradle invoked
+  with `-Dorg.gradle.java.home=<jdk21>` + `JAVA_HOME`/`PATH` set;
+  `ANDROID_HOME=C:/Users/TK/AppData/Local/Android/Sdk`.
+- `cargo build -p iris-android` (host) → `target/debug/iriscode.dll`;
+  `uniffi-bindgen 0.31.2 generate --library target/debug/iriscode.dll --language
+  kotlin` → replaced `iriscode.kt` (6854 → 7220 lines; `FfiCryptoSigner` now
+  present, 27 refs).
+- `kotlin/src/main/kotlin/iriscode/api.kt`: added
+  `typealias FfiCryptoSigner = uniffi.iriscode.FfiCryptoSigner` next to the
+  other foreign-trait aliases.
+- `cargo ndk -t arm64-v8a -t x86_64 -t armeabi-v7a -o android/app/src/main/jniLibs
+  build --release -p iris-android` — refreshed all three `libiriscode.so`.
+- Committed the regenerated `Cargo.lock`.
+- `:app:assembleDebug` → **BUILD SUCCESSFUL in 58s** (deprecation warnings only).
+
+**Phase T — hardware.**
+- `adb -s <serial> install -r -d app-debug.apk` → `Success` on both phones.
+- `adb shell monkey -p org.iris.mesh -c android.intent.category.LAUNCHER 1` on
+  both; `adb logcat` (tag `iriscore`):
+  ```
+  P1  I ActivityTaskManager: Displayed org.iris.mesh/iriscore.ui.MainActivity ... +2s446ms
+  P1  W iriscore: iriscode::engine: transport failed to start; trying the others
+        event="engine.start_transport_failed" transport="wifi-aware-0"
+        error=... wifiaware.start: not supported on this device
+  P1  D iriscore: iris_core::discovery: discovery pass complete ... transport=ble-android peers_seen=0
+  P2  W iriscore: iriscode::engine: mesh started with a subset of transports
+        event="engine.start_all_partial" started=["ble-android"]
+        failed=["wifi-aware-0: ... not supported on this device",
+                "wifi-direct-0: ... WifiP2p action failed reason=2"]
+  ```
+- **Pass criteria met:** APK builds, installs on both phones, app launches
+  without `UnsatisfiedLinkError`, the Rust engine initialises, its `tracing`
+  reaches logcat (HW-3), and **BLE `start_advertising` + discovery loop come up
+  on both phones**. No crash on either device.
+- Not verified here (later tiers): peer discovery (`peers_seen=0` — permissions
+  not yet granted, and this is Tier 1), Wi-Fi Aware (no NAN hardware — Tier 7,
+  deferred), Wi-Fi Direct (P2 `reason=2` BUSY on cold start — HV-23).
+
+**Phase C.**
+- Commit _pending_.
+- Tracker: **HV-84 → 🟢** (build + engine-start verified on 2 phones with logcat).
+  Tier 0: 10 findings — 1 🟢, 4 ✅, 5 ⬜.
+- `docs/testing/ANDROID_BUILD_STATUS.md` is stale (66-error state from a much
+  earlier attempt) — flagged for correction in the HV-2 commit that rewrites
+  that doc's CI/build section.
+
+### Session 03 closeout (in progress)
+- HV-84 🟢 — the toolchain is up and the APK runs on both phones. This unblocks
+  HV-2 / HV-3 / all radio tiers.
+- New standing requirement: builds use **JDK 21** (installed), gradle via the
+  wrapper jar with `-Dorg.gradle.java.home`. Documented above and in memory.
+- Next in this session: HV-3 (`/diag` + `snapshot()` FFI) — its struct is the
+  contract for HV-2's snippet APK.

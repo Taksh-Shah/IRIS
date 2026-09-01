@@ -22,6 +22,8 @@ typealias FfiWifiAwareAdapter = uniffi.iriscode.FfiWifiAwareAdapter
 typealias FfiWifiDirectAdapter = uniffi.iriscode.FfiWifiDirectAdapter
 @Suppress("unused")
 typealias FfiInboxListener = uniffi.iriscode.FfiInboxListener
+@Suppress("unused")
+typealias FfiCryptoSigner = uniffi.iriscode.FfiCryptoSigner
 
 // --- Engine host ---
 @Suppress("unused")
