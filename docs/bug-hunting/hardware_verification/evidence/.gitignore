@@ -1,0 +1,3 @@
+mobly_logs/
+**/*.bugreport.zip
+**/__pycache__/

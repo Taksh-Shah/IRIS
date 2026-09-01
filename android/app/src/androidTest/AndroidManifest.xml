@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HV-2: the Mobly snippet APK. Merged into app-debug-androidTest.apk. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Mobly Snippet Lib discovers RPC classes from this comma-separated list. -->
+        <meta-data
+            android:name="mobly-snippets"
+            android:value="iriscore.snippet.IrisSnippet" />
+    </application>
+
+</manifest>

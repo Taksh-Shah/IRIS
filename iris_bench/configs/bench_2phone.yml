@@ -1,0 +1,22 @@
+# HV-2 — the two-phone bench testbed.
+#
+# Serials: `adb devices`.  label: P1 / P2 fixes which phone is the sender in
+# asymmetric tests (P1 sends first).  Set install=false in TestParams to skip
+# re-installing the APKs (faster iteration when the build hasn't changed).
+#
+# (model / android version are read from the device automatically — do not set
+# them here, those attribute names are reserved by Mobly.)
+
+TestBeds:
+  - Name: iris_2phone
+    Controllers:
+      AndroidDevice:
+        - serial: 10BCA20F4M000BB
+          label: P1
+        - serial: b2fbcd39
+          label: P2
+    TestParams:
+      install: "true"
+
+MoblyParams:
+  LogPath: docs/bug-hunting/hardware_verification/evidence/mobly_logs

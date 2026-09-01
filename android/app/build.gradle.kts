@@ -22,6 +22,10 @@ android {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
 
+        // HV-2: the androidTest APK is the Mobly `iris_bench` snippet — driven
+        // from the laptop via `adb shell am instrument`, not JUnit.
+        testInstrumentationRunner = "com.google.android.mobly.snippet.SnippetRunner"
+
         // rust-android-gradle merges target/*/release into jniLibs at build
         // time on the toolchain host; the .so is produced by `cargo ndk build`
         // (AC-1) and shipped under src/main/jniLibs/{abi}/ on release builds.
@@ -147,4 +151,9 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     testImplementation("com.google.truth:truth:1.4.4")
+
+    // --- HV-2: Mobly snippet (androidTest APK = the iris_bench device surface) ---
+    androidTestImplementation("com.google.android.mobly:mobly-snippet-lib:1.4.0")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
 }
