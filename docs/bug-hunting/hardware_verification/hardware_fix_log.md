@@ -390,7 +390,7 @@ no RF/AOSP research — the mechanism is entirely in-tree)
 
 **Phase C — Close**
 
-- Commit: 66b9375 — `fix(hw/test-integrity): HV-1 — Android engine tests compile + run against the 5-arg constructor`
+- Commit: 9a0400b — `fix(hw/test-integrity): HV-1 — Android engine tests compile + run against the 5-arg constructor`
 - Tracker: HV-1 → `✅ Fixed` (Tier 0). Progress table Tier 0: `⬜ 6 → ⬜ 5`,
   `✅ 0 → 1`.
 - Docs corrected: none overclaimed HV-1 specifically. `ANDROID_BUILD_STATUS.md`

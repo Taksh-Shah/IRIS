@@ -88,7 +88,7 @@ bench can observe what the radios actually do. Do this tier first.*
 
 ### HV-1 — The Android engine's own unit tests do not compile against the real constructor
 
-- **Fix status:** ✅ Fixed · commit 66b9375 · 2026-09-01 · CI-verified (no HW
+- **Fix status:** ✅ Fixed · commit 9a0400b · 2026-09-01 · CI-verified (no HW
   gate) · see `hardware_fix_log.md` Session 01
 - **Area:** `crates/iris-android/src/engine.rs` (test module, ~line 570+)
 - **Severity:** High (test-integrity) · **HW gate:** none (host build)
