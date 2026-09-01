@@ -371,25 +371,22 @@ impl EmergencyAcl {
         }
 
         let trust = self.trust_store.level(&pubkey);
-        let store_empty = self.trust_store.is_empty();
         match trust {
-            TrustLevel::Verified | TrustLevel::AuthorityRoot => {
+            // PRY-11: "verified identity" in DEC-SEC-0006 / AC-11 / SAFETY_CHARTER.md
+            // means "signature verifies" (self-authenticating), NOT out-of-band pairing
+            // (TrustLevel::Verified). The PRY-10 signature check above already confirms
+            // the envelope is signed by the claimed sender_id pubkey. Any non-Revoked
+            // sender whose SOS is correctly signed is authorized; the 3/hr origin rate
+            // limit (EMERG-001) is the primary abuse control. TrustLevel pairing tier
+            // must not gate a life-safety message (ABUSE_PREVENTION.md §108-111).
+            TrustLevel::Verified
+            | TrustLevel::AuthorityRoot
+            | TrustLevel::Unknown
+            | TrustLevel::Unverified => {
                 self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
                 AclDecision::Authorized
             }
-            // SEC-RT-08: empty trust store = security not configured → Noop
-            // permissive (AC-12). Previously EVERY Unknown/Unverified sender
-            // was authorized regardless of configuration.
-            TrustLevel::Unknown | TrustLevel::Unverified if store_empty => {
-                self.metrics.authorized.fetch_add(1, Ordering::Relaxed);
-                AclDecision::Authorized
-            }
-            TrustLevel::Unknown | TrustLevel::Unverified => {
-                // ARMED node with a populated store: a self-asserted first-seen
-                // identity must NOT pass the SOS gate (spoofable 32-byte sender).
-                self.metrics.unauthorized.fetch_add(1, Ordering::Relaxed);
-                AclDecision::Unauthorized
-            }
+            // Revoked senders are unconditionally rejected for all classes.
             _ => {
                 self.metrics.unauthorized.fetch_add(1, Ordering::Relaxed);
                 AclDecision::Unauthorized
@@ -749,17 +746,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn acl_sos_unknown_identity_populated_store_unauthorized() {
-        // Armed node with a populated store: a self-asserted 32-byte sender
-        // that is unknown must NOT pass the SOS gate (SEC-RT-08).
+    async fn acl_sos_correctly_signed_unknown_sender_authorized() {
+        // PRY-11: armed node with populated store — an Unknown sender whose
+        // SOS envelope is correctly signed by their own key must be Authorized.
+        // "Verified identity" = signature verifies (self-authenticating pubkey),
+        // not out-of-band pairing. ABUSE_PREVENTION.md §108-111 / SAFETY_CHARTER.
         let store = Arc::new(TrustStore::new());
         let (_root, _x, ad) = root_ad();
         store.register_authority_root(&ad, now()).unwrap();
         let acl = EmergencyAcl::default(store);
 
-        // PRY-10: unknown + unsigned self-asserted sender — rejected. (The
-        // signature gate now fires first: InvalidAuthority rather than
-        // Unauthorized, but an unknown armed-store sender still cannot pass.)
         let unknown = IdentityKeypair::generate();
         let mut env = test_env(
             MessagePriority::P2,
@@ -768,8 +764,18 @@ mod tests {
             None,
         );
         sign_env(&mut env, &unknown);
-        assert_eq!(acl.check(&env, now()).await, AclDecision::Unauthorized);
-        assert_eq!(acl.metrics().unauthorized, 1);
+        // PRY-11 fix: correctly-signed SOS from Unknown sender is now Authorized.
+        assert_eq!(acl.check(&env, now()).await, AclDecision::Authorized);
+        assert_eq!(acl.metrics().authorized, 1);
+
+        // Unsigned SOS from same unknown sender is still rejected (PRY-10 gate).
+        let env_unsigned = test_env(
+            MessagePriority::P2,
+            ContentType::Sos,
+            unknown.verifying_bytes().to_vec(),
+            None,
+        );
+        assert_eq!(acl.check(&env_unsigned, now()).await, AclDecision::InvalidAuthority);
     }
 
     #[tokio::test]

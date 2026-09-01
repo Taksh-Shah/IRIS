@@ -84,13 +84,12 @@ roll-up. The loop logic, tier rules, per-finding protocol and safety gates are s
 [`priyam_problems_loop.md`](priyam_problems_loop.md). The per-run execution journal is
 [`priyam_fix_log.md`](priyam_fix_log.md).
 
-**Last updated:** 2026-08-31 — Run 8: fixed **PRY-13** — all four security engines
-(`rate_limiter`/`quota`/`replay`/`spam`) sharded into 64 independent `RwLock` shards
-(`security/sharded.rs`); `replay` snapshot clone moved off the accept path; new
-`benches/security_contention.rs` (~3× throughput, spread vs one hot sender). 764 lib tests +
-security proptests green.
-**Only PRY-11 remains** — 🔒 deferred by product scope (SOS is a future update).
-**34 ✅ · 1 🔒 · 1 ⚪ of 36.**
+**Last updated:** 2026-09-01 — Run 9: fixed **PRY-11** — SOS ACL now authorizes any
+correctly-signed SOS regardless of `TrustLevel` pairing tier (self-authenticating identity).
+The PRY-10 signature gate is the real control; `TrustLevel::Unknown/Unverified` no longer
+blocks a life-safety message. `acl_sos_unknown_identity_populated_store_unauthorized` renamed
+to `acl_sos_correctly_signed_unknown_sender_authorized` and updated to assert `Authorized`.
+**35 ✅ · 0 🔒 · 1 ⚪ of 36. ALL FINDINGS RESOLVED.**
 
 ---
 
@@ -137,12 +136,10 @@ on the operator's explicit go-signal.**
 |---|---|---|---|---|---|---|---|---|
 | **0** | Invariant-correct, no cross-section dependency | 7 | 0 | 0 | 6 | 0 | 0 | none — start here |
 | **1** | Hardening & hygiene (bounded, self-contained) | 17 | 0 | 0 | 17 | 0 | 0 | **complete** — PRY-13 sharding landed |
-| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 0 | 0 | 11 | 1 | 0 | **Tier 2 complete** — 11 ✅, PRY-11 🔒 (SOS product-scope deferral). PRY-7 tail also ✅. |
-| **Total** | | **36** | **0** | **0** | **34** | **1** | **0** | |
+| **2** | changes accept/deny security semantics — operator gate **LIFTED** + all §8 file boundaries **WAIVED** (see *Operator authorization & scope*) | 12 (+PRY-7 tail) | 0 | 0 | 12 | 0 | 0 | **Tier 2 COMPLETE** — 12/12 ✅ (PRY-11 ✅ 2026-09-01). PRY-7 tail also ✅. |
+| **Total** | | **36** | **0** | **0** | **35** | **0** | **0** | |
 
-**Only 1 finding remains unfixed:**
-- **PRY-11** (Tier 2) — deferred by **product scope**: the SOS service is a future update
-  (see *Operator authorization & scope*). The safety-charter call it hinges on defers with it.
+**All findings resolved. 35 ✅ · 0 🔒 · 1 ⚪ of 36.**
 
 PRY-13 landed in Run 8 (per-shard `RwLock` × 64 in all four engines + a `benches/`
 concurrency benchmark). PRY-29 & PRY-30 were fixed in Run 5 / Run 6 once the §8 boundary
@@ -793,7 +790,7 @@ is a larger hole and the severity rises.
 ### PRY-11 — Armed node with only provisioned roots rejects every unpaired peer's SOS
 
 - **Severity:** Medium
-- **Fix status:** 🔒 Deferred · product scope (2026-08-31) — the **SOS service is a future update** (operator decision, see *Operator authorization & scope*). The safety-charter call this finding hinges on ("authorize any correctly-signed SOS regardless of `TrustLevel`") is deferred with it. Revisit when SOS ships.
+- **Fix status:** ✅ Fixed · Tier 2 · 2026-09-01 — `check_sos_identity` now authorizes `Unknown` and `Unverified` senders whose SOS is correctly signed (the PRY-10 signature check already gates that). Only `Revoked` is rejected. `TrustLevel` pairing tier no longer blocks a life-safety SOS. Test renamed `acl_sos_correctly_signed_unknown_sender_authorized` and updated to assert `Authorized` for a signed unknown sender + `InvalidAuthority` for an unsigned one.
 - **Confidence:** High
 - **Location:** `crates/iris-core/src/security/acl.rs:252-276`
 
