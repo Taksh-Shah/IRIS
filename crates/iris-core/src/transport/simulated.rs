@@ -124,6 +124,11 @@ pub struct SimConfig {
     /// `WifiP2pManager` `reason=BUSY` while the platform P2P state machine
     /// leaves `P2pDisabledState` — HV-23). 0 = never.
     pub busy_first_n_connects: u32,
+    /// HV-90: link-establishing window. `send()` returns
+    /// [`TransportError::NotConnected`] for the first this many calls (models a
+    /// GATT link that is still ~seconds from coming up when the first message
+    /// is queued). The engine must *hold* the message, not fail it. 0 = never.
+    pub not_connected_first_n_sends: u32,
 }
 
 impl Default for SimConfig {
@@ -143,6 +148,7 @@ impl Default for SimConfig {
             mtu_after_shrink: 0,
             scan_fail_after_calls: 0,
             busy_first_n_connects: 0,
+            not_connected_first_n_sends: 0,
         }
     }
 }
@@ -327,6 +333,11 @@ impl Transport for SimulatedTransport {
             return Err(TransportError::ShuttingDown);
         }
         let sends = self.send_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        // HV-90: link-establishing window — the first N sends fail NotConnected
+        // because the GATT link isn't up yet. The engine must hold the message.
+        if sends < self.config.not_connected_first_n_sends {
+            return Err(TransportError::NotConnected);
+        }
         // HV-4 / RF-45-e: unsolicited mid-stream disconnect — the link silently
         // dies (no disconnect callback) after N sends; the transport degrades
         // and this send fails NotConnected.

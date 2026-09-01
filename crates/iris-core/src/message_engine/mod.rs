@@ -1411,7 +1411,7 @@ impl MessageEngine {
                 attempt = item.attempts,
                 "select_transports() returned no candidates for this peer — requeuing"
             );
-            self.requeue_or_fail(item, true).await;
+            self.requeue_or_fail(item, true, true).await;
             return;
         }
 
@@ -1428,7 +1428,8 @@ impl MessageEngine {
         let to_send = match self.serialize_for_transport(&item.envelope, max_mtu).await {
             Ok(v) => v,
             Err(_) => {
-                self.requeue_or_fail(item, true).await;
+                // A serialize failure is a real fault, not "no link yet".
+                self.requeue_or_fail(item, true, false).await;
                 return;
             }
         };
@@ -1499,13 +1500,26 @@ impl MessageEngine {
         // MG-39: unanimous non-retryable guard (see requeue_or_fail).
         let mut saw_failure = false;
         let mut any_retryable_failure = false;
+        // HV-90: a failure is *transient* when the message never actually left
+        // the device because there is no link *yet* (NotConnected) or the stack
+        // is briefly busy — as opposed to a link that carried it and failed.
+        // A transient-only round should not consume a delivery attempt.
+        let mut saw_non_transient_failure = false;
         for (t_sent, t_saw_failure, t_retryable, t_last_err) in results {
             if t_sent { sent_any = true; }
             if t_saw_failure {
                 saw_failure = true;
                 if t_retryable { any_retryable_failure = true; }
             }
-            if let Some(e) = t_last_err { last_error = Some(e); }
+            if let Some((tid, e)) = t_last_err {
+                if !matches!(
+                    e,
+                    crate::TransportError::NotConnected | crate::TransportError::Busy
+                ) {
+                    saw_non_transient_failure = true;
+                }
+                last_error = Some((tid, e));
+            }
         }
 
         if sent_any {
@@ -1553,7 +1567,8 @@ impl MessageEngine {
             // when every failure we actually observed was non-retryable —
             // see requeue_or_fail's own doc comment for why P0 is exempt.
             let retryable = !saw_failure || any_retryable_failure;
-            self.requeue_or_fail(item, retryable).await;
+            let transient = saw_failure && !saw_non_transient_failure;
+            self.requeue_or_fail(item, retryable, transient).await;
         }
     }
 
@@ -1572,8 +1587,32 @@ impl MessageEngine {
     /// a worse outcome than the wasted retry cycles this finding flags. The
     /// other two call sites (no transport selected; serialize failed) pass
     /// `true` — neither has a `TransportError` to consult.
-    async fn requeue_or_fail(&self, item: QueuedMessage, retryable: bool) {
+    async fn requeue_or_fail(&self, item: QueuedMessage, retryable: bool, transient: bool) {
+        // HV-90: how long to hold a message that could not be sent because no
+        // link exists yet, before trying again. Short enough that a message
+        // sent while a ~30 s GATT connect is in flight still lands promptly
+        // once the link is up; long enough not to spin. TTL still bounds it.
+        const TRANSIENT_RETRY_SECS: u64 = 3;
         let policy = crate::message_engine::ack::retry_policy(item.envelope.priority);
+
+        // HV-90: the message never left the device (no link yet / stack busy).
+        // That is not a spent delivery attempt — hold it in the store and try
+        // again soon, TTL-bounded. Without this, the first message to any peer
+        // is `DeliveryFailed` in milliseconds while the GATT link is still ~30 s
+        // from coming up (the operator's "the first message never works").
+        if transient {
+            let mut it = item;
+            it.next_retry = Some(
+                std::time::Instant::now() + std::time::Duration::from_secs(TRANSIENT_RETRY_SECS),
+            );
+            self.storage
+                .update_status(&it.envelope.message_id, MessageStatus::PendingSend)
+                .await
+                .ok();
+            self.queue.lock().await.push(it);
+            return;
+        }
+
         let attempt = item.attempts + 1;
         let budget_ok = match policy.max_attempts {
             Some(max) => retryable && attempt <= max,

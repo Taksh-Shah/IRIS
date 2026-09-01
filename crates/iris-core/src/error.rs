@@ -129,6 +129,14 @@ impl TransportError {
             self,
             TransportError::Busy
                 | TransportError::ConnectionFailed
+                // HV-90: no active link to this peer *right now*. The discovery /
+                // connect loop is continuously working to establish one, so a
+                // send that fails here should wait, not terminally fail — this
+                // was the direct cause of "the first message to a peer never
+                // arrives" (the link comes up ~seconds later, but the message
+                // was already `DeliveryFailed`). Permanent unreachability is
+                // `PeerNotFound` / `PolicyDenied`, which stay non-retryable.
+                | TransportError::NotConnected
                 // RF-5: a rate/duty-cycle limit that names its own recovery
                 // time will admit the same request again once that time
                 // passes — retryable, unlike a permanent policy/hardware

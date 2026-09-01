@@ -18,12 +18,18 @@
 //! formation and belongs with HV-19 — the Wi-Fi Direct sim does not model group
 //! election yet, so it is deferred to that finding.
 
+use std::sync::Arc;
 use std::time::Duration;
 
+use futures_util::StreamExt;
+use iris_core::crypto::key_directory::MemoryKeyDirectory;
 use iris_core::message::{DiscoveryConfig, MessagePriority, PeerId, PeerInfo, SerializedMessage};
-use iris_core::protocol::MessageId;
+use iris_core::message_engine::crypto::{IrisCryptoProvider, NodeIdentity};
+use iris_core::message_engine::storage::MemoryStorage;
+use iris_core::message_engine::{MessageEngine, MessageEngineConfig};
+use iris_core::protocol::{ContentType, Envelope, MessageId, PROTOCOL_VERSION};
 use iris_core::transport::simulated::{SimConfig, SimulatedTransport};
-use iris_core::transport::{Transport, TransportState};
+use iris_core::transport::{Transport, TransportManager, TransportState};
 use iris_core::TransportError;
 
 fn msg(n: u8, len: usize) -> SerializedMessage {
@@ -162,6 +168,100 @@ async fn scan_throttle_lockout_reproduces() {
             _ => panic!("scan past the ceiling must be refused"),
         }
     }
+}
+
+/// HV-90 — the fix for the "first message to a peer is lost" gate.
+///
+/// When the first message is queued the GATT link is still ~seconds from coming
+/// up, so `Transport::send()` returns `NotConnected`. Before the fix the engine
+/// treated that as a non-retryable failure and marked the message
+/// `DeliveryFailed` in milliseconds — the link came up seconds later with
+/// nothing to carry. After the fix a transient link failure holds the message
+/// (short retry, no attempt spent, TTL-bounded) and it delivers once the link
+/// is up.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn hv90_message_held_until_link_establishes() {
+    let alice_ident = Arc::new(NodeIdentity::generate());
+    let bob_ident = Arc::new(NodeIdentity::generate());
+    let alice_id = alice_ident.identity.verifying_bytes();
+    let bob_id = bob_ident.identity.verifying_bytes();
+
+    // Shared transport: the first 3 send() calls fail NotConnected, then it works.
+    let transport = Arc::new(SimulatedTransport::new(
+        "sim",
+        "Sim",
+        SimConfig {
+            packet_loss_rate: 0.0,
+            latency_base_ms: 0,
+            latency_spread_ms: 0,
+            not_connected_first_n_sends: 3,
+            ..Default::default()
+        },
+    ));
+
+    let mk = |node_id, ident: Arc<NodeIdentity>| {
+        let manager = Arc::new(TransportManager::new());
+        let engine = MessageEngine::new(
+            MessageEngineConfig { node_id, gc_interval_secs: 3600, ..Default::default() },
+            Arc::new(MemoryStorage::new()),
+            Arc::new(IrisCryptoProvider::new(ident)),
+            manager.clone(),
+        );
+        (engine, manager)
+    };
+    let (alice, a_mgr) = mk(alice_id, alice_ident);
+    let (bob, b_mgr) = mk(bob_id, bob_ident.clone());
+    a_mgr.register(transport.clone()).await.unwrap();
+    b_mgr.register(transport.clone()).await.unwrap();
+
+    let mut dir = MemoryKeyDirectory::new();
+    dir.insert(bob_id, bob_ident.static_x25519.public_bytes());
+    alice.set_key_directory(Arc::new(dir));
+
+    let mut bob_rx = bob.delivered_messages();
+
+    // Pump the shared transport into bob's engine (no auto-forwarder in tests).
+    let bob_pump = bob.clone();
+    let pump_transport = transport.clone();
+    tokio::spawn(async move {
+        let mut stream = pump_transport.incoming_messages();
+        while let Some(msg) = stream.next().await {
+            let _ = bob_pump.process_incoming(msg).await;
+        }
+    });
+
+    let env = Envelope {
+        version: PROTOCOL_VERSION,
+        message_id: MessageId::new_v7(),
+        sender_id: alice_id.to_vec(),
+        recipient_id: bob_id.to_vec(),
+        priority: MessagePriority::P4, // max_attempts = 2 — the class that used to lose it
+        ttl_seconds: 3600,
+        timestamp: iris_core::message_engine::expiry::unix_now(),
+        hop_count: 0,
+        max_hops: None,
+        payload_type: ContentType::Text,
+        payload_size: 2,
+        payload_hash: Envelope::compute_payload_hash(b"hi"),
+        payload: b"hi".to_vec(),
+        payload_ref: None,
+        signature: None,
+        encryption_hdr: None,
+        routing_hints: None,
+        auth_cert_chain: None,
+    };
+    alice.send_message(env).await.expect("send accepted");
+
+    // 3 transient failures × ~3 s hold + delivery — comfortably inside 30 s.
+    let delivered = tokio::time::timeout(Duration::from_secs(30), bob_rx.recv())
+        .await
+        .expect("message must be HELD and delivered once the link is up, not failed")
+        .expect("delivered channel");
+    assert_eq!(delivered.payload, b"hi".to_vec());
+    assert_eq!(
+        alice.metrics().delivery_failed, 0,
+        "a link-establishing delay must not count as a delivery failure"
+    );
 }
 
 /// SIM-001 determinism carries over to the new modes: same config (incl. seed)
