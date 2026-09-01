@@ -36,7 +36,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::{broadcast, Mutex};
+use futures_util::future;
+use tokio::sync::{broadcast, Mutex, Notify, Semaphore};
 use tokio::task::AbortHandle;
 
 use crate::crypto::key_directory::KeyDirectory;
@@ -93,6 +94,10 @@ pub struct MessageEngineConfig {
     pub node_id: [u8; 32],
     /// Background task poll interval (default 50 ms; tests may raise it).
     pub poll_interval: Duration,
+    /// PS-1: max concurrent outbound deliveries (default 16). Each delivery
+    /// holds one semaphore permit. Set to 1 for serialised (pre-PS-1) behaviour
+    /// or when transport adapters are known non-re-entrant.
+    pub max_concurrent_outbound: usize,
 }
 
 impl Default for MessageEngineConfig {
@@ -107,6 +112,7 @@ impl Default for MessageEngineConfig {
             storage_quota_bytes: 500 * 1024 * 1024,
             node_id: [0u8; 32],
             poll_interval: Duration::from_millis(50),
+            max_concurrent_outbound: 16,
         }
     }
 }
@@ -244,6 +250,10 @@ pub struct MessageEngine {
     metrics: EngineMetrics,
     telemetry: MetricsRegistry,
     tasks: Mutex<Vec<AbortHandle>>,
+    /// PS-1: wakes the delivery loop immediately when a message is enqueued.
+    outbound_notify: Arc<Notify>,
+    /// PS-1: bounds total concurrent in-flight deliveries.
+    outbound_semaphore: Arc<Semaphore>,
 }
 
 impl MessageEngine {
@@ -278,6 +288,7 @@ impl MessageEngine {
         telemetry: MetricsRegistry,
     ) -> Arc<Self> {
         let (delivered_tx, _) = broadcast::channel(1024);
+        let max_concurrent = config.max_concurrent_outbound.max(1);
         let engine = Arc::new(MessageEngine {
             config: config.clone(),
             queue: Mutex::new(PriorityQueue::new(config.starvation_p0_budget.max(1))),
@@ -298,6 +309,8 @@ impl MessageEngine {
             metrics: EngineMetrics::default(),
             telemetry,
             tasks: Mutex::new(Vec::new()),
+            outbound_notify: Arc::new(Notify::new()),
+            outbound_semaphore: Arc::new(Semaphore::new(max_concurrent)),
         });
 
         let delivery = engine.spawn_delivery_loop();
@@ -489,6 +502,7 @@ impl MessageEngine {
             // Register our own id so echo/loopback is deduped (R5).
             let _ = self.dedup.lock().await.seen(envelope.message_id);
             q.push(QueuedMessage::new(envelope.clone()));
+            self.outbound_notify.notify_one();
         }
         if let Err(e) = self.storage.persist(&envelope).await {
             // Refund the quota reservation (SEC-RT-04) — nothing was stored.
@@ -1088,6 +1102,7 @@ impl MessageEngine {
         q.push(item);
         let depth = q.len();
         drop(q);
+        self.outbound_notify.notify_one();
         self.metrics.relayed.fetch_add(1, Ordering::Relaxed);
         self.telemetry.increment(metric::MESSAGES_RELAYED_TOTAL);
         tracing::debug!(
@@ -1132,6 +1147,7 @@ impl MessageEngine {
             return Err(MsgEngineError::QueueFull);
         }
         q.push(QueuedMessage::new(envelope));
+        self.outbound_notify.notify_one();
         Ok(())
     }
 
@@ -1291,13 +1307,38 @@ impl MessageEngine {
 
     fn spawn_delivery_loop(self: &Arc<Self>) -> AbortHandle {
         let this = self.clone();
+        // PS-1: wake on Notify (pushed by every enqueue site) rather than
+        // polling at fixed rate. A fallback sleep prevents spin on spurious
+        // wakeups and bounds quiet-queue CPU cost.
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(this.config.poll_interval).await;
-                let Some(item) = this.queue.lock().await.dequeue(std::time::Instant::now()) else {
-                    continue;
-                };
-                this.deliver_outbound(item).await;
+                tokio::select! {
+                    _ = this.outbound_notify.notified() => {}
+                    _ = tokio::time::sleep(this.config.poll_interval) => {}
+                }
+                // Drain as many items as there are free semaphore permits so
+                // we keep in-flight concurrency bounded even under burst load.
+                let available = this.outbound_semaphore.available_permits();
+                for _ in 0..available.max(1) {
+                    let Some(item) = this.queue.lock().await.dequeue(std::time::Instant::now()) else {
+                        break;
+                    };
+                    // Acquire a permit before spawning so the semaphore is
+                    // decremented inside this task and released by the child.
+                    let Ok(permit) = this.outbound_semaphore.clone().try_acquire_owned() else {
+                        // All permits in use — put message back by requeuing.
+                        // PS-1: requeue directly rather than calling requeue_or_fail
+                        // (which modifies attempt count). Attempt count is only
+                        // bumped when a transport send actually fails.
+                        this.queue.lock().await.push(item);
+                        break;
+                    };
+                    let engine = this.clone();
+                    tokio::spawn(async move {
+                        engine.deliver_outbound(item).await;
+                        drop(permit);
+                    });
+                }
             }
         })
         .abort_handle()
@@ -1392,64 +1433,79 @@ impl MessageEngine {
             }
         };
 
-        let mut sent_any = false;
-        // HW-4: `t.send(...).is_ok()` discarded the Err entirely — the
-        // single most likely reason a message with a live, ranked transport
-        // still never went out was invisible by construction. Keep the
-        // last error per transport so the requeue/fail path below can say
-        // WHY, instead of nothing.
-        let mut last_error: Option<(crate::TransportId, crate::TransportError)> = None;
-        // MG-39: track whether *every* observed send failure was
-        // non-retryable — feeds `requeue_or_fail`'s bounded-budget
-        // short-circuit below. `saw_failure` stays false if `ranked` was
-        // non-empty but every entry vanished from `manager.get()` (no
-        // actual send was attempted), so that edge case defaults to
-        // retryable rather than being mistaken for a unanimous
-        // non-retryable failure.
-        let mut saw_failure = false;
-        let mut any_retryable_failure = false;
-        for r in &ranked {
-            let Some(t) = self.manager.get(&r.transport_id).await else {
-                tracing::debug!(
-                    event = "msg.transport_vanished",
-                    message_id = %id.short(),
-                    transport = %r.transport_id,
-                    "select_transports() ranked a transport that manager.get() no longer has"
-                );
-                continue;
-            };
-            t.set_send_priority_hint(priority);
-            for frag in &to_send {
-                let payload = match codec::encode(frag) {
-                    Ok(p) => p,
-                    Err(_) => continue,
+        // PS-1: fan out to all ranked transports concurrently so multipath
+        // P0/P1 latency is max(transports) not sum(transports). Each future
+        // returns (sent, saw_failure, any_retryable, last_err). Non-multipath
+        // messages have at most one ranked transport so join_all degrades to
+        // a single sequential send — no behaviour change for P2–P7.
+        let to_send = Arc::new(to_send);
+        type SendResult = (bool, bool, bool, Option<(crate::TransportId, crate::TransportError)>);
+        let futs = ranked.iter().map(|r| {
+            let tid = r.transport_id.clone();
+            let to_send = Arc::clone(&to_send);
+            let manager = self.manager.clone();
+            async move {
+                let Some(t) = manager.get(&tid).await else {
+                    tracing::debug!(
+                        event = "msg.transport_vanished",
+                        transport = %tid,
+                        "select_transports() ranked a transport that manager.get() no longer has"
+                    );
+                    return (false, false, false, None::<(crate::TransportId, crate::TransportError)>);
                 };
-                let Some(target) = dest.or(Some(broadcast_peer())) else {
-                    continue;
-                };
-                let sm = SerializedMessage {
-                    message_id: frag.message_id,
-                    priority,
-                    payload,
-                };
-                match t.send(&target, &sm).await {
-                    Ok(_) => sent_any = true,
-                    Err(e) => {
-                        tracing::debug!(
-                            event = "msg.transport_send_failed",
-                            message_id = %id.short(),
-                            transport = %r.transport_id,
-                            error = %e,
-                            "transport.send() failed for this fragment"
-                        );
-                        saw_failure = true;
-                        if e.is_retryable() {
-                            any_retryable_failure = true;
+                t.set_send_priority_hint(priority);
+                let mut t_sent = false;
+                let mut t_saw_failure = false;
+                let mut t_retryable = false;
+                let mut t_last_err: Option<(crate::TransportId, crate::TransportError)> = None;
+                for frag in to_send.as_ref() {
+                    let payload = match codec::encode(frag) {
+                        Ok(p) => p,
+                        Err(_) => continue,
+                    };
+                    let Some(target) = dest.or(Some(broadcast_peer())) else {
+                        continue;
+                    };
+                    let sm = SerializedMessage {
+                        message_id: frag.message_id,
+                        priority,
+                        payload,
+                    };
+                    match t.send(&target, &sm).await {
+                        Ok(_) => t_sent = true,
+                        Err(e) => {
+                            tracing::debug!(
+                                event = "msg.transport_send_failed",
+                                transport = %tid,
+                                error = %e,
+                                "transport.send() failed for this fragment"
+                            );
+                            t_saw_failure = true;
+                            if e.is_retryable() {
+                                t_retryable = true;
+                            }
+                            t_last_err = Some((tid.clone(), e));
                         }
-                        last_error = Some((r.transport_id.clone(), e));
                     }
                 }
+                (t_sent, t_saw_failure, t_retryable, t_last_err)
             }
+        });
+        let results: Vec<SendResult> = future::join_all(futs).await;
+
+        let mut sent_any = false;
+        // HW-4: keep last error per-transport for the requeue/fail log path.
+        let mut last_error: Option<(crate::TransportId, crate::TransportError)> = None;
+        // MG-39: unanimous non-retryable guard (see requeue_or_fail).
+        let mut saw_failure = false;
+        let mut any_retryable_failure = false;
+        for (t_sent, t_saw_failure, t_retryable, t_last_err) in results {
+            if t_sent { sent_any = true; }
+            if t_saw_failure {
+                saw_failure = true;
+                if t_retryable { any_retryable_failure = true; }
+            }
+            if let Some(e) = t_last_err { last_error = Some(e); }
         }
 
         if sent_any {

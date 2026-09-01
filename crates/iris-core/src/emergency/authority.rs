@@ -194,6 +194,143 @@ pub fn verify_authoritative(
     })
 }
 
+// ── PS-3: VerifiedChainCache ─────────────────────────────────────────────────
+//
+// Cache chain-verification results by `authority_peer_short` so that repeated
+// `EmergencyAlert` broadcasts from the same authority skip the ~4-element
+// `verify_chain` call on every relay hop.
+//
+// Revocation contract (Section 1 specification, now that PRY is complete):
+//   (a) A peer is revoked via `TrustStore::revoke` → evict any cached entry
+//       whose `sender_id` matches the revoked identity; call `invalidate`.
+//   (b) A peer rotates its key via `TrustStore::adopt_rotation` → the chain
+//       leaf identity is unchanged (rotation only swaps the X25519 binding, not
+//       the Ed25519 identity) so the cache entry stays valid.
+//   (c) Entries expire at `profile.expires_at` (capped by `MAX_CACHE_TTL_SECS`
+//       as a defence-in-depth ceiling regardless of advertised validity).
+//   (d) The cache is per-engine (not persisted across restarts) — a fresh start
+//       always re-verifies.
+//
+// Thread-safety: `VerifiedChainCache` wraps its map in a `std::sync::Mutex`
+// so it can be shared behind an `Arc` in the `EmergencyGateway`.
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Defence-in-depth ceiling: cached entries are always re-verified at least
+/// this often, even if `expires_at` is far in the future.
+const MAX_CACHE_TTL_SECS: u64 = 3600; // 1 hour
+/// Maximum number of entries in the cache (one per authority leaf identity).
+const MAX_CACHE_ENTRIES: usize = 256;
+
+/// A single cached entry in [`VerifiedChainCache`].
+#[derive(Debug, Clone)]
+struct CacheEntry {
+    verified: VerifiedAuthority,
+    /// Absolute unix-second timestamp after which this entry must not be used.
+    expires_at_unix: u64,
+}
+
+/// PS-3: per-engine cache that maps `authority_peer_short` → `VerifiedAuthority`
+/// to avoid re-running `verify_chain` on every relay of the same broadcast.
+#[derive(Debug, Default)]
+pub struct VerifiedChainCache {
+    inner: Mutex<HashMap<[u8; 16], CacheEntry>>,
+}
+
+impl VerifiedChainCache {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Look up a cached verification for `authority_peer_short`.
+    ///
+    /// Returns `Some(VerifiedAuthority)` if the entry is present and not
+    /// expired; `None` otherwise (caller must call `verify_authoritative` and
+    /// then [`Self::insert`]).
+    pub fn get(&self, short: &[u8; 16], now_unix: u64) -> Option<VerifiedAuthority> {
+        let mut map = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        let entry = map.get(short)?;
+        if now_unix >= entry.expires_at_unix {
+            map.remove(short);
+            return None;
+        }
+        Some(entry.verified.clone())
+    }
+
+    /// Store a freshly verified authority in the cache.
+    ///
+    /// `broadcast_expires_at` is taken from `EmergencyBroadcast::expires_at`.
+    /// The cache TTL is `min(broadcast_expires_at, now + MAX_CACHE_TTL_SECS)`.
+    /// When the cache is at capacity, the entry with the earliest `expires_at`
+    /// is evicted (EMERG-FIFO policy: oldest authority grants expire first).
+    pub fn insert(&self, verified: VerifiedAuthority, broadcast_expires_at: u64, now_unix: u64) {
+        let expires_at_unix = broadcast_expires_at
+            .min(now_unix.saturating_add(MAX_CACHE_TTL_SECS));
+        let entry = CacheEntry {
+            verified: verified.clone(),
+            expires_at_unix,
+        };
+        let mut map = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        if map.len() >= MAX_CACHE_ENTRIES && !map.contains_key(&verified.authority_peer_short) {
+            // Evict the soonest-expiring entry.
+            if let Some(evict_key) = map
+                .iter()
+                .min_by_key(|(_, e)| e.expires_at_unix)
+                .map(|(k, _)| *k)
+            {
+                map.remove(&evict_key);
+            }
+        }
+        map.insert(verified.authority_peer_short, entry);
+    }
+
+    /// Evict any cached entry whose `sender_id` matches a revoked peer.
+    ///
+    /// Call this from `TrustStore::revoke` wiring so revoked authority
+    /// identities cannot benefit from stale cache hits.
+    pub fn invalidate(&self, sender_id: &[u8; 32]) {
+        let mut map = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        map.retain(|_, e| &e.verified.sender_id != sender_id);
+    }
+
+    /// Combined verify-or-use-cached: returns a `VerifiedAuthority`, either
+    /// from the cache or by running the full `verify_authoritative` pipeline.
+    ///
+    /// Successful verifications are automatically inserted into the cache.
+    pub fn get_or_verify(
+        &self,
+        chain_blobs: &[Vec<u8>],
+        trust: &TrustStore,
+        sender_id: &[u8],
+        broadcast: &super::model::EmergencyBroadcast,
+        now_unix: u64,
+    ) -> Result<VerifiedAuthority, AuthorityError> {
+        let short = authority_short_id(sender_id);
+        if let Some(cached) = self.get(&short, now_unix) {
+            return Ok(cached);
+        }
+        let verified = verify_authoritative(chain_blobs, trust, sender_id, broadcast, now_unix)?;
+        self.insert(verified.clone(), broadcast.expires_at, now_unix);
+        Ok(verified)
+    }
+
+    /// Purge all entries that have already expired. Call periodically (e.g.
+    /// from the engine GC loop) to keep the map bounded without eviction
+    /// pressure on valid entries.
+    pub fn purge_expired(&self) {
+        let now_unix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let mut map = self.inner.lock().unwrap_or_else(|p| p.into_inner());
+        map.retain(|_, e| e.expires_at_unix > now_unix);
+    }
+}
+
+// ── end PS-3 ─────────────────────────────────────────────────────────────────
+
 /// SHA-256(sender_id)[..16] — the pseudonymous, non-reversible short binding,
 /// matching IDENT-001 `identity::peer_id::peer_short` (not blake3 — docs conformance).
 pub fn authority_short_id(sender_id: &[u8]) -> [u8; 16] {

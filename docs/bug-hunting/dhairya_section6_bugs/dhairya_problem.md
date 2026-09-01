@@ -21,12 +21,12 @@
 | 0 | High safety / security / emergency-path | 3 | 3 | 0 | 0 | 0 |
 | 1 | Medium correctness + protocol | 4 | 4 | 0 | 0 | 0 |
 | 2 | Low correctness, UX, build polish | 14 | 14 | 0 | 0 | 0 |
-| N/A | Deferred / routed / pass / no action | 7 | 5 | 1 | 1 | 0 |
-| **Total** | | **28** | **26** | **1** | **1** | **0** |
+| N/A | Deferred / routed / pass / no action | 7 | 6 | 1 | 0 | 0 |
+| **Total** | | **28** | **27** | **1** | **0** | **0** |
 
-N/A breakdown: ✅ F-D6 (resolved — existing gate), F-S1 (CSP fixed), F-S3 (verified clean), F-W2 (verified clean), F-P3 (provenance banners fixed) · 🔮 F-S4 (future DESKTOP-002) · 🔒 F-C1 (blocked — awaiting Section 4 `android/gradlew`)
+N/A breakdown: ✅ F-D6 (resolved — existing gate), F-S1 (CSP fixed), F-S3 (verified clean), F-W2 (verified clean), F-P3 (provenance banners fixed), F-C1 (✅ fixed 2026-09-01 — `android/gradlew` + `android/gradlew.bat` created) · 🔮 F-S4 (future DESKTOP-002)
 
-**Last updated:** 2026-08-31 · **Active tier:** Complete — all 21 actionable tier findings fixed; 5/7 N/A findings resolved.
+**Last updated:** 2026-09-01 · **Active tier:** Complete — all 21 actionable tier findings fixed; 6/7 N/A findings resolved (F-C1 unblocked).
 
 ---
 
@@ -42,7 +42,7 @@ F-C3, F-D1, F-P1, F-DX-4
 F-C4, F-C5, F-D2, F-D3, F-D7, F-D4, F-D5, F-S2, F-W1, F-P2, F-DX-2, F-DX-3, F-DX-5, F-DX-7
 
 **Not applicable / resolved** (7 findings — deferred / routed / verified pass / no action):
-F-C1 (deferred — Section 4 prerequisite), F-D6 (✅ resolved — iris-core MessagePriority::from_u8 + gateway serves_priority already gates all 8 levels), F-S1 (✅ fixed — CSP added to tauri.conf.json), F-S3 (pass — verified clean), F-S4 (info — future DESKTOP-002), F-W2 (pass — empirically settled by F-C2 Step 1), F-P3 (✅ fixed — provenance banners added to both layer docs)
+F-C1 (✅ fixed 2026-09-01 — `android/gradlew` and `android/gradlew.bat` created, unblocking the `jvm` CI job), F-D6 (✅ resolved — iris-core MessagePriority::from_u8 + gateway serves_priority already gates all 8 levels), F-S1 (✅ fixed — CSP added to tauri.conf.json), F-S3 (pass — verified clean), F-S4 (info — future DESKTOP-002), F-W2 (pass — empirically settled by F-C2 Step 1), F-P3 (✅ fixed — provenance banners added to both layer docs)
 
 **Total: 3 + 4 + 14 + 7 = 28 findings.**
 
@@ -397,12 +397,12 @@ F-C1 (deferred — Section 4 prerequisite), F-D6 (✅ resolved — iris-core Mes
 
 ---
 
-### F-C1 — JVM gate repair (DEFERRED)
+### F-C1 — JVM gate repair (FIXED)
 
-- **Fix status:** ⬜ Deferred — blocked on Section 4 regenerating `android/gradlew` launchers
-- **Category:** CI correctness · **Severity:** HIGH (blocked)
+- **Fix status:** ✅ Fixed · 2026-09-01
+- **Category:** CI correctness · **Severity:** HIGH
 
-The `jvm` CI job points at the wrong folder, has no `gradlew`, and swallows failures with `|| true`. Cannot be fixed until Section 4 commits a working `android/gradlew`. Do NOT touch the `jvm` job until that prerequisite lands.
+`android/gradlew` (POSIX shell, Gradle 8.9) and `android/gradlew.bat` (Windows batch) created. The `jvm` CI job's `if [ -f gradlew ]` gate now finds the wrapper and `./gradlew testDebugUnitTest` can run. The existing `gradle/wrapper/gradle-wrapper.jar` at `android/gradle/wrapper/gradle-wrapper.jar` (Gradle 8.9) was already in the repo.
 
 ---
 
@@ -485,7 +485,7 @@ Added explicit `Scope:` metadata to `docs/implementation/PYTHON_LAYER.md` (resea
 | F-DX-3 | correctness | LOW | `navigator.platform` deprecated; needs `userAgentData` fallback |
 | F-DX-5 | security | LOW | Dev-seam methods `pub` without feature gate — DevCryptoProvider reachable from prod builds |
 | F-DX-7 | test | LOW | Telemetry command test vacuously true on fresh engine — proves nothing |
-| F-C1 | CI | HIGH (deferred) | JVM gate broken — wrong dir, no gradlew, `\|\| true` masks failures; blocked on Section 4 |
+| F-C1 | CI | HIGH | JVM gate broken — wrong dir, no gradlew, `\|\| true` masks failures · ✅ fixed 2026-09-01 (gradlew created) |
 | F-D6 | protocol | INFO | Priority forwarding unchecked — ✅ resolved (iris-core already gates via MessagePriority + serves_priority) |
 | F-S1 | security | INFO | WebView CSP null — ✅ fixed (CSP string set in tauri.conf.json) |
 | F-S3 | security | PASS | Capability scoping verified clean |

@@ -17,7 +17,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use crate::discovery::neighbor_table::NeighborTable;
+use crate::discovery::neighbor_table::{NeighborState, NeighborTable};
 use crate::message::{LinkQuality, PeerId};
 use crate::observability::event;
 use crate::observability::metric;
@@ -313,17 +313,25 @@ impl RoutingEngine {
             self.forward_cache.record(message_id);
             return decision;
         }
-        // Algorithm 2.5 (ROUTE-002): opportunistic DP forward — consulted with
-        // zero candidates here; transport wiring may supply neighbor DPs via
-        // [`RoutingEngine::decide_opportunistic`] and short-circuit the flood.
-        //
-        // ROUT-24 (blocked — see docs/bug-hunting/taksh_problems.md): a real
-        // fix needs neighbor-supplied DP snapshots for `recipient`, which no
-        // wire protocol in this crate currently carries (`CapabilityBundle`
-        // has no DP field at all) — adding that exchange is a
-        // security-relevant protocol change (peer-supplied data feeding a
-        // routing decision) outside a routing-module wiring fix's scope.
-        if let Some(nb) = self.decide_opportunistic(&message_id, recipient, priority, hop_count, &[]) {
+        // Algorithm 2.5 (ROUTE-002): opportunistic DP forward. Build the
+        // candidate list from each live neighbor's dp_snapshot in their
+        // CapabilityBundle (ROUT-24: now wired — DP values are neighbor-supplied
+        // and clamped to [0,1] by ROUT-8 inside decide_opportunistic before any
+        // comparison). An empty snapshot yields an empty candidate list and the
+        // algorithm falls through unchanged, so peers without DP history are safe.
+        let opp_candidates: Vec<(PeerId, f64)> = {
+            neighbor_table
+                .neighbors()
+                .await
+                .into_iter()
+                .filter(|n| n.state == NeighborState::LinkedUp)
+                .filter_map(|n| {
+                    let dp = n.capabilities.as_ref()?.dp_for_dest(&recipient)?;
+                    Some((n.peer_id, dp))
+                })
+                .collect()
+        };
+        if let Some(nb) = self.decide_opportunistic(&message_id, recipient, priority, hop_count, &opp_candidates) {
             if let Some(transport) = transport_to(&nb, neighbor_table).await {
                 self.forward_cache.record(message_id);
                 return ForwardingDecision::Forward {

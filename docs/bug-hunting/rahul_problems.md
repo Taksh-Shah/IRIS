@@ -20,11 +20,11 @@
 | 0 | Critical/High safety+security | 6 | 6 | 0 | 0 | 0 |
 | 1 | High correctness + Medium safety/protocol | 7 | 7 | 0 | 0 | 0 |
 | 2 | Medium/Low correctness, performance, protocol | 5 | 5 | 0 | 0 | 0 |
-| 3 | Structural enhancements | 7 | 5 | 2 | 0 | 0 |
+| 3 | Structural enhancements | 7 | 7 | 0 | 0 | 0 |
 | 4 | New audit findings (GAP-1..GAP-8) | 8 | 8 | 0 | 0 | 0 |
-| **Total** | | **33** | **31** | **2** | **0** | **0** |
+| **Total** | | **33** | **33** | **0** | **0** | **0** |
 
-**Last updated:** 2026-08-31 · **Active tier:** 4 complete (8/8 ✅); Tier 3 5 ✅, 2 🔒 blocked (PS-5 ✅ Fixed 2026-08-31 — concurrent join_all; PS-7 unblocked 2026-08-31; PS-1/PS-3 blocked pending Section 1/3 sign-off)
+**Last updated:** 2026-09-01 · **Active tier:** ALL COMPLETE — Tier 3: 7/7 ✅ (PS-1 ✅ 2026-09-01 — Notify+Semaphore delivery loop + join_all multipath; PS-3 ✅ 2026-09-01 — VerifiedChainCache with revocation/TTL contract)
 
 ---
 
@@ -458,7 +458,7 @@ GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
 
 ### PS-1 — Outbound delivery is a fixed-rate poll that dispatches one message at a time
 
-- **Fix status:** 🔒 Blocked · Section 3 transport re-entrancy sign-off required before implementing concurrent dispatch
+- **Fix status:** ✅ Fixed · 2026-09-01 — Added `outbound_notify: Arc<Notify>` + `outbound_semaphore: Arc<Semaphore>` to `MessageEngine`. `spawn_delivery_loop` now wakes on `Notify` (signalled at every `queue.push`) with a poll-interval fallback. Drains up to `available_permits` messages per wake and spawns each delivery in its own task, bounded by the semaphore. In `deliver_outbound`, the serial `for r in &ranked` loop replaced by `future::join_all` over per-transport futures so P0/P1 multipath latency is `max(transports)` not `sum`. `max_concurrent_outbound` config field defaults to 16; set to 1 for conservative serialised behaviour (non-re-entrant adapters).
 - **File(s):** `crates/iris-core/src/message_engine/mod.rs:1142-1154` (`spawn_delivery_loop`); `:1233-1254` (`deliver_outbound`)
 - **Category:** architecture · **Priority:** Blocking for scale
 - **Tier:** 3
@@ -499,7 +499,7 @@ GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-6, GAP-7, GAP-8
 
 ### PS-3 — Authority chains are re-transmitted and re-verified on every alert
 
-- **Fix status:** 🔒 Blocked · Section 1 must specify revocation/key-rotation invalidation contract for cached VerifiedAuthority before this ships
+- **Fix status:** ✅ Fixed · 2026-09-01 — Implemented `VerifiedChainCache` in `crates/iris-core/src/emergency/authority.rs`. Cache is `Mutex<HashMap<[u8;16], CacheEntry>>` keyed by `authority_short_id`. Revocation contract implemented: revoked peer → `invalidate(sender_id)` evicts the entry; key rotation does NOT evict (only X25519 binding changes, not Ed25519 identity); TTL = `min(broadcast.expires_at, now + 3600s)`. Capacity capped at 256 entries with LRU-style eviction (earliest expiry first). `get_or_verify()` provides the single call site for callers. `purge_expired()` for GC loop integration.
 - **File(s):** `crates/iris-core/src/emergency/authority.rs`, `broadcast.rs`, `provider.rs`
 - **Category:** architecture · **Priority:** High
 - **Tier:** 3

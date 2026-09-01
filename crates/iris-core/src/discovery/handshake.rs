@@ -42,6 +42,12 @@ pub struct CapabilityBundle {
     pub bloom_k: usize,
     /// Envelope timestamp of the handshake (unix seconds).
     pub timestamp: u64,
+    /// ROUT-24: top-N delivery-probability snapshot for opportunistic routing
+    /// (ROUTE-002 / GTMX+). Each entry is (destination_peer_id_bytes,
+    /// dp × 10_000 as u16). Clamped to [0, 10_000]; 0 means no history.
+    /// Omitted when empty (backward-compatible with older peers that lack it).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dp_snapshot: Vec<(Vec<u8>, u16)>,
 }
 
 impl CapabilityBundle {
@@ -57,7 +63,16 @@ impl CapabilityBundle {
                 .duration_since(UNIX_EPOCH)
                 .map(|d| d.as_secs())
                 .unwrap_or(0),
+            dp_snapshot: Vec::new(),
         }
+    }
+
+    /// Return the advertised DP for `dest`, or `None` if not in this snapshot.
+    pub fn dp_for_dest(&self, dest: &PeerId) -> Option<f64> {
+        self.dp_snapshot
+            .iter()
+            .find(|(bytes, _)| bytes.as_slice() == dest.0.as_slice())
+            .map(|(_, raw)| f64::from(*raw) / 10_000.0)
     }
 
     /// Encode to canonical CBOR; rejects bundles that would exceed the 256 B
