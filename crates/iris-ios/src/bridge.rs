@@ -38,12 +38,22 @@ fn uuid_to_hex(u: Uuid) -> String {
 }
 
 fn hex_to_uuid(s: &str) -> Option<Uuid> {
-    let clean: String = s.chars().filter(|c| *c != '-' && *c != ':').collect();
-    if clean.len() != 32 {
+    let mut clean = [0u8; 40];
+    let mut len = 0usize;
+    for &byte in s.as_bytes() {
+        if byte != b'-' && byte != b':' {
+            if len >= 40 {
+                return None;
+            }
+            clean[len] = byte;
+            len += 1;
+        }
+    }
+    if len != 32 {
         return None;
     }
     let mut b = [0u8; 16];
-    for (i, pair) in clean.as_bytes().chunks(2).enumerate() {
+    for (i, pair) in clean[..32].chunks(2).enumerate() {
         let hex = std::str::from_utf8(pair).ok()?;
         b[i] = u8::from_str_radix(hex, 16).ok()?;
     }

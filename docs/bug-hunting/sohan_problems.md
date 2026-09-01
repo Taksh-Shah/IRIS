@@ -19,12 +19,12 @@
 | Tier | Name | Total | ✅ Fixed | 🔮 Future | ❌ Reverted | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | Critical/High safety + security | 2 | 2 | 0 | 0 | 0 |
-| 1 | High correctness + Medium safety/protocol | 4 | 3 | 1 | 0 | 0 |
-| 2 | Medium/Low correctness, UX, build | 8 | 7 | 0 | 0 | 1 |
+| 1 | High correctness + Medium safety/protocol | 4 | 4 | 0 | 0 | 0 |
+| 2 | Medium/Low correctness, UX, build | 8 | 8 | 0 | 0 | 0 |
 | N/A | Informational / cleanup (track only) | 2 | 2 | 0 | 0 | 0 |
-| **Total** | | **16** | **14** | **1** | **0** | **1** |
+| **Total** | | **16** | **16** | **0** | **0** | **0** |
 
-**Last updated:** 2026-08-30 · **Active tier:** All findings resolved or classified. AN-2 CI-wired (download artifact from next CI run and commit .so). AN-6 deferred to crypto sprint (friend's work). One remaining ⬜ is the unstarted slot that AN-6 occupies in Tier 2 — reclassify when sprint begins.
+**Last updated:** 2026-09-01 · **Active tier:** All findings resolved. AN-6 fixed — `FfiX25519KeyProvider` trait wired into `AndroidCryptoProvider::decrypt`; Kotlin `X25519KeyProviderImpl` bridges `X25519StaticAd`; DH performed inside JCA, secret never crosses FFI boundary.
 
 ---
 
@@ -166,7 +166,7 @@ AN-15, AN-16
 
 ### AN-6 — X25519 key-exchange code is fully written and tested but never called
 
-- **Fix status:** 🔮 Future scope — AN-1 (real signing) is now in place; X25519 wiring is deferred to a separate crypto sprint. The `FfiCryptoSigner` pattern from AN-1 is the template: add a `FfiX25519KeyProvider` foreign trait, implement it in Kotlin via `X25519StaticAd`, thread it into `AndroidCryptoProvider::decrypt()`.
+- **Fix status:** ✅ Fixed — Added `FfiX25519KeyProvider` UniFFI foreign trait (`crates/iris-android/src/ffi/x25519_provider.rs`); `AndroidCryptoProvider::with_x25519_provider` constructor + updated `decrypt()` uses the provider for DH. Kotlin `X25519KeyProviderImpl` wraps `X25519StaticAd`; wired in `IrisCoreModule` via `IrisEngine.newWithX25519`. Raw secret never crosses FFI.
 - **File(s):** `android/app/src/main/kotlin/iriscore/identity/X25519StaticAd.kt`
 - **Category:** safety · **Severity:** Medium
 - **Tier:** 1

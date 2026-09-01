@@ -2,8 +2,8 @@
 //!
 //! Signing is delegated to the Kotlin-side `FfiCryptoSigner` (Android Keystore
 //! TEE or software backend). Verification, key-agreement, and AEAD are in Rust.
-//! X25519 static keypair is generated once per engine lifetime; AN-6 will wire
-//! the Kotlin-side `X25519StaticAd` once AN-1 (this file) lands.
+//! AN-6: X25519 DH is now delegated to the Kotlin-side `FfiX25519KeyProvider`
+//! (wraps `X25519StaticAd`) so the raw secret bytes never cross the FFI boundary.
 
 use std::sync::Arc;
 
@@ -12,17 +12,36 @@ use iris_core::message_engine::crypto::{CryptoError, CryptoProvider};
 use iris_core::protocol::{EncryptionHdr, Envelope};
 
 use crate::ffi::crypto_signer::FfiCryptoSigner;
+use crate::ffi::x25519_provider::FfiX25519KeyProvider;
 
 pub struct AndroidCryptoProvider {
     signer: Arc<dyn FfiCryptoSigner>,
-    static_x25519: X25519Keypair,
+    /// AN-6: Kotlin-side X25519 provider (wraps `X25519StaticAd`). When
+    /// present, DH for decryption is performed inside Kotlin/JCA so the raw
+    /// static secret never crosses the FFI boundary. Falls back to an
+    /// internally-generated ephemeral keypair when `None` (dev/test only).
+    x25519_provider: Option<Arc<dyn FfiX25519KeyProvider>>,
+    /// Fallback keypair used only when `x25519_provider` is `None`.
+    fallback_x25519: X25519Keypair,
 }
 
 impl AndroidCryptoProvider {
     pub fn new(signer: Arc<dyn FfiCryptoSigner>) -> Self {
         Self {
             signer,
-            static_x25519: X25519Keypair::generate(),
+            x25519_provider: None,
+            fallback_x25519: X25519Keypair::generate(),
+        }
+    }
+
+    pub fn with_x25519_provider(
+        signer: Arc<dyn FfiCryptoSigner>,
+        x25519_provider: Arc<dyn FfiX25519KeyProvider>,
+    ) -> Self {
+        Self {
+            signer,
+            x25519_provider: Some(x25519_provider),
+            fallback_x25519: X25519Keypair::generate(),
         }
     }
 }
@@ -94,8 +113,19 @@ impl CryptoProvider for AndroidCryptoProvider {
         ciphertext: &[u8],
         hdr: &EncryptionHdr,
     ) -> Result<Vec<u8>, CryptoError> {
-        let shared = crypto::x25519::diffie_hellman(&self.static_x25519.secret, &hdr.ephemeral_pubkey)
-            .map_err(|e| CryptoError::Codec(e.to_string()))?;
+        // AN-6: delegate DH to Kotlin so the raw static secret stays in JCA.
+        let shared: [u8; 32] = if let Some(provider) = &self.x25519_provider {
+            let bytes = provider
+                .diffie_hellman(hdr.ephemeral_pubkey.to_vec())
+                .map_err(|e| CryptoError::Codec(e.to_string()))?;
+            bytes
+                .try_into()
+                .map_err(|_| CryptoError::Codec("X25519 provider returned != 32 bytes".into()))?
+        } else {
+            // Fallback: use the internally-generated keypair (dev/test only).
+            crypto::x25519::diffie_hellman(&self.fallback_x25519.secret, &hdr.ephemeral_pubkey)
+                .map_err(|e| CryptoError::Codec(e.to_string()))?
+        };
         let key = crypto::kdf::message_key(&shared, info)?;
         crypto::aead::decrypt(&key, &hdr.nonce, ciphertext, aad)
             .map_err(|_| CryptoError::DecryptionFailed)

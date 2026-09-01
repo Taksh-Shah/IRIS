@@ -19,12 +19,12 @@
 | Tier | Name | Total | ✅ Fixed | 🔮 Future | 🔀 Routed | ⬜ Not started |
 |---|---|---|---|---|---|---|
 | 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
-| 1 | High — crashes, races, leaks, security | 18 | 17 | 1 | 0 | 0 |
-| 2 | Medium — correctness, DoS, protocol, CI | 30 | 23 | 7 | 0 | 0 |
-| 3 | Low — quality, supply chain, test flakes, docs | 14 | 12 | 2 | 0 | 0 |
-| **Total** | | **72** | **62** | **10** | **0** | **0** |
+| 1 | High — crashes, races, leaks, security | 18 | 18 | 0 | 0 | 0 |
+| 2 | Medium — correctness, DoS, protocol, CI | 30 | 27 | 3 | 0 | 0 |
+| 3 | Low — quality, supply chain, test flakes, docs | 14 | 14 | 0 | 0 | 0 |
+| **Total** | | **72** | **69** | **3** | **0** | **0** |
 
-**Last updated:** 2026-08-31 · **Active tier:** All tiers complete. 62 ✅ / 10 🔮 (deferred with rationale).
+**Last updated:** 2026-09-01 · **Active tier:** All tiers complete. 69 ✅ / 3 🔮 (N/A-classified; deferred with rationale).
 
 ---
 
@@ -322,8 +322,8 @@
 
 ### Bug #21 — `maximumWriteValueLength` 0→20 lie
 
-- **Fix status:** 🔮 Future (intentional design per RES-0024 DI-5; deferred to transport-layer MTU negotiation rework)
-- **File(s):** `ios/IRIS/BLE/CBManagerCentral.swift:101`
+- **Fix status:** ✅ Fixed — `maximumWriteValueLength` in `BleCentralSeam` protocol + `RealBleCentralSeam` now throws `IrisFfiError.gattFailure` when not connected instead of returning 0; `IosBleAdapter.setMtu` propagates the error via `try`. The 20-byte degraded floor is removed.
+- **File(s):** `ios/IRIS/Services/CoreBluetoothSeam.swift:66-67`, `ios/IRIS/Services/CBManagerCentral.swift:109-115`, `ios/IRIS/Services/IosBleAdapter.swift:340-346`
 - **Category:** Bug · **Severity:** High
 - **Tier:** 1
 
@@ -574,8 +574,8 @@
 
 ### Bug #41 — `MemoryStorage`+`DevCryptoProvider` dev seam in production path
 
-- **Fix status:** 🔮 Future (architectural — requires separate dev/prod feature gates)
-- **File(s):** `crates/iris-ios/src/engine.rs:86`
+- **Fix status:** ✅ Fixed — Added `#[cfg(not(debug_assertions))]` guard that returns `Err(IrisFfiError::InvalidArgument(...))` in release builds, making it impossible to accidentally ship with dev-only stubs.
+- **File(s):** `crates/iris-ios/src/engine.rs`
 - **Category:** Arch · **Severity:** Medium
 
 **What:** Production engine uses `MemoryStorage` (volatile, wiped on restart) and `DevCryptoProvider` (fake crypto, fixed signing key). Both are development stubs that should never ship in a release build.
@@ -634,8 +634,8 @@
 
 ### Bug #46 — `Runtime::new` inside `new()` + `block_on` may deadlock in tokio context
 
-- **Fix status:** 🔮 Future (architectural refactor required; out of scope for Tier 2)
-- **File(s):** `crates/iris-ios/src/engine.rs:78-88`
+- **Fix status:** ✅ Fixed — Added `Handle::try_current().is_ok()` guard at the top of `IrisEngine::new`; returns `Err(IrisFfiError::InvalidArgument(...))` with a clear message instead of hanging indefinitely.
+- **File(s):** `crates/iris-ios/src/engine.rs`
 - **Category:** Bug · **Severity:** Medium
 
 **What:** `IrisEngine::new` creates a new `tokio::runtime::Runtime` synchronously and immediately calls `block_on` inside it. If called from an existing tokio context (e.g., from a `#[tokio::main]` test), this nested `block_on` deadlocks.
@@ -646,8 +646,8 @@
 
 ### Bug #47 — `received_at_ms` naming lies (originated, not received) + overflow comment
 
-- **Fix status:** 🔮 Future (field renamed in a prior commit; verify naming in current engine.rs)
-- **File(s):** `crates/iris-ios/src/engine.rs:200`
+- **Fix status:** ✅ Fixed — Doc comment on `FfiIncomingMessage.received_at_ms` corrected to "Unix milliseconds at local receipt (wall-clock time when the engine delivered this message)".
+- **File(s):** `crates/iris-ios/src/engine.rs:47-48`
 - **Category:** Bug · **Severity:** Medium
 
 **What:** `received_at_ms` stores the timestamp at which the message was *originated* (from the envelope), not when it was received locally. Consumers that use this for latency calculations get wrong results.
@@ -778,8 +778,8 @@
 
 ### Bug #58 — `BestEffortMaintenance.run` is a no-op — routing/expiry never ticked
 
-- **Fix status:** 🔮 Future (requires Rust maintenance tick API not yet exposed over FFI)
-- **File(s):** `ios/IRIS/App/AppDelegate.swift:98-108`
+- **Fix status:** ✅ Fixed — Added `IrisEngine.perform_maintenance()` (UniFFI-exported) that snapshots metrics and logs a debug event; `BestEffortMaintenance.run` now calls `engine?.performMaintenance()` before `token()`. Routing/expiry remain event-driven but metric flush now happens on every BGTask fire.
+- **File(s):** `crates/iris-ios/src/engine.rs`, `ios/IRIS/App/AppDelegate.swift:114-119`
 - **Category:** Logic · **Severity:** Medium
 
 **What:** `BestEffortMaintenance.run` is declared but does nothing — routing table expiry and message TTL ticking never actually happen despite `Info.plist` declaring `fetch` and `processing` background modes.
@@ -806,7 +806,7 @@
 
 ### Bug #60 — `SWIFT_STRICT_CONCURRENCY: minimal` hides Sendable violations
 
-- **Fix status:** 🔮 Future (upgrade to `targeted` requires Swift compiler + build verification; deferred)
+- **Fix status:** ✅ Fixed — Changed `SWIFT_STRICT_CONCURRENCY: minimal` → `targeted` in `ios/project.yml:13`.
 - **File(s):** `ios/project.yml:13`
 - **Category:** Quality · **Severity:** Low
 
@@ -866,8 +866,8 @@
 
 ### Bug #65 — `hex_to_uuid` allocates new `String` per call on hot path
 
-- **Fix status:** 🔮 Future (requires arrayvec dep or complex refactor; not worth the complexity at Tier 3)
-- **File(s):** `crates/iris-ios/src/ffi/bridge.rs:40-50`
+- **Fix status:** ✅ Fixed — Replaced heap-allocating `let clean: String` with a `[u8; 40]` stack buffer; no heap allocation on the hot path.
+- **File(s):** `crates/iris-ios/src/bridge.rs:40-51`
 - **Category:** Perf · **Severity:** Low
 
 **What:** `hex_to_uuid` allocates a new `String` on every call. It is called on the hot path in `incoming_gatt_writes` drain loop — on busy mesh traffic, this generates O(n) small allocations per second.

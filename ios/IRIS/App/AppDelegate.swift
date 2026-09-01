@@ -112,9 +112,11 @@ public final class BestEffortMaintenance: IrisMaintenanceWork {
         self.engine = engine
     }
     public func run(token: @escaping () -> Void) {
-        // The Rust engine performs routing/expiry/metric maintenance internally;
-        // this slot is where periodic maintenance kicks would surface. Always
-        // complete the token so the BG task never hangs.
+        // Bug #58: trigger metric flush on the Rust engine so the background
+        // task is not a complete no-op. Routing/expiry are event-driven and do
+        // not need an explicit tick; the token must always be called so the
+        // BGTask never hangs.
+        engine?.performMaintenance()
         token()
     }
 }

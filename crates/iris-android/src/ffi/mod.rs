@@ -11,6 +11,7 @@ pub mod crypto_signer;
 pub mod error;
 pub mod wifi_aware_adapter;
 pub mod wifi_direct_adapter;
+pub mod x25519_provider;
 
 pub use ble_adapter::{
     FfiAdvertisementData, FfiBleAdapter, FfiGattWriteEvent, FfiScanFilter, FfiScanResult,
@@ -23,3 +24,4 @@ pub use wifi_direct_adapter::{
     FfiDirectPeerDiscovery, FfiGroupConfig, FfiGroupInfo, FfiIncomingWifiDirectData,
     FfiOperatingBand, FfiWifiDirectAdapter,
 };
+pub use x25519_provider::FfiX25519KeyProvider;

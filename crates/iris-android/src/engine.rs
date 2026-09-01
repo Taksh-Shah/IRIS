@@ -37,6 +37,7 @@ use crate::ffi::crypto_signer::FfiCryptoSigner;
 use crate::ffi::error::IrisFfiError;
 use crate::ffi::wifi_aware_adapter::FfiWifiAwareAdapter;
 use crate::ffi::wifi_direct_adapter::FfiWifiDirectAdapter;
+use crate::ffi::x25519_provider::FfiX25519KeyProvider;
 
 /// A delivered message handed to the Kotlin shell (`subscribe_inbox`).
 #[derive(Debug, Clone, uniffi::Record)]
@@ -165,6 +166,32 @@ impl IrisEngine {
             direct,
             node_id,
             Arc::new(AndroidCryptoProvider::new(signer)),
+        )
+    }
+
+    /// AN-6: constructor variant that wires the Kotlin-side `FfiX25519KeyProvider`
+    /// (wraps `X25519StaticAd`) so DH is performed inside JCA and the raw static
+    /// secret never crosses the FFI boundary. Use this constructor when the
+    /// X25519 static ad is available; prefer `new` only for development/testing.
+    #[uniffi::constructor]
+    pub fn new_with_x25519(
+        ble: Arc<dyn FfiBleAdapter>,
+        aware: Arc<dyn FfiWifiAwareAdapter>,
+        direct: Arc<dyn FfiWifiDirectAdapter>,
+        node_id: Vec<u8>,
+        signer: Arc<dyn FfiCryptoSigner>,
+        x25519_provider: Arc<dyn FfiX25519KeyProvider>,
+    ) -> Result<Arc<Self>, IrisFfiError> {
+        crate::logging::init();
+        let node_id: [u8; 32] = node_id
+            .try_into()
+            .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
+        Self::build(
+            ble,
+            aware,
+            direct,
+            node_id,
+            Arc::new(AndroidCryptoProvider::with_x25519_provider(signer, x25519_provider)),
         )
     }
 }

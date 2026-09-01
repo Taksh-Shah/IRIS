@@ -64,7 +64,9 @@ public protocol BleCentralSeam: AnyObject, Sendable {
     func readValue(identifier: UUID, characteristicUuid: CBUUID)
     func writeValue(identifier: UUID, characteristicUuid: CBUUID, data: Data, withResponse: Bool)
     /// maximumWriteValueLength(for: .withResponse) — negotiated ATT *payload*.
-    func maximumWriteValueLength(identifier: UUID) -> Int
+    /// Throws `IrisFfiError.deviceNotFound` when the peripheral is unknown and
+    /// `IrisFfiError.gattFailure` when not yet connected (Bug #21: never lies 0→20).
+    func maximumWriteValueLength(identifier: UUID) throws -> Int
 }
 
 /// Central-side delegate (projection of CBCentralManagerDelegate + CBPeripheralDelegate).

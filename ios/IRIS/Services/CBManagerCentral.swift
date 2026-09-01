@@ -106,11 +106,15 @@ public final class RealBleCentralSeam: NSObject, BleCentralSeam, Sendable {
         p.writeValue(data, for: characteristic, type: withResponse ? .withResponse : .withoutResponse)
     }
 
-    public func maximumWriteValueLength(identifier: UUID) -> Int {
-        guard let p = peripheral(for: identifier) else { return 0 }
-        // Negotiated ATT payload (cap 512); NEVER trap on a disconnected
-        // peripheral (CoreBluetooth throws NSRangeException).
-        guard p.state == .connected else { return 0 }
+    public func maximumWriteValueLength(identifier: UUID) throws -> Int {
+        guard let p = peripheral(for: identifier) else { throw IrisFfiError.deviceNotFound }
+        // Bug #21: when the peripheral is not connected CoreBluetooth has not
+        // completed MTU negotiation — returning 0 and letting the caller
+        // substitute 20 would lie to the engine. Throw instead so the caller
+        // can defer the write until the connection is established.
+        guard p.state == .connected else {
+            throw IrisFfiError.gattFailure("peripheral not connected — MTU not yet negotiated")
+        }
         return p.maximumWriteValueLength(for: .withResponse)
     }
 

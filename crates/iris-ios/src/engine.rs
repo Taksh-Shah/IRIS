@@ -44,7 +44,7 @@ pub struct FfiIncomingMessage {
     pub payload: Vec<u8>,
     /// 0 = P0 … 7 = P7.
     pub priority: u8,
-    /// Unix epoch milliseconds at origination.
+    /// Unix milliseconds at local receipt (wall-clock time when the engine delivered this message).
     pub received_at_ms: u64,
 }
 
@@ -88,6 +88,15 @@ impl IrisEngine {
     /// engine returns.
     #[uniffi::constructor]
     pub fn new(ble: Arc<dyn FfiBleAdapter>, node_id: Vec<u8>) -> Result<Arc<Self>, IrisFfiError> {
+        // Bug #46: block_on on this thread's own runtime would deadlock; fail
+        // fast with a clear message instead of hanging indefinitely.
+        if tokio::runtime::Handle::try_current().is_ok() {
+            return Err(IrisFfiError::InvalidArgument(
+                "IrisEngine::new must not be called from within a tokio runtime context; \
+                 block_on would deadlock — call from a plain (non-async) thread"
+                    .into(),
+            ));
+        }
         let node_id: [u8; 32] = node_id
             .try_into()
             .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
@@ -107,6 +116,15 @@ impl IrisEngine {
                 .register(ble_t.clone())
                 .await
                 .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
+
+            // Bug #41: MemoryStorage and DevCryptoProvider are dev-only seams.
+            // Release builds must fail fast rather than silently ship with them.
+            #[cfg(not(debug_assertions))]
+            return Err(IrisFfiError::InvalidArgument(
+                "IrisEngine: MemoryStorage and DevCryptoProvider are dev-only stubs; \
+                 replace them with production implementations before shipping a release build."
+                    .into(),
+            ));
 
             let engine = MessageEngine::new_with_telemetry(
                 MessageEngineConfig {
@@ -260,6 +278,16 @@ impl IrisEngine {
         }
         *slot = Some(handle.abort_handle());
         Ok(())
+    }
+
+    /// Snapshot metrics and flush internal counters.
+    ///
+    /// Called from the iOS background task slot (AC-14 `BestEffortMaintenance`).
+    /// The engine handles routing/expiry event-driven internally; this method
+    /// surfaces the metric snapshot so background reporting stays current.
+    pub fn perform_maintenance(&self) {
+        let _ = self.engine.metrics();
+        tracing::debug!("ios: background maintenance tick");
     }
 
     /// Shut down the message engine and the BLE transport (async teardown

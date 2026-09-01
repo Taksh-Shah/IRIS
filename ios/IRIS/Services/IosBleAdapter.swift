@@ -337,13 +337,10 @@ public final class IosBleAdapter: FfiBleAdapter, @unchecked Sendable {
         else {
             throw IrisFfiError.deviceNotFound
         }
-        // DEC-BLE-002-0004 / AC-8: no-op request; return the negotiated ATT
-        // payload (`maximumWriteValueLength(for: .withResponse)`, cap 512).
-        let negotiated = central.maximumWriteValueLength(identifier: peer.identifier)
-        // 20-B degraded guard (RES-0024 DI-5 / iOS 16.x regression): a broken
-        // negotiation must never report more than the practical floor.
-        let guarded = negotiated >= 23 ? negotiated : 20
-        return UInt16(min(guarded, 512))
+        // DEC-BLE-002-0004 / AC-8: return the negotiated ATT payload (cap 512).
+        // Bug #21: throws when not connected — the 0→20 lie is gone.
+        let negotiated = try central.maximumWriteValueLength(identifier: peer.identifier)
+        return UInt16(min(negotiated, 512))
     }
 
     public func incomingGattWrites() -> [FfiGattWriteEvent] {

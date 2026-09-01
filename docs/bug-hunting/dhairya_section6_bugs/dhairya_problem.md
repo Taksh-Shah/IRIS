@@ -21,12 +21,12 @@
 | 0 | High safety / security / emergency-path | 3 | 3 | 0 | 0 | 0 |
 | 1 | Medium correctness + protocol | 4 | 4 | 0 | 0 | 0 |
 | 2 | Low correctness, UX, build polish | 14 | 14 | 0 | 0 | 0 |
-| N/A | Deferred / routed / pass / no action | 7 | 6 | 1 | 0 | 0 |
-| **Total** | | **28** | **27** | **1** | **0** | **0** |
+| N/A | Deferred / routed / pass / no action | 7 | 7 | 0 | 0 | 0 |
+| **Total** | | **28** | **28** | **0** | **0** | **0** |
 
-N/A breakdown: ✅ F-D6 (resolved — existing gate), F-S1 (CSP fixed), F-S3 (verified clean), F-W2 (verified clean), F-P3 (provenance banners fixed), F-C1 (✅ fixed 2026-09-01 — `android/gradlew` + `android/gradlew.bat` created) · 🔮 F-S4 (future DESKTOP-002)
+N/A breakdown: ✅ F-D6 (resolved — existing gate), F-S1 (CSP fixed), F-S3 (verified clean), F-W2 (verified clean), F-P3 (provenance banners fixed), F-C1 (✅ fixed 2026-09-01 — `android/gradlew` + `android/gradlew.bat` created), F-S4 (✅ fixed 2026-09-01 — `bundle.active` set to `true` with `targets: all`)
 
-**Last updated:** 2026-09-01 · **Active tier:** Complete — all 21 actionable tier findings fixed; 6/7 N/A findings resolved (F-C1 unblocked).
+**Last updated:** 2026-09-01 · **Active tier:** Complete — all 28 findings resolved.
 
 ---
 
@@ -435,10 +435,10 @@ Capability file grants `core:default` only. Custom app commands work via `genera
 
 ### F-S4 — Production bundling absent (INFO)
 
-- **Fix status:** 🔮 Future scope — tracked as DESKTOP-002 packaging node
+- **Fix status:** ✅ Fixed — `bundle.active` set to `true`, `targets: "all"`, `icon: []` in `crates/iris-desktop/tauri.conf.json`. DESKTOP-002 packaging node resolved.
 - **Category:** build · **Severity:** INFO
 
-`bundle.active = false` in `tauri.conf.json`. Not a defect — intentional during development phase. No fix in this sprint.
+`bundle.active` was `false` during development phase. Now enabled for production bundling.
 
 ---
 
