@@ -24,6 +24,8 @@ typealias FfiWifiDirectAdapter = uniffi.iriscode.FfiWifiDirectAdapter
 typealias FfiInboxListener = uniffi.iriscode.FfiInboxListener
 @Suppress("unused")
 typealias FfiCryptoSigner = uniffi.iriscode.FfiCryptoSigner
+@Suppress("unused")
+typealias FfiX25519KeyProvider = uniffi.iriscode.FfiX25519KeyProvider
 
 // --- Engine host ---
 @Suppress("unused")
@@ -96,6 +98,8 @@ typealias FfiTransportDiag = uniffi.iriscode.FfiTransportDiag
 typealias FfiNeighborDiag = uniffi.iriscode.FfiNeighborDiag
 @Suppress("unused")
 typealias FfiMessageMetrics = uniffi.iriscode.FfiMessageMetrics
+@Suppress("unused")
+typealias FfiCounter = uniffi.iriscode.FfiCounter
 
 // --- Enums ---
 @Suppress("unused")

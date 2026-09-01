@@ -64,6 +64,12 @@ const IRIS_COMMANDS = [
     aliases: ["diagnostic", "snapshot"],
   },
   {
+    name: "stats",
+    description: "Message / route / security counters (non-zero)",
+    group: "NETWORK",
+    aliases: ["kpi", "metrics"],
+  },
+  {
     name: "node",
     description: "Show this node's identity",
     group: "SYSTEM",
@@ -196,6 +202,8 @@ function irisExecute(raw, hasRecipient) {
       return { type: "system", title: "LINKS", lines: [] };
     case "diag":
       return { type: "system", title: "DIAG", lines: [] };
+    case "stats":
+      return { type: "system", title: "STATS", lines: [] };
     case "node":
       return { type: "system", title: "NODE", lines: [] };
     default:

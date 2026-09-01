@@ -98,6 +98,12 @@ object CommandRegistry {
             aliases = listOf("diagnostic", "snapshot"),
         ),
         IrisCommand(
+            name = "stats",
+            description = "Message / route / security counters (non-zero)",
+            group = CommandGroup.NETWORK,
+            aliases = listOf("kpi", "metrics"),
+        ),
+        IrisCommand(
             name = "node",
             description = "Show this node's identity",
             group = CommandGroup.SYSTEM,

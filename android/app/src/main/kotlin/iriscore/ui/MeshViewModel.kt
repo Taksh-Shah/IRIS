@@ -201,10 +201,12 @@ class MeshViewModel @Inject constructor(
             }
 
             is CommandResult.System ->
-                if (result.title == "DIAG") {
+                if (result.title == "DIAG" || result.title == "STATS") {
                     // snapshot() is a blocking FFI call — resolve off the main thread.
                     viewModelScope.launch {
-                        val entry = withContext(Dispatchers.IO) { resolveDiag() }
+                        val entry = withContext(Dispatchers.IO) {
+                            if (result.title == "STATS") resolveStats() else resolveDiag()
+                        }
                         appendEvent(entry)
                     }
                 } else {
@@ -289,6 +291,26 @@ class MeshViewModel @Inject constructor(
             }
         }
         return ConsoleEntry.system(title = "DIAG", lines = lines, status = uiState.value.status.name)
+    }
+
+    /**
+     * HV-6: renders `/stats` — the non-zero raw `MetricsRegistry` counters from
+     * the engine. `snapshot()` also emits an `iris.kpi` logcat line, so a bench
+     * `adb logcat | grep iris.kpi` capture is a counter time series.
+     */
+    private fun resolveStats(): ConsoleEntry {
+        val snap = try {
+            repository.snapshot()
+        } catch (e: RuntimeException) {
+            return ConsoleEntry.system("STATS", listOf("error" to (e.message ?: e.javaClass.simpleName)))
+        }
+        val nonZero = snap.counters.filter { it.value > 0uL }
+        val lines = if (nonZero.isEmpty()) {
+            listOf("counters" to "all zero")
+        } else {
+            nonZero.map { it.name to it.value.toString() }
+        }
+        return ConsoleEntry.system(title = "STATS", lines = lines, status = uiState.value.status.name)
     }
 
     private fun appendEvent(entry: ConsoleEntry) {

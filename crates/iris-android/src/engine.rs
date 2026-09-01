@@ -74,6 +74,8 @@ pub struct FfiMeshSnapshot {
     pub neighbors: Vec<FfiNeighborDiag>,
     /// Message-engine lifetime counters (since process start / last reset).
     pub messages: FfiMessageMetrics,
+    /// HV-6: the full raw `MetricsRegistry` counter set, sorted by name.
+    pub counters: Vec<FfiCounter>,
 }
 
 /// Per-transport slice of [`FfiMeshSnapshot`].
@@ -110,6 +112,16 @@ pub struct FfiMessageMetrics {
     pub dropped_duplicates: u64,
     pub expired: u64,
     pub delivery_failed: u64,
+}
+
+/// HV-6: one raw `MetricsRegistry` counter (name → lifetime value). The full
+/// set is `metric::ALL` — message/route/SCF/gateway/security counters. Rendered
+/// by `/stats` (non-zero only) and emitted as the `iris.kpi` logcat line so a
+/// bench session's `adb logcat` capture is an analysable KPI trace.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiCounter {
+    pub name: String,
+    pub value: u64,
 }
 
 /// Foreign-trait callback the Kotlin shell installs to receive delivered
@@ -359,6 +371,17 @@ impl IrisEngine {
         });
 
         let m = self.engine.metrics();
+        let mut counters: Vec<FfiCounter> = self
+            .engine
+            .telemetry()
+            .snapshot()
+            .into_iter()
+            .map(|(name, value)| FfiCounter {
+                name: name.to_string(),
+                value,
+            })
+            .collect();
+        counters.sort_by(|a, b| a.name.cmp(&b.name));
         let snapshot = FfiMeshSnapshot {
             node_id_hex: PeerId::from_bytes(self.node_id).to_string(),
             transports,
@@ -371,6 +394,7 @@ impl IrisEngine {
                 expired: m.expired,
                 delivery_failed: m.delivery_failed,
             },
+            counters,
         };
         tracing::info!(
             event = "iris.diag",
@@ -380,6 +404,15 @@ impl IrisEngine {
             messages = ?snapshot.messages,
             "mesh snapshot",
         );
+        // HV-6: a second, KPI-shaped line — just the non-zero counters, one
+        // field each — so a bench `adb logcat | grep iris.kpi` is a time series.
+        let kpi: Vec<String> = snapshot
+            .counters
+            .iter()
+            .filter(|c| c.value > 0)
+            .map(|c| format!("{}={}", c.name, c.value))
+            .collect();
+        tracing::info!(event = "iris.kpi", node = %snapshot.node_id_hex, counters = %kpi.join(" "), "mesh kpi");
         snapshot
     }
 

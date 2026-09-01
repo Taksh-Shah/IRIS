@@ -746,6 +746,12 @@ internal interface UniffiCallbackInterfaceFfiWifiDirectAdapterMethod15 : com.sun
 internal interface UniffiCallbackInterfaceFfiWifiDirectAdapterMethod16 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiX25519KeyProviderMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiX25519KeyProviderMethod1 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`ephemeralPubkey`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("uniffiFree", "uniffiClone", "onMessage")
 internal open class UniffiVTableCallbackInterfaceFfiInboxListener(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -952,6 +958,28 @@ internal open class UniffiVTableCallbackInterfaceFfiWifiDirectAdapter(
     }
 
 }
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "staticPublicKey", "diffieHellman")
+internal open class UniffiVTableCallbackInterfaceFfiX25519KeyProvider(
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+    @JvmField internal var `staticPublicKey`: UniffiCallbackInterfaceFfiX25519KeyProviderMethod0? = null,
+    @JvmField internal var `diffieHellman`: UniffiCallbackInterfaceFfiX25519KeyProviderMethod1? = null,
+) : Structure() {
+    class UniffiByValue(
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+        `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+        `staticPublicKey`: UniffiCallbackInterfaceFfiX25519KeyProviderMethod0? = null,
+        `diffieHellman`: UniffiCallbackInterfaceFfiX25519KeyProviderMethod1? = null,
+    ): UniffiVTableCallbackInterfaceFfiX25519KeyProvider(`uniffiFree`,`uniffiClone`,`staticPublicKey`,`diffieHellman`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiX25519KeyProvider) {
+        `uniffiFree` = other.`uniffiFree`
+        `uniffiClone` = other.`uniffiClone`
+        `staticPublicKey` = other.`staticPublicKey`
+        `diffieHellman` = other.`diffieHellman`
+    }
+
+}
 
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
@@ -1071,7 +1099,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_ffiwifidirectadapter_is_available(
     ): Int
+    external fun uniffi_iriscode_checksum_method_ffix25519keyprovider_static_public_key(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_ffix25519keyprovider_diffie_hellman(
+    ): Int
     external fun uniffi_iriscode_checksum_constructor_irisengine_new(
+    ): Int
+    external fun uniffi_iriscode_checksum_constructor_irisengine_new_with_x25519(
     ): Int
     external fun ffi_iriscode_uniffi_contract_version(
     ): Int
@@ -1094,6 +1128,7 @@ internal object UniffiLib {
         uniffiCallbackInterfaceFfiInboxListener.register(this)
         uniffiCallbackInterfaceFfiWifiAwareAdapter.register(this)
         uniffiCallbackInterfaceFfiWifiDirectAdapter.register(this)
+        uniffiCallbackInterfaceFfiX25519KeyProvider.register(this)
         
     }
     external fun uniffi_iriscode_fn_clone_ffiinboxlistener(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1109,6 +1144,8 @@ external fun uniffi_iriscode_fn_clone_irisengine(`handle`: Long,uniffi_out_err: 
 external fun uniffi_iriscode_fn_free_irisengine(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,`x25519Provider`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1228,6 +1265,16 @@ external fun uniffi_iriscode_fn_method_ffiwifidirectadapter_shutdown(`ptr`: Long
 ): Long
 external fun uniffi_iriscode_fn_method_ffiwifidirectadapter_is_available(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+external fun uniffi_iriscode_fn_clone_ffix25519keyprovider(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_iriscode_fn_free_ffix25519keyprovider(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_init_callback_vtable_ffix25519keyprovider(`vtable`: UniffiVTableCallbackInterfaceFfiX25519KeyProvider,
+): Unit
+external fun uniffi_iriscode_fn_method_ffix25519keyprovider_static_public_key(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_ffix25519keyprovider_diffie_hellman(`ptr`: Long,`ephemeralPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun ffi_iriscode_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_iriscode_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1491,7 +1538,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffiwifidirectadapter_is_available() != 47814) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_iriscode_checksum_method_ffix25519keyprovider_static_public_key() != 65228) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_ffix25519keyprovider_diffie_hellman() != 35693) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_iriscode_checksum_constructor_irisengine_new() != 12524) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_constructor_irisengine_new_with_x25519() != 63309) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -5686,6 +5742,381 @@ public object FfiConverterTypeFfiWifiDirectAdapter: FfiConverter<FfiWifiDirectAd
 
 
 /**
+ * Kotlin-implemented X25519 static-key provider (wraps `X25519StaticAd`).
+ *
+ * - `static_public_key()` — 32-byte X25519 public key for advertisement.
+ * - `diffie_hellman(ephemeral_pubkey)` — compute `X25519(static_secret, eph)`
+ * entirely inside Kotlin/JCA so the raw secret bytes never cross the FFI
+ * boundary; returns the 32-byte shared secret.
+ */
+public interface FfiX25519KeyProvider {
+    
+    /**
+     * 32-byte X25519 public key advertised in the static-ad binding.
+     */
+    fun `staticPublicKey`(): kotlin.ByteArray
+    
+    /**
+     * Perform X25519 DH against the given 32-byte ephemeral public key.
+     * Returns the 32-byte raw shared secret.
+     */
+    fun `diffieHellman`(`ephemeralPubkey`: kotlin.ByteArray): kotlin.ByteArray
+    
+    companion object
+}
+
+/**
+ * Kotlin-implemented X25519 static-key provider (wraps `X25519StaticAd`).
+ *
+ * - `static_public_key()` — 32-byte X25519 public key for advertisement.
+ * - `diffie_hellman(ephemeral_pubkey)` — compute `X25519(static_secret, eph)`
+ * entirely inside Kotlin/JCA so the raw secret bytes never cross the FFI
+ * boundary; returns the 32-byte shared secret.
+ */
+open class FfiX25519KeyProviderImpl: Disposable, AutoCloseable, FfiX25519KeyProvider
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_iriscode_fn_free_ffix25519keyprovider(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_iriscode_fn_clone_ffix25519keyprovider(handle, status)
+        }
+    }
+
+    
+    /**
+     * 32-byte X25519 public key advertised in the static-ad binding.
+     */
+    @Throws(IrisFfiException::class)override fun `staticPublicKey`(): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_ffix25519keyprovider_static_public_key(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Perform X25519 DH against the given 32-byte ephemeral public key.
+     * Returns the 32-byte raw shared secret.
+     */
+    @Throws(IrisFfiException::class)override fun `diffieHellman`(`ephemeralPubkey`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_ffix25519keyprovider_diffie_hellman(
+        it,
+        FfiConverterByteArray.lower(`ephemeralPubkey`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceFfiX25519KeyProvider {
+    internal object `staticPublicKey`: UniffiCallbackInterfaceFfiX25519KeyProviderMethod0 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiX25519KeyProvider.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`staticPublicKey`(
+                )
+            }
+            val writeReturn = { value: kotlin.ByteArray -> uniffiOutReturn.setValue(FfiConverterByteArray.lower(value)) }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: IrisFfiException -> FfiConverterTypeIrisFfiError.lower(e) }
+            )
+        }
+    }
+    internal object `diffieHellman`: UniffiCallbackInterfaceFfiX25519KeyProviderMethod1 {
+        override fun callback(`uniffiHandle`: Long,`ephemeralPubkey`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiX25519KeyProvider.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`diffieHellman`(
+                    FfiConverterByteArray.lift(`ephemeralPubkey`),
+                )
+            }
+            val writeReturn = { value: kotlin.ByteArray -> uniffiOutReturn.setValue(FfiConverterByteArray.lower(value)) }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: IrisFfiException -> FfiConverterTypeIrisFfiError.lower(e) }
+            )
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeFfiX25519KeyProvider.handleMap.remove(handle)
+        }
+    }
+
+    internal object uniffiClone: UniffiCallbackInterfaceClone {
+        override fun callback(handle: Long): Long {
+            return FfiConverterTypeFfiX25519KeyProvider.handleMap.clone(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceFfiX25519KeyProvider.UniffiByValue(
+        uniffiFree,
+        uniffiClone,
+        `staticPublicKey`,
+        `diffieHellman`,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_iriscode_fn_init_callback_vtable_ffix25519keyprovider(vtable)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiX25519KeyProvider: FfiConverter<FfiX25519KeyProvider, Long> {
+    internal val handleMap = UniffiHandleMap<FfiX25519KeyProvider>()
+
+    override fun lower(value: FfiX25519KeyProvider): Long {
+        if (value is FfiX25519KeyProviderImpl) {
+             // Rust-implemented object.  Clone the handle and return it
+            return value.uniffiCloneHandle()
+         } else {
+            // Kotlin object, generate a new vtable handle and return that.
+            return handleMap.insert(value)
+         }
+    }
+
+    override fun lift(value: Long): FfiX25519KeyProvider {
+        if ((value and 1.toLong()) == 0.toLong()) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return FfiX25519KeyProviderImpl(UniffiWithHandle, value)
+        } else {
+            // Kotlin-generated handle, get the object from the handle map
+            return handleMap.remove(value)
+        }
+    }
+
+    override fun read(buf: ByteBuffer): FfiX25519KeyProvider {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: FfiX25519KeyProvider) = 8UL
+
+    override fun write(value: FfiX25519KeyProvider, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * The Android app's engine host. Owns the three injected platform adapters,
  * the transport manager, and the message engine — all driven by a tokio
  * runtime whose handle is threaded through every poll path.
@@ -5959,11 +6390,27 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
 
     
-    
+    companion object {
+        
     /**
-     * @suppress
+     * AN-6: constructor variant that wires the Kotlin-side `FfiX25519KeyProvider`
+     * (wraps `X25519StaticAd`) so DH is performed inside JCA and the raw static
+     * secret never crosses the FFI boundary. Use this constructor when the
+     * X25519 static ad is available; prefer `new` only for development/testing.
      */
-    companion object
+    @Throws(IrisFfiException::class) fun `newWithX25519`(`ble`: FfiBleAdapter, `aware`: FfiWifiAwareAdapter, `direct`: FfiWifiDirectAdapter, `nodeId`: kotlin.ByteArray, `signer`: FfiCryptoSigner, `x25519Provider`: FfiX25519KeyProvider): IrisEngine {
+            return FfiConverterTypeIrisEngine.lift(
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(
+    
+        FfiConverterTypeFfiBleAdapter.lower(`ble`),FfiConverterTypeFfiWifiAwareAdapter.lower(`aware`),FfiConverterTypeFfiWifiDirectAdapter.lower(`direct`),FfiConverterByteArray.lower(`nodeId`),FfiConverterTypeFfiCryptoSigner.lower(`signer`),FfiConverterTypeFfiX25519KeyProvider.lower(`x25519Provider`),_status)
+}
+    )
+    }
+    
+
+        
+    }
     
 }
 
@@ -6086,6 +6533,50 @@ public object FfiConverterTypeFfiAdvertisementData: FfiConverterRustBuffer<FfiAd
     override fun write(value: FfiAdvertisementData, buf: ByteBuffer) {
             FfiConverterByteArray.write(value.`payload`, buf)
             FfiConverterBoolean.write(value.`nonConnectable`, buf)
+    }
+}
+
+
+
+/**
+ * HV-6: one raw `MetricsRegistry` counter (name → lifetime value). The full
+ * set is `metric::ALL` — message/route/SCF/gateway/security counters. Rendered
+ * by `/stats` (non-zero only) and emitted as the `iris.kpi` logcat line so a
+ * bench session's `adb logcat` capture is an analysable KPI trace.
+ */
+data class FfiCounter (
+    var `name`: kotlin.String
+    , 
+    var `value`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCounter: FfiConverterRustBuffer<FfiCounter> {
+    override fun read(buf: ByteBuffer): FfiCounter {
+        return FfiCounter(
+            FfiConverterString.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCounter) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterULong.allocationSize(value.`value`)
+    )
+
+    override fun write(value: FfiCounter, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterULong.write(value.`value`, buf)
     }
 }
 
@@ -6504,6 +6995,11 @@ data class FfiMeshSnapshot (
      * Message-engine lifetime counters (since process start / last reset).
      */
     var `messages`: FfiMessageMetrics
+    , 
+    /**
+     * HV-6: the full raw `MetricsRegistry` counter set, sorted by name.
+     */
+    var `counters`: List<FfiCounter>
     
 ){
     
@@ -6524,6 +7020,7 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterSequenceTypeFfiTransportDiag.read(buf),
             FfiConverterSequenceTypeFfiNeighborDiag.read(buf),
             FfiConverterTypeFfiMessageMetrics.read(buf),
+            FfiConverterSequenceTypeFfiCounter.read(buf),
         )
     }
 
@@ -6531,7 +7028,8 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterString.allocationSize(value.`nodeIdHex`) +
             FfiConverterSequenceTypeFfiTransportDiag.allocationSize(value.`transports`) +
             FfiConverterSequenceTypeFfiNeighborDiag.allocationSize(value.`neighbors`) +
-            FfiConverterTypeFfiMessageMetrics.allocationSize(value.`messages`)
+            FfiConverterTypeFfiMessageMetrics.allocationSize(value.`messages`) +
+            FfiConverterSequenceTypeFfiCounter.allocationSize(value.`counters`)
     )
 
     override fun write(value: FfiMeshSnapshot, buf: ByteBuffer) {
@@ -6539,6 +7037,7 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterSequenceTypeFfiTransportDiag.write(value.`transports`, buf)
             FfiConverterSequenceTypeFfiNeighborDiag.write(value.`neighbors`, buf)
             FfiConverterTypeFfiMessageMetrics.write(value.`messages`, buf)
+            FfiConverterSequenceTypeFfiCounter.write(value.`counters`, buf)
     }
 }
 
@@ -7373,6 +7872,34 @@ public object FfiConverterSequenceTypeFfiAcceptedConnection: FfiConverterRustBuf
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiAcceptedConnection.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiCounter: FfiConverterRustBuffer<List<FfiCounter>> {
+    override fun read(buf: ByteBuffer): List<FfiCounter> {
+        val len = buf.getInt()
+        return List<FfiCounter>(len) {
+            FfiConverterTypeFfiCounter.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCounter>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCounter.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCounter>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCounter.write(it, buf)
         }
     }
 }

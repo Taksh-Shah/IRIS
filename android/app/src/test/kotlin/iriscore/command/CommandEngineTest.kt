@@ -174,6 +174,15 @@ class CommandEngineTest {
     }
 
     @Test
+    fun `stats resolves to a STATS system block`() {
+        // HV-6: KPI counters, filled by the console from engine.snapshot().
+        val result = CommandExecutor.execute("/stats", hasRecipient = false)
+        assertTrue(result is CommandResult.System)
+        assertEquals("STATS", (result as CommandResult.System).title)
+        assertEquals("stats", CommandRegistry.find("kpi")?.name)
+    }
+
+    @Test
     fun `every registered command is executable`() {
         // Guards against a palette that advertises commands the executor does
         // not handle — the failure mode would be a command that silently does
