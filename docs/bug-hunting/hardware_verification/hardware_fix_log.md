@@ -559,6 +559,60 @@ correct before Tier 4.
 
 **Phase T.** n/a — sim routing logic, no radio component.
 
-**Phase C.** Commit _pending_. Tracker: HV-82 → `✅ Fixed` · commit 6c0a755.
+**Phase C.** Commit 6c0a755. Tracker: HV-82 → `✅ Fixed`.
 
 ---
+
+### New candidates spotted (Session 02)
+
+- **HV-83** — `sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only`
+  (`crates/iris-core/tests/sysval_mesh_integration.rs:223`) panics on a clean
+  `fc720d5`. Pre-existing; found running the HV-82 test gate. Likely
+  transport-selection / `RadioConflictGroup` fallout (cf. HV-46). Added to the
+  Tier-0 tracker as `⬜`.
+
+### Session 02 closeout
+
+- Findings advanced: **HV-81** `⬜ → ✅ Fixed` (`e044bda`) — the build gate;
+  **HV-82** `⬜ → ✅ Fixed` (`6c0a755`) — the ROUT-25 test gate. Both host-only,
+  no HW component, so neither is `🟢`.
+- 🟢 count: 0 → 0. ✅ count: 2 → 4 (Session 01: HV-1, HV-5; Session 02: HV-81,
+  HV-82). Tier 0 now 9 findings: 4 ✅, 5 ⬜ (HV-2, HV-3, HV-4, HV-6, HV-83).
+- Gates restored: `cargo build --workspace --all-features` ✅;
+  `cargo test -p iris-storage` ✅; `cargo test -p iris-core` — all lib tests
+  green **except** the pre-existing HV-83 integration failure;
+  `cargo test -p iris-android` 6/6.
+- Blockers opened: none. HV-83 logged as a new pre-existing `⬜` (does not block
+  the Android/BLE work; blocks a fully-green `cargo test -p iris-core`).
+- Hardware: not used — all four findings to date are host-only.
+- **Stopped here — the rest of Tier 0 is human-in-the-loop.** Remaining:
+  - **HV-2** — the Mobly `iris_bench` harness + `IrisTestSnippet` APK + evidence
+    pipeline. This is the gate to Tier 1 and is inherently a bench activity:
+    it drives two physical phones from the laptop, and building/installing the
+    snippet APK needs the gradle + NDK + `cargo ndk` toolchain exercised with
+    the operator present (Android build history in
+    `docs/testing/ANDROID_BUILD_STATUS.md` shows this path has been fragile).
+    There is **no `gradlew` wrapper script** in `android/` — only
+    `gradle/wrapper/gradle-wrapper.jar`; the invocation is
+    `java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain <tasks>`
+    (SDK at `C:/Users/TK/AppData/Local/Android/Sdk`, `cargo-ndk 4.1.2`,
+    JDK 25 present). Confirm `assembleDebug` builds before HV-2 starts.
+  - **HV-3** — `/diag` + `snapshot()` FFI (transports, per-transport state,
+    live links + MTU, discovered peers, scan-backoff, last-N send outcomes) +
+    a rolling event ring over FFI + consistent `iris.*` tags. Large; touches
+    iris-core (to expose state not currently queryable), iris-android FFI, and
+    Kotlin (`CommandExecutor`/`CommandRegistry` `/diag`). The loop wants it
+    "verified on device", and its struct **is** HV-2's `meshSnapshot()` — build
+    the two together.
+  - **HV-4** — injectable fault model on the sim adapters (mid-stream MTU
+    change, unsolicited disconnect, `onScanFailed` after N restarts, `BUSY` on
+    first K calls, GO/GO tie) + `sysval_*` recovery scenarios. `SimulatedTransport`
+    already models loss/latency/MTU/connect-failure/bandwidth/order; the new
+    modes belong partly there and partly on the iris-android `SimBle`/`SimDirect`/
+    `SimAware`. Best built against the specific Tier-1 findings it must
+    reproduce (HV-7 fragment failure, HV-14 scan backoff, HV-19 GO/GO).
+  - **HV-78** — fold `dumpsys`/`btsnoop` capture into the HV-2 harness.
+- Suggested when the operator is next at the bench: (1) confirm
+  `assembleDebug` + `installDebug` on both phones; (2) decide HV-3's FFI
+  struct shape together (it locks HV-2's RPC surface); (3) then the agent
+  builds HV-3 + HV-2 and the operator runs the 2-phone smoke.
