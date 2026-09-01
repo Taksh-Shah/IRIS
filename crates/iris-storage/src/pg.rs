@@ -39,6 +39,20 @@ fn host_is_loopback(host: &str) -> bool {
     matches!(host, "127.0.0.1" | "::1" | "localhost")
 }
 
+/// HV-81: spawn the background driver task for one Postgres connection,
+/// generic over the stream type so both the rustls and NoTls arms of
+/// `establish` can share it.
+fn spawn_pg_driver<S>(connection: tokio_postgres::Connection<tokio_postgres::Socket, S>)
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            tracing::debug!("pg connection driver ended: {e}");
+        }
+    });
+}
+
 /// Build a rustls `MakeRustlsConnect` backed by the bundled Mozilla root set.
 fn make_tls_connector() -> Result<MakeRustlsConnect, StorageError> {
     let mut roots = rustls::RootCertStore::empty();
@@ -226,21 +240,26 @@ async fn establish(
             "TLS required for non-loopback Postgres — set IRIS_PG_SSLMODE=require or use a loopback host".into(),
         ));
     }
-    let (client, connection) = if *ssl_mode == SslMode::Require {
+    // HV-81: the TLS and NoTls arms return `Connection` over different stream
+    // types (`RustlsStream<Socket>` vs `NoTlsStream`), so the `if`/`else` cannot
+    // yield a single value — spawn each arm's driver task inside the arm and let
+    // the expression yield only the `Client`.
+    let client = if *ssl_mode == SslMode::Require {
         let tls = make_tls_connector()?;
-        pg.connect(tls)
+        let (client, connection) = pg
+            .connect(tls)
             .await
-            .map_err(|e| StorageError::Backend(format!("pg connect (tls): {e}")))?
+            .map_err(|e| StorageError::Backend(format!("pg connect (tls): {e}")))?;
+        spawn_pg_driver(connection);
+        client
     } else {
-        pg.connect(tokio_postgres::NoTls)
+        let (client, connection) = pg
+            .connect(tokio_postgres::NoTls)
             .await
-            .map_err(|e| StorageError::Backend(format!("pg connect: {e}")))?
+            .map_err(|e| StorageError::Backend(format!("pg connect: {e}")))?;
+        spawn_pg_driver(connection);
+        client
     };
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            tracing::debug!("pg connection driver ended: {e}");
-        }
-    });
     for statement in CONNECTION_MIGRATIONS {
         client
             .batch_execute(statement)

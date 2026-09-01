@@ -367,7 +367,7 @@ mod tests {
     /// PgStorageConfig::debug must not contain the password.
     #[test]
     fn config_debug_redacts_password() {
-        use crate::pg::PgStorageConfig;
+        use crate::pg::{PgStorageConfig, SslMode};
         let cfg = PgStorageConfig {
             host: "db.internal".into(),
             port: 5432,
@@ -377,6 +377,7 @@ mod tests {
             max_storage_bytes: 1024,
             eviction_threshold: 0.8,
             node_id: None,
+            ssl_mode: SslMode::Require,
         };
         let rendered = format!("{cfg:?}");
         assert!(rendered.contains("[redacted]"), "rendered: {rendered}");

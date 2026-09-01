@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 6 | 0 | 2 | 0 | 0 | 4 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 8 | 0 | 3 | 0 | 0 | 5 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **81** | **0** | **2** | **0** | **0** | **79** |
+| **Total** | | **83** | **0** | **3** | **0** | **0** | **80** |
 
-**Last updated:** 2026-09-01 (Session 01 — HV-1, HV-5 `✅ Fixed`) ·
-**Active tier:** 0
+**Last updated:** 2026-09-01 (Session 02 — HV-81 `✅ Fixed`; HV-81/HV-82 added
+to Tier 0) · **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -236,6 +236,46 @@ success rate. The operator's "it fails sometimes" cannot be turned into "it fail
 **Fix sketch:** wire the existing `MetricsRegistry` counters through the FFI
 `snapshot()` from HV-3 and render a `/stats` block. Log a one-line CSV row per
 send outcome so a bench session produces an analysable file.
+
+---
+
+### HV-81 — `iris-storage` does not build; TLS/NoTls `Connection` type mismatch blocks the Phase-D build gate
+
+- **Fix status:** ✅ Fixed · commit _pending_ · 2026-09-01 · host build, no HW
+  gate · Session 02
+- **Area:** `crates/iris-storage/src/pg.rs` (`establish`),
+  `crates/iris-storage/src/seal.rs` (test literal)
+- **Severity:** High (blocks `cargo build --workspace --all-features` and
+  `cargo test -p iris-storage` — both loop Phase-D gates)
+
+**What (found in Session 01):** TAK-6's `SslMode` split made `establish()`'s
+`if *ssl_mode == Require { pg.connect(tls) } else { pg.connect(NoTls) }` return
+two different `Connection<Socket, S>` types (`RustlsStream<Socket>` vs
+`NoTlsStream`) — `E0308`. The `ssl_mode` field was also never added to the
+`PgStorageConfig` test literal in `seal.rs` (`E0063`). Pre-existing at `fc720d5`;
+not from the hardware deep-dive but on the critical path for every later finding.
+
+**Resolution:** generic `spawn_pg_driver<S>()` helper; each `if`/`else` arm
+spawns its own driver and yields only `Client`. `ssl_mode: SslMode::Require`
+added to the test literal. `cargo build --workspace --all-features` and
+`cargo test -p iris-storage` both green.
+
+---
+
+### HV-82 — `iris-core` ROUT-25 cold-start-spray tests fail at HEAD
+
+- **Fix status:** ⬜ (spotted Session 01; deferred — see Session 02 log)
+- **Area:** `crates/iris-core/src/routing/opportunistic.rs`,
+  `crates/iris-core/src/routing/mod.rs` (tests `rout25_cold_start_sprays_instead_of_flooding`,
+  `rout25_spray_fallback_fires_when_cold_start`)
+- **Severity:** Medium (test-integrity) · **HW gate:** none
+
+**What:** two ROUT-25 tests fail on a clean `fc720d5`. The
+cold-start-spray-instead-of-flood behaviour from `5ffffb0` either regressed
+under a later commit (`ca02ad6` "ROUT-23/26" is the prime suspect) or the tests
+were committed red. Directly relevant to Tier 4 (flood/PRoPHET) and to HV-75
+(the live relay path does not call the routing module at all) — best fixed as
+part of the Tier-4 routing research rather than in isolation.
 
 ---
 

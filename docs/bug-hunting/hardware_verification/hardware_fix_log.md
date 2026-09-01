@@ -439,6 +439,7 @@ iris-android` passes.
   cold-start-spray-instead-of-flood behaviour added in `5ffffb0` regressed (or
   the tests were committed red). Relevant to Tier 4 (flood/PRoPHET) research —
   the live relay path's routing is already the subject of HV-75.
+
 ### Session 01 closeout
 
 - Findings advanced: HV-1 `⬜ → ✅ Fixed` (CI-verified; no HW gate); HV-5
@@ -459,3 +460,65 @@ iris-android` passes.
   the phones on the bench. Clear **HV-81** first so `cargo build --workspace
   --all-features` is green for the rest of the tier. HV-3 (`/diag` +
   `snapshot()` FFI) and HV-4 (sim fault model) follow.
+
+---
+
+## Session 02 — 2026-09-01 — Clear the blockers (HV-81, HV-82), then Tier 0
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`) · P2 = vivo 2004 (`b2fbcd39`) —
+enrolled, not used yet (blocker work + Tier-0 instrumentation are host-only).
+**Build under test:** `2fbad16` → HEAD (main)
+**Session goal:** HV-81, HV-82 (unblock the Phase-D build/test gates), then
+carry on Tier 0 (HV-2 / HV-3 / HV-4) until a hardware step is required.
+
+---
+
+### HV-81 — `iris-storage` does not build (TLS/NoTls `Connection` type mismatch)
+
+**Phase R.** TAK-6 added `SslMode` and made `establish()` pick rustls vs `NoTls`
+at runtime:
+```rust
+let (client, connection) = if *ssl_mode == SslMode::Require {
+    pg.connect(make_tls_connector()?) ...      // Connection<Socket, RustlsStream<Socket>>
+} else {
+    pg.connect(tokio_postgres::NoTls) ...       // Connection<Socket, NoTlsStream>
+};
+```
+The two arms of the `if` produce different concrete `Connection<S>` types, so the
+expression has no single type — `E0308`, arm 2 "expected `RustlsStream<Socket>`,
+found `NoTlsStream`". `cargo build -p iris-storage` fails on a clean `fc720d5`
+(the tracker note said "`--all-features`" but it fails on default features too —
+there is no `cfg` gate on the TLS path). A sibling break: the TAK-6 `ssl_mode`
+field was never added to the `PgStorageConfig` literal in
+`seal.rs::config_debug_redacts_password`, so `cargo test -p iris-storage` also
+fails to compile (`E0063 missing field ssl_mode`).
+
+`tokio_postgres`'s own docs spawn the driver per connection immediately after
+`connect()`; the connection value is only ever `.await`ed on a spawned task and
+never returned to callers. So there is no need for the `if`/`else` to yield the
+`Connection` at all — each arm can spawn its own driver and yield only `Client`.
+
+**Phase D.** `crates/iris-storage/src/pg.rs`:
+- New generic helper
+  `fn spawn_pg_driver<S>(connection: tokio_postgres::Connection<tokio_postgres::Socket, S>)
+  where S: AsyncRead + AsyncWrite + Unpin + Send + 'static` — the shared driver
+  spawn, monomorphised per stream type.
+- `establish()`: the `if`/`else` now binds `(client, connection)` inside each
+  arm, calls `spawn_pg_driver(connection)`, and yields `client`. Behaviour is
+  identical (driver task spawned, `tracing::debug!` on driver exit).
+
+`crates/iris-storage/src/seal.rs`: add `ssl_mode: SslMode::Require` to the test
+config literal; import `SslMode`.
+
+- `cargo build -p iris-storage`: **pass** (was E0308).
+- `cargo build --workspace --all-features`: **pass** (1m03s) — the Phase-D build
+  gate is green again.
+- `cargo test -p iris-storage`: **21 + 1 + 2/16-ignored pass, 0 fail** (was:
+  does not compile).
+
+**Phase T.** n/a — no radio component; needs a live Postgres for the `#[ignore]`
+integration tests, which is not this pass's concern.
+
+**Phase C.** Commit _pending_. Tracker: new **HV-81 → `✅ Fixed`** under Tier 0.
+
+---
