@@ -698,7 +698,7 @@ every hardware finding after it.
   deferred), Wi-Fi Direct (P2 `reason=2` BUSY on cold start — HV-23).
 
 **Phase C.**
-- Commit _pending_.
+- Commit 3daf0da.
 - Tracker: **HV-84 → 🟢** (build + engine-start verified on 2 phones with logcat).
   Tier 0: 10 findings — 1 🟢, 4 ✅, 5 ⬜.
 - `docs/testing/ANDROID_BUILD_STATUS.md` is stale (66-error state from a much

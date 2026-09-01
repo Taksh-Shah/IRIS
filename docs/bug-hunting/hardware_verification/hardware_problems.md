@@ -300,7 +300,7 @@ look; blocks a fully-green `cargo test -p iris-core`.
 
 ### HV-84 — The debug APK has not built since 2026-08-30: stale UniFFI Kotlin bindings + missing `api.kt` facade alias
 
-- **Fix status:** 🟢 HW-verified · commit _pending_ · 2026-09-01 · APK builds,
+- **Fix status:** 🟢 HW-verified · commit 3daf0da · 2026-09-01 · APK builds,
   installs, and the engine starts on P1=V2205 + P2=vivo 2004 · Session 03
 - **Area:** `kotlin/src/main/kotlin/iriscore/uniffi/iriscode/iriscode.kt`
   (generated), `kotlin/src/main/kotlin/iriscode/api.kt` (facade),
