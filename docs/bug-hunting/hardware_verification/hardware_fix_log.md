@@ -399,6 +399,32 @@ no RF/AOSP research — the mechanism is entirely in-tree)
 
 ---
 
+### HV-5 — `received_at_ms` doc comment still says "origination", code says local receipt
+
+**Phase R.** GAP-9 changed `FfiIncomingMessage.received_at_ms` to
+`unix_now().saturating_mul(1000)` (local receipt time) at `engine.rs:351` — the
+sender's self-declared origination time is peer-controlled and unsafe as an inbox
+sort key (a peer could pin or bury its own messages). The `///` doc on the field
+(`engine.rs:50`) was never updated and still read "Unix epoch milliseconds at
+origination", directly contradicting the code and the `GAP-9` comment 300 lines
+below it. Kotlin `MeshRepository.toUi` consumes it as `receivedAtMs` for sort
+order. No `originated_at_ms` field exists, so the UI cannot distinguish a freshly
+relayed hour-old message from a new one — noted in the corrected doc as a known
+limitation rather than fixed (adding a field is a UI-driven change, not a
+doc-drift fix).
+
+**Phase D.** `crates/iris-android/src/engine.rs` — rewrote the field doc comment
+to state local-receipt semantics, cite GAP-9, name the Kotlin consumer, and flag
+the missing-origination-time limitation. Comment-only; `cargo build -p
+iris-android` passes.
+
+**Phase T.** n/a — documentation, no radio component.
+
+**Phase C.** Commit _pending_. Tracker: HV-5 → `✅ Fixed`. Tier 0 counts
+`✅ 1 → 2`, `⬜ 5 → 4`.
+
+---
+
 ### New candidates spotted (not fixed)
 
 - **HV-81** — `iris-storage` does not build under `--all-features`:
@@ -413,24 +439,23 @@ no RF/AOSP research — the mechanism is entirely in-tree)
   cold-start-spray-instead-of-flood behaviour added in `5ffffb0` regressed (or
   the tests were committed red). Relevant to Tier 4 (flood/PRoPHET) research —
   the live relay path's routing is already the subject of HV-75.
-- **HV-5** is right here at `engine.rs:49` (`received_at_ms` doc says
-  "origination", code is local receipt) — already tracked, Tier 0, trivial;
-  take it next as its own one-line commit.
-
 ### Session 01 closeout
 
-- Findings advanced: HV-1 `⬜ → ✅ Fixed` (CI-verified; no HW gate).
-- 🟢 count: 0 → 0 (unchanged — HV-1 has no hardware component).
-- ✅ count: 0 → 1.
+- Findings advanced: HV-1 `⬜ → ✅ Fixed` (CI-verified; no HW gate); HV-5
+  `⬜ → ✅ Fixed` (doc/comment drift, no HW gate).
+- 🟢 count: 0 → 0 (neither finding has a hardware component).
+- ✅ count: 0 → 2. Tier 0 `⬜` 6 → 4.
 - Blockers opened: none new in the HV-1..HV-80 set. Two pre-existing repo
   breakages logged as HV-81 (build, `--all-features`) and HV-82 (iris-core
   routing tests) — both predate this session and are outside Appendix B's
   Android scope, but HV-81 blocks the Phase-D `--all-features` build gate for
   every subsequent finding and should be fixed first.
-- Hardware: both phones enrolled and `adb`-reachable; no radio test run (not
-  applicable to HV-1).
-- Next session should pick up: **HV-5** (2-minute doc fix, same file) then
-  **HV-2** — the Mobly `iris_bench` harness + `IrisTestSnippet` APK + evidence
-  pipeline (loop §4). HV-2 is the large one and is the gate to Tier 1. Consider
-  clearing HV-81 first so `cargo build --workspace --all-features` is green for
-  the rest of the tier.
+- Hardware: both phones enrolled and `adb`-reachable (P1 = V2205 `10BCA20F4M000BB`,
+  P2 = vivo 2004 `b2fbcd39`); no radio test run — neither finding this session
+  has a radio component.
+- Next session should pick up: **HV-2** — the Mobly `iris_bench` harness +
+  `IrisTestSnippet` APK + evidence pipeline (loop §4). It is the large Tier-0
+  deliverable and the gate to Tier 1, and warrants its own focused session with
+  the phones on the bench. Clear **HV-81** first so `cargo build --workspace
+  --all-features` is green for the rest of the tier. HV-3 (`/diag` +
+  `snapshot()` FFI) and HV-4 (sim fault model) follow.

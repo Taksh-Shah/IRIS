@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 6 | 0 | 1 | 0 | 0 | 5 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 6 | 0 | 2 | 0 | 0 | 4 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,9 +69,9 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **81** | **0** | **1** | **0** | **0** | **80** |
+| **Total** | | **81** | **0** | **2** | **0** | **0** | **79** |
 
-**Last updated:** 2026-09-01 (Session 01 — HV-1 `✅ Fixed`, CI-verified) ·
+**Last updated:** 2026-09-01 (Session 01 — HV-1, HV-5 `✅ Fixed`) ·
 **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
@@ -204,8 +204,9 @@ CI.
 
 ### HV-5 — `received_at_ms` doc comment still says "origination", code says local receipt
 
-- **Fix status:** ⬜
-- **Area:** `crates/iris-android/src/engine.rs:50` (doc) vs `:322` (code)
+- **Fix status:** ✅ Fixed · commit _pending_ · 2026-09-01 · doc/comment only, no
+  HW gate · Session 01
+- **Area:** `crates/iris-android/src/engine.rs:50` (doc) vs `:351` (code)
 - **Severity:** Low (doc/code drift, but it's on the FFI contract) · **HW gate:** none
 
 **What:** GAP-9 correctly changed the field to `unix_now().saturating_mul(1000)`

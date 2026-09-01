@@ -47,7 +47,13 @@ pub struct FfiIncomingMessage {
     pub payload: Vec<u8>,
     /// 0 = P0 … 7 = P7.
     pub priority: u8,
-    /// Unix epoch milliseconds at origination.
+    /// Unix epoch milliseconds at **local receipt** on this node (GAP-9): set
+    /// from `unix_now()` when the delivered message is drained, *not* the
+    /// sender's self-declared origination time (that field is peer-controlled
+    /// and unsafe as an inbox sort key). The Kotlin side (`MeshRepository.toUi`)
+    /// uses it for `receivedAtMs` ordering. There is currently no field
+    /// carrying the true origination time — the UI cannot tell a freshly
+    /// relayed hour-old message from a new one.
     pub received_at_ms: u64,
 }
 
