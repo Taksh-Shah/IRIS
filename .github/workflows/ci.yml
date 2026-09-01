@@ -67,6 +67,12 @@ jobs:
         run: cargo nextest run --workspace --all-features --profile ci
       - name: Run doc-tests
         run: cargo test --doc --workspace --all-features
+      # HV-1: the Android engine's own unit tests (round_trip_delivers_over_shared_mesh
+      # et al.) regressed to non-compiling when `signer` was added and went
+      # unnoticed because nothing named this crate explicitly. Keep an explicit,
+      # named gate so an iris-android test break is legible in the CI summary.
+      - name: Android engine tests (iris-android)
+        run: cargo test -p iris-android
       - name: Upload JUnit report
         uses: actions/upload-artifact@v4
         if: always()

@@ -267,3 +267,170 @@ should be reconsidered for v1; LAN P2P (HV-43) is the deferred piece.
 - Suggested parallel track: HV-54 + HV-55 (composer height + send button) — one
   small PR, no transport code, immediately improves the operator's daily
   experience. Can be done by a second contributor any time.
+
+---
+
+## Session 01 — 2026-09-01 — Tier 0 start (HV-1)
+
+**Devices:** P1 = V2205 (vivo, `10BCA20F4M000BB`) · P2 = vivo 2004
+(`b2fbcd39`) — both `adb`-reachable, **not yet used this session** (HV-1 is a
+host-build finding, no radio component).
+**Build under test:** `fc720d5` (main)
+**Baseline captured:**
+- `cargo build --workspace --all-features` = **FAIL**, pre-existing and unrelated:
+  `iris-storage` `lib.rs` `connect_pg` — `if`/`else` arms return
+  `RustlsStream<Socket>` vs `NoTlsStream` (E0308). Fails identically on a clean
+  `fc720d5` with the working tree stashed. Logged as a new candidate (HV-81
+  below); out of HV-1 scope.
+- `cargo test -p iris-android` = **FAIL to compile** (the HV-1 defect itself —
+  5× `IrisEngine::new` call sites in the test module pass 4 args, ctor takes 5).
+- `cargo test -p iris-core` = 762/764; **2 pre-existing failures** unrelated to
+  this crate: `routing::tests::rout25_cold_start_sprays_instead_of_flooding` and
+  `routing::opportunistic::tests::rout25_spray_fallback_fires_when_cold_start`
+  (both land in `iris-core/src/routing/`, last touched by `5ffffb0` /
+  `ca02ad6` "ROUT-21/23/25/26"; confirmed failing on stashed `fc720d5`). Logged
+  as HV-82 below.
+**Session goal:** Tier 0, HV-1.
+
+---
+
+### HV-1 — The Android engine's own unit tests do not compile against the real constructor
+
+**Phase R — Research note** (codebase-only; `HW gate: none` per the tracker, so
+no RF/AOSP research — the mechanism is entirely in-tree)
+
+- **Mechanism.** `bde5c8e` ("AN-1 — replace DevCryptoProvider with real
+  AndroidCryptoProvider", 2026-08-30) added a 5th parameter
+  `signer: Arc<dyn FfiCryptoSigner>` to `IrisEngine::new`
+  (`crates/iris-android/src/engine.rs:86`) and swapped the engine's
+  `CryptoProvider` from `DevCryptoProvider` to `AndroidCryptoProvider`. It
+  updated the Kotlin caller (`IrisCoreModule.kt`) but **not** the five
+  `IrisEngine::new(...)` call sites in `#[cfg(test)] mod tests` (lines ~572, 597,
+  635, 644, 745 at HEAD). `cargo build --workspace` does not compile test code,
+  and nothing in CI names this crate explicitly, so `cargo nextest run
+  --workspace` was the only thing exercising it — and that leg has been red (or
+  silently skipped in local dev-loops) since 2026-08-30. Net: the one test that
+  proves an end-to-end send through the FFI bridge
+  (`round_trip_delivers_over_shared_mesh`) has not run for ~2 days of engine
+  work.
+- **Why the current code is wrong.** Two layers:
+  1. The test module cannot name a `dyn FfiCryptoSigner` — there is no test
+     double for it anywhere in the crate (`grep FfiCryptoSigner … | grep -i
+     test|sim|stub|mock|fake` → nothing).
+  2. Even with a signer stub, `round_trip_delivers_over_shared_mesh` uses
+     `node_a = [1u8; 32]` / `node_b = [2u8; 32]` — **not** real Ed25519 keys —
+     so `AndroidCryptoProvider::verify` (strict `verify_strict` against
+     `envelope.sender_id`) and `decrypt` (X25519 DH against a *randomly
+     generated, non-injectable* `static_x25519`) can never succeed in a
+     two-engine test. Making that test pass under the real provider needs
+     AN-6 (inject/derive the X25519 static key), which the commit itself marks
+     **blocked**.
+- **How this is solved elsewhere.** `iris-core`'s own engine tests
+  (`message_engine/mod.rs:1900+`) keep using `DevCryptoProvider` and, since
+  PRY-33/RED-0002 (`seal_outbound` fails closed on a missing recipient key),
+  register a fake key: `dir.insert(BOB, [0xBB; 32]); engine.set_key_directory(…)`.
+  `DevCryptoProvider`'s encrypt/decrypt are pass-through, so the key *value* is
+  irrelevant — only its presence in the directory matters. This is the
+  established in-repo pattern for "exercise the plumbing, not the crypto."
+- **IRIS constraints.** The FFI surface must not change
+  (`#[uniffi::export]`/`#[uniffi::constructor]` on `new`); the production path
+  must still hard-wire `AndroidCryptoProvider` (no way to inject an inert
+  provider from Kotlin). `Arc<dyn CryptoProvider>` is not a uniffi type, so any
+  crypto-parameterised constructor must live **outside** the `#[uniffi::export]
+  impl` block.
+- **Research outcome.** Extract the body of `new` into a private
+  `IrisEngine::build(ble, aware, direct, node_id, crypto: Arc<dyn CryptoProvider>)`
+  in a plain (non-exported) `impl` block; `pub fn new` keeps its signature and
+  calls `build` with `AndroidCryptoProvider`. Add a `#[cfg(test)]`
+  `IrisEngine::new_for_test(…)` that calls `build` with `DevCryptoProvider`, plus
+  a `#[cfg(test)]` `register_test_key` helper mirroring the iris-core pattern.
+  The four registration/lifecycle tests are unchanged in intent; the round-trip
+  test gains one line (`a_engine.register_test_key(node_b, [0xBB; 32])`) and
+  keeps testing exactly what it tested pre-`bde5c8e` (bridge → transport →
+  `SimMeshCoordinator` → inbox), not the crypto backend. Rejected: (a) a real
+  Ed25519/X25519 `SimSigner` + real-key node ids — blocked on AN-6, far larger
+  than HV-1's "make the test run" goal; (b) `#[ignore]` on the round-trip test —
+  defeats the purpose of the finding.
+
+**Phase D — Implementation**
+
+- Files changed:
+  - `crates/iris-android/src/engine.rs` — `use …crypto::CryptoProvider`; split
+    `new` → `new` (FFI, wires `AndroidCryptoProvider`) + private `build(…, crypto:
+    Arc<dyn CryptoProvider>)` in a new plain `impl` block; re-open
+    `#[uniffi::export] impl` for the rest of the surface; new `#[cfg(test)] impl`
+    with `new_for_test` + `register_test_key`; 5 test call sites →
+    `new_for_test`; round-trip test registers B's key before send.
+  - `.github/workflows/ci.yml` — explicit named `cargo test -p iris-android`
+    step after the doc-tests step (legibility; the `nextest --workspace` leg
+    already covered it but the break was invisible in the summary).
+- Sim fault-injection test added: none — HV-1 is test-integrity, not a failure
+  mode. The fault model is HV-4.
+- `cargo test -p iris-android`: **6/6 pass** (was: does not compile).
+  ```
+  test engine::tests::engine_registers_three_transports_over_bridges ... ok
+  test engine::tests::start_all_brings_transports_up_over_bridges ... ok
+  test engine::tests::round_trip_delivers_over_shared_mesh ... ok
+  test engine::tests::engine_owns_a_live_runtime ... ok
+  test bridge::tests::ble4_draining_one_handle_does_not_destroy_another_peers_frames ... ok
+  test ffi::ble_adapter::tests::projection_trait_drives_sync_ops ... ok
+  test result: ok. 6 passed; 0 failed
+  ```
+- `cargo build -p iris-android` / `cargo clippy -p iris-android --all-targets`:
+  pass (2 clippy warnings in `bridge.rs` are pre-existing `manual_str_repeat` /
+  `manual_repeat_n`, not touched here).
+
+**Phase T — Hardware test**
+
+- n/a. HV-1 has no radio component (`HW gate: none`). Per loop §0 this cannot be
+  marked `🟢` (that status is reserved for on-phone evidence); it is marked
+  `✅ Fixed` with the CI/`cargo test` evidence above. It unblocks the sim
+  round-trip that every Tier 1+ BLE/Wi-Fi-Direct finding will regression-check
+  against.
+
+**Phase C — Close**
+
+- Commit: 66b9375 — `fix(hw/test-integrity): HV-1 — Android engine tests compile + run against the 5-arg constructor`
+- Tracker: HV-1 → `✅ Fixed` (Tier 0). Progress table Tier 0: `⬜ 6 → ⬜ 5`,
+  `✅ 0 → 1`.
+- Docs corrected: none overclaimed HV-1 specifically. `ANDROID_BUILD_STATUS.md`
+  is the natural home for "iris-android tests now gate in CI" — deferred to the
+  HV-2 harness commit which rewrites that doc's CI section wholesale.
+
+---
+
+### New candidates spotted (not fixed)
+
+- **HV-81** — `iris-storage` does not build under `--all-features`:
+  `connect_pg` `if tls { pg.connect(make_tls_connector()?) } else {
+  pg.connect(NoTls) }` — the two arms have incompatible `Connection<_, S>` types
+  (E0308). Needs `.map(|(c, _)| c)` normalisation or boxing the stream. Blocks
+  `cargo build --workspace --all-features` (a loop Phase-D gate). Pre-existing at
+  `fc720d5`.
+- **HV-82** — `iris-core` ROUT-25 cold-start spray: two tests
+  (`rout25_cold_start_sprays_instead_of_flooding`,
+  `rout25_spray_fallback_fires_when_cold_start`) fail at `fc720d5`. The
+  cold-start-spray-instead-of-flood behaviour added in `5ffffb0` regressed (or
+  the tests were committed red). Relevant to Tier 4 (flood/PRoPHET) research —
+  the live relay path's routing is already the subject of HV-75.
+- **HV-5** is right here at `engine.rs:49` (`received_at_ms` doc says
+  "origination", code is local receipt) — already tracked, Tier 0, trivial;
+  take it next as its own one-line commit.
+
+### Session 01 closeout
+
+- Findings advanced: HV-1 `⬜ → ✅ Fixed` (CI-verified; no HW gate).
+- 🟢 count: 0 → 0 (unchanged — HV-1 has no hardware component).
+- ✅ count: 0 → 1.
+- Blockers opened: none new in the HV-1..HV-80 set. Two pre-existing repo
+  breakages logged as HV-81 (build, `--all-features`) and HV-82 (iris-core
+  routing tests) — both predate this session and are outside Appendix B's
+  Android scope, but HV-81 blocks the Phase-D `--all-features` build gate for
+  every subsequent finding and should be fixed first.
+- Hardware: both phones enrolled and `adb`-reachable; no radio test run (not
+  applicable to HV-1).
+- Next session should pick up: **HV-5** (2-minute doc fix, same file) then
+  **HV-2** — the Mobly `iris_bench` harness + `IrisTestSnippet` APK + evidence
+  pipeline (loop §4). HV-2 is the large one and is the gate to Tier 1. Consider
+  clearing HV-81 first so `cargo build --workspace --all-features` is green for
+  the rest of the tier.

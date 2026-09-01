@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 6 | 0 | 0 | 0 | 0 | 6 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 6 | 0 | 1 | 0 | 0 | 5 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **81** | **0** | **0** | **0** | **0** | **81** |
+| **Total** | | **81** | **0** | **1** | **0** | **0** | **80** |
 
-**Last updated:** 2026-08-31 (tracker created; Tier 9 added after the framework
-research pass — HV-65..HV-80) · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 01 — HV-1 `✅ Fixed`, CI-verified) ·
+**Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -88,9 +88,16 @@ bench can observe what the radios actually do. Do this tier first.*
 
 ### HV-1 — The Android engine's own unit tests do not compile against the real constructor
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · commit 66b9375 · 2026-09-01 · CI-verified (no HW
+  gate) · see `hardware_fix_log.md` Session 01
 - **Area:** `crates/iris-android/src/engine.rs` (test module, ~line 570+)
 - **Severity:** High (test-integrity) · **HW gate:** none (host build)
+
+**Resolution:** split `IrisEngine::new` into the FFI constructor + a private
+`build(…, crypto: Arc<dyn CryptoProvider>)`; added `#[cfg(test)]`
+`new_for_test` (inert `DevCryptoProvider`) + `register_test_key` (PRY-33 fix).
+5 test call sites updated; `round_trip_delivers_over_shared_mesh` runs again.
+`cargo test -p iris-android` → 6/6, now an explicit named CI step.
 
 **What:** `IrisEngine::new` takes five parameters
 `(ble, aware, direct, node_id, signer)`. Every call in the `#[cfg(test)] mod

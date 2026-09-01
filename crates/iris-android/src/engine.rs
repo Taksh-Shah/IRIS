@@ -18,6 +18,7 @@ use tokio::runtime::{Handle, Runtime};
 
 use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
+use iris_core::message_engine::crypto::CryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
 use iris_core::message_engine::{
     expiry::unix_now, InboundOutcome, MessageEngine, MessageEngineConfig,
@@ -98,6 +99,30 @@ impl IrisEngine {
         let node_id: [u8; 32] = node_id
             .try_into()
             .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
+        Self::build(
+            ble,
+            aware,
+            direct,
+            node_id,
+            Arc::new(AndroidCryptoProvider::new(signer)),
+        )
+    }
+}
+
+impl IrisEngine {
+    /// HV-1: the real construction path, parameterised on the crypto backend so
+    /// the `#[cfg(test)]` module can build an engine over the inert
+    /// `DevCryptoProvider` (via [`Self::new_for_test`]) without a Kotlin
+    /// `FfiCryptoSigner`. Production always goes through [`Self::new`] with the
+    /// real `AndroidCryptoProvider`. Kept out of the `#[uniffi::export]` block:
+    /// `Arc<dyn CryptoProvider>` is not an FFI type.
+    fn build(
+        ble: Arc<dyn FfiBleAdapter>,
+        aware: Arc<dyn FfiWifiAwareAdapter>,
+        direct: Arc<dyn FfiWifiDirectAdapter>,
+        node_id: [u8; 32],
+        crypto: Arc<dyn CryptoProvider>,
+    ) -> Result<Arc<Self>, IrisFfiError> {
         let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
         let handle = runtime.handle().clone();
 
@@ -140,7 +165,7 @@ impl IrisEngine {
                     ..Default::default()
                 },
                 Arc::new(MemoryStorage::new()),
-                Arc::new(AndroidCryptoProvider::new(signer.clone())),
+                crypto,
                 manager.clone(),
                 MetricsRegistry::new(),
             );
@@ -196,6 +221,10 @@ impl IrisEngine {
         }))
     }
 
+}
+
+#[uniffi::export]
+impl IrisEngine {
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()
@@ -431,6 +460,43 @@ fn build_text_envelope(
     Ok(env)
 }
 
+/// HV-1: test-only constructor over the inert `DevCryptoProvider`. Keeps the
+/// engine's FFI/transport/mesh wiring tests (`round_trip_delivers_over_shared_mesh`
+/// et al.) building and running without a Kotlin `FfiCryptoSigner` — those tests
+/// exercise the bridge + transport + `SimMeshCoordinator` path, not the crypto
+/// backend. Kept out of the `#[uniffi::export]` block so it is never part of the
+/// generated FFI surface.
+#[cfg(test)]
+impl IrisEngine {
+    fn new_for_test(
+        ble: Arc<dyn FfiBleAdapter>,
+        aware: Arc<dyn FfiWifiAwareAdapter>,
+        direct: Arc<dyn FfiWifiDirectAdapter>,
+        node_id: Vec<u8>,
+    ) -> Result<Arc<Self>, IrisFfiError> {
+        let node_id: [u8; 32] = node_id
+            .try_into()
+            .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
+        Self::build(
+            ble,
+            aware,
+            direct,
+            node_id,
+            Arc::new(iris_core::message_engine::crypto::DevCryptoProvider::new()),
+        )
+    }
+
+    /// HV-1: register a recipient X25519 key so `seal_outbound` does not fail
+    /// closed with `KeyUnavailable` (PRY-33 / RED-0002). `DevCryptoProvider`'s
+    /// encrypt/decrypt are pass-through, so the key value is irrelevant to the
+    /// round-trip — only its presence in the directory matters.
+    fn register_test_key(&self, node_id: [u8; 32], x25519_pubkey: [u8; 32]) {
+        let mut dir = iris_core::crypto::key_directory::MemoryKeyDirectory::new();
+        dir.insert(node_id, x25519_pubkey);
+        self.engine.set_key_directory(Arc::new(dir));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
@@ -569,7 +635,7 @@ mod tests {
     /// registers all three mesh transports before it returns.
     #[test]
     fn engine_registers_three_transports_over_bridges() {
-        let engine = IrisEngine::new(
+        let engine = IrisEngine::new_for_test(
             Arc::new(SimBle),
             Arc::new(SimAware::default()),
             Arc::new(SimDirect),
@@ -594,7 +660,7 @@ mod tests {
             available: true,
             ..Default::default()
         });
-        let engine = IrisEngine::new(
+        let engine = IrisEngine::new_for_test(
             Arc::new(SimBle),
             aware.clone(),
             Arc::new(SimDirect),
@@ -632,7 +698,7 @@ mod tests {
         let node_a = [1u8; 32];
         let node_b = [2u8; 32];
 
-        let a_engine = IrisEngine::new(
+        let a_engine = IrisEngine::new_for_test(
             Arc::new(SimBle),
             Arc::new(SimAwareWire {
                 inner: a_inner.clone(),
@@ -641,7 +707,7 @@ mod tests {
             node_a.to_vec(),
         )
         .expect("engine A builds");
-        let b_engine = IrisEngine::new(
+        let b_engine = IrisEngine::new_for_test(
             Arc::new(SimBle),
             Arc::new(SimAwareWire {
                 inner: b_inner.clone(),
@@ -698,6 +764,9 @@ mod tests {
             a_wa.connect(&target).await.expect("A connects to B");
         });
 
+        // HV-1 / PRY-33: A must know B's recipient key to seal the message.
+        a_engine.register_test_key(node_b, [0xBB; 32]);
+
         // B installs the inbox listener before the message arrives.
         let inbox = Arc::new(Mutex::new(Vec::new()));
         b_engine
@@ -742,7 +811,7 @@ mod tests {
     /// The engine's handle is a *real* tokio handle, not the uniffi attribute.
     #[test]
     fn engine_owns_a_live_runtime() {
-        let engine = IrisEngine::new(
+        let engine = IrisEngine::new_for_test(
             Arc::new(SimBle),
             Arc::new(SimAware::default()),
             Arc::new(SimDirect),
