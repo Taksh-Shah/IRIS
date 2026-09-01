@@ -99,6 +99,31 @@ pub struct SimConfig {
     /// When true, messages are delivered in send order (RF-45-c).
     /// When false (default), independent per-message sleeps may reorder delivery.
     pub preserve_order: bool,
+
+    // --- HV-4: injectable RF failure modes the earlier sim could not model.
+    // Each is disabled at its zero value so existing tests are unaffected.
+    /// RF-45-e: unsolicited disconnect. After this many successful `send()`s on
+    /// this transport, the next `send()` returns [`TransportError::ConnectionLost`]
+    /// and the transport drops to `Degraded` (models a GATT link a peer walked
+    /// away from with no disconnect callback — HV-7 / HV-27). 0 = never.
+    pub disconnect_after_sends: u32,
+    /// RF-45-f: mid-stream MTU shrink. After this many `send()`s the effective
+    /// max message size drops to `mtu_after_shrink` (models the Android
+    /// peripheral-role link that never renegotiates up, or a renegotiation to a
+    /// worse value — HV-8). 0 = never.
+    pub mtu_shrink_after_sends: u32,
+    /// Effective MTU once `mtu_shrink_after_sends` trips. Ignored when that is 0.
+    pub mtu_after_shrink: usize,
+    /// RF-45-g: scan refusal. `discover_peers()` returns
+    /// [`TransportError::Busy`] on every call after the first this many (models
+    /// `onScanFailed(SCANNING_TOO_FREQUENTLY)` / the AOSP 5-per-30 s throttle —
+    /// HV-11 / HV-14). 0 = never.
+    pub scan_fail_after_calls: u32,
+    /// RF-45-h: bring-up BUSY window. `connect()` returns
+    /// [`TransportError::Busy`] for the first this many calls (models
+    /// `WifiP2pManager` `reason=BUSY` while the platform P2P state machine
+    /// leaves `P2pDisabledState` — HV-23). 0 = never.
+    pub busy_first_n_connects: u32,
 }
 
 impl Default for SimConfig {
@@ -113,6 +138,11 @@ impl Default for SimConfig {
             max_message_size: None,
             connect_failure_rate: 0.0,
             preserve_order: false,
+            disconnect_after_sends: 0,
+            mtu_shrink_after_sends: 0,
+            mtu_after_shrink: 0,
+            scan_fail_after_calls: 0,
+            busy_first_n_connects: 0,
         }
     }
 }
@@ -140,6 +170,10 @@ pub struct SimulatedTransport {
     last_delivery_at: StdMutex<Instant>,
     /// Token bucket for bandwidth enforcement (RF-45-b).
     token_bucket: StdMutex<TokenBucket>,
+    /// HV-4: lifetime call counters driving the injectable failure modes.
+    send_count: std::sync::atomic::AtomicU32,
+    scan_count: std::sync::atomic::AtomicU32,
+    connect_count: std::sync::atomic::AtomicU32,
 }
 
 impl SimulatedTransport {
@@ -186,6 +220,9 @@ impl SimulatedTransport {
             pending_deliveries: StdMutex::new(Vec::new()),
             last_delivery_at: StdMutex::new(Instant::now()),
             token_bucket: StdMutex::new(TokenBucket::new(bw)),
+            send_count: std::sync::atomic::AtomicU32::new(0),
+            scan_count: std::sync::atomic::AtomicU32::new(0),
+            connect_count: std::sync::atomic::AtomicU32::new(0),
         }
     }
 
@@ -234,6 +271,13 @@ impl Transport for SimulatedTransport {
         &self,
         _config: DiscoveryConfig,
     ) -> Result<Pin<Box<dyn Stream<Item = PeerInfo> + Send>>, TransportError> {
+        // HV-4 / RF-45-g: scan throttle — after N successful starts, every
+        // further `discover_peers` is refused (the `onScanFailed` /
+        // SCANNING_TOO_FREQUENTLY analogue).
+        let scans = self.scan_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if self.config.scan_fail_after_calls > 0 && scans >= self.config.scan_fail_after_calls {
+            return Err(TransportError::Busy);
+        }
         Ok(Box::pin(futures_util::stream::empty()))
     }
 
@@ -250,6 +294,13 @@ impl Transport for SimulatedTransport {
     }
 
     async fn connect(&self, peer: &PeerInfo) -> Result<TransportLink, TransportError> {
+        // HV-4 / RF-45-h: platform P2P bring-up BUSY window — the first N
+        // connect attempts are refused before the state machine is ready.
+        let connects =
+            self.connect_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if connects < self.config.busy_first_n_connects {
+            return Err(TransportError::Busy);
+        }
         // RF-45-a: fault injection — probabilistic connection failure.
         if self.config.connect_failure_rate > 0.0 {
             let mut rng = self.rng.lock().await;
@@ -275,8 +326,24 @@ impl Transport for SimulatedTransport {
         if self.state.load() == TransportState::Unavailable {
             return Err(TransportError::ShuttingDown);
         }
-        // RF-43: enforce the advertised MTU so fragmentation tests are meaningful.
-        let mtu = self.caps.max_message_size;
+        let sends = self.send_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        // HV-4 / RF-45-e: unsolicited mid-stream disconnect — the link silently
+        // dies (no disconnect callback) after N sends; the transport degrades
+        // and this send fails NotConnected.
+        if self.config.disconnect_after_sends > 0 && sends >= self.config.disconnect_after_sends {
+            self.set_state(TransportState::Degraded);
+            return Err(TransportError::NotConnected);
+        }
+        // RF-43 + HV-4 / RF-45-f: enforce the advertised MTU, shrunk mid-stream
+        // once `mtu_shrink_after_sends` trips (the Android peripheral-role link
+        // that never renegotiates up).
+        let mtu = if self.config.mtu_shrink_after_sends > 0
+            && sends >= self.config.mtu_shrink_after_sends
+        {
+            self.config.mtu_after_shrink
+        } else {
+            self.caps.max_message_size
+        };
         if message.payload.len() > mtu {
             return Err(TransportError::MessageTooLarge {
                 limit: mtu,
@@ -501,6 +568,125 @@ mod tests {
         assert_eq!(
             a_sorted, b_sorted,
             "same seed must drop the SAME messages: a={a_sorted:?} b={b_sorted:?}"
+        );
+    }
+
+    // --- HV-4: the injectable RF failure modes -----------------------------
+
+    fn msg(n: u8, payload: &[u8]) -> SerializedMessage {
+        SerializedMessage {
+            message_id: crate::protocol::MessageId::from([n; 16]),
+            priority: MessagePriority::P3,
+            payload: payload.to_vec(),
+        }
+    }
+
+    #[tokio::test]
+    async fn hv4_disconnect_after_sends_degrades_then_fails() {
+        let cfg = SimConfig {
+            disconnect_after_sends: 2,
+            latency_base_ms: 0,
+            latency_spread_ms: 0,
+            ..Default::default()
+        };
+        let t = SimulatedTransport::new("sim-0", "Sim", cfg);
+        let peer = PeerId([9u8; 32]);
+        assert!(t.send(&peer, &msg(0, b"a")).await.is_ok());
+        assert!(t.send(&peer, &msg(1, b"b")).await.is_ok());
+        assert_eq!(
+            t.send(&peer, &msg(2, b"c")).await.unwrap_err(),
+            TransportError::NotConnected,
+            "3rd send must hit the injected disconnect"
+        );
+        assert_eq!(t.state(), TransportState::Degraded);
+    }
+
+    #[tokio::test]
+    async fn hv4_mtu_shrinks_mid_stream() {
+        let cfg = SimConfig {
+            max_message_size: Some(512),
+            mtu_shrink_after_sends: 1,
+            mtu_after_shrink: 20,
+            latency_base_ms: 0,
+            latency_spread_ms: 0,
+            ..Default::default()
+        };
+        let t = SimulatedTransport::new("sim-0", "Sim", cfg);
+        let peer = PeerId([9u8; 32]);
+        // First send at the full MTU is fine.
+        assert!(t.send(&peer, &msg(0, &[b'x'; 200])).await.is_ok());
+        // After the shrink a 200-byte payload no longer fits.
+        match t.send(&peer, &msg(1, &[b'x'; 200])).await {
+            Err(TransportError::MessageTooLarge { limit, actual }) => {
+                assert_eq!(limit, 20);
+                assert_eq!(actual, 200);
+            }
+            other => panic!("expected MessageTooLarge after shrink, got {other:?}"),
+        }
+        // A small payload still gets through on the shrunk link.
+        assert!(t.send(&peer, &msg(2, b"hi").clone()).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn hv4_scan_refused_after_n_calls() {
+        let cfg = SimConfig {
+            scan_fail_after_calls: 2,
+            ..Default::default()
+        };
+        let t = SimulatedTransport::new("sim-0", "Sim", cfg);
+        assert!(t.discover_peers(DiscoveryConfig::default()).await.is_ok());
+        assert!(t.discover_peers(DiscoveryConfig::default()).await.is_ok());
+        match t.discover_peers(DiscoveryConfig::default()).await {
+            Err(TransportError::Busy) => {}
+            _ => panic!("3rd discover_peers must be throttled with Busy"),
+        }
+    }
+
+    #[tokio::test]
+    async fn hv4_connect_busy_window_then_succeeds() {
+        let cfg = SimConfig {
+            busy_first_n_connects: 3,
+            ..Default::default()
+        };
+        let t = SimulatedTransport::new("sim-0", "Sim", cfg);
+        let peer = PeerInfo {
+            peer_id: PeerId([2u8; 32]),
+            addresses: Vec::new(),
+            transport_addresses: Vec::new(),
+            last_seen: None,
+        };
+        for attempt in 0..3 {
+            assert_eq!(
+                t.connect(&peer).await.unwrap_err(),
+                TransportError::Busy,
+                "connect attempt {attempt} must be BUSY"
+            );
+        }
+        assert!(t.connect(&peer).await.is_ok(), "4th connect must succeed");
+    }
+
+    #[tokio::test]
+    async fn hv4_faults_are_deterministic_by_seed() {
+        // Two transports, same config incl. seed → identical fault timing.
+        let cfg = SimConfig {
+            disconnect_after_sends: 3,
+            seed: 11,
+            latency_base_ms: 0,
+            latency_spread_ms: 0,
+            ..Default::default()
+        };
+        let a = SimulatedTransport::new("sim-a", "A", cfg.clone());
+        let b = SimulatedTransport::new("sim-b", "B", cfg);
+        let peer = PeerId([9u8; 32]);
+        for i in 0..3u8 {
+            assert_eq!(
+                a.send(&peer, &msg(i, b"x")).await.is_ok(),
+                b.send(&peer, &msg(i, b"x")).await.is_ok(),
+            );
+        }
+        assert_eq!(
+            a.send(&peer, &msg(3, b"x")).await.is_err(),
+            b.send(&peer, &msg(3, b"x")).await.is_err(),
         );
     }
 }
