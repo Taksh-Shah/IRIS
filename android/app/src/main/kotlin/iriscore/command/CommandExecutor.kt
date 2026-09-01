@@ -72,6 +72,7 @@ object CommandExecutor {
             // live state; the executor only names what is being asked for.
             "peers" -> CommandResult.System(title = "LINKS", lines = emptyList())
             "node" -> CommandResult.System(title = "NODE", lines = emptyList())
+            "diag" -> CommandResult.System(title = "DIAG", lines = emptyList())
 
             else -> CommandResult.Error("/${command.name} is not wired up yet")
         }

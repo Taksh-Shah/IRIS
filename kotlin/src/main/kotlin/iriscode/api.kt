@@ -88,6 +88,14 @@ typealias FfiGroupInfo = uniffi.iriscode.FfiGroupInfo
 typealias FfiIncomingWifiDirectData = uniffi.iriscode.FfiIncomingWifiDirectData
 @Suppress("unused")
 typealias FfiIncomingMessage = uniffi.iriscode.FfiIncomingMessage
+@Suppress("unused")
+typealias FfiMeshSnapshot = uniffi.iriscode.FfiMeshSnapshot
+@Suppress("unused")
+typealias FfiTransportDiag = uniffi.iriscode.FfiTransportDiag
+@Suppress("unused")
+typealias FfiNeighborDiag = uniffi.iriscode.FfiNeighborDiag
+@Suppress("unused")
+typealias FfiMessageMetrics = uniffi.iriscode.FfiMessageMetrics
 
 // --- Enums ---
 @Suppress("unused")

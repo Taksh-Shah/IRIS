@@ -981,6 +981,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_send_text(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_snapshot(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_start_all(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_stop_all(
@@ -1111,6 +1113,8 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: 
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_send_text(`ptr`: Long,`recipientHex`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_start_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1350,6 +1354,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_send_text() != 50109) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_snapshot() != 60241) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_start_all() != 5995) {
@@ -1924,6 +1931,29 @@ public object FfiConverterULong: FfiConverter<ULong, Long> {
 
     override fun write(value: ULong, buf: ByteBuffer) {
         buf.putLong(value.toLong())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterFloat: FfiConverter<Float, Float> {
+    override fun lift(value: Float): Float {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Float {
+        return buf.getFloat()
+    }
+
+    override fun lower(value: Float): Float {
+        return value
+    }
+
+    override fun allocationSize(value: Float) = 4UL
+
+    override fun write(value: Float, buf: ByteBuffer) {
+        buf.putFloat(value)
     }
 }
 
@@ -5674,6 +5704,14 @@ public interface IrisEngineInterface {
     fun `sendText`(`recipientHex`: kotlin.String, `text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray
     
     /**
+     * HV-3: point-in-time diagnostic of the mesh — registered transports and
+     * their state/cost, known neighbours and their live links, and the
+     * message-engine counters. Also emitted to logcat (`iris.diag`) so a
+     * failure can be inspected from a plain `adb logcat` capture.
+     */
+    fun `snapshot`(): FfiMeshSnapshot
+    
+    /**
      * Bring the three mesh transports up: each `start_advertising` triggers
      * its adapter bring-up (BLE scan+advertise, Wi-Fi Aware attach+subscribe+
      * publish, Wi-Fi Direct attach+DNS-SD) and spawns the inbound poller.
@@ -5838,6 +5876,25 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     UniffiLib.uniffi_iriscode_fn_method_irisengine_send_text(
         it,
         FfiConverterString.lower(`recipientHex`),FfiConverterString.lower(`text`),FfiConverterUByte.lower(`priority`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * HV-3: point-in-time diagnostic of the mesh — registered transports and
+     * their state/cost, known neighbours and their live links, and the
+     * message-engine counters. Also emitted to logcat (`iris.diag`) so a
+     * failure can be inspected from a plain `adb logcat` capture.
+     */override fun `snapshot`(): FfiMeshSnapshot {
+            return FfiConverterTypeFfiMeshSnapshot.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_snapshot(
+        it,
+        _status)
 }
     }
     )
@@ -6420,6 +6477,188 @@ public object FfiConverterTypeFfiIncomingWifiDirectData: FfiConverterRustBuffer<
 
 
 /**
+ * HV-3: one-shot structured diagnostic of what the mesh is doing right now.
+ * Rendered by the shell's `/diag` command and also dumped to logcat (tag
+ * `iriscore`, `iris.diag` event) on every call. This is the single readout
+ * the hardware-verification loop and the Mobly `iris_bench` harness (HV-2)
+ * consume — keep the field set stable.
+ */
+data class FfiMeshSnapshot (
+    /**
+     * This node's 64-hex identity.
+     */
+    var `nodeIdHex`: kotlin.String
+    , 
+    /**
+     * One entry per registered transport, in registration order.
+     */
+    var `transports`: List<FfiTransportDiag>
+    , 
+    /**
+     * Known neighbours from the `NeighborTable` (discovered peers + their
+     * per-transport links). Empty until discovery has seen a peer.
+     */
+    var `neighbors`: List<FfiNeighborDiag>
+    , 
+    /**
+     * Message-engine lifetime counters (since process start / last reset).
+     */
+    var `messages`: FfiMessageMetrics
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSnapshot> {
+    override fun read(buf: ByteBuffer): FfiMeshSnapshot {
+        return FfiMeshSnapshot(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeFfiTransportDiag.read(buf),
+            FfiConverterSequenceTypeFfiNeighborDiag.read(buf),
+            FfiConverterTypeFfiMessageMetrics.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiMeshSnapshot) = (
+            FfiConverterString.allocationSize(value.`nodeIdHex`) +
+            FfiConverterSequenceTypeFfiTransportDiag.allocationSize(value.`transports`) +
+            FfiConverterSequenceTypeFfiNeighborDiag.allocationSize(value.`neighbors`) +
+            FfiConverterTypeFfiMessageMetrics.allocationSize(value.`messages`)
+    )
+
+    override fun write(value: FfiMeshSnapshot, buf: ByteBuffer) {
+            FfiConverterString.write(value.`nodeIdHex`, buf)
+            FfiConverterSequenceTypeFfiTransportDiag.write(value.`transports`, buf)
+            FfiConverterSequenceTypeFfiNeighborDiag.write(value.`neighbors`, buf)
+            FfiConverterTypeFfiMessageMetrics.write(value.`messages`, buf)
+    }
+}
+
+
+
+/**
+ * Message-engine counters in [`FfiMeshSnapshot`] (`MessageEngine::metrics()`).
+ */
+data class FfiMessageMetrics (
+    var `sent`: kotlin.ULong
+    , 
+    var `delivered`: kotlin.ULong
+    , 
+    var `relayed`: kotlin.ULong
+    , 
+    var `droppedDuplicates`: kotlin.ULong
+    , 
+    var `expired`: kotlin.ULong
+    , 
+    var `deliveryFailed`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiMessageMetrics: FfiConverterRustBuffer<FfiMessageMetrics> {
+    override fun read(buf: ByteBuffer): FfiMessageMetrics {
+        return FfiMessageMetrics(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiMessageMetrics) = (
+            FfiConverterULong.allocationSize(value.`sent`) +
+            FfiConverterULong.allocationSize(value.`delivered`) +
+            FfiConverterULong.allocationSize(value.`relayed`) +
+            FfiConverterULong.allocationSize(value.`droppedDuplicates`) +
+            FfiConverterULong.allocationSize(value.`expired`) +
+            FfiConverterULong.allocationSize(value.`deliveryFailed`)
+    )
+
+    override fun write(value: FfiMessageMetrics, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`sent`, buf)
+            FfiConverterULong.write(value.`delivered`, buf)
+            FfiConverterULong.write(value.`relayed`, buf)
+            FfiConverterULong.write(value.`droppedDuplicates`, buf)
+            FfiConverterULong.write(value.`expired`, buf)
+            FfiConverterULong.write(value.`deliveryFailed`, buf)
+    }
+}
+
+
+
+/**
+ * Per-neighbour slice of [`FfiMeshSnapshot`].
+ */
+data class FfiNeighborDiag (
+    var `peerIdHex`: kotlin.String
+    , 
+    /**
+     * `LinkedUp` (≥1 live link) or `LinkedDown` (all dropped, kept for TTL).
+     */
+    var `state`: kotlin.String
+    , 
+    /**
+     * One `"<transport-id>:<quality>"` string per live link, e.g.
+     * `"ble-android:Good"`.
+     */
+    var `links`: List<kotlin.String>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiNeighborDiag: FfiConverterRustBuffer<FfiNeighborDiag> {
+    override fun read(buf: ByteBuffer): FfiNeighborDiag {
+        return FfiNeighborDiag(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiNeighborDiag) = (
+            FfiConverterString.allocationSize(value.`peerIdHex`) +
+            FfiConverterString.allocationSize(value.`state`) +
+            FfiConverterSequenceString.allocationSize(value.`links`)
+    )
+
+    override fun write(value: FfiNeighborDiag, buf: ByteBuffer) {
+            FfiConverterString.write(value.`peerIdHex`, buf)
+            FfiConverterString.write(value.`state`, buf)
+            FfiConverterSequenceString.write(value.`links`, buf)
+    }
+}
+
+
+
+/**
  * Owned discovery match (`wifiaware::PeerDiscovery`).
  *
  * FFI-17: this record used to also carry an `rssi: i32` field that Kotlin
@@ -6643,6 +6882,74 @@ public object FfiConverterTypeFfiScanResult: FfiConverterRustBuffer<FfiScanResul
             FfiConverterString.write(value.`address`, buf)
             FfiConverterByteArray.write(value.`payload`, buf)
             FfiConverterInt.write(value.`rssi`, buf)
+    }
+}
+
+
+
+/**
+ * Per-transport slice of [`FfiMeshSnapshot`].
+ */
+data class FfiTransportDiag (
+    var `id`: kotlin.String
+    , 
+    var `displayName`: kotlin.String
+    , 
+    /**
+     * `TransportState` debug form: `Unavailable` | `Degraded` | `Available` |
+     * `Connected`.
+     */
+    var `state`: kotlin.String
+    , 
+    var `estimatedBatteryMa`: kotlin.Float
+    , 
+    var `bandwidthAvailableBps`: kotlin.ULong
+    , 
+    /**
+     * 0.0 (idle) … 1.0 (saturated).
+     */
+    var `congestionLevel`: kotlin.Float
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTransportDiag: FfiConverterRustBuffer<FfiTransportDiag> {
+    override fun read(buf: ByteBuffer): FfiTransportDiag {
+        return FfiTransportDiag(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTransportDiag) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterString.allocationSize(value.`state`) +
+            FfiConverterFloat.allocationSize(value.`estimatedBatteryMa`) +
+            FfiConverterULong.allocationSize(value.`bandwidthAvailableBps`) +
+            FfiConverterFloat.allocationSize(value.`congestionLevel`)
+    )
+
+    override fun write(value: FfiTransportDiag, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterString.write(value.`state`, buf)
+            FfiConverterFloat.write(value.`estimatedBatteryMa`, buf)
+            FfiConverterULong.write(value.`bandwidthAvailableBps`, buf)
+            FfiConverterFloat.write(value.`congestionLevel`, buf)
     }
 }
 
@@ -7020,6 +7327,34 @@ public object FfiConverterSequenceULong: FfiConverterRustBuffer<List<kotlin.ULon
 /**
  * @suppress
  */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiAcceptedConnection: FfiConverterRustBuffer<List<FfiAcceptedConnection>> {
     override fun read(buf: ByteBuffer): List<FfiAcceptedConnection> {
         val len = buf.getInt()
@@ -7160,6 +7495,34 @@ public object FfiConverterSequenceTypeFfiIncomingWifiDirectData: FfiConverterRus
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiNeighborDiag: FfiConverterRustBuffer<List<FfiNeighborDiag>> {
+    override fun read(buf: ByteBuffer): List<FfiNeighborDiag> {
+        val len = buf.getInt()
+        return List<FfiNeighborDiag>(len) {
+            FfiConverterTypeFfiNeighborDiag.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiNeighborDiag>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiNeighborDiag.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiNeighborDiag>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiNeighborDiag.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiPeerDiscovery: FfiConverterRustBuffer<List<FfiPeerDiscovery>> {
     override fun read(buf: ByteBuffer): List<FfiPeerDiscovery> {
         val len = buf.getInt()
@@ -7206,6 +7569,34 @@ public object FfiConverterSequenceTypeFfiScanResult: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiScanResult.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiTransportDiag: FfiConverterRustBuffer<List<FfiTransportDiag>> {
+    override fun read(buf: ByteBuffer): List<FfiTransportDiag> {
+        val len = buf.getInt()
+        return List<FfiTransportDiag>(len) {
+            FfiConverterTypeFfiTransportDiag.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiTransportDiag>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiTransportDiag.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiTransportDiag>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiTransportDiag.write(it, buf)
         }
     }
 }

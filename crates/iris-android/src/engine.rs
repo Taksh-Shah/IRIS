@@ -57,6 +57,60 @@ pub struct FfiIncomingMessage {
     pub received_at_ms: u64,
 }
 
+/// HV-3: one-shot structured diagnostic of what the mesh is doing right now.
+/// Rendered by the shell's `/diag` command and also dumped to logcat (tag
+/// `iriscore`, `iris.diag` event) on every call. This is the single readout
+/// the hardware-verification loop and the Mobly `iris_bench` harness (HV-2)
+/// consume — keep the field set stable.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiMeshSnapshot {
+    /// This node's 64-hex identity.
+    pub node_id_hex: String,
+    /// One entry per registered transport, in registration order.
+    pub transports: Vec<FfiTransportDiag>,
+    /// Known neighbours from the `NeighborTable` (discovered peers + their
+    /// per-transport links). Empty until discovery has seen a peer.
+    pub neighbors: Vec<FfiNeighborDiag>,
+    /// Message-engine lifetime counters (since process start / last reset).
+    pub messages: FfiMessageMetrics,
+}
+
+/// Per-transport slice of [`FfiMeshSnapshot`].
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiTransportDiag {
+    pub id: String,
+    pub display_name: String,
+    /// `TransportState` debug form: `Unavailable` | `Degraded` | `Available` |
+    /// `Connected`.
+    pub state: String,
+    pub estimated_battery_ma: f32,
+    pub bandwidth_available_bps: u64,
+    /// 0.0 (idle) … 1.0 (saturated).
+    pub congestion_level: f32,
+}
+
+/// Per-neighbour slice of [`FfiMeshSnapshot`].
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiNeighborDiag {
+    pub peer_id_hex: String,
+    /// `LinkedUp` (≥1 live link) or `LinkedDown` (all dropped, kept for TTL).
+    pub state: String,
+    /// One `"<transport-id>:<quality>"` string per live link, e.g.
+    /// `"ble-android:Good"`.
+    pub links: Vec<String>,
+}
+
+/// Message-engine counters in [`FfiMeshSnapshot`] (`MessageEngine::metrics()`).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiMessageMetrics {
+    pub sent: u64,
+    pub delivered: u64,
+    pub relayed: u64,
+    pub dropped_duplicates: u64,
+    pub expired: u64,
+    pub delivery_failed: u64,
+}
+
 /// Foreign-trait callback the Kotlin shell installs to receive delivered
 /// messages. `#[async_trait]`-free: `on_message` is a synchronous notify.
 #[uniffi::export(with_foreign)]
@@ -234,6 +288,72 @@ impl IrisEngine {
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()
+    }
+
+    /// HV-3: point-in-time diagnostic of the mesh — registered transports and
+    /// their state/cost, known neighbours and their live links, and the
+    /// message-engine counters. Also emitted to logcat (`iris.diag`) so a
+    /// failure can be inspected from a plain `adb logcat` capture.
+    pub fn snapshot(&self) -> FfiMeshSnapshot {
+        let manager = self.manager.clone();
+        let discovery = self.discovery.clone();
+        let ids = self.transports.clone();
+        let (transports, neighbors) = self.handle.block_on(async move {
+            let mut transports = Vec::with_capacity(ids.len());
+            for id in &ids {
+                if let Some(t) = manager.get(id).await {
+                    let cost = t.cost_snapshot();
+                    transports.push(FfiTransportDiag {
+                        id: t.transport_id().as_str().to_string(),
+                        display_name: t.display_name().to_string(),
+                        state: format!("{:?}", t.state()),
+                        estimated_battery_ma: cost.estimated_battery_ma,
+                        bandwidth_available_bps: cost.bandwidth_available_bps,
+                        congestion_level: cost.congestion_level,
+                    });
+                }
+            }
+            let neighbors = discovery
+                .neighbors()
+                .neighbor_summaries()
+                .await
+                .into_iter()
+                .map(|n| FfiNeighborDiag {
+                    peer_id_hex: n.peer_id.to_string(),
+                    state: format!("{:?}", n.state),
+                    links: n
+                        .links
+                        .iter()
+                        .map(|l| format!("{}:{:?}", l.transport.as_str(), l.quality))
+                        .collect(),
+                })
+                .collect();
+            (transports, neighbors)
+        });
+
+        let m = self.engine.metrics();
+        let snapshot = FfiMeshSnapshot {
+            node_id_hex: PeerId::from_bytes(self.node_id).to_string(),
+            transports,
+            neighbors,
+            messages: FfiMessageMetrics {
+                sent: m.sent,
+                delivered: m.delivered,
+                relayed: m.relayed,
+                dropped_duplicates: m.dropped_duplicates,
+                expired: m.expired,
+                delivery_failed: m.delivery_failed,
+            },
+        };
+        tracing::info!(
+            event = "iris.diag",
+            node = %snapshot.node_id_hex,
+            transports = ?snapshot.transports,
+            neighbors = ?snapshot.neighbors,
+            messages = ?snapshot.messages,
+            "mesh snapshot",
+        );
+        snapshot
     }
 
     /// Bring the three mesh transports up: each `start_advertising` triggers
@@ -812,6 +932,31 @@ mod tests {
             got.is_some(),
             "FfiInboxListener must receive the delivered message"
         );
+    }
+
+    /// HV-3: `snapshot()` reports every registered transport, the node id, and
+    /// the message counters — the contract the `/diag` shell command and the
+    /// HV-2 Mobly harness read.
+    #[test]
+    fn snapshot_reports_transports_and_identity() {
+        let engine = IrisEngine::new_for_test(
+            Arc::new(SimBle),
+            Arc::new(SimAware::default()),
+            Arc::new(SimDirect),
+            vec![7u8; 32],
+        )
+        .expect("engine builds");
+
+        let snap = engine.snapshot();
+        assert_eq!(snap.node_id_hex, "07".repeat(32));
+        let ids: Vec<&str> = snap.transports.iter().map(|t| t.id.as_str()).collect();
+        assert!(ids.contains(&"ble-android"), "got {ids:?}");
+        assert!(ids.contains(&"wifi-aware-0"), "got {ids:?}");
+        assert!(ids.contains(&"wifi-direct-0"), "got {ids:?}");
+        // Fresh engine: no neighbours, no traffic.
+        assert!(snap.neighbors.is_empty());
+        assert_eq!(snap.messages.sent, 0);
+        assert_eq!(snap.messages.delivered, 0);
     }
 
     /// The engine's handle is a *real* tokio handle, not the uniffi attribute.

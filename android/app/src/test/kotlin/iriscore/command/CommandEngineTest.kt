@@ -164,6 +164,16 @@ class CommandEngineTest {
     }
 
     @Test
+    fun `diag resolves to a DIAG system block`() {
+        // HV-3: the console fills the lines from engine.snapshot(); the
+        // executor only names the request.
+        val result = CommandExecutor.execute("/diag", hasRecipient = false)
+        assertTrue(result is CommandResult.System)
+        assertEquals("DIAG", (result as CommandResult.System).title)
+        assertEquals("diag", CommandRegistry.find("snapshot")?.name)
+    }
+
+    @Test
     fun `every registered command is executable`() {
         // Guards against a palette that advertises commands the executor does
         // not handle — the failure mode would be a command that silently does

@@ -146,6 +146,13 @@ class MeshRepository @Inject constructor(
         }
     }
 
+    /**
+     * HV-3: point-in-time mesh diagnostic (`/diag`). Blocking FFI call — the
+     * caller must be off the main thread. Also emits an `iris.diag` line to
+     * logcat.
+     */
+    fun snapshot(): iriscode.FfiMeshSnapshot = engine.get().snapshot()
+
     /** Spill the relay outbox into the engine (WorkManager entrypoint). */
     suspend fun drainRelayOutbox(): Int {
         val sent = outbox.drain { queued ->

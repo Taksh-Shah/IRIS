@@ -58,6 +58,12 @@ const IRIS_COMMANDS = [
     aliases: ["links", "status"],
   },
   {
+    name: "diag",
+    description: "Full mesh diagnostic — transports, neighbours, counters",
+    group: "NETWORK",
+    aliases: ["diagnostic", "snapshot"],
+  },
+  {
     name: "node",
     description: "Show this node's identity",
     group: "SYSTEM",
@@ -188,6 +194,8 @@ function irisExecute(raw, hasRecipient) {
       };
     case "peers":
       return { type: "system", title: "LINKS", lines: [] };
+    case "diag":
+      return { type: "system", title: "DIAG", lines: [] };
     case "node":
       return { type: "system", title: "NODE", lines: [] };
     default:

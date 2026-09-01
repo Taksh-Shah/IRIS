@@ -200,7 +200,16 @@ class MeshViewModel @Inject constructor(
                 _consoleEvents.value = emptyList()
             }
 
-            is CommandResult.System -> appendEvent(resolveSystem(result))
+            is CommandResult.System ->
+                if (result.title == "DIAG") {
+                    // snapshot() is a blocking FFI call — resolve off the main thread.
+                    viewModelScope.launch {
+                        val entry = withContext(Dispatchers.IO) { resolveDiag() }
+                        appendEvent(entry)
+                    }
+                } else {
+                    appendEvent(resolveSystem(result))
+                }
 
             is CommandResult.Error -> appendEvent(
                 ConsoleEntry.system(title = "ERROR", lines = listOf("detail" to result.message)),
@@ -241,6 +250,45 @@ class MeshViewModel @Inject constructor(
 
             else -> ConsoleEntry.system(result.title, result.lines)
         }
+    }
+
+    /**
+     * HV-3: renders `/diag` from the engine's live [MeshRepository.snapshot].
+     * Runs on IO (the underlying FFI call blocks). A failure is surfaced as a
+     * system line rather than crashing the console.
+     */
+    private fun resolveDiag(): ConsoleEntry {
+        val snap = try {
+            repository.snapshot()
+        } catch (e: RuntimeException) {
+            return ConsoleEntry.system("DIAG", listOf("error" to (e.message ?: e.javaClass.simpleName)))
+        }
+        val lines = buildList {
+            add("node" to snap.nodeIdHex)
+            snap.transports.forEach { t ->
+                add(
+                    t.id to "${t.state}  batt=${t.estimatedBatteryMa}mA  bw=${t.bandwidthAvailableBps}bps  cong=${t.congestionLevel}",
+                )
+            }
+            if (snap.neighbors.isEmpty()) {
+                add("neighbors" to "none")
+            } else {
+                snap.neighbors.forEach { n ->
+                    add(
+                        "peer ${n.peerIdHex.take(16)}…" to
+                            "${n.state}  links=[${n.links.joinToString(", ")}]",
+                    )
+                }
+            }
+            snap.messages.let { m ->
+                add(
+                    "messages" to
+                        "sent=${m.sent} delivered=${m.delivered} relayed=${m.relayed} " +
+                        "dup=${m.droppedDuplicates} expired=${m.expired} failed=${m.deliveryFailed}",
+                )
+            }
+        }
+        return ConsoleEntry.system(title = "DIAG", lines = lines, status = uiState.value.status.name)
     }
 
     private fun appendEvent(entry: ConsoleEntry) {

@@ -92,6 +92,12 @@ object CommandRegistry {
             aliases = listOf("links", "status"),
         ),
         IrisCommand(
+            name = "diag",
+            description = "Full mesh diagnostic — transports, neighbours, counters",
+            group = CommandGroup.NETWORK,
+            aliases = listOf("diagnostic", "snapshot"),
+        ),
+        IrisCommand(
             name = "node",
             description = "Show this node's identity",
             group = CommandGroup.SYSTEM,
