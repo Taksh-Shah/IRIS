@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 12 | 2 | 5 | 0 | 0 | 5 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 4 | 7 | 0 | 0 | 3 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **87** | **2** | **5** | **0** | **0** | **80** |
+| **Total** | | **89** | **4** | **7** | **0** | **0** | **78** |
 
-**Last updated:** 2026-09-01 (Session 03 — HV-84 + HV-3 `🟢`; HV-85 `✅`;
-HV-85/HV-86 added) · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 04 — HV-6 + HV-88 `🟢`; HV-4 + HV-87 `✅`;
+HV-87/HV-88 added) · **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -185,10 +185,19 @@ the fact. Base it on the existing `MetricsRegistry` and `observability` module.
 
 ### HV-4 — The simulated adapters model success, not RF
 
-- **Fix status:** ⬜
-- **Area:** `SimulatedBleAdapter`, `SimBle`, `SimDirect`, `SimAware`,
-  `SimMeshCoordinator`
+- **Fix status:** ✅ Fixed · commit 1ad395d · 2026-09-01 · CI sim model, no HW
+  gate · Session 04
+- **Area:** `SimConfig` / `SimulatedTransport` (`crates/iris-core/src/transport/simulated.rs`),
+  `crates/iris-core/tests/sysval_fault_injection.rs`
 - **Severity:** Medium (test-integrity) · **HW gate:** none
+
+**Resolution:** four seeded, deterministic failure modes on `SimConfig`
+(`disconnect_after_sends`, `mtu_shrink_after_sends`+`mtu_after_shrink`,
+`scan_fail_after_calls`, `busy_first_n_connects`), each off at its zero default,
+exercised in `send()`/`discover_peers()`/`connect()`. 5 unit tests + 5
+`sysval_fault_injection` scenarios. GO/GO election tie deferred to HV-19 (the
+Wi-Fi Direct sim has no group election). Later Tier-1..3 findings extend this
+model per loop §1 Phase D step 4.
 
 **What:** the sim adapters deliver every frame, in order, with zero latency, no
 loss, no MTU renegotiation mid-stream, no disconnect, no `onScanFailed`, no
@@ -229,9 +238,15 @@ message from a fresh one).
 
 ### HV-6 — No field-KPI capture: delivery rate, hop count, link lifetime are not measured on device
 
-- **Fix status:** ⬜
-- **Area:** `observability/`, `docs/operations/PILOT_KPI_PLAN.md`
-- **Severity:** Medium (instrumentation) · **HW gate:** verify on device
+- **Fix status:** 🟢 HW-verified · commit 49f0d99 · 2026-09-01 · `/stats` +
+  `iris.kpi` logcat line on P1=V2205 + P2=vivo 2004 · Session 04. **Partial:**
+  message/route/security counters are exposed; per-link lifetime, scan-restart
+  rate and group-formation success rate need HV-27 (per-link health) + HV-86
+  (event ring).
+- **Area:** `crates/iris-android/src/engine.rs` (`FfiCounter`, `snapshot().counters`,
+  `iris.kpi`), `android/.../ui/MeshViewModel.kt` (`/stats`),
+  `.../command/*`, `crates/iris-desktop/ui/commands.js`
+- **Severity:** Medium (instrumentation) · **HW gate:** verify on device ✓
 
 **What:** `docs/performance/*` calls the throughput/latency numbers
 "folklore-grade" (SYSTEM_TEST_REPORT §5). There is no on-device counter for:
@@ -379,6 +394,46 @@ sane levels across every transport/discovery/engine log site (today: `IrisBle`,
 and (c) a rolling in-memory ring of the last ~100 transport-level events
 retrievable over FFI so a failure can be inspected after the fact. Lower urgency
 than the live snapshot; fold into HV-6 (field-KPI capture) if convenient.
+
+---
+
+### HV-87 — `CapabilityBundle` test literal missing `dp_snapshot`
+
+- **Fix status:** ✅ Fixed · commit 678dfe3 · 2026-09-01 · host build · Session 04
+- **Area:** `crates/iris-core/src/discovery/neighbor_table.rs` (test literal)
+- **Severity:** Medium (test-integrity) · **HW gate:** none
+
+**What:** an upstream commit (PRoPHET DP-over-handshake) added
+`dp_snapshot: Vec<(Vec<u8>, u16)>` to `CapabilityBundle` but left the literal in
+`capabilities_recorded_and_retained` un-updated → `cargo test -p iris-core`
+E0063. Added `dp_snapshot: Vec::new()`.
+
+---
+
+### HV-88 — Upstream AN-6 FFI wiring incomplete: APK crashed on launch
+
+- **Fix status:** 🟢 HW-verified · commit 49f0d99 · 2026-09-01 · APK launches on
+  P1=V2205 + P2=vivo 2004 without the `UnsatisfiedLinkError` · Session 04
+- **Area:** `kotlin/.../iriscode/{api.kt, uniffi/.../iriscode.kt}`,
+  `android/app/src/main/jniLibs/*/libiriscode.so`
+- **Severity:** Critical (no runnable APK) · **HW gate:** APK launch on 2 phones
+
+**What:** the AN-6 commit that landed in the 2026-09-01 pull added the
+`FfiX25519KeyProvider` uniffi trait + `IrisEngine::new_with_x25519` and the
+Kotlin `provideFfiX25519KeyProvider` / `IrisEngine.newWithX25519` call, but did
+**not** regenerate the committed `iriscode.kt`, add the `api.kt` facade alias,
+or rebuild the jniLibs `.so`. `:app:kspDebugKotlin` failed
+(`'FfiX25519KeyProvider' could not be resolved`) and, once that was fixed, the
+app FATAL-crashed at startup:
+`UnsatisfiedLinkError: undefined symbol: uniffi_iriscode_fn_clone_ffix25519keyprovider`
+(regenerated `iriscode.kt` expected symbols absent from the stale `.so`). Third
+instance of this exact pattern (see HV-1, HV-84). **A CI gate that runs
+`uniffi-bindgen generate` + `cargo ndk build` + `:app:assembleDebug` and fails on
+any diff to the committed bindings/`.so` would catch the whole class** — fold
+into HV-2.
+
+**Resolution:** regenerated `iriscode.kt`, added the `FfiX25519KeyProvider`
+alias, rebuilt `libiriscode.so` for all 3 ABIs.
 
 ---
 

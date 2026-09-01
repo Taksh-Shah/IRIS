@@ -791,3 +791,162 @@ unchanged here.
   RPCs (Mobly Snippet Lib) + the Python `iris_bench` suite. Also rewrite the
   stale `docs/testing/ANDROID_BUILD_STATUS.md` in that commit. HV-4 (sim fault
   model) and HV-6 (KPI capture) follow.
+
+---
+
+## Session 04 — 2026-09-01 — HV-4 (sim fault model) + HV-6 (KPI capture)
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`) · P2 = vivo 2004 (`b2fbcd39`) — both
+on USB. Used for HV-6 / HV-88 (`/stats` + APK-launch smoke).
+**Build under test:** HEAD after a `git pull` fast-forwarded `e53f613` -> `3e70a87`
+(6 upstream commits from the other bug-hunt loops: ROUT-24/PS-1/PS-3/F-C1,
+PRY-11 SOS auth, AN-6 X25519, future-scope, shrey reclassify, integration
+report). All Session 01-03 HV work is intact below `e53f613`.
+**Baseline captured:** `cargo build --workspace` = ok. `cargo test -p iris-core`
+= **FAIL to compile** — upstream added `dp_snapshot` to `CapabilityBundle` and
+left one test literal un-updated (fixed as **HV-87**, commit 678dfe3). After
+that: iris-core lib 766/766; iris-android 7/7; the one pre-existing failure
+`sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only`
+(HV-83) still fails, unrelated.
+
+---
+
+### HV-87 — CapabilityBundle test literal missing dp_snapshot
+
+**Phase R/D.** Upstream added `dp_snapshot: Vec<(Vec<u8>, u16)>` to
+`CapabilityBundle` (PRoPHET DP exchanged over the discovery handshake) but the
+literal in `neighbor_table.rs::capabilities_recorded_and_retained` was not
+updated -> E0063, `cargo test -p iris-core` won't compile. Added
+`dp_snapshot: Vec::new()`. iris-core lib 766/766.
+**Phase C.** Commit 678dfe3. Tracker HV-87 -> Fixed.
+
+---
+
+### HV-4 — The simulated adapters model success, not RF
+
+**Phase R.** `SimulatedTransport` (`crates/iris-core/src/transport/simulated.rs`)
+already models packet loss, latency + spread, a static MTU, `connect_failure_rate`,
+a token bucket and optional ordering (RF-45-a..d). It does NOT model the
+failure modes the Tier-1..3 findings are about: a link that dies mid-stream with
+no callback (HV-7 `close_peer`, HV-27 silently-dead link), a peripheral-role
+MTU that never renegotiates up (HV-8), `onScanFailed(SCANNING_TOO_FREQUENTLY)` /
+the AOSP `ScanManager` 5-per-30 s throttle (HV-11 / HV-14), and `WifiP2pManager`
+`reason=BUSY` during the ~30 s P2P bring-up window (HV-23 — seen live on P2 this
+session: `wifi_direct.dns_sd ... WifiP2p action failed reason=2`). The
+iris-android `SimBle`/`SimDirect`/`SimAware` are trivial `#[cfg(test)]` stubs
+with no state machine; the real fault surface is `SimulatedTransport`, which is
+registered in `TransportManager` and drives the engine tests. Determinism
+(SIM-001, seeded ChaCha8) must carry over.
+
+**Phase D.** `SimConfig` gains four modes, each disabled at its zero default so
+every existing test is unaffected:
+- `disconnect_after_sends` — after N successful `send()`s the transport
+  `set_state(Degraded)` and the send returns `TransportError::NotConnected`.
+- `mtu_shrink_after_sends` + `mtu_after_shrink` — the effective MTU used by the
+  size check drops mid-stream.
+- `scan_fail_after_calls` — `discover_peers()` returns `TransportError::Busy`
+  after the first N.
+- `busy_first_n_connects` — `connect()` returns `TransportError::Busy` for the
+  first N calls.
+Backed by three `AtomicU32` counters on the struct. 5 unit tests in
+`simulated.rs` + `crates/iris-core/tests/sysval_fault_injection.rs` (5 scenarios
+asserting the observable recovery property). `cargo test -p iris-core` green;
+`sysval_fault_injection` 5/5. GO/GO election tie deferred to HV-19.
+
+**Phase T.** n/a — this is the L1 CI layer; no radio component.
+
+**Phase C.** Commit 1ad395d. Tracker HV-4 -> Fixed (no HW gate).
+
+---
+
+### HV-88 — Upstream AN-6 FFI wiring incomplete: APK crashed on launch
+
+**Phase R.** After the pull, `:app:assembleDebug` failed at `:app:kspDebugKotlin`
+— `'FfiX25519KeyProvider' could not be resolved` across `IrisCoreModule`. The
+AN-6 commit added the `#[uniffi::export(with_foreign)] trait FfiX25519KeyProvider`
++ the `new_with_x25519` constructor + the Kotlin call sites, but not: the
+regenerated `iriscode.kt`, the `api.kt` facade alias, or the jniLibs `.so`.
+Adding the alias got past KSP; the app then FATAL-crashed on first launch:
+```
+FATAL EXCEPTION: DefaultDispatcher-worker-2
+java.lang.UnsatisfiedLinkError: Error looking up function
+'uniffi_iriscode_fn_clone_ffix25519keyprovider': undefined symbol
+  at uniffi.iriscode.IrisEngine$Companion.newWithX25519(iriscode.kt:6404)
+  at iriscore.di.IrisCoreModule.provideIrisEngine(IrisCoreModule.kt:82)
+```
+— the regenerated `iriscode.kt` referenced FFI symbols absent from the committed
+`.so` (which `cargo ndk` had not rebuilt; `touch crates/iris-android/src/lib.rs`
+forced it — cargo's fingerprint had not noticed the pulled source changes).
+Third instance of the same pattern (HV-1 `signer`, HV-84 `FfiCryptoSigner`, now
+`FfiX25519KeyProvider`).
+
+**Phase D.** `cargo build -p iris-android` -> `uniffi-bindgen 0.31.2 generate
+--library target/debug/iriscode.dll --language kotlin` -> `iriscode.kt`;
+`typealias FfiX25519KeyProvider = uniffi.iriscode.FfiX25519KeyProvider` in
+`api.kt`; `cargo ndk -t arm64-v8a -t x86_64 -t armeabi-v7a ... build --release`
+for all three `.so`. (Committed with HV-6 — the same regen carries HV-6's new
+`FfiCounter` record.)
+
+**Phase T — hardware.** Both phones launch the app, load the `.so`, and start
+the engine (`iriscode::engine start_all_partial started=["ble-android"]`) — the
+`UnsatisfiedLinkError` is gone.
+
+**Phase C.** Commit 49f0d99 (with HV-6). Tracker HV-88 -> HW-verified.
+Recommended (feeds HV-2): a CI job that runs bindgen + `cargo ndk` +
+`:app:assembleDebug` and fails on any diff to the committed `iriscode.kt` /
+`.so`.
+
+---
+
+### HV-6 — No field-KPI capture
+
+**Phase R.** `MetricsRegistry::snapshot()` already returns the full `metric::ALL`
+counter map (`msg.*`, `route.*`, `scf.*`, `gw.*`, `security.*`), and
+`MessageEngine::telemetry()` exposes the live registry — HV-3's `snapshot()`
+only surfaced the typed six-field `MetricsSnapshot`. Missing: the raw map on the
+FFI + a shell readout + a greppable per-capture log line. The deeper KPIs
+(median GATT link lifetime, scan-restart count/hour, group-formation success
+rate) need per-link instrumentation that does not exist yet — HV-27 + HV-86;
+HV-6 delivers the message/route/security half now.
+
+**Phase D.**
+- `engine.rs`: `FfiCounter { name, value }`; `FfiMeshSnapshot.counters:
+  Vec<FfiCounter>` from `self.engine.telemetry().snapshot()`, sorted; a second
+  `tracing::info!(event = "iris.kpi", ...)` line with the non-zero
+  `name=value` list.
+- `/stats` command: registry (aliases `kpi`, `metrics`), executor
+  (`-> System("STATS")`), `MeshViewModel.resolveStats()` on `Dispatchers.IO`,
+  `commands.js` mirror + `case "stats"`.
+- Tests: `stats resolves to a STATS system block` (Kotlin);
+  `:app:testDebugUnitTest` 78/78; `cargo test -p iris-android` 7/7.
+
+**Phase T — hardware.**
+```
+P1  I iriscore: iriscode::engine: mesh kpi  event="iris.kpi"  node=72ddbbb8...  counters=
+P2  I iriscore: ... event="iris.kpi" ... counters=
+```
+Screenshot: the `STATS` console block renders — `> counters   all zero` /
+`STATUS: RUNNING`. A `/to <P2-id>` + `/send hello-kpi` shows the Android outbox
+`QUEUED` chip — the core engine correctly reports zero because `seal_outbound`
+rejected the send for a missing recipient X25519 key (PRY-33) and
+`MeshRepository` spooled it locally (HV-38). `/stats` still reads all-zero,
+which is accurate. A non-zero demonstration needs real two-phone delivery
+(Tier 1).
+
+**Phase C.** Commit 49f0d99. Tracker HV-6 -> HW-verified (partial — see HV-27 / HV-86).
+
+### Session 04 closeout
+- Findings advanced: **HV-4 ✅** (sim fault model — CI), **HV-6 🟢** (`/stats` +
+  `iris.kpi`, both phones), **HV-87 ✅** (upstream `dp_snapshot` test break),
+  **HV-88 🟢** (upstream AN-6 left the APK non-building / crash-on-launch —
+  regen bindings + `.so`).
+- 🟢 count: 2 -> 4. ✅ count: 5 -> 7. **Tier 0: 14 findings — 4 🟢, 7 ✅, 3 ⬜
+  (HV-2, HV-83, HV-86).**
+- **Gate to Tier 1** now needs only HV-2: `cargo test -p iris-android` in CI
+  (HV-1) + the L1 sim fault model (HV-4) + `iris_bench` driving two phones with a
+  10/10 "P1 sends, P2 receives" + evidence pipeline.
+- Recurring risk (HV-88): three FFI-surface changes in a row (`signer`,
+  `FfiCryptoSigner`, `FfiX25519KeyProvider`) each broke the build or runtime
+  because nothing regenerates/checks the committed bindings + `.so`. A CI gate
+  for this should be part of HV-2.
+- Next session: **HV-2** — with the operator, per the earlier plan.
