@@ -16,15 +16,20 @@
 
 ## Progress Tracker
 
-| Tier | Name | Total | ✅ Fixed | 🔮 Future | 🔀 Routed | ⬜ Not started |
-|---|---|---|---|---|---|---|
-| 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 |
-| 1 | High — crashes, races, leaks, security | 18 | 18 | 0 | 0 | 0 |
-| 2 | Medium — correctness, DoS, protocol, CI | 30 | 27 | 3 | 0 | 0 |
-| 3 | Low — quality, supply chain, test flakes, docs | 14 | 14 | 0 | 0 | 0 |
-| **Total** | | **72** | **69** | **3** | **0** | **0** |
+| Tier | Name | Total | ✅ Fixed | ⚪ N/A | 🔮 Future | 🔀 Routed | ⬜ Not started |
+|---|---|---|---|---|---|---|---|
+| 0 | Critical — build breaks + emergency-path blockers | 10 | 10 | 0 | 0 | 0 | 0 |
+| 1 | High — crashes, races, leaks, security | 18 | 18 | 0 | 0 | 0 | 0 |
+| 2 | Medium — correctness, DoS, protocol, CI | 30 | 27 | 3 | 0 | 0 | 0 |
+| 3 | Low — quality, supply chain, test flakes, docs | 14 | 14 | 0 | 0 | 0 | 0 |
+| **Total** | | **72** | **69** | **3** | **0** | **0** | **0** |
 
-**Last updated:** 2026-09-01 · **Active tier:** All tiers complete. 69 ✅ / 3 🔮 (N/A-classified; deferred with rationale).
+**Last updated:** 2026-09-01 · **Active tier:** All tiers complete. 69 ✅ · 3 ⚪ N/A · 0 🔮 of 72. ALL FINDINGS RESOLVED.
+
+⚪ **N/A findings** (premise disproved by code inspection — no fix required):
+- **#45** — `Data(rustBuffer:)` `.none` deallocator aliasing: UniFFI `.none` is correct per spec; caller owns the buffer; no double-free risk.
+- **#54** — `build-xcframework.sh` `FRAMEWORK_DIR` drift from `ios.yml`: both use `ios/IrisFramework`; no path drift exists.
+- **#56** — `didReceiveRead` at `offset==value.count` returns empty Data not `invalidOffset`: ATT spec §3.4.4.4 explicitly permits returning empty Data when offset equals value length; behaviour is correct.
 
 ---
 
