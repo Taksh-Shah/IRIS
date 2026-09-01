@@ -705,10 +705,89 @@ every hardware finding after it.
   earlier attempt) — flagged for correction in the HV-2 commit that rewrites
   that doc's CI/build section.
 
-### Session 03 closeout (in progress)
-- HV-84 🟢 — the toolchain is up and the APK runs on both phones. This unblocks
-  HV-2 / HV-3 / all radio tiers.
-- New standing requirement: builds use **JDK 21** (installed), gradle via the
-  wrapper jar with `-Dorg.gradle.java.home`. Documented above and in memory.
-- Next in this session: HV-3 (`/diag` + `snapshot()` FFI) — its struct is the
-  contract for HV-2's snippet APK.
+---
+
+### HV-85 — Android JVM unit-test leg does not compile
+
+**Phase R.** `:app:compileDebugUnitTestKotlin` fails on a clean `fc720d5`:
+`AdapterLifecycleTest.kt:88` etc. — `Cannot infer type` / `No value passed for
+parameter 'create'`. `9431aca` (FFI-12, 2026-08-27) added `dispose` as
+`SessionGate`'s 2nd ctor param (defaulted); Kotlin routes a trailing lambda to
+the last param, so `SessionGate { … }` binds it to `dispose`. Production sites
+all use `SessionGate(create = { … })`.
+
+**Phase D.** 5 test call sites → `SessionGate(create = { … })`.
+`:app:testDebugUnitTest` → **77/77** (76 pre-existing + HV-3's new one).
+
+**Phase C.** Commit 13c5e2e. Tracker **HV-85 → ✅**.
+
+---
+
+### HV-3 — /diag mesh snapshot over FFI
+
+**Phase R.** Field debugging today: `adb logcat | grep` across `IrisBle` /
+`IrisBleDiag` / `IrisWifiDirectDiag` / `iriscode::engine` / `iris_core::*` — no
+single "what is the mesh doing now". The Rust side already exposes everything
+needed piecemeal: `TransportManager::{list,get}` + `Transport::{state,
+cost_snapshot,display_name}`, `DiscoveryManager::neighbors()` →
+`NeighborTable::neighbor_summaries()` (peer + per-transport links),
+`MessageEngine::metrics()` → `MetricsSnapshot`. HW-3's logcat bridge is already
+installed. So the fix is an aggregation + FFI record, not new transport surgery.
+The deeper per-link MTU / scan-backoff state is *not* on the `Transport` trait —
+that needs a `Transport::diagnostics()` method touching every impl → deferred to
+HV-86 along with the `iris.*` tag rename and the event ring.
+
+**Phase D.**
+- `crates/iris-android/src/engine.rs`: `FfiMeshSnapshot` + `FfiTransportDiag` +
+  `FfiNeighborDiag` + `FfiMessageMetrics` records; `IrisEngine::snapshot()`
+  (`block_on` for the async manager/neighbour reads) which also emits
+  `tracing::info!(event = "iris.diag", …)`.
+- Regenerated `kotlin/…/uniffi/iriscode/iriscode.kt` (`uniffi-bindgen 0.31.2
+  generate --library target/debug/iriscode.dll --language kotlin`); 4 new
+  `typealias` in `kotlin/…/iriscode/api.kt`.
+- `MeshRepository.snapshot()` (blocking FFI, off-main); `/diag` in
+  `CommandRegistry` (aliases `diagnostic`, `snapshot`) + `CommandExecutor`
+  (`→ System("DIAG")`); `MeshViewModel` resolves DIAG on `Dispatchers.IO` and
+  renders transports / neighbours / counters.
+- `crates/iris-desktop/ui/commands.js`: added the `diag` entry + `case "diag"`
+  so `DesignTokenParityTest` (`command set matches the desktop mirror`) passes.
+- Tests: `snapshot_reports_transports_and_identity` (Rust, `cargo test -p
+  iris-android` → 8/8); `diag resolves to a DIAG system block` (Kotlin).
+
+**Phase T — hardware.** Reinstalled on both phones, granted BLE/Wi-Fi/location
+perms, launched, typed `/diag` in the console (`adb shell input`):
+```
+P1 (72ddbbb8…) I iriscore: iriscode::engine: mesh snapshot  event="iris.diag"
+   transports=[FfiTransportDiag { id: "ble-android", state: "Available",
+     estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, … },
+     { id: "wifi-aware-0", state: "Unavailable", … },
+     { id: "wifi-direct-0", state: "Degraded", … }]
+   neighbors=[]  messages=FfiMessageMetrics { sent: 0, delivered: 0, … }
+P2 (3782eb73…) I iriscore: … event="iris.diag" … wifi-direct-0 state: "Available" …
+```
+Screenshot confirms the `DIAG` block also renders in the console UI (`>
+wifi-aware-0  Unavailable  batt=25.0mA …` / `> messages  sent=0 …` /
+`STATUS: RUNNING`). The composer overlaps the newest lines — that is **HV-54**,
+unchanged here.
+
+**Phase C.** Commit a7daad0. Tracker **HV-3 → 🟢 (partial — see HV-86)**.
+
+### Session 03 closeout
+- Findings advanced: **HV-84 🟢** (APK builds + runs on both phones — first in
+  days), **HV-3 🟢** (`/diag`/`snapshot()` verified on both phones),
+  **HV-85 ✅** (unit-test leg compiles). New follow-ups logged: **HV-86**
+  (HV-3's `iris.*` tag rename + event ring — deferred).
+- 🟢 count: 0 → 2. ✅ count: 4 → 5. Tier 0: 12 findings — 2 🟢, 5 ✅, 5 ⬜
+  (HV-2, HV-4, HV-6, HV-83, HV-86).
+- Toolchain now working and documented (JDK 21, gradle-wrapper-jar invocation,
+  `cargo ndk` ABIs, uniffi regen procedure) — in this log's HV-84 entry and in
+  the agent's memory.
+- Blockers: none open. Pre-existing `⬜`: HV-83 (iris-core satellite integration
+  test), HV-86 (HV-3 tail).
+- **Next: HV-2** — the Mobly `iris_bench` harness + `IrisTestSnippet` APK +
+  evidence pipeline (loop §4). Everything it needs is now in place: the APK
+  builds, `snapshot()`/`nodeId()`/`sendText()` exist over FFI, and both phones
+  run the engine. The snippet APK adds `startMesh`/`meshSnapshot`/`awaitDelivered`
+  RPCs (Mobly Snippet Lib) + the Python `iris_bench` suite. Also rewrite the
+  stale `docs/testing/ANDROID_BUILD_STATUS.md` in that commit. HV-4 (sim fault
+  model) and HV-6 (KPI capture) follow.

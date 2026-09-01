@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 10 | 1 | 4 | 0 | 0 | 5 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 12 | 2 | 5 | 0 | 0 | 5 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **85** | **1** | **4** | **0** | **0** | **80** |
+| **Total** | | **87** | **2** | **5** | **0** | **0** | **80** |
 
-**Last updated:** 2026-09-01 (Session 03 — HV-84 `🟢` — first APK build in days,
-runs on both phones) · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 03 — HV-84 + HV-3 `🟢`; HV-85 `✅`;
+HV-85/HV-86 added) · **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -149,10 +149,17 @@ replaces every ad-hoc `adb`/manual-tap workflow.
 
 ### HV-3 — No structured, greppable on-device diagnostic surface
 
-- **Fix status:** ⬜
-- **Area:** `crates/iris-android/src/logging.rs`, adapter `Log.d` calls, a new
-  `/diag` shell command
-- **Severity:** High (instrumentation) · **HW gate:** verify on device
+- **Fix status:** 🟢 HW-verified · commit a7daad0 · 2026-09-01 · `/diag` fires
+  on P1=V2205 + P2=vivo 2004, structured `iris.diag` logcat + console block ·
+  Session 03. **Partial:** the `snapshot()` FFI + `/diag` command are done
+  (`FfiMeshSnapshot`: node id, per-transport id/state/cost, `NeighborTable`
+  neighbours + links, `MessageEngine` counters); the loop-§(a) `iris.*` tag
+  rename and §(c) 100-event ring are **not** — see follow-up **HV-86**.
+- **Area:** `crates/iris-android/src/engine.rs` (`snapshot()` + `Ffi*` records),
+  `kotlin/.../iriscode/{api.kt,uniffi/.../iriscode.kt}`,
+  `android/.../data/MeshRepository.kt`, `.../command/{CommandRegistry,CommandExecutor}.kt`,
+  `.../ui/MeshViewModel.kt`, `crates/iris-desktop/ui/commands.js`
+- **Severity:** High (instrumentation) · **HW gate:** verify on device ✓
 
 **What:** field debugging today means `adb logcat | grep -E 'IrisBle|IrisWifiDirectDiag|IrisBleDiag'`
 across two phones and eyeballing interleaved lines. The tags are ad-hoc
@@ -337,6 +344,41 @@ the refreshed `Cargo.lock`. `:app:assembleDebug` → **BUILD SUCCESSFUL**; APK
 installs on both phones; app launches, loads the `.so`, engine starts, BLE comes
 up (Wi-Fi Aware "not supported on this device" — expected, no NAN hardware;
 Wi-Fi Direct hits `reason=2`/BUSY on P2 — that is HV-23, tracked separately).
+
+---
+
+### HV-85 — The Android JVM unit-test leg (`:app:testDebugUnitTest`) does not compile
+
+- **Fix status:** ✅ Fixed · commit 13c5e2e · 2026-09-01 · host build · Session 03
+- **Area:** `android/app/src/test/kotlin/iriscore/adapter/AdapterLifecycleTest.kt`
+- **Severity:** High (test-integrity — the loop's L2 layer) · **HW gate:** none
+
+**What:** `9431aca` (FFI-12, 2026-08-27) added `dispose` as `SessionGate`'s
+second constructor parameter (with a default). Kotlin routes a trailing lambda
+to the **last** parameter, so `SessionGate { … }` in the tests binds the lambda
+to `dispose` and reports `create` missing —
+`:app:compileDebugUnitTestKotlin` has failed since. Every production call site
+already uses `SessionGate(create = { … })`.
+
+**Resolution:** updated the 5 test call sites to the named-arg form.
+`:app:testDebugUnitTest` → 77/77.
+
+---
+
+### HV-86 — HV-3 follow-up: `iris.*` tag rename + the 100-event transport ring
+
+- **Fix status:** ⬜ (opened Session 03; HV-3 delivered the `snapshot()`/`/diag` core)
+- **Area:** `crates/iris-android/src/logging.rs`, all adapter `Log.d`/`tracing`
+  call sites, `crates/iris-core/src/observability/`
+- **Severity:** Medium (instrumentation) · **HW gate:** verify on device
+
+**What:** HV-3's fix sketch had three parts; (b) `snapshot()`/`/diag` is done
+(commit a7daad0). Still open: (a) one consistent `iris.*` tag/target scheme with
+sane levels across every transport/discovery/engine log site (today: `IrisBle`,
+`IrisBleDiag`, `IrisWifiDirectDiag`, `iriscode::engine`, `iris_core::*` — mixed),
+and (c) a rolling in-memory ring of the last ~100 transport-level events
+retrievable over FFI so a failure can be inspected after the fact. Lower urgency
+than the live snapshot; fold into HV-6 (field-KPI capture) if convenient.
 
 ---
 
