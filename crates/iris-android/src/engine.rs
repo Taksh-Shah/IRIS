@@ -148,6 +148,22 @@ pub trait FfiInboxListener: Send + Sync + 'static {
     fn on_message(&self, message: FfiIncomingMessage);
 }
 
+/// HV-89 (interim): a manually-fed X25519 key directory.
+///
+/// `MessageEngine::seal_outbound` fails closed (PRY-33) when an addressed
+/// recipient has no X25519 key. Android has no handshake-based key exchange
+/// yet, so — until that lands — this accepts keys pushed in over
+/// [`IrisEngine::register_peer_key`] (the `iris_bench` harness wires the two
+/// bench phones' keys out-of-band; a future `/addkey` command could use it
+/// too). Same shape as the desktop `TrustKeyDirectory`, just fed by hand.
+struct BenchKeyDirectory(std::sync::Mutex<std::collections::HashMap<[u8; 32], [u8; 32]>>);
+
+impl iris_core::crypto::key_directory::KeyDirectory for BenchKeyDirectory {
+    fn x25519_pubkey(&self, node_id: &[u8; 32]) -> Option<[u8; 32]> {
+        self.0.lock().ok()?.get(node_id).copied()
+    }
+}
+
 /// The Android app's engine host. Owns the three injected platform adapters,
 /// the transport manager, and the message engine — all driven by a tokio
 /// runtime whose handle is threaded through every poll path.
@@ -159,6 +175,8 @@ pub struct IrisEngine {
     engine: Arc<MessageEngine>,
     transports: Vec<TransportId>,
     node_id: [u8; 32],
+    /// HV-89 interim: the hand-fed X25519 key directory (see [`BenchKeyDirectory`]).
+    keydir: Arc<BenchKeyDirectory>,
     /// GAP-7: owns the background scan loop that calls `Transport::connect()`
     /// on first contact with a peer. Without this, `deliver_outbound` can
     /// select a transport but every `send()` fails with `NotConnected`
@@ -241,6 +259,10 @@ impl IrisEngine {
     ) -> Result<Arc<Self>, IrisFfiError> {
         let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
         let handle = runtime.handle().clone();
+        let keydir = Arc::new(BenchKeyDirectory(std::sync::Mutex::new(
+            std::collections::HashMap::new(),
+        )));
+        let keydir_for_engine = keydir.clone();
 
         // The engine's background tasks and the transport registrations all
         // need a live tokio context — build them inside `block_on` on the
@@ -285,6 +307,10 @@ impl IrisEngine {
                 manager.clone(),
                 MetricsRegistry::new(),
             );
+
+            // HV-89 interim: give the engine a key directory so `seal_outbound`
+            // has somewhere to look (still fails closed until a key is fed).
+            engine.set_key_directory(keydir_for_engine);
 
             let all: [Arc<dyn Transport>; 3] = [ble_t, aware_t, direct_t];
             for t in &all {
@@ -333,6 +359,7 @@ impl IrisEngine {
             engine,
             transports,
             node_id,
+            keydir,
             discovery,
         }))
     }
@@ -344,6 +371,27 @@ impl IrisEngine {
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()
+    }
+
+    /// HV-89 (interim): register a peer's 32-byte X25519 static public key so
+    /// `seal_outbound` can encrypt addressed messages to it. Both args are
+    /// 64-hex. Used by the `iris_bench` harness to wire the bench phones'
+    /// keys out-of-band until handshake-based key exchange lands. Idempotent.
+    pub fn register_peer_key(
+        &self,
+        peer_id_hex: &str,
+        x25519_pub_hex: &str,
+    ) -> Result<(), IrisFfiError> {
+        let peer = decode_hex32(peer_id_hex)
+            .ok_or_else(|| IrisFfiError::InvalidArgument("peer id must be 64 hex chars".into()))?;
+        let key: [u8; 32] = decode_hex32(x25519_pub_hex)
+            .ok_or_else(|| IrisFfiError::InvalidArgument("x25519 key must be 64 hex chars".into()))?;
+        self.keydir
+            .0
+            .lock()
+            .map_err(|_| IrisFfiError::IoError("keydir poisoned".into()))?
+            .insert(peer, key);
+        Ok(())
     }
 
     /// HV-3: point-in-time diagnostic of the mesh — registered transports and
@@ -617,6 +665,19 @@ impl IrisEngine {
 }
 
 /// Parse a 64-hex node id into a `PeerId`.
+/// Decode exactly 64 hex chars into 32 bytes, or `None`.
+fn decode_hex32(hex: &str) -> Option<[u8; 32]> {
+    if hex.len() != 64 {
+        return None;
+    }
+    let mut b = [0u8; 32];
+    for (i, pair) in hex.as_bytes().chunks(2).enumerate() {
+        let s = std::str::from_utf8(pair).ok()?;
+        b[i] = u8::from_str_radix(s, 16).ok()?;
+    }
+    Some(b)
+}
+
 fn parse_peer_id_hex(hex: &str) -> Result<PeerId, IrisFfiError> {
     if hex.len() != 64 {
         return Err(IrisFfiError::InvalidArgument(

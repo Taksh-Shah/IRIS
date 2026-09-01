@@ -1007,6 +1007,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_node_id(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_register_peer_key(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_send_text(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_snapshot(
@@ -1149,6 +1151,8 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Lo
 ): Long
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_register_peer_key(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`x25519PubHex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_send_text(`ptr`: Long,`recipientHex`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1398,6 +1402,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_node_id() != 19294) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_register_peer_key() != 24246) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_send_text() != 50109) {
@@ -6129,6 +6136,14 @@ public interface IrisEngineInterface {
     fun `nodeId`(): kotlin.ByteArray
     
     /**
+     * HV-89 (interim): register a peer's 32-byte X25519 static public key so
+     * `seal_outbound` can encrypt addressed messages to it. Both args are
+     * 64-hex. Used by the `iris_bench` harness to wire the bench phones'
+     * keys out-of-band until handshake-based key exchange lands. Idempotent.
+     */
+    fun `registerPeerKey`(`peerIdHex`: kotlin.String, `x25519PubHex`: kotlin.String)
+    
+    /**
      * Send a text message to `recipient_hex` (64-hex node id). Returns the
      * 16-byte wire message id on acceptance.
      */
@@ -6293,6 +6308,25 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     }
     )
     }
+    
+
+    
+    /**
+     * HV-89 (interim): register a peer's 32-byte X25519 static public key so
+     * `seal_outbound` can encrypt addressed messages to it. Both args are
+     * 64-hex. Used by the `iris_bench` harness to wire the bench phones'
+     * keys out-of-band until handshake-based key exchange lands. Idempotent.
+     */
+    @Throws(IrisFfiException::class)override fun `registerPeerKey`(`peerIdHex`: kotlin.String, `x25519PubHex`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_register_peer_key(
+        it,
+        FfiConverterString.lower(`peerIdHex`),FfiConverterString.lower(`x25519PubHex`),_status)
+}
+    }
+    
     
 
     
