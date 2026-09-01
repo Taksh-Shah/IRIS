@@ -204,7 +204,7 @@ CI.
 
 ### HV-5 — `received_at_ms` doc comment still says "origination", code says local receipt
 
-- **Fix status:** ✅ Fixed · commit _pending_ · 2026-09-01 · doc/comment only, no
+- **Fix status:** ✅ Fixed · commit 5fdaeeb · 2026-09-01 · doc/comment only, no
   HW gate · Session 01
 - **Area:** `crates/iris-android/src/engine.rs:50` (doc) vs `:351` (code)
 - **Severity:** Low (doc/code drift, but it's on the FFI contract) · **HW gate:** none

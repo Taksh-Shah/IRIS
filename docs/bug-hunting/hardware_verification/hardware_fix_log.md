@@ -420,7 +420,7 @@ iris-android` passes.
 
 **Phase T.** n/a — documentation, no radio component.
 
-**Phase C.** Commit _pending_. Tracker: HV-5 → `✅ Fixed`. Tier 0 counts
+**Phase C.** Commit 5fdaeeb. Tracker: HV-5 → `✅ Fixed`. Tier 0 counts
 `✅ 1 → 2`, `⬜ 5 → 4`.
 
 ---
