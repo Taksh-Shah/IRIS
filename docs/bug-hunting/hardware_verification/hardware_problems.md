@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 4 | 7 | 0 | 0 | 3 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 5 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **89** | **4** | **7** | **0** | **0** | **78** |
+| **Total** | | **89** | **5** | **7** | **0** | **1** | **76** |
 
-**Last updated:** 2026-09-01 (Session 04 — HV-6 + HV-88 `🟢`; HV-4 + HV-87 `✅`;
-HV-87/HV-88 added) · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 05 — HV-86 `🟢`; HV-83 `🔒` deferred
+as satellite is post-v1). **Tier 0: only HV-2 remains.** · **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -308,15 +308,19 @@ interaction. `cargo test -p iris-core rout25` → 7/7.
 
 ### HV-83 — `sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only` fails at HEAD
 
-- **Fix status:** ⬜ (spotted Session 02)
+- **Fix status:** 🔒 Blocked — **deferred: satellite is post-v1 scope** (operator
+  decision, Session 05). The satellite transport will not ship or be benched in
+  this pass, so a test asserting P0-multipath satellite behaviour is not on the
+  Tier-0 critical path. Revisit if/when satellite enters scope.
 - **Area:** `crates/iris-core/tests/sysval_mesh_integration.rs:223`
-- **Severity:** Medium (test-integrity) · **HW gate:** none
+- **Severity:** Low (test-integrity for an out-of-scope transport) · **HW gate:** none
 
 **What:** the P0 multipath integration test (satellite included only for
 emergency traffic) panics on a clean `fc720d5`. Not from the hardware deep-dive;
 found while running the loop's narrow test gate for HV-82. Likely fallout from a
-transport-selection / `RadioConflictGroup` change (cf. HV-46). Needs its own
-look; blocks a fully-green `cargo test -p iris-core`.
+transport-selection / `RadioConflictGroup` change (cf. HV-46). It keeps
+`cargo test -p iris-core` from being 100% green, but the failure is entirely in
+the satellite path — everything the mesh tiers exercise is green.
 
 ---
 
@@ -382,10 +386,22 @@ already uses `SessionGate(create = { … })`.
 
 ### HV-86 — HV-3 follow-up: `iris.*` tag rename + the 100-event transport ring
 
-- **Fix status:** ⬜ (opened Session 03; HV-3 delivered the `snapshot()`/`/diag` core)
-- **Area:** `crates/iris-android/src/logging.rs`, all adapter `Log.d`/`tracing`
-  call sites, `crates/iris-core/src/observability/`
-- **Severity:** Medium (instrumentation) · **HW gate:** verify on device
+- **Fix status:** 🟢 HW-verified · commit 78beb32 · 2026-09-01 · `/diag` ring
+  renders on P1=V2205 + P2=vivo 2004; `adb logcat -s iriscore` catches the
+  adapter lines · Session 05
+- **Area:** `crates/iris-core/src/observability/ring.rs` (new),
+  `crates/iris-android/src/logging.rs`, `crates/iris-android/src/engine.rs`
+  (`FfiLogEvent`, `snapshot().recent_events`),
+  `android/.../util/IrisLog.kt` (new) + the 2 transport adapters,
+  `android/.../ui/MeshViewModel.kt`
+- **Severity:** Medium (instrumentation) · **HW gate:** verify on device ✓
+
+**Resolution:** (b) `observability::ring::RingLayer` — a `tracing` Layer
+capturing every `event = "..."` taxonomy event into a process-global 128-entry
+ring, surfaced as `FfiMeshSnapshot.recent_events` and rendered as the tail of
+`/diag`. (a) the 14 Kotlin adapter `Log.d("IrisBleDiag"/…)` calls route through
+`IrisLog` → tag `iriscore`, prefix `iris.ble.*` / `iris.wd.*`. Adds
+`tracing-subscriber` to iris-core deps (Appendix B).
 
 **What:** HV-3's fix sketch had three parts; (b) `snapshot()`/`/diag` is done
 (commit a7daad0). Still open: (a) one consistent `iris.*` tag/target scheme with

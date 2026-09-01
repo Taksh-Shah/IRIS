@@ -950,3 +950,113 @@ which is accurate. A non-zero demonstration needs real two-phone delivery
   because nothing regenerates/checks the committed bindings + `.so`. A CI gate
   for this should be part of HV-2.
 - Next session: **HV-2** — with the operator, per the earlier plan.
+
+---
+
+## Session 05 — 2026-09-01 — HV-86 (tag unification + transport-event ring)
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`) · P2 = vivo 2004 (`b2fbcd39`) — both
+on USB. Used for the `/diag` ring + `adb logcat -s iriscore` checks.
+**Build under test:** `30946aa` -> HEAD.
+**Session goal:** HV-86 (the last non-HV-2 Tier-0 finding); reclassify HV-83.
+
+---
+
+### HV-83 — reclassified
+
+Operator decision: satellite is post-v1 scope, will not ship or be benched in
+this pass. The failing test (`sysval_mesh_integration::p0_multipath_includes_
+satellite_emergency_only`) asserts P0-multipath behaviour for the satellite
+transport — not on the Tier-0 critical path. Marked **🔒 deferred** in the
+tracker. Everything the mesh tiers exercise in `cargo test -p iris-core` is
+green; only the satellite path fails.
+
+---
+
+### HV-86 — iris.* log-tag unification + the transport-event ring
+
+**Phase R.** Two gaps left after HV-3:
+- (a) The Rust `tracing` events already share one logcat tag (`iriscore`) and a
+  consistent `event = "area.verb"` field (`discovery.connect_ok`,
+  `msg.all_sends_failed`, `engine.start_transport_failed`, …). The **Kotlin
+  adapters** do not: 14 `Log.d`/`Log.w` calls under three separate tags
+  (`IrisBleDiag`, `IrisWifiDirectDiag`, `IrisBle`), so a bench operator has to
+  run four `adb logcat -s` filters and still misses correlation.
+- (b) `MetricsRegistry` answers "how many"; nothing answers "what just happened,
+  in what order". The whole point of this pass is intermittent-failure
+  debugging — at the moment a send fails you need the last N transport events
+  (which transport was selected, did a scan just get throttled, did a peer
+  drop). No such buffer exists.
+  `tracing` already emits everything needed as taxonomy events; the minimal
+  capture is a `Layer` that siphons those into a bounded ring — **zero edits to
+  the ~40 existing log sites**, and it cannot record payloads or full ids
+  because the events themselves can't (P1/P2/P3).
+
+**Phase D.**
+- **`crates/iris-core/src/observability/ring.rs` (new):** `RingEvent {unix_ms,
+  level, event, detail}`; a process-global `Mutex<VecDeque>` capped at 128 with
+  `record` / `recent` / `clear`; `RingLayer` — a `tracing_subscriber::Layer`
+  whose `on_event` visits fields, keeps only events carrying an `event=` field
+  (drops `iris.diag` / `iris.kpi` to avoid self-recursion), and pushes a compact
+  `message key=value …` line. Adds `tracing-subscriber` to iris-core
+  (`Cargo.toml`, Appendix-B scope note). 1 unit test (captures taxonomy events,
+  ignores bare debug lines and self-dumps, stays bounded past 128).
+- **`crates/iris-android/src/logging.rs`:** `.with(RingLayer)` in the
+  subscriber stack.
+- **`crates/iris-android/src/engine.rs`:** `FfiLogEvent` record;
+  `FfiMeshSnapshot.recent_events` populated from `ring::recent()`.
+- **`android/app/src/main/kotlin/iriscore/util/IrisLog.kt` (new):** `IrisLog.d/w`
+  → `Log.*("iriscore", "iris.<area> <msg>")`. The 14 adapter call sites in
+  `AndroidBleTransportAdapter` / `AndroidWifiDirectTransportAdapter` switched to
+  `IrisLog.d("ble.gatt", …)` / `IrisLog.w("wd.init", …)` etc.
+- **`MeshViewModel.resolveDiag()`:** appends the last 15 ring events as
+  `<level-initial> <event>` : `<detail>` lines.
+- Regenerated `iriscode.kt` + `api.kt` alias for `FfiLogEvent`; rebuilt the 3
+  `.so`.
+- Tests: `cargo test -p iris-core` 772, `-p iris-android` 7;
+  `:app:testDebugUnitTest` 78/78.
+
+**Phase T — hardware.** Installed on both phones, launched, drove `/diag`:
+
+Part (a) — one tag:
+```
+P1  D iriscore: iris.ble.gatt ensureGattServer: addService(IRIS_SERVICE_UUID=3e5c6b1a-…) -> true
+P2  D iriscore: iris.ble.gatt …
+```
+`adb logcat -s iriscore | grep iris.ble` now catches the adapter lines that used
+to be under `IrisBleDiag`.
+
+Part (b) — the ring, rendered in the `/diag` console block on **both** phones:
+```
+> W engine.start_transport_failed   transport failed to start; trying the others
+    transport=wifi-aware-0 error=…wifiaware.start: not supported on this device (Other)
+> D discovery.scan_pass_complete    discovery pass complete for this transport
+    transport=ble-android peers_seen=0
+> D discovery.discover_peers_failed discover_peers() failed for this pass; skipping
+    this transport this round transport=wifi-aware-0 error=…
+```
+Time-ordered, newest last — the run-up to a failure reads top-to-bottom. No
+crash on either device.
+
+**Phase C.** Commit 78beb32. Tracker **HV-86 → 🟢**.
+
+### Session 05 closeout
+- Findings advanced: **HV-86 🟢** (tag unification + event ring, verified on both
+  phones). **HV-83 → 🔒 deferred** (satellite post-v1).
+- 🟢 count: 4 → 5. **Tier 0: 14 findings — 5 🟢, 7 ✅, 1 🔒 (HV-83), 1 ⬜ (HV-2).**
+- **Tier 0 is one finding from done: HV-2.**
+- **Gate to Tier 1** = HV-2 only: `cargo test -p iris-android` in CI (HV-1) + the
+  L1 sim fault model (HV-4) + `iris_bench` driving two phones with a 10/10
+  "P1 sends, P2 receives" + the btsnoop/logcat/dumpsys/meshSnapshot evidence
+  pipeline.
+- **Next session (HV-2) needs the operator:** (1) enable *Bluetooth HCI snoop
+  log* in Developer Options on both phones; (2) be at the bench to run the smoke
+  and place the phones. Agent builds the `IrisTestSnippet` APK + the `iris_bench`
+  Python package + the evidence pipeline; the smoke uses a tiny payload first to
+  isolate the harness from fragmentation (HV-7). **Step 0 before building:**
+  check whether the Android engine populates its key directory from the
+  discovery handshake's X25519 static ad — the `KeyUnavailable` seen in HV-6's
+  manual send suggests it may not, which would block the smoke (new finding
+  HV-89).
+- Recurring FFI-regen risk (HV-88) still unaddressed — the CI regen-diff gate
+  should land as part of HV-2.
