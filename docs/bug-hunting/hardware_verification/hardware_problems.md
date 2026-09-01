@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 5 | 7 | 0 | 1 | 1 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 14 | 0 | 0 | 0 | 0 | 14 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **91** | **5** | **7** | **0** | **1** | **78** |
+| **Total** | | **91** | **6** | **7** | **0** | **1** | **77** |
 
-**Last updated:** 2026-09-01 (Session 05 — HV-86 `🟢`; HV-83 `🔒` deferred
-as satellite is post-v1). **Tier 0: only HV-2 remains.** · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 06 — HV-2 `🟢` harness verified,
+P1→P2 BLE delivery works 9/10; **Tier 0 complete**). Gate to Tier 1 = the 9→10 fix (HV-90). · **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -121,9 +121,28 @@ finding regression-checks against.
 
 ### HV-2 — CI has no Android instrumented-test leg; the sim is the only thing exercised
 
-- **Fix status:** ⬜
-- **Area:** `.github/workflows/ci.yml`, `docs/testing/ANDROID_BUILD_STATUS.md`
-- **Severity:** High (test-integrity) · **HW gate:** none
+- **Fix status:** 🟢 HW-verified · commits c0bfb31 (HV-89 interim) + 0519516 ·
+  2026-09-01 · the `iris_bench` harness drives P1=V2205 + P2=vivo 2004 end to
+  end and P1→P2 BLE delivery works 9/10 · Session 06. **The harness (loop §4.2
+  deliverable) is done.** The §2 Tier-0→Tier-1 *gate* — the smoke at **10/10** —
+  is not yet met: iter 1 fails because the first GATT connection takes ~30 s and
+  the queued message exhausts its retry budget before the link is up (→ HV-90 +
+  a retry-hold, the first Tier-1 work).
+- **Area:** `iris_bench/` (host Python), `android/app/src/androidTest/`
+  (`IrisSnippet`), `android/app/build.gradle.kts`,
+  `docs/bug-hunting/hardware_verification/evidence/`
+- **Severity:** High (test-integrity) · **HW gate:** 2 phones ✓
+
+**Delivered:** `iris_bench` (Mobly) — `IrisBenchBase` (registers 2 controllers,
+force-installs the app + snippet APKs, grants perms, loads the snippet, per-test
+evidence), `test_tier0_smoke.py`, `evidence.py` (logcat + `dumpsys
+bluetooth_manager`/`wifip2p` + `meshSnapshot()` JSON + best-effort `btsnoop` via
+`bugreport`). The `IrisTestSnippet` APK (`org.iris.mesh.test`, mobly-snippet-lib
+1.4.0) builds a real `IrisEngine` over the real adapters and exposes `startMesh`
+/ `stopMesh` / `nodeId` / `staticX25519` / `registerPeerKey` / `sendText` /
+`awaitDelivered` / `meshSnapshot`. First run: `evidence/session-01/`.
+**Still owed:** the CI L1+L2 gate + the bindgen/`.so` regen-diff check
+(HV-88 recurrence) + rewriting the stale `docs/testing/ANDROID_BUILD_STATUS.md`.
 
 **What:** CI builds `libiriscode.so` and runs the Rust suite. There is no
 `connectedAndroidTest`, no emulator leg, no `adb`-driven smoke. The 66 historical
@@ -460,8 +479,11 @@ message. It must be 10/10 before anything else is trusted.*
 
 ### HV-89 — Android has no key directory / key-exchange; since PRY-33 every addressed send fails closed
 
-- **Fix status:** ⬜ (found Session 06, HV-2 Step 0) · **prerequisite for the
-  Tier-0→Tier-1 gate** (no Android↔Android delivery is possible without it)
+- **Fix status:** 🟡 Interim landed (commit c0bfb31) — `BenchKeyDirectory` +
+  FFI `register_peer_key`; the `iris_bench` harness hand-feeds the two phones'
+  keys and delivery then works. **The real fix is still owed:** handshake-carried
+  `KeyAdvertisementV1` + `TrustKeyDirectory` (as desktop does) so any two IRIS
+  nodes exchange keys automatically. Found Session 06 (HV-2 Step 0).
 - **Area:** `crates/iris-android/src/engine.rs` (no `set_key_directory`),
   `crates/iris-core/src/discovery/{mod,handshake}.rs` (handshake carries no key
   ad), `crates/iris-core/src/identity/{advertise,trust_store}.rs` (the reusable
@@ -499,31 +521,36 @@ tested while the real handshake exchange is built.
 
 ---
 
-### HV-90 — BLE GATT connection never establishes on the bench phones (status 255 / 257)
+### HV-90 — BLE GATT: the first connection takes ~30 s, and a message queued before the link is up is dropped
 
-- **Fix status:** ⬜ (observed Session 06, HV-2 Step 0)
-- **Area:** `AndroidBleTransportAdapter.connectGatt` / `onConnectionStateChange`,
-  `ble.rs` connect path; interacts with HV-13, HV-33, HV-7
-- **Severity:** Critical · **HW gate:** 2 phones
+- **Fix status:** ⬜ (characterised Session 06 with the HV-2 harness — was
+  first seen as "connect always fails"; the harness run shows it does connect)
+- **Area:** `AndroidBleTransportAdapter.connectGatt`, `ble.rs` connect path +
+  `scan_allowed`/`DiscoveryManager` cadence, `MessageEngine` delivery-retry
+  budget; interacts with HV-13, HV-14, HV-33
+- **Severity:** Critical (the operator's "BLE sometimes works" — and the last
+  thing between here and a 10/10 Tier-0 gate) · **HW gate:** 2 phones ✓
 
-**What:** with both apps running side by side, **BLE discovery works** —
-`peers_seen=2` on P2 (vivo 2004, Android 12). But **every GATT connection
-fails**:
-- P2: `disconnected before connect completed, status=257` (`0x101` =
-  `GATT_CONN_FAIL_ESTABLISH` / cancelled), `elapsed_ms=11..27` — fails instantly.
-- P1 (V2205, Android 14): `bta_gattc_open_fail: Cannot establish Connection …
-  GATT_Status(255)` (`0xFF` generic), then a 30 s timeout
-  (`connection failed elapsed_ms=30002`).
-- The discovered peer ids carry the `…ffffffffffffffff` tail —
-  `synthesize_unknown_peer_id` (HV-13): the connect fires before the beacon
-  parse resolves the real id.
+**What (harness evidence, `evidence/session-01`):** with `iris_bench` driving
+both phones, BLE discovery + GATT connection + delivery **all work** —
+`connectGatt: ready resolved successfully`, MTU negotiated to **517**,
+`gattWrite … len=350` goes through, and messages 2–10 of the smoke deliver in
+~200 ms each. Two real defects remain:
+1. **First-connect latency ~30 s.** `startMesh` → first `GATT_Connect` ~33 s
+   later, connected ~2 s after that. The delay is the discovery scan / connect
+   cadence (candidate: HV-14 scan-restart backoff, or `connectGatt(autoConnect
+   = false)` with a slow first direct connect, or the beacon-parse → connect
+   ordering — the peer id still carries the `…ffffffff` synthetic tail, HV-13).
+2. **A message queued before the link is up is lost.** `msg.transport_send_failed
+   error="transport: not connected"` → `msg.all_sends_failed "requeuing"` →
+   `msg.delivery_failed "delivery attempt budget exhausted"`. The engine retries
+   for a bounded budget and drops the message rather than holding it until the
+   link comes up. Iteration 1 of the smoke fails for exactly this reason.
 
-This is the core Tier-1 blocker and the direct cause of the operator's "BLE
-sometimes works." Needs the HV-2 harness + `btsnoop` to diagnose the ATT-level
-timeline. Candidate mechanisms: HV-33 (status not classified/retried), HV-13
-(connecting to a synthetic id / stale address), connect issued off the main
-thread, RPA address rotation (HV-17), or the accept-poller / GATT-server
-interaction. **First Tier-1 finding to work.**
+**First Tier-1 work.** Fixing (1) shrinks the window; fixing (2) (hold/retry a
+queued message across a link-establishment delay instead of exhausting a budget)
+closes the 9→10 gap. Also seen: P2 `deliveryFailed=9` alongside `delivered=9` —
+the recipient's ACK/reverse path also hits "not connected" (HV-58 territory).
 
 ### HV-7 — Every real message is fragmented into many ATT writes, each a blocking round-trip, and one failure tears the whole link down
 

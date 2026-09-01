@@ -1060,3 +1060,117 @@ crash on either device.
   HV-89).
 - Recurring FFI-regen risk (HV-88) still unaddressed — the CI regen-diff gate
   should land as part of HV-2.
+
+---
+
+## Session 06 — 2026-09-01 — HV-2 (the iris_bench harness) + the two blockers it found
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`, Android 14 / SDK 34) · P2 = vivo 2004
+(`b2fbcd39`, Android 12 / SDK 31). Both on USB, driven by Mobly.
+**Build under test:** `56869e4` -> HEAD.
+**Session goal:** HV-2 — stand up the Mobly `iris_bench` harness + snippet APK +
+evidence pipeline (loop §4). Step 0 first: does Android<->Android delivery even
+work today?
+
+---
+
+### HV-2 Step 0 — de-risk: two blockers found
+
+Watched both apps run side by side:
+- **BLE discovery works** — `peers_seen=2` on P2.
+- **GATT connection failed** every attempt at first (`status=255` / `257`), so
+  it looked like "connect never works".
+- **HV-89:** the Android engine never calls `set_key_directory` and the
+  discovery handshake carries no key ad -> since PRY-33 (`seal_outbound`
+  fails closed) *every* addressed Android->Android send dies with
+  `KeyUnavailable`. Confirmed: `/send` -> the Android outbox QUEUED chip, core
+  counters zero. The old "BLE 3-way working" claim predates PRY-33.
+
+Set `bluetooth_hci_log=1` on both phones; the file isn't readable without root
+on vivo, so btsnoop is pulled best-effort via `adb bugreport`.
+
+---
+
+### HV-89 (interim) — give the engine a hand-fed X25519 key directory
+
+**Phase D.** `crates/iris-android/src/engine.rs`: `BenchKeyDirectory` (an
+accumulating `Mutex<HashMap<[u8;32],[u8;32]>>` impl `KeyDirectory`), created in
+`build()` and wired via `engine.set_key_directory(...)`; FFI
+`register_peer_key(peer_hex, x25519_hex)`. The `iris_bench` harness calls
+`registerPeerKey` both ways after `startMesh`, using each phone's
+`staticX25519()`. Same shape as HV-1's `register_test_key`.
+`cargo test -p iris-android` 7/7. Regenerated bindings + `.so`.
+**The real fix (handshake-carried `KeyAdvertisementV1` + `TrustKeyDirectory`,
+as desktop does) is still owed** — tracked as HV-89.
+**Phase C.** Commit c0bfb31.
+
+---
+
+### HV-2 — the iris_bench harness
+
+**Phase R.** Loop §4 (written Session 00) is the research output — Mobly +
+Mobly Snippet Lib, host-driven, multi-device. Integration choice: the snippet
+is the app module's **`src/androidTest` APK** (`org.iris.mesh.test`) — it runs
+in the app's process/classloader so it can `import iriscore.*`, build a real
+`IrisEngine` over the real `AndroidBleTransportAdapter` etc., and needs no
+separate Gradle module. `mobly-snippet-lib` latest on Maven Central is `1.4.0`
+(1.0.0 does not exist).
+
+**Phase D.**
+- `android/app/src/androidTest/kotlin/iriscore/snippet/IrisSnippet.kt` — `@Rpc`
+  surface: `startMesh` / `stopMesh` / `nodeId` / `staticX25519` /
+  `registerPeerKey` / `sendText` / `awaitDelivered` / `meshSnapshot`. Builds the
+  engine like `IrisCoreModule` does; installs an `FfiInboxListener` that records
+  delivered wire-ids.
+- `android/app/src/androidTest/AndroidManifest.xml` — `mobly-snippets` meta-data.
+- `android/app/build.gradle.kts` — `testInstrumentationRunner = SnippetRunner`,
+  `androidTestImplementation mobly-snippet-lib:1.4.0` + `androidx.test:runner/core`.
+- `iris_bench/` — `IrisBenchBase` (2 controllers via `min_number=2`, force-installs
+  `app-debug.apk` + `app-debug-androidTest.apk`, `pm grant` the runtime perms,
+  battery-opt whitelist, `load_snippet`, per-test evidence, `session-NN` dir),
+  `test_tier0_smoke.py` (`P1 -> P2` x10, 2-byte payload = one ATT write),
+  `evidence.py` (logcat + `dumpsys bluetooth_manager`/`wifip2p` + `meshSnapshot`
+  JSON + best-effort btsnoop via bugreport), `configs/bench_2phone.yml`,
+  `__main__.py` (`python -m iris_bench`), `README.md`.
+- Config gotchas fixed: `model`/`android` are reserved `AndroidDevice` attrs (use
+  only `label`); `suite_runner.run_suite([cls], argv=...)` not `test_runner.main`;
+  `--tests` wants `Class.method`.
+
+**Phase T — hardware.** `python -m iris_bench` — full run, `evidence/session-01/`:
+```
+snippet loaded; node=72ddbbb8…            (P1)
+snippet loaded; node=3782eb73…            (P2)
+[Test] test_p1_sends_p2_receives_10x
+iter 1/10: {'delivered': False, 'timeoutMs': 90000}
+iter 2/10: {'delivered': True, ... 'payloadUtf8': 'hi1'}
+iter 3..10/10: {'delivered': True, ...}
+SMOKE SUMMARY: {"delivered": 9, "of": 10}
+```
+- The harness drives both phones end to end, loads the snippet, runs the test,
+  and captures logcat + both `dumpsys` + `meshSnapshot` JSON on pass and on fail.
+- **P1 -> P2 BLE single-hop delivery WORKS** — 9/10, MTU negotiated to 517,
+  `gattWrite len=350` succeeds, ~200 ms latency once linked.
+- Iter 1 fails: `startMesh` -> first `GATT_Connect` ~33 s later
+  (`discovery.connect_ok elapsed_ms=3001` after the scan finally fires), and the
+  iter-1 message `msg.delivery_failed "delivery attempt budget exhausted"` /
+  `msg.transport_send_failed "transport: not connected"` before the link is up.
+  -> **HV-90** (characterised: not "never connects" — "~30 s first connect + the
+  queued message is dropped rather than held").
+
+**Phase C.** Commit 0519516. Tracker **HV-2 -> 🟢** (the harness — loop §4.2
+deliverable). Regen-diff CI gate + `ANDROID_BUILD_STATUS.md` rewrite still owed.
+
+### Session 06 closeout
+- **Tier 0 is complete.** 14 findings — 6 🟢 (HV-2, HV-3, HV-6, HV-84, HV-86,
+  HV-88), 7 ✅ (HV-1, HV-4, HV-5, HV-81, HV-82, HV-85, HV-87), 1 🔒 (HV-83
+  satellite, deferred).
+- New findings: **HV-89** (no Android key exchange — interim landed, real fix
+  owed), **HV-90** (first-connect latency + queued-message drop).
+- 🟢 count: 5 -> 6.
+- **Gate to Tier 1** (§2: the smoke at 10/10) is **9/10** — one HV-90 fix away
+  (hold a queued message across link establishment; shrink the first-connect
+  window). That is the first Tier-1 work, done with the harness.
+- Harness usage: `python -m iris_bench` (see `iris_bench/README.md`). btsnoop is
+  best-effort via bugreport on non-root vivo.
+- Still owed on HV-2: the CI L1+L2 gate + the bindgen/`.so` regen-diff check
+  (HV-88 recurrence), + rewrite `docs/testing/ANDROID_BUILD_STATUS.md`.
