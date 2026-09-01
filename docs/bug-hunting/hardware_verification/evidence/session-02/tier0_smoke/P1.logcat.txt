@@ -1,0 +1,515 @@
+--------- beginning of main
+09-01 19:59:31.093 W/logcat  ( 2807): type=1400 audit(0.0:341739): avc:  denied  { ioctl } for  path="socket:[65288439]" dev="sockfs" ino=65288439 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 19:59:31.105 W/logcat  ( 2807): type=1400 audit(0.0:341740): avc:  denied  { ioctl } for  path="socket:[65288439]" dev="sockfs" ino=65288439 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 19:59:31.109 W/logcat  ( 2807): type=1400 audit(0.0:341741): avc:  denied  { ioctl } for  path="socket:[65288439]" dev="sockfs" ino=65288439 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 19:59:31.109 W/logcat  ( 2807): type=1400 audit(0.0:341742): avc:  denied  { ioctl } for  path="socket:[65288439]" dev="sockfs" ino=65288439 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 19:59:31.558 I/bt_stack(22032): [INFO:bta_gatts_act.cc(246)] register application first_unuse rcb_idx=1
+09-01 19:59:31.559 I/bt_stack(22032): [INFO:gatt_api.cc(1458)] GATT_Register_Ext 95c720e5-c6d4-4528-b871-9112d5c7de0f
+09-01 19:59:31.559 I/bt_stack(22032): [INFO:gatt_api.cc(1479)] allocated gatt_if=7
+09-01 19:59:31.564 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register 21443e8f-cd7a-b65c-4c8b-e99ee9974189
+09-01 19:59:31.564 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-01 19:59:31.568 I/bt_stack(22032): [INFO:bta_gatts_api.cc(140)] bta_gatts_add_service_impl: rcb_idx=1
+09-01 19:59:31.568 I/bt_stack(22032): [INFO:gatt_api.cc(205)] GATTS_AddService
+09-01 19:59:31.568 I/bt_stack(22032): [INFO:gatt_api.cc(318)] GATTS_AddService: service parsed correctly, now starting
+09-01 19:59:31.568 I/bt_stack(22032): [INFO:gatt_sr_hash.cc(124)] gatts_calculate_database_hash: hash=342F374A6A676FC692019BD7260D80B7
+09-01 19:59:31.591 D/BtGatt.AdvertiseManager(22032): startAdvertisingSet() - reg_id=-22, callback: android.os.BinderProxy@2e9ee9a, interval 1600, callingPkg org.iris.mesh
+09-01 19:59:31.618 D/BtGatt.AdvertiseManager(22032): onAdvertisingSetStarted() - regId=-22, advertiserId=1, status=0
+09-01 19:59:31.781 I/NearbyMediums(19919): No BLE Fast/GATT advertisements found in the latest cycle.
+09-01 19:59:31.782 I/NearbyMediums(19919): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-01 19:59:32.305 W/DeviceStateUtils(19919): Active network is null
+09-01 19:59:32.306 W/Auth    (19919): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-01 19:59:32.306 W/Auth    (19919): dedt: Failed to process request
+09-01 19:59:32.306 W/Auth    (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 19:59:32.306 W/Auth    (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 19:59:32.306 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 19:59:32.306 W/Auth    (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 19:59:32.306 W/Auth    (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 19:59:32.306 W/Auth    (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.306 W/Auth    (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 19:59:32.306 W/Auth    (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 19:59:32.306 W/Auth    (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 19:59:32.306 W/Auth    (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 19:59:32.306 W/Auth    (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 19:59:32.306 W/Auth    (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 19:59:32.306 W/Auth    (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 19:59:32.306 W/Auth    (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 19:59:32.306 W/Auth    (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 19:59:32.306 W/Auth    (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 19:59:32.306 W/Auth    (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 19:59:32.306 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.306 W/Auth    (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.306 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.306 W/Auth    (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 19:59:32.306 W/Auth    (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 19:59:32.306 W/Auth    (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 19:59:32.306 W/Auth    (19919): Caused by: degw: Connectivity error
+09-01 19:59:32.306 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 19:59:32.306 W/Auth    (19919): 	... 20 more
+09-01 19:59:32.306 W/Auth    (19919): Caused by: java.io.IOException
+09-01 19:59:32.306 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 19:59:32.306 W/Auth    (19919): 	... 20 more
+09-01 19:59:32.312 E/AuthPII (19919): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:https://www.googleapis.com/auth/googleplay
+09-01 19:59:32.312 E/AuthPII (19919): bksu: Error when calling server using GmsNetworkStack.
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 19:59:32.312 E/AuthPII (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.312 E/AuthPII (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.312 E/AuthPII (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: bksu: Error requesting token.
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 12 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-01 19:59:32.312 E/AuthPII (19919): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-01 19:59:32.312 E/AuthPII (19919): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 13 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: dedt: Failed to process request
+09-01 19:59:32.312 E/AuthPII (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 19:59:32.312 E/AuthPII (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 19:59:32.312 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 19:59:32.312 E/AuthPII (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 19:59:32.312 E/AuthPII (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 19:59:32.312 E/AuthPII (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.312 E/AuthPII (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 19:59:32.312 E/AuthPII (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 19:59:32.312 E/AuthPII (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 13 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: degw: Connectivity error
+09-01 19:59:32.312 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 20 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: java.io.IOException
+09-01 19:59:32.312 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 20 more
+09-01 19:59:32.312 E/AuthPII (19919): Message is Error when calling server using GmsNetworkStack.
+09-01 19:59:32.312 E/AuthPII (19919): bksu: Error when calling server using GmsNetworkStack.
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 19:59:32.312 E/AuthPII (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.312 E/AuthPII (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.312 E/AuthPII (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 19:59:32.312 E/AuthPII (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: bksu: Error requesting token.
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 12 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-01 19:59:32.312 E/AuthPII (19919): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-01 19:59:32.312 E/AuthPII (19919): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 13 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: dedt: Failed to process request
+09-01 19:59:32.312 E/AuthPII (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 19:59:32.312 E/AuthPII (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 19:59:32.312 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 19:59:32.312 E/AuthPII (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 19:59:32.312 E/AuthPII (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 19:59:32.312 E/AuthPII (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.312 E/AuthPII (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 19:59:32.312 E/AuthPII (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 19:59:32.312 E/AuthPII (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 19:59:32.312 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 13 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: degw: Connectivity error
+09-01 19:59:32.312 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 20 more
+09-01 19:59:32.312 E/AuthPII (19919): Caused by: java.io.IOException
+09-01 19:59:32.312 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 19:59:32.312 E/AuthPII (19919): 	... 20 more
+09-01 19:59:32.313 I/Auth    (19919): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-01 19:59:32.313 W/Auth    (19919): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:https://www.googleapis.com/auth/googleplay [CONTEXT service_id=153 ]
+09-01 19:59:32.313 W/Auth    (19919): aiic: GetToken failed with status code: NetworkError
+09-01 19:59:32.313 W/Auth    (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-01 19:59:32.313 W/Auth    (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 19:59:32.313 W/Auth    (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 19:59:32.313 W/Auth    (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 19:59:32.313 W/Auth    (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 19:59:32.313 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.313 W/Auth    (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 19:59:32.313 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 19:59:32.313 W/Auth    (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 19:59:32.313 W/Auth    (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 19:59:32.313 W/Auth    (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 19:59:32.313 W/Auth    (19919): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError [CONTEXT service_id=343 ]
+09-01 19:59:33.092 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.092 I/System.out(27826): GlobalSearch: name:  _i4_1.del ; size = 3
+09-01 19:59:33.092 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 19:59:33.096 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.096 I/System.out(27826): GlobalSearch: name:  _he_1.del ; size = 3
+09-01 19:59:33.096 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 19:59:33.099 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.099 I/System.out(27826): GlobalSearch: name:  _hd_1.del ; size = 3
+09-01 19:59:33.099 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 19:59:33.103 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.103 I/System.out(27826): GlobalSearch: name:  _hc_1.del ; size = 6
+09-01 19:59:33.103 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 19:59:33.106 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.106 I/System.out(27826): GlobalSearch: name:  _fx_1.del ; size = 3
+09-01 19:59:33.106 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 19:59:33.110 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.110 I/System.out(27826): GlobalSearch: name:  _fw_1.del ; size = 3
+09-01 19:59:33.110 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 19:59:33.113 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.113 I/System.out(27826): GlobalSearch: name:  _fu_3.del ; size = 9
+09-01 19:59:33.113 I/System.out(27826): GlobalSearch: memsize = 2
+09-01 19:59:33.136 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 19:59:33.136 I/System.out(27826): GlobalSearch: name:  _ft_4.del ; size = 56
+09-01 19:59:33.136 I/System.out(27826): GlobalSearch: memsize = 7
+09-01 19:59:35.542 D/BoundBrokerSvc(19919): onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-01 19:59:36.755 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:f7:6b:7b:0d:27
+09-01 19:59:36.756 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:f7:6b:7b:0d:27
+09-01 19:59:36.791 D/BoundBrokerSvc(19919): onRebind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-01 19:59:40.213 I/IPCThreadState(30148): oneway function results for code 2 on binder at 0xb400007636da1240 will be dropped but finished with status UNKNOWN_TRANSACTION
+09-01 19:59:41.786 I/NearbyMediums(19919): No BLE Fast/GATT advertisements found in the latest cycle.
+09-01 19:59:41.787 I/NearbyMediums(19919): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-01 19:59:48.969 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:f7:6b:7b:0d:27
+09-01 19:59:48.970 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:f7:6b:7b:0d:27
+09-01 19:59:48.970 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 68:a1:79:45:e5:f6
+09-01 19:59:48.971 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 68:a1:79:45:e5:f6
+09-01 19:59:51.795 I/NearbyMediums(19919): No BLE Fast/GATT advertisements found in the latest cycle.
+09-01 19:59:51.796 I/NearbyMediums(19919): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-01 19:59:53.755 E/msys    (31816): E[N mns:TigonMNS]_LogError(334)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+09-01 19:59:53.771 E/msys    (31816): E[N mns:TigonMNS]_LogError(334)=>Failed to resolve using system DNS resolver, getaddrinfo(): No address associated with hostname
+09-01 20:00:01.799 I/NearbyMediums(19919): No BLE Fast/GATT advertisements found in the latest cycle.
+09-01 20:00:01.800 I/NearbyMediums(19919): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-01 20:00:02.987 W/DeviceStateUtils(19919): Active network is null
+09-01 20:00:02.988 W/Auth    (19919): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-01 20:00:02.988 W/Auth    (19919): dedt: Failed to process request
+09-01 20:00:02.988 W/Auth    (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 20:00:02.988 W/Auth    (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 20:00:02.988 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 20:00:02.988 W/Auth    (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 20:00:02.988 W/Auth    (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 20:00:02.988 W/Auth    (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.988 W/Auth    (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 20:00:02.988 W/Auth    (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 20:00:02.988 W/Auth    (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 20:00:02.988 W/Auth    (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 20:00:02.988 W/Auth    (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 20:00:02.988 W/Auth    (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 20:00:02.988 W/Auth    (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 20:00:02.988 W/Auth    (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:02.988 W/Auth    (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:02.988 W/Auth    (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:02.988 W/Auth    (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:02.988 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.988 W/Auth    (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.988 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.988 W/Auth    (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:02.988 W/Auth    (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:02.988 W/Auth    (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:02.988 W/Auth    (19919): Caused by: degw: Connectivity error
+09-01 20:00:02.988 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 20:00:02.988 W/Auth    (19919): 	... 20 more
+09-01 20:00:02.988 W/Auth    (19919): Caused by: java.io.IOException
+09-01 20:00:02.988 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 20:00:02.988 W/Auth    (19919): 	... 20 more
+09-01 20:00:02.993 E/AuthPII (19919): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:https://www.googleapis.com/auth/googleplay
+09-01 20:00:02.993 E/AuthPII (19919): bksu: Error when calling server using GmsNetworkStack.
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 20:00:02.993 E/AuthPII (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.993 E/AuthPII (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.993 E/AuthPII (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: bksu: Error requesting token.
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 12 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-01 20:00:02.993 E/AuthPII (19919): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-01 20:00:02.993 E/AuthPII (19919): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 13 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: dedt: Failed to process request
+09-01 20:00:02.993 E/AuthPII (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 20:00:02.993 E/AuthPII (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 20:00:02.993 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 20:00:02.993 E/AuthPII (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 20:00:02.993 E/AuthPII (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 20:00:02.993 E/AuthPII (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.993 E/AuthPII (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 20:00:02.993 E/AuthPII (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 20:00:02.993 E/AuthPII (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 13 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: degw: Connectivity error
+09-01 20:00:02.993 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 20 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: java.io.IOException
+09-01 20:00:02.993 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 20 more
+09-01 20:00:02.993 E/AuthPII (19919): Message is Error when calling server using GmsNetworkStack.
+09-01 20:00:02.993 E/AuthPII (19919): bksu: Error when calling server using GmsNetworkStack.
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 20:00:02.993 E/AuthPII (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.993 E/AuthPII (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.993 E/AuthPII (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:02.993 E/AuthPII (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: bksu: Error requesting token.
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 12 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-01 20:00:02.993 E/AuthPII (19919): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-01 20:00:02.993 E/AuthPII (19919): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 13 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: dedt: Failed to process request
+09-01 20:00:02.993 E/AuthPII (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 20:00:02.993 E/AuthPII (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 20:00:02.993 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 20:00:02.993 E/AuthPII (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 20:00:02.993 E/AuthPII (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 20:00:02.993 E/AuthPII (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.993 E/AuthPII (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 20:00:02.993 E/AuthPII (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 20:00:02.993 E/AuthPII (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 20:00:02.993 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 13 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: degw: Connectivity error
+09-01 20:00:02.993 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 20 more
+09-01 20:00:02.993 E/AuthPII (19919): Caused by: java.io.IOException
+09-01 20:00:02.993 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 20:00:02.993 E/AuthPII (19919): 	... 20 more
+09-01 20:00:02.994 I/Auth    (19919): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-01 20:00:02.994 W/Auth    (19919): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:https://www.googleapis.com/auth/googleplay [CONTEXT service_id=153 ]
+09-01 20:00:02.994 W/Auth    (19919): aiic: GetToken failed with status code: NetworkError
+09-01 20:00:02.994 W/Auth    (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-01 20:00:02.994 W/Auth    (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:02.994 W/Auth    (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:02.994 W/Auth    (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:02.994 W/Auth    (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:02.994 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.994 W/Auth    (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:02.994 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:02.994 W/Auth    (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:02.994 W/Auth    (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:02.994 W/Auth    (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:02.994 W/Auth    (19919): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError [CONTEXT service_id=343 ]
+09-01 20:00:03.792 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register 7f8dacae-b81c-7e26-22b1-3ae1c484225f
+09-01 20:00:03.793 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-01 20:00:03.900 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register 5c66ce8a-eeaf-21a0-9084-f11b658a718c
+09-01 20:00:03.900 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=14
+09-01 20:00:03.914 I/bt_stack(22032): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=14, address=68:a1:79:45:e5:f6 is_direct 1
+09-01 20:00:03.914 I/bt_stack(22032): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=68:a1:79:45:e5:f6, cl_supp_feat=0000, aware=1
+09-01 20:00:03.914 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-01 20:00:03.914 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-01 20:00:03.997 D/BoundBrokerSvc(19919): onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-01 20:00:04.566 W/DeviceStateUtils(19919): Active network is null
+09-01 20:00:04.567 W/Auth    (19919): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-01 20:00:04.567 W/Auth    (19919): dedt: Failed to process request
+09-01 20:00:04.567 W/Auth    (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 20:00:04.567 W/Auth    (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 20:00:04.567 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 20:00:04.567 W/Auth    (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 20:00:04.567 W/Auth    (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 20:00:04.567 W/Auth    (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.567 W/Auth    (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 20:00:04.567 W/Auth    (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 20:00:04.567 W/Auth    (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 20:00:04.567 W/Auth    (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 20:00:04.567 W/Auth    (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 20:00:04.567 W/Auth    (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 20:00:04.567 W/Auth    (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 20:00:04.567 W/Auth    (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:04.567 W/Auth    (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:04.567 W/Auth    (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:04.567 W/Auth    (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:04.567 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.567 W/Auth    (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.567 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.567 W/Auth    (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:04.567 W/Auth    (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:04.567 W/Auth    (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:04.567 W/Auth    (19919): Caused by: degw: Connectivity error
+09-01 20:00:04.567 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 20:00:04.567 W/Auth    (19919): 	... 20 more
+09-01 20:00:04.567 W/Auth    (19919): Caused by: java.io.IOException
+09-01 20:00:04.567 W/Auth    (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 20:00:04.567 W/Auth    (19919): 	... 20 more
+09-01 20:00:04.570 E/AuthPII (19919): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:https://www.googleapis.com/auth/googleplay
+09-01 20:00:04.570 E/AuthPII (19919): bksu: Error when calling server using GmsNetworkStack.
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 20:00:04.570 E/AuthPII (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.570 E/AuthPII (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.570 E/AuthPII (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: bksu: Error requesting token.
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 12 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-01 20:00:04.570 E/AuthPII (19919): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-01 20:00:04.570 E/AuthPII (19919): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 13 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: dedt: Failed to process request
+09-01 20:00:04.570 E/AuthPII (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 20:00:04.570 E/AuthPII (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 20:00:04.570 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 20:00:04.570 E/AuthPII (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 20:00:04.570 E/AuthPII (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 20:00:04.570 E/AuthPII (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.570 E/AuthPII (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 20:00:04.570 E/AuthPII (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 20:00:04.570 E/AuthPII (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 13 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: degw: Connectivity error
+09-01 20:00:04.570 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 20 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: java.io.IOException
+09-01 20:00:04.570 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 20 more
+09-01 20:00:04.570 E/AuthPII (19919): Message is Error when calling server using GmsNetworkStack.
+09-01 20:00:04.570 E/AuthPII (19919): bksu: Error when calling server using GmsNetworkStack.
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-01 20:00:04.570 E/AuthPII (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.570 E/AuthPII (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.570 E/AuthPII (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:04.570 E/AuthPII (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: bksu: Error requesting token.
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 12 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-01 20:00:04.570 E/AuthPII (19919): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-01 20:00:04.570 E/AuthPII (19919): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 13 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: dedt: Failed to process request
+09-01 20:00:04.570 E/AuthPII (19919): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-01 20:00:04.570 E/AuthPII (19919): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-01 20:00:04.570 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-01 20:00:04.570 E/AuthPII (19919): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-01 20:00:04.570 E/AuthPII (19919): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-01 20:00:04.570 E/AuthPII (19919): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.570 E/AuthPII (19919): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-01 20:00:04.570 E/AuthPII (19919): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-01 20:00:04.570 E/AuthPII (19919): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-01 20:00:04.570 E/AuthPII (19919): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 13 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: degw: Connectivity error
+09-01 20:00:04.570 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 20 more
+09-01 20:00:04.570 E/AuthPII (19919): Caused by: java.io.IOException
+09-01 20:00:04.570 E/AuthPII (19919): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-01 20:00:04.570 E/AuthPII (19919): 	... 20 more
+09-01 20:00:04.570 I/Auth    (19919): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-01 20:00:04.571 W/Auth    (19919): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:https://www.googleapis.com/auth/googleplay [CONTEXT service_id=153 ]
+09-01 20:00:04.571 W/Auth    (19919): aiic: GetToken failed with status code: NetworkError
+09-01 20:00:04.571 W/Auth    (19919): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-01 20:00:04.571 W/Auth    (19919): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-01 20:00:04.571 W/Auth    (19919): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-01 20:00:04.571 W/Auth    (19919): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-01 20:00:04.571 W/Auth    (19919): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-01 20:00:04.571 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.571 W/Auth    (19919): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-01 20:00:04.571 W/Auth    (19919): 	at android.os.Binder.transact(Binder.java:1249)
+09-01 20:00:04.571 W/Auth    (19919): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-01 20:00:04.571 W/Auth    (19919): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-01 20:00:04.571 W/Auth    (19919): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-01 20:00:04.571 W/Auth    (19919): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError [CONTEXT service_id=343 ]
+09-01 20:00:04.790 D/BoundBrokerSvc(20068): onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+09-01 20:00:05.241 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:f7:6b:7b:0d:27
+09-01 20:00:05.242 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:f7:6b:7b:0d:27
+09-01 20:00:05.269 D/BoundBrokerSvc(19919): onRebind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-01 20:00:05.601 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 68:a1:79:45:e5:f6
+09-01 20:00:05.601 I/bt_stack(22032): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-01 20:00:05.601 I/bt_stack(22032): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-01 20:00:05.601 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-01 20:00:05.602 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-01 20:00:05.603 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-01 20:00:05.777 E/bt_stack(22032): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_68a17945e5f6 for reading, error: No such file or directory
+09-01 20:00:05.779 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-01 20:00:05.779 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:00:05.783 D/BluetoothGattServer(19919): onServerConnectionState() - status=0 serverIf=9 device=68:A1:79:45:E5:F6
+09-01 20:00:05.861 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-01 20:00:05.952 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-01 20:00:05.953 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-01 20:00:06.042 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.043 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-01 20:00:06.133 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-01 20:00:06.221 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.221 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-01 20:00:06.312 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.312 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-01 20:00:06.316 D/BluetoothGattServer(19919): onConnectionUpdated() - Device=68:A1:79:45:E5:F6 interval=6 latency=0 timeout=500 status=0
+09-01 20:00:06.333 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-01 20:00:06.334 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:00:06.349 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.349 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=3, s_handle=0x0028, e_handle=0xffff
+09-01 20:00:06.363 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.363 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=4, s_handle=0x0028, e_handle=0xffff
+09-01 20:00:06.377 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-01 20:00:06.393 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.393 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000e, disc_type=5, s_handle=0x002b, e_handle=0xffff
+09-01 20:00:06.408 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:00:06.408 I/bt_stack(22032): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-01 20:00:06.444 I/bt_stack(22032): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest68:a1:79:45:e5:f6 conn_id=0x000e
+09-01 20:00:06.445 I/bt_stack(22032): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 68:a1:79:45:e5:f6
+09-01 20:00:06.445 I/bt_stack(22032): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:14 mtu:517 user mtu 517
+09-01 20:00:06.460 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-01 20:00:06.461 I/bt_stack(22032): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (68:a1:79:45:e5:f6) MTU 517
+09-01 20:00:06.461 I/bt_stack(22032): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-01 20:00:06.542 D/BluetoothGattServer(19919): onConnectionUpdated() - Device=68:A1:79:45:E5:F6 interval=36 latency=0 timeout=500 status=0
+09-01 20:00:06.584 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:08.111 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:08.515 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:08.787 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:09.057 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:09.327 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:09.640 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:09.912 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:10.181 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:10.450 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:00:10.765 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4

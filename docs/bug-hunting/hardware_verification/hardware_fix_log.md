@@ -1174,3 +1174,85 @@ deliverable). Regen-diff CI gate + `ANDROID_BUILD_STATUS.md` rewrite still owed.
   best-effort via bugreport on non-root vivo.
 - Still owed on HV-2: the CI L1+L2 gate + the bindgen/`.so` regen-diff check
   (HV-88 recurrence), + rewrite `docs/testing/ANDROID_BUILD_STATUS.md`.
+
+---
+
+## Session 07 — 2026-09-01 — HV-90: the tier-0 smoke passes 10/10
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`) · P2 = vivo 2004 (`b2fbcd39`).
+**Build under test:** `1680610` -> HEAD.
+**Session goal:** close the 9->10 gap on the `iris_bench` tier-0 smoke — the §2
+Tier-0->Tier-1 gate.
+
+---
+
+### HV-90 (part 2) — hold a message while the link establishes
+
+**Phase R.** `iris_bench/evidence/session-01`: iter 1 of the smoke fails while
+iters 2-10 deliver in ~200 ms. Timeline: `sendText` at T0, first `GATT_Connect`
+~33 s later, `connect_ok` ~2 s after that. But iter 1's message is already
+`DeliveryFailed` — the P2 ring shows
+`msg.transport_send_failed error="transport: not connected"` ->
+`msg.all_sends_failed "requeuing"` -> `msg.delivery_failed "budget exhausted"`
+in quick succession.
+
+Mechanism, traced to source: `deliver_outbound` selects `ble-android` (transport
+state `Available` — HV-27: transport state != per-peer link state), calls
+`t.send()`, gets `TransportError::NotConnected` (no GATT link yet).
+`error.rs::is_retryable()` does **not** list `NotConnected`, so
+`any_retryable_failure` stays false ->
+`retryable = !saw_failure || any_retryable_failure` = false ->
+`requeue_or_fail(item, false)` -> `budget_ok = retryable && attempt <= max` =
+false -> `fail_message` **on the first attempt, in milliseconds**. The GATT link
+comes up 30 s later with nothing to carry. The `max_attempts` budget (2 for P4)
+is designed for ACK retransmission, not for "couldn't send yet" — DTN practice
+(RFC 9171: bundles wait in the store until a CLA is available) is to hold.
+
+**Phase D.**
+- `crates/iris-core/src/error.rs`: `TransportError::NotConnected` ->
+  `is_retryable()` true (permanent unreachability stays `PeerNotFound` /
+  `PolicyDenied`).
+- `crates/iris-core/src/message_engine/mod.rs`: `deliver_outbound` tracks
+  `saw_non_transient_failure` (any failure that isn't `NotConnected`/`Busy`);
+  `transient = saw_failure && !saw_non_transient_failure`. New
+  `requeue_or_fail(item, retryable, transient)` — a *transient* round holds the
+  message (`next_retry = now + 3 s`, no attempt consumed, `PendingSend`) rather
+  than the budget path. `no_transport_selected` passes `transient = true` (wait
+  for a transport); serialize-failure passes `false`.
+- `crates/iris-core/src/transport/simulated.rs`: HV-4 gains
+  `not_connected_first_n_sends` (first N `send()`s fail `NotConnected`).
+- `crates/iris-core/tests/sysval_fault_injection.rs`:
+  `hv90_message_held_until_link_establishes` — two real engines over a shared
+  sim transport that rejects the first 3 sends; asserts the P4 message is
+  delivered (not failed) and `delivery_failed == 0`. 6/6.
+- `cargo test -p iris-core` 772 + all integration suites (only the pre-existing
+  HV-83 satellite test fails). `-p iris-android` 7/7.
+
+**Phase T — hardware.** Rebuilt `.so` + both APKs; `python -m iris_bench --tests
+test_p1_sends_p2_receives_10x`:
+```
+iter 1/10:  {'delivered': True, 'latencyMs': 27735, ... 'payloadUtf8': 'hi0'}
+iter 2..10: {'delivered': True, 'latencyMs': 250..297}
+SMOKE SUMMARY: {"delivered": 10, "of": 10, "median_latency_ms": 281}
+[Test] test_p1_sends_p2_receives_10x PASS
+```
+P2 `meshSnapshot`: `delivered: 10, deliveryFailed: 0` (was `9 / 9` — the reverse
+ACK path cleared too). `evidence/session-02`.
+
+**Phase C.** Commit 28d0f1a. Tracker **HV-90 -> 🟢** (meets the §2 gate).
+The ~30 s first-connect latency is split out as **HV-91** (iter 1 still takes
+27 s — no longer *lost*, just slow).
+
+### Session 07 closeout
+- **The Tier-0->Tier-1 gate is met.** `cargo test -p iris-android` in CI (HV-1),
+  L1 sim fault model (HV-4), and the `iris_bench` "P1 sends, P2 receives" smoke
+  **10/10 with the evidence pipeline** (logcat + dumpsys + meshSnapshot in
+  `evidence/session-02`).
+- Findings advanced: **HV-90 🟢**. New: **HV-91** (first-connect latency ~30 s).
+- 🟢 count: 6 -> 7. **Active tier: 1.**
+- **Tier 1 is now open.** Order (loop §2 / §5): HV-91 (first-connect latency) +
+  the HV-7/HV-8 group (MTU & fragmentation — a 300-char message both ways 10/10)
+  + the HV-11/HV-14/HV-15 scan-lifecycle group. All now testable with the
+  harness: add `test_tier1_ble.py`.
+- Still owed from Tier 0: HV-89 real fix (handshake key exchange), the HV-2 CI
+  gate + regen-diff check + `ANDROID_BUILD_STATUS.md` rewrite.

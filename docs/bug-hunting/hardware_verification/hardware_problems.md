@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 14 | 0 | 0 | 0 | 0 | 14 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 15 | 1 | 0 | 0 | 0 | 14 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **91** | **6** | **7** | **0** | **1** | **77** |
+| **Total** | | **92** | **7** | **7** | **0** | **1** | **77** |
 
-**Last updated:** 2026-09-01 (Session 06 — HV-2 `🟢` harness verified,
-P1→P2 BLE delivery works 9/10; **Tier 0 complete**). Gate to Tier 1 = the 9→10 fix (HV-90). · **Active tier:** 1
+**Last updated:** 2026-09-01 (Session 07 — HV-90 `🟢`: the iris_bench
+tier-0 smoke PASSES 10/10 on hardware — **Tier-0→Tier-1 gate met**). · **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -523,8 +523,13 @@ tested while the real handshake exchange is built.
 
 ### HV-90 — BLE GATT: the first connection takes ~30 s, and a message queued before the link is up is dropped
 
-- **Fix status:** ⬜ (characterised Session 06 with the HV-2 harness — was
-  first seen as "connect always fails"; the harness run shows it does connect)
+- **Fix status:** 🟢 HW-verified · commit 28d0f1a · 2026-09-01 · the iris_bench
+  tier-0 smoke `test_p1_sends_p2_receives_10x` **PASSES 10/10** on P1=V2205 +
+  P2=vivo 2004 (was 9/10) — **meets the §2 Tier-0→Tier-1 gate** · Session 07.
+  The message-hold half is fixed; the ~30 s first-connect latency itself
+  (part 1 below) is not — iter 1 still takes 27 s, it just no longer *loses*
+  the message. Shrinking that window is follow-up **HV-91** (BLE
+  discovery/connect cadence).
 - **Area:** `AndroidBleTransportAdapter.connectGatt`, `ble.rs` connect path +
   `scan_allowed`/`DiscoveryManager` cadence, `MessageEngine` delivery-retry
   budget; interacts with HV-13, HV-14, HV-33
@@ -547,10 +552,29 @@ both phones, BLE discovery + GATT connection + delivery **all work** —
    for a bounded budget and drops the message rather than holding it until the
    link comes up. Iteration 1 of the smoke fails for exactly this reason.
 
-**First Tier-1 work.** Fixing (1) shrinks the window; fixing (2) (hold/retry a
-queued message across a link-establishment delay instead of exhausting a budget)
-closes the 9→10 gap. Also seen: P2 `deliveryFailed=9` alongside `delivered=9` —
-the recipient's ACK/reverse path also hits "not connected" (HV-58 territory).
+**Part (2) fixed** (commit 28d0f1a): `TransportError::NotConnected` is now
+`is_retryable()`, and `deliver_outbound` classifies a round whose only failures
+were `NotConnected`/`Busy` as *transient* — `requeue_or_fail` then holds the
+message (short 3 s retry, no `max_attempts` slot spent, TTL-bounded) instead of
+failing it. The P2 reverse-ACK failures cleared too (`deliveryFailed` 9 → 0).
+**Part (1)** — the ~30 s first-connect latency — is open as **HV-91**.
+
+---
+
+### HV-91 — BLE first-connect latency ~30 s (discovery / connect cadence)
+
+- **Fix status:** ⬜ (split from HV-90, Session 07)
+- **Area:** `ble.rs` `scan_allowed` / `DiscoveryManager` scan cadence,
+  `AndroidBleTransportAdapter.connectGatt` (`autoConnect=false`), HV-13 synthetic id
+- **Severity:** High (UX — "the first message takes 30 s") · **HW gate:** 2 phones
+
+**What:** `iris_bench` evidence (`session-02`): `startMesh` → first `GATT_Connect`
+~33 s later, then connected in ~2 s. HV-90's hold means the first message is no
+longer *lost*, but it still waits ~27 s. Candidates: the discovery scan-restart
+cadence / backoff (HV-14), the first direct `connectGatt` being slow with
+`autoConnect=false`, or the beacon-parse → connect ordering (the peer id still
+carries the `…ffffffff` synthetic tail — HV-13). Measure with the harness;
+target: first delivery under ~5 s.
 
 ### HV-7 — Every real message is fragmented into many ATT writes, each a blocking round-trip, and one failure tears the whole link down
 
