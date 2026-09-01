@@ -519,6 +519,6 @@ config literal; import `SslMode`.
 **Phase T.** n/a — no radio component; needs a live Postgres for the `#[ignore]`
 integration tests, which is not this pass's concern.
 
-**Phase C.** Commit _pending_. Tracker: new **HV-81 → `✅ Fixed`** under Tier 0.
+**Phase C.** Commit _pending_. Tracker: new **HV-81 → `✅ Fixed` · commit e044bda** under Tier 0.
 
 ---

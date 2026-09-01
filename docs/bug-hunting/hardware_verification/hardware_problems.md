@@ -241,7 +241,7 @@ send outcome so a bench session produces an analysable file.
 
 ### HV-81 — `iris-storage` does not build; TLS/NoTls `Connection` type mismatch blocks the Phase-D build gate
 
-- **Fix status:** ✅ Fixed · commit _pending_ · 2026-09-01 · host build, no HW
+- **Fix status:** ✅ Fixed · commit e044bda · 2026-09-01 · host build, no HW
   gate · Session 02
 - **Area:** `crates/iris-storage/src/pg.rs` (`establish`),
   `crates/iris-storage/src/seal.rs` (test literal)
