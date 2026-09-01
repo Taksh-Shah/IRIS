@@ -85,7 +85,7 @@ class AdapterLifecycleTest {
     @Test
     fun `rt111 ensureStarted is idempotent - create runs exactly once`() = runBlocking {
         var creates = 0
-        val gate = SessionGate { creates++; "session" }
+        val gate = SessionGate(create = { creates++; "session" })
         val first = gate.ensureStarted()
         val second = gate.ensureStarted()
         val third = gate.ensureStarted()
@@ -98,11 +98,11 @@ class AdapterLifecycleTest {
     @Test
     fun `rt111 ensureStarted never latches into failure - retry recovers`() = runBlocking {
         var attempts = 0
-        val gate = SessionGate<Unit> {
+        val gate = SessionGate<Unit>(create = {
             attempts++
             if (attempts == 1) throw IllegalStateException("platform down")
             Unit
-        }
+        })
         assertThrows(IllegalStateException::class.java) { runBlocking { gate.ensureStarted() } }
         gate.ensureStarted() // second attempt must retry, not reuse a failed latch
         assertEquals(2, attempts)
@@ -111,11 +111,11 @@ class AdapterLifecycleTest {
     @Test
     fun `rt111 concurrent starters coalesce into one create`() = runBlocking {
         var creates = 0
-        val gate = SessionGate<Unit> {
+        val gate = SessionGate<Unit>(create = {
             creates++
             delay(20L)
             Unit
-        }
+        })
         coroutineScope {
             val jobs = (0 until 8).map { async { gate.ensureStarted() } }
             jobs.awaitAll()
@@ -125,7 +125,7 @@ class AdapterLifecycleTest {
 
     @Test
     fun `rt111 markStarted seeds async resource and reset drops it`() = runBlocking {
-        val gate = SessionGate<Unit> { Unit }
+        val gate = SessionGate<Unit>(create = { Unit })
         assertFalse(gate.isStarted())
         assertTrue(gate.markStarted(Unit)) // onSessionStarted path
         assertTrue(gate.isStarted())
@@ -136,7 +136,7 @@ class AdapterLifecycleTest {
 
     @Test
     fun `rt010 invalidate clears the latch without blocking`() = runBlocking {
-        val gate = SessionGate<Unit> { Unit }
+        val gate = SessionGate<Unit>(create = { Unit })
         gate.ensureStarted()
         gate.invalidate() // channel-lost callback
         assertFalse(gate.isStarted())
