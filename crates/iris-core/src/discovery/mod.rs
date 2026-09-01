@@ -56,8 +56,14 @@ impl DiscoveryMode {
 /// Configuration for the discovery engine.
 #[derive(Debug, Clone)]
 pub struct DiscoveryConfig {
-    /// Interval between full scan rounds (per registered transport).
+    /// Interval between full scan rounds when the mesh is quiescent (at least
+    /// one live neighbour link) — battery-friendly baseline.
     pub scan_interval: Duration,
+    /// HV-91: interval between scan rounds while there is **no** live link
+    /// (cold start / a peer just dropped). Short so the first link forms in
+    /// seconds, not `scan_interval`. Kept above the BLE `scan_allowed` throttle
+    /// budget (5 starts / 30 s) so a fast cadence never trips it.
+    pub active_scan_interval: Duration,
     /// Neighbor idle-TTL before eviction.
     pub neighbor_ttl: Duration,
     /// Per-scan timeout handed to `Transport::discover_peers`.
@@ -72,6 +78,10 @@ impl Default for DiscoveryConfig {
     fn default() -> Self {
         DiscoveryConfig {
             scan_interval: Duration::from_secs(30),
+            // 3 s: harvest-only passes cost the radio nothing (HV-91 changed
+            // `discover_peers` to re-arm the scan only every ~5 passes), so a
+            // fast cold-start cadence never trips the scan-restart throttle.
+            active_scan_interval: Duration::from_secs(3),
             neighbor_ttl: Duration::from_secs(300),
             scan_timeout: Duration::from_secs(10),
             max_peers: 64,
@@ -102,6 +112,12 @@ pub struct DiscoveryManager {
     // after the first couple of failures, which is the only thing in this
     // codebase's control.
     connect_backoff: tokio::sync::Mutex<HashMap<(TransportId, PeerId), ConnectBackoff>>,
+    /// HV-91: true once at least one `connect()` has succeeded and the peer has
+    /// not since been evicted. Drives the scan cadence — fast (`active_scan_
+    /// interval`) until there is a real link, then `scan_interval`. This is a
+    /// *connectivity* signal, distinct from `NeighborTable`'s `LinkedUp` which
+    /// only means "beacon seen recently" (HV-27).
+    has_confirmed_link: std::sync::atomic::AtomicBool,
 }
 
 /// HW-18: backoff state for one (transport, peer) pair. `next_attempt` gates
@@ -129,6 +145,7 @@ impl DiscoveryManager {
             mode: AtomicU8::new(DiscoveryMode::Passive as u8),
             task: tokio::sync::Mutex::new(None),
             connect_backoff: tokio::sync::Mutex::new(HashMap::new()),
+            has_confirmed_link: std::sync::atomic::AtomicBool::new(false),
             config,
         }
     }
@@ -237,6 +254,10 @@ impl DiscoveryManager {
                     peer = %peer_id,
                     "peer evicted from neighbor table (TTL expired)"
                 );
+                // HV-91: a lost peer means we may have no link — resume fast
+                // scanning until a connect succeeds again.
+                self.has_confirmed_link
+                    .store(false, std::sync::atomic::Ordering::Relaxed);
             }
             self.events.send(ev).ok();
         }
@@ -299,6 +320,8 @@ impl DiscoveryManager {
             match transport.connect(&peer).await {
                 Ok(_) => {
                     self.connect_backoff.lock().await.remove(&backoff_key);
+                    self.has_confirmed_link
+                        .store(true, std::sync::atomic::Ordering::Relaxed);
                     tracing::debug!(
                         event = "discovery.connect_ok",
                         peer = %peer.peer_id,
@@ -408,7 +431,20 @@ impl DiscoveryManager {
         let handle = tokio::spawn(async move {
             loop {
                 this.scan_once().await;
-                tokio::time::sleep(this.config.scan_interval).await;
+                // HV-91: scan fast until a `connect()` has actually succeeded,
+                // then back off. A missed first scan must not cost a full
+                // `scan_interval` (30 s) — that was "the first message takes
+                // ~30 s". `NeighborTable::LinkedUp` is not enough (it means
+                // "beacon seen", HV-27) — gate on `has_confirmed_link`.
+                let linked = this
+                    .has_confirmed_link
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                let sleep_for = if linked && this.mode() != DiscoveryMode::Active {
+                    this.config.scan_interval
+                } else {
+                    this.config.active_scan_interval
+                };
+                tokio::time::sleep(sleep_for).await;
             }
         });
         *guard = Some(handle);
@@ -462,6 +498,7 @@ mod tests {
             pid(id),
             DiscoveryConfig {
                 scan_interval: Duration::from_millis(20),
+                active_scan_interval: Duration::from_millis(20),
                 neighbor_ttl: Duration::from_secs(60),
                 scan_timeout: Duration::from_millis(100),
                 max_peers: 64,
@@ -492,6 +529,48 @@ mod tests {
         let m = manager(1);
         m.scan_once().await;
         assert_eq!(m.neighbors().len().await, 0);
+    }
+
+    /// HV-91: with no live link the background loop scans at
+    /// `active_scan_interval`, not the 30 s `scan_interval` — so a missed first
+    /// scan costs seconds, not half a minute. Here `connect()` always fails, so
+    /// no link ever forms and the loop must keep scanning fast: many
+    /// `connect()` attempts in a short window.
+    #[tokio::test]
+    async fn hv91_cold_start_loop_scans_at_active_interval() {
+        let m = Arc::new(DiscoveryManager::new(
+            pid(1),
+            DiscoveryConfig {
+                scan_interval: Duration::from_secs(40),
+                active_scan_interval: Duration::from_millis(20),
+                neighbor_ttl: Duration::from_secs(60),
+                scan_timeout: Duration::from_millis(5),
+                max_peers: 8,
+                capabilities: vec![],
+            },
+        ));
+        let sim = crate::transport::simulated::SimulatedTransport::new(
+            "sim-hv91",
+            "Sim HV-91",
+            SimConfig { connect_failure_rate: 1.0, ..SimConfig::default() },
+        );
+        let t = Arc::new(CountingConnectTransport {
+            inner: sim,
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(9),
+        });
+        m.register_transport(t.clone()).await;
+        m.start().await;
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        m.stop().await;
+
+        let scans = t.scan_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert!(
+            scans >= 4,
+            "unlinked loop must scan at active_scan_interval — only {scans} \
+             scan passes in 300 ms (a 40 s scan_interval would give 1)"
+        );
     }
 
     #[tokio::test]
@@ -557,7 +636,23 @@ mod tests {
     struct CountingConnectTransport {
         inner: crate::transport::simulated::SimulatedTransport,
         connect_calls: std::sync::atomic::AtomicUsize,
+        scan_calls: std::sync::atomic::AtomicUsize,
         seeded_peer: PeerInfo,
+    }
+
+    impl Default for CountingConnectTransport {
+        fn default() -> Self {
+            Self {
+                inner: crate::transport::simulated::SimulatedTransport::new(
+                    "sim-count",
+                    "Sim Count",
+                    SimConfig::default(),
+                ),
+                connect_calls: std::sync::atomic::AtomicUsize::new(0),
+                scan_calls: std::sync::atomic::AtomicUsize::new(0),
+                seeded_peer: peer_info(9),
+            }
+        }
     }
 
     #[async_trait::async_trait]
@@ -585,6 +680,8 @@ mod tests {
             _config: ScanConfig,
         ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = PeerInfo> + Send>>, TransportError>
         {
+            self.scan_calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             Ok(Box::pin(futures_util::stream::iter(vec![
                 self.seeded_peer.clone()
             ])))
@@ -652,6 +749,7 @@ mod tests {
         let t = Arc::new(CountingConnectTransport {
             inner: sim,
             connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
             seeded_peer: peer_info(9),
         });
         m.register_transport(t.clone()).await;

@@ -500,7 +500,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 ?: throw AdapterOff()
             ensureGattServer()
             val settings = AdvertiseSettings.Builder()
-                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
+                // HV-91: LOW_POWER advertises at a ~1 s interval, so a scanning
+                // peer can take many seconds to catch the first IRIS beacon.
+                // BALANCED (~250 ms) roughly quarters that with a modest power
+                // cost — the app only advertises while its foreground mesh
+                // service is up. HV-80 will make this adaptive.
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
                 .setConnectable(!data.nonConnectable)
                 .build()
@@ -790,7 +795,14 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     private fun scanSettings(): ScanSettings =
         ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            // HV-91: the app only ever scans while its foreground service is up
+            // and it is trying to form or hold a mesh link. SCAN_MODE_LOW_POWER
+            // (~512 ms window / ~5 s interval) routinely misses a 1 s-interval
+            // advertiser for 10–20 s — the core of "the first message takes
+            // ~30 s". LOW_LATENCY scans continuously; the first IRIS beacon is
+            // then seen within a second or two. HV-80 will dial this back to
+            // BALANCED/LOW_POWER once links are stable and battery matters.
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
 
     private fun pruneOldStarts(now: Long) {

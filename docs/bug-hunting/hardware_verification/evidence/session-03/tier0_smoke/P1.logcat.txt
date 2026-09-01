@@ -1,0 +1,317 @@
+--------- beginning of main
+09-01 20:22:26.253 W/logcat  ( 5429): type=1400 audit(0.0:342204): avc:  denied  { ioctl } for  path="socket:[65326461]" dev="sockfs" ino=65326461 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 20:22:26.269 W/logcat  ( 5429): type=1400 audit(0.0:342205): avc:  denied  { ioctl } for  path="socket:[65326461]" dev="sockfs" ino=65326461 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 20:22:26.281 W/logcat  ( 5429): type=1400 audit(0.0:342206): avc:  denied  { ioctl } for  path="socket:[65326461]" dev="sockfs" ino=65326461 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 20:22:26.285 W/logcat  ( 5429): type=1400 audit(0.0:342207): avc:  denied  { ioctl } for  path="socket:[65326461]" dev="sockfs" ino=65326461 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-01 20:22:26.413 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 1, "method": "startMesh", "params": []}
+09-01 20:22:26.414 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#startMesh
+09-01 20:22:26.433 D/CompatibilityChangeReporter( 5286): Compat change id reported: 263076149; UID 10406; state: ENABLED
+09-01 20:22:26.474 W/SystemServiceRegistry( 5286): No service published for: wifiaware
+09-01 20:22:26.546 I/org.iris.mesh( 5286): Background concurrent copying GC freed 13MB AllocSpace bytes, 276(5548KB) LOS objects, 57% free, 4563KB/10MB, paused 102us,58us total 129.422ms
+09-01 20:22:26.619 D/nativeloader( 5286): Load /data/app/~~B7zIt81OoxUeFTNEhHgeJg==/org.iris.mesh-zws_MZSiiK-DJKc-ykqifw==/base.apk!/lib/arm64-v8a/libjnidispatch.so using class loader ns clns-4 (caller=/data/app/~~B7zIt81OoxUeFTNEhHgeJg==/org.iris.mesh-zws_MZSiiK-DJKc-ykqifw==/base.apk!classes11.dex): ok
+09-01 20:22:26.729 D/BluetoothGattServer( 5286): registerCallback()
+09-01 20:22:26.739 D/BluetoothGattServer( 5286): registerCallback() - UUID=0e8ce7a4-f77d-437c-bbbb-714cfa2c2b7a
+09-01 20:22:26.745 I/bt_stack(22032): [INFO:bta_gatts_act.cc(246)] register application first_unuse rcb_idx=1
+09-01 20:22:26.745 I/bt_stack(22032): [INFO:gatt_api.cc(1458)] GATT_Register_Ext 0e8ce7a4-f77d-437c-bbbb-714cfa2c2b7a
+09-01 20:22:26.745 I/bt_stack(22032): [INFO:gatt_api.cc(1479)] allocated gatt_if=7
+09-01 20:22:26.751 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register cc485b30-a29d-3da5-cd63-3c40e4dddd6a
+09-01 20:22:26.749 D/BluetoothGattServer( 5286): onServerRegistered() - status=0 serverIf=7
+09-01 20:22:26.751 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-01 20:22:26.753 D/BluetoothGattServer( 5286): addService() - service: 3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0d
+09-01 20:22:26.753 D/BluetoothLeScanner( 5286): onScannerRegistered() - status=0 scannerId=12 mScannerId=0
+09-01 20:22:26.777 I/bt_stack(22032): [INFO:bta_gatts_api.cc(140)] bta_gatts_add_service_impl: rcb_idx=1
+09-01 20:22:26.778 I/bt_stack(22032): [INFO:gatt_api.cc(205)] GATTS_AddService
+09-01 20:22:26.778 I/bt_stack(22032): [INFO:gatt_api.cc(318)] GATTS_AddService: service parsed correctly, now starting
+09-01 20:22:26.778 I/bt_stack(22032): [INFO:gatt_sr_hash.cc(124)] gatts_calculate_database_hash: hash=342F374A6A676FC692019BD7260D80B7
+09-01 20:22:26.781 D/iriscore( 5286): iris.ble.gatt ensureGattServer: addService(IRIS_SERVICE_UUID=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0d) -> true
+09-01 20:22:26.783 D/BluetoothGattServer( 5286): onServiceAdded() - handle=50 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0d status=0
+09-01 20:22:26.786 D/BluetoothLeAdvertiser( 5286):  Total bytes: size:29
+09-01 20:22:26.789 D/BluetoothLeAdvertiser( 5286):  Total bytes: size:29
+09-01 20:22:26.795 D/BtGatt.AdvertiseManager(22032): startAdvertisingSet() - reg_id=-26, callback: android.os.BinderProxy@31bbeb4, interval 1600, callingPkg org.iris.mesh
+09-01 20:22:26.804 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-01 20:22:26.823 D/BtGatt.AdvertiseManager(22032): onAdvertisingSetStarted() - regId=-26, advertiserId=1, status=0
+09-01 20:22:26.894 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-01 20:22:26.899 W/iriscore( 5286): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-aware-0" [3merror[0m[2m=[0mtransport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)
+09-01 20:22:27.758 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.758 I/System.out(27826): GlobalSearch: name:  _i5_1.del ; size = 3
+09-01 20:22:27.758 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 20:22:27.763 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.763 I/System.out(27826): GlobalSearch: name:  _he_1.del ; size = 3
+09-01 20:22:27.763 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 20:22:27.767 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.767 I/System.out(27826): GlobalSearch: name:  _hd_1.del ; size = 3
+09-01 20:22:27.767 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 20:22:27.771 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.771 I/System.out(27826): GlobalSearch: name:  _hc_1.del ; size = 6
+09-01 20:22:27.771 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 20:22:27.774 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.774 I/System.out(27826): GlobalSearch: name:  _fx_1.del ; size = 3
+09-01 20:22:27.774 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 20:22:27.778 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.778 I/System.out(27826): GlobalSearch: name:  _fw_1.del ; size = 3
+09-01 20:22:27.778 I/System.out(27826): GlobalSearch: memsize = 1
+09-01 20:22:27.781 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.781 I/System.out(27826): GlobalSearch: name:  _fu_3.del ; size = 9
+09-01 20:22:27.781 I/System.out(27826): GlobalSearch: memsize = 2
+09-01 20:22:27.804 I/System.out(27826): GlobalSearch: firstInt:  -2
+09-01 20:22:27.804 I/System.out(27826): GlobalSearch: name:  _ft_4.del ; size = 56
+09-01 20:22:27.804 I/System.out(27826): GlobalSearch: memsize = 7
+09-01 20:22:28.985 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-01 20:22:29.013 W/iriscore( 5286): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-direct-0" [3merror[0m[2m=[0mtransport error: wifi-direct-0.start_advertising: transport: radio is switched off
+09-01 20:22:29.025 W/iriscore( 5286): [2miriscode::engine[0m[2m:[0m mesh started with a subset of transports [3mevent[0m[2m=[0m"engine.start_all_partial" [3mstarted[0m[2m=[0m["ble-android"] [3mfailed[0m[2m=[0m["wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)", "wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport: radio is switched off"]
+09-01 20:22:29.038 I/iriscore( 5286): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Degraded", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-01 20:22:29.039 I/iriscore( 5286): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a [3mcounters[0m[2m=[0m
+09-01 20:22:29.076 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":1,"result":"{\"running\":true,\"nodeIdHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Degraded\",\"batteryMa\":80}],\"neighbors\":[],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-aware-0 error=transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-direct-0 error=transport error: wifi-direct-0.start_advertising: transport: radio is switched off\"},{\"level\":\"WARN\",\"event\":\"engine.start_all_partial\",\"detail\":\"mesh started with a subset of transports started=[\\\"ble-android\\\"] failed=[\\\"wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\\\", \\\"wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport: radio is switched off\\\"]\"}]}","callback":null,"error":null}
+09-01 20:22:29.390 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:55:2c:aa:18:46
+09-01 20:22:29.390 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2a:ab:09:0e:2c:33
+09-01 20:22:29.448 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:40:2c:aa:18:46
+09-01 20:22:29.449 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2a:ab:09:0e:2c:33
+09-01 20:22:30.425 I/NearbySharing(19919): ReceiveProvider: Received request to stop advertising.
+09-01 20:22:30.426 I/NearbySharing(19919): Advertising has stopped
+09-01 20:22:30.436 I/NearbySharing(19919): NearbySharing Internal event ReceiveManagerStopBroadcast
+09-01 20:22:30.442 I/NearbyConnections(19919): Client 70114711 requested advertising to stop.
+09-01 20:22:30.443 I/NearbySharing(19919): [ClearcutLog] ADVERTISE_DEVICE_PRESENCE_END sessionId=0 flowId=6333510228260821269 
+09-01 20:22:30.454 I/NearbySharing(19919): NearbySharing Internal event ReceiveManagerEnd
+09-01 20:22:30.457 D/BtGatt.AdvertiseManager(22032): stopAdvertisingSet() android.os.BinderProxy@e655c6d
+09-01 20:22:30.461 D/BluetoothLeAdvertiser(19919):  Total bytes: size:10
+09-01 20:22:30.461 D/BluetoothLeAdvertiser(19919):  Total bytes: size:10
+09-01 20:22:30.465 D/BtGatt.AdvertiseManager(22032): startAdvertisingSet() - reg_id=-27, callback: android.os.BinderProxy@a233add, interval 160, callingPkg com.google.android.gms
+09-01 20:22:30.470 I/NearbySharing(19919): Start advertising with mode BACKGROUND certificate visibility SELF_SHARE data usage preference ONLINE, bt advertising false, vendorId 0, deviceName included: false
+09-01 20:22:30.481 I/NearbySharing(19919): Uwb feature is off.
+09-01 20:22:30.484 I/NearbySharing(19919): Updating advertising options for [ebsl@86e5881, dwyl@ab92d26] providers
+09-01 20:22:30.485 I/NearbySharing(19919): ReceiveProvider: Received request to start advertising.
+09-01 20:22:30.486 D/BtGatt.AdvertiseManager(22032): onAdvertisingSetStarted() - regId=-27, advertiserId=3, status=0
+09-01 20:22:30.486 I/NearbySharing(19919): Advertising has started with mode BACKGROUND, Bt enabled : false
+09-01 20:22:30.488 I/NearbyMediums(19919): Successfully stopped BLE advertising for service NearbySharing
+09-01 20:22:30.488 I/NearbyMediums(19919): [InstantOnLostManager] Start instant onLost legacy advertising, hashes = [ 0x29 0x22 0x21 0x56 ].
+09-01 20:22:30.490 I/NearbyMediums(19919): Stopped accepting Bluetooth Classic connections for NearbySharing.
+09-01 20:22:30.490 I/NearbyMediums(19919): Can't stop accepting Wifi connections because it was never started.
+09-01 20:22:30.490 I/NearbyMediums(19919): Can't stop accepting WiFi connections because it was never started.
+09-01 20:22:30.490 I/NearbyMediums(19919): Can't stop NFC advertising because it was never started.
+09-01 20:22:30.490 I/NearbyMediums(19919): Skipping stop accepting connections: we are not currently accepting WebRTC connections for NearbySharing.
+09-01 20:22:30.491 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:22:30.491 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:22:30.491 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:22:30.491 W/NearbyMediums(19919): [WifiNetworkV2] WifiStatusChangedCallback was not registered for NearbySharing.
+09-01 20:22:30.506 I/Nearby  (19919): (REDACTED) Successfully shutdown executor %s.
+09-01 20:22:30.555 I/NearbySharing(19919): Loading certificates with visibility SELF_SHARE
+09-01 20:22:30.555 I/NearbySharing(19919): Saving the private certificate to file nearby_sharing_private_certificate_file_for_self.
+09-01 20:22:30.571 I/NearbySharing(19919): Network state changed: NetworkState(isRestricted=false, isOnline=false, isCongested=false, isMetered=false, isWifiConnected=false)
+09-01 20:22:30.571 I/NearbySharing(19919): Network state changed: NetworkState(isRestricted=false, isOnline=false, isCongested=false, isMetered=false, isWifiConnected=false)
+09-01 20:22:30.571 I/NearbySharing(19919): WEBRTC disabled: dataUsage ONLINE
+09-01 20:22:30.573 I/NearbyConnections(19919): ClientProxy(0p:com.google.android.gms.nearby.sharing) allow WebRtc to use mobile data.
+09-01 20:22:30.574 I/NearbyConnections(19919): Client 70114711 requested advertising to start.
+09-01 20:22:30.575 I/NearbyConnections(19919): 70114711 0p:com.google.android.gms.nearby.sharing startAdvertising in nc mode.
+09-01 20:22:30.579 I/Nearby  (19919): (REDACTED) Note nearby client %s for operation %s
+09-01 20:22:30.583 I/NearbyConnections(19919): [PcpManager] In startAdvertising() advertisingMediums:[BLE] upgradeMediums:[USB, WIFI_LAN, WIFI_DIRECT, WIFI_AWARE, WIFI_HOTSPOT, BLE_L2CAP, BLUETOOTH, BLE, NFC] listener:255372987
+09-01 20:22:30.635 I/NearbyConnections(19919): Instant Connection Security key rotated.
+09-01 20:22:30.636 I/NearbyConnections(19919): Scheduled invalidation of the HPKE key alarm (delayMillis:8000) for client 70114711
+09-01 20:22:30.636 I/NearbyConnections(19919): Get local endpoint id from random generation A1YL (last:null) for client 70114711
+09-01 20:22:30.636 I/NearbyConnections(19919): generateRxInstantConnectionAdvBytes() returns null due to not supporting extended advertisements
+09-01 20:22:30.649 I/bt_stack(22032): [INFO:port_api.cc(124)] RFCOMM_CreateConnection BDA: ff:ff:ff:ff:ff:ff
+09-01 20:22:30.650 I/NearbyMediums(19919): Started accepting Bluetooth Classic connections for NearbySharing.
+09-01 20:22:30.661 D/BluetoothLeAdvertiser(19919):  Total bytes: size:31
+09-01 20:22:30.667 D/BtGatt.AdvertiseManager(22032): startAdvertisingSet() - reg_id=-28, callback: android.os.BinderProxy@7922d23, interval 400, callingPkg com.google.android.gms
+09-01 20:22:30.689 D/BtGatt.AdvertiseManager(22032): onAdvertisingSetStarted() - regId=-28, advertiserId=4, status=0
+09-01 20:22:30.696 I/NearbyMediums(19919): Started BLE Legacy advertising. Regular Header Advertised : false, Fast Advertised : true, AdvertisingSettings : BleAdvertisingSetting{powerLevel= BALANCED_POWER, isConnectable= false, isPrivateGatt= true}, isAcceptingConnection : false
+09-01 20:22:30.697 I/NearbyMediums(19919): Successfully started BLE advertising of size 23 for service NearbySharing, deviceToken : [ 0x34 0x73 ].
+09-01 20:22:30.709 I/NearbySharing(19919): [broadcast provider] advertising started.
+09-01 20:22:30.710 I/NearbySharing(19919): [broadcast controller] started.
+09-01 20:22:30.711 I/NearbySharing(19919): [ReceiveManager] started.
+09-01 20:22:30.713 I/NearbySharing(19919): NearbySharing Internal event ReceiveManagerStart(mode=2, isEveryoneMode=false, dataUsage=2, useQrCode=false, success=true)
+09-01 20:22:30.716 I/NearbySharing(19919): [ClearcutLog] ADVERTISE_DEVICE_PRESENCE_START sessionId=0 flowId=5819989599574374997 sessionStatus: 1, visibility: 4
+09-01 20:22:32.339 I/NearbyMediums(19919): No BLE Fast/GATT advertisements found in the latest cycle.
+09-01 20:22:32.340 I/NearbyMediums(19919): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-01 20:22:32.494 D/BtGatt.AdvertiseManager(22032): stopAdvertisingSet() android.os.BinderProxy@a233add
+09-01 20:22:32.809 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2a:ab:09:0e:2c:33
+09-01 20:22:33.720 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 2, "method": "registerPeerKey", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "a5ce72e81931c4c08ed5d2383494ab5b9c0333f6c3046cc3ccbf10b1f6aafa4b"]}
+09-01 20:22:33.722 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-01 20:22:33.751 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":2,"result":null,"callback":null,"error":null}
+09-01 20:22:33.756 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 3, "method": "nodeId", "params": []}
+09-01 20:22:33.758 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-01 20:22:33.766 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":3,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-01 20:22:33.768 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 4, "method": "staticX25519", "params": []}
+09-01 20:22:33.770 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-01 20:22:33.787 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:4e:2c:aa:18:46
+09-01 20:22:33.787 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6a:0c:db:42:c9:0a
+09-01 20:22:33.788 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6a:0c:db:42:c9:0a
+09-01 20:22:33.896 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":4,"result":"7afb47658b89526ef4c92c7504b6796a354a9f7c3487865c521cc15503b5eb0b","callback":null,"error":null}
+09-01 20:22:33.926 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 5, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi0", 4]}
+09-01 20:22:33.927 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:33.966 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:33.966 D/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-01 20:22:33.968 W/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-01 20:22:33.968 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":5,"result":"01a05d75270f7df39d7abff2cb55384c","callback":null,"error":null}
+09-01 20:22:34.072 D/BoundBrokerSvc(20068): onUnbind: Intent { act=com.google.android.gms.potokens.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.GmsApiService }
+09-01 20:22:36.029 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register 77d6616e-3ebd-8d05-50c2-e8efe7c10a10
+09-01 20:22:36.030 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-01 20:22:36.031 D/BluetoothLeScanner( 5286): onScannerRegistered() - status=0 scannerId=12 mScannerId=0
+09-01 20:22:36.049 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-01 20:22:36.067 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-01 20:22:36.989 D/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-01 20:22:36.989 W/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-01 20:22:38.135 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-01 20:22:38.638 I/NearbyConnections(19919): Invalidate cached hpkeKey for client 70114711
+09-01 20:22:39.253 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:53:2c:aa:18:46
+09-01 20:22:39.254 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7f:d3:a1:a5:5e:b8
+09-01 20:22:39.257 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:53:2c:aa:18:46
+09-01 20:22:39.257 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2a:ab:09:0e:2c:33
+09-01 20:22:40.019 D/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-01 20:22:40.021 W/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-01 20:22:41.614 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:87:65:b4:ff:f4
+09-01 20:22:41.616 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:87:65:b4:ff:f4
+09-01 20:22:42.344 I/NearbyMediums(19919): No BLE Fast/GATT advertisements found in the latest cycle.
+09-01 20:22:42.344 I/NearbyMediums(19919): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-01 20:22:42.626 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7f:d3:a1:a5:5e:b8
+09-01 20:22:42.628 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2a:ab:09:0e:2c:33
+09-01 20:22:42.629 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:87:65:b4:ff:f4
+09-01 20:22:42.629 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:87:65:b4:ff:f4
+09-01 20:22:43.047 D/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-01 20:22:43.049 W/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-01 20:22:45.188 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register 4cd0fa33-906b-97f4-4952-3865431e13c6
+09-01 20:22:45.188 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-01 20:22:45.191 D/BluetoothLeScanner( 5286): onScannerRegistered() - status=0 scannerId=12 mScannerId=0
+09-01 20:22:45.258 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-01 20:22:45.271 D/CompatibilityChangeReporter( 5286): Compat change id reported: 265103382; UID 10406; state: ENABLED
+09-01 20:22:45.273 D/BluetoothGatt( 5286): connect() - device: 62:87:65:B4:FF:F4, auto: false, eattSupport: false
+09-01 20:22:45.274 D/BluetoothGatt( 5286): registerApp()
+09-01 20:22:45.274 D/BluetoothGatt( 5286): registerApp() - UUID=ca0405ab-f410-4480-8476-d715d1d6267e
+09-01 20:22:45.280 I/bt_stack(22032): [INFO:gatt_api.cc(1422)] GATT_Register fb4da11a-a198-7961-83e1-90ed3c5a5c43
+09-01 20:22:45.280 I/bt_stack(22032): [INFO:gatt_api.cc(1443)] allocated gatt_if=13
+09-01 20:22:45.281 D/iriscore( 5286): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-01 20:22:45.285 D/BluetoothGatt( 5286): onClientRegistered() - status=0 clientIf=13
+09-01 20:22:45.290 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-01 20:22:45.297 I/bt_stack(22032): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=13, address=62:87:65:b4:ff:f4 is_direct 1
+09-01 20:22:45.297 I/bt_stack(22032): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=62:87:65:b4:ff:f4, cl_supp_feat=0000, aware=1
+09-01 20:22:45.297 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-01 20:22:45.298 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-01 20:22:46.090 W/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m select_transports() returned no candidates for this peer — requeuing [3mevent[0m[2m=[0m"msg.no_transport_selected" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4 [3mdest[0m[2m=[0mSome(ShortId([55, 130, 235, 115, 92, 159, 18, 128])) [3mattempt[0m[2m=[0m0
+09-01 20:22:47.401 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:48:2c:aa:18:46
+09-01 20:22:47.761 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7f:d3:a1:a5:5e:b8
+09-01 20:22:47.761 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2a:ab:09:0e:2c:33
+09-01 20:22:47.779 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 1b:5b:2c:aa:18:46
+09-01 20:22:47.781 I/bt_stack(22032): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 62:87:65:b4:ff:f4
+09-01 20:22:47.787 I/bt_stack(22032): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-01 20:22:47.787 I/bt_stack(22032): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-01 20:22:47.787 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-01 20:22:47.787 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-01 20:22:47.789 I/bt_stack(22032): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-01 20:22:48.013 D/BluetoothGattServer( 5286): onServerConnectionState() - status=0 serverIf=7 device=62:87:65:B4:FF:F4
+09-01 20:22:48.013 D/BluetoothGattServer(19919): onServerConnectionState() - status=0 serverIf=9 device=62:87:65:B4:FF:F4
+09-01 20:22:48.013 E/bt_stack(22032): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_628765b4fff4 for reading, error: No such file or directory
+09-01 20:22:48.013 D/IrisBleDiag( 5286): gattServer onConnectionStateChange device=62:87:65:B4:FF:F4 status=0 newState=2
+09-01 20:22:48.015 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-01 20:22:48.016 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:22:48.016 I/Logger  (22032): ensure_log_file ret:188 acc:0
+09-01 20:22:48.028 D/BluetoothGatt( 5286): onClientConnectionState() - status=0 clientIf=13 device=62:87:65:B4:FF:F4
+09-01 20:22:48.030 D/BluetoothGatt( 5286): discoverServices() - device: 62:87:65:B4:FF:F4
+09-01 20:22:48.096 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-01 20:22:48.185 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-01 20:22:48.186 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-01 20:22:48.275 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.276 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-01 20:22:48.365 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-01 20:22:48.456 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.456 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-01 20:22:48.547 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.548 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-01 20:22:48.552 D/BluetoothGattServer(19919): onConnectionUpdated() - Device=62:87:65:B4:FF:F4 interval=6 latency=0 timeout=500 status=0
+09-01 20:22:48.552 D/BluetoothGattServer( 5286): onConnectionUpdated() - Device=62:87:65:B4:FF:F4 interval=6 latency=0 timeout=500 status=0
+09-01 20:22:48.554 D/BluetoothGatt( 5286): onConnectionUpdated() - Device=62:87:65:B4:FF:F4 interval=6 latency=0 timeout=500 status=0
+09-01 20:22:48.568 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-01 20:22:48.581 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.582 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0028, e_handle=0xffff
+09-01 20:22:48.597 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.597 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0028, e_handle=0xffff
+09-01 20:22:48.613 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-01 20:22:48.627 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.627 I/bt_stack(22032): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x002b, e_handle=0xffff
+09-01 20:22:48.643 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-01 20:22:48.643 I/bt_stack(22032): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-01 20:22:48.653 D/BluetoothGatt( 5286): onSearchComplete() = Device=62:87:65:B4:FF:F4 Status=0
+09-01 20:22:48.656 D/iriscore( 5286): iris.ble.gatt connectGatt: ready resolved successfully
+09-01 20:22:48.672 D/BluetoothGatt( 5286): configureMTU() - device: 62:87:65:B4:FF:F4 mtu: 517
+09-01 20:22:48.680 I/bt_stack(22032): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest62:87:65:b4:ff:f4 conn_id=0x000d
+09-01 20:22:48.680 I/bt_stack(22032): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 62:87:65:b4:ff:f4
+09-01 20:22:48.680 I/bt_stack(22032): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:13 mtu:517 user mtu 517
+09-01 20:22:48.684 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m3449
+09-01 20:22:48.686 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-01 20:22:48.689 D/iriscore( 5286): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-01 20:22:48.695 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-01 20:22:48.695 I/bt_stack(22032): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (62:87:65:b4:ff:f4) MTU 517
+09-01 20:22:48.695 I/bt_stack(22032): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-01 20:22:48.698 D/BluetoothGatt( 5286): onConfigureMTU() - Device=62:87:65:B4:FF:F4 mtu=517 status=0
+09-01 20:22:48.730 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=350 known=[5]
+09-01 20:22:48.783 D/BluetoothGattServer(19919): onConnectionUpdated() - Device=62:87:65:B4:FF:F4 interval=36 latency=0 timeout=500 status=0
+09-01 20:22:48.783 D/BluetoothGattServer( 5286): onConnectionUpdated() - Device=62:87:65:B4:FF:F4 interval=36 latency=0 timeout=500 status=0
+09-01 20:22:48.784 D/BluetoothGatt( 5286): onConnectionUpdated() - Device=62:87:65:B4:FF:F4 interval=36 latency=0 timeout=500 status=0
+09-01 20:22:48.816 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:48.841 D/BoundBrokerSvc(19919): onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-01 20:22:49.108 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:49.177 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:49.183 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d75270f7df3 [3mpriority[0m[2m=[0m4
+09-01 20:22:49.432 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 6, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi1", 4]}
+09-01 20:22:49.433 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:49.457 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d75639e70f0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:49.459 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":6,"result":"01a05d75639e70f0b1ef3488e49b9d88","callback":null,"error":null}
+09-01 20:22:49.489 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:49.580 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:49.587 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d75639e70f0 [3mpriority[0m[2m=[0m4
+09-01 20:22:49.698 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 7, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi2", 4]}
+09-01 20:22:49.702 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:49.757 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d7564c471f1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:49.760 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":7,"result":"01a05d7564c471f19307b895466ae7c0","callback":null,"error":null}
+09-01 20:22:49.781 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:49.850 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:49.857 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d7564c471f1 [3mpriority[0m[2m=[0m4
+09-01 20:22:49.999 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 8, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi3", 4]}
+09-01 20:22:50.002 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:50.051 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d7565e37522 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:50.056 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":8,"result":"01a05d7565e375228001707c73679fb5","callback":null,"error":null}
+09-01 20:22:50.067 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:50.165 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:50.171 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d7565e37522 [3mpriority[0m[2m=[0m4
+09-01 20:22:50.294 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 9, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi4", 4]}
+09-01 20:22:50.297 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:50.341 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d75670d7400 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:50.344 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":9,"result":"01a05d75670d7400bf21773bc64d3c35","callback":null,"error":null}
+09-01 20:22:50.356 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:50.435 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:50.442 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d75670d7400 [3mpriority[0m[2m=[0m4
+09-01 20:22:50.582 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 10, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi5", 4]}
+09-01 20:22:50.583 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:50.607 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d75681c70e0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:50.610 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":10,"result":"01a05d75681c70e0a65ff3d1f3a84f0d","callback":null,"error":null}
+09-01 20:22:50.624 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:50.707 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:50.713 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d75681c70e0 [3mpriority[0m[2m=[0m4
+09-01 20:22:50.845 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 11, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi6", 4]}
+09-01 20:22:50.846 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:50.870 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d75692378b3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:50.873 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":11,"result":"01a05d75692378b385c168dcf50af684","callback":null,"error":null}
+09-01 20:22:50.885 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:50.974 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:50.980 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d75692378b3 [3mpriority[0m[2m=[0m4
+09-01 20:22:51.209 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 12, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi7", 4]}
+09-01 20:22:51.214 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:51.257 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d756aa17173 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:51.259 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":12,"result":"01a05d756aa17173a3457823002a4dca","callback":null,"error":null}
+09-01 20:22:51.273 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:51.335 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:51.341 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d756aa17173 [3mpriority[0m[2m=[0m4
+--------- beginning of system
+09-01 20:22:51.342 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-01 20:22:51.498 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 13, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi8", 4]}
+09-01 20:22:51.499 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:51.548 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d756bbf7141 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:51.555 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":13,"result":"01a05d756bbf7141ad45bd7dc965256e","callback":null,"error":null}
+09-01 20:22:51.567 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:51.650 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:51.658 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d756bbf7141 [3mpriority[0m[2m=[0m4
+09-01 20:22:51.795 V/org.iris.mesh.test.JsonRpcServer:54( 5286): Session 1 Received: {"id": 14, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "hi9", 4]}
+09-01 20:22:51.799 D/org.iris.mesh.test.SnippetManager:286( 5286): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-01 20:22:51.839 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a05d756ce87f43 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m19 [3mttl_secs[0m[2m=[0m3600
+09-01 20:22:51.842 V/org.iris.mesh.test.JsonRpcServer:116( 5286): Session 1 Sent: {"id":14,"result":"01a05d756ce87f43a789eddcffc8b4cc","callback":null,"error":null}
+09-01 20:22:51.855 D/iriscore( 5286): iris.ble.gatt gattWrite ENTER handle=5 len=290 known=[5]
+09-01 20:22:51.920 I/bt_stack(22032): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-01 20:22:51.926 I/iriscore( 5286): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a05d756ce87f43 [3mpriority[0m[2m=[0m4

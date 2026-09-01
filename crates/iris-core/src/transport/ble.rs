@@ -535,6 +535,12 @@ pub struct BleTransport {
     state_tx: broadcast::Sender<TransportStateEvent>,
     incoming_tx: broadcast::Sender<IncomingMessage>,
     scan_handle: std::sync::Mutex<Option<ScanHandle>>,
+    /// HV-91: `discover_peers` call count. The scan, once started, keeps
+    /// running — so most passes just harvest results (fast, cheap on the
+    /// throttle). Every `SCAN_REARM_EVERY` passes it is torn down and
+    /// restarted as a dead-scan safety net (a scan the OS silently killed —
+    /// e.g. Bluetooth toggled — is otherwise never noticed; HV-11).
+    scan_pass: std::sync::atomic::AtomicU64,
     adv_handle: std::sync::Mutex<Option<AdvHandle>>,
     /// GATT handles + negotiated ATT MTU per connected peer — one connection
     /// per peer is reused for all sends (AC-9; RES-0019 R6.4/G2 bounds
@@ -656,6 +662,7 @@ impl BleTransport {
             state_tx,
             incoming_tx,
             scan_handle: std::sync::Mutex::new(None),
+            scan_pass: std::sync::atomic::AtomicU64::new(0),
             adv_handle: std::sync::Mutex::new(None),
             connections: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             connect_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
@@ -1013,7 +1020,17 @@ impl Transport for BleTransport {
         config: DiscoveryConfig,
     ) -> Result<Pin<Box<dyn Stream<Item = PeerInfo> + Send>>, TransportError> {
         let adapter = self.adapter()?;
-        if !self.scan_allowed() {
+        // HV-91: the scan-restart throttle only matters when we are actually
+        // going to restart the scan. A harvest-only pass costs the OS nothing,
+        // so it must not burn the `scan_allowed` budget (this was the
+        // "discover_peers counts, startScan counts" conflation — HV-14).
+        const SCAN_REARM_EVERY: u64 = 5;
+        let pass = self.scan_pass.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let want_rearm = {
+            let scan_handle = self.scan_handle.lock().unwrap_or_else(|p| p.into_inner());
+            scan_handle.is_none() || pass % SCAN_REARM_EVERY == 0
+        };
+        if want_rearm && !self.scan_allowed() {
             // MG-40: throttling is transient (this same transport will
             // accept a scan again once the cooldown passes) — it is
             // neither a framing failure nor a permanent policy denial, so
@@ -1046,7 +1063,9 @@ impl Transport for BleTransport {
         // `IrisBle: startScan failed errorCode=1` repeating on every
         // ~30s re-arm forever after, on the device whose discovery loop
         // fired a second pass before this fix.
-        {
+        if want_rearm {
+            // HW-1: never call start_scan twice without stopping the prior scan
+            // (real BluetoothLeScanner → SCAN_FAILED_ALREADY_STARTED forever).
             let mut scan_handle = self.scan_handle.lock().unwrap_or_else(|p| p.into_inner());
             if let Some(prior) = *scan_handle {
                 adapter.stop_scan(prior);
@@ -1840,14 +1859,26 @@ mod tests {
     async fn scan_burst_is_throttled_within_window() {
         let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
         let t = BleTransport::new(Some(adapter.clone()));
-        for _ in 0..SCAN_CEILING {
+        // HV-91: only the periodic *re-arms* count against the throttle, not
+        // every harvest pass. Force SCAN_CEILING re-arms, then expect the next.
+        // to be refused. (pass 0, 5, 10, … are re-arms.)
+        const REARM_EVERY: u64 = 5;
+        let calls_for_ceiling_rearms = REARM_EVERY as usize * (SCAN_CEILING - 1) + 1;
+        for _ in 0..calls_for_ceiling_rearms {
             assert!(t.discover_peers(DiscoveryConfig::default()).await.is_ok());
         }
-        let err = t.discover_peers(DiscoveryConfig::default()).await;
+        // Advance to the next re-arm pass and expect the throttle to bite.
+        let mut err = Ok(());
+        for _ in 0..REARM_EVERY {
+            err = t.discover_peers(DiscoveryConfig::default()).await.map(|_| ());
+            if err.is_err() {
+                break;
+            }
+        }
         assert!(
             matches!(err, Err(TransportError::Busy)),
-            "burst beyond {} starts within 30s must be refused (AC-5)",
-            SCAN_CEILING
+            "the {}-th scan re-arm within 30 s must be refused (AC-5)",
+            SCAN_CEILING + 1
         );
     }
 
@@ -1870,13 +1901,23 @@ mod tests {
             "the very first scan has nothing prior to stop"
         );
 
-        let _second = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
-        let stops = adapter.scan_stop_calls();
+        // HV-91: the running scan keeps delivering — passes 2..=5 just harvest,
+        // no stop/start churn.
+        for _ in 0..4 {
+            let _ = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        }
+        assert!(
+            adapter.scan_stop_calls().is_empty(),
+            "between re-arm points, discover_peers must not stop/restart the scan"
+        );
+
+        // Pass 5 (the 6th call) re-arms — and when it does, it stops the prior
+        // handle first (the HW-1 contract: never start_scan twice unstopped).
+        let _ = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
         assert_eq!(
-            stops,
+            adapter.scan_stop_calls(),
             vec![ScanHandle(1)],
-            "re-arming discovery must stop_scan the FIRST call's handle \
-             before starting a new one — exactly once, with the prior handle"
+            "the periodic re-arm must stop the prior scan handle exactly once first"
         );
     }
 
