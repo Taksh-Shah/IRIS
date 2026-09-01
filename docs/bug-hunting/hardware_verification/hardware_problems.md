@@ -59,7 +59,7 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 8 | 0 | 3 | 0 | 0 | 5 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 9 | 0 | 4 | 0 | 0 | 5 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 12 | 0 | 0 | 0 | 0 | 12 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **83** | **0** | **3** | **0** | **0** | **80** |
+| **Total** | | **84** | **0** | **4** | **0** | **0** | **80** |
 
-**Last updated:** 2026-09-01 (Session 02 — HV-81 `✅ Fixed`; HV-81/HV-82 added
-to Tier 0) · **Active tier:** 0
+**Last updated:** 2026-09-01 (Session 02 — HV-81, HV-82 `✅ Fixed`;
+HV-81/82/83 added to Tier 0) · **Active tier:** 0
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -264,18 +264,37 @@ added to the test literal. `cargo build --workspace --all-features` and
 
 ### HV-82 — `iris-core` ROUT-25 cold-start-spray tests fail at HEAD
 
-- **Fix status:** ⬜ (spotted Session 01; deferred — see Session 02 log)
+- **Fix status:** ✅ Fixed · commit _pending_ · 2026-09-01 · sim-only, no HW
+  gate · Session 02
 - **Area:** `crates/iris-core/src/routing/opportunistic.rs`,
   `crates/iris-core/src/routing/mod.rs` (tests `rout25_cold_start_sprays_instead_of_flooding`,
   `rout25_spray_fallback_fires_when_cold_start`)
 - **Severity:** Medium (test-integrity) · **HW gate:** none
 
-**What:** two ROUT-25 tests fail on a clean `fc720d5`. The
-cold-start-spray-instead-of-flood behaviour from `5ffffb0` either regressed
-under a later commit (`ca02ad6` "ROUT-23/26" is the prime suspect) or the tests
-were committed red. Directly relevant to Tier 4 (flood/PRoPHET) and to HV-75
-(the live relay path does not call the routing module at all) — best fixed as
-part of the Tier-4 routing research rather than in isolation.
+**What:** two ROUT-25 tests failed on a clean `fc720d5`. `ca02ad6` (ROUT-23)
+lowered `l_for_priority(P4+, _)` to 1 ("direct-only") after `5ffffb0` (ROUT-25)
+wrote the tests against the old sprayable P4 budget — so a P4 cold-start now
+correctly declines to spray and the assertions were stale.
+
+**Resolution:** the two tests now use P2 (L=3, spray-eligible) to exercise the
+real "cold start → spray not flood" intent; added two new pins
+(`rout25_spray_fallback_direct_only_priority_does_not_spray`,
+`rout25_direct_only_priority_cold_start_still_floods`) for the ROUT-23 × ROUT-25
+interaction. `cargo test -p iris-core rout25` → 7/7.
+
+---
+
+### HV-83 — `sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only` fails at HEAD
+
+- **Fix status:** ⬜ (spotted Session 02)
+- **Area:** `crates/iris-core/tests/sysval_mesh_integration.rs:223`
+- **Severity:** Medium (test-integrity) · **HW gate:** none
+
+**What:** the P0 multipath integration test (satellite included only for
+emergency traffic) panics on a clean `fc720d5`. Not from the hardware deep-dive;
+found while running the loop's narrow test gate for HV-82. Likely fallout from a
+transport-selection / `RadioConflictGroup` change (cf. HV-46). Needs its own
+look; blocks a fully-green `cargo test -p iris-core`.
 
 ---
 

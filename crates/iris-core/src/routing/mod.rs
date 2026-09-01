@@ -657,7 +657,36 @@ mod tests {
         // ROUT-25: with the opportunistic layer enabled and genuinely no DP
         // history for the recipient (a fresh router — the default state),
         // decide() must hand off to the spray fallback (Forward/Opportunistic)
-        // instead of falling straight through to Flood.
+        // instead of falling straight through to Flood. Uses P2 (L=3): ROUT-23
+        // made P4+ direct-only (L=1) so a P4+ cold-start correctly floods —
+        // see `rout25_direct_only_priority_cold_start_still_floods`.
+        let mut engine =
+            RoutingEngine::new().with_opportunistic(crate::routing::prophet::ProphetConfig::default());
+        let table = NeighborTable::new(Duration::from_secs(60));
+        for n in [2u8, 3, 4] {
+            table
+                .upsert(&peer_info(n), &TransportId::from("sim"), LinkQuality::Good)
+                .await;
+        }
+        let decision = engine
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P2, vec![], &table)
+            .await;
+        assert!(
+            matches!(
+                decision,
+                ForwardingDecision::Forward {
+                    algorithm: ForwardingAlgorithm::Opportunistic,
+                    ..
+                }
+            ),
+            "expected a spray fallback Forward, got {decision:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn rout25_direct_only_priority_cold_start_still_floods() {
+        // ROUT-23 × ROUT-25: a P4+ message is direct-only (L=1), so even a
+        // cold-start recipient does not spray — decide() falls through to Flood.
         let mut engine =
             RoutingEngine::new().with_opportunistic(crate::routing::prophet::ProphetConfig::default());
         let table = NeighborTable::new(Duration::from_secs(60));
@@ -670,14 +699,8 @@ mod tests {
             .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert!(
-            matches!(
-                decision,
-                ForwardingDecision::Forward {
-                    algorithm: ForwardingAlgorithm::Opportunistic,
-                    ..
-                }
-            ),
-            "expected a spray fallback Forward, got {decision:?}"
+            matches!(decision, ForwardingDecision::Flood { .. }),
+            "P4+ cold-start is direct-only, expected Flood, got {decision:?}"
         );
     }
 

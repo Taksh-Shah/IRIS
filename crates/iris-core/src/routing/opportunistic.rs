@@ -544,15 +544,36 @@ mod tests {
         let msg = mid();
         let contact = pid(2);
 
-        // Genuinely cold: no DP entry for dest at all.
+        // Genuinely cold: no DP entry for dest at all. P2 (L=3) is a
+        // spray-eligible band — ROUT-23 made P4+ direct-only (L=1), so the
+        // cold-start fallback for P4+ correctly yields NoAdvantage (see
+        // `rout25_spray_fallback_direct_only_priority_does_not_spray`).
         assert!(!r.predictions().has_entry(&dest));
-        let decision = r.spray_fallback(&msg, &dest, &contact, MessagePriority::P4, 3);
+        let decision = r.spray_fallback(&msg, &dest, &contact, MessagePriority::P2, 5);
         assert_eq!(
             decision,
             OpportunisticDecision::ForwardTo {
                 next_hop: contact,
                 reason: OpportunisticReason::Spray,
             }
+        );
+    }
+
+    #[test]
+    fn rout25_spray_fallback_direct_only_priority_does_not_spray() {
+        // ROUT-23 × ROUT-25 interaction: P4–P7 are direct-only (L=1), so even a
+        // genuinely cold-start contact gets no spray copy — the message waits
+        // for a direct meeting with the destination (or the flood/store chain
+        // handles it downstream). Pins the behaviour that broke the original
+        // ROUT-25 tests when ROUT-23 lowered the P4+ budget.
+        let mut r = OpportunisticRouter::new(ProphetConfig::default());
+        let dest = pid(9);
+        let msg = mid();
+        let contact = pid(2);
+        assert!(!r.predictions().has_entry(&dest));
+        assert_eq!(
+            r.spray_fallback(&msg, &dest, &contact, MessagePriority::P4, 3),
+            OpportunisticDecision::NoAdvantage,
         );
     }
 

@@ -519,6 +519,46 @@ config literal; import `SslMode`.
 **Phase T.** n/a — no radio component; needs a live Postgres for the `#[ignore]`
 integration tests, which is not this pass's concern.
 
-**Phase C.** Commit _pending_. Tracker: new **HV-81 → `✅ Fixed` · commit e044bda** under Tier 0.
+**Phase C.** Commit e044bda. Tracker: new **HV-81 → `✅ Fixed`** under Tier 0.
+
+---
+
+### HV-82 — `iris-core` ROUT-25 cold-start-spray tests fail at HEAD
+
+**Phase R.** Two tests panic on a clean `fc720d5`:
+- `routing::opportunistic::tests::rout25_spray_fallback_fires_when_cold_start`
+  — `left: NoAdvantage`, `right: ForwardTo{…Spray}`.
+- `routing::tests::rout25_cold_start_sprays_instead_of_flooding` — "expected a
+  spray fallback Forward, got Flood{…}".
+
+Both drive a **P4** message. `git log -- routing/`: `5ffffb0` (ROUT-25) added
+`spray_fallback` + these tests when `l_for_priority(P4, _)` still returned 3
+(sprayable). Then `ca02ad6` (ROUT-23, 2026-08-31) rewrote
+`SprayBudget::l_for_priority` to the `OPPORTUNISTIC_ROUTING.md §3.1` table —
+**P4–P7 → L=1 ("direct-only"; old value caused 3× overhead on bulk traffic)**.
+`SprayBudget::new(1)` is immediately in the wait phase (`handoff()` returns
+`None` when `remaining <= 1`), so `spray_fallback` for P4 now correctly returns
+`NoAdvantage` and `decide()` falls through to Flood. ROUT-23 (later, spec-cited)
+is authoritative; the ROUT-25 tests were left asserting the pre-ROUT-23
+behaviour. Stale test, not a code regression — loop rule "if a sim test
+contradicts reality, fix the test to model reality" applies. Sim-only today
+(HV-75: the live Android relay path never calls the routing module) but must be
+correct before Tier 4.
+
+**Phase D.**
+- `routing/opportunistic.rs`: `rout25_spray_fallback_fires_when_cold_start` →
+  `MessagePriority::P2` (L=3, spray-eligible); new
+  `rout25_spray_fallback_direct_only_priority_does_not_spray` pins P4 → `NoAdvantage`.
+- `routing/mod.rs`: `rout25_cold_start_sprays_instead_of_flooding` `decide(…)` →
+  `P2`; new `rout25_direct_only_priority_cold_start_still_floods` pins P4 → `Flood`.
+- `cargo test -p iris-core rout25`: **7/7** (was 3/5 + 2 failing).
+- `cargo test -p iris-core -p iris-android`: lib+bin **all green**. One
+  *pre-existing, unrelated* integration failure remains outside scope —
+  `sysval_mesh_integration::p0_multipath_includes_satellite_emergency_only`
+  (`:223`); confirmed failing on stashed `fc720d5`, logged as HV-83.
+
+**Phase T.** n/a — sim routing logic, no radio component.
+
+**Phase C.** Commit _pending_. Tracker: HV-82 → `✅ Fixed`.
 
 ---
