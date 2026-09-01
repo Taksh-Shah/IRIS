@@ -6968,6 +6968,71 @@ public object FfiConverterTypeFfiIncomingWifiDirectData: FfiConverterRustBuffer<
 
 
 /**
+ * HV-86: one entry from the transport-event ring (`observability::ring`).
+ * The last ~128 taxonomy events (`discovery.*` / `msg.*` / `engine.*` / …),
+ * oldest first — so a `/diag` after a failure shows the run-up to it.
+ */
+data class FfiLogEvent (
+    /**
+     * Unix epoch milliseconds at capture.
+     */
+    var `unixMs`: kotlin.ULong
+    , 
+    /**
+     * `ERROR` | `WARN` | `INFO` | `DEBUG` | `TRACE`.
+     */
+    var `level`: kotlin.String
+    , 
+    /**
+     * Taxonomy name, e.g. `discovery.connect_failed`.
+     */
+    var `event`: kotlin.String
+    , 
+    /**
+     * Compact `message key=value …` detail; never payloads or full ids.
+     */
+    var `detail`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiLogEvent: FfiConverterRustBuffer<FfiLogEvent> {
+    override fun read(buf: ByteBuffer): FfiLogEvent {
+        return FfiLogEvent(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiLogEvent) = (
+            FfiConverterULong.allocationSize(value.`unixMs`) +
+            FfiConverterString.allocationSize(value.`level`) +
+            FfiConverterString.allocationSize(value.`event`) +
+            FfiConverterString.allocationSize(value.`detail`)
+    )
+
+    override fun write(value: FfiLogEvent, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`unixMs`, buf)
+            FfiConverterString.write(value.`level`, buf)
+            FfiConverterString.write(value.`event`, buf)
+            FfiConverterString.write(value.`detail`, buf)
+    }
+}
+
+
+
+/**
  * HV-3: one-shot structured diagnostic of what the mesh is doing right now.
  * Rendered by the shell's `/diag` command and also dumped to logcat (tag
  * `iriscore`, `iris.diag` event) on every call. This is the single readout
@@ -7000,6 +7065,11 @@ data class FfiMeshSnapshot (
      * HV-6: the full raw `MetricsRegistry` counter set, sorted by name.
      */
     var `counters`: List<FfiCounter>
+    , 
+    /**
+     * HV-86: the transport-event ring, oldest first (last ~128 events).
+     */
+    var `recentEvents`: List<FfiLogEvent>
     
 ){
     
@@ -7021,6 +7091,7 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterSequenceTypeFfiNeighborDiag.read(buf),
             FfiConverterTypeFfiMessageMetrics.read(buf),
             FfiConverterSequenceTypeFfiCounter.read(buf),
+            FfiConverterSequenceTypeFfiLogEvent.read(buf),
         )
     }
 
@@ -7029,7 +7100,8 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterSequenceTypeFfiTransportDiag.allocationSize(value.`transports`) +
             FfiConverterSequenceTypeFfiNeighborDiag.allocationSize(value.`neighbors`) +
             FfiConverterTypeFfiMessageMetrics.allocationSize(value.`messages`) +
-            FfiConverterSequenceTypeFfiCounter.allocationSize(value.`counters`)
+            FfiConverterSequenceTypeFfiCounter.allocationSize(value.`counters`) +
+            FfiConverterSequenceTypeFfiLogEvent.allocationSize(value.`recentEvents`)
     )
 
     override fun write(value: FfiMeshSnapshot, buf: ByteBuffer) {
@@ -7038,6 +7110,7 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterSequenceTypeFfiNeighborDiag.write(value.`neighbors`, buf)
             FfiConverterTypeFfiMessageMetrics.write(value.`messages`, buf)
             FfiConverterSequenceTypeFfiCounter.write(value.`counters`, buf)
+            FfiConverterSequenceTypeFfiLogEvent.write(value.`recentEvents`, buf)
     }
 }
 
@@ -8012,6 +8085,34 @@ public object FfiConverterSequenceTypeFfiIncomingWifiDirectData: FfiConverterRus
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiIncomingWifiDirectData.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiLogEvent: FfiConverterRustBuffer<List<FfiLogEvent>> {
+    override fun read(buf: ByteBuffer): List<FfiLogEvent> {
+        val len = buf.getInt()
+        return List<FfiLogEvent>(len) {
+            FfiConverterTypeFfiLogEvent.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiLogEvent>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiLogEvent.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiLogEvent>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiLogEvent.write(it, buf)
         }
     }
 }

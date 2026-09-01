@@ -100,6 +100,8 @@ typealias FfiNeighborDiag = uniffi.iriscode.FfiNeighborDiag
 typealias FfiMessageMetrics = uniffi.iriscode.FfiMessageMetrics
 @Suppress("unused")
 typealias FfiCounter = uniffi.iriscode.FfiCounter
+@Suppress("unused")
+typealias FfiLogEvent = uniffi.iriscode.FfiLogEvent
 
 // --- Enums ---
 @Suppress("unused")

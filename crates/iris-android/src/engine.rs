@@ -76,6 +76,8 @@ pub struct FfiMeshSnapshot {
     pub messages: FfiMessageMetrics,
     /// HV-6: the full raw `MetricsRegistry` counter set, sorted by name.
     pub counters: Vec<FfiCounter>,
+    /// HV-86: the transport-event ring, oldest first (last ~128 events).
+    pub recent_events: Vec<FfiLogEvent>,
 }
 
 /// Per-transport slice of [`FfiMeshSnapshot`].
@@ -122,6 +124,21 @@ pub struct FfiMessageMetrics {
 pub struct FfiCounter {
     pub name: String,
     pub value: u64,
+}
+
+/// HV-86: one entry from the transport-event ring (`observability::ring`).
+/// The last ~128 taxonomy events (`discovery.*` / `msg.*` / `engine.*` / …),
+/// oldest first — so a `/diag` after a failure shows the run-up to it.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiLogEvent {
+    /// Unix epoch milliseconds at capture.
+    pub unix_ms: u64,
+    /// `ERROR` | `WARN` | `INFO` | `DEBUG` | `TRACE`.
+    pub level: String,
+    /// Taxonomy name, e.g. `discovery.connect_failed`.
+    pub event: String,
+    /// Compact `message key=value …` detail; never payloads or full ids.
+    pub detail: String,
 }
 
 /// Foreign-trait callback the Kotlin shell installs to receive delivered
@@ -382,6 +399,15 @@ impl IrisEngine {
             })
             .collect();
         counters.sort_by(|a, b| a.name.cmp(&b.name));
+        let recent_events = iris_core::observability::ring::recent()
+            .into_iter()
+            .map(|e| FfiLogEvent {
+                unix_ms: e.unix_ms,
+                level: e.level.to_string(),
+                event: e.event,
+                detail: e.detail,
+            })
+            .collect();
         let snapshot = FfiMeshSnapshot {
             node_id_hex: PeerId::from_bytes(self.node_id).to_string(),
             transports,
@@ -395,6 +421,7 @@ impl IrisEngine {
                 delivery_failed: m.delivery_failed,
             },
             counters,
+            recent_events,
         };
         tracing::info!(
             event = "iris.diag",

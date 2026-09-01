@@ -34,6 +34,8 @@ use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
+pub mod ring;
+
 /// Privacy-truncated identifier (P2 / OBS_DESIGN.md).
 ///
 /// Holds the **first 8 bytes** of a `MessageId`/`PeerId` as a fixed array and

@@ -289,6 +289,16 @@ class MeshViewModel @Inject constructor(
                         "dup=${m.droppedDuplicates} expired=${m.expired} failed=${m.deliveryFailed}",
                 )
             }
+            // HV-86: the tail of the transport-event ring — newest last, so the
+            // run-up to a failure reads top-to-bottom.
+            val events = snap.recentEvents
+            if (events.isEmpty()) {
+                add("events" to "none yet")
+            } else {
+                events.takeLast(DIAG_EVENT_LINES).forEach { e ->
+                    add("${e.level.take(1)} ${e.event}" to e.detail)
+                }
+            }
         }
         return ConsoleEntry.system(title = "DIAG", lines = lines, status = uiState.value.status.name)
     }
@@ -327,6 +337,9 @@ class MeshViewModel @Inject constructor(
     companion object {
         /** Console event cap; messages themselves are bounded by the engine. */
         private const val MAX_CONSOLE_EVENTS = 200
+
+        /** HV-86: how many ring events `/diag` prints (the ring holds ~128). */
+        private const val DIAG_EVENT_LINES = 15
     }
 
     /**

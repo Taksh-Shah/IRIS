@@ -344,11 +344,11 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         val wasStarted = dnsSdGate.isStarted()
         pendingOwnBeacon = txtRecord
         if (beaconChanged && wasStarted) {
-            android.util.Log.d("IrisWifiDirectDiag", "startDnsSd: beacon changed (len=${txtRecord.size}) while already started — forcing re-registration")
+            iriscore.util.IrisLog.d("wd.dnssd", "startDnsSd: beacon changed (len=${txtRecord.size}) while already started — forcing re-registration")
             dnsSdGate.reset()
         }
         FfiCallTimeout.suspendCall { dnsSdGate.ensureStarted() }
-        android.util.Log.d("IrisWifiDirectDiag", "startDnsSd DONE len=${txtRecord.size} wasStarted=$wasStarted beaconChanged=$beaconChanged")
+        iriscore.util.IrisLog.d("wd.dnssd", "startDnsSd DONE len=${txtRecord.size} wasStarted=$wasStarted beaconChanged=$beaconChanged")
         // HW-15: confirmed via research (matches a documented, real-world
         // WifiP2pManager quirk, not speculation) — after addLocalService
         // changes what this node advertises, an ALREADY-RUNNING discovery
@@ -367,7 +367,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // change always propagates promptly instead of waiting on an
         // unrelated timer.
         if (beaconChanged && serviceRequestGate.isStarted()) {
-            android.util.Log.d("IrisWifiDirectDiag", "startDnsSd: restarting active discovery session so peers see the new TXT record")
+            iriscore.util.IrisLog.d("wd.dnssd", "startDnsSd: restarting active discovery session so peers see the new TXT record")
             val channel = startGate.ensureStarted()
             runCatching {
                 awaitAction { p2pManagerOrThrow().stopPeerDiscovery(channel, it) }
@@ -652,7 +652,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      */
     private fun initialize(): WifiP2pManager.Channel {
         val manager = p2pManager ?: run {
-            android.util.Log.w("IrisWifiDirectDiag", "initialize: getSystemService(WIFI_P2P_SERVICE) returned null")
+            iriscore.util.IrisLog.w("wd.init", "initialize: getSystemService(WIFI_P2P_SERVICE) returned null")
             throw NotSupported()
         }
         // HW verification pass: this used to be `runCatching { }.getOrNull()`,
@@ -668,10 +668,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             manager.initialize(appContext, Looper.getMainLooper(), channelListener)
         }
         result.exceptionOrNull()?.let {
-            android.util.Log.w("IrisWifiDirectDiag", "initialize: manager.initialize() threw", it)
+            iriscore.util.IrisLog.w("wd.init", "initialize: manager.initialize() threw", it)
         }
         val channel = result.getOrNull() ?: run {
-            android.util.Log.w("IrisWifiDirectDiag", "initialize: manager.initialize() returned null channel")
+            iriscore.util.IrisLog.w("wd.init", "initialize: manager.initialize() returned null channel")
             throw NotSupported()
         }
         registerStateReceiver()

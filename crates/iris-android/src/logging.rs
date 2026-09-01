@@ -47,6 +47,8 @@ fn install() {
 
     let filter = EnvFilter::try_new(DEFAULT_FILTER).unwrap_or_else(|_| EnvFilter::new("info"));
     let android_layer = paranoid_android::layer("iriscore");
+    // HV-86: capture taxonomy events into the in-memory ring `/diag` reads.
+    let ring_layer = iris_core::observability::ring::RingLayer;
 
     // `try_init` (not `init`) because a second `IrisEngine` in the same
     // process — a real possibility across config changes / test harnesses —
@@ -54,6 +56,7 @@ fn install() {
     // `Once` alone doesn't fully cover (a subscriber set by something else
     // entirely, e.g. a future test harness, is a legitimate "already done").
     let _ = tracing_subscriber::registry()
+        .with(ring_layer)
         .with(android_layer)
         .with(filter)
         .try_init();

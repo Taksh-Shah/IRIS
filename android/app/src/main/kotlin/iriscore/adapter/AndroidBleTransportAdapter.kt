@@ -209,7 +209,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // Was unoverridden — the platform's own restart-throttle refusal
             // (SCAN_FAILED_ALREADY_STARTED et al.) was invisible; the core's
             // own scan_allowed() backoff had no way to see it either.
-            android.util.Log.w("IrisBle", "startScan failed errorCode=$errorCode")
+            iriscore.util.IrisLog.w("ble.scan", "startScan failed errorCode=$errorCode")
         }
     }
 
@@ -421,7 +421,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         if (gattServer != null) return
         val server = bleManager?.openGattServer(appContext, gattServerCallback)
         if (server == null) {
-            android.util.Log.w("IrisBleDiag", "ensureGattServer: openGattServer returned null")
+            iriscore.util.IrisLog.w("ble.gatt", "ensureGattServer: openGattServer returned null")
             return
         }
         val service = BluetoothGattService(
@@ -438,7 +438,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             ),
         )
         val added = server.addService(service)
-        android.util.Log.d("IrisBleDiag", "ensureGattServer: addService(IRIS_SERVICE_UUID=$IRIS_SERVICE_UUID) -> $added")
+        iriscore.util.IrisLog.d("ble.gatt", "ensureGattServer: addService(IRIS_SERVICE_UUID=$IRIS_SERVICE_UUID) -> $added")
         if (added) gattServer = server
     }
 
@@ -522,7 +522,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     // Was `= Unit` — every legacy-budget overflow (errorCode 1,
                     // ADVERTISE_FAILED_DATA_TOO_LARGE) failed completely
                     // silently and looked identical to a successful start.
-                    android.util.Log.w("IrisBle", "startAdvertising failed errorCode=$errorCode")
+                    iriscore.util.IrisLog.w("ble.advert", "startAdvertising failed errorCode=$errorCode")
                     advertiseHandles.remove(handle)
                 }
             }
@@ -563,7 +563,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // arguments are not available for it.
             val gatt = permitted { device.connectGatt(appContext, false, gattCallback) }
                 ?: throw DeviceNotFound()
-            android.util.Log.d("IrisBleDiag", "connectGatt: initiated, waiting for ready")
+            iriscore.util.IrisLog.d("ble.gatt", "connectGatt: initiated, waiting for ready")
             val ready = java.util.concurrent.CompletableFuture<Unit>()
             connectionReady[gatt] = ready
             // BLE-2: block this watchdog-pool thread (never the main/Binder
@@ -573,9 +573,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // (30s) is the backstop if neither ever arrives.
             try {
                 ready.get()
-                android.util.Log.d("IrisBleDiag", "connectGatt: ready resolved successfully")
+                iriscore.util.IrisLog.d("ble.gatt", "connectGatt: ready resolved successfully")
             } catch (e: java.util.concurrent.ExecutionException) {
-                android.util.Log.w("IrisBleDiag", "connectGatt: ready failed", e)
+                iriscore.util.IrisLog.w("ble.gatt", "connectGatt: ready failed", e)
                 connectionReady.remove(gatt)
                 throw (e.cause as? Exception) ?: GattFailure("connect failed: ${e.cause}")
             }
@@ -598,7 +598,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun gattWrite(handle: ULong, charUuid: String, data: ByteArray) {
         FfiCallTimeout.syncCallOrThrow(timeoutMs = GATT_WRITE_TIMEOUT_MS + 1000L) {
-            android.util.Log.d("IrisBleDiag", "gattWrite ENTER handle=$handle len=${data.size} known=${gattHandles.keys}")
+            iriscore.util.IrisLog.d("ble.gatt", "gattWrite ENTER handle=$handle len=${data.size} known=${gattHandles.keys}")
             val gatt = gattHandles[handle.toLong()]
                 ?: throw GattFailure("unknown gatt connection")
             // AND-RT-111: a write before discovery resolves to a typed error,
