@@ -1256,3 +1256,82 @@ The ~30 s first-connect latency is split out as **HV-91** (iter 1 still takes
   harness: add `test_tier1_ble.py`.
 - Still owed from Tier 0: HV-89 real fix (handshake key exchange), the HV-2 CI
   gate + regen-diff check + `ANDROID_BUILD_STATUS.md` rewrite.
+
+---
+
+## Session 08 — 2026-09-01 — HV-91: BLE first-connect latency 28 s → <7 s
+
+**Devices:** P1 = V2205 (`10BCA20F4M000BB`) · P2 = vivo 2004 (`b2fbcd39`).
+**Build under test:** `4bfe99a` -> HEAD.
+**Session goal:** HV-91 — the ~30 s first-connect latency HV-90 split out
+(message no longer *lost*, just slow).
+
+---
+
+### HV-91 — cut BLE first-connect latency
+
+**Phase R** (internet-research-first — this is Android BLE cadence).
+Sources: [Punch Through — Android BLE guide](https://punchthrough.com/android-ble-guide/),
+[Punch Through — Android BLE connect flow](https://punchthrough.com/how-to-android-ble-connect/),
+[Nordic DevZone — long connection delay on Android](https://devzone.nordicsemi.com/f/nordic-q-a/29128/long-connection-delay-with-android-ios-superfast).
+- `SCAN_MODE_LOW_POWER` = ~512 ms window every ~5 s (10 % duty). A ~1 s-interval
+  advertiser routinely goes unseen for 10–20 s ("device 2 ft away, actively
+  advertising, nothing in the scan list for 15–20 s").
+- `autoConnect = false` is already correct (autoConnect=true is *slower*).
+- IRIS compounds it: `DiscoveryConfig.scan_interval = 30 s`, so a missed first
+  scan costs a full 30 s; and `ble.rs::discover_peers` did `stop_scan(prior);
+  start_scan()` **every pass** — which (a) fought the AOSP 5-per-30 s throttle
+  (`scan_allowed`, `SCAN_CEILING = 5`) and (b) left a window each pass where the
+  beacon could be missed. `DiscoveryMode::{Active,Passive}` existed but the scan
+  loop ignored it entirely (dead config).
+
+Harness evidence (`evidence/session-03`): iter-1 message shows ~5–8 rounds of
+`msg.transport_send_failed "not connected"` (HV-90's 3 s holds) then
+`discovery.scan_pass_complete peers_seen=0` several times before `peers_seen=1`
++ `connect_ok` + `msg.sent`.
+
+**Phase D** — four coordinated changes:
+- `crates/iris-core/src/discovery/mod.rs`: `DiscoveryConfig.active_scan_interval`
+  (default **3 s**). The loop sleeps `active_scan_interval` until
+  `has_confirmed_link` (a new `AtomicBool` set on `discovery.connect_ok`, cleared
+  on `PeerLost`) — *not* `NeighborTable::LinkedUp`, which only means "beacon seen
+  recently" (HV-27). Then `scan_interval` (30 s).
+- `crates/iris-core/src/transport/ble.rs`: `discover_peers` keeps one scan
+  running — a `scan_pass` counter drives a re-arm only when `scan_handle`
+  is `None` or every 5th pass (dead-scan safety net for a scan the OS silently
+  killed). Harvest-only passes skip `scan_allowed()` entirely, so a fast
+  cadence never trips the throttle.
+- `android/.../AndroidBleTransportAdapter.kt`: scan `SCAN_MODE_LOW_POWER →
+  SCAN_MODE_LOW_LATENCY`; advertise `ADVERTISE_MODE_LOW_POWER → BALANCED`
+  (~1 s → ~250 ms beacon). Both flagged for HV-80 to make adaptive.
+- Tests: `hv91_cold_start_loop_scans_at_active_interval` (a connect-always-fails
+  transport must keep scanning fast); `hw1_rearming_discovery_stops_the_previous_scan_first`
+  and `scan_burst_is_throttled_within_window` updated for the harvest/re-arm
+  split. iris-core lib **773**, iris-android **7**, `sysval_fault_injection` **6**.
+
+**Phase T + I** — `iris_bench` tier-0 smoke, iterated:
+| build | iter-1 latency (cold) | iter-1 (warm) | 10/10 |
+|---|---|---|---|
+| before | 27.7 s | — | ✓ |
+| + LOW_LATENCY + adaptive 7 s | 15.5 s / 21.7 s | — | ✓ |
+| + harvest-only re-arm | ~21 s | — | ✓ |
+| + 3 s interval + advertise BALANCED | **6.5 s** | **0.45 s** | ✓ |
+
+`test_p1_sends_p2_receives_10x PASS` every run. iters 2–10 ~266 ms median.
+`evidence/session-04..06`.
+
+**Phase C.** Commit b4406be. Tracker **HV-91 → 🟢**. HV-80 (dial the modes back
+once links are stable, for battery) is the remaining follow-up.
+
+### Session 08 closeout
+- HV-91 🟢. Tier 1: 15 findings — 2 🟢 (HV-90, HV-91), 13 ⬜.
+- 🟢 count: 7 → 8.
+- The operator's "the first message takes forever / sometimes doesn't work" is
+  now: **cold-start first delivery ~6.5 s, steady-state <0.5 s, 10/10.**
+- Next Tier 1 (loop §2 / §5): the HV-7 + HV-8 group (MTU & fragmentation — a
+  300-char message both ways 10/10; the sim shows MTU 517 negotiated on
+  hardware so this may already largely work — verify with a `test_tier1_ble.py`),
+  then HV-11/HV-14/HV-15 (scan lifecycle — HV-91 already touched HV-14's
+  throttle-accounting, note the interaction).
+- Still owed: HV-89 real fix (handshake key exchange), HV-2 CI gate +
+  regen-diff check + `ANDROID_BUILD_STATUS.md` rewrite, HV-80.

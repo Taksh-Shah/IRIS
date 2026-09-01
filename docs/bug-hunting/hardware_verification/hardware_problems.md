@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 15 | 1 | 0 | 0 | 0 | 14 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 15 | 2 | 0 | 0 | 0 | 13 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,10 +69,10 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **92** | **7** | **7** | **0** | **1** | **77** |
+| **Total** | | **92** | **8** | **7** | **0** | **1** | **76** |
 
-**Last updated:** 2026-09-01 (Session 07 — HV-90 `🟢`: the iris_bench
-tier-0 smoke PASSES 10/10 on hardware — **Tier-0→Tier-1 gate met**). · **Active tier:** 1
+**Last updated:** 2026-09-01 (Session 08 — HV-91 `🟢`: BLE first-connect
+latency 28 s → <7 s cold / <0.5 s warm; smoke still 10/10). · **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -563,7 +563,17 @@ failing it. The P2 reverse-ACK failures cleared too (`deliveryFailed` 9 → 0).
 
 ### HV-91 — BLE first-connect latency ~30 s (discovery / connect cadence)
 
-- **Fix status:** ⬜ (split from HV-90, Session 07)
+- **Fix status:** 🟢 HW-verified · commit b4406be · 2026-09-01 · iris_bench
+  tier-0 smoke on P1=V2205 + P2=vivo 2004: **iter-1 latency 27.7 s → 6.5 s
+  cold / 0.45 s warm**, still 10/10 · Session 08. HV-80 (make scan/advertise
+  modes adaptive once links are stable, to claw back the battery cost) is the
+  remaining follow-up.
+- **Resolution:** discovery loop scans at `active_scan_interval` (3 s) until a
+  `connect()` actually succeeds (`has_confirmed_link`), then `scan_interval`
+  (30 s); `ble.rs::discover_peers` keeps one scan running and only re-arms every
+  ~5 passes (harvest-only passes no longer burn the `scan_allowed` throttle
+  budget — the HV-14 conflation); scan `LOW_POWER → LOW_LATENCY`, advertise
+  `LOW_POWER → BALANCED`.
 - **Area:** `ble.rs` `scan_allowed` / `DiscoveryManager` scan cadence,
   `AndroidBleTransportAdapter.connectGatt` (`autoConnect=false`), HV-13 synthetic id
 - **Severity:** High (UX — "the first message takes 30 s") · **HW gate:** 2 phones
