@@ -30,20 +30,34 @@ Three results dominate this report.
 
 ---
 
-## Progress Tracker
+## Progress Tracker — living section, updated as fixes land
 
-| ID | Severity | Sections | Status |
-|---|---|---|---|
-| CROSS-001 | 🔴 Critical | Android (Sohan) ↔ iOS (Shrey) / Rust Transport (Taksh) | ⬜ Not started |
-| CROSS-002 | 🟠 High | iOS (Shrey) ↔ Message Engine (Rahul) | ⬜ Not started |
-| CROSS-003 | 🟠 High | All platforms ↔ Security (Priyam) / Message Engine (Rahul) | ⬜ Not started |
-| CROSS-004 | 🟠 High | iOS (Shrey) ↔ Crypto (Priyam) | ⬜ Not started |
-| CROSS-005 | 🟠 High | Desktop (Dhairya) ↔ Protocol (Rahul) | ⬜ Not started |
-| CROSS-006 | 🟡 Medium | Message Engine (Rahul) ↔ Routing/SCF (Taksh) | ⬜ Not started |
-| CROSS-007 | 🟡 Medium | Android Kotlin (Sohan) ↔ Rust FFI generation | ⬜ Not started |
-| CROSS-008 | 🟡 Medium | iOS app (Shrey) ↔ UniFFI bridge | ⬜ Not started |
+**This section is rewritten by the fix loop after every finding.** Individual findings carry their own `Fix status` line for in-place detail; this table is the roll-up.
 
-**Last updated:** 2026-09-01 · **8 findings · 0 fixed.**
+**Last updated:** 2026-09-01 — initial sweep complete. 8 cross-section integration findings. 0 fixed.
+
+### Status legend
+⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
+
+### Tier roll-up
+
+| Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
+|---|---|---|---|---|---|---|---|---|
+| **0** | Critical — cross-platform data path broken | 1 | 1 | 0 | 0 | 0 | 0 | Fix first — nothing else matters if platforms can't see each other |
+| **1** | High — security regressions and build breaks | 4 | 4 | 0 | 0 | 0 | 0 | Tier 0 complete |
+| **2** | Medium — missing wiring, compile breaks on regen | 3 | 3 | 0 | 0 | 0 | 0 | Can run in parallel with Tier 1 |
+| **Total** | | **8** | **8** | **0** | **0** | **0** | **0** | |
+
+### Tier membership
+
+**Tier 0** (1 finding — cross-platform data path):
+CROSS-001
+
+**Tier 1** (4 findings — security regressions, build breaks, data integrity):
+CROSS-002, CROSS-003, CROSS-004, CROSS-005
+
+**Tier 2** (3 findings — missing wiring, compile breaks on binding regen):
+CROSS-006, CROSS-007, CROSS-008
 
 ---
 
