@@ -75,6 +75,9 @@ sealed interface CommandResult {
     /** Set the active recipient. */
     data class SetRecipient(val peerIdHex: String) : CommandResult
 
+    /** HV-89 interim: register a peer's X25519 static key so we can seal mail to it. */
+    data class AddKey(val peerIdHex: String, val x25519Hex: String) : CommandResult
+
     /** Filter the console view; null clears the filter. */
     data class Search(val query: String?) : CommandResult
 

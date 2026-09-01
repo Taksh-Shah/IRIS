@@ -1015,6 +1015,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_start_all(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_static_x25519_pubkey(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_stop_all(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_subscribe_inbox(
@@ -1159,6 +1161,8 @@ external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_ou
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_start_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_iriscode_fn_method_irisengine_static_x25519_pubkey(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_stop_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_subscribe_inbox(`ptr`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1414,6 +1418,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_start_all() != 5995) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_static_x25519_pubkey() != 16792) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_stop_all() != 56279) {
@@ -6165,6 +6172,13 @@ public interface IrisEngineInterface {
     fun `startAll`()
     
     /**
+     * This node's 32-byte X25519 static public key as 64-hex — the value a
+     * peer must `register_peer_key` before it can send us addressed mail
+     * (HV-89 interim, until the discovery handshake carries it). `/x25519`.
+     */
+    fun `staticX25519Pubkey`(): kotlin.ByteArray
+    
+    /**
      * Shut down the message engine and all transports (async teardown
      * through the handle).
      */
@@ -6382,6 +6396,25 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 }
     }
     
+    
+
+    
+    /**
+     * This node's 32-byte X25519 static public key as 64-hex — the value a
+     * peer must `register_peer_key` before it can send us addressed mail
+     * (HV-89 interim, until the discovery handshake carries it). `/x25519`.
+     */
+    @Throws(IrisFfiException::class)override fun `staticX25519Pubkey`(): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_static_x25519_pubkey(
+        it,
+        _status)
+}
+    }
+    )
+    }
     
 
     

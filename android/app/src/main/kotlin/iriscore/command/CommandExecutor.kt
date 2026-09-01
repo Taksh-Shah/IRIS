@@ -59,6 +59,23 @@ object CommandExecutor {
                 setRecipient(peer)
             }
 
+            "x25519" -> CommandResult.System(title = "X25519", lines = emptyList())
+
+            "addkey" -> {
+                val parts = mode.argument?.trim()?.split(Regex("\\s+")) ?: emptyList()
+                if (parts.size != 2) {
+                    return CommandResult.Error("/addkey <peer-id> <x25519>  (both 64 hex)")
+                }
+                val peer = parts[0].lowercase()
+                val key = parts[1].lowercase()
+                if (!PeerIdCodec.isHex(peer) || peer.length != PEER_ID_HEX_LENGTH ||
+                    !PeerIdCodec.isHex(key) || key.length != PEER_ID_HEX_LENGTH
+                ) {
+                    return CommandResult.Error("/addkey: both values must be $PEER_ID_HEX_LENGTH hex chars")
+                }
+                CommandResult.AddKey(peer, key)
+            }
+
             "search" -> CommandResult.Search(mode.argument)
             "clear" -> CommandResult.Clear
             "relay" -> CommandResult.Relay

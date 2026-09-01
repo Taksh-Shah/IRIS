@@ -68,6 +68,19 @@ object CommandRegistry {
             argumentHint = "<peer-id>",
         ),
         IrisCommand(
+            name = "x25519",
+            description = "Show this node's X25519 key (hand to a peer for /addkey)",
+            group = CommandGroup.SYSTEM,
+            aliases = listOf("mykey", "key"),
+        ),
+        IrisCommand(
+            name = "addkey",
+            description = "Trust a peer's X25519 key so you can send to it",
+            group = CommandGroup.MESSAGE,
+            aliases = listOf("trust"),
+            argumentHint = "<peer-id> <x25519>",
+        ),
+        IrisCommand(
             name = "search",
             description = "Search messages in this thread",
             group = CommandGroup.THREAD,

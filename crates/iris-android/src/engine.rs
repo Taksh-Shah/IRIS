@@ -177,6 +177,9 @@ pub struct IrisEngine {
     node_id: [u8; 32],
     /// HV-89 interim: the hand-fed X25519 key directory (see [`BenchKeyDirectory`]).
     keydir: Arc<BenchKeyDirectory>,
+    /// AN-6: the Kotlin X25519 provider, kept so the shell can print this
+    /// node's static public key (`/x25519`) for a peer to `/addkey`.
+    x25519_provider: Option<Arc<dyn FfiX25519KeyProvider>>,
     /// GAP-7: owns the background scan loop that calls `Transport::connect()`
     /// on first contact with a peer. Without this, `deliver_outbound` can
     /// select a transport but every `send()` fails with `NotConnected`
@@ -213,6 +216,7 @@ impl IrisEngine {
             direct,
             node_id,
             Arc::new(AndroidCryptoProvider::new(signer)),
+            None,
         )
     }
 
@@ -238,7 +242,11 @@ impl IrisEngine {
             aware,
             direct,
             node_id,
-            Arc::new(AndroidCryptoProvider::with_x25519_provider(signer, x25519_provider)),
+            Arc::new(AndroidCryptoProvider::with_x25519_provider(
+                signer,
+                x25519_provider.clone(),
+            )),
+            Some(x25519_provider),
         )
     }
 }
@@ -256,6 +264,7 @@ impl IrisEngine {
         direct: Arc<dyn FfiWifiDirectAdapter>,
         node_id: [u8; 32],
         crypto: Arc<dyn CryptoProvider>,
+        x25519_provider: Option<Arc<dyn FfiX25519KeyProvider>>,
     ) -> Result<Arc<Self>, IrisFfiError> {
         let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
         let handle = runtime.handle().clone();
@@ -360,6 +369,7 @@ impl IrisEngine {
             transports,
             node_id,
             keydir,
+            x25519_provider,
             discovery,
         }))
     }
@@ -371,6 +381,17 @@ impl IrisEngine {
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()
+    }
+
+    /// This node's 32-byte X25519 static public key as 64-hex — the value a
+    /// peer must `register_peer_key` before it can send us addressed mail
+    /// (HV-89 interim, until the discovery handshake carries it). `/x25519`.
+    pub fn static_x25519_pubkey(&self) -> Result<Vec<u8>, IrisFfiError> {
+        let provider = self
+            .x25519_provider
+            .as_ref()
+            .ok_or_else(|| IrisFfiError::InvalidArgument("no x25519 provider wired".into()))?;
+        provider.static_public_key()
     }
 
     /// HV-89 (interim): register a peer's 32-byte X25519 static public key so
@@ -757,6 +778,7 @@ impl IrisEngine {
             direct,
             node_id,
             Arc::new(iris_core::message_engine::crypto::DevCryptoProvider::new()),
+            None,
         )
     }
 

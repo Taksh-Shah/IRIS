@@ -172,6 +172,20 @@ class MeshViewModel @Inject constructor(
                 )
             }
 
+            is CommandResult.AddKey -> {
+                viewModelScope.launch {
+                    val line = withContext(Dispatchers.IO) {
+                        try {
+                            repository.addPeerKey(result.peerIdHex, result.x25519Hex)
+                            "peer ${result.peerIdHex.take(16)}…" to "key trusted"
+                        } catch (e: RuntimeException) {
+                            "error" to (e.message ?: e.javaClass.simpleName)
+                        }
+                    }
+                    appendEvent(ConsoleEntry.system(title = "ADDKEY", lines = listOf(line)))
+                }
+            }
+
             is CommandResult.Search -> {
                 _searchQuery.value = result.query
                 appendEvent(
@@ -201,11 +215,15 @@ class MeshViewModel @Inject constructor(
             }
 
             is CommandResult.System ->
-                if (result.title == "DIAG" || result.title == "STATS") {
-                    // snapshot() is a blocking FFI call — resolve off the main thread.
+                if (result.title == "DIAG" || result.title == "STATS" || result.title == "X25519") {
+                    // These read the engine over a blocking FFI call — off-main.
                     viewModelScope.launch {
                         val entry = withContext(Dispatchers.IO) {
-                            if (result.title == "STATS") resolveStats() else resolveDiag()
+                            when (result.title) {
+                                "STATS" -> resolveStats()
+                                "X25519" -> resolveX25519()
+                                else -> resolveDiag()
+                            }
                         }
                         appendEvent(entry)
                     }
@@ -308,6 +326,16 @@ class MeshViewModel @Inject constructor(
      * the engine. `snapshot()` also emits an `iris.kpi` logcat line, so a bench
      * `adb logcat | grep iris.kpi` capture is a counter time series.
      */
+    /** HV-89 interim: show this node's X25519 static key for a peer to `/addkey`. */
+    private fun resolveX25519(): ConsoleEntry {
+        val line = try {
+            "x25519" to repository.staticX25519()
+        } catch (e: RuntimeException) {
+            "error" to (e.message ?: e.javaClass.simpleName)
+        }
+        return ConsoleEntry.system(title = "X25519", lines = listOf(line))
+    }
+
     private fun resolveStats(): ConsoleEntry {
         val snap = try {
             repository.snapshot()

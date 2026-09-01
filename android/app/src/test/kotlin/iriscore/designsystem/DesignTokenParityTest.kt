@@ -126,7 +126,7 @@ class DesignTokenParityTest {
     @Test
     fun `command set matches the desktop mirror`() {
         // A user who learns /sos on the phone must find it on the desktop.
-        val desktopNames = Regex("name:\\s*\"([a-z]+)\"")
+        val desktopNames = Regex("name:\\s*\"([a-z0-9]+)\"")
             .findAll(commandsJs)
             .map { it.groupValues[1] }
             .toSet()

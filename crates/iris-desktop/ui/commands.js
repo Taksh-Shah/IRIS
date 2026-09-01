@@ -70,6 +70,18 @@ const IRIS_COMMANDS = [
     aliases: ["kpi", "metrics"],
   },
   {
+    name: "x25519",
+    description: "Show this node's X25519 key (hand to a peer for /addkey)",
+    group: "SYSTEM",
+    aliases: ["mykey", "key"],
+  },
+  {
+    name: "addkey",
+    description: "Trust a peer's X25519 key so you can send to it",
+    group: "MESSAGE",
+    aliases: ["trust"],
+  },
+  {
     name: "node",
     description: "Show this node's identity",
     group: "SYSTEM",
@@ -204,6 +216,10 @@ function irisExecute(raw, hasRecipient) {
       return { type: "system", title: "DIAG", lines: [] };
     case "stats":
       return { type: "system", title: "STATS", lines: [] };
+    case "x25519":
+      return { type: "system", title: "X25519", lines: [] };
+    case "addkey":
+      return { type: "system", title: "ADDKEY", lines: [] };
     case "node":
       return { type: "system", title: "NODE", lines: [] };
     default:

@@ -153,6 +153,14 @@ class MeshRepository @Inject constructor(
      */
     fun snapshot(): iriscode.FfiMeshSnapshot = engine.get().snapshot()
 
+    /** HV-89 interim: this node's X25519 static public key, 64-hex. */
+    fun staticX25519(): String =
+        engine.get().staticX25519Pubkey().joinToString("") { "%02x".format(it) }
+
+    /** HV-89 interim: trust a peer's X25519 key so addressed mail to it can be sealed. */
+    fun addPeerKey(peerHex: String, x25519Hex: String) =
+        engine.get().registerPeerKey(peerHex, x25519Hex)
+
     /** Spill the relay outbox into the engine (WorkManager entrypoint). */
     suspend fun drainRelayOutbox(): Int {
         val sent = outbox.drain { queued ->
