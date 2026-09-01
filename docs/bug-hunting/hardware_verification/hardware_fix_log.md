@@ -559,6 +559,6 @@ correct before Tier 4.
 
 **Phase T.** n/a — sim routing logic, no radio component.
 
-**Phase C.** Commit _pending_. Tracker: HV-82 → `✅ Fixed`.
+**Phase C.** Commit _pending_. Tracker: HV-82 → `✅ Fixed` · commit 6c0a755.
 
 ---

@@ -264,7 +264,7 @@ added to the test literal. `cargo build --workspace --all-features` and
 
 ### HV-82 — `iris-core` ROUT-25 cold-start-spray tests fail at HEAD
 
-- **Fix status:** ✅ Fixed · commit _pending_ · 2026-09-01 · sim-only, no HW
+- **Fix status:** ✅ Fixed · commit 6c0a755 · 2026-09-01 · sim-only, no HW
   gate · Session 02
 - **Area:** `crates/iris-core/src/routing/opportunistic.rs`,
   `crates/iris-core/src/routing/mod.rs` (tests `rout25_cold_start_sprays_instead_of_flooding`,
