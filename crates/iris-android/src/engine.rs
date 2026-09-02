@@ -321,6 +321,15 @@ impl IrisEngine {
             // has somewhere to look (still fails closed until a key is fed).
             engine.set_key_directory(keydir_for_engine);
 
+            // CROSS-003: the engine defaults to NoopSecurityPolicy (all checks
+            // permissive) until a real policy is installed. No platform ever
+            // called set_security_policy(), so rate limiting, replay
+            // protection, quota, and the emergency ACL were silently disabled
+            // in production on every platform. Arm it here.
+            engine.set_security_policy(std::sync::Arc::new(
+                iris_core::FullSecurityPolicy::new(std::sync::Arc::new(iris_core::TrustStore::new())),
+            ));
+
             let all: [Arc<dyn Transport>; 3] = [ble_t, aware_t, direct_t];
             for t in &all {
                 Self::spawn_inbox_forwarder(engine.clone(), t.clone());

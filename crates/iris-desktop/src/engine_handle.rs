@@ -215,6 +215,15 @@ impl DesktopEngine {
             engine.set_key_directory(dir);
         }
 
+        // CROSS-003: the engine defaults to NoopSecurityPolicy (all checks
+        // permissive) until a real policy is installed. No platform ever
+        // called set_security_policy(), so rate limiting, replay protection,
+        // quota, and the emergency ACL were silently disabled in production
+        // on every platform. Arm it here.
+        engine.set_security_policy(std::sync::Arc::new(iris_core::FullSecurityPolicy::new(
+            std::sync::Arc::new(iris_core::TrustStore::new()),
+        )));
+
         // GAP-7: discovery is what actually calls `Transport::connect()` on
         // first contact — without it every send() fails NotConnected forever,
         // and InternetTransport specifically never leaves `Unavailable`.

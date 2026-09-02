@@ -137,6 +137,15 @@ impl IrisEngine {
                 MetricsRegistry::new(),
             );
 
+            // CROSS-003: the engine defaults to NoopSecurityPolicy (all checks
+            // permissive) until a real policy is installed. No platform ever
+            // called set_security_policy(), so rate limiting, replay
+            // protection, quota, and the emergency ACL were silently disabled
+            // in production on every platform. Arm it here.
+            engine.set_security_policy(Arc::new(iris_core::FullSecurityPolicy::new(Arc::new(
+                iris_core::TrustStore::new(),
+            ))));
+
             Self::spawn_inbox_forwarder(engine.clone(), ble_t.clone());
 
             // GAP-7: discovery is what actually calls `Transport::connect()`

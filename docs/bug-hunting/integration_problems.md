@@ -151,7 +151,7 @@ payload_type: if priority == MessagePriority::P0 {
 
 ### CROSS-003 — `NoopSecurityPolicy` hardcoded; no platform engine ever installs `FullSecurityPolicy`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 1 · commit `pending` · 2026-09-02 — added `engine.set_security_policy(Arc::new(FullSecurityPolicy::new(Arc::new(TrustStore::new()))))` immediately after engine construction in all three platform engines: `iris-android/src/engine.rs` (after `set_key_directory`), `iris-ios/src/engine.rs` (after `MessageEngine::new_with_telemetry`), `iris-desktop/src/engine_handle.rs` (after the optional `set_key_directory`). Used a fresh `TrustStore::new()` on each platform rather than threading through each platform's existing identity/trust plumbing (Desktop's `IdentityManager` holds a private `TrustStore` with no public accessor) — sufficient to arm rate limiting, replay protection, quota, and the ACL's structural checks; wiring a *shared, populated* trust store (so `EmergencyAcl` allowlists resolve real authorities) is a larger follow-on tracked separately, not this finding's scope, which is only "the policy is Noop." No Rust toolchain in this environment to compile-verify — `iris_core::FullSecurityPolicy`/`iris_core::TrustStore` are both confirmed root re-exports (`iris-core/src/lib.rs:40,51`), `set_security_policy(Arc<dyn SecurityPolicy>)` signature confirmed at `message_engine/mod.rs:355`, `Arc` confirmed in scope in all three files.
 - **Severity:** High
 - **Sections:** All platforms ↔ Priyam (security) ↔ Rahul (message engine)
 - **Files:**
