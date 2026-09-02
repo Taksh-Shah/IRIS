@@ -18,6 +18,7 @@ _DEFAULT_CONFIG = os.path.join(_HERE, "configs", "bench_2phone.yml")
 
 _MODULES = {
     "tier0": "iris_bench.test_tier0_smoke",
+    "tier1": "iris_bench.test_tier1_ble",
 }
 
 

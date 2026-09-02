@@ -1560,3 +1560,256 @@ one story). Tracker: HV-92 **→ 🟢**, HV-93 **→ 🟢**. `🟢` count 8 → 
 - Still owed: HV-89 real fix (handshake `KeyAdvertisementV1`), HV-2 CI gate +
   regen-diff check + `ANDROID_BUILD_STATUS.md` rewrite, HV-80, HV-7/HV-8 group
   (next Tier-1 per §2/§5).
+
+---
+
+## Session 10 — 2026-09-02 · P1 = vivo V2205 (Android 15, API 35) · P2 = vivo 2004 (Android 13, API 33)
+
+Active tier 1. §5 group: **HV-7 + HV-8** (BLE MTU & fragmentation). Loop §4 —
+verification via the Mobly `iris_bench` harness (`test_tier1_ble.py`), not
+ad-hoc adb.
+
+### HV-7 + HV-8 — Research note
+
+**1. Mechanism (from source at HEAD + platform research).**
+
+*Central → peripheral (the direction that works today).* `BleTransport::connect`
+(`ble.rs:1412`) runs `adapter.set_mtu(handle, MTU_NEGOTIATED=517)` on the blocking
+pool under `MTU_TIMEOUT`. The Kotlin `setMtu` (`AndroidBleTransportAdapter.kt:768`)
+calls `gatt.requestMtu(517)` then **synchronously** reads `negotiatedMtu[gatt]`
+— which is populated only later by `onMtuChanged` (async, `BluetoothGattCallback`,
+API 21+) — so it is almost always `null` and the method returns the *requested*
+517. Rust stores `(handle, 517, 0)` in `connections`. `send()` (`ble.rs:1505`)
+segments to that per-connection MTU: `data_cap = min(517-5, 512) - 7 = 505`
+bytes/frame, so a 300-char message is **one** frame (~307 B). Matches Session-09
+logcat (`gattWrite … len=303..307`, single write, delivered). Android 14+
+negotiates 517 on the first `requestMtu` per ACL and ignores later ones (RES-0019
+R1; developer.android.com `BluetoothGatt.requestMtu`), so the stored value is
+usually right *by luck* even though the code never waits for the callback.
+
+*Peripheral → central (the reply direction — HV-8).* `ensure_accept_poller`
+(`ble.rs:905`) registers a connection a remote central dialled to us as
+`connections.entry(peer_id).or_insert((accepted.handle, MTU_DEFAULT=23, 0))`.
+Nothing ever updates it: the Android **peripheral role cannot call
+`requestMtu`** (only the central can — confirmed developer.android.com +
+Nordic DevZone 97206), and `gattServerCallback` has **no `onMtuChanged`
+override at all** (`BluetoothGattServerCallback.onMtuChanged(device, mtu)`
+exists since API 22 and *does* fire on the server when the central negotiates —
+Microsoft Learn `BluetoothGattServerCallback.OnMtuChanged`, blessed-android
+6.2). So a reply sent on a *peripheral-only* link fragments at MTU 23:
+`data_cap = 23-5-7 = 11` B/frame → a 300-char reply = ~28 frames.
+**Caveat proven by reading `.entry().or_insert()`:** with *symmetric* discovery
+(both phones dial each other — the common case) the central `connect()` inserts
+`(_, 517, _)` first and the accept-poller's `or_insert` is a **no-op**, so the
+reply uses MTU 517 too. HV-8 bites only on an *asymmetric* link (connect backoff
+on one side, one-way beacon visibility, or one phone's advertiser rebuilt).
+This must be confirmed on the bench (Phase T alternates roles per loop §T).
+
+*The link-teardown fragility (HV-7's core, direction-independent).* `send()`'s
+frame loop (`ble.rs:1521`):
+```rust
+for frame in &frames {
+    if let Err(e) = adapter.gatt_write(handle, char_uuid, frame.clone()) {
+        self.close_peer(&resolved_key, adapter.clone(), Some(&e));
+        return Err(to_transport_err(e));
+    }
+}
+```
+One failed frame → `close_peer` (drops the connection + poller) → whole message
+returned as `Err`. There is **no per-fragment retry anywhere**. Post-HV-92,
+`GattFailure("gatt write failed status=133")` still maps to `Protocol` (terminal,
+`!is_retryable`) so the message is also *dropped at attempt 0*, not held. GATT
+133 on a write is, per crickshaw.dev "Surviving GATT_ERROR 133", a *category*:
+stale connection state / bonding race / resource exhaustion (all transient) vs
+genuine link loss (permanent) — the recommended handling is **serialize + close
+the poisoned handle + jittered backoff, 3 attempts (250 ms → 500 ms → 1 s)**,
+not "tear down on the first miss".
+
+**2. Why the current code gets it wrong.**
+- `setMtu` returns the *requested* value, not the negotiated one — a latent bug
+  that happens to be masked by Android 14 always granting 517. On a peer that
+  caps lower it would store an over-estimate (Android's WITH_RESPONSE long-write
+  still delivers up to 512 B via prepared writes, so not fatal, just slow).
+- `ensure_accept_poller` hard-codes `MTU_DEFAULT`; `gattServerCallback` drops the
+  one signal (`onMtuChanged`) that would fix it.
+- `send()` treats the first frame error as fatal to the link. Assumption that
+  does not hold on real RF: "a write error means the peer is gone." Per
+  crickshaw.dev / Martijn van Welie part 2, most write errors on a live ACL are
+  transient and clear on a short retry.
+
+**3. How it's solved elsewhere.**
+- **blessed-android** (`getMaximumWriteValueLength(writeType)`, command queue):
+  `requestMtu` is queued and *resolved on `onMtuChanged`*; the negotiated value
+  (not the request) sizes every subsequent write; MTU change "can be initiated by
+  either side" and the server tracks it via its own `onMtuChanged`.
+- **Nordic Android-BLE-Library**: same — MTU request is an async queued op; the
+  peripheral side is told to `overrideMtu()` in its server callback.
+- **bitchat-android** (`BluetoothMeshService`): "compact binary packet format
+  with **fragmentation**, … **outbox retry**" in `MessageRouter` — retry lives
+  above the transport, and the transport serializes GATT ops rather than tearing
+  down.
+- **crickshaw.dev / Punch Through**: never reuse a poisoned `gatt`; 3 retries,
+  jittered exp backoff; WITH_RESPONSE writes for reliability (WITHOUT_RESPONSE
+  "can be silently dropped").
+
+**4. IRIS-specific constraints.** FFI seam: `gatt_write` is a blocking call on a
+watchdog thread with `GATT_WRITE_TIMEOUT_MS` — a retry loop must stay inside that
+budget or move to the Rust side. Typed errors only. The transport abstraction
+already carries a per-connection MTU tuple (`connections: (handle, mtu, msg_id)`)
+— the fix rides that, no new shared state. Battery: WITH_RESPONSE stays (no
+throughput hack). Privacy model unaffected. `MAX_MESSAGE_BYTES` / manager
+eligibility floor (`BLE_MAX_MESSAGE_CONSERVATIVE`) stays worst-case — the
+fragmenter already uses the live per-connection value.
+
+**5. Research outcome.** Land as one §5 commit:
+(a) **Per-frame retry in `ble.rs::send()`** — retry each `gatt_write` up to 3×
+with jittered backoff (250/500/1000 ms) before `close_peer`; only tear the link
+down after a frame exhausts its retries or a disconnect callback arrives.
+(b) **HV-8 server MTU** — add `onMtuChanged` to `gattServerCallback`, store
+per-device, surface it (extend `FfiAcceptedConnection` with `mtu`, or a sibling
+`serverMtu()` drain); `ensure_accept_poller` registers the real value, and on a
+peripheral-only link with no server MTU yet, raise the stored 23 → a 100-B floor
+after the first successful inbound frame proves the link.
+(c) **`setMtu` awaits `onMtuChanged`** — a short (~2 s) latch so Rust stores the
+negotiated value, not the requested one.
+Rejected: `WRITE_TYPE_NO_RESPONSE` (reliability > speed for a messenger);
+raising the manager's size floor (worst-case is correct there).
+Sim regression guard: extend `SimulatedBleAdapter` with
+`fail_first_n_writes_transient(n)` (a `133`-class `GattFailure` cleared on
+retry) + an `AttSegmenter`/`send` test asserting a multi-frame message with a
+transient mid-stream failure still delivers and the link is NOT closed.
+
+**Phase T plan.** New `iris_bench/test_tier1_ble.py`:
+`test_300char_both_directions_10x` (P1→P2 and P2→P1, 300-char payload, 10/10
+each, assert no `close_peer` / `discovery.connect` churn in the interval),
+`test_role_alternation` (swap which phone starts/advertises/sends first),
+`test_mtu_negotiated_before_first_send` (snapshot/logcat shows MTU 517 on the
+link before the first `msg.sent`). Run baseline FIRST to characterise HEAD.
+
+### HV-7 + HV-8 — Phase T (baseline) + Phase D + Phase T (fix)
+
+**Baseline on HEAD (`d356f21`), via `iris_bench/test_tier1_ble.py`:**
+
+| test | result | note |
+|---|---|---|
+| `test_p1_to_p2_300char_10x` (HV-7 fwd) | **10/10 delivered, intact, 0 churn** | MTU 517 negotiates → a 300-char message is ~3 ATT frames (`len=323/512/88`), not the ~28 the finding predicted. iter-1 9.6 s (cold connect, HV-91), iters 2–10 ~375 ms. |
+| `test_p2_to_p1_300char_10x` (HV-8 reply) | **10/10 delivered, intact, 0 churn** | Symmetric discovery: P2 has a *central* link to P1 (MTU 517), so the reply is NOT the peripheral-only MTU-23 path. HV-8 as written needs an asymmetric link. |
+| `test_pingpong_300char_10x` (receive-then-reply) | **FAIL — 20/20 delivered but 1 `msg.delivery_failed` + a 34 s stall** | The real defect. |
+
+**Premise check (loop §1).** HV-7's *fragmentation-storm* premise ("every
+200-char message is ~12 serial writes") is **disproved** on Android-14-class
+hardware — `requestMtu` reliably yields 517 and a 300-char message is a few
+505-byte frames. HV-8's *pinned-at-23* premise only reproduces on an asymmetric
+link. **But** HV-7's *teardown-fragility* premise ("one failed write tears down
+the whole link and drops the message; no retry") is **confirmed** — just
+triggered by a spontaneous link blip under bidirectional load, not by a
+fragment-7-of-12.
+
+**What the ping-pong actually showed** (`evidence/session-12/FAIL-…`,
+time-aligned P1+P2 logcat):
+```
+18:19:43.5  P2  gattServer onConnectionStateChange dev=67:91:B5:8E:37:66 status=0 newState=0   ← link drops under load
+18:19:45.9  P2  msg.transport_send_failed error="gatt write initiated but onCharacteristicWrite never fired within 5000ms"
+18:19:45.9  P2  msg.all_sends_failed attempt=0 ; msg.delivery_failed        ← DROPPED (Protocol, non-transient)
+18:20:11–16 P2  gattServer …newState=2 ; onCharacteristicWriteRequest resumes   ← ~30 s to recover (HV-91 cold path)
+```
+Three layered problems: **(a)** a BLE link drops under sustained bidirectional
+WITH_RESPONSE load (`status=0` clean disconnect, both sides ~simultaneously —
+cause needs `btsnoop`, not enabled on these phones → **HV-96 candidate**);
+**(b)** the in-flight `gatt_write` blocks the full `GATT_WRITE_TIMEOUT_MS` (5 s)
+then fails; **(c)** that timeout `GattFailure` maps to `Protocol` (terminal) so
+the message is `DeliveryFailed` at `attempt=0` instead of held.
+
+**Phase D — fix (one §5 commit).**
+- `ble.rs::to_transport_err` / `gatt_failure_is_link_not_ready` — also classify
+  `onCharacteristicWrite never fired`, `unknown gatt connection`, `previous
+  gatt write failed` as `NotConnected` (retryable + transient, HV-90 hold) —
+  a link that dropped mid-write is not a framing fault.
+- `ble.rs::send()` — **per-frame retry**: each `gatt_write` retries up to 3×
+  with jittered backoff (250/500 ms + 0–63 ms) on a *retryable* error before
+  `close_peer`. A single dropped frame no longer tears the link down; a whole
+  dead link fails the retries fast ("unknown gatt connection") and the now-
+  transient error holds the message.
+- `ble.rs::ensure_accept_poller` — register a peripheral-role (inbound-only)
+  connection at `MTU_NEGOTIATED`, not `MTU_DEFAULT` (23). Android's
+  WITH_RESPONSE `writeCharacteristic` ≤512 B is split by the platform's own ATT
+  long-write regardless of the local MTU (blessed-android 6.2), and the central
+  always negotiates 517 (RES-0019 R1) — so the reply direction now sizes frames
+  like the forward direction. `.entry().or_insert()` stays a no-op when a real
+  `connect()` value already exists.
+- `SimulatedBleAdapter.fail_next_writes_transient(n)` + 2 tests:
+  `hv7_transient_frame_write_failure_retries_without_closing_the_link`
+  (a mid-message transient miss → still delivers, link stays `Connected`, no
+  reconnect) and `hv7_write_failure_that_exhausts_retries_still_holds_the_message`
+  (all writes fail → `NotConnected`, not `Protocol`). iris-core **777**,
+  fault-injection **6**, iris-android **7**.
+
+**Phase T — fix, P1 = vivo V2205 (Android 15) · P2 = vivo 2004 (Android 13):**
+`test_pingpong_300char_10x` → **fwd 10/10, rev 10/10, 0 churn, 0
+`msg.delivery_failed`**, whole run ~8 s (was: 1 failure + 34 s stall).
+
+**Phase I — the fix perturbed a pre-existing race (2 iterations).**
+- ❌ Attempt 1: also classified `unknown gatt connection` as transient +
+  raised `ensure_accept_poller`'s registered MTU to `MTU_NEGOTIATED`. The
+  reply direction went **0/10 (90 s timeouts)** — `ensure_accept_poller`
+  registers a *phantom* send route (handle = `deviceHash`, only valid for the
+  GATT-server *receive* path, never `gatt_write`), and when `send()` resolves
+  it before the real central `connect()` completes, every write is `unknown
+  gatt connection`. Making that "retryable" turned a fast fail-over into a
+  forever-held loop; the MTU bump shifted the resolve-vs-accept timing so the
+  phantom won more often. Reverted both.
+- ❌ Attempt 2 (single-run): reply direction 10/10 but **2 `msg.delivery_failed`**
+  — the phantom-handle write still mapped to `Protocol` (dropped) on the first
+  post-blip send. Fix: in `send()`, an `unknown gatt connection` error drops
+  that connection entry and returns `NotConnected` (held → the engine
+  re-resolves to the real link) — no retry (pointless on a phantom).
+- ✅ Attempt 3: per-frame retry (3× jittered, retryable errors only) +
+  write-timeout (`onCharacteristicWrite never fired`) → `NotConnected` +
+  phantom-handle → `NotConnected`. `MTU_NEGOTIATED`/`unknown-gatt-retryable`
+  NOT included.
+
+**Phase T — fix verified, P1 = vivo V2205 (Android 15) · P2 = vivo 2004 (Android 13):**
+
+| test (each its own process, BT cycled first) | result |
+|---|---|
+| `test_p1_to_p2_300char_10x` | **10/10, intact, 0 churn** (iter-1 6.6 s cold, rest ~375 ms) |
+| `test_p2_to_p1_300char_10x` | **10/10, intact, 0 churn** ×2 runs |
+| `test_pingpong_300char_10x` (the HV-7 failure-trigger) | **fwd 10/10 + rev 10/10, 0 churn, ×4 runs** (was: 1 `delivery_failed` + 34 s stall on HEAD) |
+
+**Two findings opened, out of scope for this commit:**
+- **HV-96** — a BLE GATT link drops spontaneously under sustained bidirectional
+  WITH_RESPONSE load (`gattServer onConnectionStateChange … status=0 newState=0`
+  on *both* sides within ~3 s; `onConnectionUpdated interval=6↔36` churn just
+  before). This commit *mitigates* it (message held, ~0.5 s recovery vs a
+  dropped message + 30 s), but the drop itself is unaddressed. Needs `btsnoop`
+  (HCI snoop log — **not enabled on the bench phones**; operator: Developer
+  Options → enable *Bluetooth HCI snoop log* on both) to read the LL disconnect
+  reason. Candidate causes: connection-parameter renegotiation, no explicit
+  `requestConnectionPriority`, both-sides-write contention.
+- **HV-97** — `iris_bench` harness: back-to-back test methods in one process
+  fail (the 2nd direction times out for 5×90 s), and `base.py::_make_session_dir`
+  bumps `session-NN` per *process* not per bench session. `stopMesh`→`startMesh`
+  does not cleanly reset the OS BLE stack (stale `BluetoothGattServer` / scan
+  callbacks from the previous `AndroidBleTransportAdapter` — HV-95 family).
+  Each finding's test must run as its own `python -m iris_bench` invocation
+  until fixed.
+
+**Phase C.** HV-7 **→ 🟢** (per-frame retry + transient write-timeout hold).
+HV-8 **→ 🔒 deferred** — its "pinned at 23" premise only reproduces on an
+asymmetric link; with symmetric discovery a `connect()` shadows the accept-poller
+MTU, and the 300-char reply is already 10/10. The proper fix (wire
+`BluetoothGattServerCallback.onMtuChanged` + add `mtu` to `FfiAcceptedConnection`)
+needs a bindings regen and is not on the gate's critical path.
+
+### Session 10 closeout
+- Devices: P1 = vivo V2205 (Android 15), P2 = vivo 2004 (Android 13). BLE only.
+- Findings advanced: **HV-7 🟢**, **HV-8 🔒 deferred (analysis)**. 🟢 count 10 → 11.
+- Tier 1: 19 findings — 5 🟢 (HV-90/91/92/93/7), 1 🔒 (HV-8), 13 ⬜.
+- New: `iris_bench/test_tier1_ble.py` (`test_module tier1`) — 300-char fwd/rev/
+  ping-pong, with a logcat-churn assertion.
+- Candidates opened: **HV-96** (spontaneous link drop under load — needs
+  btsnoop), **HV-97** (harness: back-to-back tests + per-session evidence dir).
+- Gate to Tier 2 (§2): HV-7 ✓ HV-8 (🔒 w/ analysis) ✓ ; still need
+  HV-10/11/14/15 (🟢 or 🔒) + a 30-min zero-unexplained-loss session. HV-96 is
+  the blocker for that 30-min run — do it next (it needs the operator to enable
+  HCI snoop).

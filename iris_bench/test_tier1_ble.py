@@ -1,0 +1,156 @@
+"""Tier-1 BLE single-hop — MTU & fragmentation (HV-7 + HV-8).
+
+Loop §2 gate to Tier 2: "a 300-char message goes both ways 10/10" with no
+unexplained link teardown. Loop §5 group: HV-7 (one failed ATT write tears the
+whole link down; no per-fragment retry) + HV-8 (peripheral-role / inbound
+connections never negotiate MTU — replies fragment at 23 bytes).
+
+Each test docstring is its HV verification procedure (loop §4.2).
+
+Run:  python -m iris_bench --tests test_tier1_ble.Tier1Ble.<method>
+"""
+
+import json
+import re
+
+from mobly import asserts
+from mobly import test_runner
+
+from iris_bench.base import IrisBenchBase
+
+_ITERATIONS = 10
+_DELIVER_TIMEOUT_MS = 90_000
+
+# 300 printable chars — forces multi-frame at MTU 23 (~28 frames), single frame
+# at MTU 517. ASCII only so byte length == char length.
+_PAYLOAD_300 = ("HV7-" + "".join(chr(0x30 + (i % 10)) for i in range(292)) + "-END")
+assert len(_PAYLOAD_300) == 300
+
+# logcat signatures that mean "the link was torn down mid-test" (HV-7 symptom).
+_CHURN_PATTERNS = [
+    r"close_peer",
+    r'event="discovery\.connect_failed"',
+    r'event="discovery\.connect_backoff',
+    r"msg\.delivery_failed",
+    r"characteristic .* not yet discovered",
+]
+
+
+class Tier1Ble(IrisBenchBase):
+
+    def setup_test(self):
+        self.start_mesh_both()
+
+    def teardown_test(self):
+        self.stop_mesh_both()
+
+    # ---- helpers ---------------------------------------------------------
+
+    def _logcat_since_cleared(self, ad):
+        return ad.adb.logcat(["-d"]).decode("utf-8", "replace")
+
+    def _churn_hits(self, text):
+        hits = {}
+        for pat in _CHURN_PATTERNS:
+            found = re.findall(pat, text)
+            if found:
+                hits[pat] = len(found)
+        return hits
+
+    def _run_direction(self, src, dst, label):
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        results = []
+        for i in range(_ITERATIONS):
+            r = self.send_and_await(
+                src, dst, f"{_PAYLOAD_300}#{i}",
+                priority=4, timeout_ms=_DELIVER_TIMEOUT_MS,
+            )
+            results.append(r)
+            src.log.info("%s iter %d/%d: delivered=%s latency=%sms",
+                         label, i + 1, _ITERATIONS,
+                         r.get("delivered"), r.get("latencyMs"))
+
+        self.capture_evidence(f"tier1_{label}")
+        delivered = [r for r in results if r.get("delivered")]
+        # payload integrity — a fragmentation bug can deliver a truncated/garbled body
+        # body is _PAYLOAD_300 + "#<i>"; check the 300-char core survived intact
+        _expected = {f"{_PAYLOAD_300}#{i}" for i in range(_ITERATIONS)}
+        intact = [r for r in delivered if r.get("payloadUtf8", "") in _expected]
+        churn = {ad.label: self._churn_hits(self._logcat_since_cleared(ad))
+                 for ad in self.ads}
+        lat = sorted(r["latencyMs"] for r in delivered if r.get("latencyMs", -1) >= 0)
+        summary = {
+            "direction": label,
+            "delivered": len(delivered),
+            "intact": len(intact),
+            "of": _ITERATIONS,
+            "median_latency_ms": lat[len(lat) // 2] if lat else None,
+            "churn": churn,
+        }
+        src.log.info("TIER1 %s SUMMARY: %s", label, json.dumps(summary))
+        return summary, results
+
+    # ---- HV-7: central -> peripheral, 300 chars ------------------------
+
+    def test_p1_to_p2_300char_10x(self):
+        """HV-7 fwd: P1 sends a 300-char message to P2, 10 times. Pass:
+        10/10 delivered, bodies intact, zero link-teardown signatures in
+        either phone's logcat during the run."""
+        summary, results = self._run_direction(self.p1, self.p2, "p1_to_p2")
+        asserts.assert_equal(summary["delivered"], _ITERATIONS,
+                             f"P1->P2 300-char must be 10/10; {summary}\n{results}")
+        asserts.assert_equal(summary["intact"], _ITERATIONS,
+                             f"P1->P2 bodies must be intact; {summary}")
+        asserts.assert_false(
+            any(summary["churn"].values()),
+            f"no link teardown allowed during the run; {summary['churn']}")
+
+    # ---- HV-8: peripheral -> central (the reply direction), 300 chars --
+
+    def test_p2_to_p1_300char_10x(self):
+        """HV-8 reply: P2 sends a 300-char message to P1, 10 times. This is
+        the direction that runs at MTU 23 when P2's link to P1 is
+        peripheral-only. Pass: 10/10 delivered, bodies intact, no teardown."""
+        summary, results = self._run_direction(self.p2, self.p1, "p2_to_p1")
+        asserts.assert_equal(summary["delivered"], _ITERATIONS,
+                             f"P2->P1 300-char must be 10/10; {summary}\n{results}")
+        asserts.assert_equal(summary["intact"], _ITERATIONS,
+                             f"P2->P1 bodies must be intact; {summary}")
+        asserts.assert_false(
+            any(summary["churn"].values()),
+            f"no link teardown allowed during the run; {summary['churn']}")
+
+    # ---- ping-pong: receive then immediately reply (HV-8's real symptom) --
+
+    def test_pingpong_300char_10x(self):
+        """The 'reply fails seconds after a successful receive' symptom: P1
+        sends 300 chars to P2, then P2 immediately replies 300 chars to P1.
+        10 round trips. Pass: 20/20 delivered (10 each way), no teardown."""
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        fwd_ok = rev_ok = 0
+        for i in range(_ITERATIONS):
+            a = self.send_and_await(self.p1, self.p2, f"{_PAYLOAD_300}>{i}",
+                                    timeout_ms=_DELIVER_TIMEOUT_MS)
+            if a.get("delivered"):
+                fwd_ok += 1
+            b = self.send_and_await(self.p2, self.p1, f"{_PAYLOAD_300}<{i}",
+                                    timeout_ms=_DELIVER_TIMEOUT_MS)
+            if b.get("delivered"):
+                rev_ok += 1
+            self.p1.log.info("round %d: fwd=%s rev=%s", i + 1,
+                             a.get("delivered"), b.get("delivered"))
+        self.capture_evidence("tier1_pingpong")
+        churn = {ad.label: self._churn_hits(self._logcat_since_cleared(ad))
+                 for ad in self.ads}
+        self.p1.log.info("PINGPONG: fwd=%d/10 rev=%d/10 churn=%s",
+                         fwd_ok, rev_ok, json.dumps(churn))
+        asserts.assert_equal((fwd_ok, rev_ok), (_ITERATIONS, _ITERATIONS),
+                             f"ping-pong must be 10/10 each way; fwd={fwd_ok} rev={rev_ok}")
+        asserts.assert_false(any(churn.values()),
+                             f"no teardown during ping-pong; {churn}")
+
+
+if __name__ == "__main__":
+    test_runner.main()

@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 19 | 4 | 0 | 0 | 0 | 15 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 21 | 5 | 0 | 2 | 1 | 13 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,13 +69,14 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **96** | **10** | **7** | **0** | **1** | **78** |
+| **Total** | | **98** | **11** | **7** | **2** | **2** | **76** |
 
-**Last updated:** 2026-09-02 (Session 09 — HV-92 + HV-93 🟢: the first
-addressed BLE message went from *always dropped* to *P1→P2 through the app UI
-15/15*, ~0.5 s/msg once linked. Sender now holds a `NotConnected`-class GATT
-failure; receiver registers the accepted connection from the write request when
-the server never sees STATE_CONNECTED). · **Active tier:** 1
+**Last updated:** 2026-09-02 (Session 10 — HV-7 🟢 via `iris_bench`
+`test_tier1_ble`: 300-char both ways 10/10, ping-pong fwd+rev 10/10 ×4 with zero
+link teardown (HEAD had a `delivery_failed` + 34 s stall). Per-frame ATT-write
+retry + hold-on-mid-write-drop. HV-8 🔒 (shadowed by symmetric discovery).
+Opened HV-96 spontaneous link-drop-under-load, HV-97 harness lifecycle).
+· **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -679,7 +680,23 @@ renders on P2's console 10/10; iris_bench tier-0 smoke stays 10/10.
 
 ### HV-7 — Every real message is fragmented into many ATT writes, each a blocking round-trip, and one failure tears the whole link down
 
-- **Fix status:** ⬜
+- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · `iris_bench` `test_tier1_ble`: 300-char P1→P2 **10/10**, P2→P1 **10/10**, ping-pong **fwd 10/10 + rev 10/10 ×4 runs, 0 link teardown** (HEAD: 1 `msg.delivery_failed` + 34 s stall) · Session 10
+- **Premise note:** the *fragmentation-storm* premise ("~12 serial writes per
+  200-char message") is disproved on Android-14-class hardware — `requestMtu`
+  reliably yields 517 so a 300-char message is ~3 frames. The *teardown-
+  fragility* premise ("one failed write kills the link + drops the message; no
+  retry") is confirmed — it just triggers on a spontaneous link blip under load,
+  not fragment-7-of-12.
+- **Resolution:** `ble.rs::send()` retries each ATT frame 3× (jittered
+  250/500 ms) on a *retryable* error before `close_peer`; a write-completion
+  timeout (`onCharacteristicWrite never fired` — the link dropped mid-write) is
+  classified `NotConnected` so the message is **held** across the reconnect, not
+  `DeliveryFailed`; an `unknown gatt connection` (phantom accept-poller route)
+  drops that entry and returns `NotConnected` so the engine re-resolves to a
+  real link. Sim: `SimulatedBleAdapter.fail_next_writes_transient` + 2 tests.
+- **Owed:** HV-96 (the link drop itself) · HV-8 (reply-direction MTU on an
+  asymmetric link).
+- **Was:** ⬜
 - **Area:** `crates/iris-core/src/transport/ble.rs` (`send`, `close_peer`,
   `AttSegmenter`), `crates/iris-core/src/transport/ble_att.rs`,
   `AndroidBleTransportAdapter.gattWrite`
@@ -728,7 +745,23 @@ delivered, no link teardown in logcat, median latency recorded. Repeat at 1 m,
 
 ### HV-8 — Inbound (peripheral-role) connections never negotiate MTU — pinned at 23 bytes for the session
 
-- **Fix status:** ⬜
+- **Fix status:** 🔒 Deferred (analysis) · 2026-09-02 · Session 10
+- **Analysis:** the "pinned at 23" premise only reproduces on an **asymmetric**
+  link. `ensure_accept_poller` registers the inbound connection with
+  `connections.entry(peer_id).or_insert((handle, MTU_DEFAULT, 0))` — but with
+  symmetric discovery (both phones dial each other, the common case) the central
+  `connect()` inserts the real `(handle, 517, _)` first and the `.or_insert()`
+  is a no-op, so the reply uses MTU 517. Bench: `test_p2_to_p1_300char_10x`
+  (300-char reply) is **10/10** at HEAD without any HV-8 fix. The gap is real
+  only when a node has an inbound link but no outbound one (connect backoff on
+  one side / one-way beacon visibility) — and the Android peripheral role
+  cannot write on a server connection anyway (the adapter's `gattWrite` needs a
+  central `gattHandles` entry).
+- **Proper fix (when scheduled):** add `onMtuChanged(device, mtu)` to
+  `AndroidBleTransportAdapter.gattServerCallback`, carry it in
+  `FfiAcceptedConnection` (bindings regen), and have `ensure_accept_poller`
+  register the real value. Not on the Tier-1→Tier-2 gate critical path.
+- **Was:** ⬜
 - **Area:** `ble.rs` `ensure_accept_poller` (registers
   `(handle, MTU_DEFAULT, 0)`), `AndroidBleTransportAdapter` GATT server callbacks
 - **Severity:** High · **HW gate:** 2 phones
@@ -1078,6 +1111,61 @@ path records `ble-android` as failed rather than half-up; retry `openGattServer`
 with bounded backoff; surface "BLE server unavailable — toggle Bluetooth" in
 `/diag`. Consider a watchdog that re-runs `ensureGattServer` when the server
 handle is null while advertising is supposedly active.
+
+---
+
+### HV-96 — A BLE GATT link drops spontaneously under sustained bidirectional load
+
+- **Fix status:** 🔬 (found in Session 10 verifying HV-7's ping-pong)
+- **Area:** `AndroidBleTransportAdapter` (connection priority / parameters),
+  `ble.rs`; interacts with HV-91 (reconnect latency), HV-15 (auto-reconnect)
+- **Severity:** High · **HW gate:** 2 phones **+ `btsnoop` HCI snoop log**
+
+**What:** with HV-7's per-frame retry + hold in place, a 300-char ping-pong
+(receive-then-reply, 10 rounds) still occasionally drops the GATT link mid-run:
+`gattServer onConnectionStateChange … status=0 newState=0` fires on **both**
+phones within ~3 s, preceded by repeated `onConnectionUpdated interval=6 …
+interval=36` (connection-parameter renegotiation). HV-7's fix makes the
+in-flight message *held* (recovers in ~0.5 s instead of a `msg.delivery_failed`
++ ~30 s cold reconnect), so the ping-pong now passes — but the underlying drop
+is a real defect and will dominate the loop §2 "30-minute session, zero
+unexplained link losses" gate.
+
+**Why `status=0`:** a clean/local disconnect, not a supervision timeout
+(`status=8`). One side is tearing the link down — candidate causes: IRIS's own
+`close_peer` on a transient error (now retried, so less likely), the OS
+dropping the link under write pressure, or a connection-priority/parameter
+conflict. Needs the HCI log to see the LL `LL_TERMINATE_IND` reason code.
+
+**Fix sketch (pending research):** `requestConnectionPriority(CONNECTION_
+PRIORITY_HIGH)` after connect for the active-messaging window; do not let both
+sides renegotiate parameters simultaneously; confirm `close_peer` is not
+firing; keep the poller warm across a <2 s drop (HV-15).
+
+**HW verification:** the 30-minute two-phone bidirectional session (loop §2
+Tier-1→Tier-2 gate) shows zero unexplained link losses, with `btsnoop`
+confirming any that do occur are external RF, not a self-inflicted teardown.
+
+### HV-97 — `iris_bench`: back-to-back tests fail; evidence dir bumps per process
+
+- **Fix status:** 🔬 (found in Session 10)
+- **Area:** `iris_bench/base.py` (`_make_session_dir`, `stop_mesh_both` /
+  `start_mesh_both`), `IrisSnippet.stopMesh`/`startMesh`
+- **Severity:** Medium (test-integrity) · **HW gate:** 2 phones
+
+**What:** running two test methods in one `python -m iris_bench` invocation:
+the first passes, the second (opposite direction) times out for 5×90 s. Each
+`setup_test` does `stopMesh` then `startMesh`, which builds a fresh
+`IrisEngine` over a fresh `AndroidBleTransportAdapter` — but the *previous*
+adapter's `BluetoothGattServer` and scan/advertise callbacks are not fully torn
+down, so the OS BLE stack is left with duplicate registrations (HV-95 family).
+Also `_make_session_dir` increments `session-NN` on every `setup_class` (every
+process), littering `evidence/` with `session-11…session-20`.
+
+**Fix sketch:** `IrisEngine.stopAll` / the adapter must `close()` the GATT
+server and unregister every callback; `iris_bench` should reuse one engine per
+class where possible, or force a BT cycle between tests; `_make_session_dir`
+keyed off a run id / env var, not an incrementing scan of the folder.
 
 ---
 

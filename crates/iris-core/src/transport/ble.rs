@@ -320,6 +320,10 @@ pub struct SimulatedBleAdapter {
     /// "characteristic not yet discovered" `GattFailure` — models a connection
     /// whose GATT DB was still incomplete when `connect_gatt` returned `Ok`.
     unready_writes: std::sync::atomic::AtomicU32,
+    /// HV-7: number of upcoming `gatt_write` calls that fail with a *transient*
+    /// `GattFailure` (write-completion timeout) then recover — models a
+    /// momentary RF dropout / stack contention mid-message.
+    transient_write_failures: std::sync::atomic::AtomicU32,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -404,6 +408,13 @@ impl SimulatedBleAdapter {
     /// when `onServicesDiscovered` returned an incomplete GATT database.
     pub fn fail_next_writes_unready(&self, n: u32) {
         self.unready_writes
+            .store(n, std::sync::atomic::Ordering::Relaxed);
+    }
+    /// HV-7: make the next `n` `gatt_write` calls fail with a *transient*
+    /// `GattFailure` (write never completed) then recover — the per-frame retry
+    /// in `send()` should ride over it without tearing the link down.
+    pub fn fail_next_writes_transient(&self, n: u32) {
+        self.transient_write_failures
             .store(n, std::sync::atomic::Ordering::Relaxed);
     }
 }
@@ -498,6 +509,20 @@ impl BleAdapter for SimulatedBleAdapter {
             return Err(BleError::GattFailure(format!(
                 "characteristic {char_uuid:?} not yet discovered"
             )));
+        }
+        // HV-7: transient write failure that recovers on retry.
+        if self
+            .transient_write_failures
+            .fetch_update(
+                std::sync::atomic::Ordering::Relaxed,
+                std::sync::atomic::Ordering::Relaxed,
+                |n| if n > 0 { Some(n - 1) } else { None },
+            )
+            .is_ok()
+        {
+            return Err(BleError::GattFailure(
+                "gatt write initiated but onCharacteristicWrite never fired within 5000ms".into(),
+            ));
         }
         self.writes.lock().unwrap_or_else(|p| p.into_inner()).push((
             GattWriteEvent {
@@ -897,7 +922,11 @@ impl BleTransport {
                     // (only the central side calls `requestMtu`), so this is
                     // a size assumption, not a measured value, exactly like
                     // `MTU_DEFAULT`'s existing use as a pre-negotiation
-                    // fallback elsewhere in this file.
+                    // fallback elsewhere in this file. HV-8 (wire the GATT
+                    // server's `onMtuChanged` here) is deferred — with
+                    // symmetric discovery a `connect()` to this peer inserts a
+                    // real value first and this `.entry().or_insert()` is a
+                    // no-op; raising it perturbs the resolve-vs-accept race.
                     connections
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
@@ -1544,15 +1573,46 @@ impl Transport for BleTransport {
             }
         })?;
         let char_uuid = IRIS_WRITE_CHARACTERISTIC;
-        for frame in &frames {
-            if let Err(e) = adapter.gatt_write(handle, char_uuid, frame.clone()) {
-                // Write failure = link is dead: tear the peer down (BLE-RT-005)
-                // rather than leaving a zombie `Connected` entry the manager
-                // keeps selecting. Must close by `resolved_key` (whichever
-                // form is actually in `connections`), not the caller's
-                // `peer` — HW-5: those two can legitimately differ.
-                self.close_peer(&resolved_key, adapter.clone(), Some(&e));
-                return Err(to_transport_err(e));
+        // HV-7: a single failed ATT write used to `close_peer` immediately, so
+        // one dropped fragment (frame 7 of N) tore down the whole GATT link and
+        // discarded the message — every later send then paid the ~30 s
+        // re-discovery. Most write failures on a live ACL are transient
+        // (crickshaw.dev "Surviving GATT_ERROR 133"; Martijn van Welie pt.2):
+        // stack contention, a momentary RF dropout. Retry each frame a few
+        // times with jittered backoff before giving up; only `close_peer` when
+        // a frame truly exhausts its retries or the error is non-retryable
+        // (a framing fault). A write timeout mid-message (the link dropped
+        // under load — HV-96) is `NotConnected` so the engine HOLDS the
+        // message across the reconnect rather than dropping it.
+        const FRAME_WRITE_ATTEMPTS: u32 = 3;
+        const FRAME_BACKOFF_MS: [u64; 2] = [250, 500];
+        for (fi, frame) in frames.iter().enumerate() {
+            let mut attempt = 0u32;
+            loop {
+                let e = match adapter.gatt_write(handle, char_uuid, frame.clone()) {
+                    Ok(()) => break,
+                    Err(e) => e,
+                };
+                // A resolved connection whose handle the adapter does not know
+                // is a phantom — the inbound-only accept-poller entry, or a
+                // handle the disconnect callback already tore down. Retrying it
+                // is pointless; drop it and report `NotConnected` so the engine
+                // HOLDS the message and re-resolves to a real connection.
+                if matches!(&e, BleError::GattFailure(m) if m.contains("unknown gatt connection")) {
+                    self.close_peer(&resolved_key, adapter.clone(), None);
+                    return Err(TransportError::NotConnected);
+                }
+                let te = to_transport_err(e);
+                attempt += 1;
+                if !te.is_retryable() || attempt >= FRAME_WRITE_ATTEMPTS {
+                    self.close_peer(&resolved_key, adapter.clone(), None);
+                    return Err(te);
+                }
+                // jitter: 0..64 ms keyed off (handle, frame idx, attempt)
+                let base = FRAME_BACKOFF_MS
+                    [(attempt as usize - 1).min(FRAME_BACKOFF_MS.len() - 1)];
+                let jitter = (handle.0 ^ (fi as u64) ^ (attempt as u64)) % 64;
+                tokio::time::sleep(Duration::from_millis(base + jitter)).await;
             }
         }
         // BLE-10: count wire bytes actually sent (payload + per-frame ATT headers).
@@ -1639,13 +1699,22 @@ fn to_transport_err(e: BleError) -> TransportError {
     }
 }
 
-/// HV-92: `true` when a `GattFailure` message describes a link that has not
-/// finished establishing (as opposed to a framing/decode fault on a live link).
+/// HV-92 / HV-96: `true` when a `GattFailure` message describes a link that is
+/// not (yet) usable — still establishing, or dropped mid-write — as opposed to a
+/// framing/decode fault on a live link. These are transient: the discovery /
+/// connect loop is (re)establishing a link, so the message should be **held**
+/// (`NotConnected` — retryable + transient) rather than `DeliveryFailed`.
 fn gatt_failure_is_link_not_ready(msg: &str) -> bool {
     msg.contains("not yet discovered")
         || msg.contains("disconnected before connect completed")
         || msg.contains("not initiated")
         || msg.contains("service discovery failed")
+        // HV-96: the link dropped while a write was in flight — the write
+        // future timed out waiting for `onCharacteristicWrite`. Sustained
+        // bidirectional load triggers this on real hardware. (NOT "unknown
+        // gatt connection" — that means the handle itself is wrong/gone and
+        // retrying it is pointless; it must fail over, not hold.)
+        || msg.contains("onCharacteristicWrite never fired")
 }
 
 /// Parse `"AA:BB:CC:DD:EE:FF"` into a `BleAddress`.
@@ -1732,6 +1801,58 @@ mod tests {
         ));
     }
 
+    #[tokio::test(start_paused = true)]
+    async fn hv7_transient_frame_write_failure_retries_without_closing_the_link() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([31u8; 32]), "AA:BB:CC:DD:EE:F7");
+        let link = t.connect(&peer).await.unwrap();
+        let handle_before = adapter.connect_count();
+
+        // The next two ATT writes fail transiently (write never completed),
+        // then recover — the per-frame retry must ride over it.
+        adapter.fail_next_writes_transient(2);
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([32u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"a 300-ish char message that spans a couple of ATT frames \
+                       so the retry logic is exercised on more than the first \
+                       frame; the link must survive a transient miss".to_vec(),
+        };
+        let receipt = t.send(&peer.peer_id, &msg).await.expect(
+            "HV-7: a transient mid-message write failure must NOT fail the send",
+        );
+        assert!(receipt.bytes_sent > 0);
+        // The link was NOT torn down (no reconnect, still Connected).
+        assert_eq!(t.state(), TransportState::Connected);
+        assert_eq!(adapter.connect_count(), handle_before, "no reconnect");
+        assert_eq!(link.peer_id, peer.peer_id);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn hv7_write_failure_that_exhausts_retries_still_holds_the_message() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([33u8; 32]), "AA:BB:CC:DD:EE:F8");
+        t.connect(&peer).await.unwrap();
+
+        // Every write fails transiently — retries exhaust. The error must still
+        // be `NotConnected` (held), not `Protocol` (dropped).
+        adapter.fail_next_writes_transient(50);
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([34u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"held not dropped".to_vec(),
+        };
+        let err = t.send(&peer.peer_id, &msg).await.unwrap_err();
+        assert_eq!(
+            err,
+            TransportError::NotConnected,
+            "HV-96: a link that dropped mid-write is transient — hold the message"
+        );
+        assert!(err.is_retryable());
+    }
+
     #[tokio::test]
     async fn hv92_send_into_unready_link_is_held_then_delivers_after_reconnect() {
         let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
@@ -1740,8 +1861,9 @@ mod tests {
         t.connect(&peer).await.unwrap();
 
         // The first connection's GATT DB was still incomplete: the write fails
-        // "characteristic not yet discovered" exactly as observed on hardware.
-        adapter.fail_next_writes_unready(1);
+        // "characteristic not yet discovered" past the HV-7 per-frame retry
+        // budget (3 attempts on this 1-frame message), exactly as on hardware.
+        adapter.fail_next_writes_unready(3);
         let msg = SerializedMessage {
             message_id: crate::protocol::MessageId::from([22u8; 16]),
             priority: MessagePriority::P2,
