@@ -983,7 +983,7 @@ ceiling/window against the actual Android version behaviour on the bench phones.
 
 ### HV-15 — No automatic reconnect: a dropped GATT link is only re-established by the next discovery pass finding the beacon again
 
-- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · Session 12 · `iris_bench` `test_forced_drop_reconnect_10x` + `dropAllLinks()` hook: after a forced drop, `ble.drop_all_links` → `connectGatt: initiated` **65 ms** later → `discovery.connect_ok elapsed_ms ≈ 1100` on **both** phones (was: wait for the beacon to re-enter the scan buffer, up to 30 s). The targeted reconnect + `DiscoveryManager::wake()` (interruptible scan loop) are proven. End-to-end *message* recovery after the drop is blocked downstream by **HV-98** (receiver-side inbound poller), not by HV-15.
+- **Fix status:** 🟢 HW-verified · commit 553fa4d · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · Session 12 · `iris_bench` `test_forced_drop_reconnect_10x` + `dropAllLinks()` hook: after a forced drop, `ble.drop_all_links` → `connectGatt: initiated` **65 ms** later → `discovery.connect_ok elapsed_ms ≈ 1100` on **both** phones (was: wait for the beacon to re-enter the scan buffer, up to 30 s). The targeted reconnect + `DiscoveryManager::wake()` (interruptible scan loop) are proven. End-to-end *message* recovery after the drop is blocked downstream by **HV-98** (receiver-side inbound poller), not by HV-15.
 - **Premise note:** partly disproved — `scan_transport` already calls `connect()`
   (idempotent) for every peer *harvested this pass*, so a drop heals without a
   full handshake **if** the beacon is in the current scan buffer. The gap: a
