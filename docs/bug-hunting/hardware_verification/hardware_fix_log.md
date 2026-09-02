@@ -1335,3 +1335,228 @@ once links are stable, for battery) is the remaining follow-up.
   throttle-accounting, note the interaction).
 - Still owed: HV-89 real fix (handshake key exchange), HV-2 CI gate +
   regen-diff check + `ANDROID_BUILD_STATUS.md` rewrite, HV-80.
+
+---
+
+## Session 09 — 2026-09-02 · P1 = vivo V2205 (Android 15) · P2 = vivo 2004 (Android 13)
+
+**Trigger.** Operator asked to *see* an addressed message go P1→P2 through the
+app UI (not the Mobly snippet). Added two interim shell commands to make that
+possible (`/x25519`, `/addkey` — commit d3ee253, the HV-89 interim UI path).
+Drove the demo: `/x25519` on both → exchanged keys → `/addkey` both ways →
+`/to <P2>` → `/send`. **P2 never received it.** logcat gave a clean root cause,
+so this session opens and works **HV-92**.
+
+### HV-92 — first BLE send after a cold connect fails "characteristic not yet discovered", message dropped not held
+
+**Phase R — Research note.**
+
+1. **The mechanism (observed).** P1 logcat, time-aligned:
+   ```
+   05:57:36.070  iris.ble.gatt gattWrite ENTER handle=33 len=301 known=[33]
+   05:57:36.088  msg.transport_send_failed transport=ble-android
+                 error="characteristic 3e5c6b1a2a104f6e9c315f3e5a0b0c0e not yet discovered"
+   05:57:36.088  msg.all_sends_failed message_id=01a05f839cf27a33 attempt=0 ranked_transports=1
+   05:57:36.088  msg.delivery_failed  message_id=01a05f839cf27a33
+   05:58:07.970  iris.ble.gatt connectGatt: initiated, waiting for ready
+   05:58:09.004  bt_stack bta_gattc_explore_srvc_finished: service discovery finished
+   05:58:09.015  iris.ble.gatt connectGatt: ready resolved successfully
+   ```
+   The connection P1 used to send (handle 33) had `connectionReady` resolved
+   `Ok`, but `serviceCharacteristics[gatt]` was empty — the IRIS service was not
+   in that connection's GATT database. A *second* connect ~31 s later discovered
+   services cleanly. By then the message was already `DeliveryFailed`.
+
+2. **Why the current code gets it wrong.** Two layers:
+   - `AndroidBleTransportAdapter.onServicesDiscovered` (HEAD):
+     ```kotlin
+     gatt.getService(IRIS_SERVICE_UUID)?.getCharacteristic(IRIS_CHARACTERISTIC_UUID)?.let {
+         serviceCharacteristics[gatt] = it
+     }
+     connectionReady.remove(gatt)?.complete(Unit)   // fires even when ?.let was skipped
+     ```
+     The `?.let` silently no-ops when the service is absent, but `ready`
+     completes successfully regardless. The assumption "`onServicesDiscovered`
+     with `GATT_SUCCESS` ⇒ the full GATT DB is present" does not hold on the
+     first discovery after a cold connect on several OEM stacks (Nordic
+     Android-BLE-Library #273 discussion; Punch Through and Microchip BLE guides
+     both note incomplete first-discovery and recommend a bounded retry /
+     refresh).
+   - `crates/iris-core/src/transport/ble.rs::to_transport_err`:
+     `BleError::GattFailure(m) => TransportError::Protocol(m)`. `Protocol` is
+     `!is_retryable()` and is treated as **non-transient** by
+     `message_engine::deliver_outbound` (only `NotConnected`/`Busy` count as
+     transient — the HV-90 hold). So a "link still coming up" condition is
+     indistinguishable from a corrupt-frame fault: fail at `attempt=0`.
+
+3. **How it's solved elsewhere.** Nordic's library gates "connection ready" on a
+   real service-discovery result and exposes a `refreshDeviceCache` + retry;
+   RxAndroidBle serialises and retries discovery; the common field fix is
+   "retry `discoverServices()` 1–3× with a short delay before declaring the DB
+   final." bitchat-android likewise only marks a peer writable after it has
+   located its write characteristic, not on `STATE_CONNECTED`.
+
+4. **IRIS-specific constraints.** FFI seam: `connect_gatt` is a blocking FFI call
+   on a watchdog-pool thread — the retry loop must stay off the main/Binder
+   thread (it already does; `connectionReady.get()` blocks the watchdog thread)
+   and must resolve within the outer 30 s `syncCall` backstop. Typed errors
+   only: the failure the waiter raises must map to a *retryable* `TransportError`
+   so `message_engine` holds rather than drops. Privacy / identity model
+   unaffected (no MAC-as-identity change).
+
+5. **Research outcome.** Two coordinated changes, smallest that hold:
+   (a) `onServicesDiscovered` retries `discoverServices()` up to 3× at 300 ms
+   spacing when the IRIS characteristic is not yet in the DB, and only
+   `completeExceptionally` after the last try — so `connect_gatt` returns `Ok`
+   *only* when the link can actually carry a frame.
+   (b) `to_transport_err` classifies the "still establishing" `GattFailure`
+   strings (`not yet discovered`, `disconnected before connect completed`,
+   `not initiated`) as `TransportError::NotConnected`, which HV-90 already made
+   retryable **and** transient — so a message sent into the ~30 s connect window
+   is held (3 s transient re-tries, TTL-bounded) and lands when the link is up.
+   Rejected: a new `BleError::LinkNotReady` FFI variant (needs a bindings regen
+   for a one-line semantic; string classification in `to_transport_err` is
+   local and reversible). Rejected: retrying at the `send()` fragment loop
+   (wrong layer — the connection object itself is not ready; holding at the
+   engine is what HV-90 established).
+
+
+**Phase D — implementation (commit pending).**
+- `crates/iris-core/src/transport/ble.rs`:
+  - `to_transport_err` — `GattFailure` whose message contains `not yet
+    discovered` / `disconnected before connect completed` / `not initiated` /
+    `service discovery failed` now maps to `TransportError::NotConnected`
+    (retryable + transient) instead of `Protocol` (terminal). Helper
+    `gatt_failure_is_link_not_ready`.
+  - `SimulatedBleAdapter` gains `fail_next_writes_unready(n)` + an
+    `unready_writes` counter; `gatt_write` returns the "characteristic not yet
+    discovered" `GattFailure` for the next `n` calls.
+  - Tests: `hv92_characteristic_not_yet_discovered_maps_to_not_connected`
+    (unit — the four link-not-ready strings map to `NotConnected` & are
+    retryable; a real framing fault stays `Protocol`),
+    `hv92_send_into_unready_link_is_held_then_delivers_after_reconnect`
+    (`BleTransport::send` returns `NotConnected` on the unready write, then
+    delivers after the discovery loop reconnects). iris-core lib **777**,
+    fault-injection **6**, iris-android **7** — all green.
+- `android/.../AndroidBleTransportAdapter.kt`:
+  - `onServicesDiscovered` no longer completes `connectionReady` when
+    `getService(IRIS_SERVICE_UUID)` is null on a `GATT_SUCCESS` pass — it
+    re-runs `discoverServices()` up to `SERVICE_DISCOVERY_RETRY_ATTEMPTS` (3)
+    times at `SERVICE_DISCOVERY_RETRY_DELAY_MS` (300 ms) on a daemon thread,
+    then fails the waiter with `GattFailure("characteristic not yet discovered
+    after N discovery attempts")` (→ Rust `NotConnected`, held).
+  - `serviceDiscoveryRetries` map, cleaned on `STATE_DISCONNECTED`.
+- `:app:testDebugUnitTest` green; `:app:assembleDebug` green; 3 `.so` rebuilt
+  (no FFI signature change → no bindgen regen).
+
+**Phase T — bench, P1 = vivo V2205 (Android 15) · P2 = vivo 2004 (Android 13).**
+
+❌ Attempt 1 — the fix behaves exactly as designed, but exposed a *second*
+defect underneath. P1 logcat:
+```
+onServicesDiscovered: IRIS characteristic absent, re-discovering (1/3 .. 3/3)
+GattFailure: characteristic not yet discovered after 3 discovery attempts
+msg.transport_send_failed error="transport: not connected to peer"
+msg.all_sends_failed attempt=0 ... requeuing        ← held, not dropped ✓
+(retries every 3 s)
+```
+The message is now **held** instead of `DeliveryFailed` — HV-92's own fix is
+confirmed. But it never lands because P1's service discovery genuinely finds no
+IRIS service on the peer. Root cause on P2:
+```
+06:20:53.799 W iris.ble.gatt ensureGattServer: openGattServer returned null
+06:20:53.800 W iris.ble.scan  startScan failed errorCode=2
+```
+P2's Bluetooth stack was wedged (`BluetoothManager.openGattServer` → null,
+`SCAN_FAILED_APPLICATION_REGISTRATION_FAILED`) after the session's
+connect/disconnect churn + repeated reinstalls. `ensureGattServer` **swallows
+the null** and advertising proceeds regardless — so P2 advertised an IRIS
+beacon with no GATT server behind it, and every P1 connect could only ever fail
+"characteristic not yet discovered". → **HV-93 candidate:** `ensureGattServer`
+must fail `start_advertising` (or retry `openGattServer`) when the server can't
+be opened, rather than advertising a serverless beacon.
+
+Recovery: `adb shell svc bluetooth disable/enable` on P2 →
+`ensureGattServer: addService(...0d) -> true`. Re-running the bench.
+
+### HV-93 — inbound GATT-server frames never drained (accept-poller never spawned)
+
+**Phase R.** Attempt 1 above surfaced this. P2's `onCharacteristicWriteRequest`
+fired `matchesIris=true len=307` for every send, but `BluetoothGattServerCallback
+.onConnectionStateChange` **never fired** (no `IrisBleDiag gattServer
+onConnectionStateChange` line all session), so `pendingAcceptedConnections`
+stayed empty, `ble.rs::ensure_accept_poller` never called `spawn_inbound_poller`
+for the peer, and every frame sat in `pendingGattWrites` undrained. AOSP's
+`BluetoothGattServer` only reports connections it initiated or bonded ones;
+IRIS's privacy model forbids bonding (MAC ≠ identity), so the accepted
+connection must be registered from a signal that *does* arrive — the write
+request itself, which carries the `BluetoothDevice`.
+
+**Phase D.**
+- `AndroidBleTransportAdapter.kt`:
+  - `onCharacteristicWriteRequest` — the first IRIS write from a device
+    announces it via `pendingAcceptedConnections` (keyed by `deviceHash`, the
+    same key the frames use). De-dup with a per-process
+    `announcedInboundPeers` (`ConcurrentHashMap.newKeySet<ULong>`); cleared on
+    server `STATE_DISCONNECTED`. `ble.rs` de-dups by handle so a redundant
+    announce (when STATE_CONNECTED *does* fire) is a no-op.
+  - `onConnectionStateChange` also seeds/clears `announcedInboundPeers`.
+- No Rust change; `ensure_accept_poller` already drains
+  `accepted_connections()` → `spawn_inbound_poller` → `drain_gatt_writes` →
+  reassembly → `incoming_tx`, and `drain_gatt_writes` returns everything
+  buffered so frames queued before the poller spawned are picked up on its
+  first 500 ms tick.
+- `:app:testDebugUnitTest` green; `:app:assembleDebug` green.
+
+**Phase T — bench, P1 = vivo V2205 (Android 15) · P2 = vivo 2004 (Android 13).**
+
+✅ **10/10** — app-UI demo, both apps cold-started, keys exchanged via
+`/x25519`+`/addkey`, `/to`, then ten `/send`:
+
+| send (P1 msg.sent) | P2 msg.delivered | hops | Δ |
+|---|---|---|---|
+| 06:30:21 | 06:30:22 | 0 | ~0.9 s |
+| 06:30:42 | 06:30:42 | 0 | ~0.3 s |
+| 06:31:03 | 06:31:04 | 0 | ~0.4 s |
+| 06:31:24 | 06:31:25 | 0 | ~0.3 s |
+| 06:31:45 | 06:31:46 | 0 | ~0.6 s |
+| 06:32:07 | 06:32:07 | 0 | ~0.6 s |
+| 06:32:28 | 06:32:28 | 0 | ~0.4 s |
+| 06:32:49 | 06:32:49 | 0 | ~0.5 s |
+| 06:33:10 | 06:33:11 | 0 | ~0.6 s |
+| 06:33:31 | 06:33:32 | 0 | ~0.7 s |
+
+All ten render on P2's console (`HV-92 verify 1..10`, timestamps 06:30:22 →
+06:33:32 — screenshot `evidence/session-09/HV-92-93/P2_console_10of10.png`).
+**Reconfirmation run** (fresh cold start, new X25519 keys, 5 sends): **5/5**
+delivered 06:40:00 → 06:41:16. Combined **15/15**.
+
+`P2.logcat.txt`: 10× `onCharacteristicWriteRequest … matchesIris=true` each
+followed within ~0.5 s by `msg.delivered … hops=0`; before HV-93 the identical
+write lines produced **zero** deliveries.
+
+**Observed but out of scope — HV-94 candidate:** if P2's *process* is restarted
+mid-session while P1 keeps its now-stale GATT link, P1's `send()` keeps writing
+to the dead handle and P2 never re-links until discovery churns it — P1 needs to
+notice the peer's link died and reconnect (HV-15 auto-reconnect territory).
+Not a HV-92/93 regression; both cold-start paths are 15/15.
+
+**Phase C.** Committed as one §5 group (HV-92 + HV-93 — "make the first
+addressed BLE message arrive end-to-end", sender-hold and receiver-drain are
+one story). Tracker: HV-92 **→ 🟢**, HV-93 **→ 🟢**. `🟢` count 8 → 10.
+
+### Session 09 closeout
+- Devices: P1 = vivo V2205 (Android 15), P2 = vivo 2004 (Android 13). BLE only
+  (Wi-Fi Aware unsupported on both; Wi-Fi Direct `dns_sd` fails `reason=2`).
+- Findings advanced: **HV-92 🟢, HV-93 🟢** (both opened + closed this session).
+- `🟢` count: 8 → 10. Tier 1: 17 findings — 4 🟢 (HV-90, HV-91, HV-92, HV-93),
+  13 ⬜.
+- The operator's "the first message never arrives" is now: **cold-start P1→P2
+  through the app UI, 15/15, ~0.5 s per message once linked.**
+- Interim UI path for HV-89 shipped: `/x25519` + `/addkey` (commit d3ee253).
+- Candidates opened: **HV-94** (peer process restart → sender stale link, no
+  auto-reconnect); the `ensureGattServer: openGattServer returned null` swallow
+  (advertises a serverless beacon) — fold into HV-16 or a new finding.
+- Still owed: HV-89 real fix (handshake `KeyAdvertisementV1`), HV-2 CI gate +
+  regen-diff check + `ANDROID_BUILD_STATUS.md` rewrite, HV-80, HV-7/HV-8 group
+  (next Tier-1 per §2/§5).

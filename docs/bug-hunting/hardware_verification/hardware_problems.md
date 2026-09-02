@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 15 | 2 | 0 | 0 | 0 | 13 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 17 | 4 | 0 | 0 | 0 | 13 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,10 +69,13 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **92** | **8** | **7** | **0** | **1** | **76** |
+| **Total** | | **94** | **10** | **7** | **0** | **1** | **76** |
 
-**Last updated:** 2026-09-01 (Session 08 — HV-91 `🟢`: BLE first-connect
-latency 28 s → <7 s cold / <0.5 s warm; smoke still 10/10). · **Active tier:** 1
+**Last updated:** 2026-09-02 (Session 09 — HV-92 + HV-93 🟢: the first
+addressed BLE message went from *always dropped* to *P1→P2 through the app UI
+15/15*, ~0.5 s/msg once linked. Sender now holds a `NotConnected`-class GATT
+failure; receiver registers the accepted connection from the write request when
+the server never sees STATE_CONNECTED). · **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -585,6 +588,94 @@ cadence / backoff (HV-14), the first direct `connectGatt` being slow with
 `autoConnect=false`, or the beacon-parse → connect ordering (the peer id still
 carries the `…ffffffff` synthetic tail — HV-13). Measure with the harness;
 target: first delivery under ~5 s.
+
+### HV-92 — First send after connect fails with "characteristic not yet discovered" and the message is dropped, not held
+
+- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · app-UI demo P1→P2 **15/15** (10/10 + 5/5 reconfirm), ~0.5 s/msg · Session 09 · with HV-93 (§5 group)
+- **Area:** `AndroidBleTransportAdapter.onServicesDiscovered` (completes the
+  `connectionReady` future even when the IRIS characteristic is absent from the
+  freshly-discovered GATT DB), `crates/iris-core/src/transport/ble.rs`
+  `to_transport_err` (`GattFailure` → `Protocol`, non-retryable),
+  `crates/iris-core/src/message_engine/mod.rs` transient classification
+- **Severity:** Critical (the first addressed message to a peer is silently lost) ·
+  **HW gate:** 2 phones
+
+**What:** observed on P1=V2205 → P2=vivo 2004 sending a real addressed message
+through the app UI (`/addkey` + `/to` + `/send`). P1's discovery `connect()`
+opened a GATT connection (handle 33) and `connectGatt` returned `Ok`; the first
+`gatt_write` immediately failed:
+
+```
+msg.transport_send_failed transport=ble-android
+  error="characteristic 3e5c6b1a2a104f6e9c315f3e5a0b0c0e not yet discovered"
+msg.all_sends_failed message_id=01a05f839cf27a33 attempt=0
+msg.delivery_failed  message_id=01a05f839cf27a33      ← dropped
+```
+
+~30 s later a fresh `connectGatt` completed service discovery cleanly
+(`bta_gattc_explore_srvc_finished` / "ready resolved successfully") — but the
+message was already gone.
+
+**Mechanism:** Android's first `onServicesDiscovered` after a cold connect can
+return an incomplete GATT database (well-documented OEM behaviour — Nordic /
+Punch Through / Microchip BLE notes). `onServicesDiscovered` does
+`gatt.getService(IRIS_SERVICE_UUID)?.getCharacteristic(...)?.let { cache }` then
+**unconditionally** `connectionReady.complete(Unit)` — so when the service is not
+yet in the DB, `serviceCharacteristics[gatt]` stays empty but Rust is told the
+link is ready. The first `gatt_write` then throws `GattFailure("characteristic …
+not yet discovered")`, which `to_transport_err` maps to `TransportError::Protocol`
+— **non-retryable and non-transient** — so `message_engine` fails the message at
+`attempt=0` instead of holding it (the HV-90 hold only covers `NotConnected` /
+`Busy`).
+
+**Fix direction:** (a) `onServicesDiscovered` must not report ready until the
+IRIS characteristic is actually resolvable — retry `discoverServices()` a bounded
+number of times, then fail the waiter exceptionally; (b) `to_transport_err` must
+classify "characteristic not yet discovered" / "disconnected before connect
+completed" / "write not initiated" as `NotConnected` (retryable + transient) so
+the in-flight message is held across the reconnect, exactly as HV-90 intended.
+
+**HW verification:** app-UI demo P1→P2 (`/addkey`, `/to`, `/send`) delivers the
+message on P2's screen 10/10 with the phones cold; also the iris_bench tier-0
+smoke stays 10/10.
+
+### HV-93 — Inbound GATT-server frames are never drained: `onConnectionStateChange` doesn't fire for the accepting side, so no reassembly poller is spawned
+
+- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · app-UI demo P1→P2 **15/15**; every `onCharacteristicWriteRequest` now followed by `msg.delivered hops=0` (was 0 deliveries) · Session 09 · with HV-92 (§5 group)
+- **Area:** `AndroidBleTransportAdapter.gattServerCallback`
+  (`onConnectionStateChange` / `onCharacteristicWriteRequest`), interacts with
+  `crates/iris-core/src/transport/ble.rs::ensure_accept_poller`
+- **Severity:** Critical (the peer receives every ATT frame and delivers none) ·
+  **HW gate:** 2 phones
+
+**What:** with HV-92's sender-side hold in place, P1's frames physically reach
+P2 — P2 logs `onCharacteristicWriteRequest … matchesIris=true len=307` for every
+send. But P2's `iris_core` never logs a single inbound-message event and the
+message never appears in P2's console. `BluetoothGattServerCallback
+.onConnectionStateChange` **never fired** for the inbound LE connection (its
+`IrisBleDiag gattServer onConnectionStateChange` line is absent across the whole
+session), so `pendingAcceptedConnections` stayed empty,
+`ble.rs::ensure_accept_poller` never spawned a `spawn_inbound_poller` for the
+peer, and the frames sat in `pendingGattWrites` undrained.
+
+**Mechanism:** on several OEM stacks `onConnectionStateChange` on the *server*
+callback is only invoked when the local side calls `BluetoothGattServer
+.connect(device, false)` or the devices are bonded — a plain remote
+`connectGatt` + characteristic write does not trigger it. AOSP's own
+`BluetoothGattServer` docs note the server "will not be informed" of arbitrary
+connections. IRIS cannot bond (privacy model: MAC ≠ identity), so it must
+register the accepted connection from a signal that *does* arrive.
+
+**Fix direction:** `onCharacteristicWriteRequest` carries the `BluetoothDevice`.
+The first IRIS write from a device announces the accepted connection
+(`pendingAcceptedConnections`, keyed by `deviceHash` — the same key the write
+frames use), so the accept-poller spawns the reassembly poller and drains the
+already-buffered frames. De-dup with a per-device `announcedInboundPeers` set,
+cleared on server disconnect; `ble.rs` de-dups by handle so a redundant announce
+is a no-op.
+
+**HW verification:** app-UI demo P1→P2 (`/addkey`, `/to`, `/send`) — the message
+renders on P2's console 10/10; iris_bench tier-0 smoke stays 10/10.
 
 ### HV-7 — Every real message is fragmented into many ATT writes, each a blocking round-trip, and one failure tears the whole link down
 

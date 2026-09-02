@@ -316,6 +316,10 @@ pub struct SimulatedBleAdapter {
     /// `drain_disconnected_handles`. Tests call `simulate_disconnect` to inject
     /// a link-down event exactly as a real OS bridge would.
     disconnected: std::sync::Mutex<Vec<GattHandle>>,
+    /// HV-92: number of upcoming `gatt_write` calls that fail with the Android
+    /// "characteristic not yet discovered" `GattFailure` — models a connection
+    /// whose GATT DB was still incomplete when `connect_gatt` returned `Ok`.
+    unready_writes: std::sync::atomic::AtomicU32,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -395,6 +399,13 @@ impl SimulatedBleAdapter {
     pub fn scan_stop_calls(&self) -> Vec<ScanHandle> {
         self.scan_stop_calls.lock().unwrap_or_else(|p| p.into_inner()).clone()
     }
+    /// HV-92: make the next `n` `gatt_write` calls fail with the Android
+    /// "characteristic not yet discovered" `GattFailure`, as a real link does
+    /// when `onServicesDiscovered` returned an incomplete GATT database.
+    pub fn fail_next_writes_unready(&self, n: u32) {
+        self.unready_writes
+            .store(n, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -473,6 +484,21 @@ impl BleAdapter for SimulatedBleAdapter {
         char_uuid: Uuid,
         data: Vec<u8>,
     ) -> Result<(), BleError> {
+        // HV-92: a connection whose GATT DB was still incomplete when
+        // `connect_gatt` returned rejects writes until discovery catches up.
+        if self
+            .unready_writes
+            .fetch_update(
+                std::sync::atomic::Ordering::Relaxed,
+                std::sync::atomic::Ordering::Relaxed,
+                |n| if n > 0 { Some(n - 1) } else { None },
+            )
+            .is_ok()
+        {
+            return Err(BleError::GattFailure(format!(
+                "characteristic {char_uuid:?} not yet discovered"
+            )));
+        }
         self.writes.lock().unwrap_or_else(|p| p.into_inner()).push((
             GattWriteEvent {
                 handle,
@@ -1596,8 +1622,30 @@ fn to_transport_err(e: BleError) -> TransportError {
         },
         BleError::AdapterOff => TransportError::RadioDisabled,
         BleError::DeviceNotFound => TransportError::PeerNotFound,
+        // HV-92: a `GattFailure` is only a genuine protocol fault when the link
+        // is up and carried a frame that failed. The "link is still coming up"
+        // failures — the write characteristic not yet in the discovered GATT DB
+        // (Android's incomplete first-discovery), a disconnect racing the
+        // connect handshake, or `writeCharacteristic` never accepting the
+        // initiation — are transient: the discovery/connect loop is actively
+        // (re)establishing a usable link. Map them to `NotConnected`, which
+        // HV-90 made retryable *and* transient, so a message sent into the
+        // ~30 s connect window is held (TTL-bounded) instead of `DeliveryFailed`
+        // at attempt 0.
+        BleError::GattFailure(m) if gatt_failure_is_link_not_ready(&m) => {
+            TransportError::NotConnected
+        }
         BleError::GattFailure(m) => TransportError::Protocol(m),
     }
+}
+
+/// HV-92: `true` when a `GattFailure` message describes a link that has not
+/// finished establishing (as opposed to a framing/decode fault on a live link).
+fn gatt_failure_is_link_not_ready(msg: &str) -> bool {
+    msg.contains("not yet discovered")
+        || msg.contains("disconnected before connect completed")
+        || msg.contains("not initiated")
+        || msg.contains("service discovery failed")
 }
 
 /// Parse `"AA:BB:CC:DD:EE:FF"` into a `BleAddress`.
@@ -1661,6 +1709,56 @@ mod tests {
         // wire bytes once the 7-byte frame header (GAP-5: +1 version byte) is
         // included.
         assert_eq!(receipt.bytes_sent, 18);
+    }
+
+    #[test]
+    fn hv92_characteristic_not_yet_discovered_maps_to_not_connected() {
+        // HV-92: the "link still coming up" GattFailures must be retryable so
+        // message_engine holds the message across the ~30 s reconnect window.
+        for m in [
+            "characteristic 3e5c6b1a...0c0e not yet discovered",
+            "disconnected before connect completed, status=133",
+            "gatt write not initiated after 3 attempts",
+            "service discovery failed status=129",
+        ] {
+            let e = to_transport_err(BleError::GattFailure(m.into()));
+            assert_eq!(e, TransportError::NotConnected, "{m:?}");
+            assert!(e.is_retryable(), "{m:?} must be retryable");
+        }
+        // A genuine framing fault on a live link stays a non-retryable Protocol.
+        assert!(matches!(
+            to_transport_err(BleError::GattFailure("bad frame: truncated".into())),
+            TransportError::Protocol(_)
+        ));
+    }
+
+    #[tokio::test]
+    async fn hv92_send_into_unready_link_is_held_then_delivers_after_reconnect() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([21u8; 32]), "AA:BB:CC:DD:EE:F1");
+        t.connect(&peer).await.unwrap();
+
+        // The first connection's GATT DB was still incomplete: the write fails
+        // "characteristic not yet discovered" exactly as observed on hardware.
+        adapter.fail_next_writes_unready(1);
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([22u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"held then sent".to_vec(),
+        };
+        let err = t.send(&peer.peer_id, &msg).await.unwrap_err();
+        assert_eq!(
+            err,
+            TransportError::NotConnected,
+            "HV-92: an unready link is transient, not a Protocol fault"
+        );
+
+        // The discovery/connect loop re-establishes the link; this time service
+        // discovery is complete and the held message lands.
+        t.connect(&peer).await.unwrap();
+        let receipt = t.send(&peer.peer_id, &msg).await.unwrap();
+        assert!(receipt.bytes_sent > 0);
     }
 
     #[tokio::test]

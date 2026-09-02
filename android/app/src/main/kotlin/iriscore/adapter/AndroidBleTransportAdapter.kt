@@ -83,6 +83,18 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         private const val GATT_WRITE_RETRY_ATTEMPTS = 5
         private const val GATT_WRITE_RETRY_DELAY_MS = 40L
 
+        /**
+         * HV-92: Android's first `onServicesDiscovered` after a cold connect can
+         * return an incomplete GATT database on several OEM stacks — the IRIS
+         * service simply isn't in `gatt.services` yet. Re-run `discoverServices()`
+         * a few times before declaring the connection unusable, so `connectGatt`
+         * only reports ready when a write can actually land. Field guidance
+         * (Nordic Android-BLE-Library, Punch Through) is 1–3 retries with a
+         * short delay.
+         */
+        private const val SERVICE_DISCOVERY_RETRY_ATTEMPTS = 3
+        private const val SERVICE_DISCOVERY_RETRY_DELAY_MS = 300L
+
         // HW-7: how long gattWrite() blocks waiting for the async
         // onCharacteristicWrite completion callback before giving up.
         // Generous relative to normal BLE write latency (single-digit to
@@ -154,6 +166,10 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     // AND-RT-111: IRIS characteristic cached by onServicesDiscovered (async);
     // negotiated MTU + last client-write status tracked per connection.
     private val serviceCharacteristics = ConcurrentHashMap<BluetoothGatt, BluetoothGattCharacteristic>()
+    // HV-92: per-connection count of service-discovery passes that came back
+    // without the IRIS service, so onServicesDiscovered can retry a bounded number
+    // of times before failing the connectGatt() waiter.
+    private val serviceDiscoveryRetries = ConcurrentHashMap<BluetoothGatt, Int>()
     private val negotiatedMtu = ConcurrentHashMap<BluetoothGatt, Int>()
     private val gattWriteFailures = ConcurrentHashMap<BluetoothGatt, Int>()
 
@@ -261,13 +277,56 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 gatt.close()
                 return
             }
-            gatt.getService(IRIS_SERVICE_UUID)?.getCharacteristic(IRIS_CHARACTERISTIC_UUID)?.let {
-                serviceCharacteristics[gatt] = it
+            val characteristic =
+                gatt.getService(IRIS_SERVICE_UUID)?.getCharacteristic(IRIS_CHARACTERISTIC_UUID)
+            if (characteristic != null) {
+                serviceCharacteristics[gatt] = characteristic
+                serviceDiscoveryRetries.remove(gatt)
+                // Connection is genuinely usable now: STATE_CONNECTED happened
+                // AND the characteristic gattWrite needs is resolvable. This is
+                // what connectGatt() has been blocking on.
+                connectionReady.remove(gatt)?.complete(Unit)
+                return
             }
-            // Connection is genuinely usable now: STATE_CONNECTED happened AND
-            // the characteristic gattWrite needs is resolvable. This is what
-            // connectGatt() has been blocking on.
-            connectionReady.remove(gatt)?.complete(Unit)
+            // HV-92: GATT_SUCCESS but the IRIS service is not in the discovered
+            // database yet (Android's incomplete first-discovery). Do NOT report
+            // the link ready — Rust would then store a connection whose very
+            // first gattWrite fails "characteristic not yet discovered" and the
+            // message is dropped. Re-run discovery a bounded number of times.
+            val tries = (serviceDiscoveryRetries[gatt] ?: 0) + 1
+            serviceDiscoveryRetries[gatt] = tries
+            if (tries <= SERVICE_DISCOVERY_RETRY_ATTEMPTS) {
+                iriscore.util.IrisLog.w(
+                    "ble.gatt",
+                    "onServicesDiscovered: IRIS characteristic absent, re-discovering ($tries/$SERVICE_DISCOVERY_RETRY_ATTEMPTS)",
+                )
+                Thread({
+                    try {
+                        Thread.sleep(SERVICE_DISCOVERY_RETRY_DELAY_MS)
+                    } catch (_: InterruptedException) {
+                    }
+                    try {
+                        if (!gatt.discoverServices()) {
+                            serviceDiscoveryRetries.remove(gatt)
+                            connectionReady.remove(gatt)?.completeExceptionally(
+                                GattFailure("characteristic not yet discovered (re-discovery refused)"),
+                            )
+                        }
+                    } catch (e: SecurityException) {
+                        serviceDiscoveryRetries.remove(gatt)
+                        connectionReady.remove(gatt)?.completeExceptionally(e)
+                    }
+                }, "iris-ble-rediscover").apply { isDaemon = true }.start()
+                return
+            }
+            serviceDiscoveryRetries.remove(gatt)
+            connectionReady.remove(gatt)?.completeExceptionally(
+                GattFailure(
+                    "characteristic not yet discovered after $SERVICE_DISCOVERY_RETRY_ATTEMPTS discovery attempts",
+                ),
+            )
+            gatt.disconnect()
+            gatt.close()
         }
 
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
@@ -291,6 +350,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
                 gattHandles.entries.removeIf { it.value == gatt }
                 serviceCharacteristics.remove(gatt)
+                serviceDiscoveryRetries.remove(gatt)
                 negotiatedMtu.remove(gatt)
                 gattWriteFailures.remove(gatt)
                 // BLE-2: a disconnect before onServicesDiscovered ever ran
@@ -333,6 +393,15 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     @Volatile
     private var gattServer: BluetoothGattServer? = null
 
+    /**
+     * HV-93: peers we have already announced to the core via
+     * `pendingAcceptedConnections`, so a burst of inbound writes from a peer
+     * whose server-side STATE_CONNECTED never fired is announced exactly once.
+     * Keyed by [deviceHash]; entries are cleared on server disconnect.
+     */
+    private val announcedInboundPeers =
+        java.util.concurrent.ConcurrentHashMap.newKeySet<ULong>()
+
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             // HW-9: this override did not exist at all before — the GATT
@@ -351,6 +420,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 pendingAcceptedConnections.add(
                     FfiAcceptedConnection(handle = deviceHash(device), address = device.address),
                 )
+                announcedInboundPeers.add(deviceHash(device))
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                // HV-93: allow a later reconnect from the same peer to be
+                // re-announced from onCharacteristicWriteRequest.
+                announcedInboundPeers.remove(deviceHash(device))
             }
         }
 
@@ -374,6 +448,27 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     "responseNeeded=$responseNeeded",
             )
             if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
+                // HV-93: on several OEM stacks BluetoothGattServerCallback
+                // .onConnectionStateChange never fires for an inbound LE
+                // connection (it needs a server-side connect() or a bond) —
+                // so pendingAcceptedConnections stayed empty, ble.rs's
+                // accept-poller never spawned a reassembly poller for this
+                // peer, and every frame written here sat in pendingGattWrites
+                // undrained. The write request itself carries the device, so
+                // announce the accepted connection here the first time we see
+                // one from it. ble.rs de-dups by handle, so re-announcing a
+                // still-live connection is a no-op.
+                val h = deviceHash(device)
+                if (announcedInboundPeers.add(h)) {
+                    android.util.Log.d(
+                        "IrisBleDiag",
+                        "onCharacteristicWriteRequest: announcing inbound peer ${device.address} (no server STATE_CONNECTED seen)",
+                    )
+                    while (pendingAcceptedConnections.size >= MAX_PENDING) pendingAcceptedConnections.poll()
+                    pendingAcceptedConnections.add(
+                        FfiAcceptedConnection(handle = h, address = device.address),
+                    )
+                }
                 // Bounded: if the core stops draining, drop the oldest rather
                 // than growing without limit.
                 while (pendingGattWrites.size >= MAX_PENDING) pendingGattWrites.poll()
