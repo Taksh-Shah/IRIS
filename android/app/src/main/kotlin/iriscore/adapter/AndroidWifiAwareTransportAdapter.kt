@@ -26,7 +26,7 @@ import iriscode.FfiIncomingNdpData
 import iriscode.FfiPeerDiscovery
 import iriscode.FfiPublishConfig
 import iriscode.FfiWifiAwareAdapter
-import iriscode.TransportFailure
+import iriscode.Transport
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicLong
@@ -191,7 +191,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             // session that surfaced it. The subscribe session is seeded
             // asynchronously by onSubscribeStarted, so it may not be live yet.
             val discovery = subscribeGate.ensureStarted()
-                ?: throw TransportFailure("Wi-Fi Aware discovery session not started")
+                ?: throw Transport("Wi-Fi Aware discovery session not started")
             val peer = peerHandles[peerHandle.toLong()]
                 ?: throw DeviceNotFound()
             val specifier = WifiAwareNetworkSpecifier.Builder(discovery, peer)
@@ -240,9 +240,9 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 // forever and retried against a link that would never
                 // recover.
                 if (ndpEverOpened.contains(handle)) {
-                    throw TransportFailure("ndp closed")
+                    throw Transport("ndp closed")
                 }
-                throw TransportFailure("NDP network not yet available")
+                throw Transport("NDP network not yet available")
             }
             val link = links.get(handle)
             if (link != null && link.send(payload)) return@suspendCall
@@ -321,10 +321,10 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
                 pendingAttach = null
                 // FFI-7: attach() throws SecurityException synchronously when
                 // NEARBY_WIFI_DEVICES (API 33+) isn't granted — undeclared,
-                // this used to fall through to a generic TransportFailure
+                // this used to fall through to a generic Transport
                 // indistinguishable from any other attach failure.
                 cont.resumeWithException(
-                    if (e is SecurityException) PermissionDenied() else TransportFailure("Wi-Fi Aware attach failed: ${e.message}"),
+                    if (e is SecurityException) PermissionDenied() else Transport("Wi-Fi Aware attach failed: ${e.message}"),
                 )
             }
         }
@@ -343,7 +343,7 @@ class AndroidWifiAwareTransportAdapter(context: Context) : FfiWifiAwareAdapter {
             availability.setAvailable(false)
             pendingAttach?.let { cont ->
                 pendingAttach = null
-                cont.resumeWithException(TransportFailure("Wi-Fi Aware attach failed"))
+                cont.resumeWithException(Transport("Wi-Fi Aware attach failed"))
             }
         }
     }

@@ -28,7 +28,7 @@ import iriscode.DeviceNotFound
 import iriscode.NotSupported
 import iriscode.PermissionDenied
 import iriscode.FfiWifiDirectAdapter
-import iriscode.TransportFailure
+import iriscode.Transport
 import iriscore.util.PeerIdCodec
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -428,7 +428,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     override suspend fun createGroup(config: FfiGroupConfig): FfiGroupInfo {
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
-                ?: throw TransportFailure("Wi-Fi Direct not initialized")
+                ?: throw Transport("Wi-Fi Direct not initialized")
             val band = if (config.band != FfiOperatingBand.AUTO) config.band else bandHint
             // FFI-9: Rust's band-fallback retry (create_group falling back to
             // OperatingBand::Auto) keys on the substring "band" appearing in
@@ -452,14 +452,14 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // The settle window not producing a real snapshot means the
             // group genuinely never formed — that's a real, reportable
             // failure, not a degraded-but-ok result.
-            awaitCurrentGroupInfo(channel) ?: throw TransportFailure("group not formed")
+            awaitCurrentGroupInfo(channel) ?: throw Transport("group not formed")
         }
     }
 
     override suspend fun joinGroup(go: ULong, config: FfiGroupConfig): FfiGroupInfo {
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
-                ?: throw TransportFailure("Wi-Fi Direct not initialized")
+                ?: throw Transport("Wi-Fi Direct not initialized")
             val address = peerDevices[go.toLong()]
                 ?: throw DeviceNotFound()
             val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
@@ -473,7 +473,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // The settle window not producing a real snapshot means the
             // group genuinely never formed — that's a real, reportable
             // failure, not a degraded-but-ok result.
-            awaitCurrentGroupInfo(channel) ?: throw TransportFailure("group not formed")
+            awaitCurrentGroupInfo(channel) ?: throw Transport("group not formed")
         }
     }
 
@@ -554,7 +554,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // here too to tell "not a member yet" from "was a member, link
             // is gone".
             if (groupRegistry.accepts(handle)) {
-                throw TransportFailure("link closed")
+                throw Transport("link closed")
             }
             // No socket yet and never was one (group still forming): hold
             // the frame in the bounded outbox and flush it on connect.
@@ -881,7 +881,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         return null
     }
 
-    // FFI-14: degradedGroupInfo() removed — see the throw TransportFailure
+    // FFI-14: degradedGroupInfo() removed — see the throw Transport
     // call sites above that replaced it.
 
     // -- data path ---------------------------------------------------------
@@ -1126,7 +1126,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 try {
                     awaitActionOnce(failureContext, launch)
                     return@withLock
-                } catch (e: TransportFailure) {
+                } catch (e: Transport) {
                     val busy = e.message?.contains("reason=$WIFI_P2P_BUSY") == true
                     if (!busy || attempt >= BUSY_RETRY_ATTEMPTS) throw e
                     delay(BUSY_RETRY_DELAY_MS)
@@ -1143,7 +1143,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                         // AND-RT-103: typed FFI error — a raw IllegalStateException
                         // becomes UNIFFI_CALL_UNEXPECTED_ERROR and panics the Rust side.
                         val suffix = failureContext?.let { " $it" } ?: ""
-                        cont.resumeWithException(TransportFailure("WifiP2p action failed reason=$reason$suffix"))
+                        cont.resumeWithException(Transport("WifiP2p action failed reason=$reason$suffix"))
                     }
                 })
             } catch (e: SecurityException) {

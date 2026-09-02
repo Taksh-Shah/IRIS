@@ -31,11 +31,11 @@ import iriscode.FfiScanFilter
 import iriscode.FfiScanResult
 import iriscode.AdapterOff
 import iriscode.DeviceNotFound
-import iriscode.FfiTimeout
+import iriscode.Timeout
 import iriscode.GattFailure
 import iriscode.InvalidArgument
 import iriscode.PermissionDenied
-import iriscode.TransportFailure
+import iriscode.Transport
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.util.UUID
@@ -561,7 +561,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // Was `syncCall(onTimeout = throwTimeout())`: throwTimeout() throws
         // eagerly while Kotlin builds syncCall's argument list, before the
         // block below - the real scan start - ever runs. Every call to
-        // startScan threw FfiTimeout unconditionally. syncCallOrThrow defers
+        // startScan threw Timeout unconditionally. syncCallOrThrow defers
         // the throw to where it belongs (AdapterLifecycle.kt).
         return FfiCallTimeout.syncCallOrThrow {
             // A handle of 0 used to be returned for "no scanner", "throttled"
@@ -575,7 +575,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             if (scanStartTimes.size >= SCAN_RESTART_CEILING) {
                 // Reported, not silently swallowed — the core's own backoff is
                 // authoritative and needs to know the start was refused.
-                throw TransportFailure("BLE scan restart ceiling reached")
+                throw Transport("BLE scan restart ceiling reached")
             }
             // Only mutate the shared filter once the start is actually going
             // ahead; a refused call used to leave rssiFloor changed globally.
@@ -604,7 +604,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun startAdvertising(data: FfiAdvertisementData): ULong {
         // Same defect as startScan above: syncCall(onTimeout = throwTimeout())
-        // threw FfiTimeout unconditionally, before advertising was ever
+        // threw Timeout unconditionally, before advertising was ever
         // attempted. Confirmed on a real device (API 34): every call failed
         // immediately with "transport protocol error: timeout", under 2s,
         // nowhere near the 30s budget - because the real operation never ran.
@@ -679,7 +679,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // as if it were a genuine connection — Rust had no way to tell a
         // timed-out connect from a successful one, so it proceeded straight
         // to gattWrite() against a handle nothing was ever registered
-        // under. syncCallOrThrow surfaces the overrun as FfiTimeout instead.
+        // under. syncCallOrThrow surfaces the overrun as Timeout instead.
         return FfiCallTimeout.syncCallOrThrow {
             val adapter = bleManager?.adapter ?: throw AdapterOff()
             // The Rust bridge emits a bare 12-hex address ("AABBCCDDEEFF"), but

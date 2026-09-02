@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import iriscode.FfiTimeout
+import iriscode.Timeout
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -39,7 +39,7 @@ class AdapterLifecycleTest {
         //
         // assertThrows takes a non-suspend Executable, so the suspend call has
         // to be driven by its own runBlocking inside the lambda.
-        assertThrows(FfiTimeout::class.java) {
+        assertThrows(Timeout::class.java) {
             runBlocking { FfiCallTimeout.suspendCall(timeoutMs = 20L) { delay(5_000L) } }
         }
     }
@@ -60,8 +60,8 @@ class AdapterLifecycleTest {
     fun `rt110 syncCall propagates the adapter's typed failure`() {
         // A typed error thrown inside the block must reach the caller rather
         // than being wrapped in ExecutionException by the watchdog pool.
-        assertThrows(FfiTimeout::class.java) {
-            FfiCallTimeout.syncCall<Int>(timeoutMs = 2_000L, onTimeout = -1) { throw FfiTimeout() }
+        assertThrows(Timeout::class.java) {
+            FfiCallTimeout.syncCall<Int>(timeoutMs = 2_000L, onTimeout = -1) { throw Timeout() }
         }
     }
 

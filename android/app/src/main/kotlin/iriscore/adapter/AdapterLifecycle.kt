@@ -1,6 +1,6 @@
 package iriscore.adapter
 
-import iriscode.FfiTimeout
+import iriscode.Timeout
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
@@ -89,7 +89,7 @@ object FfiCallTimeout {
     /**
      * Run a `suspend` platform op under a timeout.
      *
-     * An overrun is translated into [FfiTimeout], the declared FFI error.
+     * An overrun is translated into [Timeout], the declared FFI error.
      * `withTimeout` throws `TimeoutCancellationException`, which is NOT part of
      * `IrisFfiException`; letting it escape turned every slow radio call into
      * `UNIFFI_CALL_UNEXPECTED_ERROR` on the Rust side — and several of these
@@ -101,7 +101,7 @@ object FfiCallTimeout {
     ): T = try {
         withTimeout(timeoutMs) { block() }
     } catch (e: TimeoutCancellationException) {
-        throw FfiTimeout()
+        throw Timeout()
     }
 
     /**
@@ -129,16 +129,16 @@ object FfiCallTimeout {
     }
 
     /**
-     * [syncCall] variant for callers that must throw [FfiTimeout] on overrun
+     * [syncCall] variant for callers that must throw [Timeout] on overrun
      * rather than return a fallback value.
      *
      * `onTimeout: T` above is a plain (eagerly evaluated) parameter, not a
      * lazy supplier - Kotlin evaluates every argument before the enclosing
      * call runs. `syncCall(onTimeout = throwTimeout())` (where `throwTimeout()
-     * : T = throw FfiTimeout()`) therefore threw immediately, as part of
+     * : T = throw Timeout()`) therefore threw immediately, as part of
      * building syncCall's argument list, before `block` - the actual platform
      * operation - ever ran. `startScan` and `startAdvertising` used exactly
-     * this pattern: every call to either threw FfiTimeout unconditionally,
+     * this pattern: every call to either threw Timeout unconditionally,
      * meaning BLE scanning and advertising could never succeed on a real
      * device regardless of whether the underlying platform call would have
      * worked. Confirmed on a real device: `ble-android.start_advertising`
@@ -157,7 +157,7 @@ object FfiCallTimeout {
             future.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (_: TimeoutException) {
             future.cancel(true)
-            throw FfiTimeout()
+            throw Timeout()
         } catch (e: ExecutionException) {
             throw e.cause ?: e
         }

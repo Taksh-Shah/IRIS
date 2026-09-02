@@ -300,7 +300,7 @@ A grep of `message_engine/mod.rs` for `RoutingEngine`, `ScfEngine`, `buffer_mess
 
 ### CROSS-007 — Android Kotlin imports non-existent UniFFI class names
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · PENDING BUILD VERIFICATION · Tier 2 · commit `pending` · 2026-09-02 — renamed `FfiTimeout` → `Timeout` and `TransportFailure` → `Transport` everywhere in `android/`, matching the Rust `IrisFfiError::Timeout`/`::Transport` variant names exactly (same convention the file's other 5 already-correct imports — `AdapterOff`, `DeviceNotFound`, `GattFailure`, `InvalidArgument`, `PermissionDenied` — already follow). Blast radius was wider than the finding's own two named files: found and fixed 5 files total (`AndroidBleTransportAdapter.kt`, `AdapterLifecycle.kt`, `AdapterLifecycleTest.kt`, `AndroidWifiAwareTransportAdapter.kt`, `AndroidWifiDirectTransportAdapter.kt`) via a repo-wide grep before concluding the rename was complete — re-derived from current source per the loop's own protocol rather than trusting the finding's file list at face value. Checked for a naming collision (an existing `Transport`/`Timeout` symbol elsewhere in `android/`) before renaming — none found. Re-grepped the whole `android/` tree afterward: zero remaining references to either old name. No Gradle toolchain in this environment to compile-verify.
 - **Severity:** Medium
 - **Sections:** Sohan (Android Kotlin) ↔ Rust FFI generation
 - **Files:**
