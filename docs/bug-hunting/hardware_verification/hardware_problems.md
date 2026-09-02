@@ -680,7 +680,7 @@ renders on P2's console 10/10; iris_bench tier-0 smoke stays 10/10.
 
 ### HV-7 — Every real message is fragmented into many ATT writes, each a blocking round-trip, and one failure tears the whole link down
 
-- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · `iris_bench` `test_tier1_ble`: 300-char P1→P2 **10/10**, P2→P1 **10/10**, ping-pong **fwd 10/10 + rev 10/10 ×4 runs, 0 link teardown** (HEAD: 1 `msg.delivery_failed` + 34 s stall) · Session 10
+- **Fix status:** 🟢 HW-verified · commit 78743be · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · `iris_bench` `test_tier1_ble`: 300-char P1→P2 **10/10**, P2→P1 **10/10**, ping-pong **fwd 10/10 + rev 10/10 ×4 runs, 0 link teardown** (HEAD: 1 `msg.delivery_failed` + 34 s stall) · Session 10
 - **Premise note:** the *fragmentation-storm* premise ("~12 serial writes per
   200-char message") is disproved on Android-14-class hardware — `requestMtu`
   reliably yields 517 so a 300-char message is ~3 frames. The *teardown-
