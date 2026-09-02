@@ -110,7 +110,7 @@ Note: the GATT **write** characteristic UUID (`IRIS_WRITE_CHARACTERISTIC` = `3e5
 
 ### CROSS-002 — iOS sends `ContentType::Text` for P0/SOS messages; Android sends `ContentType::Sos`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 1 · commit `pending` · 2026-09-02 — `iris-ios/src/engine.rs`'s `build_text_envelope` now branches on `priority == MessagePriority::P0` exactly like `iris-android/src/engine.rs`'s parallel function, setting `ContentType::Sos` for P0. `MessagePriority` and `ContentType` were already in scope (same import as Android); `MessagePriority` derives `PartialEq`. No Rust toolchain in this environment to compile-verify — correctness follows from mirroring Android's already-shipped, identically-shaped code exactly.
 - **Severity:** High
 - **Sections:** Shrey (iOS engine) ↔ Rahul (message engine / routing policy)
 - **Files:**

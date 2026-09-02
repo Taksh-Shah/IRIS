@@ -368,7 +368,14 @@ fn build_text_envelope(
         timestamp: unix_now(),
         hop_count: 0,
         max_hops: None,
-        payload_type: ContentType::Text,
+        // CROSS-002: P0 must carry ContentType::Sos (mirrors iris-android's
+        // build_text_envelope) so emergency ACL/routing checks that branch on
+        // content type actually activate for iOS-originated SOS messages.
+        payload_type: if priority == MessagePriority::P0 {
+            ContentType::Sos
+        } else {
+            ContentType::Text
+        },
         payload_size: text.len() as u64,
         payload_hash: [0u8; 32],
         payload: text.as_bytes().to_vec(),
