@@ -64,6 +64,25 @@ Tier 2: CROSS-006 (RoutingEngine/ScfEngine wiring — the largest remaining fix,
 
 ---
 
+## Run 3 — 2026-09-02 — Tier 2 (closeout)
+
+Target findings (3): CROSS-006, CROSS-007, CROSS-008.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | CROSS-007 | ✅ Fixed · PENDING BUILD VERIFICATION | 24e1c3b | Renamed `FfiTimeout`→`Timeout`, `TransportFailure`→`Transport` to match `IrisFfiError`'s actual Rust variant names, same convention the file's other 5 imports already correctly follow. **Re-derived the real scope before fixing**: the finding's own text named only 2 files; a repo-wide grep found the bug actually present in 5 (`AndroidBleTransportAdapter.kt`, `AdapterLifecycle.kt`, `AdapterLifecycleTest.kt`, `AndroidWifiAwareTransportAdapter.kt`, `AndroidWifiDirectTransportAdapter.kt`). Checked for a naming collision before renaming (none). Re-grepped afterward: zero remaining references anywhere in `android/`. |
+| 2 | CROSS-006 | 🔒 Blocked | — | Investigated rather than attempted. `RoutingEngine::decide()` (`routing/mod.rs:220`) takes `&mut self`, needs a `&NeighborTable` `MessageEngine` doesn't have, needs per-message flood-tracking state `deliver_outbound` doesn't carry, and returns a `ForwardingDecision` that isn't a like-for-like swap for the transport-selection path currently in use (`message_engine/mod.rs:1347`). Genuine architectural rewrite of the live delivery hot path, not a wiring fix. Same class of change `taksh_problems_loop.md` itself hard-gates behind human sign-off. No toolchain here to verify something this consequential, and no operator authorization on record for it — correctly left blocked rather than guessed at. |
+| 3 | CROSS-008 | 🔒 Blocked | — | Re-verified the Rust side first: `perform_maintenance` is already correctly exported in `engine.rs` (confirmed untouched by this run's earlier CROSS-004 edit to the same file). Nothing left to fix in source. The only remaining defect is the committed `IrisCore.swift` predating that export — that file is UniFFI-generated scaffolding (checksums, vtables), unsafe to hand-patch. Correctly blocked rather than attempted; same underlying human action (`build-xcframework.sh`) that CROSS-004 already needs resolves both findings together. |
+
+**Run closeout:** Tier 2 is now fully triaged — all 3 findings addressed (1 fixed, 2 correctly and deliberately blocked with specific, investigated reasons rather than either guessed-at fixes or reflexive blocking). **All 8 findings across all 3 tiers have now been triaged: 6 fixed (5 pending build verification), 2 blocked, 0 unstarted, 0 reverted.**
+
+**Carried notes for whoever picks this up next:**
+- A single human session running the real Android Gradle build, the real Rust `cargo build --workspace`, and `ios/Scripts/build-xcframework.sh` would promote CROSS-001/002/004/005/007 off PENDING BUILD VERIFICATION and simultaneously resolve CROSS-008 (the binding regen it's blocked on).
+- CROSS-006 needs an actual human decision — not a build run — before any further code is written for it. Its own finding text names the two owners (Rahul, Taksh) whose engineering agreement it wants.
+- CROSS-003's fix was deliberately narrower than "fully wire security" — it arms `FullSecurityPolicy` with a fresh, unpopulated `TrustStore` per platform. A populated, shared trust store (so `EmergencyAcl` allowlists actually resolve real authorities) is real follow-on work, flagged inline in CROSS-003's own fix-status line, not silently assumed done.
+
+---
+
 ### Run entry format (for the next run to follow)
 
 ```
