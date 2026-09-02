@@ -34,7 +34,7 @@ Three results dominate this report.
 
 **This section is rewritten by the fix loop after every finding.** Individual findings carry their own `Fix status` line for in-place detail; this table is the roll-up.
 
-**Last updated:** 2026-09-02 — Run 2: fixed all of Tier 1 (CROSS-002 iOS SOS content type, CROSS-003 security policy wiring on all 3 platforms, CROSS-004 iOS production crypto path, CROSS-005 Desktop receipt timestamp). 8 cross-section integration findings. 5 fixed (4 pending build verification), 3 remaining.
+**Last updated:** 2026-09-02 — Run 3: closed out Tier 2. CROSS-007 fixed (Kotlin FFI naming, wider blast radius than originally scoped — 5 files). CROSS-008 blocked (Rust side already correct; fix is entirely "regenerate IrisCore.swift", same human action CROSS-004 already needs). CROSS-006 blocked (investigated `RoutingEngine::decide()`'s real signature; genuinely not a small wiring change — needs explicit human/cross-section sign-off before a future run attempts it, consistent with `taksh_problems_loop.md`'s own Tier 2 gate for the identical class of change). **8 cross-section integration findings: 6 fixed (5 pending build verification), 2 blocked, 0 remaining unstarted.**
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -45,8 +45,10 @@ Three results dominate this report.
 |---|---|---|---|---|---|---|---|---|
 | **0** | Critical — cross-platform data path broken | 1 | 0 | 0 | 1 | 0 | 0 | **✅ COMPLETE** (pending build verification — CROSS-001) |
 | **1** | High — security regressions and build breaks | 4 | 0 | 0 | 4 | 0 | 0 | **✅ COMPLETE** (3 of 4 pending build verification — CROSS-002/003/004; CROSS-005 is Rust-only, same no-toolchain caveat as all Rust fixes this run) |
-| **2** | Medium — missing wiring, compile breaks on regen | 3 | 3 | 0 | 0 | 0 | 0 | Tier 1 complete — **now active** |
-| **Total** | | **8** | **3** | **0** | **5** | **0** | **0** | |
+| **2** | Medium — missing wiring, compile breaks on regen | 3 | 0 | 0 | 1 | 2 | 0 | **CLOSED OUT** — CROSS-007 ✅ fixed; CROSS-006/CROSS-008 🔒 blocked (see each finding's own status line) |
+| **Total** | | **8** | **0** | **0** | **6** | **2** | **0** | |
+
+**All 8 findings have been triaged.** 6 are fixed (5 pending a human running the real Android/iOS/Rust build toolchains this environment doesn't have); 2 are correctly and deliberately blocked pending explicit human decisions — CROSS-006 needs a cross-section engineering sign-off before its architectural rewrite is attempted, CROSS-008 needs nothing but the same iOS binding regeneration CROSS-004 already requires.
 
 ### Tier membership
 
@@ -273,7 +275,7 @@ received_at_unix: unix_now(),
 
 ### CROSS-006 — `RoutingEngine::decide()` and `ScfEngine` never called from `MessageEngine`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked · Tier 2 · 2026-09-02 — reason: re-investigated before attempting, per the loop's own protocol, and confirmed this is not a small drop-in wiring change. `RoutingEngine::decide()` (`routing/mod.rs:220`) takes `&mut self` (would need a new `Mutex<RoutingEngine>` or similar field on `MessageEngine`, which currently only holds `Arc`-shared, `&self`-method state), requires a `&NeighborTable` argument (a discovery-layer structure not currently threaded into `MessageEngine` at all), and requires per-message `already_flooded: Vec<PeerId>` flood-loop-prevention state that `deliver_outbound` doesn't currently track. It returns `ForwardingDecision`, a different shape from the `TransportSelectionRequest`/ranked-transport-list `deliver_outbound` (`message_engine/mod.rs:1347`) currently builds — not a like-for-like swap. This is the exact class of change the finding's own text flags as needing Rahul/Taksh coordination, and the same class of change `taksh_problems_loop.md` itself hard-gates behind explicit human sign-off before touching (its own Tier 2, "routing loop prevention... A wrong fix here is worse than the original bug"). With no Rust toolchain in this environment to compile- or test-verify a rewrite of the live message-delivery hot path, and no operator authorization on record for this specific cross-cutting change (unlike the recorded authorization `taksh_problems.md` itself operated under for its own Tier 2), attempting this now would be exactly the kind of unverified, high-blast-radius edit the fix loop's safety limits (§8) exist to prevent. Needs an explicit human go-ahead (and ideally the Section 2/Section 3 owners' agreement the finding itself calls for) before a future run attempts it.
 - **Severity:** Medium
 - **Sections:** Rahul (Message Engine) ↔ Taksh (Routing / DTN Store-Carry-Forward)
 - **Files:**
@@ -334,7 +336,7 @@ Update all catch/throw sites in both files to use the correct variant names.
 
 ### CROSS-008 — `performMaintenance()` absent from committed `IrisCore.swift`; `AppDelegate` calls it
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** 🔒 Blocked · Tier 2 · 2026-09-02 — reason: the Rust side already has nothing to fix. Re-verified `crates/iris-ios/src/engine.rs`: `pub fn perform_maintenance(&self)` is present and correctly inside the `#[uniffi::export] impl IrisEngine` block (confirmed still true after this session's CROSS-004 rewrite of the same file's constructor section — `perform_maintenance` was untouched by that edit and remains exported). The entire remaining defect is that the *committed* `ios/IRIS/RustFFI/IrisCore.swift` predates that export and needs regenerating — that file is UniFFI-generated scaffolding (function-pointer vtables, per-symbol checksums) that is unsafe to hand-edit; the only correct fix is running `ios/Scripts/build-xcframework.sh` against the current Rust source, which requires Xcode and is not available in this environment. This is the same underlying requirement CROSS-004 is already `PENDING BUILD VERIFICATION` on (that fix also needs `IrisCore.swift` regenerated, for `FfiCryptoSigner`/`newWithSigner`) — one human build-toolchain session resolves both findings' remaining step together. Not attempting a hand-patch of the generated file per the loop's own safety limits (§8: never modify files outside the fix's actual scope in a way that risks corrupting build-contract-bearing generated code).
 - **Severity:** Medium
 - **Sections:** Shrey (iOS app / AppDelegate) ↔ UniFFI bridge (Rust + committed Swift bindings)
 - **Files:**
