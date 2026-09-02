@@ -941,7 +941,7 @@ not start blind.
 
 ### HV-14 — After 5 scan restarts in 30 s the node stops scanning for up to 30 s — and reconnect cycles burn restarts
 
-- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · `iris_bench` `test_sustained_session_recovers_fast` ×3 (40-round bidirectional): **fwd 40/40, rev 40/40, 0 loss each** · Session 11 · §5 group
+- **Fix status:** 🟢 HW-verified · commit 366f080 · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · `iris_bench` `test_sustained_session_recovers_fast` ×3 (40-round bidirectional): **fwd 40/40, rev 40/40, 0 loss each** · Session 11 · §5 group
 - **Resolution:** HV-91 already de-conflated the `scan_allowed` budget
   (harvest-only passes don't re-arm). The residual bug: `has_confirmed_link`
   (which picks the fast 3 s vs slow 30 s scan cadence) was set `false` **only**
