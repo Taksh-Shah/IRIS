@@ -81,6 +81,11 @@ class IrisSnippet : Snippet {
         return snapshotJson()
     }
 
+    @Rpc(description = "HV-97: drop every live link (advertising/scanning stay up) so discovery re-forms them — the deterministic reconnect trigger for HV-14/HV-15.")
+    fun dropAllLinks() {
+        (engine ?: error("startMesh first")).dropAllLinks()
+    }
+
     @Rpc(description = "Stop all transports and drop the engine.")
     fun stopMesh() {
         engine?.stopAll()

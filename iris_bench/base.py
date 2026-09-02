@@ -83,15 +83,16 @@ class IrisBenchBase(base_test.BaseTestClass):
         ad.log.info("snippet loaded; node=%s", ad.iris.nodeId())
 
     def _make_session_dir(self):
+        # HV-97: keyed off a run id (env `IRIS_BENCH_RUN`, else a timestamp) —
+        # NOT an incrementing scan of the folder, which bumped `session-NN` on
+        # every process and littered the tree. One bench session sets
+        # IRIS_BENCH_RUN once and all its test invocations share the folder.
         base = os.path.join(
             _REPO_ROOT,
             "docs/bug-hunting/hardware_verification/evidence",
         )
-        os.makedirs(base, exist_ok=True)
-        existing = [d for d in os.listdir(base) if d.startswith("session-")]
-        n = 1 + max((int(d.split("-")[1]) for d in existing if d.split("-")[1].isdigit()),
-                    default=0)
-        d = os.path.join(base, f"session-{n:02d}")
+        run = os.environ.get("IRIS_BENCH_RUN") or time.strftime("run-%Y%m%d-%H%M")
+        d = os.path.join(base, run)
         os.makedirs(d, exist_ok=True)
         return d
 

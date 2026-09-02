@@ -665,6 +665,28 @@ impl IrisEngine {
             Ok(())
         })
     }
+
+    /// HV-97: drop every live link on every transport WITHOUT shutting the mesh
+    /// down — advertising/scanning stay up, so the discovery loop re-forms the
+    /// links. A test hook for the `iris_bench` harness to deterministically
+    /// exercise the reconnect path (HV-14/HV-15).
+    pub fn drop_all_links(&self) -> Result<(), IrisFfiError> {
+        let handle = self.handle.clone();
+        let manager = self.manager.clone();
+        let ids = self.transports.clone();
+        let discovery = self.discovery.clone();
+        handle.block_on(async move {
+            for id in ids {
+                if let Some(t) = manager.get(&id).await {
+                    t.drop_all_links().await;
+                }
+            }
+            // HV-97: wake discovery so the reconnect scan runs now, not after
+            // the current `scan_interval` sleep (up to 30 s).
+            discovery.wake();
+            Ok(())
+        })
+    }
 }
 
 impl IrisEngine {

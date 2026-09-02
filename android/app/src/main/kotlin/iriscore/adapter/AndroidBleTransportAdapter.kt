@@ -646,6 +646,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     advertiser.stopAdvertising(callback)
                 }
             }
+            // HV-97: also tear down the GATT server. It is opened lazily in
+            // ensureGattServer() and was never closed — so a stopMesh -> new
+            // AndroidBleTransportAdapter -> startMesh cycle left the OS with a
+            // second, stale BluetoothGattServer registered, which wedged
+            // inbound connections on the OEM stack (back-to-back iris_bench
+            // tests in one process failed for exactly this).
+            if (advertiseHandles.isEmpty()) {
+                quietly {
+                    gattServer?.close()
+                    gattServer = null
+                    announcedInboundPeers.clear()
+                }
+            }
         }
     }
 

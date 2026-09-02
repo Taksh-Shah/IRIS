@@ -120,6 +120,10 @@ pub struct DiscoveryManager {
     /// scan interval instead of waiting for the beacon to be re-harvested.
     /// Bounded at `2 * max_peers`.
     known_peers: tokio::sync::Mutex<HashMap<PeerId, PeerInfo>>,
+    /// HV-97: interrupts the background loop's `sleep` so a `wake()` (a link
+    /// just dropped, the RETRY button, `drop_all_links`) triggers a scan
+    /// *immediately* instead of after up to `scan_interval` (30 s).
+    wake: tokio::sync::Notify,
     /// HV-91: true once at least one `connect()` has succeeded and the peer has
     /// not since been evicted. Drives the scan cadence — fast (`active_scan_
     /// interval`) until there is a real link, then `scan_interval`. This is a
@@ -154,6 +158,7 @@ impl DiscoveryManager {
             task: tokio::sync::Mutex::new(None),
             connect_backoff: tokio::sync::Mutex::new(HashMap::new()),
             known_peers: tokio::sync::Mutex::new(HashMap::new()),
+            wake: tokio::sync::Notify::new(),
             has_confirmed_link: std::sync::atomic::AtomicBool::new(false),
             config,
         }
@@ -525,10 +530,21 @@ impl DiscoveryManager {
                 } else {
                     this.config.active_scan_interval
                 };
-                tokio::time::sleep(sleep_for).await;
+                // HV-97: a `wake()` (link dropped / RETRY / drop_all_links)
+                // cuts the sleep short so recovery does not wait a full
+                // `scan_interval`.
+                tokio::select! {
+                    _ = tokio::time::sleep(sleep_for) => {}
+                    _ = this.wake.notified() => {}
+                }
             }
         });
         *guard = Some(handle);
+    }
+
+    /// HV-97: wake the background loop now — the next scan runs immediately.
+    pub fn wake(&self) {
+        self.wake.notify_one();
     }
 
     pub async fn stop(&self) {
@@ -640,6 +656,8 @@ mod tests {
             connect_calls: std::sync::atomic::AtomicUsize::new(0),
             scan_calls: std::sync::atomic::AtomicUsize::new(0),
             seeded_peer: peer_info(9),
+            yield_passes: std::sync::atomic::AtomicUsize::new(usize::MAX),
+            fail_connect: std::sync::atomic::AtomicBool::new(false),
         });
         m.register_transport(t.clone()).await;
         m.start().await;
@@ -719,6 +737,13 @@ mod tests {
         connect_calls: std::sync::atomic::AtomicUsize,
         scan_calls: std::sync::atomic::AtomicUsize,
         seeded_peer: PeerInfo,
+        /// HV-15: stop yielding `seeded_peer` in `discover_peers` after this
+        /// many passes (default: never) — models a dropped link whose beacon
+        /// has left the scan buffer.
+        yield_passes: std::sync::atomic::AtomicUsize,
+        /// HV-15: when true, `connect()` returns `ConnectionFailed` (so
+        /// `has_confirmed_link` stays false and the stale-reconnect path runs).
+        fail_connect: std::sync::atomic::AtomicBool,
     }
 
     impl Default for CountingConnectTransport {
@@ -732,6 +757,8 @@ mod tests {
                 connect_calls: std::sync::atomic::AtomicUsize::new(0),
                 scan_calls: std::sync::atomic::AtomicUsize::new(0),
                 seeded_peer: peer_info(9),
+                yield_passes: std::sync::atomic::AtomicUsize::new(usize::MAX),
+                fail_connect: std::sync::atomic::AtomicBool::new(false),
             }
         }
     }
@@ -748,6 +775,11 @@ mod tests {
             self.inner.capabilities()
         }
         fn state(&self) -> crate::transport::TransportState {
+            // HV-15: let a test force "no live link" so the stale-reconnect
+            // path in scan_once runs even after a successful connect().
+            if self.fail_connect.load(std::sync::atomic::Ordering::Relaxed) {
+                return crate::transport::TransportState::Available;
+            }
             self.inner.state()
         }
         fn state_stream(
@@ -761,11 +793,15 @@ mod tests {
             _config: ScanConfig,
         ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = PeerInfo> + Send>>, TransportError>
         {
-            self.scan_calls
+            let n = self
+                .scan_calls
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            Ok(Box::pin(futures_util::stream::iter(vec![
-                self.seeded_peer.clone()
-            ])))
+            let peers = if n < self.yield_passes.load(std::sync::atomic::Ordering::Relaxed) {
+                vec![self.seeded_peer.clone()]
+            } else {
+                vec![]
+            };
+            Ok(Box::pin(futures_util::stream::iter(peers)))
         }
         async fn stop_discovery(&self) -> Result<(), TransportError> {
             self.inner.stop_discovery().await
@@ -785,6 +821,9 @@ mod tests {
         ) -> Result<crate::message::TransportLink, TransportError> {
             self.connect_calls
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if self.fail_connect.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(TransportError::ConnectionFailed);
+            }
             self.inner.connect(peer).await
         }
         async fn send(
@@ -832,6 +871,8 @@ mod tests {
             connect_calls: std::sync::atomic::AtomicUsize::new(0),
             scan_calls: std::sync::atomic::AtomicUsize::new(0),
             seeded_peer: peer_info(9),
+            yield_passes: std::sync::atomic::AtomicUsize::new(usize::MAX),
+            fail_connect: std::sync::atomic::AtomicBool::new(false),
         });
         m.register_transport(t.clone()).await;
 
@@ -846,6 +887,44 @@ mod tests {
             "second scan pass of an ALREADY-KNOWN peer must still attempt connect() \
              (idempotent no-op if still linked, a genuine retry if the link dropped) — \
              this is the exact fix for HW-3"
+        );
+    }
+
+    #[tokio::test]
+    async fn hv15_dropped_peer_is_reconnected_from_cache_without_a_fresh_beacon() {
+        // A link forms, then the peer's beacon leaves the scan buffer (the
+        // transport stops yielding it). With no live link, `scan_once` must
+        // still attempt `connect()` for the cached peer — HV-15.
+        let m = manager(7);
+        let t = Arc::new(CountingConnectTransport {
+            inner: crate::transport::simulated::SimulatedTransport::new(
+                "sim-hv15", "Sim HV-15", SimConfig::default(),
+            ),
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(9),
+            // yield the beacon on pass 0 only.
+            yield_passes: std::sync::atomic::AtomicUsize::new(1),
+            // `state()` reports Available (no live link) so the stale path runs;
+            // `connect()` itself still succeeds (idempotent) — this models "link
+            // dropped, beacon gone, but the cached address is still good".
+            fail_connect: std::sync::atomic::AtomicBool::new(true),
+        });
+        m.register_transport(t.clone()).await;
+
+        m.scan_once().await; // pass 0: beacon seen → cached + connect attempted
+        let seen_phase = t.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(seen_phase, 1);
+
+        m.scan_once().await; // pass 1: NO beacon — HV-15 must still retry the cache
+        let stale_phase = t.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert!(
+            stale_phase > seen_phase,
+            "HV-15: a cached peer whose beacon left the scan buffer must still \
+             get a connect() attempt while there is no live link — got \
+             {stale_phase} calls after a beaconless pass, was {seen_phase} \
+             (pre-HV-15 the beaconless pass yields nothing so connect() is \
+             never called)"
         );
     }
 

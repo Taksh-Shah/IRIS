@@ -213,5 +213,50 @@ class Tier1Ble(IrisBenchBase):
         asserts.assert_false(slow, f"every drop must recover in <15s; slow={slow}")
 
 
+    def test_forced_drop_reconnect_10x(self):
+        """HV-14/HV-15: prime the link, then `dropAllLinks()` on BOTH phones
+        (radio stays up — advertising/scanning continue) and time how long
+        until a fresh message delivers again. 10 cycles. Pass: every recovery
+        < 15 s (targeted reconnect from the cached address + fast scan cadence,
+        not the 30 s slow-scan interval), and no `msg.delivery_failed`.
+        Dropping both sides avoids the HV-94 zombie-link case (one side keeps a
+        stale handle) — that is its own finding."""
+        import time
+        _CYCLES = 10
+        _BUDGET_S = 15
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        r = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        recoveries = []
+        for i in range(_CYCLES):
+            self.p1.iris.dropAllLinks()
+            self.p2.iris.dropAllLinks()
+            t0 = time.monotonic()
+            ok = False
+            while time.monotonic() - t0 < _BUDGET_S + 5:
+                rr = self.send_and_await(self.p1, self.p2, f"reconnect-{i}",
+                                         timeout_ms=6000)
+                if rr.get("delivered"):
+                    ok = True
+                    break
+                time.sleep(1)
+            dt = round(time.monotonic() - t0, 1)
+            recoveries.append(dt)
+            self.p1.log.info("drop %d/%d: recovered=%s in %ss", i + 1, _CYCLES, ok, dt)
+            asserts.assert_true(ok, f"drop {i}: no recovery within {_BUDGET_S + 5}s")
+
+        self.capture_evidence("tier1_forced_drop")
+        churn = {ad.label: self._logcat_since_cleared(ad) for ad in self.ads}
+        failed = {k: v.count("msg.delivery_failed") for k, v in churn.items()}
+        self.p1.log.info("FORCED-DROP: recoveries=%s failed=%s", recoveries, failed)
+        asserts.assert_equal(sum(failed.values()), 0,
+                             f"no msg.delivery_failed allowed; {failed}")
+        slow = [d for d in recoveries if d > _BUDGET_S]
+        asserts.assert_false(slow, f"every drop must recover in <{_BUDGET_S}s; slow={slow}")
+
+
 if __name__ == "__main__":
     test_runner.main()

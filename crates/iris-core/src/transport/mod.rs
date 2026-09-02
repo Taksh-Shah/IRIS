@@ -513,4 +513,12 @@ pub trait Transport: Send + Sync + 'static {
 
     /// Graceful shutdown.
     async fn shutdown(&self) -> Result<(), TransportError>;
+
+    /// HV-97: drop every live link on this transport WITHOUT shutting the
+    /// transport down — advertising/scanning stay up so discovery re-forms the
+    /// links. Used by the bench harness to deterministically exercise the
+    /// reconnect path (HV-15) and by the app's RETRY affordance later
+    /// (HV-31/HV-33). Default no-op for transports where "drop the link" has no
+    /// meaning distinct from `shutdown`.
+    async fn drop_all_links(&self) {}
 }

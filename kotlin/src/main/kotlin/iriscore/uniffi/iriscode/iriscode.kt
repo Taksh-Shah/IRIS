@@ -1011,6 +1011,8 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_iriscode_checksum_method_ffiinboxlistener_on_message(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_drop_all_links(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_node_id(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_register_peer_key(
@@ -1159,6 +1161,8 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: 
 ): Long
 external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,`x25519Provider`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+external fun uniffi_iriscode_fn_method_irisengine_drop_all_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_register_peer_key(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`x25519PubHex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1413,6 +1417,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffiinboxlistener_on_message() != 54918) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_drop_all_links() != 16155) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_node_id() != 19294) {
@@ -6188,6 +6195,14 @@ public object FfiConverterTypeFfiX25519KeyProvider: FfiConverter<FfiX25519KeyPro
 public interface IrisEngineInterface {
     
     /**
+     * HV-97: drop every live link on every transport WITHOUT shutting the mesh
+     * down — advertising/scanning stay up, so the discovery loop re-forms the
+     * links. A test hook for the `iris_bench` harness to deterministically
+     * exercise the reconnect path (HV-14/HV-15).
+     */
+    fun `dropAllLinks`()
+    
+    /**
      * The node's 32-byte PeerId for outbound messages.
      */
     fun `nodeId`(): kotlin.ByteArray
@@ -6357,6 +6372,25 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
             UniffiLib.uniffi_iriscode_fn_clone_irisengine(handle, status)
         }
     }
+
+    
+    /**
+     * HV-97: drop every live link on every transport WITHOUT shutting the mesh
+     * down — advertising/scanning stay up, so the discovery loop re-forms the
+     * links. A test hook for the `iris_bench` harness to deterministically
+     * exercise the reconnect path (HV-14/HV-15).
+     */
+    @Throws(IrisFfiException::class)override fun `dropAllLinks`()
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_drop_all_links(
+        it,
+        _status)
+}
+    }
+    
+    
 
     
     /**

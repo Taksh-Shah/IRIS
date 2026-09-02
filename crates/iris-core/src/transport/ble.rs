@@ -1711,6 +1711,26 @@ impl Transport for BleTransport {
         }
         Ok(())
     }
+
+    /// HV-97: drop every live GATT link but keep scanning/advertising up so the
+    /// discovery loop re-forms them — the deterministic reconnect trigger the
+    /// bench harness needs to verify HV-14/HV-15. Unlike `shutdown`, the
+    /// per-peer pollers and the accept-poller stay, and the state goes to
+    /// `Available` (not `Unavailable`), so `connect()` is re-selected.
+    async fn drop_all_links(&self) {
+        let Ok(adapter) = self.adapter() else { return };
+        let dropped: Vec<PeerId> = {
+            self.connections.lock().unwrap_or_else(|p| p.into_inner()).keys().copied().collect()
+        };
+        for peer in &dropped {
+            self.close_peer(peer, adapter.clone(), None);
+        }
+        tracing::warn!(
+            event = "ble.drop_all_links",
+            count = dropped.len(),
+            "test hook: dropped all GATT links, discovery will re-form them"
+        );
+    }
 }
 
 fn to_transport_err(e: BleError) -> TransportError {
@@ -1870,6 +1890,29 @@ mod tests {
         assert_eq!(t.state(), TransportState::Connected);
         assert_eq!(adapter.connect_count(), handle_before, "no reconnect");
         assert_eq!(link.peer_id, peer.peer_id);
+    }
+
+    #[tokio::test]
+    async fn hv97_drop_all_links_clears_connections_but_stays_reconnectable() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([41u8; 32]), "AA:BB:CC:DD:EE:F9");
+        t.connect(&peer).await.unwrap();
+        assert_eq!(t.state(), TransportState::Connected);
+
+        t.drop_all_links().await;
+        // Link is gone but the transport is NOT shut down — it can be selected
+        // and re-connected without a start_all().
+        assert_ne!(t.state(), TransportState::Unavailable);
+        assert!(t.send(&peer.peer_id, &SerializedMessage {
+            message_id: crate::protocol::MessageId::from([42u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"x".to_vec(),
+        }).await.is_err(), "no link right after drop_all_links");
+
+        // Discovery re-forms it.
+        t.connect(&peer).await.unwrap();
+        assert_eq!(t.state(), TransportState::Connected);
     }
 
     #[tokio::test(start_paused = true)]

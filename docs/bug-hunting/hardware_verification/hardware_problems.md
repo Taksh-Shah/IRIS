@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 21 | 6 | 2 | 2 | 1 | 10 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 22 | 7 | 2 | 2 | 1 | 10 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,14 +69,16 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **98** | **12** | **9** | **2** | **2** | **73** |
+| **Total** | | **99** | **13** | **9** | **2** | **2** | **73** |
 
-**Last updated:** 2026-09-02 (Session 11 — scan-lifecycle §5 group: **HV-14 🟢**
-(scan cadence tracks real transport state; 3× clean 40-round bidirectional
-sessions, 0 loss), **HV-11 + HV-15 ✅ HW-PENDING** (`onScanFailed` drain +
-targeted reconnect from cached address — L1-sim-verified, no regression, but no
-hardware drop occurred to watch them heal — need a `dropLink()` snippet RPC).
-· **Active tier:** 1
+**Last updated:** 2026-09-02 (Session 12 — **HV-97 ✅** (`dropAllLinks()` hook +
+`DiscoveryManager::wake()` interruptible scan loop + per-run evidence dir +
+`stopAdvertising` closes the GATT server), **HV-15 🟢** — forced-drop bench:
+`ble.drop_all_links` → `connectGatt` 65 ms later → `connect_ok elapsed_ms ≈
+1100` on both phones (was up to 30 s). End-to-end message recovery blocked
+downstream by new **HV-98** (inbound poller does not re-attach after reconnect —
+receiver side, HV-93/HV-94 family). HCI snoop confirmed unavailable on Funtouch
+OS without root — HV-96 stays blocked). · **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
 landed, hardware verification still owed · `🔬` in the research phase (see loop
@@ -981,7 +983,7 @@ ceiling/window against the actual Android version behaviour on the bench phones.
 
 ### HV-15 — No automatic reconnect: a dropped GATT link is only re-established by the next discovery pass finding the beacon again
 
-- **Fix status:** ✅ Fixed · HW-PENDING · 2026-09-02 · Session 11 · §5 group with HV-11/14
+- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · Session 12 · `iris_bench` `test_forced_drop_reconnect_10x` + `dropAllLinks()` hook: after a forced drop, `ble.drop_all_links` → `connectGatt: initiated` **65 ms** later → `discovery.connect_ok elapsed_ms ≈ 1100` on **both** phones (was: wait for the beacon to re-enter the scan buffer, up to 30 s). The targeted reconnect + `DiscoveryManager::wake()` (interruptible scan loop) are proven. End-to-end *message* recovery after the drop is blocked downstream by **HV-98** (receiver-side inbound poller), not by HV-15.
 - **Premise note:** partly disproved — `scan_transport` already calls `connect()`
   (idempotent) for every peer *harvested this pass*, so a drop heals without a
   full handshake **if** the beacon is in the current scan buffer. The gap: a
@@ -1181,7 +1183,21 @@ confirming any that do occur are external RF, not a self-inflicted teardown.
 
 ### HV-97 — `iris_bench`: back-to-back tests fail; evidence dir bumps per process
 
-- **Fix status:** 🔬 (found in Session 10)
+- **Fix status:** ✅ Fixed · 2026-09-02 · Session 12 · plus a new `dropAllLinks()` hook
+- **Resolution:** `_make_session_dir` keyed off `$IRIS_BENCH_RUN` (or a
+  timestamp), not a folder scan. `AndroidBleTransportAdapter.stopAdvertising`
+  now `gattServer?.close()` + nulls it + clears `announcedInboundPeers` when the
+  last advertiser stops (the server was opened lazily and never closed → a
+  `stopMesh` → new adapter → `startMesh` cycle left a second stale
+  `BluetoothGattServer`). Also added `Transport::drop_all_links()` +
+  `IrisEngine::drop_all_links()` FFI + `IrisSnippet.dropAllLinks()` RPC +
+  `DiscoveryManager::wake()` — the deterministic reconnect trigger the harness
+  needs (used to verify HV-14/HV-15/HV-98). Sim
+  `hv97_drop_all_links_clears_connections_but_stays_reconnectable`.
+- **Owed:** full re-verify of "two test methods in one process" once HV-98
+  (inbound poller re-attach) lands — the stale GATT server was one cause, the
+  inbound-poller lifecycle is the other.
+- **Was:** 🔬 (found in Session 10)
 - **Area:** `iris_bench/base.py` (`_make_session_dir`, `stop_mesh_both` /
   `start_mesh_both`), `IrisSnippet.stopMesh`/`startMesh`
 - **Severity:** Medium (test-integrity) · **HW gate:** 2 phones
@@ -1199,6 +1215,36 @@ process), littering `evidence/` with `session-11…session-20`.
 server and unregister every callback; `iris_bench` should reuse one engine per
 class where possible, or force a BT cycle between tests; `_make_session_dir`
 keyed off a run id / env var, not an incrementing scan of the folder.
+
+---
+
+### HV-98 — Inbound reassembly poller does not re-attach after a drop + reconnect
+
+- **Fix status:** 🔬 (found in Session 12 verifying HV-97/HV-15)
+- **Area:** `AndroidBleTransportAdapter` (`announcedInboundPeers` lifecycle,
+  `gattServerCallback`), `ble.rs` `ensure_accept_poller` / `close_peer` vs the
+  accept-poller's `spawned` set
+- **Severity:** Critical (a peer that re-links after any drop stops receiving) ·
+  **HW gate:** 2 phones
+
+**What:** with HV-97's `dropAllLinks()` hook, P1 and P2 both re-establish the
+GATT link in ~1 s and P1's ATT frames reach P2's characteristic
+(`onCharacteristicWriteRequest matchesIris=true len=300`) — but P2 emits no
+`msg.delivered`. P2's GATT *server* never fires
+`onConnectionStateChange(DISCONNECTED)` for P1's connection (OEM: server-side
+disconnect callback is unreliable — HV-93/HV-94), so `announcedInboundPeers`
+keeps the stale `deviceHash`, `onCharacteristicWriteRequest` does not
+re-announce the accepted connection, and `ensure_accept_poller` (whose
+`spawned` set also still holds the handle) never re-spawns the inbound
+reassembly poller. P2's own `drop_all_links` → `close_peer` had aborted the
+poller that was there.
+
+**Fix sketch:** (a) `onCharacteristicWriteRequest` re-announces whenever there
+is no *live* inbound poller for the device (track liveness, not a fire-once
+`Set`); (b) or the accept-poller treats "frames arriving on a handle with no
+poller" as a re-attach trigger; (c) clear `announcedInboundPeers` / the
+accept-poller's `spawned` on our own `close_peer` / `drop_all_links`, not only
+on the OEM server-disconnect callback. Coordinate with HV-93/HV-94.
 
 ---
 
