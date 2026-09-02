@@ -34,7 +34,7 @@ Three results dominate this report.
 
 **This section is rewritten by the fix loop after every finding.** Individual findings carry their own `Fix status` line for in-place detail; this table is the roll-up.
 
-**Last updated:** 2026-09-02 — Run 1: fixed CROSS-001 (Android BLE service UUID aligned to Rust/iOS). 8 cross-section integration findings. 1 fixed (pending build verification), 7 remaining.
+**Last updated:** 2026-09-02 — Run 2: fixed all of Tier 1 (CROSS-002 iOS SOS content type, CROSS-003 security policy wiring on all 3 platforms, CROSS-004 iOS production crypto path, CROSS-005 Desktop receipt timestamp). 8 cross-section integration findings. 5 fixed (4 pending build verification), 3 remaining.
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -44,9 +44,9 @@ Three results dominate this report.
 | Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
 | **0** | Critical — cross-platform data path broken | 1 | 0 | 0 | 1 | 0 | 0 | **✅ COMPLETE** (pending build verification — CROSS-001) |
-| **1** | High — security regressions and build breaks | 4 | 4 | 0 | 0 | 0 | 0 | Tier 0 complete — **now active** |
-| **2** | Medium — missing wiring, compile breaks on regen | 3 | 3 | 0 | 0 | 0 | 0 | Can run in parallel with Tier 1 |
-| **Total** | | **8** | **7** | **0** | **1** | **0** | **0** | |
+| **1** | High — security regressions and build breaks | 4 | 0 | 0 | 4 | 0 | 0 | **✅ COMPLETE** (3 of 4 pending build verification — CROSS-002/003/004; CROSS-005 is Rust-only, same no-toolchain caveat as all Rust fixes this run) |
+| **2** | Medium — missing wiring, compile breaks on regen | 3 | 3 | 0 | 0 | 0 | 0 | Tier 1 complete — **now active** |
+| **Total** | | **8** | **3** | **0** | **5** | **0** | **0** | |
 
 ### Tier membership
 
@@ -236,7 +236,7 @@ Arc::new(AndroidCryptoProvider::with_x25519_provider(signer, x25519_provider))
 
 ### CROSS-005 — Desktop uses sender-controlled origination timestamp as `received_at_unix`
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · Tier 1 · commit `pending` · 2026-09-02 — `iris-desktop/src/types.rs`'s `IncomingMessageView::from_envelope` now sets `received_at_unix: unix_now()` (local receipt time) instead of `env.timestamp` (sender-controlled origination time), matching Android's/iOS's `received_at_ms: unix_now().saturating_mul(1000)` pattern exactly (Desktop's field is unscaled seconds — confirmed `Envelope::timestamp`'s doc comment says "Unix epoch seconds," matching `unix_now()`'s own return unit, so no `*1000` needed here). No Rust toolchain in this environment to compile-verify; `unix_now` confirmed exported at `iris_core::message_engine::expiry::unix_now` (same import path Android/iOS already use).
 - **Severity:** High
 - **Sections:** Dhairya (Desktop) ↔ Rahul (Protocol / Envelope)
 - **Files:**

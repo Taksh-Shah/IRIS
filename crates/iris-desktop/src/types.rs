@@ -7,6 +7,7 @@
 use serde::Serialize;
 
 use iris_core::message::PeerId;
+use iris_core::message_engine::expiry::unix_now;
 use iris_core::message_engine::MetricsSnapshot;
 use iris_core::observability::ShortId;
 use iris_core::protocol::{ContentType, Envelope};
@@ -57,7 +58,12 @@ impl IncomingMessageView {
             },
             message_id_short: env.message_id.short().to_string(),
             priority: env.priority.as_u8(),
-            received_at_unix: env.timestamp,
+            // CROSS-005: env.timestamp is the sender's self-declared
+            // origination time (peer-controlled, unauthenticated) — using it
+            // as the inbox sort key lets a peer backdate/future-date its own
+            // messages. Android/iOS both use local receipt time
+            // (unix_now()) for the analogous field; do the same here.
+            received_at_unix: unix_now(),
             text,
             content_type: format!("{:?}", env.payload_type),
         }
