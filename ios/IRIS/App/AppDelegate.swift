@@ -45,7 +45,11 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         // IDENT_DESIGN D1: node PeerId = Ed25519 public-key bytes (32 B).
         let nodeId = pair.verifyingKeyRaw
-        if let engine = try? IrisEngine(ble: adapter, nodeId: nodeId) {
+        // CROSS-004: newWithSigner wires the real Keychain-backed signer
+        // (KeychainCryptoSigner) instead of the dev-only DevCryptoProvider
+        // that the plain IrisEngine(ble:nodeId:) constructor still uses.
+        let signer = KeychainCryptoSigner(keyPair: pair)
+        if let engine = try? IrisEngine.newWithSigner(ble: adapter, nodeId: nodeId, signer: signer) {
             self.engine = engine
         } else {
             return true
@@ -91,7 +95,9 @@ public final class AppDelegate: UIResponder, UIApplicationDelegate {
         guard engine == nil else { return }
         guard let pair = try? KeychainEd25519.identity() else { return }
         let nodeId = pair.verifyingKeyRaw
-        if let adapter = self.adapter, let e = try? IrisEngine(ble: adapter, nodeId: nodeId) {
+        let signer = KeychainCryptoSigner(keyPair: pair)
+        if let adapter = self.adapter,
+           let e = try? IrisEngine.newWithSigner(ble: adapter, nodeId: nodeId, signer: signer) {
             self.engine = e
             // Bug #32: log errors on retry path too.
             do {

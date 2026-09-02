@@ -8,10 +8,12 @@
 
 pub mod ble_adapter;
 pub mod body;
+pub mod crypto_signer;
 pub mod error;
 
 pub use ble_adapter::{
     FfiAdvertisementData, FfiBleAdapter, FfiGattWriteEvent, FfiScanFilter, FfiScanResult,
 };
 pub use body::{FfiIrisEnvelope, IrisBody};
+pub use crypto_signer::FfiCryptoSigner;
 pub use error::IrisFfiError;

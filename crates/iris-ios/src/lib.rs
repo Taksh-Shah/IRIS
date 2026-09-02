@@ -33,10 +33,12 @@ uniffi::setup_scaffolding!();
 pub mod bridge;
 pub mod engine;
 pub mod ffi;
+pub mod ios_crypto;
 
 pub use engine::{FfiInboxListener, FfiIncomingMessage, IrisEngine};
 pub use ffi::ble_adapter::{
     FfiAdvertisementData, FfiBleAdapter, FfiGattWriteEvent, FfiScanFilter, FfiScanResult,
 };
 pub use ffi::body::{FfiIrisEnvelope, IrisBody};
+pub use ffi::crypto_signer::FfiCryptoSigner;
 pub use ffi::error::IrisFfiError;

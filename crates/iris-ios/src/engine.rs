@@ -6,9 +6,12 @@
 //! DEC-IOS-0003 — `#[uniffi::export(async_runtime=...)]` is INEFFECTIVE on
 //! exported-trait impls in 0.31.x). The single iOS mesh transport is
 //! `BleTransport::new_ios` (transport id `ble-ios`, BLE-002) registered over
-//! `crate::bridge::BleBridge`; the `MessageEngine` runs on
-//! `MemoryStorage` + `DevCryptoProvider` (STORE-001 / RED-0001 dev seam).
-//! Delivered messages surface to the Swift shell through `subscribe_inbox`
+//! `crate::bridge::BleBridge`; the `MessageEngine` runs on `MemoryStorage`
+//! (STORE-001 dev seam, unchanged) plus a crypto backend selected by which
+//! constructor is used — `new()` is `DevCryptoProvider` (dev/test only,
+//! blocked in release builds); `new_with_signer()` is the real
+//! `IosCryptoProvider`, wired to the Swift-side Keychain-backed
+//! `FfiCryptoSigner` (CROSS-004). Delivered messages surface to the Swift shell through `subscribe_inbox`
 //! (FfiInboxListener); the `IrisBody` envelope surface (ffi::body) is
 //! installed via `set_body_renderer`.
 
@@ -20,7 +23,7 @@ use tokio::runtime::{Handle, Runtime};
 
 use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
-use iris_core::message_engine::crypto::DevCryptoProvider;
+use iris_core::message_engine::crypto::{CryptoProvider, DevCryptoProvider};
 use iris_core::message_engine::storage::MemoryStorage;
 use iris_core::message_engine::{
     expiry::unix_now, InboundOutcome, MessageEngine, MessageEngineConfig,
@@ -33,7 +36,9 @@ use iris_core::transport::{Transport, TransportId, TransportManager};
 use crate::bridge::BleBridge;
 use crate::ffi::ble_adapter::FfiBleAdapter;
 use crate::ffi::body::{FfiIrisEnvelope, IrisBody};
+use crate::ffi::crypto_signer::FfiCryptoSigner;
 use crate::ffi::error::IrisFfiError;
+use crate::ios_crypto::IosCryptoProvider;
 
 /// A delivered message handed to the Swift shell (`subscribe_inbox`).
 #[derive(Debug, Clone, uniffi::Record)]
@@ -100,78 +105,38 @@ impl IrisEngine {
         let node_id: [u8; 32] = node_id
             .try_into()
             .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
-        let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
-        let handle = runtime.handle().clone();
+        Self::build(ble, node_id, Arc::new(DevCryptoProvider::new()), true)
+    }
 
-        // The engine's background tasks and the transport registration all
-        // need a live tokio context — build them inside `block_on` on the
-        // engine's own runtime (the explicit-handle pattern, issue #2576).
-        let (manager, engine, transports, discovery) = runtime.block_on(async {
-            let manager = Arc::new(TransportManager::new());
-
-            let ble_t = Arc::new(BleTransport::new_ios(Some(Arc::new(BleBridge::new(ble)))));
-
-            let ble_id = ble_t.transport_id().clone();
-            manager
-                .register(ble_t.clone())
-                .await
-                .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
-
-            // Bug #41: MemoryStorage and DevCryptoProvider are dev-only seams.
-            // Release builds must fail fast rather than silently ship with them.
-            #[cfg(not(debug_assertions))]
+    /// CROSS-004: production constructor — wires the Swift-side
+    /// `FfiCryptoSigner` (Keychain-backed Ed25519) through `IosCryptoProvider`
+    /// instead of the inert `DevCryptoProvider`. Before this constructor
+    /// existed, iOS had no production crypto path at all: debug builds sent
+    /// unsigned/unencrypted envelopes via `new()`, and release builds simply
+    /// could not start (bug #41's guard). Prefer this constructor for any
+    /// non-debug build; `new()` remains for development/testing only.
+    #[uniffi::constructor]
+    pub fn new_with_signer(
+        ble: Arc<dyn FfiBleAdapter>,
+        node_id: Vec<u8>,
+        signer: Arc<dyn FfiCryptoSigner>,
+    ) -> Result<Arc<Self>, IrisFfiError> {
+        if tokio::runtime::Handle::try_current().is_ok() {
             return Err(IrisFfiError::InvalidArgument(
-                "IrisEngine: MemoryStorage and DevCryptoProvider are dev-only stubs; \
-                 replace them with production implementations before shipping a release build."
+                "IrisEngine::new_with_signer must not be called from within a tokio runtime \
+                 context; block_on would deadlock — call from a plain (non-async) thread"
                     .into(),
             ));
-
-            let engine = MessageEngine::new_with_telemetry(
-                MessageEngineConfig {
-                    node_id,
-                    ..Default::default()
-                },
-                Arc::new(MemoryStorage::new()),
-                Arc::new(DevCryptoProvider::new()),
-                manager.clone(),
-                MetricsRegistry::new(),
-            );
-
-            // CROSS-003: the engine defaults to NoopSecurityPolicy (all checks
-            // permissive) until a real policy is installed. No platform ever
-            // called set_security_policy(), so rate limiting, replay
-            // protection, quota, and the emergency ACL were silently disabled
-            // in production on every platform. Arm it here.
-            engine.set_security_policy(Arc::new(iris_core::FullSecurityPolicy::new(Arc::new(
-                iris_core::TrustStore::new(),
-            ))));
-
-            Self::spawn_inbox_forwarder(engine.clone(), ble_t.clone());
-
-            // GAP-7: discovery is what actually calls `Transport::connect()`
-            // on first contact — without it every send() fails NotConnected
-            // forever.
-            let discovery = Arc::new(DiscoveryManager::new(
-                PeerId::from_bytes(node_id),
-                DiscoveryConfig::default(),
-            ));
-            discovery.register_transport(ble_t.clone()).await;
-            discovery.start().await;
-
-            Ok::<_, IrisFfiError>((manager, engine, vec![ble_id], discovery))
-        })?;
-
-        Ok(Arc::new(Self {
-            runtime,
-            handle,
-            manager,
-            engine,
-            transports,
+        }
+        let node_id: [u8; 32] = node_id
+            .try_into()
+            .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
+        Self::build(
+            ble,
             node_id,
-            body: Arc::new(Mutex::new(None)),
-            inbox_task: Mutex::new(None),
-            discovery,
-        }))
+            Arc::new(IosCryptoProvider::new(signer)),
+            false,
+        )
     }
 
     /// The node's 32-byte PeerId for outbound messages.
@@ -319,6 +284,102 @@ impl IrisEngine {
 }
 
 impl IrisEngine {
+    /// Shared construction path parameterised on the crypto backend, mirroring
+    /// `iris-android`'s `IrisEngine::build`. `is_dev_crypto` gates bug #41's
+    /// release-build guard: `new()`'s `DevCryptoProvider` path must still fail
+    /// fast in a release build (it's inert — no real signing/encryption ever),
+    /// but `new_with_signer()`'s real `IosCryptoProvider` path must not be
+    /// blocked, since it's exactly the production path bug #41 was waiting for.
+    /// Kept out of the `#[uniffi::export]` block: `Arc<dyn CryptoProvider>` is
+    /// not an FFI type.
+    fn build(
+        ble: Arc<dyn FfiBleAdapter>,
+        node_id: [u8; 32],
+        crypto: Arc<dyn CryptoProvider>,
+        is_dev_crypto: bool,
+    ) -> Result<Arc<Self>, IrisFfiError> {
+        let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
+        let handle = runtime.handle().clone();
+
+        // The engine's background tasks and the transport registration all
+        // need a live tokio context — build them inside `block_on` on the
+        // engine's own runtime (the explicit-handle pattern, issue #2576).
+        let (manager, engine, transports, discovery) = runtime.block_on(async {
+            let manager = Arc::new(TransportManager::new());
+
+            let ble_t = Arc::new(BleTransport::new_ios(Some(Arc::new(BleBridge::new(ble)))));
+
+            let ble_id = ble_t.transport_id().clone();
+            manager
+                .register(ble_t.clone())
+                .await
+                .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
+
+            // Bug #41: MemoryStorage and (on the new()/dev path only)
+            // DevCryptoProvider are dev-only seams. Release builds must fail
+            // fast rather than silently ship with an inert crypto provider.
+            // Written as a runtime cfg!() check (rather than a
+            // #[cfg(not(debug_assertions))] attribute on the block) so
+            // `is_dev_crypto` is a genuinely-used parameter in every build
+            // configuration — an attribute-gated block would otherwise leave
+            // it unused, and warn, in debug builds.
+            if is_dev_crypto && !cfg!(debug_assertions) {
+                return Err(IrisFfiError::InvalidArgument(
+                    "IrisEngine: this is the dev-only IrisEngine::new() path (MemoryStorage + \
+                     DevCryptoProvider); call new_with_signer() with a real FfiCryptoSigner \
+                     before shipping a release build."
+                        .into(),
+                ));
+            }
+
+            let engine = MessageEngine::new_with_telemetry(
+                MessageEngineConfig {
+                    node_id,
+                    ..Default::default()
+                },
+                Arc::new(MemoryStorage::new()),
+                crypto,
+                manager.clone(),
+                MetricsRegistry::new(),
+            );
+
+            // CROSS-003: the engine defaults to NoopSecurityPolicy (all checks
+            // permissive) until a real policy is installed. No platform ever
+            // called set_security_policy(), so rate limiting, replay
+            // protection, quota, and the emergency ACL were silently disabled
+            // in production on every platform. Arm it here.
+            engine.set_security_policy(Arc::new(iris_core::FullSecurityPolicy::new(Arc::new(
+                iris_core::TrustStore::new(),
+            ))));
+
+            Self::spawn_inbox_forwarder(engine.clone(), ble_t.clone());
+
+            // GAP-7: discovery is what actually calls `Transport::connect()`
+            // on first contact — without it every send() fails NotConnected
+            // forever.
+            let discovery = Arc::new(DiscoveryManager::new(
+                PeerId::from_bytes(node_id),
+                DiscoveryConfig::default(),
+            ));
+            discovery.register_transport(ble_t.clone()).await;
+            discovery.start().await;
+
+            Ok::<_, IrisFfiError>((manager, engine, vec![ble_id], discovery))
+        })?;
+
+        Ok(Arc::new(Self {
+            runtime,
+            handle,
+            manager,
+            engine,
+            transports,
+            node_id,
+            body: Arc::new(Mutex::new(None)),
+            inbox_task: Mutex::new(None),
+            discovery,
+        }))
+    }
+
     /// Spawn a task forwarding one transport's inbound frames into the engine.
     fn spawn_inbox_forwarder(engine: Arc<MessageEngine>, transport: Arc<dyn Transport>) {
         let mut incoming = transport.incoming_messages();
