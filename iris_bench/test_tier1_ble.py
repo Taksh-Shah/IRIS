@@ -152,5 +152,66 @@ class Tier1Ble(IrisBenchBase):
                              f"no teardown during ping-pong; {churn}")
 
 
+    # ---- HV-11/14/15: scan lifecycle — sustained session, fast recovery -----
+
+    def test_sustained_session_recovers_fast(self):
+        """HV-14/HV-15: a 40-round 300-char ping-pong. Link drops happen
+        naturally under bidirectional load (HV-96); each must recover fast
+        (targeted reconnect from the cached address + fast scan cadence), not
+        after the 30 s slow-scan interval. Pass: >=95% delivered each way, no
+        `msg.delivery_failed`, and every gap between a drop and the next
+        delivery is < 15 s."""
+        import re as _re
+        import time
+
+        _ROUNDS = 40
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        fwd_ok = rev_ok = 0
+        for i in range(_ROUNDS):
+            a = self.send_and_await(self.p1, self.p2, f"{_PAYLOAD_300}>{i}",
+                                    timeout_ms=_DELIVER_TIMEOUT_MS)
+            if a.get("delivered"):
+                fwd_ok += 1
+            b = self.send_and_await(self.p2, self.p1, f"{_PAYLOAD_300}<{i}",
+                                    timeout_ms=_DELIVER_TIMEOUT_MS)
+            if b.get("delivered"):
+                rev_ok += 1
+            if (i + 1) % 10 == 0:
+                self.p1.log.info("round %d/%d: fwd=%d rev=%d", i + 1, _ROUNDS,
+                                 fwd_ok, rev_ok)
+
+        self.capture_evidence("tier1_sustained")
+        churn = {ad.label: self._logcat_since_cleared(ad) for ad in self.ads}
+        failed = {k: v.count("msg.delivery_failed") for k, v in churn.items()}
+        # recovery gaps: from a server disconnect (newState=0) to the next
+        # msg.delivered on that phone.
+        gaps = []
+        for lbl, txt in churn.items():
+            ev = []
+            for m in _re.finditer(
+                r"(\d\d:\d\d:\d\d\.\d+).*?(newState=0|msg\.delivered)", txt):
+                ts = m.group(1)
+                secs = (int(ts[0:2]) * 3600 + int(ts[3:5]) * 60
+                        + float(ts[6:]))
+                ev.append((secs, m.group(2)))
+            last_drop = None
+            for secs, kind in ev:
+                if kind == "newState=0":
+                    last_drop = secs
+                elif kind == "msg.delivered" and last_drop is not None:
+                    gaps.append(round(secs - last_drop, 1))
+                    last_drop = None
+        self.p1.log.info("SUSTAINED: fwd=%d/%d rev=%d/%d failed=%s recovery_gaps=%s",
+                         fwd_ok, _ROUNDS, rev_ok, _ROUNDS, failed, sorted(gaps))
+
+        asserts.assert_true(fwd_ok >= _ROUNDS * 0.95 and rev_ok >= _ROUNDS * 0.95,
+                            f"delivery must be >=95% each way; fwd={fwd_ok} rev={rev_ok}")
+        asserts.assert_equal(sum(failed.values()), 0,
+                             f"no msg.delivery_failed allowed; {failed}")
+        slow = [g for g in gaps if g > 15]
+        asserts.assert_false(slow, f"every drop must recover in <15s; slow={slow}")
+
+
 if __name__ == "__main__":
     test_runner.main()

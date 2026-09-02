@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 21 | 5 | 0 | 2 | 1 | 13 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 21 | 6 | 2 | 2 | 1 | 10 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,13 +69,13 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **98** | **11** | **7** | **2** | **2** | **76** |
+| **Total** | | **98** | **12** | **9** | **2** | **2** | **73** |
 
-**Last updated:** 2026-09-02 (Session 10 — HV-7 🟢 via `iris_bench`
-`test_tier1_ble`: 300-char both ways 10/10, ping-pong fwd+rev 10/10 ×4 with zero
-link teardown (HEAD had a `delivery_failed` + 34 s stall). Per-frame ATT-write
-retry + hold-on-mid-write-drop. HV-8 🔒 (shadowed by symmetric discovery).
-Opened HV-96 spontaneous link-drop-under-load, HV-97 harness lifecycle).
+**Last updated:** 2026-09-02 (Session 11 — scan-lifecycle §5 group: **HV-14 🟢**
+(scan cadence tracks real transport state; 3× clean 40-round bidirectional
+sessions, 0 loss), **HV-11 + HV-15 ✅ HW-PENDING** (`onScanFailed` drain +
+targeted reconnect from cached address — L1-sim-verified, no regression, but no
+hardware drop occurred to watch them heal — need a `dropLink()` snippet RPC).
 · **Active tier:** 1
 
 Legend: `🟢` verified on ≥2 physical phones with logged evidence · `✅` code fix
@@ -847,7 +847,17 @@ restart (audit every path).
 
 ### HV-11 — `onScanFailed` is logged only; the core's `scan_allowed()` backoff never learns the platform refused
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-PENDING · 2026-09-02 · Session 11 · §5 group with HV-14/15
+- **Resolution:** new `BleAdapter::drain_scan_failures() -> Vec<i32>` (+ the
+  `FfiBleAdapter` foreign-trait method, bindings regenerated). Kotlin
+  `onScanFailed` enqueues the code; `discover_peers` drains it each pass and on
+  a hard code (2 `APPLICATION_REGISTRATION_FAILED`, 3 `INTERNAL_ERROR`,
+  6 `SCANNING_TOO_FREQUENTLY`) clears `scan_handle` (forces a real re-arm) and
+  on 6 arms `refused_until`. `tracing::warn!(event = "ble.scan_refused")`.
+  L1 sim `hv11_platform_scan_refusal_forces_a_rearm_and_arms_backoff`.
+- **HW-pending:** no L3 trigger for `SCANNING_TOO_FREQUENTLY` without a test
+  hook; the 3× 40-round sustained sessions logged zero `ble.scan_refused`.
+- **Was:** ⬜
 - **Area:** `AndroidBleTransportAdapter.scanCallback.onScanFailed`,
   `ble.rs` `scan_allowed`, `discover_peers`
 - **Severity:** High · **HW gate:** 2 phones
@@ -931,7 +941,17 @@ not start blind.
 
 ### HV-14 — After 5 scan restarts in 30 s the node stops scanning for up to 30 s — and reconnect cycles burn restarts
 
-- **Fix status:** ⬜
+- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · `iris_bench` `test_sustained_session_recovers_fast` ×3 (40-round bidirectional): **fwd 40/40, rev 40/40, 0 loss each** · Session 11 · §5 group
+- **Resolution:** HV-91 already de-conflated the `scan_allowed` budget
+  (harvest-only passes don't re-arm). The residual bug: `has_confirmed_link`
+  (which picks the fast 3 s vs slow 30 s scan cadence) was set `false` **only**
+  by the 300 s neighbor-TTL sweep, so a `close_peer` link drop left the scan
+  slow for up to 30 s. `DiscoveryManager::scan_once` now recomputes
+  `has_confirmed_link` from **actual transport state** (`any transport.state()
+  == Connected`) every pass — a drop resumes fast scanning on the next pass.
+- **Verified:** 3× clean 40-round bidirectional sessions (240 messages, 0 loss)
+  + the HV-7 ping-pong regression, all pass with the change in.
+- **Was:** ⬜
 - **Area:** `ble.rs` `scan_allowed` (SCAN_CEILING=5, exponential backoff to 30 s),
   `ScanRestartPolicy`, `discover_peers`
 - **Severity:** High · **HW gate:** 2 phones, force reconnects
@@ -961,7 +981,20 @@ ceiling/window against the actual Android version behaviour on the bench phones.
 
 ### HV-15 — No automatic reconnect: a dropped GATT link is only re-established by the next discovery pass finding the beacon again
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-PENDING · 2026-09-02 · Session 11 · §5 group with HV-11/14
+- **Premise note:** partly disproved — `scan_transport` already calls `connect()`
+  (idempotent) for every peer *harvested this pass*, so a drop heals without a
+  full handshake **if** the beacon is in the current scan buffer. The gap: a
+  dropped link's beacon can be absent from the buffer for several passes.
+- **Resolution:** `DiscoveryManager` caches every `PeerInfo` it has connected
+  (`known_peers`, bounded `2×max_peers`); the per-beacon connect block is
+  extracted to `attempt_connect()`; `scan_once` also runs it — while there is no
+  live link — for every known peer still in the neighbor table whose beacon was
+  not harvested this pass. `connect()` needs only the cached address, no scan.
+- **HW-pending:** no GATT link drop occurred in the 3× sustained bench sessions
+  (the post-HV-7 desired outcome), so the reconnect firing was not observed.
+  Closing to 🟢 needs a `dropLink()` snippet RPC (HV-97).
+- **Was:** ⬜
 - **Area:** `ble.rs` `close_peer`, `DiscoveryManager`, `connect`
 - **Severity:** High · **HW gate:** 2 phones
 

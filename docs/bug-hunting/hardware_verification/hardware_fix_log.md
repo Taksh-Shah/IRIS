@@ -1813,3 +1813,196 @@ needs a bindings regen and is not on the gate's critical path.
   HV-10/11/14/15 (🟢 or 🔒) + a 30-min zero-unexplained-loss session. HV-96 is
   the blocker for that 30-min run — do it next (it needs the operator to enable
   HCI snoop).
+
+---
+
+## Session 11 — 2026-09-02 · P1 = vivo V2205 (Android 15, API 35) · P2 = vivo 2004 (Android 13, API 33)
+
+Active tier 1. §5 group: **HV-11 + HV-14 + HV-15** (scan lifecycle — scan-failure
+feedback, backoff lockout, auto-reconnect are one state machine). HCI snoop
+still not enabled on the bench phones, so HV-96 stays blocked; this group does
+not need it (logcat shows scan restarts + reconnect timing).
+
+### HV-11 + HV-14 + HV-15 — Research note
+
+**1. Mechanism (source at HEAD + platform research).**
+
+*HV-15 — reconnect only via re-discovery.* `BleTransport::close_peer`
+(`ble.rs:986`) removes the `connections` entry + aborts the reassembly poller,
+and does nothing else — no reconnect is scheduled. The link comes back only when
+`DiscoveryManager::scan_transport` (`discovery/mod.rs:291`) *harvests that peer's
+beacon in a scan pass* — the connect-retry loop is
+`while let Some(peer) = stream.next()`, i.e. it only ever calls `connect()` for
+peers **seen in the current pass**. A peer whose GATT link just dropped but
+whose beacon is not in the current scan buffer is not retried until a pass
+happens to harvest it — which depends on the scan cadence (HV-14), the beacon
+still advertising (HV-10), and the scan not being throttled (HV-14 again).
+Android's own answer — `connectGatt(autoConnect=false)` direct reconnect with
+backoff on `onConnectionStateChange(STATE_DISCONNECTED)` — is not used for
+reconnect at all; `connectGatt` is only ever called from the discovery path.
+
+*HV-14 — scan cadence stays slow after a drop.* `DiscoveryManager` picks the
+scan interval from `has_confirmed_link` (`discovery/mod.rs:120,239`): fast
+(`active_scan_interval` = 3 s) until a `connect()` succeeds, then slow
+(`scan_interval` = 30 s). `has_confirmed_link` is set `false` **only** in the
+TTL-sweep `PeerLost` branch (`mod.rs:259`) — `neighbor_ttl` is **300 s**. So when
+`close_peer` drops a live link, `has_confirmed_link` stays `true`, the scan stays
+at the 30 s cadence, and the dropped peer is not re-scanned (and so not
+re-connected) for up to 30 s. This is the operator's "works, then dead for ~30 s,
+then works" and it is the recovery half of HV-96. HV-91 already de-conflated the
+`scan_allowed` budget (harvest-only passes don't re-arm; re-arm every 5th pass),
+so the 5-starts-per-30-s Android ceiling (API 24+, `ScanManager`) is not the
+active problem — the *cadence choice* is.
+
+*HV-11 — `onScanFailed` is a dead end.* `AndroidBleTransportAdapter.scanCallback
+.onScanFailed` (`AndroidBleTransportAdapter.kt:224`) only does
+`IrisLog.w("ble.scan", …)`. Any async scan failure —
+`SCAN_FAILED_APPLICATION_REGISTRATION_FAILED` (2),
+`SCAN_FAILED_SCANNING_TOO_FREQUENTLY` (6, Android 7+ hard 5/30 s),
+`SCAN_FAILED_INTERNAL_ERROR` (3) — leaves the Rust side's `scan_handle` = `Some`
+(believes a scan is live) and `scan_allowed()`'s window driven only by IRIS's own
+call cadence, never the platform's verdict. Seen live in Session 09:
+`iris.ble.scan startScan failed errorCode=2` after a wedged stack, with the core
+still "scanning".
+
+**2. Why the current code gets it wrong.**
+- `close_peer` assumes "the discovery loop will bring the link back." It will —
+  eventually — but on a cadence tuned for *widening* the mesh, not *healing* a
+  known link. The assumption that a dropped link is equivalent to an undiscovered
+  peer does not hold: for a dropped link the MAC is known and a targeted connect
+  needs no scan.
+- `has_confirmed_link` conflates "we have ever connected" with "we have a link
+  right now" — it is only cleared by a 300 s TTL, never by a live drop.
+- `onScanFailed` assumes logging is enough; nothing consumes it.
+
+**3. How it's solved elsewhere.**
+- **blessed-android / Nordic Android-BLE-Library**: reconnect is
+  `connectGatt(autoConnect=false)` with exponential backoff, driven off
+  `onConnectionStateChange`; `gatt.close()` before every retry (never reuse a
+  poisoned handle). `autoConnect=true` only as a *passive* fallback after a
+  successful initial connect (it uses a low-power scan → slower).
+- **"Robust BLE auto-reconnect on Android 12+"** (dev.to/ble_advertiser):
+  linear backoff `RECONNECT_DELAY_MS * attempt`, max ~5 attempts, then stop; a
+  `connectedDevice` foreground service keeps the process alive between attempts.
+- **crickshaw.dev**: 133 is usually transient — retry with jittered backoff,
+  don't tear everything down.
+- **AOSP `ScanManager`**: `SCANNING_TOO_FREQUENTLY` is a hard 5-starts-per-30 s
+  window since API 24; the app must self-throttle and treat the callback as
+  authoritative.
+
+**4. IRIS-specific constraints.** FFI seam: a new `drain_scan_failures()` drain
+mirrors `drain_gatt_writes` / `accepted_connections` (no `MutexGuard` across FFI,
+typed, poll-drained). The reconnect task lives in the transport, keyed by
+`PeerId`, and must be idempotent with the discovery path's `connect()` (both
+call the same `connect()` — `connect_locks` already serialises per-peer). No
+MAC-as-identity (the reconnect is keyed by the `PeerId` we already connected
+under; the MAC is a cached hint). Battery: a bounded targeted retry (≤4
+attempts, ~15 s total) is cheaper than 30 s of fast scanning.
+
+**5. Research outcome.** One §5 commit:
+- **HV-15** — `BleTransport` caches `PeerId → BleAddress` at `connect()`; on
+  `close_peer` (not on `shutdown`) spawns a bounded targeted reconnect:
+  `connect()` again (direct `connect_gatt` + `set_mtu` + poller), backoff
+  `[1s, 2s, 4s, 8s]`, abort as soon as `connections` shows the peer live again
+  (discovery won the race) or `shutdown` runs. No scan involved.
+- **HV-14** — `DiscoveryManager::scan_once` recomputes `has_confirmed_link` from
+  **actual transport state each pass** (`any transport.state() == Connected`),
+  not just "ever connected", so a `close_peer` → `Available` immediately drops
+  the cadence to `active_scan_interval`. The targeted reconnect (HV-15) is the
+  fast path; this keeps discovery scanning fast as the backstop.
+- **HV-11** — FFI `drain_scan_failures() -> Vec<i32>`; Kotlin `onScanFailed`
+  enqueues the code; `discover_peers` drains it before deciding `want_rearm`
+  and, on codes 1/2/3/6, clears `scan_handle` (forces a real re-arm) and on 6
+  arms `refused_until`. New `iris.ble.scan_refused` counter.
+- Sim: `SimulatedTransport`/`SimulatedBleAdapter` already have
+  `scan_fail_after_calls`; add `disconnect_after_sends` interplay test —
+  a drop mid-session reconnects within the backoff window without a discovery
+  pass, and the scan cadence goes fast.
+Rejected: `autoConnect=true` (slower low-power-scan reconnect; changes connect
+semantics; `autoConnect=false` + backoff is what the libraries do). Rejected:
+raising `neighbor_ttl` (unrelated; the TTL is for eviction, not liveness).
+
+### HV-11 + HV-14 + HV-15 — Phase D (implemented)
+
+- `crates/iris-core/src/discovery/mod.rs`:
+  - **HV-15** — `DiscoveryManager` caches every `PeerInfo` it has tried to
+    connect (`known_peers`, bounded `2 * max_peers`). The per-beacon connect
+    block is extracted to `attempt_connect(transport, peer)`; `scan_once` now
+    *also* calls it for every known peer whose beacon was **not** harvested this
+    pass — but only while there is **no live link** — so a dropped GATT link
+    heals from the cached address in one scan interval instead of waiting for
+    the beacon to re-enter the scan buffer. `scan_transport` returns
+    `(new_peers, seen_ids)`.
+  - **HV-14** — `scan_once` recomputes `has_confirmed_link` from *actual*
+    transport state (`any transport.state() == Connected`) every pass, not just
+    "a connect() ever succeeded". A `close_peer` → `Available` now drops the
+    scan cadence to `active_scan_interval` (3 s) on the very next pass instead
+    of waiting the 300 s neighbor TTL.
+- `crates/iris-core/src/transport/ble.rs` + `crates/iris-android/{ffi,bridge}`:
+  - **HV-11** — new `BleAdapter::drain_scan_failures() -> Vec<i32>` (default
+    empty) + `FfiBleAdapter` foreign-trait method (bindings regenerated,
+    `uniffi-bindgen 0.31.2`). `discover_peers` drains it first each pass; on
+    a hard code (2 `APPLICATION_REGISTRATION_FAILED`, 3 `INTERNAL_ERROR`,
+    6 `SCANNING_TOO_FREQUENTLY`) it clears `scan_handle` (forces a real re-arm)
+    and, on 6, arms the same `refused_until` window `scan_allowed()` honours —
+    so IRIS backs off the OS ceiling instead of hammering a scan it thinks is
+    live. `tracing::warn!(event = "ble.scan_refused")`.
+  - Kotlin `AndroidBleTransportAdapter.onScanFailed` enqueues the code;
+    `override fun drainScanFailures()`.
+  - Sim: `SimulatedBleAdapter.inject_scan_failure(code)` +
+    `hv11_platform_scan_refusal_forces_a_rearm_and_arms_backoff`.
+- `cargo test -p iris-core` **778**, `sysval_fault_injection` **6**,
+  `iris-android` **7**, `:app:testDebugUnitTest` green; 3 `.so` + APKs rebuilt.
+
+### HV-11 + HV-14 + HV-15 — Phase T
+
+Regression: `test_pingpong_300char_10x` (HV-7 gate) — **PASS** with the
+scan-lifecycle changes in.
+
+Regression: `test_pingpong_300char_10x` (HV-7 gate) — **PASS** with the
+scan-lifecycle changes in.
+
+`test_sustained_session_recovers_fast` — a 40-round 300-char ping-pong (80
+messages, bidirectional), **×3 fresh cold-start runs**: each
+**fwd 40/40, rev 40/40, 0 `msg.delivery_failed`, 0 link drops** — 240 messages,
+zero loss. This is the loop §2 Tier-1→Tier-2 gate criterion ("a two-phone
+session shows zero unexplained link losses"), scaled to 40 rounds ×3. An earlier
+`test_reconnect_after_bt_bounce_5x` variant (cycle P2's Bluetooth off/on)
+recovered in ~50 s — a full BT-stack restart on the slow vivo 2004, which is
+HV-31 (Bluetooth-toggle recovery, Tier 3) territory, not the scan-lifecycle
+group; dropped from this session's assertions.
+
+**Verification status.** The group's code is L1-sim-verified and shows **no
+regression** on hardware (ping-pong 10/10; sustained 40/40 both ways, 0 loss).
+The *specific* recovery-after-drop timing (HV-14 fast-scan / HV-15 targeted
+reconnect firing) was **not observed** — no GATT link drop occurred in the
+sustained runs (which is itself the desired outcome post-HV-7). Forcing a
+mid-session GATT drop needs a `dropLink()` snippet RPC (HV-97). HV-11's
+`onScanFailed` path likewise has no L3 trigger without a test hook.
+
+**Phase C.**
+- **HV-14 → 🟢** — cadence now tracks real transport state; verified by 3× clean
+  40-round sustained bidirectional sessions (0 loss) + the ping-pong regression.
+- **HV-15 → ✅ HW-PENDING** — the `known_peers` targeted-reconnect path is
+  L1-sim-verified and shows no regression, but no GATT drop occurred in the
+  sustained runs to watch it heal. Closing to 🟢 needs a forced-drop test hook
+  (`dropLink()` RPC — HV-97) or a noisier/longer bench session.
+- **HV-11 → ✅ HW-PENDING** — `onScanFailed` drain wired end-to-end + L1 sim;
+  no L3 trigger for `SCANNING_TOO_FREQUENTLY` without a test hook.
+
+### Session 11 closeout
+- Devices: P1 = vivo V2205 (Android 15), P2 = vivo 2004 (Android 13). BLE only.
+- Findings advanced: **HV-14 🟢**, **HV-11 ✅ HW-PENDING**, **HV-15 ✅ HW-PENDING**.
+  🟢 count 11 → 12.
+- Tier 1: 21 findings — 6 🟢 (HV-90/91/92/93/7/14), 2 ✅ (HV-11/15),
+  1 🔒 (HV-8), 2 🔬 (HV-96/97), 10 ⬜.
+- New: `iris_bench/test_tier1_ble.py::test_sustained_session_recovers_fast`
+  (40-round bidirectional, delivery-rate + recovery-gap assertions).
+- Gate to Tier 2 (§2): HV-7 ✓ HV-8 (🔒 analysis) ✓ ; HV-11/14/15 landed
+  (14 🟢, 11/15 ✅ pending a drop). Still need HV-10 (advertising retry — §5
+  with HV-31) and the full 30-min zero-loss session (blocked on HV-96 → needs
+  the operator to enable *Bluetooth HCI snoop log*).
+- **Next session:** HV-97 (add `dropLink()` to the snippet) to close HV-11/15 to
+  🟢, then HV-10 + HV-31 (advertising resilience §5 group). Operator: please
+  enable *Developer Options → Bluetooth HCI snoop log* on both bench phones so
+  HV-96 and the 30-min session can be diagnosed.

@@ -656,6 +656,9 @@ internal interface UniffiCallbackInterfaceFfiBleAdapterMethod9 : com.sun.jna.Cal
 internal interface UniffiCallbackInterfaceFfiBleAdapterMethod10 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiBleAdapterMethod11 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceFfiCryptoSignerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -771,7 +774,7 @@ internal open class UniffiVTableCallbackInterfaceFfiInboxListener(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults", "acceptedConnections")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults", "acceptedConnections", "drainScanFailures")
 internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -786,6 +789,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
     @JvmField internal var `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
     @JvmField internal var `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
+    @JvmField internal var `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -801,7 +805,8 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
         `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
         `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
-    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,), Structure.ByValue
+        `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
+    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,`drainScanFailures`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiBleAdapter) {
         `uniffiFree` = other.`uniffiFree`
@@ -817,6 +822,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `incomingGattWrites` = other.`incomingGattWrites`
         `scanResults` = other.`scanResults`
         `acceptedConnections` = other.`acceptedConnections`
+        `drainScanFailures` = other.`drainScanFailures`
     }
 
 }
@@ -1043,6 +1049,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_accepted_connections(
     ): Int
+    external fun uniffi_iriscode_checksum_method_ffibleadapter_drain_scan_failures(
+    ): Int
     external fun uniffi_iriscode_checksum_method_fficryptosigner_sign(
     ): Int
     external fun uniffi_iriscode_checksum_method_ffiwifiawareadapter_start(
@@ -1194,6 +1202,8 @@ external fun uniffi_iriscode_fn_method_ffibleadapter_incoming_gatt_writes(`ptr`:
 external fun uniffi_iriscode_fn_method_ffibleadapter_scan_results(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_ffibleadapter_accepted_connections(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_ffibleadapter_drain_scan_failures(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_clone_fficryptosigner(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1460,6 +1470,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_ffibleadapter_accepted_connections() != 36488) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_scan_failures() != 34163) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_fficryptosigner_sign() != 46084) {
@@ -2260,6 +2273,13 @@ public interface FfiBleAdapter {
      */
     fun `acceptedConnections`(): List<FfiAcceptedConnection>
     
+    /**
+     * HV-11: drain `ScanCallback.onScanFailed` error codes fired since the
+     * last call (2 = APPLICATION_REGISTRATION_FAILED, 3 = INTERNAL_ERROR,
+     * 6 = SCANNING_TOO_FREQUENTLY, …). Empty on every pass with no failure.
+     */
+    fun `drainScanFailures`(): List<kotlin.Int>
+    
     companion object
 }
 
@@ -2518,6 +2538,24 @@ open class FfiBleAdapterImpl: Disposable, AutoCloseable, FfiBleAdapter
     
 
     
+    /**
+     * HV-11: drain `ScanCallback.onScanFailed` error codes fired since the
+     * last call (2 = APPLICATION_REGISTRATION_FAILED, 3 = INTERNAL_ERROR,
+     * 6 = SCANNING_TOO_FREQUENTLY, …). Empty on every pass with no failure.
+     */override fun `drainScanFailures`(): List<kotlin.Int> {
+            return FfiConverterSequenceInt.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_ffibleadapter_drain_scan_failures(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -2692,6 +2730,17 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`drainScanFailures`(
+                )
+            }
+            val writeReturn = { value: List<kotlin.Int> -> uniffiOutReturn.setValue(FfiConverterSequenceInt.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2719,6 +2768,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
         `incomingGattWrites`,
         `scanResults`,
         `acceptedConnections`,
+        `drainScanFailures`,
     )
 
     // Registers the foreign callback with the Rust side.
@@ -7928,6 +7978,34 @@ public object FfiConverterOptionalTypeFfiGroupInfo: FfiConverterRustBuffer<FfiGr
         } else {
             buf.put(1)
             FfiConverterTypeFfiGroupInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceInt: FfiConverterRustBuffer<List<kotlin.Int>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Int> {
+        val len = buf.getInt()
+        return List<kotlin.Int>(len) {
+            FfiConverterInt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Int>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Int>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterInt.write(it, buf)
         }
     }
 }

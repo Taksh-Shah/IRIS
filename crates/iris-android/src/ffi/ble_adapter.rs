@@ -80,6 +80,10 @@ pub trait FfiBleAdapter: Send + Sync + 'static {
     /// HW-9: drain connections accepted by this node's GATT server since
     /// last call (a remote central dialed us) — see `FfiAcceptedConnection`.
     fn accepted_connections(&self) -> Vec<FfiAcceptedConnection>;
+    /// HV-11: drain `ScanCallback.onScanFailed` error codes fired since the
+    /// last call (2 = APPLICATION_REGISTRATION_FAILED, 3 = INTERNAL_ERROR,
+    /// 6 = SCANNING_TOO_FREQUENTLY, …). Empty on every pass with no failure.
+    fn drain_scan_failures(&self) -> Vec<i32>;
 }
 
 #[cfg(test)]
@@ -116,6 +120,9 @@ pub(crate) mod tests {
             Vec::new()
         }
         fn accepted_connections(&self) -> Vec<FfiAcceptedConnection> {
+            Vec::new()
+        }
+        fn drain_scan_failures(&self) -> Vec<i32> {
             Vec::new()
         }
     }

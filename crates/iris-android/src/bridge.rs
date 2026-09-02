@@ -287,6 +287,12 @@ impl BleAdapter for BleBridge {
             })
             .collect()
     }
+
+    // HV-11: pass the platform's async scan-failure codes straight through so
+    // `BleTransport::discover_peers` can re-arm a scan the OS silently refused.
+    fn drain_scan_failures(&self) -> Vec<i32> {
+        self.ffi.drain_scan_failures()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -635,6 +641,9 @@ mod tests {
             Vec::new()
         }
         fn accepted_connections(&self) -> Vec<crate::ffi::ble_adapter::FfiAcceptedConnection> {
+            Vec::new()
+        }
+        fn drain_scan_failures(&self) -> Vec<i32> {
             Vec::new()
         }
     }

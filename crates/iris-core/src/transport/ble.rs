@@ -270,6 +270,15 @@ pub trait BleAdapter: Send + Sync + 'static {
     fn drain_disconnected_handles(&self) -> Vec<GattHandle> {
         Vec::new()
     }
+    /// HV-11: `ScanCallback.onScanFailed` error codes fired since the last
+    /// call. Android's async scan-failure callback is otherwise invisible to
+    /// the core — a `SCAN_FAILED_SCANNING_TOO_FREQUENTLY` (6),
+    /// `_APPLICATION_REGISTRATION_FAILED` (2) or `_INTERNAL_ERROR` (3) leaves
+    /// the transport believing a scan is live when the OS refused it. Default
+    /// empty so non-Android implementors keep compiling.
+    fn drain_scan_failures(&self) -> Vec<i32> {
+        Vec::new()
+    }
 }
 
 /// In-memory BLE adapter for tests and simulation. No hardware involved.
@@ -324,6 +333,8 @@ pub struct SimulatedBleAdapter {
     /// `GattFailure` (write-completion timeout) then recover — models a
     /// momentary RF dropout / stack contention mid-message.
     transient_write_failures: std::sync::atomic::AtomicU32,
+    /// HV-11: queued `onScanFailed` error codes, drained by `drain_scan_failures`.
+    scan_failures: std::sync::Mutex<Vec<i32>>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -417,6 +428,14 @@ impl SimulatedBleAdapter {
         self.transient_write_failures
             .store(n, std::sync::atomic::Ordering::Relaxed);
     }
+    /// HV-11: inject an `onScanFailed(code)` the transport will observe on its
+    /// next `discover_peers` via `drain_scan_failures`.
+    pub fn inject_scan_failure(&self, code: i32) {
+        self.scan_failures
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(code);
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -488,6 +507,9 @@ impl BleAdapter for SimulatedBleAdapter {
         std::mem::take(
             &mut *self.disconnected.lock().unwrap_or_else(|p| p.into_inner()),
         )
+    }
+    fn drain_scan_failures(&self) -> Vec<i32> {
+        std::mem::take(&mut *self.scan_failures.lock().unwrap_or_else(|p| p.into_inner()))
     }
     fn gatt_write(
         &self,
@@ -1079,6 +1101,27 @@ impl Transport for BleTransport {
         // going to restart the scan. A harvest-only pass costs the OS nothing,
         // so it must not burn the `scan_allowed` budget (this was the
         // "discover_peers counts, startScan counts" conflation — HV-14).
+        // HV-11: consume any async `onScanFailed` the platform fired since the
+        // last pass. A hard refusal (2 APPLICATION_REGISTRATION_FAILED,
+        // 3 INTERNAL_ERROR, 6 SCANNING_TOO_FREQUENTLY) means the scan we think
+        // is live is not — drop the handle so this pass *re-arms* instead of
+        // harvesting a dead scan, and on 6 arm the same `refused_until` backoff
+        // `scan_allowed()` uses so we do not immediately trip the OS ceiling
+        // again.
+        for code in adapter.drain_scan_failures() {
+            if matches!(code, 2 | 3 | 6) {
+                *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                tracing::warn!(
+                    event = "ble.scan_refused",
+                    code,
+                    "platform onScanFailed — forcing a scan re-arm"
+                );
+                if code == 6 {
+                    let until = std::time::Instant::now() + SCAN_WINDOW;
+                    *self.refused_until.write().unwrap_or_else(|p| p.into_inner()) = Some(until);
+                }
+            }
+        }
         const SCAN_REARM_EVERY: u64 = 5;
         let pass = self.scan_pass.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let want_rearm = {
@@ -2100,6 +2143,34 @@ mod tests {
             "the {}-th scan re-arm within 30 s must be refused (AC-5)",
             SCAN_CEILING + 1
         );
+    }
+
+    #[tokio::test]
+    async fn hv11_platform_scan_refusal_forces_a_rearm_and_arms_backoff() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        // First pass re-arms and succeeds (pass 0).
+        assert!(t.discover_peers(DiscoveryConfig::default()).await.is_ok());
+        let stops_after_first = adapter.scan_stop_calls().len();
+
+        // Platform fires onScanFailed(SCANNING_TOO_FREQUENTLY) asynchronously.
+        adapter.inject_scan_failure(6);
+        // Next pass (not normally a re-arm pass) must be refused — the drained
+        // failure both cleared `scan_handle` (forcing a re-arm) and armed the
+        // `refused_until` window `scan_allowed()` honours.
+        let err = t.discover_peers(DiscoveryConfig::default()).await.map(|_| ());
+        assert!(
+            matches!(err, Err(TransportError::Busy)),
+            "a platform SCANNING_TOO_FREQUENTLY must back the transport off, got {err:?}"
+        );
+        // It did NOT start a new scan while backed off (no extra stop_scan).
+        assert_eq!(adapter.scan_stop_calls().len(), stops_after_first);
+
+        // A non-hard failure code (e.g. 1 ALREADY_STARTED handled elsewhere) is
+        // ignored by this path — sanity that only 2/3/6 arm the backoff.
+        adapter.inject_scan_failure(5);
+        // still refused because the code-6 window has not elapsed
+        assert!(t.discover_peers(DiscoveryConfig::default()).await.is_err());
     }
 
     #[tokio::test]

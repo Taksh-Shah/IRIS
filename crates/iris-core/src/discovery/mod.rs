@@ -20,7 +20,7 @@ use tokio::sync::broadcast;
 use tokio::sync::RwLock;
 
 use crate::message::MessagePriority::P2;
-use crate::message::{DiscoveryConfig as ScanConfig, LinkQuality, PeerId};
+use crate::message::{DiscoveryConfig as ScanConfig, LinkQuality, PeerId, PeerInfo};
 use crate::transport::{TopologyEvent, Transport, TransportId};
 use crate::TransportError;
 
@@ -112,6 +112,14 @@ pub struct DiscoveryManager {
     // after the first couple of failures, which is the only thing in this
     // codebase's control.
     connect_backoff: tokio::sync::Mutex<HashMap<(TransportId, PeerId), ConnectBackoff>>,
+    /// HV-15: every `PeerInfo` we have ever tried to connect (its transport
+    /// addresses included). When a GATT link drops, its beacon may not be in
+    /// the *current* scan buffer for several passes — but `connect()` only
+    /// needs the cached address, not a fresh scan. `scan_once` re-attempts
+    /// `connect()` for these when there is no live link, so a drop heals in a
+    /// scan interval instead of waiting for the beacon to be re-harvested.
+    /// Bounded at `2 * max_peers`.
+    known_peers: tokio::sync::Mutex<HashMap<PeerId, PeerInfo>>,
     /// HV-91: true once at least one `connect()` has succeeded and the peer has
     /// not since been evicted. Drives the scan cadence — fast (`active_scan_
     /// interval`) until there is a real link, then `scan_interval`. This is a
@@ -145,6 +153,7 @@ impl DiscoveryManager {
             mode: AtomicU8::new(DiscoveryMode::Passive as u8),
             task: tokio::sync::Mutex::new(None),
             connect_backoff: tokio::sync::Mutex::new(HashMap::new()),
+            known_peers: tokio::sync::Mutex::new(HashMap::new()),
             has_confirmed_link: std::sync::atomic::AtomicBool::new(false),
             config,
         }
@@ -238,10 +247,58 @@ impl DiscoveryManager {
     /// transports (internet, LoRa, satellite) benefit immediately.
     pub async fn scan_once(&self) {
         let transports = self.transports.read().await.clone();
-        let per_transport: Vec<Vec<PeerId>> =
+        let per_transport: Vec<(Vec<PeerId>, Vec<PeerId>)> =
             futures_util::future::join_all(transports.iter().map(|t| self.scan_transport(t)))
                 .await;
-        let new_peers: Vec<PeerId> = per_transport.into_iter().flatten().collect();
+        let mut new_peers: Vec<PeerId> = Vec::new();
+        let mut seen_peers: Vec<PeerId> = Vec::new();
+        for (new, seen) in per_transport {
+            new_peers.extend(new);
+            seen_peers.extend(seen);
+        }
+        // HV-14: the scan cadence is driven by `has_confirmed_link`. Recompute it
+        // from *actual* transport state every pass, not just "a connect() has
+        // ever succeeded" — so when `close_peer` drops the last live GATT link
+        // (transport falls back to `Available`) the very next pass resumes the
+        // fast `active_scan_interval` instead of waiting the 300 s neighbor TTL.
+        // The targeted reconnect (HV-15) is the fast path; this keeps discovery
+        // scanning fast as the backstop while it retries.
+        let any_connected = transports
+            .iter()
+            .any(|t| t.state() == crate::transport::TransportState::Connected);
+        self.has_confirmed_link
+            .store(any_connected, std::sync::atomic::Ordering::Relaxed);
+        // HV-15: with no live link, re-attempt `connect()` for every known peer
+        // whose beacon was NOT harvested this pass — a dropped GATT link's
+        // beacon can be out of the scan buffer for several passes, but the
+        // cached address is all `connect()` needs. Skipped while a link is up
+        // (the mesh is working; the per-beacon path covers the rest).
+        if !any_connected {
+            let seen: std::collections::HashSet<PeerId> = seen_peers.iter().copied().collect();
+            // Only retry a known peer that is still in the neighbor table
+            // (i.e. its beacon was seen within `neighbor_ttl` — the peer is
+            // around, the link just dropped) — not one that has genuinely gone
+            // away. `connect_backoff` bounds the wasted `connect()` blocking
+            // after the 2nd consecutive failure. Cap per pass so one flapping
+            // peer cannot stall the loop.
+            let mut stale: Vec<PeerInfo> = Vec::new();
+            {
+                let known = self.known_peers.lock().await;
+                for p in known.values() {
+                    if seen.contains(&p.peer_id) || stale.len() >= 3 {
+                        continue;
+                    }
+                    if self.table.get(&p.peer_id).await.is_some() {
+                        stale.push(p.clone());
+                    }
+                }
+            }
+            for peer in &stale {
+                for t in &transports {
+                    self.attempt_connect(t, peer).await;
+                }
+            }
+        }
         // First-contact handshake for peers never seen before.
         for peer_id in new_peers {
             self.run_handshake(peer_id).await;
@@ -266,7 +323,7 @@ impl DiscoveryManager {
     /// Scan one transport: discover peers, upsert into the neighbor table,
     /// attempt connect for each visible peer, emit topology events.
     /// Returns the peer ids of newly discovered (never-seen-before) peers.
-    async fn scan_transport(&self, transport: &Arc<dyn Transport>) -> Vec<PeerId> {
+    async fn scan_transport(&self, transport: &Arc<dyn Transport>) -> (Vec<PeerId>, Vec<PeerId>) {
         let scan_cfg = ScanConfig {
             timeout: self.config.scan_timeout,
             max_peers: self.config.max_peers,
@@ -283,13 +340,15 @@ impl DiscoveryManager {
                     error = %e,
                     "discover_peers() failed for this pass; skipping this transport this round"
                 );
-                return Vec::new();
+                return (Vec::new(), Vec::new());
             }
         };
         let mut new_peers = Vec::new();
+        let mut seen_ids: Vec<PeerId> = Vec::new();
         let mut seen_this_pass = 0usize;
         while let Some(peer) = futures_util::StreamExt::next(&mut stream).await {
             seen_this_pass += 1;
+            seen_ids.push(peer.peer_id);
             let ev = self
                 .table
                 .upsert(&peer, transport.transport_id(), LinkQuality::Good)
@@ -297,69 +356,26 @@ impl DiscoveryManager {
             if matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })) {
                 new_peers.push(peer.peer_id);
             }
+            // HV-15: remember this peer (address included) so `scan_once` can
+            // re-attempt `connect()` even on passes that do not re-harvest its
+            // beacon.
+            {
+                let mut known = self.known_peers.lock().await;
+                if known.len() >= self.config.max_peers.saturating_mul(2)
+                    && !known.contains_key(&peer.peer_id)
+                {
+                    // Bounded: drop an arbitrary entry (churn guard, not LRU —
+                    // a genuinely active peer is re-inserted next pass anyway).
+                    if let Some(k) = known.keys().next().copied() {
+                        known.remove(&k);
+                    }
+                }
+                known.insert(peer.peer_id, peer.clone());
+            }
             // HW-3: attempt connect unconditionally each pass — `connect()`
             // is idempotent/no-op when the link already exists (AC-9), so
             // this retries dropped links without requiring a re-discovery.
-            let backoff_key = (transport.transport_id().clone(), peer.peer_id);
-            if let Some(state) = self.connect_backoff.lock().await.get(&backoff_key) {
-                if Instant::now() < state.next_attempt {
-                    tracing::debug!(
-                        event = "discovery.connect_backoff_skip",
-                        peer = %peer.peer_id,
-                        transport = %transport.transport_id(),
-                        failures = state.failures,
-                        "skipping connect() this pass — backing off after repeated failures"
-                    );
-                    if let Some(ev) = ev {
-                        self.events.send(ev).ok();
-                    }
-                    continue;
-                }
-            }
-            let connect_started = std::time::Instant::now();
-            match transport.connect(&peer).await {
-                Ok(_) => {
-                    self.connect_backoff.lock().await.remove(&backoff_key);
-                    self.has_confirmed_link
-                        .store(true, std::sync::atomic::Ordering::Relaxed);
-                    tracing::debug!(
-                        event = "discovery.connect_ok",
-                        peer = %peer.peer_id,
-                        transport = %transport.transport_id(),
-                        elapsed_ms = connect_started.elapsed().as_millis() as u64,
-                        "link to known peer confirmed live (idempotent no-op if already connected)"
-                    );
-                }
-                Err(e) => {
-                    let mut backoff = self.connect_backoff.lock().await;
-                    let failures = backoff.get(&backoff_key).map_or(0, |s| s.failures) + 1;
-                    // First failure keeps the normal scan cadence;
-                    // second+ consecutive failure starts doubling.
-                    if failures >= 2 {
-                        let delay = CONNECT_BACKOFF_BASE
-                            .saturating_mul(1 << (failures - 2).min(4))
-                            .min(CONNECT_BACKOFF_MAX);
-                        backoff.insert(
-                            backoff_key.clone(),
-                            ConnectBackoff { next_attempt: Instant::now() + delay, failures },
-                        );
-                    } else {
-                        backoff.insert(
-                            backoff_key.clone(),
-                            ConnectBackoff { next_attempt: Instant::now(), failures },
-                        );
-                    }
-                    drop(backoff);
-                    tracing::warn!(
-                        event = "discovery.connect_failed",
-                        peer = %peer.peer_id,
-                        transport = %transport.transport_id(),
-                        error = %e,
-                        elapsed_ms = connect_started.elapsed().as_millis() as u64,
-                        "failed to establish/confirm link with peer this scan pass — will retry next pass"
-                    );
-                }
-            }
+            self.attempt_connect(transport, &peer).await;
             if let Some(ev) = ev {
                 self.events.send(ev).ok();
             }
@@ -370,7 +386,72 @@ impl DiscoveryManager {
             peers_seen = seen_this_pass,
             "discovery pass complete for this transport"
         );
-        new_peers
+        (new_peers, seen_ids)
+    }
+
+    /// One backoff-gated `connect()` attempt for `peer` over `transport`.
+    /// `connect()` is idempotent (a live link is a no-op), so this is the
+    /// single reconnect path — used both for freshly-scanned peers and, via
+    /// `scan_once`, for a known peer whose link dropped but whose beacon is not
+    /// in the current scan buffer (HV-15).
+    async fn attempt_connect(&self, transport: &Arc<dyn Transport>, peer: &PeerInfo) {
+        let backoff_key = (transport.transport_id().clone(), peer.peer_id);
+        if let Some(state) = self.connect_backoff.lock().await.get(&backoff_key) {
+            if Instant::now() < state.next_attempt {
+                tracing::debug!(
+                    event = "discovery.connect_backoff_skip",
+                    peer = %peer.peer_id,
+                    transport = %transport.transport_id(),
+                    failures = state.failures,
+                    "skipping connect() this pass — backing off after repeated failures"
+                );
+                return;
+            }
+        }
+        let connect_started = std::time::Instant::now();
+        match transport.connect(peer).await {
+            Ok(_) => {
+                self.connect_backoff.lock().await.remove(&backoff_key);
+                self.has_confirmed_link
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                tracing::debug!(
+                    event = "discovery.connect_ok",
+                    peer = %peer.peer_id,
+                    transport = %transport.transport_id(),
+                    elapsed_ms = connect_started.elapsed().as_millis() as u64,
+                    "link to known peer confirmed live (idempotent no-op if already connected)"
+                );
+            }
+            Err(e) => {
+                let mut backoff = self.connect_backoff.lock().await;
+                let failures = backoff.get(&backoff_key).map_or(0, |s| s.failures) + 1;
+                // First failure keeps the normal scan cadence;
+                // second+ consecutive failure starts doubling.
+                if failures >= 2 {
+                    let delay = CONNECT_BACKOFF_BASE
+                        .saturating_mul(1 << (failures - 2).min(4))
+                        .min(CONNECT_BACKOFF_MAX);
+                    backoff.insert(
+                        backoff_key.clone(),
+                        ConnectBackoff { next_attempt: Instant::now() + delay, failures },
+                    );
+                } else {
+                    backoff.insert(
+                        backoff_key.clone(),
+                        ConnectBackoff { next_attempt: Instant::now(), failures },
+                    );
+                }
+                drop(backoff);
+                tracing::warn!(
+                    event = "discovery.connect_failed",
+                    peer = %peer.peer_id,
+                    transport = %transport.transport_id(),
+                    error = %e,
+                    elapsed_ms = connect_started.elapsed().as_millis() as u64,
+                    "failed to establish/confirm link with peer this scan pass — will retry next pass"
+                );
+            }
+        }
     }
 
     /// Exchange capabilities + dedup Bloom with a peer. Builds the handshake

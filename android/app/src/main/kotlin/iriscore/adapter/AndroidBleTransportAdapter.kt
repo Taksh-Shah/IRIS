@@ -222,12 +222,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         }
 
         override fun onScanFailed(errorCode: Int) {
-            // Was unoverridden — the platform's own restart-throttle refusal
-            // (SCAN_FAILED_ALREADY_STARTED et al.) was invisible; the core's
-            // own scan_allowed() backoff had no way to see it either.
+            // HV-11: this used to be log-only, so the core's scan_allowed()
+            // backoff never learned the platform refused. Queue the code for
+            // drainScanFailures() — BleTransport::discover_peers re-arms a scan
+            // the OS silently rejected (SCAN_FAILED_APPLICATION_REGISTRATION_
+            // FAILED=2, INTERNAL_ERROR=3, SCANNING_TOO_FREQUENTLY=6).
             iriscore.util.IrisLog.w("ble.scan", "startScan failed errorCode=$errorCode")
+            while (scanFailures.size >= MAX_PENDING) scanFailures.poll()
+            scanFailures.add(errorCode)
         }
     }
+
+    /** HV-11: onScanFailed error codes awaiting drainScanFailures(). */
+    private val scanFailures = ConcurrentLinkedQueue<Int>()
 
     /** RSSI floor applied on the platform side (core filter default -95 dBm). */
     @Volatile
@@ -787,6 +794,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     // dialed to us, mirroring incomingGattWrites()/scanResults()'s pattern.
     override fun acceptedConnections(): List<FfiAcceptedConnection> =
         FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(pendingAcceptedConnections) }
+
+    override fun drainScanFailures(): List<Int> =
+        FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(scanFailures) }
 
     /**
      * Atomically removes and returns every buffered item.
