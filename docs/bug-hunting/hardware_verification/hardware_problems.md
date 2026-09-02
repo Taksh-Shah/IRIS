@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 17 | 4 | 0 | 0 | 0 | 13 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 19 | 4 | 0 | 0 | 0 | 15 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,7 +69,7 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **94** | **10** | **7** | **0** | **1** | **76** |
+| **Total** | | **96** | **10** | **7** | **0** | **1** | **78** |
 
 **Last updated:** 2026-09-02 (Session 09 — HV-92 + HV-93 🟢: the first
 addressed BLE message went from *always dropped* to *P1→P2 through the app UI
@@ -1019,6 +1019,65 @@ scan starvation. None of this is tested or handled.
 measure IRIS discovery/delivery success, and add graceful degradation: cap
 concurrent IRIS GATT connections, back off advertising when the system is
 contended, surface a "radio contended" diagnostic.
+
+---
+
+### HV-94 — Sender keeps a zombie GATT link after the peer's app process restarts: writes "succeed" into a dead server, no liveness check, no reconnect
+
+- **Fix status:** ⬜ (found in Session 09 while verifying HV-92/HV-93)
+- **Area:** `ble.rs` `send` / `close_peer` / connection liveness, interacts with
+  HV-15 (dropped-link reconnect) and HV-27 (per-link health)
+- **Severity:** High · **HW gate:** 2 phones
+
+**What:** distinct from HV-15, where both sides see the link drop. Here the
+Android ACL/GATT connection **stays up from the central's (P1's) perspective**
+while the *peripheral's app process* (P2) is killed and relaunched underneath it.
+P1's `connections` entry and poller are untouched, `gatt_write` keeps returning
+`Ok` (the frames leave P1's radio), so nothing triggers `close_peer` — but P2's
+new process has a fresh GATT server, a fresh engine, and fresh X25519 keys, so
+the frames are either not routed to the new server object or cannot be decrypted.
+Observed: after `am force-stop` + relaunch on P2, P1's subsequent `/send`s log
+`msg.sent` normally and P2 shows nothing until the discovery loop eventually
+re-churns the peer (tens of seconds to never).
+
+**Why it matters:** an OOM-kill or a user swipe-away of the IRIS app on one phone
+silently blackholes every message the other phone sends until a full
+rediscovery. The operator will read it as "it just stopped working."
+
+**Fix sketch:** (a) a cheap liveness signal on the central side — treat a run of
+writes with no corresponding ACK / no `onCharacteristicWrite` confirmation, or a
+GATT error, as "peer gone" and `close_peer` + reconnect; (b) or an application
+heartbeat on the IRIS characteristic; (c) the peripheral, on startup, should
+proactively tear down any lingering server-side connections so the central sees a
+real disconnect. Coordinate with HV-15's reconnect path and HV-27's per-link
+health.
+
+---
+
+### HV-95 — `openGattServer` returning null is swallowed — the node advertises an IRIS beacon with no GATT server behind it
+
+- **Fix status:** ⬜ (found in Session 09; recovered manually with a Bluetooth off/on toggle)
+- **Area:** `AndroidBleTransportAdapter.ensureGattServer` / `startAdvertising`
+- **Severity:** High · **HW gate:** 2 phones
+
+**What:** `ensureGattServer()` calls `bleManager.openGattServer(...)`; when the
+Bluetooth stack is wedged (seen after heavy connect/disconnect churn + repeated
+reinstalls — `openGattServer` returns `null`, `startScan` fails
+`errorCode=2 SCAN_FAILED_APPLICATION_REGISTRATION_FAILED`, `dumpsys
+bluetooth_manager` stops reporting adapter state) it logs
+`ensureGattServer: openGattServer returned null` **and returns** — but
+`startAdvertising` then proceeds anyway. The node broadcasts a connectable IRIS
+beacon it cannot serve: every peer that connects fails
+"characteristic not yet discovered" forever (the exact HV-92 symptom, but here
+the cause is a missing server, not an incomplete discovery). Only a manual
+`svc bluetooth disable/enable` (or reboot) recovered it in Session 09.
+
+**Fix sketch:** if `openGattServer` returns null (or `addService` returns false),
+`startAdvertising` must fail with a typed error so the core's transport-start
+path records `ble-android` as failed rather than half-up; retry `openGattServer`
+with bounded backoff; surface "BLE server unavailable — toggle Bluetooth" in
+`/diag`. Consider a watchdog that re-runs `ensureGattServer` when the server
+handle is null while advertising is supposedly active.
 
 ---
 
