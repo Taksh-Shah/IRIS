@@ -65,8 +65,19 @@ import java.util.concurrent.atomic.AtomicLong
 class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     companion object {
-        /** IRIS BLE transport service UUID (BLE-001). */
-        val IRIS_SERVICE_UUID: UUID = UUID.fromString("3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0d")
+        /**
+         * IRIS BLE transport service UUID (BLE-001).
+         *
+         * CROSS-001: must byte-match `iris_core::transport::ble::IRIS_SERVICE_UUID`
+         * (`01000000-0000-0000-0000-000000000000`) exactly — this is what iOS
+         * advertises too (`IrisBleConstants.serviceUUID`). Android used to define
+         * its own independent value (`3e5c6b1a-...-0c0d`) here, so an Android
+         * scanner filtering on that UUID never matched an iOS peripheral
+         * advertising Rust core's UUID, and vice versa — Android and iOS were
+         * mutually invisible to each other's BLE discovery. Do not change this
+         * without also updating the other two definitions.
+         */
+        val IRIS_SERVICE_UUID: UUID = UUID.fromString("01000000-0000-0000-0000-000000000000")
 
         /** GATT write characteristic used by the core BLE-001 transport. */
         val IRIS_CHARACTERISTIC_UUID: UUID = UUID.fromString("3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e")

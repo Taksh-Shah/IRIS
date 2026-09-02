@@ -24,9 +24,20 @@ build, same discipline `taksh_fix_log.md` uses for `PENDING LIVE-PG` and
 
 ## Run log
 
-No runs yet. The next wake cycle should start at Tier 0 (CROSS-001) per
-`integration_problem_loop.md` §2 and record its result here using the format
-below.
+## Run 1 — 2026-09-02 — Tier 0
+
+Target finding (1): CROSS-001.
+
+| # | Finding | Status | Commit | Verification |
+|---|---|---|---|---|
+| 1 | CROSS-001 | ✅ Fixed · PENDING BUILD VERIFICATION | (pending commit) | `AndroidBleTransportAdapter.kt:69` `IRIS_SERVICE_UUID` changed `3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0d` → `01000000-0000-0000-0000-000000000000` (matches `iris_core::transport::ble::IRIS_SERVICE_UUID` and `IrisBleConstants.serviceUUID` exactly). Confirmed single definition site via grep across `android/` (7 hits total: 1 definition, 6 references — `BleScanSession.kt:111`, `ensureGattServer()` at `:530`/`:543`, GATT lookup at `:288`, two doc-comment mentions), all reference the constant, none duplicate the literal. Re-grepped whole repo for the old UUID afterward: zero hits in any `.kt`/`.rs`/`.swift` source file; remaining hits are hardware-log evidence files (historical, pre-fix captures) and this report's own bug narrative (also historical, describes the pre-fix state on purpose). No Android SDK/Gradle in this environment — cannot compile-verify per `integration_problem_loop.md` §4 step 6. |
+
+**Run closeout:** Kotlin-only fix — no Rust files touched, so no Rust build was needed (and no `cargo` toolchain exists in this environment regardless). Kotlin side unverified by compiler; verified by exhaustive grep instead.
+
+**Carried notes for later runs:** CROSS-001 needs promotion from `PENDING BUILD VERIFICATION` to plain `✅ Fixed` by a human running the Android Gradle build, then ideally a real two-device BLE discovery test (Android ↔ iOS) per the report's own recommended verification in `taksh_problems.md`'s hardware-verification precedent.
+
+### Next run
+Tier 1: CROSS-002 (iOS ContentType::Sos), CROSS-003 (NoopSecurityPolicy wiring), CROSS-004 (iOS DevCryptoProvider), CROSS-005 (Desktop received_at_unix) — no ordering dependency between them, fix in ID order.
 
 ---
 

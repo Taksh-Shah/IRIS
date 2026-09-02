@@ -34,7 +34,7 @@ Three results dominate this report.
 
 **This section is rewritten by the fix loop after every finding.** Individual findings carry their own `Fix status` line for in-place detail; this table is the roll-up.
 
-**Last updated:** 2026-09-01 — initial sweep complete. 8 cross-section integration findings. 0 fixed.
+**Last updated:** 2026-09-02 — Run 1: fixed CROSS-001 (Android BLE service UUID aligned to Rust/iOS). 8 cross-section integration findings. 1 fixed (pending build verification), 7 remaining.
 
 ### Status legend
 ⬜ Not started · 🔵 In progress · ✅ Fixed & tested · 🟢 Fixed & verified · 🔒 Blocked (reason recorded) · ❌ Attempted, reverted (reason recorded) · ⚪ Not applicable
@@ -43,10 +43,10 @@ Three results dominate this report.
 
 | Tier | Name | Findings | ⬜ Not started | 🔵 In progress | ✅/🟢 Done | 🔒 Blocked | ❌ Reverted | Gate to enter |
 |---|---|---|---|---|---|---|---|---|
-| **0** | Critical — cross-platform data path broken | 1 | 1 | 0 | 0 | 0 | 0 | Fix first — nothing else matters if platforms can't see each other |
-| **1** | High — security regressions and build breaks | 4 | 4 | 0 | 0 | 0 | 0 | Tier 0 complete |
+| **0** | Critical — cross-platform data path broken | 1 | 0 | 0 | 1 | 0 | 0 | **✅ COMPLETE** (pending build verification — CROSS-001) |
+| **1** | High — security regressions and build breaks | 4 | 4 | 0 | 0 | 0 | 0 | Tier 0 complete — **now active** |
 | **2** | Medium — missing wiring, compile breaks on regen | 3 | 3 | 0 | 0 | 0 | 0 | Can run in parallel with Tier 1 |
-| **Total** | | **8** | **8** | **0** | **0** | **0** | **0** | |
+| **Total** | | **8** | **7** | **0** | **1** | **0** | **0** | |
 
 ### Tier membership
 
@@ -67,7 +67,7 @@ CROSS-006, CROSS-007, CROSS-008
 
 ### CROSS-001 — Android BLE Service UUID mismatch: Android ↔ iOS/Rust are invisible to each other
 
-- **Fix status:** ⬜ Not started
+- **Fix status:** ✅ Fixed · PENDING BUILD VERIFICATION · Tier 0 · 2026-09-02 — `AndroidBleTransportAdapter.kt:69`'s `IRIS_SERVICE_UUID` changed from `3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0d` to `01000000-0000-0000-0000-000000000000`, matching Rust core and iOS exactly. Single definition site; `BleScanSession.kt:111`, `ensureGattServer()`, and the GATT-lookup call site at `AndroidBleTransportAdapter.kt:288` all reference the constant rather than duplicating the literal, so no other file needed a change. Verified by grep: zero remaining references to the old UUID in any `.kt`/`.rs`/`.swift` source file (only hardware-log evidence files and this report's own bug description still contain the old value, both as historical record, not live code). No Gradle toolchain in this environment to compile-verify — promote to plain `✅ Fixed` after a human runs the Android build and a real two-device BLE discovery test.
 - **Severity:** Critical
 - **Sections:** Sohan (Android) ↔ Shrey (iOS) / Taksh (Rust Transport)
 - **Files:**
