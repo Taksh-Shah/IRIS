@@ -591,7 +591,7 @@ target: first delivery under ~5 s.
 
 ### HV-92 — First send after connect fails with "characteristic not yet discovered" and the message is dropped, not held
 
-- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · app-UI demo P1→P2 **15/15** (10/10 + 5/5 reconfirm), ~0.5 s/msg · Session 09 · with HV-93 (§5 group)
+- **Fix status:** 🟢 HW-verified · commit e6a4e72 · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · app-UI demo P1→P2 **15/15** (10/10 + 5/5 reconfirm), ~0.5 s/msg · Session 09 · with HV-93 (§5 group)
 - **Area:** `AndroidBleTransportAdapter.onServicesDiscovered` (completes the
   `connectionReady` future even when the IRIS characteristic is absent from the
   freshly-discovered GATT DB), `crates/iris-core/src/transport/ble.rs`
@@ -641,7 +641,7 @@ smoke stays 10/10.
 
 ### HV-93 — Inbound GATT-server frames are never drained: `onConnectionStateChange` doesn't fire for the accepting side, so no reassembly poller is spawned
 
-- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · app-UI demo P1→P2 **15/15**; every `onCharacteristicWriteRequest` now followed by `msg.delivered hops=0` (was 0 deliveries) · Session 09 · with HV-92 (§5 group)
+- **Fix status:** 🟢 HW-verified · commit e6a4e72 · 2026-09-02 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · app-UI demo P1→P2 **15/15**; every `onCharacteristicWriteRequest` now followed by `msg.delivered hops=0` (was 0 deliveries) · Session 09 · with HV-92 (§5 group)
 - **Area:** `AndroidBleTransportAdapter.gattServerCallback`
   (`onConnectionStateChange` / `onCharacteristicWriteRequest`), interacts with
   `crates/iris-core/src/transport/ble.rs::ensure_accept_poller`
