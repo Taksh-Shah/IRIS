@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 4 | 1 | 2 | 7 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 5 | 1 | 2 | 6 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,7 +69,7 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **100** | **15** | **11** | **1** | **3** | **70** |
+| **Total** | | **100** | **15** | **12** | **1** | **3** | **69** |
 
 **Last updated:** 2026-09-03 (Session 15 — **HV-94 HW-verified** — client-side
 GATT disconnect now surfaced to the core via `drainDisconnectedHandles` (mirror
@@ -1050,7 +1050,19 @@ instead of destroying it.
 
 ### HV-16 — GATT server / characteristic UUIDs: verify Android and the core actually agree on the wire
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · commit <pending> · 2026-09-03 · Session 15 ·
+  regression guard landed. The four UUID sites agree at HEAD (Kotlin
+  `IRIS_SERVICE_UUID` was unified to `01000000-…` by CROSS-001 `9bddad9`; the
+  write path already threads `IRIS_WRITE_CHARACTERISTIC` from the core across
+  the FFI). Two coupled tests now fail the build on any drift:
+  `iris-android/src/bridge.rs::hv16_ble_uuids_match_the_canonical_wire_values`
+  (core `pub const`s → canonical hex, all distinct) and
+  `android/.../BleUuidParityTest.kt` (parses those literals, asserts the Kotlin
+  constants match + non-collision). UUID agreement is transitively HW-verified
+  by every passing BLE delivery test this pass (HV-7/92/93/98 all exercise the
+  write characteristic + GATT-server match). iOS `IrisBleConstants` flagged in
+  both tests' comments (not on the bench).
+- **Was:** ⬜
 - **Area:** `AndroidBleTransportAdapter.IRIS_SERVICE_UUID` /
   `IRIS_CHARACTERISTIC_UUID` vs `ble.rs::IRIS_WRITE_CHARACTERISTIC` /
   `IRIS_SERVICE_UUID` / `IRIS_IDENTIFY_CHARACTERISTIC`

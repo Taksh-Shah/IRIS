@@ -730,4 +730,35 @@ mod tests {
         assert!(bridge.drain_gatt_writes(GattHandle(1)).is_empty());
         assert!(bridge.drain_gatt_writes(GattHandle(2)).is_empty());
     }
+
+    /// HV-16: the canonical IRIS BLE UUIDs. Any drift here must also break the
+    /// Kotlin `BleUuidParityTest` (which asserts the same strings against
+    /// `AndroidBleTransportAdapter`'s constants) — the two together are the
+    /// cross-FFI regression guard the finding asks for. Change a UUID → change
+    /// BOTH tests (and iOS `IrisBleConstants`) deliberately.
+    #[test]
+    fn hv16_ble_uuids_match_the_canonical_wire_values() {
+        use iris_core::transport::ble::{
+            IRIS_IDENTIFY_CHARACTERISTIC, IRIS_SERVICE_UUID, IRIS_WRITE_CHARACTERISTIC,
+        };
+        assert_eq!(
+            uuid_to_hex(IRIS_SERVICE_UUID),
+            "01000000000000000000000000000000",
+            "IRIS_SERVICE_UUID drifted — update Kotlin BleUuidParityTest + iOS too"
+        );
+        assert_eq!(
+            uuid_to_hex(IRIS_IDENTIFY_CHARACTERISTIC),
+            "02000000000000000000000000000000",
+        );
+        assert_eq!(
+            uuid_to_hex(IRIS_WRITE_CHARACTERISTIC),
+            "3e5c6b1a2a104f6e9c315f3e5a0b0c0e",
+            "IRIS_WRITE_CHARACTERISTIC drifted — update Kotlin BleUuidParityTest + iOS too"
+        );
+        // No two IRIS UUIDs may collide (a write to the service UUID was
+        // exactly the BLE-3 bug).
+        assert_ne!(IRIS_SERVICE_UUID, IRIS_WRITE_CHARACTERISTIC);
+        assert_ne!(IRIS_SERVICE_UUID, IRIS_IDENTIFY_CHARACTERISTIC);
+        assert_ne!(IRIS_WRITE_CHARACTERISTIC, IRIS_IDENTIFY_CHARACTERISTIC);
+    }
 }

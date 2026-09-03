@@ -2677,3 +2677,40 @@ kills. Evidence: `session-15-hv94b/`.
 core the same way the server-side accept is (HW-9), so a peer whose app process
 dies is torn down promptly and the link re-forms in < 1 s with no lost message.
 Commit `28272c0`.
+
+---
+
+## Session 15 (cont.) — HV-16 (UUID agreement regression guard)
+
+**Phase R.** Inspected all four sites at HEAD:
+- `iris_core::transport::ble::IRIS_SERVICE_UUID` = `Uuid([1,0,…])` →
+  `01000000-0000-0000-0000-000000000000`
+- `iris_core::…::IRIS_WRITE_CHARACTERISTIC` = `3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e`
+- `AndroidBleTransportAdapter.IRIS_SERVICE_UUID` = `01000000-…-0000` ✅ (CROSS-001
+  `9bddad9` unified this; the finding was written before that)
+- `AndroidBleTransportAdapter.IRIS_CHARACTERISTIC_UUID` = `3e5c6b1a-…-0c0e` ✅
+- The *write path* already uses a single source: `send()` hands
+  `IRIS_WRITE_CHARACTERISTIC` across the FFI as a string; Kotlin's constant is
+  only used for GATT-server registration + the inbound match.
+
+So the values agree today — the gap the finding names ("a test that fails loudly
+if any drifts", Severity: High **regression guard**) is the missing guard, not a
+live mismatch.
+
+**Phase D.** Two coupled tests referencing the same canonical hex strings:
+- `iris-android/src/bridge.rs::hv16_ble_uuids_match_the_canonical_wire_values` —
+  `uuid_to_hex(<each core const>)` == the canonical literal, and all three
+  distinct (a write to the service UUID was the BLE-3 bug).
+- `android/.../BleUuidParityTest.kt` — parses those three literals back out of
+  the Rust test and asserts `AndroidBleTransportAdapter`'s constants
+  (hex-normalised) match, plus non-collision.
+
+Chain of truth: core `pub const` → Rust test literal (guarded) → Kotlin test →
+Kotlin constant. Changing a UUID now fails a test on whichever side wasn't
+updated. iOS `IrisBleConstants` noted in both tests' comments (not on the bench).
+
+**Phase T / C.** No hardware behaviour change — pure regression guard.
+`cargo test -p iris-android` (**8** incl. `hv16_…`) + `:app:testDebugUnitTest
+--tests BleUuidParityTest` (**3/0/0**) green. UUID agreement is transitively
+HW-verified by every passing BLE delivery test this pass. HV-16 -> ✅
+(regression guard). Commit <pending>.
