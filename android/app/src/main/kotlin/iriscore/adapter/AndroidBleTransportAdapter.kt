@@ -314,9 +314,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         adapterEvents.add(code)
     }
 
-    /** RSSI floor applied on the platform side (core filter default -95 dBm). */
+    /**
+     * RSSI floor applied on the platform side. HV-12: defaults to the same
+     * -95 dBm as `iris_core::transport::ble::RSSI_FLOOR_DBM` (was -127 =
+     * "accept everything", which is the floor that actually applied on any
+     * scan the OS refused, or before the first `startScan`). A `startScan`
+     * overwrites this with `filter.rssiFloor`, which the bridge also derives
+     * from `RSSI_FLOOR_DBM`.
+     */
     @Volatile
-    private var rssiFloor: Int = -127
+    private var rssiFloor: Int = -95
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onCharacteristicWrite(

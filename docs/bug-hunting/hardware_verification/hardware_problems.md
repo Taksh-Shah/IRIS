@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 5 | 1 | 2 | 6 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 7 | 1 | 2 | 4 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,14 +69,18 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **100** | **15** | **12** | **1** | **3** | **69** |
+| **Total** | | **100** | **15** | **14** | **1** | **3** | **67** |
 
-**Last updated:** 2026-09-03 (Session 15 — **HV-94 HW-verified** — client-side
-GATT disconnect now surfaced to the core via `drainDisconnectedHandles` (mirror
-of HW-9's accept drain); a peer whose app process dies is torn down +
-reconnected in <1 s, 0 lost messages. `test_peer_process_restart_recovers` 3/3.
-Also this session: HV-99 partial improvements, HV-31 blocked, HV-10 HW-pending,
-HV-98 verified.) · Previously: 2026-09-03 (Session 14 — **HV-10 ✅ HW-PENDING** (bounded
+**Last updated:** 2026-09-03 (Session 15 — **HV-94 HW-verified** (client GATT
+disconnect surfaced to the core via `drainDisconnectedHandles`; peer app
+process dies → torn down + reconnected <1 s, 0 lost msgs;
+`test_peer_process_restart_recovers` 3/3), **HV-16 ✅** (cross-FFI UUID
+regression guard: Rust `hv16_…` + Kotlin `BleUuidParityTest`), **HV-12 ✅
+HW-PENDING** (`RSSI_FLOOR_DBM` -85 → -95, single source; ping-pong 10/10 no
+regression), **HV-13 ✅ HW-PENDING** (`known_addresses` TTL-swept + capped +
+evicted on `close_peer`; part-a split-id reconciliation deferred). Also this
+session: HV-99 partial, HV-31 blocked, HV-10 HW-pending, HV-98 verified.) ·
+Previously: 2026-09-03 (Session 14 — **HV-10 ✅ HW-PENDING** (bounded
 advertising-retry backoff — no bench trigger for `TOO_MANY_ADVERTISERS`) +
 **HV-31 🔒 Blocked** (§5 group; `btStateReceiver` for
 `BluetoothAdapter.ACTION_STATE_CHANGED` + `BleAdapter::drain_adapter_events()`
@@ -920,7 +924,15 @@ metric.
 
 ### HV-12 — RSSI floor is inconsistent across three layers (-85 / -95 / -127)
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-PENDING · commit <pending> · 2026-09-03 ·
+  Session 15 · `RSSI_FLOOR_DBM` -85 → **-95** (single source; the Android
+  adapter's `rssiFloor` default -127 → -95 to match; the bridge default was
+  already -95). Delivery smoke (`test_pingpong_300char_10x` fwd 10/10 + rev
+  10/10, 0 churn) confirms no regression — -95 is strictly more permissive so
+  it cannot reduce discovery. L1 `hv12_rssi_floor_is_one_mesh_appropriate_value`.
+  **Owed (L4 manual):** the effective-range map — at what distance / wall count
+  does discovery actually stop.
+- **Was:** ⬜
 - **Area:** `ble.rs::RSSI_FLOOR_DBM = -85`, its doc comment says "core filter
   default -95", `AndroidBleTransportAdapter.rssiFloor` defaults to `-127` and is
   only set from `filter.rssiFloor` when a scan actually starts
@@ -945,7 +957,16 @@ the bench: at what distance / wall count does discovery stop.
 
 ### HV-13 — `known_addresses` (MAC → candidate PeerId) is only populated by `discover_peers`, and never pruned
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed (part b) · HW-PENDING · commit <pending> · 2026-09-03
+  · Session 15 · `known_addresses` value → `(PeerId, Instant)`; `discover_peers`
+  sweeps entries older than `KNOWN_ADDR_TTL` (300 s) + caps at `KNOWN_ADDR_CAP`
+  (128, oldest-first) each pass; `close_peer` evicts the dropped peer's MAC
+  hints. L1 `hv13_known_addresses_is_bounded_and_evicted_on_close`; forced-drop
+  regression exercises the `close_peer` eviction. **Part (a) deferred** — the
+  split synthetic/real peer-id reconciliation is an envelope↔transport
+  cross-layer change and genuinely needs 2–3 phones + a crafted
+  advertise-before-scan race.
+- **Was:** ⬜
 - **Area:** `ble.rs` `known_addresses`, `discover_peers`, `ensure_accept_poller`,
   `close_peer`
 - **Severity:** Medium · **HW gate:** 2–3 phones

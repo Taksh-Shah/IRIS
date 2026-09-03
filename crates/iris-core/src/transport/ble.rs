@@ -88,10 +88,19 @@ pub const IRIS_WRITE_CHARACTERISTIC: Uuid = Uuid([
 pub struct BleAddress(pub [u8; 6]);
 
 /// Minimum RSSI (dBm) for a scan candidate to be admitted (BLE-26).
-/// Android bridge uses this as its floor; iOS applies its own CoreBluetooth
-/// filter. The value -85 dBm corresponds to a link margin of ~10 m in an
-/// open office environment and rejects wall-attenuated/out-of-range peers.
-pub const RSSI_FLOOR_DBM: i32 = -85;
+///
+/// HV-12: was -85 dBm, described as "~10 m open office" — and it did exactly
+/// what that implies: "it only works when the phones are right next to each
+/// other". A phone in a pocket or one interior wall away is routinely -88…-95
+/// dBm and was filtered out. This is the *single* source: the Android
+/// `FfiScanFilter.rssi_floor` is threaded from here (`ScanFilter::rssi_threshold`
+/// → the bridge), and the Android adapter's own default now matches it (it no
+/// longer starts at -127 "accept everything" and only picks up a real floor
+/// inside a *successful* `startScan`). -95 keeps genuinely unusable links
+/// (deep multi-wall / far out of range, typically < -98) out while admitting
+/// the through-a-wall / in-a-bag links a resilience mesh must carry. Tunable
+/// per platform later if a specific radio needs it.
+pub const RSSI_FLOOR_DBM: i32 = -95;
 
 /// Scan filter.
 #[derive(Debug, Clone, Default)]
@@ -709,7 +718,13 @@ pub struct BleTransport {
     /// did not itself dial, since Android's peripheral role never gives the
     /// GATT server a beacon/identity for the central that just connected to
     /// it, only its MAC address.
-    known_addresses: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<BleAddress, PeerId>>>,
+    /// HV-13: value carries the last-seen `Instant` so `discover_peers` can
+    /// sweep stale MAC→candidate hints (a MAC the OS has since rotated, a peer
+    /// long gone) and cap the map — it used to grow unbounded across a
+    /// long-lived node's neighbour churn and could hand the accept-poller a
+    /// candidate id for a MAC that now belongs to a different device.
+    known_addresses:
+        std::sync::Arc<std::sync::Mutex<std::collections::HashMap<BleAddress, (PeerId, std::time::Instant)>>>,
     /// HW-9: the single long-lived task that drains `accepted_connections()`
     /// and spawns a reassembly poller for each new one. One per transport
     /// instance, started (idempotently) from `start_advertising` — the
@@ -753,6 +768,16 @@ const SCAN_CEILING: usize = 5;
 const SCAN_WINDOW: std::time::Duration = std::time::Duration::from_secs(30);
 /// Backoff cap (Android 17 hardens throttling; exponential 1s..=30s).
 const SCAN_BACKOFF_MAX_S: u64 = 30;
+
+/// HV-13: `known_addresses` (MAC → candidate id hint for the accept-poller) is
+/// swept on every `discover_peers` pass. An entry older than this — a MAC the
+/// OS has since rotated (BLE RPAs rotate every ~15 min), a peer long gone — is
+/// stale and could misattribute a re-used MAC. Matches the discovery
+/// neighbour TTL family.
+const KNOWN_ADDR_TTL: std::time::Duration = std::time::Duration::from_secs(300);
+/// Hard cap regardless of age, so a burst of ambient MACs cannot bloat the map
+/// between sweeps; oldest entries are dropped first.
+const KNOWN_ADDR_CAP: usize = 128;
 
 // SYS-2: deadline constants for radio adapter calls (connect / MTU).
 // A hung connectGatt call blocks the node indefinitely without these.
@@ -1002,7 +1027,7 @@ impl BleTransport {
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
                         .get(&accepted.address)
-                        .copied()
+                        .map(|(pid, _)| *pid)
                         .unwrap_or_else(|| BleTransport::synthesize_unknown_peer_id(&accepted.address));
                     // Registered under whatever MTU `set_mtu` would default
                     // to — the peripheral role never proactively negotiates
@@ -1087,6 +1112,12 @@ impl BleTransport {
         // gets reused on the next connect), only for not growing forever
         // across a long-lived node's peer churn.
         self.connect_locks.lock().unwrap_or_else(|p| p.into_inner()).remove(peer);
+        // HV-13: drop this peer's MAC→candidate hints too — the link is gone
+        // and the MAC may be re-assigned before we re-discover the peer.
+        self.known_addresses
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .retain(|_, (pid, _)| pid != peer);
         if let Some(p) = self.pollers.write().unwrap_or_else(|p| p.into_inner()).remove(peer) {
             p.abort();
         }
@@ -1270,6 +1301,21 @@ impl Transport for BleTransport {
         // adapter surfaced. Runs here AND on the cheap `poll_health` path so the
         // reaction is not gated on the 30 s linked scan cadence.
         self.handle_adapter_events(&adapter).await;
+
+        // HV-13: sweep stale / overflowing MAC→candidate hints once per pass.
+        {
+            let mut known = self.known_addresses.lock().unwrap_or_else(|p| p.into_inner());
+            known.retain(|_, (_, seen)| seen.elapsed() < KNOWN_ADDR_TTL);
+            if known.len() > KNOWN_ADDR_CAP {
+                let mut by_age: Vec<(BleAddress, std::time::Instant)> =
+                    known.iter().map(|(a, (_, t))| (*a, *t)).collect();
+                by_age.sort_by_key(|(_, t)| *t);
+                for (addr, _) in by_age.into_iter().take(known.len() - KNOWN_ADDR_CAP) {
+                    known.remove(&addr);
+                }
+            }
+        }
+
         const SCAN_REARM_EVERY: u64 = 5;
         let pass = self.scan_pass.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let want_rearm = {
@@ -1432,7 +1478,7 @@ impl Transport for BleTransport {
             self.known_addresses
                 .lock()
                 .unwrap_or_else(|p| p.into_inner())
-                .insert(r.address, candidate_id);
+                .insert(r.address, (candidate_id, std::time::Instant::now()));
             peers.push(PeerInfo {
                 peer_id: candidate_id,
                 addresses: Vec::new(),
@@ -2364,6 +2410,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn hv13_known_addresses_is_bounded_and_evicted_on_close() {
+        // HV-13: the MAC→candidate hint map used to grow unbounded and keep a
+        // stale mapping after the peer's link dropped (its MAC may be
+        // re-assigned before re-discovery).
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
+
+        // A discovered peer → its MAC is recorded.
+        let peer_id = PeerId([0x0F; 32]);
+        let short = crate::identity::peer_id::peer_short(&peer_id.0);
+        let mac = BleAddress([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01]);
+        adapter.inject_scan_result(mac, DiscoveryBeacon::build(caps, short, 0), -60);
+        // …plus a burst of ambient IRIS beacons well over the cap.
+        for i in 0..(KNOWN_ADDR_CAP as u16 + 40) {
+            let bmac = BleAddress([(i >> 8) as u8, i as u8, 0x33, 0x33, 0x33, 0x33]);
+            adapter.inject_scan_result(bmac, DiscoveryBeacon::build(caps, [i as u8; 16], 0), -60);
+        }
+        let _ = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+
+        {
+            let known = t.known_addresses.lock().unwrap();
+            assert!(
+                known.len() <= KNOWN_ADDR_CAP,
+                "known_addresses must be capped at {KNOWN_ADDR_CAP}, was {}",
+                known.len()
+            );
+        }
+
+        // Re-discover just our real peer so it survives the cap, then close it.
+        adapter.inject_scan_result(mac, DiscoveryBeacon::build(caps, short, 0), -60);
+        let _ = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let candidate = DiscoveryBeacon { capabilities: caps, peer_short: short, freshness_minutes: 0 }
+            .candidate_peer_id();
+        assert!(t.known_addresses.lock().unwrap().values().any(|(p, _)| *p == candidate));
+        t.close_peer(&candidate, adapter.clone(), None);
+        assert!(
+            !t.known_addresses.lock().unwrap().values().any(|(p, _)| *p == candidate),
+            "close_peer must drop the peer's MAC hint"
+        );
+    }
+
+    #[tokio::test]
     async fn hw5_send_by_real_peer_id_reaches_a_connection_keyed_by_candidate_id() {
         // HW-5: found on real hardware — `connections` is keyed by whatever
         // PeerId `connect()` was called with, and discovery calls connect()
@@ -2464,6 +2554,24 @@ mod tests {
         adapter.inject_scan_failure(5);
         // still refused because the code-6 window has not elapsed
         assert!(t.discover_peers(DiscoveryConfig::default()).await.is_err());
+    }
+
+    #[test]
+    fn hv12_rssi_floor_is_one_mesh_appropriate_value() {
+        // HV-12: three layers used to disagree (-85 / -95 / -127). The core
+        // constant is now the single source; -85 filtered out through-a-wall
+        // peers a resilience mesh must carry, -127 filtered nothing.
+        assert_eq!(RSSI_FLOOR_DBM, -95);
+        assert!(
+            (-100..=-90).contains(&RSSI_FLOOR_DBM),
+            "the mesh RSSI floor must admit wall-attenuated links (~-90..-95) \
+             without admitting genuinely dead ones (< -98)"
+        );
+        // Both call sites in discover_peers carry exactly this value.
+        let ios = ScanFilter { service_uuids: vec![IRIS_SERVICE_UUID], rssi_threshold: Some(RSSI_FLOOR_DBM) };
+        let android = ScanFilter { rssi_threshold: Some(RSSI_FLOOR_DBM), ..ScanFilter::default() };
+        assert_eq!(ios.rssi_threshold, android.rssi_threshold);
+        assert_eq!(ios.rssi_threshold, Some(-95));
     }
 
     #[tokio::test]

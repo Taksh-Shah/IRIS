@@ -2713,3 +2713,57 @@ updated. iOS `IrisBleConstants` noted in both tests' comments (not on the bench)
 `cargo test -p iris-android` (**8** incl. `hv16_…`) + `:app:testDebugUnitTest
 --tests BleUuidParityTest` (**3/0/0**) green. UUID agreement is transitively
 HW-verified by every passing BLE delivery test this pass. HV-16 -> ✅ (regression guard). Commit 8c0a986.
+
+---
+
+## Session 15 (cont.) — HV-12 (RSSI floor consistency)
+
+**Phase R.** Three floors: `iris_core::…::RSSI_FLOOR_DBM = -85` (its doc claimed
+-95); the Android bridge's `FfiScanFilter` default `-95`; the Android adapter's
+`rssiFloor` field `-127` (accept-all), only overwritten inside a *successful*
+`startScan`. -85 dBm is a ~10 m open-office margin — a phone in a pocket or one
+interior wall away is routinely -88…-95 dBm and was filtered out entirely
+("only works when the phones are right next to each other"). Field references
+(Nordic, Punch Through, Martijn van Welie pt.1) put a usable BLE link at roughly
+-95…-100 dBm; below ~-98 the connection itself is unreliable.
+
+**Phase D.** One source of truth: `RSSI_FLOOR_DBM = -95` (was -85), doc rewritten;
+the Android adapter's `rssiFloor` default `-127` → `-95` so a refused/pre-first
+scan still applies the mesh floor rather than nothing. The bridge default was
+already -95. L1 test `hv12_rssi_floor_is_one_mesh_appropriate_value` (constant
+== -95, in the -90…-100 band, both `discover_peers` call sites carry it).
+iris-core **784** green.
+
+**Phase T.** -95 is strictly more permissive than -85, so it cannot reduce
+discovery; the risk is admitting noise, a non-issue on the bench. Ran `test_pingpong_300char_10x` (fwd 10/10 + rev 10/10, 0 churn) and
+`test_forced_drop_reconnect_10x` (10/10, ~3.6 s, 0 failed) as no-regression
+checks. The "at what distance / wall count does
+discovery stop" range map is an L4 manual pass (needs someone to walk a phone)
+— owed, tracked on the finding.
+
+---
+
+## Session 15 (cont.) — HV-13 (`known_addresses` unbounded + never pruned)
+
+**Phase R.** `known_addresses: HashMap<BleAddress, PeerId>` is the accept-poller's
+only way to attribute an inbound (peripheral-role) connection to a peer id — it
+has just a MAC, never a beacon. Written only by `discover_peers` on a parsed
+beacon; never removed. Two problems: (1) grows unbounded across a long-lived
+node's neighbour churn; (2) a stale MAC→candidate mapping mis-attributes a
+re-used MAC (Android RPAs rotate ~every 15 min; `MAX_PENDING`-style eviction on
+the *scan* queue does not touch this map). The full fix-sketch (a) —
+reconciling a synthetic-id `connections` entry to the real id once the envelope
+layer decrypts a sender — is a larger cross-layer change (envelope ↔ transport)
+and is left as a follow-up; this closes (b) + the TTL.
+
+**Phase D.** `known_addresses` value → `(PeerId, Instant)`. `discover_peers`
+sweeps entries older than `KNOWN_ADDR_TTL` (300 s, the neighbour-TTL family)
+once per pass and caps at `KNOWN_ADDR_CAP` (128, oldest-first eviction).
+`close_peer` now `retain`s out the dropped peer's MAC hints. L1 test
+`hv13_known_addresses_is_bounded_and_evicted_on_close`. iris-core **785** green.
+
+**Phase T.** Core-only; no observable hardware behaviour beyond "discovery +
+delivery still work". Covered by the delivery smoke run for HV-12 (below) and
+the forced-drop regression (exercises `close_peer` → eviction). The split-id
+reconciliation (fix-sketch a) is what genuinely needs 2–3 phones + a crafted
+advertise-before-scan race — deferred with the finding.

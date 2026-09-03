@@ -1,0 +1,77 @@
+WifiP2pService:
+ total records=92
+ rec[0]: time=08-29 11:32:38.881 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=147485(0x2401d)
+ rec[1]: time=08-29 11:41:23.033 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[2]: time=08-29 11:41:23.196 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[3]: time=08-29 11:41:52.718 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[4]: time=08-29 11:41:52.718 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+ rec[5]: time=08-29 11:42:04.056 processed=P2pDisabledState org=P2pDisabledState dest=InactiveState what=139292(0x2201c)
+ rec[6]: time=08-29 11:42:38.065 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[7]: time=08-29 11:42:38.301 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[8]: time=08-29 11:49:00.298 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[9]: time=08-29 11:49:00.308 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[10]: time=08-29 11:49:41.759 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=147485(0x2401d)
+ rec[11]: time=08-29 11:49:41.812 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=147485(0x2401d)
+ rec[12]: time=08-29 12:07:41.733 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[13]: time=08-29 12:07:41.894 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[14]: time=08-29 12:10:12.140 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[15]: time=08-29 12:10:12.141 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+ rec[16]: time=08-29 12:12:07.510 processed=P2pDisabledState org=P2pDisabledState dest=InactiveState what=139292(0x2201c)
+ rec[17]: time=08-29 12:12:41.540 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[18]: time=08-29 12:12:41.744 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[19]: time=08-29 12:15:29.231 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[20]: time=08-29 12:15:29.241 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[21]: time=08-29 12:16:07.627 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[22]: time=08-29 12:16:07.816 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[23]: time=08-29 12:19:06.547 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[24]: time=08-29 12:19:06.570 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[25]: time=08-29 12:19:06.612 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[26]: time=08-29 12:19:06.616 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+ rec[27]: time=08-29 12:19:18.965 processed=P2pDisabledState org=P2pDisabledState dest=InactiveState what=139292(0x2201c)
+ rec[28]: time=08-29 12:19:52.986 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[29]: time=08-29 12:19:53.209 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[30]: time=08-29 12:19:56.832 processed=GroupCreatedState org=GroupCreatedState dest=UserAuthorizingJoinState what=147489(0x24021)
+ rec[31]: time=08-29 12:19:58.478 processed=UserAuthorizingJoinState org=UserAuthorizingJoinState dest=GroupCreatedState what=143362(0x23002)
+ rec[32]: time=08-29 12:25:47.163 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[33]: time=08-29 12:25:47.185 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[34]: time=08-29 12:26:22.798 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[35]: time=08-29 12:26:23.006 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[36]: time=08-29 12:29:40.537 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[37]: time=08-29 12:29:40.552 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[38]: time=08-29 12:29:40.591 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[39]: time=08-29 12:29:40.592 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+ rec[40]: time=08-29 12:29:52.274 processed=P2pDisabledState org=P2pDisabledState dest=InactiveState what=139292(0x2201c)
+ rec[41]: time=08-29 12:30:26.305 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[42]: time=08-29 12:30:26.472 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[43]: time=08-29 12:44:14.317 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[44]: time=08-29 12:44:14.335 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[45]: time=08-29 12:48:13.099 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[46]: time=08-29 12:48:13.100 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+ rec[47]: time=08-30 21:31:55.168 processed=P2pDisabledState org=P2pDisabledState dest=InactiveState what=139292(0x2201c)
+ rec[48]: time=08-30 21:31:59.565 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[49]: time=08-30 21:31:59.566 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+curState=P2pDisabledState
+mWifiP2pInfo groupFormed: false isGroupOwner: false groupOwnerAddress: null
+mGroup null
+mSavedPeerConfig 
+ address: 
+ wps:  setup: 0
+ BSSID: null
+ pin: null
+
+ groupOwnerIntent: -1
+ persist: -2
+ networkName: null
+ passphrase: <empty>
+ groupOwnerBand: 0
+mGroups
+
+mAutonomousGroup true
+mJoinExistingGroup true
+mDiscoveryStarted false
+mDetailedState IDLE
+mTemporarilyDisconnectedWifi false
+mServiceDiscReqId null
+mDeathDataByBinder {android.os.BinderProxy@5781f1e=deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda0@4a87fa9, messenger=android.os.Messenger@1e236ec, worksource=WorkSource{10363 org.iris.mesh}, android.os.Binder@feda6d5=deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda0@957ab5, messenger=android.os.Messenger@1e236ec, worksource=WorkSource{1000 android}}
+mClientInfoList 2
+
