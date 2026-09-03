@@ -411,14 +411,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     @Volatile
     private var gattServer: BluetoothGattServer? = null
 
-    /**
-     * HV-93: peers we have already announced to the core via
-     * `pendingAcceptedConnections`, so a burst of inbound writes from a peer
-     * whose server-side STATE_CONNECTED never fired is announced exactly once.
-     * Keyed by [deviceHash]; entries are cleared on server disconnect.
-     */
-    private val announcedInboundPeers =
-        java.util.concurrent.ConcurrentHashMap.newKeySet<ULong>()
+    // HV-93/HV-98: the accept path is driven off observed inbound writes, not
+    // the OEM GATT-server connection callback (unreliable on Funtouch et al.):
+    // `onCharacteristicWriteRequest` announces the accepted connection on every
+    // IRIS write; the Rust accept-poller de-dups a handle it already polls and
+    // clears it on `close_peer`, so the first write after a drop re-spawns.
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
@@ -438,11 +435,6 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 pendingAcceptedConnections.add(
                     FfiAcceptedConnection(handle = deviceHash(device), address = device.address),
                 )
-                announcedInboundPeers.add(deviceHash(device))
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                // HV-93: allow a later reconnect from the same peer to be
-                // re-announced from onCharacteristicWriteRequest.
-                announcedInboundPeers.remove(deviceHash(device))
             }
         }
 
@@ -466,27 +458,24 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     "responseNeeded=$responseNeeded",
             )
             if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
-                // HV-93: on several OEM stacks BluetoothGattServerCallback
+                // HV-93/HV-98: on several OEM stacks BluetoothGattServerCallback
                 // .onConnectionStateChange never fires for an inbound LE
-                // connection (it needs a server-side connect() or a bond) —
-                // so pendingAcceptedConnections stayed empty, ble.rs's
-                // accept-poller never spawned a reassembly poller for this
-                // peer, and every frame written here sat in pendingGattWrites
-                // undrained. The write request itself carries the device, so
-                // announce the accepted connection here the first time we see
-                // one from it. ble.rs de-dups by handle, so re-announcing a
-                // still-live connection is a no-op.
+                // connection — neither for its start (HV-93) nor its drop
+                // (HV-98). The write request itself is the only reliable "this
+                // peer is talking to us" signal, so announce the accepted
+                // connection on EVERY IRIS write. The Rust accept-poller
+                // de-dups a handle that already has a live inbound poller
+                // (`accept_spawned`), and — since HV-98 — `close_peer` removes
+                // the handle from that set, so the first write after a drop
+                // re-spawns the poller. A redundant announce for a still-live
+                // connection is a cheap no-op (bounded queue, drained every
+                // 500 ms). A time-gated re-announce was tried first and was
+                // fragile when drops came < 1.5 s apart (HV-98 attempt 1).
                 val h = deviceHash(device)
-                if (announcedInboundPeers.add(h)) {
-                    android.util.Log.d(
-                        "IrisBleDiag",
-                        "onCharacteristicWriteRequest: announcing inbound peer ${device.address} (no server STATE_CONNECTED seen)",
-                    )
-                    while (pendingAcceptedConnections.size >= MAX_PENDING) pendingAcceptedConnections.poll()
-                    pendingAcceptedConnections.add(
-                        FfiAcceptedConnection(handle = h, address = device.address),
-                    )
-                }
+                while (pendingAcceptedConnections.size >= MAX_PENDING) pendingAcceptedConnections.poll()
+                pendingAcceptedConnections.add(
+                    FfiAcceptedConnection(handle = h, address = device.address),
+                )
                 // Bounded: if the core stops draining, drop the oldest rather
                 // than growing without limit.
                 while (pendingGattWrites.size >= MAX_PENDING) pendingGattWrites.poll()
@@ -667,7 +656,6 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 quietly {
                     gattServer?.close()
                     gattServer = null
-                    announcedInboundPeers.clear()
                 }
             }
         }

@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 22 | 7 | 2 | 2 | 1 | 10 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 22 | 8 | 2 | 1 | 1 | 10 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,9 +69,15 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **99** | **13** | **9** | **2** | **2** | **73** |
+| **Total** | | **99** | **14** | **9** | **1** | **2** | **73** |
 
-**Last updated:** 2026-09-02 (Session 12 — **HV-97 ✅** (`dropAllLinks()` hook +
+**Last updated:** 2026-09-03 (Session 13 — **HV-98 🟢** — inbound reassembly
+poller now re-attaches after a drop + reconnect: announce-every-write on the
+Kotlin side, `accept_spawned` shared set cleared by `close_peer` on the Rust
+side. `iris_bench test_forced_drop_reconnect_10x` **10/10**, recovery ~3.5 s
+each, 0 `msg.delivery_failed`. End-to-end message recovery after HV-97's
+`dropAllLinks()` is now fully closed. Next: HV-10 + HV-31 advertising
+resilience. HV-96 stays blocked.) · Previously: 2026-09-02 (Session 12 — **HV-97 ✅** (`dropAllLinks()` hook +
 `DiscoveryManager::wake()` interruptible scan loop + per-run evidence dir +
 `stopAdvertising` closes the GATT server), **HV-15 🟢** — forced-drop bench:
 `ble.drop_all_links` → `connectGatt` 65 ms later → `connect_ok elapsed_ms ≈
@@ -1220,7 +1226,18 @@ keyed off a run id / env var, not an incrementing scan of the folder.
 
 ### HV-98 — Inbound reassembly poller does not re-attach after a drop + reconnect
 
-- **Fix status:** 🔬 (found in Session 12 verifying HV-97/HV-15)
+- **Fix status:** 🟢 HW-verified · commit `<pending>` · 2026-09-03 · P1=vivo V2205
+  (Android 15) P2=vivo 2004 (Android 13) · `iris_bench`
+  `test_forced_drop_reconnect_10x` **10/10**, recovery ~3.5 s each, 0
+  `msg.delivery_failed`
+- **Fix (Session 13):** `onCharacteristicWriteRequest` announces the accepted
+  connection on **every** IRIS write (dropped the fire-once `Set` and the
+  time-gap heuristic). Dedup + re-attach is now owned by the Rust accept-poller:
+  a new shared `BleTransport.accept_spawned: Arc<Mutex<HashSet<GattHandle>>>`
+  (was a task-local set, unreachable from `close_peer`); `close_peer` /
+  `shutdown` clear the handle, so the first write after our own `drop_all_links`
+  re-spawns the inbound reassembly poller while a still-live handle stays a
+  cheap no-op. L1 sim regression: `hv98_inbound_poller_re_attaches_after_our_own_drop`.
 - **Area:** `AndroidBleTransportAdapter` (`announcedInboundPeers` lifecycle,
   `gattServerCallback`), `ble.rs` `ensure_accept_poller` / `close_peer` vs the
   accept-poller's `spawned` set

@@ -335,6 +335,10 @@ pub struct SimulatedBleAdapter {
     transient_write_failures: std::sync::atomic::AtomicU32,
     /// HV-11: queued `onScanFailed` error codes, drained by `drain_scan_failures`.
     scan_failures: std::sync::Mutex<Vec<i32>>,
+    /// HV-93/HV-98: accepted connections (a remote central dialled our GATT
+    /// server) re-reported on every `accepted_connections()` drain until
+    /// cleared — exactly how the Kotlin adapter re-announces on a write-gap.
+    accepted: std::sync::Mutex<Vec<AcceptedConnection>>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -358,6 +362,25 @@ impl SimulatedBleAdapter {
     /// `drain_disconnected_handles` call will return it, causing the accept
     /// poller to tear down the peer — exactly as a real platform bridge would
     /// when `didDisconnect`/`onConnectionStateChange(DISCONNECTED)` fires.
+    /// HV-93/HV-98: a remote central dialled our GATT server. It is re-reported
+    /// on every `accepted_connections()` drain (mirroring the Kotlin adapter's
+    /// write-gap re-announce) until `clear_accepted` — so the accept-poller can
+    /// re-spawn the inbound reassembly poller for a peer that re-linked after a
+    /// `close_peer`.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn inject_accepted_connection(&self, handle: GattHandle, address: BleAddress) {
+        let mut a = self.accepted.lock().unwrap_or_else(|p| p.into_inner());
+        if !a.iter().any(|c| c.handle == handle) {
+            a.push(AcceptedConnection { handle, address });
+        }
+    }
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn clear_accepted(&self, handle: GattHandle) {
+        self.accepted
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .retain(|c| c.handle != handle);
+    }
     #[cfg(any(test, feature = "test-support"))]
     pub fn simulate_disconnect(&self, handle: GattHandle) {
         self.disconnected
@@ -511,6 +534,9 @@ impl BleAdapter for SimulatedBleAdapter {
     fn drain_scan_failures(&self) -> Vec<i32> {
         std::mem::take(&mut *self.scan_failures.lock().unwrap_or_else(|p| p.into_inner()))
     }
+    fn accepted_connections(&self) -> Vec<AcceptedConnection> {
+        self.accepted.lock().unwrap_or_else(|p| p.into_inner()).clone()
+    }
     fn gatt_write(
         &self,
         handle: GattHandle,
@@ -658,6 +684,13 @@ pub struct BleTransport {
     /// instance, started (idempotently) from `start_advertising` — the
     /// natural point at which this node becomes dialable at all.
     accept_poller: std::sync::Mutex<Option<tokio::task::AbortHandle>>,
+    /// HV-98: GATT handles the accept-poller has already spawned an inbound
+    /// reassembly poller for. Was a task-local `HashSet` inside the
+    /// accept-poller closure — unreachable from `close_peer`, so a peer that
+    /// re-linked after a drop (its inbound poller aborted by our own
+    /// `close_peer` / `drop_all_links`) was never re-spawned because its
+    /// handle still looked "spawned". Shared so `close_peer` can prune it.
+    accept_spawned: std::sync::Arc<std::sync::Mutex<std::collections::HashSet<GattHandle>>>,
     /// Fragment-header codec only. BLE-5: the doc here used to claim the
     /// segmenter's own MTU resizes live via `on_mtu_changed` — it never did;
     /// `on_mtu_changed`/`mtu()` have zero callers outside `ble_att.rs`'s own
@@ -742,6 +775,7 @@ impl BleTransport {
             pollers: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
             known_addresses: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             accept_poller: std::sync::Mutex::new(None),
+            accept_spawned: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashSet::new())),
             segmenter: AttSegmenter::new(),
             scan_times: std::sync::Mutex::new(std::collections::VecDeque::new()),
             scan_backoff_s: std::sync::Mutex::new(0),
@@ -920,17 +954,16 @@ impl BleTransport {
         let incoming_tx = self.incoming_tx.clone();
         let tid = self.id.clone();
         let dropped_inbound_accept = self.dropped_inbound.clone();
+        // HV-98: shared with `close_peer` so a peer that re-links after a drop
+        // is re-spawned. An accepted connection is re-reported on every drain
+        // (Kotlin re-announces on a post-reconnect write-gap), so this still
+        // guards against a duplicate poller for a *still-live* connection.
+        let spawned = self.accept_spawned.clone();
         let task = tokio::spawn(async move {
-            // Handles already turned into a spawned poller — an accepted
-            // connection is reported on every drain until it disconnects
-            // (mirrors `drain_gatt_writes`'s own "since last call" framing
-            // for the underlying queue), so this guards against spawning a
-            // duplicate poller for the same still-live connection.
-            let mut spawned: std::collections::HashSet<GattHandle> = std::collections::HashSet::new();
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 for accepted in adapter.accepted_connections() {
-                    if !spawned.insert(accepted.handle) {
+                    if !spawned.lock().unwrap_or_else(|p| p.into_inner()).insert(accepted.handle) {
                         continue;
                     }
                     let peer_id = known_addresses
@@ -973,7 +1006,7 @@ impl BleTransport {
                 // aborting its poller and removing its connection entry. We do NOT
                 // call `disconnect_gatt` — the OS already closed the link.
                 for dead in adapter.drain_disconnected_handles() {
-                    spawned.remove(&dead);
+                    spawned.lock().unwrap_or_else(|p| p.into_inner()).remove(&dead);
                     let peer_id = connections
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
@@ -1011,6 +1044,12 @@ impl BleTransport {
     ) {
         if let Some((handle, ..)) = self.connections.lock().unwrap_or_else(|p| p.into_inner()).remove(peer) {
             adapter.disconnect_gatt(handle);
+            // HV-98: forget this handle from the accept-poller's "already
+            // spawned" set so that if the peer re-links (and Kotlin re-announces
+            // the accepted connection on the post-reconnect write-gap), a fresh
+            // inbound reassembly poller IS spawned — the OEM GATT server never
+            // fires the disconnect callback that would otherwise clear it.
+            self.accept_spawned.lock().unwrap_or_else(|p| p.into_inner()).remove(&handle);
         }
         // Not load-bearing for correctness (a stale empty-Mutex entry just
         // gets reused on the next connect), only for not growing forever
@@ -1696,6 +1735,10 @@ impl Transport for BleTransport {
         if let Some(p) = self.accept_poller.lock().unwrap_or_else(|p| p.into_inner()).take() {
             p.abort();
         }
+        // HV-98: a fresh accept-poller (its `spawned` set) starts on the next
+        // `start_advertising`; clear it here so it does not carry stale handles
+        // across a stop/start cycle.
+        self.accept_spawned.lock().unwrap_or_else(|p| p.into_inner()).clear();
         self.set_state(TransportState::Unavailable);
         // Disconnect every live GATT link (RED-0009-01).
         let adapter = self.adapter()?;
@@ -1890,6 +1933,54 @@ mod tests {
         assert_eq!(t.state(), TransportState::Connected);
         assert_eq!(adapter.connect_count(), handle_before, "no reconnect");
         assert_eq!(link.peer_id, peer.peer_id);
+    }
+
+    #[tokio::test]
+    async fn hv98_inbound_poller_re_attaches_after_our_own_drop() {
+        use crate::transport::ble_att::encode_frame;
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = std::sync::Arc::new(BleTransport::new(Some(adapter.clone())));
+        // Become dialable → the accept-poller starts.
+        t.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([50u8; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        })
+        .await
+        .unwrap();
+
+        let handle = GattHandle(77);
+        let addr = BleAddress([9, 9, 9, 9, 9, 9]);
+        let mut incoming = t.incoming_messages();
+
+        // A remote central dials our server and writes a frame.
+        adapter.inject_accepted_connection(handle, addr);
+        adapter.inject_write(
+            handle,
+            IRIS_WRITE_CHARACTERISTIC,
+            encode_frame(1, 0, 1, b"first".len(), b"first").unwrap(),
+        );
+        let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
+        assert_eq!(got.expect("first inbound").unwrap().payload, b"first");
+
+        // We tear our own links down (drop_all_links / a write failure). The OEM
+        // GATT server never tells us the peer dropped.
+        t.drop_all_links().await;
+
+        // The peer re-links: the adapter re-announces (write-gap heuristic) and
+        // writes again on the SAME handle. The inbound poller MUST re-attach.
+        adapter.inject_accepted_connection(handle, addr);
+        adapter.inject_write(
+            handle,
+            IRIS_WRITE_CHARACTERISTIC,
+            encode_frame(2, 0, 1, b"after reconnect".len(), b"after reconnect").unwrap(),
+        );
+        let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
+        assert_eq!(
+            got.expect("HV-98: inbound must resume after a drop+reconnect").unwrap().payload,
+            b"after reconnect"
+        );
     }
 
     #[tokio::test]

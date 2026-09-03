@@ -2121,3 +2121,154 @@ disconnect callback. Coordinate with HV-93/HV-94.
 - **Next session: HV-98** (inbound poller re-attach after reconnect — it blocks
   every drop-recovery scenario and the §2 30-min gate). Then HV-10 + HV-31
   (advertising resilience §5 group). HV-96 stays blocked (no HCI snoop).
+
+---
+
+## Session 13 — 2026-09-03 · P1 = vivo V2205 (Android 15) · P2 = vivo 2004 (Android 13)
+
+Resumed on `main` @ 4b58b6a — 13 `integration` commits landed on top of Session 12
+(CROSS-001..008; the relevant one is `9bddad9` which changed the Kotlin
+`IRIS_SERVICE_UUID` `3e5c…0c0d` → `01000000-…` to byte-match the Rust core, and
+`24e1c3b` renamed a couple of Kotlin error types). Verified the tree at HEAD:
+`cargo build --workspace` ✓, iris-core **780**, iris-android **7**,
+`sysval_fault_injection` **6** — all green. My HV-92/93/97 adapter code is intact.
+
+### HV-98 — Inbound reassembly poller does not re-attach after a drop + reconnect
+
+**Research note.**
+
+**1. Mechanism (Session-12 evidence + platform research).** After
+`dropAllLinks()` (or any real drop), P1 and P2 re-establish the GATT link in
+~1 s and P1's ATT frames physically reach P2's characteristic — P2 logs
+`onCharacteristicWriteRequest matchesIris=true len=300` — but **no
+`msg.delivered`**. Chain:
+- P2's `AndroidBleTransportAdapter.gattServerCallback.onConnectionStateChange`
+  **never fires** for P1's connection dropping. This is a real platform gap:
+  "when the client drops off the server has no idea" (Nordic DevZone; MIT App
+  Inventor BLE keep-alive thread) — the server-side disconnect callback is
+  unreliable on Android and OEM stacks (also the root of HV-93/HV-94).
+- So P2's `announcedInboundPeers` (a *fire-once* `MutableSet<ULong>`, cleared
+  only in `onConnectionStateChange(STATE_DISCONNECTED)` which never comes)
+  keeps P1's stale `deviceHash`. `onCharacteristicWriteRequest`'s
+  `if (announcedInboundPeers.add(h))` is false → **no re-announce** to
+  `pendingAcceptedConnections`.
+- On the Rust side, `ble.rs::ensure_accept_poller` keeps a **task-local**
+  `spawned: HashSet<GattHandle>` (line 929). `close_peer` (line 1006) and
+  `drop_all_links` run on a different task and cannot touch it. So when P2's
+  own `drop_all_links` → `close_peer` aborts the inbound reassembly poller
+  (`pollers.remove(pid)` → `abort()`), the accept-poller still has the handle
+  in `spawned` and **never re-spawns** `spawn_inbound_poller`.
+- Result: P1's frames land in `pendingGattWrites` on P2 and nothing drains
+  them.
+
+**2. Why the current code gets it wrong.** Two fire-once caches assume "we saw
+this connection start, so a poller exists forever": Kotlin's
+`announcedInboundPeers` and Rust's task-local `spawned`. Both are only cleared
+by the OEM server-disconnect callback, which the platform does not reliably
+deliver. Neither is cleared by *our own* teardown (`close_peer` /
+`drop_all_links`).
+
+**3. How it's solved elsewhere.** The consistent advice: drive the receive path
+off *observed traffic*, not a one-time connect event. MIT App Inventor / Nordic
+threads: the client sends a keep-alive so the server knows to re-advertise;
+blessed-android / Nordic re-key the connection state on every `onConnectionState
+Change` *and* treat a fresh characteristic operation as liveness. Martijn van
+Welie pt.2: never trust one callback — always `close()` + reset on any state
+transition and re-derive from there.
+
+**4. IRIS constraints.** FFI seam: `pendingAcceptedConnections` is the only
+Kotlin→Rust channel for "a peer is connected to our server"; re-announcing on it
+is cheap (bounded queue, drained every 500 ms, Rust de-dups). No MAC-as-identity
+change — the announce carries `deviceHash` + address exactly as today. The
+accept-poller's `spawned` set must become shared so `close_peer` can prune it.
+
+**5. Research outcome.** Two coordinated changes, one commit:
+- **Kotlin** — `announcedInboundPeers` (fire-once) → `lastInboundWriteAtMs:
+  ConcurrentHashMap<ULong, Long>`. `onCharacteristicWriteRequest` re-announces
+  the accepted connection when the gap since this device's last IRIS write is
+  `> INBOUND_REANNOUNCE_GAP_MS` (3 s) — a gap that large means the connection
+  churned; during active messaging (sub-second writes) it never re-announces.
+  Cleared on `stopAdvertising` (with the GATT server).
+- **Rust** — `ensure_accept_poller`'s `spawned` set becomes
+  `Arc<Mutex<HashSet<GattHandle>>>` on `BleTransport`; `close_peer` (and thus
+  `drop_all_links` / `shutdown`) removes the peer's handle from it before
+  dropping the connection entry, so a subsequent re-announce actually
+  re-spawns `spawn_inbound_poller`.
+Rejected: making the peripheral send a keep-alive (adds wire traffic + a
+timer; the write-gap heuristic gets the same signal for free). Rejected:
+polling `accepted_connections()` for "is this handle still alive" (the adapter
+has no such query — the server callback is exactly what's missing).
+
+**Phase D — implementation.**
+- `crates/iris-core/src/transport/ble.rs`:
+  - `BleTransport.accept_spawned: Arc<Mutex<HashSet<GattHandle>>>` — the
+    accept-poller's "already spawned" set, was task-local (unreachable from
+    `close_peer`). `ensure_accept_poller` uses it; `close_peer` removes the
+    peer's handle from it after dropping the connection entry; `shutdown`
+    clears it.
+  - `SimulatedBleAdapter` gained `accepted: Mutex<Vec<AcceptedConnection>>` +
+    `inject_accepted_connection` / `clear_accepted` + an `accepted_connections()`
+    override (the sim never modelled the HW-9 accept path before).
+  - Sim test `hv98_inbound_poller_re_attaches_after_our_own_drop`: accept a
+    connection → frame delivers → `drop_all_links()` → re-inject the accepted
+    connection + a frame → **must deliver again**. iris-core **781**.
+- `android/.../AndroidBleTransportAdapter.kt`:
+  - `announcedInboundPeers` (fire-once `Set`, cleared only on the OEM server
+    disconnect callback that never comes) → `lastInboundWriteAtMs:
+    ConcurrentHashMap<ULong, Long>`. `onCharacteristicWriteRequest` re-announces
+    the accepted connection when this is the first write OR the gap since the
+    device's last write is `> INBOUND_REANNOUNCE_GAP_MS` (1500 ms — above the
+    ~0.5 s spacing of active messaging, below the ≥1 s a drop+reconnect takes;
+    a redundant re-announce is a harmless no-op on the Rust side). Cleared with
+    the GATT server in `stopAdvertising`.
+- Also fixed an unrelated build break on `main` (CROSS-007 left api.kt error
+  aliases stale) — commit 4df67d1.
+
+**Phase T / I.**
+- ❌ Attempt 1 (time-gated re-announce, `> 1500 ms` write-gap): drop 1/10
+  **recovered in 3.4 s** — `onCharacteristicWriteRequest: (re)announcing inbound
+  peer … (gap=3511ms)` → `msg.delivered` — the mechanism works. But drop 2/10
+  failed (21 s): when the next drop came before P1's write cadence produced a
+  >1.5 s gap, the re-announce did not fire and the (now-empty) `accept_spawned`
+  entry was never re-populated. The gap heuristic is fragile under back-to-back
+  drops / a fast-retrying sender.
+- Attempt 2: **announce the accepted connection on EVERY IRIS write** (drop the
+  gap heuristic). The Rust accept-poller de-dups a still-polled handle
+  (`accept_spawned`), so a redundant announce is a cheap no-op; only a handle
+  that `close_peer` cleared re-spawns. `pendingAcceptedConnections` is a bounded
+  queue drained every 500 ms — during a 300-char ping-pong that is ~1 dup entry
+  per drain, negligible.
+
+**Phase C.** HV-98 → 🟢.
+- `iris_bench --test_module tier1 --tests test_forced_drop_reconnect_10x` (BT-cycled
+  both phones first): **10/10** forced `dropAllLinks()` cycles recovered,
+  recoveries `[3.3, 3.7, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5]` s,
+  `failed={'P1': 0, 'P2': 0}` — every drop re-establishes the link AND the
+  inbound reassembly poller, message delivers end-to-end. Evidence:
+  `evidence/session-13-hv98/` + `evidence/mobly_logs/iris_2phone/latest`
+  (`test_forced_drop_reconnect_10x-…` PASS; P2 logcat: 34 announce/deliver lines,
+  12 `msg.delivered`).
+- iris-core **781** / iris-android **0** green, `cargo build --workspace` clean,
+  `Cargo.lock` reverted.
+- Commit `<pending>` (ble.rs `accept_spawned` + sim accept path + hv98 sim test;
+  AndroidBleTransportAdapter.kt announce-every-write; rebuilt jniLibs).
+
+### Session 13 closeout
+- **Devices:** P1 = vivo V2205 (Android 15, API 35, `10BCA20F4M000BB`);
+  P2 = vivo 2004 (Android 13, API 33, `b2fbcd39`).
+- **Advanced:** HV-98 🔬 → 🟢. Tier 1 now 8 🟢 / 2 ✅ / 1 🔬 / 1 🔒 / 10 ⬜.
+  Total 🟢 13 → 14.
+- **What changed in the real world:** before Session 12–13, any BLE link drop
+  (RF glitch, `dropAllLinks`, OEM stack hiccup) left the *receiving* phone
+  permanently deaf on that peer — the radio reconnected, ATT frames arrived at
+  the characteristic, but nothing was reassembled or delivered; only a full app
+  restart recovered it. Now the receiver re-attaches its inbound poller on the
+  first frame after any reconnect, so a dropped link self-heals in ~3.5 s with
+  no lost message.
+- **Next session pickup:** HV-10 + HV-31 (§5 advertising-resilience group;
+  HV-31 also benefits from `DiscoveryManager::wake()`).
+- **Still owed:** HV-97 follow-up — re-verify "two test methods in one process"
+  now that the inbound-poller lifecycle is fixed. §2 30-minute zero-loss session
+  (partly gated on HV-96).
+- **Still blocked:** HV-96 (spontaneous drop under load — needs HCI/btsnoop,
+  impossible on vivo Funtouch without root). HV-8 🔒 (asymmetric-link MTU).
