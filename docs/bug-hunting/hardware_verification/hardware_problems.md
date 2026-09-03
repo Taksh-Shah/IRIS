@@ -1226,7 +1226,7 @@ keyed off a run id / env var, not an incrementing scan of the folder.
 
 ### HV-98 — Inbound reassembly poller does not re-attach after a drop + reconnect
 
-- **Fix status:** 🟢 HW-verified · commit `<pending>` · 2026-09-03 · P1=vivo V2205
+- **Fix status:** 🟢 HW-verified · commit `81e17cd` · 2026-09-03 · P1=vivo V2205
   (Android 15) P2=vivo 2004 (Android 13) · `iris_bench`
   `test_forced_drop_reconnect_10x` **10/10**, recovery ~3.5 s each, 0
   `msg.delivery_failed`

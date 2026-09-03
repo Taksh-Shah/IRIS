@@ -2250,7 +2250,7 @@ has no such query — the server callback is exactly what's missing).
   12 `msg.delivered`).
 - iris-core **781** / iris-android **0** green, `cargo build --workspace` clean,
   `Cargo.lock` reverted.
-- Commit `<pending>` (ble.rs `accept_spawned` + sim accept path + hv98 sim test;
+- Commit `81e17cd` (ble.rs `accept_spawned` + sim accept path + hv98 sim test;
   AndroidBleTransportAdapter.kt announce-every-write; rebuilt jniLibs).
 
 ### Session 13 closeout
