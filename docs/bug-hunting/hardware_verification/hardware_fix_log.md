@@ -2411,3 +2411,70 @@ hardware trigger yet — its bounded-backoff logic is code-review + the
 **State at stop:** iris-core **782** / iris-android **7** green; APK +
 androidTest build SUCCESSFUL; L1 sim `hv31_bluetooth_toggle_marks_transport_
 unavailable_then_recovers` passes. HV-10 + HV-31 remain **🔬** (not verified).
+
+- ❌ Attempt 3 (hardware, `session-14-hv31c`): core-driven replay. Still FAIL —
+  cycle 0 no recovery in 60 s, and this run 0/3 cycles recovered (attempt 1 got
+  3/3). Evidence isolates **two independent latency sources**, neither of which
+  is the adapter-state receiver itself (which works — P2 logs `Bluetooth OFF` ×2
+  + `Bluetooth ON`, and the core logs `ble.adapter_off` / `ble.adapter_recovered`
+  correctly):
+  1. **P2 drains the adapter events ~20 s late.** `discover_peers` (the only
+     drain site) is starved: when BT drops, P2's `connections[P1]` is never torn
+     down (peripheral side, no `close_peer`), so `has_confirmed_link` stays
+     `true` and the discovery loop sleeps the full 30 s `scan_interval` instead
+     of the 3 s `active_scan_interval`. Nothing calls `DiscoveryManager::wake()`
+     for an adapter event — the FFI is pull-only and the Kotlin `btStateReceiver`
+     has no path to `wake()`.
+  2. **P1's reconnect `connectGatt` blocks the full 30 s `FfiCallTimeout`
+     budget** when P2 is not yet advertising (`connectGatt: initiated` →
+     `discovery.connect_failed elapsed_ms=30002`). P1 *is* trying to reconnect
+     (it gets server-side `onConnectionStateChange newState=0` when P2's BT
+     drops), but each attempt costs 30 s. This is an HV-91/HV-92-family
+     connect-timeout issue, **not** HV-31.
+  3. Minor: P2's `startScan` after `STATE_ON` still returns
+     `SCAN_FAILED_ALREADY_STARTED (1)` — the OEM stack retains a scan
+     registration across the toggle that our handle table no longer tracks.
+
+**Blocker analysis (3 attempts spent — §1 Phase I).**
+- The `btStateReceiver` (HV-31's actual deliverable) is correct and lands: it
+  observes both toggle edges, tears down stale handles, closes/reopens the GATT
+  server, and surfaces the transition to the core (`drain_adapter_events`).
+  Attempt 1 recovered 3/3 cycles (0.8–26 s) — the mechanism works.
+- The 10/10 < 60 s bar is **not met** because recovery latency is dominated by
+  two pre-existing issues outside HV-31's scope:
+  (a) `DiscoveryManager` has no wake path for an FFI-surfaced transport event —
+      needs `wake()` plumbed to `drain_adapter_events` (a shared `Arc<Notify>`
+      on `Transport`, set by `DiscoveryManager` at registration), **and** event
+      `2` must `close_peer` all connections so the cadence drops to fast;
+  (b) `connectGatt`'s 30 s `FfiCallTimeout` budget is far too long for a
+      reconnect probe — a peer that is not advertising should fail fast (~5 s)
+      so the next discovery pass can retry. → new candidate **HV-99**.
+- **Decision:** HV-31 → 🔒 Blocked (on HV-99 + the discovery-wake plumbing).
+  HV-10 → ✅ HW-PENDING (advertising-retry backoff is code-complete and
+  L1-tested; no hardware trigger for `TOO_MANY_ADVERTISERS` on the bench — it
+  needs many rapid advertiser start/stop cycles, deferred). The committed code
+  (`0875136`) stays — it is a strict improvement (adapter-off is now visible to
+  the core; advertising failures now retry) and it unblocks HV-99's work.
+- **§2 gate note:** the Tier-1→Tier-2 gate wants "HV-10, HV-11, HV-14, HV-15 🟢
+  or 🔒 with analysis". HV-10 ✅ + HV-31 🔒-with-analysis + HV-11 ✅ + HV-14/15 🟢
+  — the gate's *advertising/scanning-survive-churn* intent is met in analysis;
+  the 30-minute zero-loss session is still owed and now also gated on HV-99.
+
+### HV-99 — `connectGatt` reconnect probe blocks the full 30 s FFI budget when the peer is not advertising
+
+- **Fix status:** ⬜ (found Session 14 during HV-31 attempt 3)
+- **Area:** `AndroidBleTransportAdapter.connectGatt` (`FfiCallTimeout`
+  budget / `connectionReady` wait), `ble.rs` `connect` / discovery retry cadence
+- **Severity:** High · **HW gate:** 2 phones
+- **What:** on P1, a reconnect attempt to a peer that is temporarily not
+  advertising (peer rebooting BT, peer app restarting, peer walked out of range)
+  calls `connectGatt` which blocks the full 30 s `FfiCallTimeout` budget before
+  returning `Timeout`. The discovery loop cannot retry, switch transports, or
+  re-scan for 30 s per attempt. Observed: `connectGatt: initiated` →
+  (30 002 ms) → `discovery.connect_failed`. A reconnect probe should fail in
+  ~5 s so the next 3 s discovery pass picks it up. Blocks HV-31, HV-94, and the
+  §2 30-minute session gate.
+- **Fix sketch:** a short per-attempt connect timeout for the *discovery-driven*
+  reconnect path (distinct from a user-initiated send, which can wait longer);
+  or `connectGatt` with `autoConnect=false` + a 5–8 s ceiling, letting discovery
+  own the retry loop.

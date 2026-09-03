@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 22 | 8 | 2 | 3 | 1 | 8 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 8 | 3 | 1 | 2 | 9 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,17 +69,18 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **99** | **14** | **9** | **3** | **2** | **71** |
+| **Total** | | **100** | **14** | **10** | **1** | **3** | **72** |
 
-**Last updated:** 2026-09-03 (Session 14 — **HV-10 + HV-31 🔬** (§5 group,
-advertising / adapter-state resilience): `btStateReceiver` for
-`BluetoothAdapter.ACTION_STATE_CHANGED` + bounded advertising-retry backoff +
-new `BleAdapter::drain_adapter_events()` (core follows a BT off→on toggle:
-`Unavailable` → re-advertise from a cached `NodeAdvertisement`). Coded,
-L1-green, APK builds — **iteration paused mid-Phase-T** (hardware attempts 1–2
-recovered 3/3 toggle cycles but a Kotlin-side replay stalled ~20 s; attempt 3
-moves the replay into the core, untested). Resume in `hardware_fix_log.md`
-Session 14.) · Previously: 2026-09-03 (Session 13 — **HV-98 🟢** — inbound reassembly
+**Last updated:** 2026-09-03 (Session 14 — **HV-10 ✅ HW-PENDING** (bounded
+advertising-retry backoff — no bench trigger for `TOO_MANY_ADVERTISERS`) +
+**HV-31 🔒 Blocked** (§5 group; `btStateReceiver` for
+`BluetoothAdapter.ACTION_STATE_CHANGED` + `BleAdapter::drain_adapter_events()`
+land and are a strict improvement, but the 10/10 recovery bar is blocked on new
+**HV-99** — `connectGatt`'s 30 s reconnect-probe timeout — and a
+`DiscoveryManager::wake()` path for FFI-surfaced transport events; 3 hardware
+attempts, blocker analysis in `hardware_fix_log.md`). Commit 0875136. New
+candidate **HV-99** opened. Next: HV-94 (zombie GATT link).) · Previously:
+2026-09-03 (Session 13 — **HV-98 🟢** — inbound reassembly
 poller now re-attaches after a drop + reconnect: announce-every-write on the
 Kotlin side, `accept_spawned` shared set cleared by `close_peer` on the Rust
 side. `iris_bench test_forced_drop_reconnect_10x` **10/10**, recovery ~3.5 s
@@ -836,8 +837,10 @@ comment). Document the collision-safety analysis.
 
 ### HV-10 — Advertising failure is logged and abandoned — no retry, no state signal
 
-- **Fix status:** 🔬 (Session 14, §5 group with HV-31 — coded, not yet
-  HW-verified; iteration paused mid-Phase-T)
+- **Fix status:** ✅ Fixed · HW-PENDING · commit 0875136 · 2026-09-03 · Session
+  14 · §5 group with HV-31 · no bench trigger for `TOO_MANY_ADVERTISERS`
+  (needs many rapid advertiser start/stop cycles) — retry logic is
+  code-complete + L1-tested only
 - **Progress:** `launchAdvertising()` extracted; `onStartFailure` schedules a
   bounded exponential-backoff retry (1 s / 4 s / 10 s) for the transient codes
   (`TOO_MANY_ADVERTISERS`, `ALREADY_STARTED`, `INTERNAL_ERROR`), always
@@ -1282,6 +1285,33 @@ on the OEM server-disconnect callback. Coordinate with HV-93/HV-94.
 
 ---
 
+### HV-99 — `connectGatt` reconnect probe blocks the full 30 s FFI budget when the peer is not advertising
+
+- **Fix status:** ⬜ (found Session 14 during HV-31 attempt 3)
+- **Area:** `AndroidBleTransportAdapter.connectGatt` (`FfiCallTimeout` budget /
+  `connectionReady` wait), `ble.rs` `connect` / discovery retry cadence —
+  interacts with HV-15, HV-31, HV-94
+- **Severity:** High · **HW gate:** 2 phones
+
+**What:** on P1, a reconnect attempt to a peer that is temporarily not
+advertising (peer rebooting Bluetooth, peer app restarting, peer briefly out of
+range) calls `connectGatt`, which blocks the full 30 s `FfiCallTimeout` budget
+before returning `Timeout`. The discovery loop cannot retry, switch transports,
+or re-scan for those 30 s — per attempt. Observed (`session-14-hv31c`):
+`iris.ble.gatt connectGatt: initiated` → 30 002 ms → `discovery.connect_failed
+… elapsed_ms=30002`, immediately retried, another 30 s. A discovery-driven
+reconnect probe should fail in ~5 s so the next 3 s `active_scan_interval` pass
+picks it up. Blocks HV-31, HV-94, and the §2 30-minute-session gate.
+
+**Fix sketch:** a short per-attempt connect timeout for the *discovery-driven*
+reconnect path (distinct from a user-initiated `send`, which may wait longer);
+or `connectGatt` with `autoConnect=false` + a 5–8 s ceiling, letting the
+discovery loop own the retry cadence. Also plumb `DiscoveryManager::wake()` to
+`Transport`-surfaced events (BLE `drain_adapter_events`) so an adapter recovery
+is felt in ~1 s, not up to `scan_interval`.
+
+---
+
 ## Tier 2 — Wi-Fi Direct reliability & group-owner conflict
 
 ### HV-19 — Two peers both call `createGroup` → GO/GO conflict; there is no election
@@ -1589,8 +1619,20 @@ any transport, surface the PermissionNotice and set status to a distinct
 
 ### HV-31 — Airplane mode / Bluetooth toggle / Wi-Fi toggle: state-machine recovery
 
-- **Fix status:** 🔬 (Session 14, §5 group with HV-10 — coded, L1-green, NOT
-  yet HW-verified; iteration paused mid-Phase-T after attempt 3)
+- **Fix status:** 🔒 Blocked (blocker analysis in `hardware_fix_log.md` Session
+  14) · commit 0875136 (partial — the receiver + core drain land and are a
+  strict improvement) · 2026-09-03 · blocked on **HV-99** (`connectGatt` 30 s
+  reconnect-probe timeout) + a `DiscoveryManager::wake()` path for
+  FFI-surfaced transport events
+- **Attempts (3, hardware):** (1) recovered 3/3 toggle cycles (0.8–26 s) but a
+  Kotlin-side replay was fragile; (2) STATE_ON replay stalled ~20 s on a
+  still-settling stack; (3) core-driven replay — 0/3 in 60 s. Recovery latency
+  is dominated by two pre-existing issues outside HV-31's scope: P2 drains the
+  adapter events ~20 s late (discovery loop stays in 30 s slow cadence because
+  `connections[P1]` is never torn down + nothing calls `wake()`), and P1's
+  reconnect `connectGatt` blocks the full 30 s `FfiCallTimeout` (→ HV-99). The
+  `btStateReceiver` itself works — both edges observed, GATT server rebuilt,
+  core state follows.
 - **Progress:** new `btStateReceiver` for `BluetoothAdapter.ACTION_STATE_CHANGED`
   (mirrors the Wi-Fi Direct `p2pStateReceiver`). `STATE_OFF` → close the GATT
   server + clear every stale handle/per-connection map + `drainAdapterEvents()`
