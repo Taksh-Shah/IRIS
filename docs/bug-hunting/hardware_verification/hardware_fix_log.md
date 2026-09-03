@@ -2767,3 +2767,33 @@ delivery still work". Covered by the delivery smoke run for HV-12 (below) and
 the forced-drop regression (exercises `close_peer` → eviction). The split-id
 reconciliation (fix-sketch a) is what genuinely needs 2–3 phones + a crafted
 advertise-before-scan race — deferred with the finding.
+
+---
+
+### Session 15 closeout
+
+- **Devices:** P1 = vivo V2205 (Android 15), P2 = vivo 2004 (Android 13).
+  Autonomous run. adb server crashed twice under install/BT-cycle churn —
+  `adb kill-server && adb start-server` recovers each time.
+- **Findings advanced (4):**
+  - **HV-94 🟢** (`28272c0`) — client GATT disconnect surfaced to the core
+    (`drainDisconnectedHandles`, mirror of HW-9); peer app-process death →
+    torn down + reconnected < 1 s, 0 lost messages. `test_peer_process_restart_recovers` 3/3.
+  - **HV-16 ✅** (`8c0a986`) — cross-FFI UUID agreement regression guard (Rust
+    `hv16_…` + Kotlin `BleUuidParityTest`). Values already consistent; the guard
+    was missing.
+  - **HV-12 ✅ HW-PENDING** (`49413e5`) — `RSSI_FLOOR_DBM` -85 → -95, single
+    source. No-regression: ping-pong 10/10, forced-drop 10/10. Range map owed (L4).
+  - **HV-13 ✅ HW-PENDING** (`49413e5`) — `known_addresses` TTL-swept (300 s) +
+    capped (128) + evicted on `close_peer`. Part-(a) split-id reconciliation
+    deferred (envelope↔transport, needs 3 phones).
+- **🟢 count:** 14 → 15 (HV-94).
+- **Tier 1 status:** 23 findings — 9 🟢, 7 ✅, 1 🔬 (HV-96 blocked), 2 🔒
+  (HV-8, HV-31), 4 ⬜ (HV-9, HV-17, HV-18, HV-95).
+- **Regressions run:** HV-98 `test_forced_drop_reconnect_10x` (after HV-99) 10/10;
+  HV-7 `test_pingpong_300char_10x` (after HV-12) 10/10.
+- **Next session pickup:** HV-95 (`openGattServer` null swallowed), then HV-17
+  (`deviceHash` vs resolvable-private addresses). HV-9 (beacon `0xFFFF`) needs a
+  noisy-RF environment + a cross-platform wire change — research-only on the
+  bench. HV-18 needs a physical BT headset. The §2 30-minute zero-loss session
+  is still owed. HV-96 stays 🔒.
