@@ -1123,8 +1123,7 @@ contended, surface a "radio contended" diagnostic.
 
 ### HV-94 — Sender keeps a zombie GATT link after the peer's app process restarts: writes "succeed" into a dead server, no liveness check, no reconnect
 
-- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-03 · P1=vivo V2205
-  (Android 15) P2=vivo 2004 (Android 13) · Session 15 · `iris_bench`
+- **Fix status:** 🟢 HW-verified · commit 28272c0 · 2026-09-03 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13) · Session 15 · `iris_bench`
   `test_peer_process_restart_recovers` (`am force-stop` P2 ×3): **3/3**, P1
   recovery [0.9, 0.4, 0.5] s, **0 `msg.delivery_failed`**, 0 "unknown gatt
   connection" fallbacks.
