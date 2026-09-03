@@ -924,8 +924,7 @@ metric.
 
 ### HV-12 — RSSI floor is inconsistent across three layers (-85 / -95 / -127)
 
-- **Fix status:** ✅ Fixed · HW-PENDING · commit <pending> · 2026-09-03 ·
-  Session 15 · `RSSI_FLOOR_DBM` -85 → **-95** (single source; the Android
+- **Fix status:** ✅ Fixed · HW-PENDING · commit 49413e5 · 2026-09-03 · Session 15 · `RSSI_FLOOR_DBM` -85 → **-95** (single source; the Android
   adapter's `rssiFloor` default -127 → -95 to match; the bridge default was
   already -95). Delivery smoke (`test_pingpong_300char_10x` fwd 10/10 + rev
   10/10, 0 churn) confirms no regression — -95 is strictly more permissive so
@@ -957,8 +956,7 @@ the bench: at what distance / wall count does discovery stop.
 
 ### HV-13 — `known_addresses` (MAC → candidate PeerId) is only populated by `discover_peers`, and never pruned
 
-- **Fix status:** ✅ Fixed (part b) · HW-PENDING · commit <pending> · 2026-09-03
-  · Session 15 · `known_addresses` value → `(PeerId, Instant)`; `discover_peers`
+- **Fix status:** ✅ Fixed (part b) · HW-PENDING · commit 49413e5 · 2026-09-03 · Session 15 · `known_addresses` value → `(PeerId, Instant)`; `discover_peers`
   sweeps entries older than `KNOWN_ADDR_TTL` (300 s) + caps at `KNOWN_ADDR_CAP`
   (128, oldest-first) each pass; `close_peer` evicts the dropped peer's MAC
   hints. L1 `hv13_known_addresses_is_bounded_and_evicted_on_close`; forced-drop
