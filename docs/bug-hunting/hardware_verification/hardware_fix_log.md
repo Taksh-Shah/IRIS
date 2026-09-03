@@ -2712,5 +2712,4 @@ updated. iOS `IrisBleConstants` noted in both tests' comments (not on the bench)
 **Phase T / C.** No hardware behaviour change — pure regression guard.
 `cargo test -p iris-android` (**8** incl. `hv16_…`) + `:app:testDebugUnitTest
 --tests BleUuidParityTest` (**3/0/0**) green. UUID agreement is transitively
-HW-verified by every passing BLE delivery test this pass. HV-16 -> ✅
-(regression guard). Commit <pending>.
+HW-verified by every passing BLE delivery test this pass. HV-16 -> ✅ (regression guard). Commit 8c0a986.

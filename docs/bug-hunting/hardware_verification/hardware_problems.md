@@ -1050,8 +1050,7 @@ instead of destroying it.
 
 ### HV-16 — GATT server / characteristic UUIDs: verify Android and the core actually agree on the wire
 
-- **Fix status:** ✅ Fixed · commit <pending> · 2026-09-03 · Session 15 ·
-  regression guard landed. The four UUID sites agree at HEAD (Kotlin
+- **Fix status:** ✅ Fixed · commit 8c0a986 · 2026-09-03 · Session 15 · regression guard landed. The four UUID sites agree at HEAD (Kotlin
   `IRIS_SERVICE_UUID` was unified to `01000000-…` by CROSS-001 `9bddad9`; the
   write path already threads `IRIS_WRITE_CHARACTERISTIC` from the core across
   the FFI). Two coupled tests now fail the build on any drift:
