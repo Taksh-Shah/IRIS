@@ -2676,4 +2676,4 @@ kills. Evidence: `session-15-hv94b/`.
 **Phase C.** HV-94 -> 🟢. The client-side disconnect is now surfaced to the
 core the same way the server-side accept is (HW-9), so a peer whose app process
 dies is torn down promptly and the link re-forms in < 1 s with no lost message.
-Commit <pending>.
+Commit `28272c0`.
