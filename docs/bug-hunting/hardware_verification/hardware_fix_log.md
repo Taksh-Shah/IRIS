@@ -2567,3 +2567,32 @@ likely, peripheral-side link-death detection (HV-93/HV-94 family). HV-31 stays
 **Session 14 running total:** HV-98 🟢 · HV-10 ✅ HW-PENDING · HV-31 🔒 ·
 HV-99 ✅ HW-PENDING (partial) · candidates HV-99 opened→worked. Commits: 81e17cd,
 2bb6281, 0875136, 64ca2d2, f2858b5, + HV-99 commit next.
+
+---
+
+### Session 14 closeout
+
+- **Devices:** P1 = vivo V2205 (Android 15, API 35, `10BCA20F4M000BB`);
+  P2 = vivo 2004 (Android 13, API 33, `b2fbcd39`). Autonomous run (operator out).
+- **Findings advanced:**
+  - **HV-98 🟢** — inbound reassembly poller re-attaches after a drop+reconnect
+    (`test_forced_drop_reconnect_10x` 10/10, ~3.5 s each). Commit `81e17cd`.
+  - **HV-10 ✅ HW-PENDING** — bounded advertising-retry backoff
+    (`TOO_MANY_ADVERTISERS` etc.); no bench trigger. Commit `0875136`.
+  - **HV-31 🔒 Blocked** — `btStateReceiver` for `ACTION_STATE_CHANGED` +
+    `drain_adapter_events` land (strict improvement), but the 10/10 recovery bar
+    is blocked on HV-99. Blocker analysis above. Commit `0875136`.
+  - **HV-99 ✅ HW-PENDING (partial)** — new candidate, then worked: BT-toggle
+    recovery **never → ~24–41 s** via 12 s connect probe + 5 s backoff + adapter
+    link-teardown + `Transport::poll_health` 5 s tick. Commits `a645b90`,
+    `4f88a67`.
+- **🟢 count:** 13 → 14 (HV-98).
+- **Blockers opened:** HV-31 (on HV-99). HV-99 partial (P1-side reconnect
+  cadence + peripheral-side link-death detection still owed).
+- **Regression:** HV-98 `test_forced_drop_reconnect_10x` re-run after the HV-99
+  reconnect changes — (in progress).
+- **Next session pickup:** HV-94 (zombie GATT link after peer process restart —
+  test already written, `test_peer_process_restart_recovers`); then HV-12 (RSSI
+  floor -85→-95, one constant threaded) and HV-13 (`known_addresses` LRU +
+  evict). The §2 30-minute zero-loss session is still owed (now also gated on
+  finishing HV-99). HV-96 stays 🔒 (no HCI snoop on vivo Funtouch).
