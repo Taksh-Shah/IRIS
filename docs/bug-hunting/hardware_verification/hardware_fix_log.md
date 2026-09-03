@@ -2831,8 +2831,7 @@ opens the GATT server first try). `test_p1_to_p2_300char_10x` **10/10** (intact,
 0 churn, ~375 ms median) — advertising comes up clean AND **0 `ble.advertise_watchdog`
 / 0 "GATT server unavailable"** in either phone's logcat, i.e. the watchdog does
 not spuriously fire on a healthy stack. iris-core 786, iris-android 8 green.
-HV-95 -> ✅ HW-PENDING (the wedge-recovery path itself needs a stack that
-actually wedges). Commit <pending>.
+HV-95 -> ✅ HW-PENDING. Commit 5939a91.
 
 ### HV-100 — iris-core has intermittent full-suite test flakiness
 

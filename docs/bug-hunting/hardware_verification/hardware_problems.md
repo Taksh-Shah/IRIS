@@ -1225,8 +1225,7 @@ health.
 
 ### HV-95 — `openGattServer` returning null is swallowed — the node advertises an IRIS beacon with no GATT server behind it
 
-- **Fix status:** ✅ Fixed · HW-PENDING · commit <pending> · 2026-09-03 ·
-  Session 16 · `ensureGattServer(): Boolean` (bounded 3× retry);
+- **Fix status:** ✅ Fixed · HW-PENDING · commit 5939a91 · 2026-09-03 · Session 16 · `ensureGattServer(): Boolean` (bounded 3× retry);
   `startAdvertising` throws `Transport("BLE GATT server unavailable…")` when it
   fails so the core records `ble-android` as not-started (not half-up); core
   watchdog on the 5 s `poll_health` tick re-drives `start_advertising` whenever
