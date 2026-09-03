@@ -286,6 +286,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     /** HV-11: onScanFailed error codes awaiting drainScanFailures(). */
     private val scanFailures = ConcurrentLinkedQueue<Int>()
 
+    /** HV-94: client GATT handles whose link dropped, awaiting drainDisconnectedHandles(). */
+    private val pendingDisconnectedHandles = ConcurrentLinkedQueue<Long>()
+
     /** HV-10/HV-31: adapter-lifecycle event codes awaiting drainAdapterEvents(). */
     private val adapterEvents = ConcurrentLinkedQueue<Int>()
 
@@ -430,7 +433,18 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     connectionReady.remove(gatt)?.completeExceptionally(e)
                 }
             } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+                // HV-94: surface the client-side link-down to the Rust core the
+                // same way HW-9 surfaces server-side accepts — a drain the
+                // accept-poller consumes. Without this, a peer whose *app
+                // process* died (its GATT server gone, ACL dropped) is only
+                // noticed when the next `send()` write fails with "unknown gatt
+                // connection" — one message is lost and `close_peer` runs late.
+                val removed = gattHandles.entries.filter { it.value == gatt }.map { it.key }
                 gattHandles.entries.removeIf { it.value == gatt }
+                for (h in removed) {
+                    while (pendingDisconnectedHandles.size >= MAX_PENDING) pendingDisconnectedHandles.poll()
+                    pendingDisconnectedHandles.add(h)
+                }
                 serviceCharacteristics.remove(gatt)
                 serviceDiscoveryRetries.remove(gatt)
                 negotiatedMtu.remove(gatt)
@@ -996,6 +1010,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun drainScanFailures(): List<Int> =
         FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(scanFailures) }
+
+    // HV-94: client GATT links that dropped since the last call — the
+    // accept-poller tears down the matching `connections` entry + poller.
+    override fun drainDisconnectedHandles(): List<Long> =
+        FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(pendingDisconnectedHandles) }
 
     // HV-10/HV-31: adapter-lifecycle events (advertising gave up / Bluetooth
     // off / Bluetooth on) — `BleTransport::discover_peers` follows the toggle.

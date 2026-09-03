@@ -84,6 +84,12 @@ pub trait FfiBleAdapter: Send + Sync + 'static {
     /// last call (2 = APPLICATION_REGISTRATION_FAILED, 3 = INTERNAL_ERROR,
     /// 6 = SCANNING_TOO_FREQUENTLY, …). Empty on every pass with no failure.
     fn drain_scan_failures(&self) -> Vec<i32>;
+    /// HV-94: drain client GATT connection handles whose link dropped since the
+    /// last call (`BluetoothGattCallback.onConnectionStateChange` DISCONNECTED),
+    /// so the accept-poller tears the peer down before the next failed `send()`.
+    /// `i64` because Kotlin's adapter handles are `Long`; the bridge casts to
+    /// `GattHandle(u64)`.
+    fn drain_disconnected_handles(&self) -> Vec<i64>;
     /// HV-10/HV-31: drain adapter-lifecycle events since the last call
     /// (1 = advertising retry exhausted, 2 = Bluetooth off, 3 = Bluetooth on /
     /// adapter replayed advertise+scan). Empty on every quiet pass.
@@ -127,6 +133,9 @@ pub(crate) mod tests {
             Vec::new()
         }
         fn drain_scan_failures(&self) -> Vec<i32> {
+            Vec::new()
+        }
+        fn drain_disconnected_handles(&self) -> Vec<i64> {
             Vec::new()
         }
         fn drain_adapter_events(&self) -> Vec<i32> {

@@ -294,6 +294,16 @@ impl BleAdapter for BleBridge {
         self.ffi.drain_scan_failures()
     }
 
+    // HV-94: project Kotlin's client-side disconnect queue onto `GattHandle`,
+    // exactly like `accepted_connections` does for the server-side accept queue.
+    fn drain_disconnected_handles(&self) -> Vec<GattHandle> {
+        self.ffi
+            .drain_disconnected_handles()
+            .into_iter()
+            .map(|h| GattHandle(h as u64))
+            .collect()
+    }
+
     // HV-10/HV-31: pass the platform's adapter-lifecycle events through so
     // `BleTransport::discover_peers` can follow a Bluetooth off→on toggle.
     fn drain_adapter_events(&self) -> Vec<i32> {
@@ -650,6 +660,9 @@ mod tests {
             Vec::new()
         }
         fn drain_scan_failures(&self) -> Vec<i32> {
+            Vec::new()
+        }
+        fn drain_disconnected_handles(&self) -> Vec<i64> {
             Vec::new()
         }
         fn drain_adapter_events(&self) -> Vec<i32> {

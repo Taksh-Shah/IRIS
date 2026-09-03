@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 8 | 4 | 1 | 2 | 8 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 4 | 1 | 2 | 7 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,9 +69,14 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **100** | **14** | **11** | **1** | **3** | **71** |
+| **Total** | | **100** | **15** | **11** | **1** | **3** | **70** |
 
-**Last updated:** 2026-09-03 (Session 14 — **HV-10 ✅ HW-PENDING** (bounded
+**Last updated:** 2026-09-03 (Session 15 — **HV-94 HW-verified** — client-side
+GATT disconnect now surfaced to the core via `drainDisconnectedHandles` (mirror
+of HW-9's accept drain); a peer whose app process dies is torn down +
+reconnected in <1 s, 0 lost messages. `test_peer_process_restart_recovers` 3/3.
+Also this session: HV-99 partial improvements, HV-31 blocked, HV-10 HW-pending,
+HV-98 verified.) · Previously: 2026-09-03 (Session 14 — **HV-10 ✅ HW-PENDING** (bounded
 advertising-retry backoff — no bench trigger for `TOO_MANY_ADVERTISERS`) +
 **HV-31 🔒 Blocked** (§5 group; `btStateReceiver` for
 `BluetoothAdapter.ACTION_STATE_CHANGED` + `BleAdapter::drain_adapter_events()`
@@ -1118,7 +1123,23 @@ contended, surface a "radio contended" diagnostic.
 
 ### HV-94 — Sender keeps a zombie GATT link after the peer's app process restarts: writes "succeed" into a dead server, no liveness check, no reconnect
 
-- **Fix status:** ⬜ (found in Session 09 while verifying HV-92/HV-93)
+- **Fix status:** 🟢 HW-verified · commit <pending> · 2026-09-03 · P1=vivo V2205
+  (Android 15) P2=vivo 2004 (Android 13) · Session 15 · `iris_bench`
+  `test_peer_process_restart_recovers` (`am force-stop` P2 ×3): **3/3**, P1
+  recovery [0.9, 0.4, 0.5] s, **0 `msg.delivery_failed`**, 0 "unknown gatt
+  connection" fallbacks.
+- **Fix:** the client-side `BluetoothGattCallback.onConnectionStateChange`
+  DISCONNECTED now enqueues the dropped handle to `pendingDisconnectedHandles`,
+  exposed as `drainDisconnectedHandles(): List<Long>` — the mirror of HW-9's
+  server-side `acceptedConnections()`. `FfiBleAdapter::drain_disconnected_handles`
+  + `BleBridge` map it to `GattHandle`; the accept-poller's existing
+  `drain_disconnected_handles` consumer (BLE-1, previously fed only by the
+  simulator) tears the peer's `connections` entry + poller down. So a peer whose
+  app process dies is noticed immediately, not on the next failed `send()`.
+  L1 test `hv94_client_disconnect_tears_down_peer_before_next_send`.
+- **Note:** the "tens of seconds to never" premise was already disproved on HEAD
+  by the accumulated HV-7/HV-15/HV-98/HV-99 self-healing (verified 3/3 before
+  this fix); the fix removes the one-message-lost + the late `close_peer`.
 - **Area:** `ble.rs` `send` / `close_peer` / connection liveness, interacts with
   HV-15 (dropped-link reconnect) and HV-27 (per-link health)
 - **Severity:** High · **HW gate:** 2 phones

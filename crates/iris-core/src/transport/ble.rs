@@ -2102,6 +2102,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn hv94_client_disconnect_tears_down_peer_before_next_send() {
+        // HV-94: the peer's *app process* died — its GATT server is gone and the
+        // ACL dropped, so the OS fires `onConnectionStateChange(DISCONNECTED)`
+        // on our client. The Kotlin adapter now surfaces that handle via
+        // `drain_disconnected_handles`; the accept-poller must consume it and
+        // tear the peer down, so the NEXT `send()` fails cleanly (`NotConnected`
+        // → the engine HOLDS + reconnects) instead of writing into a dead
+        // handle.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = std::sync::Arc::new(BleTransport::new(Some(adapter.clone())));
+        t.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([60u8; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        })
+        .await
+        .unwrap();
+
+        let peer = peer_with_mac(PeerId([1u8; 32]), "AA:BB:CC:DD:EE:F1");
+        t.connect(&peer).await.unwrap();
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([2u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"hi".to_vec(),
+        };
+        t.send(&peer.peer_id, &msg).await.expect("send works while linked");
+
+        // The OS reports the client link down (peer's process died).
+        adapter.simulate_disconnect(GattHandle(1));
+        // The accept-poller drains it within a poll interval.
+        tokio::time::sleep(Duration::from_millis(700)).await;
+
+        assert_eq!(
+            t.send(&peer.peer_id, &msg).await.unwrap_err(),
+            TransportError::NotConnected,
+            "a dropped client link must be torn down, not written into"
+        );
+    }
+
+    #[tokio::test]
     async fn hv97_drop_all_links_clears_connections_but_stays_reconnectable() {
         let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
         let t = BleTransport::new(Some(adapter.clone()));

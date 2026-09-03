@@ -1,0 +1,907 @@
+--------- beginning of main
+09-03 19:42:45.932 V/org.iris.mesh.test.JsonRpcServer:54(15179): Session 1 Received: {"id": 5, "method": "nodeId", "params": []}
+09-03 19:42:45.933 D/org.iris.mesh.test.SnippetManager:286(15179): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:42:45.936 V/org.iris.mesh.test.JsonRpcServer:116(15179): Session 1 Sent: {"id":5,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:42:45.989 V/org.iris.mesh.test.JsonRpcServer:54(15179): Session 1 Received: {"id": 6, "method": "awaitDelivered", "params": ["01a0679d6e557d71a2edbf68c7731eea", 90000]}
+09-03 19:42:45.990 D/org.iris.mesh.test.SnippetManager:286(15179): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-03 19:42:46.389 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-03 19:42:46.401 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:42:46.876 D/BoundBrokerSvc( 8208): onUnbind: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+09-03 19:42:48.475 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:42:50.500 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-03 19:42:51.537 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:42:51.554 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-03 19:42:51.555 D/iriscore(15179): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-03 19:42:52.282 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:42:52.288 D/BluetoothGattServer(15179): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:42:52.289 D/IrisBleDiag(15179): gattServer onConnectionStateChange device=63:A4:03:DA:F8:C3 status=0 newState=2
+09-03 19:42:52.820 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:42:52.820 D/BluetoothGattServer(15179): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:42:53.215 D/iriscore(15179): iris.ble.gatt connectGatt: ready resolved successfully
+09-03 19:42:53.233 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1710
+09-03 19:42:53.233 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-03 19:42:53.233 D/iriscore(15179): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-03 19:42:53.260 D/iriscore(15179): iris.ble.gatt gattWrite ENTER handle=3 len=348 known=[3]
+09-03 19:42:53.315 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:42:53.317 D/BluetoothGattServer(15179): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:42:53.370 I/hbox:interacto( 4536): oneway function results for code 2 on binder at 0xb400006ff0258d40 will be dropped but finished with status UNKNOWN_TRANSACTION
+09-03 19:42:56.203 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:42:56.204 D/BluetoothGattServer(15179): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:42:56.205 D/IrisBleDiag(15179): gattServer onConnectionStateChange device=57:21:94:1F:DB:D0 status=0 newState=2
+09-03 19:42:56.745 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:42:56.746 D/BluetoothGattServer(15179): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:42:57.013 D/BluetoothGattServer( 8126): onMtuChanged() - device=, mtu=517
+09-03 19:42:57.014 D/BluetoothGattServer(15179): onMtuChanged() - device=, mtu=517
+09-03 19:42:57.104 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:42:57.106 D/IrisBleDiag(15179): onCharacteristicWriteRequest device=57:21:94:1F:DB:D0 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=350 responseNeeded=true
+09-03 19:42:57.118 D/BluetoothGattServer(15179): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:42:58.141 D/IrisBleDiag(15179): onCharacteristicWriteRequest device=57:21:94:1F:DB:D0 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=292 responseNeeded=true
+09-03 19:42:58.320 I/iriscore(15179): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a0679d6e557d71 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-03 19:42:58.364 I/iriscore(15179): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a0679d9f507b31 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-03 19:42:58.367 D/iriscore(15179): iris.ble.gatt gattWrite ENTER handle=3 len=323 known=[3]
+09-03 19:42:58.445 I/iriscore(15179): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a0679d9f507b31 [3mpriority[0m[2m=[0m4
+09-03 19:42:58.463 V/org.iris.mesh.test.JsonRpcServer:116(15179): Session 1 Sent: {"id":6,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"prime\"}","callback":null,"error":null}
+09-03 19:42:58.595 D/ProcessState(15302): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:01.141 D/AndroidRuntime(15318): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-03 19:43:01.146 I/AndroidRuntime(15318): Using default boot image
+09-03 19:43:01.146 I/AndroidRuntime(15318): Leaving lock profiling enabled
+09-03 19:43:01.146 W/libc    (15318): Access denied finding property "odsign.verification.success"
+09-03 19:43:01.142 W/app_process(15318): type=1400 audit(0.0:70992): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-03 19:43:01.149 W/app_process(15318): ART APEX data files are untrusted.
+09-03 19:43:01.149 I/app_process(15318): Using CollectorTypeCC GC.
+09-03 19:43:01.149 E/app_process(15318): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:01.149 E/app_process(15318): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:01.493 D/nativeloader(15318): InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+09-03 19:43:01.516 D/nativeloader(15318): Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:01.516 D/app_process(15318): Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+09-03 19:43:01.516 D/app_process(15318): I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+09-03 19:43:01.518 D/nativeloader(15318): Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:01.520 D/nativeloader(15318): Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:01.661 W/libc    (15318): Access denied finding property "persist.vendor.vivo.zramwb.thppool"
+09-03 19:43:01.654 W/main    (15318): type=1400 audit(0.0:70993): avc: denied { read } for name="u:object_r:vendor_zramwb_prop:s0" dev="tmpfs" ino=15409 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_zramwb_prop:s0 tclass=file permissive=0
+09-03 19:43:01.762 D/ProcessState(15318): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:01.762 D/AndroidRuntime(15318): Calling main entry com.android.commands.am.Am
+09-03 19:43:01.816 D/hw-ProcessState(15150): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:01.817 D/AndroidRuntime(15150): Shutting down VM
+09-03 19:43:01.865 I/org.iris.mesh(15330): Late-enabling -Xcheck:jni
+09-03 19:43:01.887 I/org.iris.mesh(15330): Using CollectorTypeCC GC.
+09-03 19:43:01.907 D/ProcessState(15330): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:01.951 D/CompatibilityChangeReporter(15330): Compat change id reported: 171979766; UID 10363; state: ENABLED
+--------- beginning of system
+09-03 19:43:01.983 W/ActivityThread(15330): Package uses different ABI(s) than its instrumentation: package[org.iris.mesh]: arm64-v8a, null instrumentation[org.iris.mesh.test]: null, null
+09-03 19:43:02.456 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:02.524 D/nativeloader(15330): Configuring clns-4 for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk!/lib/arm64-v8a:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.iris.mesh
+09-03 19:43:02.541 V/GraphicsEnvironment(15330): ANGLE Developer option for 'org.iris.mesh' set to: 'default'
+09-03 19:43:02.542 V/GraphicsEnvironment(15330): Updatable production driver is not supported on the device.
+09-03 19:43:02.549 D/ApplicationLoaders(15330): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:02.555 D/nativeloader(15330): Configuring clns-5 for other apk /system/framework/android.test.mock.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:02.555 D/nativeloader(15330): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:02.556 D/ApplicationLoaders(15330): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:02.560 D/nativeloader(15330): Configuring clns-6 for other apk /system/framework/android.test.runner.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:02.560 D/nativeloader(15330): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:02.677 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:02.906 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:43:03.102 D/NetworkSecurityConfig(15330): No Network Security Config specified, using platform default
+09-03 19:43:03.102 D/NetworkSecurityConfig(15330): No Network Security Config specified, using platform default
+09-03 19:43:03.102 I/AndroidJUnitRunner(15330): newApplication iriscore.IrisApplication
+09-03 19:43:03.120 D/WM-WrkMgrInitializer(15330): Initializing WorkManager with default configuration.
+09-03 19:43:03.155 D/WM-PackageManagerHelper(15330): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-03 19:43:03.155 D/WM-Schedulers(15330): Created SystemJobScheduler and enabled SystemJobService
+09-03 19:43:03.172 W/org.iris.mesh.test.SnippetRunner:105(15330): AndroidManifest.xml does not contain metadata field named "mobly-log-tag". Using package name for logging instead.
+09-03 19:43:03.172 I/org.iris.mesh.test.SnippetRunner:194(15330): Sending protocol message: SNIPPET START, PROTOCOL 1 0
+09-03 19:43:03.174 I/AndroidJUnitRunner(15330): onCreate Bundle[{action=stop, class=com.google.android.mobly.snippet.util.EmptyTestClass}]
+09-03 19:43:03.175 D/AndroidJUnitRunner(15330): Use the raw file system for managing file I/O.
+09-03 19:43:03.187 V/TestEventClient(15330): No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+09-03 19:43:03.195 D/AndroidJUnitRunner(15330): onStart is called.
+09-03 19:43:03.215 D/CompatibilityChangeReporter(15330): Compat change id reported: 160794467; UID 10363; state: ENABLED
+09-03 19:43:03.231 I/TestRunner(15330): run started: 1 tests
+09-03 19:43:03.233 I/TestRunner(15330): ignored: com.google.android.mobly.snippet.util.EmptyTestClass
+09-03 19:43:03.238 I/TestRunner(15330): run finished: 0 tests, 0 failed, 1 ignored
+09-03 19:43:03.256 D/hw-ProcessState(15318): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:03.259 D/AndroidRuntime(15318): Shutting down VM
+09-03 19:43:04.398 D/ProcessState(15374): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:04.531 D/ProcessState(15379): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:04.690 D/ProcessState(15384): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:04.840 D/ProcessState(15390): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:05.413 D/AndroidRuntime(15397): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-03 19:43:05.414 W/app_process(15397): type=1400 audit(0.0:70995): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-03 19:43:05.419 I/AndroidRuntime(15397): Using default boot image
+09-03 19:43:05.419 I/AndroidRuntime(15397): Leaving lock profiling enabled
+09-03 19:43:05.419 W/libc    (15397): Access denied finding property "odsign.verification.success"
+09-03 19:43:05.422 W/app_process(15397): ART APEX data files are untrusted.
+09-03 19:43:05.423 I/app_process(15397): Using CollectorTypeCC GC.
+09-03 19:43:05.423 E/app_process(15397): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:05.423 E/app_process(15397): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:05.766 D/nativeloader(15397): InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+09-03 19:43:05.790 D/nativeloader(15397): Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:05.790 D/app_process(15397): Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+09-03 19:43:05.790 D/app_process(15397): I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+09-03 19:43:05.791 D/nativeloader(15397): Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:05.794 D/nativeloader(15397): Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:05.930 W/main    (15397): type=1400 audit(0.0:70996): avc: denied { read } for name="u:object_r:vendor_zramwb_prop:s0" dev="tmpfs" ino=15409 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_zramwb_prop:s0 tclass=file permissive=0
+09-03 19:43:05.935 W/libc    (15397): Access denied finding property "persist.vendor.vivo.zramwb.thppool"
+09-03 19:43:06.038 D/ProcessState(15397): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:06.038 D/AndroidRuntime(15397): Calling main entry com.android.commands.am.Am
+09-03 19:43:06.156 I/org.iris.mesh(15407): Late-enabling -Xcheck:jni
+09-03 19:43:06.189 I/org.iris.mesh(15407): Using CollectorTypeCC GC.
+09-03 19:43:06.207 D/ProcessState(15407): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:06.262 D/CompatibilityChangeReporter(15407): Compat change id reported: 171979766; UID 10363; state: ENABLED
+09-03 19:43:06.305 W/ActivityThread(15407): Package uses different ABI(s) than its instrumentation: package[org.iris.mesh]: arm64-v8a, null instrumentation[org.iris.mesh.test]: null, null
+09-03 19:43:06.953 D/nativeloader(15407): Configuring clns-4 for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk!/lib/arm64-v8a:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.iris.mesh
+09-03 19:43:06.969 V/GraphicsEnvironment(15407): ANGLE Developer option for 'org.iris.mesh' set to: 'default'
+09-03 19:43:06.969 V/GraphicsEnvironment(15407): Updatable production driver is not supported on the device.
+09-03 19:43:06.976 D/ApplicationLoaders(15407): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:06.983 D/nativeloader(15407): Configuring clns-5 for other apk /system/framework/android.test.mock.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:06.983 D/nativeloader(15407): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:06.986 D/ApplicationLoaders(15407): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:06.988 D/nativeloader(15407): Configuring clns-6 for other apk /system/framework/android.test.runner.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:06.988 D/nativeloader(15407): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:07.533 D/NetworkSecurityConfig(15407): No Network Security Config specified, using platform default
+09-03 19:43:07.534 D/NetworkSecurityConfig(15407): No Network Security Config specified, using platform default
+09-03 19:43:07.534 I/AndroidJUnitRunner(15407): newApplication iriscore.IrisApplication
+09-03 19:43:07.548 D/WM-WrkMgrInitializer(15407): Initializing WorkManager with default configuration.
+09-03 19:43:07.580 D/WM-PackageManagerHelper(15407): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-03 19:43:07.580 D/WM-Schedulers(15407): Created SystemJobScheduler and enabled SystemJobService
+09-03 19:43:07.596 W/org.iris.mesh.test.SnippetRunner:105(15407): AndroidManifest.xml does not contain metadata field named "mobly-log-tag". Using package name for logging instead.
+09-03 19:43:07.596 I/org.iris.mesh.test.SnippetRunner:194(15407): Sending protocol message: SNIPPET START, PROTOCOL 1 0
+09-03 19:43:07.601 I/AndroidJUnitRunner(15407): onCreate Bundle[{action=start, class=com.google.android.mobly.snippet.util.EmptyTestClass}]
+09-03 19:43:07.602 D/AndroidJUnitRunner(15407): Use the raw file system for managing file I/O.
+09-03 19:43:07.611 V/TestEventClient(15407): No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+09-03 19:43:07.617 I/org.iris.mesh.test.SnippetManager:197(15407): No object converter provided.
+09-03 19:43:07.618 I/org.iris.mesh.test.SnippetManager:225(15407): Trying to load Snippet class: iriscore.snippet.IrisSnippet
+09-03 19:43:07.629 D/CompatibilityChangeReporter(15407): Compat change id reported: 160794467; UID 10363; state: ENABLED
+09-03 19:43:07.632 D/org.iris.mesh.test.SimpleServer:148(15407): local address /127.0.0.1
+09-03 19:43:07.633 V/org.iris.mesh.test.SimpleServer:202(15407): Bound to /127.0.0.1
+09-03 19:43:07.637 I/org.iris.mesh.test.SnippetRunner:194(15407): Sending protocol message: SNIPPET SERVING, PORT 42781
+09-03 19:43:07.638 I/org.iris.mesh.test.SnippetRunner:161(15407): Snippet server started for process 15407 on port 42781
+09-03 19:43:09.833 V/org.iris.mesh.test.SimpleServer:211(15407): Received: {"cmd": "initiate", "uid": -1}
+09-03 19:43:09.835 D/org.iris.mesh.test.SimpleServer:218(15407): Initiate a new session
+09-03 19:43:09.839 V/org.iris.mesh.test.SimpleServer$ConnectionThread:105(15407): Server thread 63 started.
+09-03 19:43:09.840 D/org.iris.mesh.test.SimpleServer$ConnectionThread:108(15407): Handling RPC connection in 63
+09-03 19:43:09.841 D/org.iris.mesh.test.JsonRpcServer:51(15407): UID 1
+09-03 19:43:09.843 V/org.iris.mesh.test.SimpleServer:253(15407): Sent: {"uid":1,"status":true}
+09-03 19:43:09.851 V/org.iris.mesh.test.JsonRpcServer:54(15407): Session 1 Received: {"id": 0, "method": "startMesh", "params": []}
+09-03 19:43:09.853 D/org.iris.mesh.test.SnippetManager:259(15407): Constructing class iriscore.snippet.IrisSnippet
+09-03 19:43:09.855 D/org.iris.mesh.test.SnippetManager:286(15407): Invoking RPC method class iriscore.snippet.IrisSnippet#startMesh
+09-03 19:43:10.127 W/SystemServiceRegistry(15407): No service published for: wifiaware
+09-03 19:43:10.247 D/nativeloader(15407): Load /data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a/libjnidispatch.so using class loader ns clns-4 (caller=/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!classes11.dex): ok
+09-03 19:43:10.336 D/BluetoothGattServer(15407): registerCallback()
+09-03 19:43:10.337 D/BluetoothGattServer(15407): registerCallback() - UUID=f7f20201-c5e9-4948-997c-3e1335ae8da1
+09-03 19:43:10.340 D/BluetoothGattServer(15407): onServerRegistered() - status=0 serverIf=7
+09-03 19:43:10.341 D/BluetoothGattServer(15407): addService() - service: 01000000-0000-0000-0000-000000000000
+09-03 19:43:10.342 D/BluetoothGattServer(15407): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:43:10.343 D/IrisBleDiag(15407): gattServer onConnectionStateChange device=57:21:94:1F:DB:D0 status=0 newState=2
+09-03 19:43:10.344 D/iriscore(15407): iris.ble.gatt ensureGattServer: addService(IRIS_SERVICE_UUID=01000000-0000-0000-0000-000000000000) -> true
+09-03 19:43:10.353 D/BluetoothGattServer(15407): onServiceAdded() - handle=48 uuid=01000000-0000-0000-0000-000000000000 status=0
+09-03 19:43:10.356 D/BluetoothLeScanner(15407): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-03 19:43:10.372 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-03 19:43:10.386 W/iriscore(15407): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-aware-0" [3merror[0m[2m=[0mtransport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:10.395 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:10.961 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:10.964 D/BluetoothGattServer(15407): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:11.252 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:11.255 D/BluetoothGattServer(15407): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:12.454 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:13.381 D/ProfileInstaller(15407): Installing profile for org.iris.mesh
+09-03 19:43:14.544 W/iriscore(15407): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-direct-0" [3merror[0m[2m=[0mtransport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:14.545 W/iriscore(15407): [2miriscode::engine[0m[2m:[0m mesh started with a subset of transports [3mevent[0m[2m=[0m"engine.start_all_partial" [3mstarted[0m[2m=[0m["ble-android"] [3mfailed[0m[2m=[0m["wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)", "wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)"]
+09-03 19:43:14.555 I/iriscore(15407): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-03 19:43:14.556 I/iriscore(15407): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0m
+09-03 19:43:14.583 V/org.iris.mesh.test.JsonRpcServer:116(15407): Session 1 Sent: {"id":0,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-aware-0 error=transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-direct-0 error=transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_all_partial\",\"detail\":\"mesh started with a subset of transports started=[\\\"ble-android\\\"] failed=[\\\"wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\\\", \\\"wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\\\"]\"}]}","callback":null,"error":null}
+09-03 19:43:14.586 V/org.iris.mesh.test.JsonRpcServer:54(15407): Session 1 Received: {"id": 1, "method": "nodeId", "params": []}
+09-03 19:43:14.587 D/org.iris.mesh.test.SnippetManager:286(15407): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:43:14.619 V/org.iris.mesh.test.JsonRpcServer:116(15407): Session 1 Sent: {"id":1,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:43:14.622 V/org.iris.mesh.test.JsonRpcServer:54(15407): Session 1 Received: {"id": 2, "method": "staticX25519", "params": []}
+09-03 19:43:14.623 D/org.iris.mesh.test.SnippetManager:286(15407): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-03 19:43:14.733 V/org.iris.mesh.test.JsonRpcServer:116(15407): Session 1 Sent: {"id":2,"result":"1e7a1dfa3a9fad7408eccce358e3e71b2ab10ee72aabb88d21f770a44e647f6a","callback":null,"error":null}
+09-03 19:43:14.780 V/org.iris.mesh.test.JsonRpcServer:54(15407): Session 1 Received: {"id": 3, "method": "registerPeerKey", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "dd614034b41e39cf5d89a5a9ab4840846768af069b911610bfa9982a63a87916"]}
+09-03 19:43:14.781 D/org.iris.mesh.test.SnippetManager:286(15407): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-03 19:43:14.787 V/org.iris.mesh.test.JsonRpcServer:116(15407): Session 1 Sent: {"id":3,"result":null,"callback":null,"error":null}
+09-03 19:43:14.792 V/org.iris.mesh.test.JsonRpcServer:54(15407): Session 1 Received: {"id": 4, "method": "nodeId", "params": []}
+09-03 19:43:14.792 D/org.iris.mesh.test.SnippetManager:286(15407): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:43:14.794 V/org.iris.mesh.test.JsonRpcServer:116(15407): Session 1 Sent: {"id":4,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:43:14.859 V/org.iris.mesh.test.JsonRpcServer:54(15407): Session 1 Received: {"id": 5, "method": "awaitDelivered", "params": ["01a0679ddf1c7c729fe7c9c96ecd7b16", 6000]}
+09-03 19:43:14.860 D/org.iris.mesh.test.SnippetManager:286(15407): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-03 19:43:14.926 D/IrisBleDiag(15407): onCharacteristicWriteRequest device=57:21:94:1F:DB:D0 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=298 responseNeeded=true
+09-03 19:43:15.148 I/iriscore(15407): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a0679ddf1c7c72 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-03 19:43:15.191 I/iriscore(15407): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a0679de10c7be3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-03 19:43:15.191 D/iriscore(15407): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-03 19:43:15.191 W/iriscore(15407): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a0679de10c7be3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-03 19:43:15.265 V/org.iris.mesh.test.JsonRpcServer:116(15407): Session 1 Sent: {"id":5,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"restart-0\"}","callback":null,"error":null}
+09-03 19:43:15.402 D/ProcessState(15497): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:15.492 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:15.513 D/iriscore(15407): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-03 19:43:15.762 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:43:15.764 D/BluetoothGattServer(15407): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:43:15.764 D/IrisBleDiag(15407): gattServer onConnectionStateChange device=63:A4:03:DA:F8:C3 status=0 newState=2
+09-03 19:43:16.305 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:16.307 D/BluetoothGattServer(15407): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:16.346 I/org.iris.mesh(15407): Background concurrent copying GC freed 19MB AllocSpace bytes, 2(72KB) LOS objects, 71% free, 4886KB/16MB, paused 1.161ms,39us total 116.838ms
+09-03 19:43:16.699 D/iriscore(15407): iris.ble.gatt connectGatt: ready resolved successfully
+09-03 19:43:16.720 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1238
+09-03 19:43:16.721 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-03 19:43:16.721 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-03 19:43:16.796 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:16.796 D/BluetoothGattServer(15407): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:17.566 D/iriscore(15407): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:17.588 D/iriscore(15407): iris.ble.gatt gattWrite ENTER handle=3 len=348 known=[3]
+09-03 19:43:17.861 D/AndroidRuntime(15502): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-03 19:43:17.868 I/AndroidRuntime(15502): Using default boot image
+09-03 19:43:17.868 I/AndroidRuntime(15502): Leaving lock profiling enabled
+09-03 19:43:17.868 W/libc    (15502): Access denied finding property "odsign.verification.success"
+09-03 19:43:17.862 W/app_process(15502): type=1400 audit(0.0:70997): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-03 19:43:17.872 W/app_process(15502): ART APEX data files are untrusted.
+09-03 19:43:17.873 I/app_process(15502): Using CollectorTypeCC GC.
+09-03 19:43:17.873 E/app_process(15502): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:17.873 E/app_process(15502): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:18.210 D/iriscore(15407): iris.ble.gatt gattWrite ENTER handle=3 len=323 known=[3]
+09-03 19:43:18.218 D/nativeloader(15502): InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+09-03 19:43:18.234 D/nativeloader(15502): Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:18.234 D/app_process(15502): Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+09-03 19:43:18.234 D/app_process(15502): I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+09-03 19:43:18.235 D/nativeloader(15502): Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:18.237 D/nativeloader(15502): Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:18.282 I/iriscore(15407): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a0679de10c7be3 [3mpriority[0m[2m=[0m4
+09-03 19:43:18.370 W/main    (15502): type=1400 audit(0.0:70998): avc: denied { read } for name="u:object_r:vendor_zramwb_prop:s0" dev="tmpfs" ino=15409 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_zramwb_prop:s0 tclass=file permissive=0
+09-03 19:43:18.376 W/libc    (15502): Access denied finding property "persist.vendor.vivo.zramwb.thppool"
+09-03 19:43:18.477 D/ProcessState(15502): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:18.477 D/AndroidRuntime(15502): Calling main entry com.android.commands.am.Am
+09-03 19:43:18.549 D/hw-ProcessState(15397): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:18.549 D/AndroidRuntime(15397): Shutting down VM
+09-03 19:43:18.598 I/org.iris.mesh(15514): Late-enabling -Xcheck:jni
+09-03 19:43:18.633 I/org.iris.mesh(15514): Using CollectorTypeCC GC.
+09-03 19:43:18.657 D/ProcessState(15514): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:18.709 D/CompatibilityChangeReporter(15514): Compat change id reported: 171979766; UID 10363; state: ENABLED
+09-03 19:43:18.750 W/ActivityThread(15514): Package uses different ABI(s) than its instrumentation: package[org.iris.mesh]: arm64-v8a, null instrumentation[org.iris.mesh.test]: null, null
+09-03 19:43:18.787 W/Auth    ( 8126): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-03 19:43:18.787 W/Auth    ( 8126): dedt: Failed to process request
+09-03 19:43:18.787 W/Auth    ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:18.787 W/Auth    ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:18.787 W/Auth    ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:18.787 W/Auth    ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:18.789 E/AuthPII ( 8126): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-03 19:43:18.789 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	... 12 more
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	... 13 more
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:18.789 E/AuthPII ( 8126): Message is Error when calling server using GmsNetworkStack.
+09-03 19:43:18.789 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	... 12 more
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	... 13 more
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:18.789 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:18.789 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:18.790 I/Auth    ( 8126): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-03 19:43:18.790 W/Auth    ( 8126): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-03 19:43:18.790 W/Auth    ( 8126): aiic: GetToken failed with status code: NetworkError
+09-03 19:43:18.790 W/Auth    ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:18.790 W/Auth    ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:18.791 W/GLSActivity( 8126): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-03 19:43:19.172 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:19.310 D/nativeloader(15514): Configuring clns-4 for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk!/lib/arm64-v8a:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.iris.mesh
+09-03 19:43:19.320 V/GraphicsEnvironment(15514): ANGLE Developer option for 'org.iris.mesh' set to: 'default'
+09-03 19:43:19.321 V/GraphicsEnvironment(15514): Updatable production driver is not supported on the device.
+09-03 19:43:19.323 D/ApplicationLoaders(15514): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:19.326 D/nativeloader(15514): Configuring clns-5 for other apk /system/framework/android.test.mock.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:19.326 D/nativeloader(15514): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:19.328 D/ApplicationLoaders(15514): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:19.330 D/nativeloader(15514): Configuring clns-6 for other apk /system/framework/android.test.runner.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:19.330 D/nativeloader(15514): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:19.409 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:19.638 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:43:19.829 W/Auth    ( 8126): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-03 19:43:19.829 W/Auth    ( 8126): dedt: Failed to process request
+09-03 19:43:19.829 W/Auth    ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:19.829 W/Auth    ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:19.829 W/Auth    ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:19.829 W/Auth    ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:19.833 E/AuthPII ( 8126): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-03 19:43:19.833 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:19.833 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	... 12 more
+09-03 19:43:19.833 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	... 13 more
+09-03 19:43:19.833 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:19.833 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:19.833 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:19.834 E/AuthPII ( 8126): Message is Error when calling server using GmsNetworkStack.
+09-03 19:43:19.834 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:19.834 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	... 12 more
+09-03 19:43:19.834 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	... 13 more
+09-03 19:43:19.834 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:19.834 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:19.834 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:19.834 I/Auth    ( 8126): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-03 19:43:19.835 W/Auth    ( 8126): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-03 19:43:19.835 W/Auth    ( 8126): aiic: GetToken failed with status code: NetworkError
+09-03 19:43:19.835 W/Auth    ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:19.835 W/Auth    ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:19.835 W/GLSActivity( 8126): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-03 19:43:19.872 D/NetworkSecurityConfig(15514): No Network Security Config specified, using platform default
+09-03 19:43:19.873 D/NetworkSecurityConfig(15514): No Network Security Config specified, using platform default
+09-03 19:43:19.873 I/AndroidJUnitRunner(15514): newApplication iriscore.IrisApplication
+09-03 19:43:19.887 D/WM-WrkMgrInitializer(15514): Initializing WorkManager with default configuration.
+09-03 19:43:19.918 D/WM-PackageManagerHelper(15514): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-03 19:43:19.919 D/WM-Schedulers(15514): Created SystemJobScheduler and enabled SystemJobService
+09-03 19:43:19.943 W/org.iris.mesh.test.SnippetRunner:105(15514): AndroidManifest.xml does not contain metadata field named "mobly-log-tag". Using package name for logging instead.
+09-03 19:43:19.943 I/org.iris.mesh.test.SnippetRunner:194(15514): Sending protocol message: SNIPPET START, PROTOCOL 1 0
+09-03 19:43:19.947 I/AndroidJUnitRunner(15514): onCreate Bundle[{action=stop, class=com.google.android.mobly.snippet.util.EmptyTestClass}]
+09-03 19:43:19.948 D/AndroidJUnitRunner(15514): Use the raw file system for managing file I/O.
+09-03 19:43:19.959 V/TestEventClient(15514): No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+09-03 19:43:19.963 D/AndroidJUnitRunner(15514): onStart is called.
+09-03 19:43:19.998 D/CompatibilityChangeReporter(15514): Compat change id reported: 160794467; UID 10363; state: ENABLED
+09-03 19:43:20.006 I/TestRunner(15514): run started: 1 tests
+09-03 19:43:20.009 I/TestRunner(15514): ignored: com.google.android.mobly.snippet.util.EmptyTestClass
+09-03 19:43:20.013 I/TestRunner(15514): run finished: 0 tests, 0 failed, 1 ignored
+09-03 19:43:20.037 D/hw-ProcessState(15502): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:20.037 D/AndroidRuntime(15502): Shutting down VM
+09-03 19:43:20.522 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-03 19:43:20.598 W/Auth    ( 8126): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-03 19:43:20.598 W/Auth    ( 8126): dedt: Failed to process request
+09-03 19:43:20.598 W/Auth    ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:20.598 W/Auth    ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:20.598 W/Auth    ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:20.598 W/Auth    ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:20.600 E/AuthPII ( 8126): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-03 19:43:20.600 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	... 12 more
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	... 13 more
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:20.600 E/AuthPII ( 8126): Message is Error when calling server using GmsNetworkStack.
+09-03 19:43:20.600 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	... 12 more
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	... 13 more
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-03 19:43:20.600 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-03 19:43:20.600 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-03 19:43:20.601 I/Auth    ( 8126): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-03 19:43:20.601 W/Auth    ( 8126): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-03 19:43:20.601 W/Auth    ( 8126): aiic: GetToken failed with status code: NetworkError
+09-03 19:43:20.601 W/Auth    ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-03 19:43:20.601 W/Auth    ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-03 19:43:20.601 W/GLSActivity( 8126): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-03 19:43:21.177 D/ProcessState(15569): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:21.315 D/ProcessState(15574): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:21.477 D/ProcessState(15579): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:21.635 D/ProcessState(15584): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:22.215 D/AndroidRuntime(15591): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-03 19:43:22.221 I/AndroidRuntime(15591): Using default boot image
+09-03 19:43:22.221 I/AndroidRuntime(15591): Leaving lock profiling enabled
+09-03 19:43:22.221 W/libc    (15591): Access denied finding property "odsign.verification.success"
+09-03 19:43:22.214 W/app_process(15591): type=1400 audit(0.0:71000): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-03 19:43:22.224 W/app_process(15591): ART APEX data files are untrusted.
+09-03 19:43:22.225 I/app_process(15591): Using CollectorTypeCC GC.
+09-03 19:43:22.225 E/app_process(15591): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:22.225 E/app_process(15591): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:22.568 D/nativeloader(15591): InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+09-03 19:43:22.591 D/nativeloader(15591): Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:22.591 D/app_process(15591): Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+09-03 19:43:22.591 D/app_process(15591): I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+09-03 19:43:22.593 D/nativeloader(15591): Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:22.595 D/nativeloader(15591): Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:22.730 W/main    (15591): type=1400 audit(0.0:71001): avc: denied { read } for name="u:object_r:vendor_zramwb_prop:s0" dev="tmpfs" ino=15409 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_zramwb_prop:s0 tclass=file permissive=0
+09-03 19:43:22.736 W/libc    (15591): Access denied finding property "persist.vendor.vivo.zramwb.thppool"
+09-03 19:43:22.839 D/ProcessState(15591): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:22.839 D/AndroidRuntime(15591): Calling main entry com.android.commands.am.Am
+09-03 19:43:22.960 I/org.iris.mesh(15601): Late-enabling -Xcheck:jni
+09-03 19:43:22.992 I/org.iris.mesh(15601): Using CollectorTypeCC GC.
+09-03 19:43:23.013 D/ProcessState(15601): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:23.065 D/CompatibilityChangeReporter(15601): Compat change id reported: 171979766; UID 10363; state: ENABLED
+09-03 19:43:23.102 W/ActivityThread(15601): Package uses different ABI(s) than its instrumentation: package[org.iris.mesh]: arm64-v8a, null instrumentation[org.iris.mesh.test]: null, null
+09-03 19:43:23.655 D/nativeloader(15601): Configuring clns-4 for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk!/lib/arm64-v8a:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.iris.mesh
+09-03 19:43:23.669 V/GraphicsEnvironment(15601): ANGLE Developer option for 'org.iris.mesh' set to: 'default'
+09-03 19:43:23.669 V/GraphicsEnvironment(15601): Updatable production driver is not supported on the device.
+09-03 19:43:23.672 D/ApplicationLoaders(15601): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:23.674 D/nativeloader(15601): Configuring clns-5 for other apk /system/framework/android.test.mock.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:23.674 D/nativeloader(15601): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:23.676 D/ApplicationLoaders(15601): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:23.678 D/nativeloader(15601): Configuring clns-6 for other apk /system/framework/android.test.runner.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:23.678 D/nativeloader(15601): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:24.270 D/NetworkSecurityConfig(15601): No Network Security Config specified, using platform default
+09-03 19:43:24.271 D/NetworkSecurityConfig(15601): No Network Security Config specified, using platform default
+09-03 19:43:24.271 I/AndroidJUnitRunner(15601): newApplication iriscore.IrisApplication
+09-03 19:43:24.283 D/WM-WrkMgrInitializer(15601): Initializing WorkManager with default configuration.
+09-03 19:43:24.376 D/WM-PackageManagerHelper(15601): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-03 19:43:24.376 D/WM-Schedulers(15601): Created SystemJobScheduler and enabled SystemJobService
+09-03 19:43:24.410 W/org.iris.mesh.test.SnippetRunner:105(15601): AndroidManifest.xml does not contain metadata field named "mobly-log-tag". Using package name for logging instead.
+09-03 19:43:24.410 I/org.iris.mesh.test.SnippetRunner:194(15601): Sending protocol message: SNIPPET START, PROTOCOL 1 0
+09-03 19:43:24.417 I/AndroidJUnitRunner(15601): onCreate Bundle[{action=start, class=com.google.android.mobly.snippet.util.EmptyTestClass}]
+09-03 19:43:24.418 D/AndroidJUnitRunner(15601): Use the raw file system for managing file I/O.
+09-03 19:43:24.442 V/TestEventClient(15601): No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+09-03 19:43:24.450 D/CompatibilityChangeReporter(15601): Compat change id reported: 160794467; UID 10363; state: ENABLED
+09-03 19:43:24.451 I/org.iris.mesh.test.SnippetManager:197(15601): No object converter provided.
+09-03 19:43:24.454 I/org.iris.mesh.test.SnippetManager:225(15601): Trying to load Snippet class: iriscore.snippet.IrisSnippet
+09-03 19:43:24.468 D/org.iris.mesh.test.SimpleServer:148(15601): local address /127.0.0.1
+09-03 19:43:24.474 V/org.iris.mesh.test.SimpleServer:202(15601): Bound to /127.0.0.1
+09-03 19:43:24.486 I/org.iris.mesh.test.SnippetRunner:194(15601): Sending protocol message: SNIPPET SERVING, PORT 37871
+09-03 19:43:24.488 I/org.iris.mesh.test.SnippetRunner:161(15601): Snippet server started for process 15601 on port 37871
+09-03 19:43:26.648 V/org.iris.mesh.test.SimpleServer:211(15601): Received: {"cmd": "initiate", "uid": -1}
+09-03 19:43:26.650 D/org.iris.mesh.test.SimpleServer:218(15601): Initiate a new session
+09-03 19:43:26.656 V/org.iris.mesh.test.SimpleServer:253(15601): Sent: {"uid":1,"status":true}
+09-03 19:43:26.658 V/org.iris.mesh.test.SimpleServer$ConnectionThread:105(15601): Server thread 64 started.
+09-03 19:43:26.659 D/org.iris.mesh.test.SimpleServer$ConnectionThread:108(15601): Handling RPC connection in 64
+09-03 19:43:26.660 D/org.iris.mesh.test.JsonRpcServer:51(15601): UID 1
+09-03 19:43:26.662 V/org.iris.mesh.test.JsonRpcServer:54(15601): Session 1 Received: {"id": 0, "method": "startMesh", "params": []}
+09-03 19:43:26.665 D/org.iris.mesh.test.SnippetManager:259(15601): Constructing class iriscore.snippet.IrisSnippet
+09-03 19:43:26.666 D/org.iris.mesh.test.SnippetManager:286(15601): Invoking RPC method class iriscore.snippet.IrisSnippet#startMesh
+09-03 19:43:26.935 W/SystemServiceRegistry(15601): No service published for: wifiaware
+09-03 19:43:27.073 D/nativeloader(15601): Load /data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a/libjnidispatch.so using class loader ns clns-4 (caller=/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!classes11.dex): ok
+09-03 19:43:27.164 D/BluetoothGattServer(15601): registerCallback()
+09-03 19:43:27.165 D/BluetoothGattServer(15601): registerCallback() - UUID=3cdf981f-35af-4a1b-a4e0-d733de44ce0d
+09-03 19:43:27.171 D/BluetoothGattServer(15601): onServerRegistered() - status=0 serverIf=7
+09-03 19:43:27.172 D/BluetoothGattServer(15601): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:43:27.172 D/BluetoothGattServer(15601): addService() - service: 01000000-0000-0000-0000-000000000000
+09-03 19:43:27.174 D/IrisBleDiag(15601): gattServer onConnectionStateChange device=57:21:94:1F:DB:D0 status=0 newState=2
+09-03 19:43:27.176 D/iriscore(15601): iris.ble.gatt ensureGattServer: addService(IRIS_SERVICE_UUID=01000000-0000-0000-0000-000000000000) -> true
+09-03 19:43:27.183 D/BluetoothGattServer(15601): onServiceAdded() - handle=48 uuid=01000000-0000-0000-0000-000000000000 status=0
+09-03 19:43:27.189 D/BluetoothLeScanner(15601): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-03 19:43:27.204 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-03 19:43:27.223 W/iriscore(15601): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-aware-0" [3merror[0m[2m=[0mtransport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:27.232 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:27.784 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:27.784 D/BluetoothGattServer(15601): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:28.083 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:28.084 D/BluetoothGattServer(15601): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:29.286 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:30.045 D/ProfileInstaller(15601): Installing profile for org.iris.mesh
+09-03 19:43:31.365 W/iriscore(15601): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-direct-0" [3merror[0m[2m=[0mtransport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:31.365 W/iriscore(15601): [2miriscode::engine[0m[2m:[0m mesh started with a subset of transports [3mevent[0m[2m=[0m"engine.start_all_partial" [3mstarted[0m[2m=[0m["ble-android"] [3mfailed[0m[2m=[0m["wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)", "wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)"]
+09-03 19:43:31.374 I/iriscore(15601): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-03 19:43:31.374 I/iriscore(15601): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0m
+09-03 19:43:31.394 V/org.iris.mesh.test.JsonRpcServer:116(15601): Session 1 Sent: {"id":0,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-aware-0 error=transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-direct-0 error=transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_all_partial\",\"detail\":\"mesh started with a subset of transports started=[\\\"ble-android\\\"] failed=[\\\"wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\\\", \\\"wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\\\"]\"}]}","callback":null,"error":null}
+09-03 19:43:31.397 V/org.iris.mesh.test.JsonRpcServer:54(15601): Session 1 Received: {"id": 1, "method": "nodeId", "params": []}
+09-03 19:43:31.399 D/org.iris.mesh.test.SnippetManager:286(15601): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:43:31.423 V/org.iris.mesh.test.JsonRpcServer:116(15601): Session 1 Sent: {"id":1,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:43:31.427 V/org.iris.mesh.test.JsonRpcServer:54(15601): Session 1 Received: {"id": 2, "method": "staticX25519", "params": []}
+09-03 19:43:31.427 D/org.iris.mesh.test.SnippetManager:286(15601): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-03 19:43:31.543 V/org.iris.mesh.test.JsonRpcServer:116(15601): Session 1 Sent: {"id":2,"result":"1996774ea00bcdec088b947be6202fadceebe700b45147bd1c7293845f0e7a46","callback":null,"error":null}
+09-03 19:43:31.597 V/org.iris.mesh.test.JsonRpcServer:54(15601): Session 1 Received: {"id": 3, "method": "registerPeerKey", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "dd614034b41e39cf5d89a5a9ab4840846768af069b911610bfa9982a63a87916"]}
+09-03 19:43:31.598 D/org.iris.mesh.test.SnippetManager:286(15601): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-03 19:43:31.604 V/org.iris.mesh.test.JsonRpcServer:116(15601): Session 1 Sent: {"id":3,"result":null,"callback":null,"error":null}
+09-03 19:43:31.612 V/org.iris.mesh.test.JsonRpcServer:54(15601): Session 1 Received: {"id": 4, "method": "nodeId", "params": []}
+09-03 19:43:31.612 D/org.iris.mesh.test.SnippetManager:286(15601): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:43:31.614 V/org.iris.mesh.test.JsonRpcServer:116(15601): Session 1 Sent: {"id":4,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:43:31.680 V/org.iris.mesh.test.JsonRpcServer:54(15601): Session 1 Received: {"id": 5, "method": "awaitDelivered", "params": ["01a0679e20d47a119daf44fce54d73d1", 6000]}
+09-03 19:43:31.681 D/org.iris.mesh.test.SnippetManager:286(15601): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-03 19:43:31.757 D/IrisBleDiag(15601): onCharacteristicWriteRequest device=57:21:94:1F:DB:D0 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=298 responseNeeded=true
+09-03 19:43:31.899 I/iriscore(15601): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a0679e20d47a11 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-03 19:43:31.947 I/iriscore(15601): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a0679e227b7510 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-03 19:43:31.947 D/iriscore(15601): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-03 19:43:31.947 W/iriscore(15601): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a0679e227b7510 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-03 19:43:31.986 V/org.iris.mesh.test.JsonRpcServer:116(15601): Session 1 Sent: {"id":5,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"restart-1\"}","callback":null,"error":null}
+09-03 19:43:32.111 D/ProcessState(15691): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:32.346 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:32.354 D/iriscore(15601): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-03 19:43:32.417 D/BoundBrokerSvc( 8208): onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+09-03 19:43:32.865 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:43:32.866 D/BluetoothGattServer(15601): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:43:32.866 D/IrisBleDiag(15601): gattServer onConnectionStateChange device=63:A4:03:DA:F8:C3 status=0 newState=2
+09-03 19:43:33.405 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:33.407 D/BluetoothGattServer(15601): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:33.790 D/iriscore(15601): iris.ble.gatt connectGatt: ready resolved successfully
+09-03 19:43:33.812 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1484
+09-03 19:43:33.812 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m1
+09-03 19:43:33.896 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:33.899 D/BluetoothGattServer(15601): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:34.409 D/iriscore(15601): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:34.430 D/iriscore(15601): iris.ble.gatt gattWrite ENTER handle=3 len=348 known=[3]
+09-03 19:43:34.563 D/AndroidRuntime(15697): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-03 19:43:34.569 I/AndroidRuntime(15697): Using default boot image
+09-03 19:43:34.570 I/AndroidRuntime(15697): Leaving lock profiling enabled
+09-03 19:43:34.570 W/libc    (15697): Access denied finding property "odsign.verification.success"
+09-03 19:43:34.566 W/app_process(15697): type=1400 audit(0.0:71002): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-03 19:43:34.572 W/app_process(15697): ART APEX data files are untrusted.
+09-03 19:43:34.573 I/app_process(15697): Using CollectorTypeCC GC.
+09-03 19:43:34.573 E/app_process(15697): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:34.573 E/app_process(15697): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:34.917 D/nativeloader(15697): InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+09-03 19:43:34.941 D/nativeloader(15697): Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:34.941 D/app_process(15697): Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+09-03 19:43:34.941 D/app_process(15697): I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+09-03 19:43:34.942 D/nativeloader(15697): Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:34.944 D/nativeloader(15697): Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:34.985 D/iriscore(15601): iris.ble.gatt gattWrite ENTER handle=3 len=323 known=[3]
+09-03 19:43:35.065 I/iriscore(15601): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a0679e227b7510 [3mpriority[0m[2m=[0m4
+09-03 19:43:35.084 W/libc    (15697): Access denied finding property "persist.vendor.vivo.zramwb.thppool"
+09-03 19:43:35.078 W/main    (15697): type=1400 audit(0.0:71003): avc: denied { read } for name="u:object_r:vendor_zramwb_prop:s0" dev="tmpfs" ino=15409 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_zramwb_prop:s0 tclass=file permissive=0
+09-03 19:43:35.188 D/ProcessState(15697): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:35.188 D/AndroidRuntime(15697): Calling main entry com.android.commands.am.Am
+09-03 19:43:35.244 D/hw-ProcessState(15591): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:35.244 D/AndroidRuntime(15591): Shutting down VM
+09-03 19:43:35.291 I/org.iris.mesh(15709): Late-enabling -Xcheck:jni
+09-03 19:43:35.319 I/org.iris.mesh(15709): Using CollectorTypeCC GC.
+09-03 19:43:35.335 D/ProcessState(15709): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:35.368 D/CompatibilityChangeReporter(15709): Compat change id reported: 171979766; UID 10363; state: ENABLED
+09-03 19:43:35.402 W/ActivityThread(15709): Package uses different ABI(s) than its instrumentation: package[org.iris.mesh]: arm64-v8a, null instrumentation[org.iris.mesh.test]: null, null
+09-03 19:43:35.912 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:35.958 D/nativeloader(15709): Configuring clns-4 for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk!/lib/arm64-v8a:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.iris.mesh
+09-03 19:43:35.973 V/GraphicsEnvironment(15709): ANGLE Developer option for 'org.iris.mesh' set to: 'default'
+09-03 19:43:35.973 V/GraphicsEnvironment(15709): Updatable production driver is not supported on the device.
+09-03 19:43:35.978 D/ApplicationLoaders(15709): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:35.981 D/nativeloader(15709): Configuring clns-5 for other apk /system/framework/android.test.mock.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:35.981 D/nativeloader(15709): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:35.983 D/ApplicationLoaders(15709): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:35.985 D/nativeloader(15709): Configuring clns-6 for other apk /system/framework/android.test.runner.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:35.985 D/nativeloader(15709): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:36.151 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:36.374 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-03 19:43:36.558 D/NetworkSecurityConfig(15709): No Network Security Config specified, using platform default
+09-03 19:43:36.559 D/NetworkSecurityConfig(15709): No Network Security Config specified, using platform default
+09-03 19:43:36.559 I/AndroidJUnitRunner(15709): newApplication iriscore.IrisApplication
+09-03 19:43:36.572 D/WM-WrkMgrInitializer(15709): Initializing WorkManager with default configuration.
+09-03 19:43:36.603 D/WM-PackageManagerHelper(15709): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-03 19:43:36.603 D/WM-Schedulers(15709): Created SystemJobScheduler and enabled SystemJobService
+09-03 19:43:36.620 W/org.iris.mesh.test.SnippetRunner:105(15709): AndroidManifest.xml does not contain metadata field named "mobly-log-tag". Using package name for logging instead.
+09-03 19:43:36.620 I/org.iris.mesh.test.SnippetRunner:194(15709): Sending protocol message: SNIPPET START, PROTOCOL 1 0
+09-03 19:43:36.623 I/AndroidJUnitRunner(15709): onCreate Bundle[{action=stop, class=com.google.android.mobly.snippet.util.EmptyTestClass}]
+09-03 19:43:36.623 D/AndroidJUnitRunner(15709): Use the raw file system for managing file I/O.
+09-03 19:43:36.632 V/TestEventClient(15709): No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+09-03 19:43:36.635 D/AndroidJUnitRunner(15709): onStart is called.
+09-03 19:43:36.673 D/CompatibilityChangeReporter(15709): Compat change id reported: 160794467; UID 10363; state: ENABLED
+09-03 19:43:36.674 I/TestRunner(15709): run started: 1 tests
+09-03 19:43:36.677 I/TestRunner(15709): ignored: com.google.android.mobly.snippet.util.EmptyTestClass
+09-03 19:43:36.679 I/TestRunner(15709): run finished: 0 tests, 0 failed, 1 ignored
+09-03 19:43:36.688 D/hw-ProcessState(15697): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:36.688 D/AndroidRuntime(15697): Shutting down VM
+09-03 19:43:37.820 D/ProcessState(15753): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:37.979 D/ProcessState(15758): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:38.139 D/ProcessState(15763): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:38.298 D/ProcessState(15768): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:38.872 D/AndroidRuntime(15776): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-03 19:43:38.877 I/AndroidRuntime(15776): Using default boot image
+09-03 19:43:38.877 I/AndroidRuntime(15776): Leaving lock profiling enabled
+09-03 19:43:38.870 W/app_process(15776): type=1400 audit(0.0:71005): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-03 19:43:38.877 W/libc    (15776): Access denied finding property "odsign.verification.success"
+09-03 19:43:38.882 W/app_process(15776): ART APEX data files are untrusted.
+09-03 19:43:38.883 I/app_process(15776): Using CollectorTypeCC GC.
+09-03 19:43:38.883 E/app_process(15776): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:38.883 E/app_process(15776): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-03 19:43:39.226 D/nativeloader(15776): InitDefaultPublicLibraries for_preload=1: libandroid.so:libaaudio.so:libamidi.so:libbinder_ndk.so:libc.so:libcamera2ndk.so:libdl.so:libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libicu.so:libicui18n.so:libicuuc.so:libjnigraphics.so:liblog.so:libmediandk.so:libm.so:libnativehelper.so:libnativewindow.so:libOpenMAXAL.so:libOpenSLES.so:libRS.so:libstdc++.so:libsync.so:libvulkan.so:libwebviewchromium_plat_support.so:libz.so
+09-03 19:43:39.249 D/nativeloader(15776): Load libicu_jni.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:39.249 D/app_process(15776): Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+09-03 19:43:39.249 D/app_process(15776): I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+09-03 19:43:39.251 D/nativeloader(15776): Load libjavacore.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:39.253 D/nativeloader(15776): Load libopenjdk.so using APEX ns com_android_art for caller /apex/com.android.art/javalib/core-oj.jar: ok
+09-03 19:43:39.386 W/main    (15776): type=1400 audit(0.0:71006): avc: denied { read } for name="u:object_r:vendor_zramwb_prop:s0" dev="tmpfs" ino=15409 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_zramwb_prop:s0 tclass=file permissive=0
+09-03 19:43:39.392 W/libc    (15776): Access denied finding property "persist.vendor.vivo.zramwb.thppool"
+09-03 19:43:39.492 D/ProcessState(15776): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:39.493 D/AndroidRuntime(15776): Calling main entry com.android.commands.am.Am
+09-03 19:43:39.603 I/org.iris.mesh(15786): Late-enabling -Xcheck:jni
+09-03 19:43:39.647 I/org.iris.mesh(15786): Using CollectorTypeCC GC.
+09-03 19:43:39.675 D/ProcessState(15786): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-03 19:43:39.742 D/CompatibilityChangeReporter(15786): Compat change id reported: 171979766; UID 10363; state: ENABLED
+09-03 19:43:39.779 W/ActivityThread(15786): Package uses different ABI(s) than its instrumentation: package[org.iris.mesh]: arm64-v8a, null instrumentation[org.iris.mesh.test]: null, null
+09-03 19:43:40.420 D/nativeloader(15786): Configuring clns-4 for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk. target_sdk_version=34, uses_libraries=, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64:/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/base.apk!/lib/arm64-v8a:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/org.iris.mesh
+09-03 19:43:40.441 V/GraphicsEnvironment(15786): ANGLE Developer option for 'org.iris.mesh' set to: 'default'
+09-03 19:43:40.442 V/GraphicsEnvironment(15786): Updatable production driver is not supported on the device.
+09-03 19:43:40.454 D/ApplicationLoaders(15786): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:40.460 D/nativeloader(15786): Configuring clns-5 for other apk /system/framework/android.test.mock.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:40.460 D/nativeloader(15786): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:40.463 D/ApplicationLoaders(15786): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+09-03 19:43:40.467 D/nativeloader(15786): Configuring clns-6 for other apk /system/framework/android.test.runner.jar. target_sdk_version=34, uses_libraries=ALL, library_path=/data/app/~~heWj-0Za50ixr_krnSRQMQ==/org.iris.mesh.test-ta7PyaCI6ltkr-_ztcC7pQ==/lib/arm64:/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/lib/arm64, permitted_path=/data:/mnt/expand
+09-03 19:43:40.468 D/nativeloader(15786): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-03 19:43:41.026 D/NetworkSecurityConfig(15786): No Network Security Config specified, using platform default
+09-03 19:43:41.027 D/NetworkSecurityConfig(15786): No Network Security Config specified, using platform default
+09-03 19:43:41.027 I/AndroidJUnitRunner(15786): newApplication iriscore.IrisApplication
+09-03 19:43:41.038 D/WM-WrkMgrInitializer(15786): Initializing WorkManager with default configuration.
+09-03 19:43:41.069 D/WM-PackageManagerHelper(15786): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-03 19:43:41.069 D/WM-Schedulers(15786): Created SystemJobScheduler and enabled SystemJobService
+09-03 19:43:41.087 W/org.iris.mesh.test.SnippetRunner:105(15786): AndroidManifest.xml does not contain metadata field named "mobly-log-tag". Using package name for logging instead.
+09-03 19:43:41.087 I/org.iris.mesh.test.SnippetRunner:194(15786): Sending protocol message: SNIPPET START, PROTOCOL 1 0
+09-03 19:43:41.090 I/AndroidJUnitRunner(15786): onCreate Bundle[{action=start, class=com.google.android.mobly.snippet.util.EmptyTestClass}]
+09-03 19:43:41.091 D/AndroidJUnitRunner(15786): Use the raw file system for managing file I/O.
+09-03 19:43:41.100 V/TestEventClient(15786): No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+09-03 19:43:41.106 I/org.iris.mesh.test.SnippetManager:197(15786): No object converter provided.
+09-03 19:43:41.107 I/org.iris.mesh.test.SnippetManager:225(15786): Trying to load Snippet class: iriscore.snippet.IrisSnippet
+09-03 19:43:41.120 D/org.iris.mesh.test.SimpleServer:148(15786): local address /127.0.0.1
+09-03 19:43:41.122 V/org.iris.mesh.test.SimpleServer:202(15786): Bound to /127.0.0.1
+09-03 19:43:41.128 I/org.iris.mesh.test.SnippetRunner:194(15786): Sending protocol message: SNIPPET SERVING, PORT 39249
+09-03 19:43:41.130 I/org.iris.mesh.test.SnippetRunner:161(15786): Snippet server started for process 15786 on port 39249
+09-03 19:43:41.145 D/CompatibilityChangeReporter(15786): Compat change id reported: 160794467; UID 10363; state: ENABLED
+09-03 19:43:43.300 V/org.iris.mesh.test.SimpleServer:211(15786): Received: {"cmd": "initiate", "uid": -1}
+09-03 19:43:43.302 D/org.iris.mesh.test.SimpleServer:218(15786): Initiate a new session
+09-03 19:43:43.306 V/org.iris.mesh.test.SimpleServer$ConnectionThread:105(15786): Server thread 64 started.
+09-03 19:43:43.306 D/org.iris.mesh.test.SimpleServer$ConnectionThread:108(15786): Handling RPC connection in 64
+09-03 19:43:43.307 D/org.iris.mesh.test.JsonRpcServer:51(15786): UID 1
+09-03 19:43:43.309 V/org.iris.mesh.test.SimpleServer:253(15786): Sent: {"uid":1,"status":true}
+09-03 19:43:43.314 V/org.iris.mesh.test.JsonRpcServer:54(15786): Session 1 Received: {"id": 0, "method": "startMesh", "params": []}
+09-03 19:43:43.317 D/org.iris.mesh.test.SnippetManager:259(15786): Constructing class iriscore.snippet.IrisSnippet
+09-03 19:43:43.319 D/org.iris.mesh.test.SnippetManager:286(15786): Invoking RPC method class iriscore.snippet.IrisSnippet#startMesh
+09-03 19:43:43.577 W/SystemServiceRegistry(15786): No service published for: wifiaware
+09-03 19:43:43.688 D/nativeloader(15786): Load /data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!/lib/arm64-v8a/libjnidispatch.so using class loader ns clns-4 (caller=/data/app/~~HBOusKfW_tQGSx0fKjkEIg==/org.iris.mesh-IoFCpG8g6nNu_RJEsliJCA==/base.apk!classes11.dex): ok
+09-03 19:43:43.770 D/BluetoothGattServer(15786): registerCallback()
+09-03 19:43:43.771 D/BluetoothGattServer(15786): registerCallback() - UUID=04f85e75-0e15-422c-8172-c5a3df6601dc
+09-03 19:43:43.780 D/BluetoothGattServer(15786): onServerRegistered() - status=0 serverIf=7
+09-03 19:43:43.780 D/BluetoothGattServer(15786): onServerConnectionState() - status=0 serverIf=7 device=
+09-03 19:43:43.780 D/BluetoothGattServer(15786): addService() - service: 01000000-0000-0000-0000-000000000000
+09-03 19:43:43.782 D/IrisBleDiag(15786): gattServer onConnectionStateChange device=57:21:94:1F:DB:D0 status=0 newState=2
+09-03 19:43:43.787 D/iriscore(15786): iris.ble.gatt ensureGattServer: addService(IRIS_SERVICE_UUID=01000000-0000-0000-0000-000000000000) -> true
+09-03 19:43:43.796 D/BluetoothGattServer(15786): onServiceAdded() - handle=48 uuid=01000000-0000-0000-0000-000000000000 status=0
+09-03 19:43:43.801 D/BluetoothLeScanner(15786): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-03 19:43:43.817 D/iriscore(15786): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-03 19:43:43.828 W/iriscore(15786): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-aware-0" [3merror[0m[2m=[0mtransport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:43.836 D/iriscore(15786): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-03 19:43:44.388 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:44.389 D/BluetoothGattServer(15786): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-03 19:43:44.688 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:44.689 D/BluetoothGattServer(15786): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-03 19:43:45.889 D/iriscore(15786): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:46.380 D/ProfileInstaller(15786): Installing profile for org.iris.mesh
+09-03 19:43:47.967 W/iriscore(15786): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-direct-0" [3merror[0m[2m=[0mtransport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)
+09-03 19:43:47.967 W/iriscore(15786): [2miriscode::engine[0m[2m:[0m mesh started with a subset of transports [3mevent[0m[2m=[0m"engine.start_all_partial" [3mstarted[0m[2m=[0m["ble-android"] [3mfailed[0m[2m=[0m["wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)", "wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)"]
+09-03 19:43:47.974 I/iriscore(15786): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-03 19:43:47.975 I/iriscore(15786): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0m
+09-03 19:43:47.992 V/org.iris.mesh.test.JsonRpcServer:116(15786): Session 1 Sent: {"id":0,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-aware-0 error=transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-direct-0 error=transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_all_partial\",\"detail\":\"mesh started with a subset of transports started=[\\\"ble-android\\\"] failed=[\\\"wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\\\", \\\"wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=2 (Other)\\\"]\"}]}","callback":null,"error":null}
+09-03 19:43:47.996 V/org.iris.mesh.test.JsonRpcServer:54(15786): Session 1 Received: {"id": 1, "method": "nodeId", "params": []}
+09-03 19:43:47.997 D/org.iris.mesh.test.SnippetManager:286(15786): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:43:48.023 V/org.iris.mesh.test.JsonRpcServer:116(15786): Session 1 Sent: {"id":1,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:43:48.027 V/org.iris.mesh.test.JsonRpcServer:54(15786): Session 1 Received: {"id": 2, "method": "staticX25519", "params": []}
+09-03 19:43:48.028 D/org.iris.mesh.test.SnippetManager:286(15786): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-03 19:43:48.147 V/org.iris.mesh.test.JsonRpcServer:116(15786): Session 1 Sent: {"id":2,"result":"08cc8fdefe226a2b25434be985c29ecd1c62d0ac6734f12608361278320ea544","callback":null,"error":null}
+09-03 19:43:48.211 V/org.iris.mesh.test.JsonRpcServer:54(15786): Session 1 Received: {"id": 3, "method": "registerPeerKey", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "dd614034b41e39cf5d89a5a9ab4840846768af069b911610bfa9982a63a87916"]}
+09-03 19:43:48.212 D/org.iris.mesh.test.SnippetManager:286(15786): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-03 19:43:48.218 V/org.iris.mesh.test.JsonRpcServer:116(15786): Session 1 Sent: {"id":3,"result":null,"callback":null,"error":null}
+09-03 19:43:48.223 V/org.iris.mesh.test.JsonRpcServer:54(15786): Session 1 Received: {"id": 4, "method": "nodeId", "params": []}
+09-03 19:43:48.223 D/org.iris.mesh.test.SnippetManager:286(15786): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-03 19:43:48.225 V/org.iris.mesh.test.JsonRpcServer:116(15786): Session 1 Sent: {"id":4,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-03 19:43:48.292 V/org.iris.mesh.test.JsonRpcServer:54(15786): Session 1 Received: {"id": 5, "method": "awaitDelivered", "params": ["01a0679e61af7511bf346a6dfef207fe", 6000]}
+09-03 19:43:48.293 D/org.iris.mesh.test.SnippetManager:286(15786): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-03 19:43:48.361 D/IrisBleDiag(15786): onCharacteristicWriteRequest device=57:21:94:1F:DB:D0 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=298 responseNeeded=true
+09-03 19:43:48.547 I/iriscore(15786): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a0679e61af7511 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-03 19:43:48.593 I/iriscore(15786): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a0679e63837232 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-03 19:43:48.593 D/iriscore(15786): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-03 19:43:48.594 W/iriscore(15786): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a0679e63837232 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-03 19:43:48.700 V/org.iris.mesh.test.JsonRpcServer:116(15786): Session 1 Sent: {"id":5,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"restart-2\"}","callback":null,"error":null}
+09-03 19:43:48.923 D/iriscore(15786): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-03 19:43:48.932 D/iriscore(15786): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)

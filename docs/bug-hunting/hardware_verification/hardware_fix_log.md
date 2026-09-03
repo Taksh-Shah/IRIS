@@ -2597,3 +2597,83 @@ HV-99 ✅ HW-PENDING (partial) · candidates HV-99 opened→worked. Commits: 81e
   floor -85→-95, one constant threaded) and HV-13 (`known_addresses` LRU +
   evict). The §2 30-minute zero-loss session is still owed (now also gated on
   finishing HV-99). HV-96 stays 🔒 (no HCI snoop on vivo Funtouch).
+
+---
+
+## Session 15 (autonomous, cont.) — HV-94 (zombie GATT link after peer process restart)
+
+**Phase R.**
+
+*Mechanism.* P2's engine process dies (`am force-stop` — models an OOM-kill or a
+swipe-away). The Android BT stack unregisters P2's `BluetoothGattServer`. On
+P1 (the GATT client), `BluetoothGattCallback.onConnectionStateChange` fires with
+`STATE_DISCONNECTED` (confirmed in `session-14-hv31c` P1 logcat:
+`gattServer onConnectionStateChange … newState=0` when P2 went away). The Kotlin
+`gattCallback.onConnectionStateChange(STATE_DISCONNECTED)` branch
+(`AndroidBleTransportAdapter` ~L432) removes the `gattHandles` entry, clears the
+per-connection maps and `gatt.close()`s — **but there is no client-side
+`drain_disconnected_handles` channel to the Rust core** (only the *server*-side
+one exists, and that callback is itself unreliable on Funtouch — HV-93). So
+`BleTransport.connections[P2]` keeps a now-dead `GattHandle`.
+
+*Why the current code recovers anyway, slowly.* The next `send()` calls
+`gatt_write(dead_handle)` → Kotlin `gattWrite` looks up `gattHandles[handle]` →
+`null` → `throw GattFailure("unknown gatt connection")` → Rust `send()` matches
+`"unknown gatt connection"` → `close_peer` + `NotConnected` (HV-7). The message
+is then HELD (HV-90) and the discovery loop reconnects (HV-15 + HV-99). So one
+message fails, then it self-heals. The finding's "tens of seconds to never" was
+observed in Session 09, before HV-7 / HV-15 / HV-98 / HV-99.
+
+*How it's solved elsewhere.* bitchat / Nordic BLE library both treat any
+`onConnectionStateChange(DISCONNECTED)` on either role as an immediate
+"peer gone → tear down + let discovery re-form", never waiting for a failed
+write to discover it. Nordic's library also proactively `cancelConnection`s
+server-side connections on its own teardown so the peer sees a real disconnect.
+
+*IRIS constraint.* The FFI seam is drain-based (no MutexGuard across FFI, typed
+errors) — a client-disconnect signal must mirror the existing
+`accepted_connections()` / `drain_scan_failures()` pattern: a
+`drain_disconnected_handles()` the transport polls.
+
+*Research outcome.* First **test the premise on HEAD** (`test_peer_process_restart_recovers`).
+If P1 recovers < 30 s reliably, the residual fix is small: (a) surface the
+client-side `STATE_DISCONNECTED` to Rust via a drain so `close_peer` runs
+*before* the next failed send (removes the one-message-lost); (b) optionally P2
+`cancelConnection`s lingering server connections on startup for a clean signal.
+If it does NOT recover, escalate. Rejected: an application heartbeat on the IRIS
+characteristic (more radio traffic, and the disconnect callback already gives us
+the signal for free on the client side).
+
+**Premise check (hardware, `session-15-hv94`, HEAD before any HV-94 code).**
+`test_peer_process_restart_recovers` (`am force-stop` P2 x3, relaunch snippet +
+startMesh, re-register keys): **3/3 recovered, ~0.5 s from t0, 0 msg.delivery_failed**.
+The "tens of seconds to never" premise is disproved on current HEAD — the
+accumulated HV-7 / HV-15 / HV-98 / HV-99 work already self-heals it (next
+`send()` write fails "unknown gatt connection" -> `close_peer` + hold +
+reconnect). BUT the finding's specific mechanism (no client-side disconnect
+signal to the core) is still real: one message is lost on the first send after
+the restart, and `close_peer` runs late. Small fix worth doing.
+
+**Phase D.** Mirror HW-9's server-side accept drain for the CLIENT side.
+- Kotlin `gattCallback.onConnectionStateChange(STATE_DISCONNECTED)` now enqueues
+  the dropped handle(s) to `pendingDisconnectedHandles`; new
+  `drainDisconnectedHandles(): List<Long>` FFI method.
+- `FfiBleAdapter::drain_disconnected_handles() -> Vec<i64>` + `BleBridge` maps
+  to `GattHandle` (exactly like `accepted_connections`) + `FakeFfi`/`SimBle`
+  stubs. Bindings regenerated.
+- The core path already existed (BLE-1: the accept-poller drains
+  `drain_disconnected_handles` and tears the peer down) but had NO test and the
+  Android bridge never fed it. L1 test
+  `hv94_client_disconnect_tears_down_peer_before_next_send` added.
+  iris-core **783** / iris-android **7** green.
+
+**Phase T.** `test_peer_process_restart_recovers` with the fix — **PASS 3/3**,
+P1 recoveries [0.9, 0.4, 0.5] s, **0 `msg.delivery_failed`**, and **0 "unknown
+gatt connection"** on P1 (was the fallback path). P1's `gattServer
+onConnectionStateChange` cycles newState 2->0->2->0 cleanly across the three
+kills. Evidence: `session-15-hv94b/`.
+
+**Phase C.** HV-94 -> 🟢. The client-side disconnect is now surfaced to the
+core the same way the server-side accept is (HW-9), so a peer whose app process
+dies is torn down promptly and the link re-forms in < 1 s with no lost message.
+Commit <pending>.
