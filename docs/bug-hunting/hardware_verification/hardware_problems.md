@@ -59,8 +59,8 @@ that remain are understood and logged.*
 
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 7 | 1 | 2 | 4 |
+| 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 8 | 1 | 2 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,9 +69,14 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **100** | **15** | **14** | **1** | **3** | **67** |
+| **Total** | | **101** | **15** | **15** | **1** | **3** | **67** |
 
-**Last updated:** 2026-09-03 (Session 15 — **HV-94 HW-verified** (client GATT
+**Last updated:** 2026-09-03 (Session 16 — **HV-95 ✅ HW-PENDING** —
+`ensureGattServer` now retries + returns a bool; `startAdvertising` fails loudly
+if the GATT server won't open (no more "connectable beacon with no server");
+core `ble.advertise_watchdog` re-drives advertising every 5 s if it's down.
+Delivery smoke 10/10, 0 spurious watchdog. Candidate **HV-100** opened
+(iris-core suite flakiness).) · Previously: 2026-09-03 (Session 15 — **HV-94 HW-verified** (client GATT
 disconnect surfaced to the core via `drainDisconnectedHandles`; peer app
 process dies → torn down + reconnected <1 s, 0 lost msgs;
 `test_peer_process_restart_recovers` 3/3), **HV-16 ✅** (cross-FFI UUID
@@ -499,6 +504,26 @@ into HV-2.
 
 **Resolution:** regenerated `iriscode.kt`, added the `FfiX25519KeyProvider`
 alias, rebuilt `libiriscode.so` for all 3 ABIs.
+
+---
+
+### HV-100 — `iris-core` full-suite tests are intermittently flaky under parallelism
+
+- **Fix status:** ⬜ (noticed Session 16)
+- **Area:** `cargo test -p iris-core --lib` (test harness, not product code)
+- **Severity:** Low (undermines "green tree after every commit") · **HW gate:** none
+
+**What:** the full parallel `cargo test -p iris-core --lib` failed twice in one
+autonomous session — once on
+`message_engine::tests::broadcast_is_delivered_and_also_relayed`, once on an
+unidentified test — both green on immediate re-run and in isolation. Consistent
+with a shared-resource / timing race between tests run in parallel (a global
+`static`, a fixed port/path, a `tokio::time` test without `start_paused`, or an
+`Instant`-based assertion with too tight a window).
+
+**Fix sketch:** run the suite ~15× to enumerate every test that ever fails;
+compare default parallelism vs `--test-threads=1`; isolate the shared resource
+or pause time. Do not paper over with retries or `#[ignore]`.
 
 ---
 
@@ -1200,8 +1225,20 @@ health.
 
 ### HV-95 — `openGattServer` returning null is swallowed — the node advertises an IRIS beacon with no GATT server behind it
 
-- **Fix status:** ⬜ (found in Session 09; recovered manually with a Bluetooth off/on toggle)
-- **Area:** `AndroidBleTransportAdapter.ensureGattServer` / `startAdvertising`
+- **Fix status:** ✅ Fixed · HW-PENDING · commit <pending> · 2026-09-03 ·
+  Session 16 · `ensureGattServer(): Boolean` (bounded 3× retry);
+  `startAdvertising` throws `Transport("BLE GATT server unavailable…")` when it
+  fails so the core records `ble-android` as not-started (not half-up); core
+  watchdog on the 5 s `poll_health` tick re-drives `start_advertising` whenever
+  `adv_handle` is None but a beacon is cached (`ble.advertise_watchdog`), so a
+  self-healing wedge recovers in ~5 s with no BT toggle. L1
+  `hv95_advertise_watchdog_redrives_a_failed_start`. Bench: no wedge trigger on
+  a healthy Funtouch stack — `test_p1_to_p2_300char_10x` **10/10**, 0 spurious
+  watchdog fires. The wedge-recovery path itself needs a stack that actually
+  wedges (Session 09 saw it after heavy churn + reinstalls).
+- **Was:** ⬜ (found in Session 09; recovered manually with a Bluetooth off/on toggle)
+- **Area:** `AndroidBleTransportAdapter.ensureGattServer` / `startAdvertising`,
+  `ble.rs` `handle_adapter_events` watchdog
 - **Severity:** High · **HW gate:** 2 phones
 
 **What:** `ensureGattServer()` calls `bleManager.openGattServer(...)`; when the

@@ -603,30 +603,49 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         return (ByteBuffer.wrap(digest).long and Long.MAX_VALUE).toULong()
     }
 
-    /** Open the process-scoped GATT server once and serve the IRIS transport characteristic. */
-    private fun ensureGattServer() {
-        if (gattServer != null) return
-        val server = bleManager?.openGattServer(appContext, gattServerCallback)
-        if (server == null) {
-            iriscore.util.IrisLog.w("ble.gatt", "ensureGattServer: openGattServer returned null")
-            return
+    /**
+     * Open the process-scoped GATT server once and serve the IRIS transport
+     * characteristic. Returns true iff a server is now live.
+     *
+     * HV-95: `openGattServer` returns null (and `addService` returns false) when
+     * the OEM Bluetooth stack is wedged — seen after heavy connect/disconnect
+     * churn + reinstalls. The old code logged and returned, and `startAdvertising`
+     * carried on: the node then broadcast a connectable IRIS beacon it could not
+     * serve, so every peer connect failed "characteristic not yet discovered"
+     * forever (the HV-92 symptom, wrong cause). Now a bounded retry, and the
+     * boolean lets `startAdvertising` fail loudly so the core records
+     * `ble-android` as not-started rather than half-up.
+     */
+    private fun ensureGattServer(): Boolean {
+        if (gattServer != null) return true
+        repeat(3) { attempt ->
+            val server = bleManager?.openGattServer(appContext, gattServerCallback)
+            if (server == null) {
+                iriscore.util.IrisLog.w("ble.gatt", "ensureGattServer: openGattServer returned null (attempt ${attempt + 1}/3)")
+                Thread.sleep(150L)
+                return@repeat
+            }
+            val service = BluetoothGattService(IRIS_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+            service.addCharacteristic(
+                BluetoothGattCharacteristic(
+                    IRIS_CHARACTERISTIC_UUID,
+                    BluetoothGattCharacteristic.PROPERTY_WRITE or
+                        BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
+                        BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                    BluetoothGattCharacteristic.PERMISSION_WRITE,
+                ),
+            )
+            val added = server.addService(service)
+            iriscore.util.IrisLog.d("ble.gatt", "ensureGattServer: addService(IRIS_SERVICE_UUID=$IRIS_SERVICE_UUID) -> $added")
+            if (added) {
+                gattServer = server
+                return true
+            }
+            quietly { server.close() }
+            Thread.sleep(150L)
         }
-        val service = BluetoothGattService(
-            IRIS_SERVICE_UUID,
-            BluetoothGattService.SERVICE_TYPE_PRIMARY,
-        )
-        service.addCharacteristic(
-            BluetoothGattCharacteristic(
-                IRIS_CHARACTERISTIC_UUID,
-                BluetoothGattCharacteristic.PROPERTY_WRITE or
-                    BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
-                    BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                BluetoothGattCharacteristic.PERMISSION_WRITE,
-            ),
-        )
-        val added = server.addService(service)
-        iriscore.util.IrisLog.d("ble.gatt", "ensureGattServer: addService(IRIS_SERVICE_UUID=$IRIS_SERVICE_UUID) -> $added")
-        if (added) gattServer = server
+        iriscore.util.IrisLog.w("ble.gatt", "ensureGattServer: no GATT server after 3 attempts — the Bluetooth stack may be wedged")
+        return false
     }
 
     private val advertiseHandles = ConcurrentHashMap<Long, Pair<BluetoothLeAdvertiser, AdvertiseCallback>>()
@@ -685,7 +704,10 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         return FfiCallTimeout.syncCallOrThrow {
             val advertiser = bleManager?.adapter?.bluetoothLeAdvertiser
                 ?: throw AdapterOff()
-            ensureGattServer()
+            // HV-95: do NOT advertise a connectable beacon we cannot serve.
+            if (!ensureGattServer()) {
+                throw Transport("BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth")
+            }
             val settings = AdvertiseSettings.Builder()
                 // HV-91: LOW_POWER advertises at a ~1 s interval, so a scanning
                 // peer can take many seconds to catch the first IRIS beacon.

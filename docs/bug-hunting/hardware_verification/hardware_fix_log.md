@@ -2797,3 +2797,49 @@ advertise-before-scan race — deferred with the finding.
   noisy-RF environment + a cross-platform wire change — research-only on the
   bench. HV-18 needs a physical BT headset. The §2 30-minute zero-loss session
   is still owed. HV-96 stays 🔒.
+
+---
+
+## Session 16 (autonomous) — HV-95 (`openGattServer` null swallowed)
+
+**Phase R.** `ensureGattServer()` returned `Unit` and, on `openGattServer` ==
+null / `addService` == false (OEM stack wedged after churn — Session 09), logged
+and returned; `startAdvertising` then advertised a connectable IRIS beacon with
+no server behind it → every peer connect failed "characteristic not yet
+discovered" forever (HV-92 symptom, wrong cause). Only `svc bluetooth
+disable/enable` recovered it. AOSP: `openGattServer` returns null when the app's
+GATT registration with `bluetoothGatt` fails (stack not ready / too many
+registered servers); it can succeed on a later call once the stack settles.
+
+**Phase D.**
+- `ensureGattServer(): Boolean` — bounded 3× retry (`openGattServer` +
+  `addService`, 150 ms apart), returns whether a server is live.
+- `startAdvertising`: `if (!ensureGattServer()) throw Transport("BLE GATT server
+  unavailable — …toggle Bluetooth")` — the core's `start_advertising` now
+  returns Err, so `start_all` records `ble-android` as not-started (it still
+  brings up the other transports) instead of half-up.
+- Core watchdog: `handle_adapter_events` (run on every 5 s `poll_health` tick,
+  HV-99) re-drives `start_advertising` from the cached beacon whenever
+  `adv_handle` is None but we have a beacon and aren't Unavailable —
+  `event="ble.advertise_watchdog"`. So a wedge that self-heals (or a later
+  `openGattServer` success) recovers within ~5 s, no BT toggle needed.
+- Sims: `SimulatedBleAdapter.fail_next_advertise(n)`; L1
+  `hv95_advertise_watchdog_redrives_a_failed_start`. iris-core **786**.
+
+**Phase T / C.** No wedge trigger on the bench (a healthy Funtouch stack
+opens the GATT server first try). `test_p1_to_p2_300char_10x` **10/10** (intact,
+0 churn, ~375 ms median) — advertising comes up clean AND **0 `ble.advertise_watchdog`
+/ 0 "GATT server unavailable"** in either phone's logcat, i.e. the watchdog does
+not spuriously fire on a healthy stack. iris-core 786, iris-android 8 green.
+HV-95 -> ✅ HW-PENDING (the wedge-recovery path itself needs a stack that
+actually wedges). Commit <pending>.
+
+### HV-100 — iris-core has intermittent full-suite test flakiness
+
+- **Fix status:** ⬜ (noticed Session 16). `cargo test -p iris-core --lib`
+  failed once with `message_engine::broadcast_is_delivered_and_also_relayed`
+  and once with an unidentified test; both passed on immediate re-run and in
+  isolation. Likely a shared-resource / timing race under parallel test
+  execution (not `--test-threads=1`-guarded). Low priority, not blocking, but
+  it undermines "green tree after every commit". Investigate: run the suite
+  10× under `--test-threads=1` vs default; bisect the offending pair.

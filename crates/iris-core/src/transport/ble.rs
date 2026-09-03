@@ -357,6 +357,8 @@ pub struct SimulatedBleAdapter {
     /// HV-10/HV-31: queued adapter-lifecycle codes, drained by
     /// `drain_adapter_events` (1 = advertising gave up, 2 = BT off, 3 = BT on).
     adapter_events: std::sync::Mutex<Vec<i32>>,
+    /// HV-95: fail the next `n` `start_advertising` calls (wedged GATT server).
+    advertise_fail_first: std::sync::Mutex<u32>,
     /// HV-93/HV-98: accepted connections (a remote central dialled our GATT
     /// server) re-reported on every `accepted_connections()` drain until
     /// cleared — exactly how the Kotlin adapter re-announces on a write-gap.
@@ -490,6 +492,11 @@ impl SimulatedBleAdapter {
             .unwrap_or_else(|p| p.into_inner())
             .push(code);
     }
+    /// HV-95: make the next `n` `start_advertising` calls fail (wedged GATT
+    /// server) — the core watchdog should re-drive it on a `poll_health` tick.
+    pub fn fail_next_advertise(&self, n: u32) {
+        *self.advertise_fail_first.lock().unwrap_or_else(|p| p.into_inner()) = n;
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -511,6 +518,16 @@ impl BleAdapter for SimulatedBleAdapter {
             .push(handle);
     }
     fn start_advertising(&self, data: AdvertisementData) -> Result<AdvHandle, BleError> {
+        // HV-95: model a wedged stack that refuses to open the GATT server for
+        // the first `n` calls (Kotlin's `startAdvertising` throws `Transport`
+        // when `ensureGattServer` fails).
+        {
+            let mut n = self.advertise_fail_first.lock().unwrap_or_else(|p| p.into_inner());
+            if *n > 0 {
+                *n -= 1;
+                return Err(BleError::GattFailure("BLE GATT server unavailable".into()));
+            }
+        }
         *self.last_ad_raw.lock().unwrap_or_else(|p| p.into_inner()) = Some(data.clone());
         // A real adapter that advertises an IRIS discovery beacon serves the
         // SAME beacon via the GATT identification characteristic on the
@@ -1229,6 +1246,22 @@ impl BleTransport {
                 }
                 _ => {}
             }
+        }
+        // HV-95: watchdog — if we are supposed to be advertising (we have a
+        // cached beacon and are not Unavailable) but have no live advertise
+        // handle, a prior `start_advertising` failed (e.g. the GATT server would
+        // not open on a wedged stack). Re-drive it; `start_advertising` retries
+        // `ensureGattServer` and only sets `adv_handle` on success.
+        if !readvertise
+            && self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()).is_none()
+            && self.state() != TransportState::Unavailable
+            && self.last_advertisement.lock().unwrap_or_else(|p| p.into_inner()).is_some()
+        {
+            readvertise = true;
+            tracing::warn!(
+                event = "ble.advertise_watchdog",
+                "advertising was expected but no handle is live — re-driving"
+            );
         }
         if readvertise {
             let info = self
@@ -2407,6 +2440,34 @@ mod tests {
         // must match the advertised short (candidate-level hint, not a trust
         // boundary — DEC-BLE-0006).
         assert_eq!(&got.peer_id.0[..16], &short);
+    }
+
+    #[tokio::test]
+    async fn hv95_advertise_watchdog_redrives_a_failed_start() {
+        // HV-95: `start_advertising` failed (the OEM GATT server would not open
+        // on a wedged stack, so Kotlin threw). Nothing used to retry — the node
+        // sat with no server, invisible/unusable, until a manual BT toggle. The
+        // `poll_health` watchdog must re-drive it.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.fail_next_advertise(2);
+        let t = BleTransport::new(Some(adapter.clone()));
+        let adv = NodeAdvertisement {
+            peer_id: PeerId([70u8; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        };
+        assert!(t.start_advertising(adv.clone()).await.is_err(), "1st attempt fails (wedged)");
+        assert!(t.adv_handle.lock().unwrap().is_none());
+
+        // Each health tick re-drives; the 2nd fails, the 3rd succeeds.
+        t.poll_health().await;
+        assert!(t.adv_handle.lock().unwrap().is_none(), "2nd attempt still fails");
+        t.poll_health().await;
+        assert!(
+            t.adv_handle.lock().unwrap().is_some(),
+            "the watchdog must recover advertising once the stack does"
+        );
     }
 
     #[tokio::test]
