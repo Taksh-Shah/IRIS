@@ -55,13 +55,13 @@ typealias DeviceNotFound = _IrisFfiException.DeviceNotFound
 @Suppress("unused")
 typealias GattFailure = _IrisFfiException.GattFailure
 @Suppress("unused")
-typealias FfiTimeout = _IrisFfiException.Timeout
+typealias Timeout = _IrisFfiException.Timeout
 @Suppress("unused")
 typealias IoException = _IrisFfiException.IoException
 @Suppress("unused")
 typealias InvalidArgument = _IrisFfiException.InvalidArgument
 @Suppress("unused")
-typealias TransportFailure = _IrisFfiException.Transport
+typealias Transport = _IrisFfiException.Transport
 
 // --- Data classes (records) ---
 @Suppress("unused")
