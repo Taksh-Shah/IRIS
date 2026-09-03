@@ -293,6 +293,12 @@ impl BleAdapter for BleBridge {
     fn drain_scan_failures(&self) -> Vec<i32> {
         self.ffi.drain_scan_failures()
     }
+
+    // HV-10/HV-31: pass the platform's adapter-lifecycle events through so
+    // `BleTransport::discover_peers` can follow a Bluetooth off→on toggle.
+    fn drain_adapter_events(&self) -> Vec<i32> {
+        self.ffi.drain_adapter_events()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -644,6 +650,9 @@ mod tests {
             Vec::new()
         }
         fn drain_scan_failures(&self) -> Vec<i32> {
+            Vec::new()
+        }
+        fn drain_adapter_events(&self) -> Vec<i32> {
             Vec::new()
         }
     }

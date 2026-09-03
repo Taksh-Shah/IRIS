@@ -659,6 +659,9 @@ internal interface UniffiCallbackInterfaceFfiBleAdapterMethod10 : com.sun.jna.Ca
 internal interface UniffiCallbackInterfaceFfiBleAdapterMethod11 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiBleAdapterMethod12 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceFfiCryptoSignerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -774,7 +777,7 @@ internal open class UniffiVTableCallbackInterfaceFfiInboxListener(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults", "acceptedConnections", "drainScanFailures")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults", "acceptedConnections", "drainScanFailures", "drainAdapterEvents")
 internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -790,6 +793,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
     @JvmField internal var `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
     @JvmField internal var `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
+    @JvmField internal var `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod12? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -806,7 +810,8 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
         `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
         `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
-    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,`drainScanFailures`,), Structure.ByValue
+        `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod12? = null,
+    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,`drainScanFailures`,`drainAdapterEvents`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiBleAdapter) {
         `uniffiFree` = other.`uniffiFree`
@@ -823,6 +828,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `scanResults` = other.`scanResults`
         `acceptedConnections` = other.`acceptedConnections`
         `drainScanFailures` = other.`drainScanFailures`
+        `drainAdapterEvents` = other.`drainAdapterEvents`
     }
 
 }
@@ -1053,6 +1059,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_drain_scan_failures(
     ): Int
+    external fun uniffi_iriscode_checksum_method_ffibleadapter_drain_adapter_events(
+    ): Int
     external fun uniffi_iriscode_checksum_method_fficryptosigner_sign(
     ): Int
     external fun uniffi_iriscode_checksum_method_ffiwifiawareadapter_start(
@@ -1208,6 +1216,8 @@ external fun uniffi_iriscode_fn_method_ffibleadapter_scan_results(`ptr`: Long,un
 external fun uniffi_iriscode_fn_method_ffibleadapter_accepted_connections(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_ffibleadapter_drain_scan_failures(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_ffibleadapter_drain_adapter_events(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_clone_fficryptosigner(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1480,6 +1490,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_scan_failures() != 34163) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_adapter_events() != 46612) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_fficryptosigner_sign() != 46084) {
@@ -2287,6 +2300,13 @@ public interface FfiBleAdapter {
      */
     fun `drainScanFailures`(): List<kotlin.Int>
     
+    /**
+     * HV-10/HV-31: drain adapter-lifecycle events since the last call
+     * (1 = advertising retry exhausted, 2 = Bluetooth off, 3 = Bluetooth on /
+     * adapter replayed advertise+scan). Empty on every quiet pass.
+     */
+    fun `drainAdapterEvents`(): List<kotlin.Int>
+    
     companion object
 }
 
@@ -2563,6 +2583,24 @@ open class FfiBleAdapterImpl: Disposable, AutoCloseable, FfiBleAdapter
     
 
     
+    /**
+     * HV-10/HV-31: drain adapter-lifecycle events since the last call
+     * (1 = advertising retry exhausted, 2 = Bluetooth off, 3 = Bluetooth on /
+     * adapter replayed advertise+scan). Empty on every quiet pass.
+     */override fun `drainAdapterEvents`(): List<kotlin.Int> {
+            return FfiConverterSequenceInt.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_ffibleadapter_drain_adapter_events(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -2748,6 +2786,17 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod12 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`drainAdapterEvents`(
+                )
+            }
+            val writeReturn = { value: List<kotlin.Int> -> uniffiOutReturn.setValue(FfiConverterSequenceInt.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2776,6 +2825,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
         `scanResults`,
         `acceptedConnections`,
         `drainScanFailures`,
+        `drainAdapterEvents`,
     )
 
     // Registers the foreign callback with the Rust side.

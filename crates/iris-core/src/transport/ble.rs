@@ -279,6 +279,16 @@ pub trait BleAdapter: Send + Sync + 'static {
     fn drain_scan_failures(&self) -> Vec<i32> {
         Vec::new()
     }
+    /// HV-10/HV-31: adapter-lifecycle events the platform surfaced since the
+    /// last call, otherwise invisible to the core:
+    ///   1 = advertising failed and the platform-side bounded retry gave up
+    ///   2 = Bluetooth adapter turned OFF (all scan/advertise/GATT handles dead)
+    ///   3 = Bluetooth adapter turned ON — the platform adapter has replayed
+    ///       advertise + scan; the transport can leave `Unavailable`
+    /// Default empty so non-Android implementors keep compiling.
+    fn drain_adapter_events(&self) -> Vec<i32> {
+        Vec::new()
+    }
 }
 
 /// In-memory BLE adapter for tests and simulation. No hardware involved.
@@ -335,6 +345,9 @@ pub struct SimulatedBleAdapter {
     transient_write_failures: std::sync::atomic::AtomicU32,
     /// HV-11: queued `onScanFailed` error codes, drained by `drain_scan_failures`.
     scan_failures: std::sync::Mutex<Vec<i32>>,
+    /// HV-10/HV-31: queued adapter-lifecycle codes, drained by
+    /// `drain_adapter_events` (1 = advertising gave up, 2 = BT off, 3 = BT on).
+    adapter_events: std::sync::Mutex<Vec<i32>>,
     /// HV-93/HV-98: accepted connections (a remote central dialled our GATT
     /// server) re-reported on every `accepted_connections()` drain until
     /// cleared — exactly how the Kotlin adapter re-announces on a write-gap.
@@ -459,6 +472,15 @@ impl SimulatedBleAdapter {
             .unwrap_or_else(|p| p.into_inner())
             .push(code);
     }
+    /// HV-10/HV-31: inject an adapter-lifecycle event the transport will observe
+    /// on its next `discover_peers` via `drain_adapter_events` (1 = advertising
+    /// retries exhausted, 2 = BT off, 3 = BT on / recovered).
+    pub fn inject_adapter_event(&self, code: i32) {
+        self.adapter_events
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(code);
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -533,6 +555,9 @@ impl BleAdapter for SimulatedBleAdapter {
     }
     fn drain_scan_failures(&self) -> Vec<i32> {
         std::mem::take(&mut *self.scan_failures.lock().unwrap_or_else(|p| p.into_inner()))
+    }
+    fn drain_adapter_events(&self) -> Vec<i32> {
+        std::mem::take(&mut *self.adapter_events.lock().unwrap_or_else(|p| p.into_inner()))
     }
     fn accepted_connections(&self) -> Vec<AcceptedConnection> {
         self.accepted.lock().unwrap_or_else(|p| p.into_inner()).clone()
@@ -641,6 +666,12 @@ pub struct BleTransport {
     /// e.g. Bluetooth toggled — is otherwise never noticed; HV-11).
     scan_pass: std::sync::atomic::AtomicU64,
     adv_handle: std::sync::Mutex<Option<AdvHandle>>,
+    /// HV-31: the last `NodeAdvertisement` handed to `start_advertising`, kept so
+    /// the transport can re-advertise itself after a Bluetooth off→on toggle
+    /// (the Kotlin adapter tears the OS-level advertiser down; nothing in the
+    /// core loop otherwise re-drives advertising — it is a one-shot at
+    /// `start_all`).
+    last_advertisement: std::sync::Mutex<Option<NodeAdvertisement>>,
     /// GATT handles + negotiated ATT MTU per connected peer — one connection
     /// per peer is reused for all sends (AC-9; RES-0019 R6.4/G2 bounds
     /// GATT-client churn). MTU is per-link (BLE-RT-003), never global.
@@ -770,6 +801,7 @@ impl BleTransport {
             scan_handle: std::sync::Mutex::new(None),
             scan_pass: std::sync::atomic::AtomicU64::new(0),
             adv_handle: std::sync::Mutex::new(None),
+            last_advertisement: std::sync::Mutex::new(None),
             connections: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             connect_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
             pollers: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
@@ -1161,6 +1193,66 @@ impl Transport for BleTransport {
                 }
             }
         }
+        // HV-10/HV-31: consume adapter-lifecycle events the Kotlin adapter
+        // surfaced. A Bluetooth off→on toggle (or airplane mode) invalidates
+        // every scan/advertise/GATT handle at the OS level; the platform adapter
+        // re-opens the GATT server and replays advertise+scan on `STATE_ON`, but
+        // the core's transport state must follow so manager selection and
+        // metrics reflect reality. `1` = the platform-side bounded advertising
+        // retry gave up (device invisible to peers — surface it, no state
+        // change since scan may still work).
+        let mut readvertise = false;
+        for code in adapter.drain_adapter_events() {
+            match code {
+                2 => {
+                    *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    self.set_state(TransportState::Unavailable);
+                    tracing::warn!(
+                        event = "ble.adapter_off",
+                        "Bluetooth turned off — transport Unavailable, handles dropped"
+                    );
+                }
+                3 => {
+                    *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    if self.state() == TransportState::Unavailable {
+                        self.set_state(TransportState::Available);
+                    }
+                    readvertise = true;
+                    tracing::info!(
+                        event = "ble.adapter_recovered",
+                        "Bluetooth turned back on — re-advertising, forcing scan re-arm"
+                    );
+                }
+                1 => {
+                    // The platform-side bounded retry gave up — give the core's
+                    // own bring-up one more shot before declaring us invisible.
+                    readvertise = true;
+                    tracing::warn!(
+                        event = "ble.advertising_failed",
+                        "platform advertising retry exhausted — re-driving advertising from the core"
+                    );
+                }
+                _ => {}
+            }
+        }
+        if readvertise {
+            let info = self
+                .last_advertisement
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .clone();
+            if let Some(info) = info {
+                if let Err(e) = self.start_advertising(info).await {
+                    tracing::warn!(
+                        event = "ble.readvertise_failed",
+                        error = %e,
+                        "could not re-advertise after adapter event"
+                    );
+                }
+            }
+        }
         const SCAN_REARM_EVERY: u64 = 5;
         let pass = self.scan_pass.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let want_rearm = {
@@ -1346,6 +1438,8 @@ impl Transport for BleTransport {
 
     async fn start_advertising(&self, info: NodeAdvertisement) -> Result<(), TransportError> {
         let adapter = self.adapter()?;
+        // HV-31: keep it so `discover_peers` can re-advertise after a BT toggle.
+        *self.last_advertisement.lock().unwrap_or_else(|p| p.into_inner()) = Some(info.clone());
         // Re-announcement (e.g. after identity/key rotation) must stop any prior
         // advertisement first so Android's max ~4 advertising-set budget is not
         // leaked and the radio doesn't keep a stale set alive (BLE-RT-011).
@@ -2305,6 +2399,43 @@ mod tests {
         adapter.inject_scan_failure(5);
         // still refused because the code-6 window has not elapsed
         assert!(t.discover_peers(DiscoveryConfig::default()).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn hv31_bluetooth_toggle_marks_transport_unavailable_then_recovers() {
+        // HV-31: a Bluetooth off→on toggle invalidates every OS handle. The
+        // Kotlin adapter drops the dead handles + replays advertise/scan and
+        // surfaces the transition; the core must follow so manager selection
+        // and metrics reflect reality.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        assert!(t.discover_peers(DiscoveryConfig::default()).await.is_ok());
+        assert_ne!(t.state(), TransportState::Unavailable);
+
+        // Platform fires ACTION_STATE_CHANGED -> STATE_OFF.
+        adapter.inject_adapter_event(2);
+        let _ = t.discover_peers(DiscoveryConfig::default()).await;
+        assert_eq!(
+            t.state(),
+            TransportState::Unavailable,
+            "Bluetooth OFF must take the BLE transport out of manager selection"
+        );
+
+        // Platform fires STATE_ON — the adapter has already replayed advertise
+        // + scan; the core just needs to come back.
+        adapter.inject_adapter_event(3);
+        let _ = t.discover_peers(DiscoveryConfig::default()).await;
+        assert_eq!(
+            t.state(),
+            TransportState::Available,
+            "Bluetooth ON must return the BLE transport to Available"
+        );
+
+        // An advertising-give-up event (1) is surfaced but does not change state
+        // (scan may still be working).
+        adapter.inject_adapter_event(1);
+        assert!(t.discover_peers(DiscoveryConfig::default()).await.is_ok());
+        assert_eq!(t.state(), TransportState::Available);
     }
 
     #[tokio::test]

@@ -84,6 +84,10 @@ pub trait FfiBleAdapter: Send + Sync + 'static {
     /// last call (2 = APPLICATION_REGISTRATION_FAILED, 3 = INTERNAL_ERROR,
     /// 6 = SCANNING_TOO_FREQUENTLY, …). Empty on every pass with no failure.
     fn drain_scan_failures(&self) -> Vec<i32>;
+    /// HV-10/HV-31: drain adapter-lifecycle events since the last call
+    /// (1 = advertising retry exhausted, 2 = Bluetooth off, 3 = Bluetooth on /
+    /// adapter replayed advertise+scan). Empty on every quiet pass.
+    fn drain_adapter_events(&self) -> Vec<i32>;
 }
 
 #[cfg(test)]
@@ -123,6 +127,9 @@ pub(crate) mod tests {
             Vec::new()
         }
         fn drain_scan_failures(&self) -> Vec<i32> {
+            Vec::new()
+        }
+        fn drain_adapter_events(&self) -> Vec<i32> {
             Vec::new()
         }
     }

@@ -18,6 +18,8 @@ object IrisLog {
 
     fun d(area: String, msg: String) = Log.d(TAG, "iris.$area $msg")
 
+    fun i(area: String, msg: String) = Log.i(TAG, "iris.$area $msg")
+
     fun w(area: String, msg: String, t: Throwable? = null) {
         if (t != null) Log.w(TAG, "iris.$area $msg", t) else Log.w(TAG, "iris.$area $msg")
     }

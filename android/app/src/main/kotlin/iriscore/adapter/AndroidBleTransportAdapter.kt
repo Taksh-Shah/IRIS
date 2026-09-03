@@ -1,5 +1,6 @@
 package iriscore.adapter
 
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -10,7 +11,11 @@ import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import android.os.Build
 import android.os.ParcelUuid
 import android.os.SystemClock
@@ -42,6 +47,10 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ConcurrentSkipListSet
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -140,6 +149,23 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
         /** Ceiling on undrained inbound items per buffer (oldest-drop). */
         const val MAX_PENDING = 512
+
+        /**
+         * HV-10: bounded exponential backoff for retrying a `startAdvertising`
+         * the platform refused asynchronously via `onStartFailure`. Retryable
+         * codes are `TOO_MANY_ADVERTISERS` (2 — usually clears once the OS
+         * reaps a leaked set), `ALREADY_STARTED` (3) and `INTERNAL_ERROR` (4).
+         * `DATA_TOO_LARGE` (1) and `FEATURE_UNSUPPORTED` (5) are terminal —
+         * retrying cannot help. After the last attempt the adapter reports
+         * event `1` to the core (`drainAdapterEvents`).
+         */
+        private val ADVERTISE_RETRY_DELAYS_MS = longArrayOf(1_000L, 4_000L, 10_000L)
+
+        // HV-10/HV-31: adapter-lifecycle event codes surfaced to the core via
+        // drainAdapterEvents() — mirror `iris_core::transport::ble` docs.
+        private const val EVT_ADVERTISING_GAVE_UP = 1
+        private const val EVT_BLUETOOTH_OFF = 2
+        private const val EVT_BLUETOOTH_ON = 3
     }
 
     private val appContext: Context = context.applicationContext
@@ -246,6 +272,31 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     /** HV-11: onScanFailed error codes awaiting drainScanFailures(). */
     private val scanFailures = ConcurrentLinkedQueue<Int>()
+
+    /** HV-10/HV-31: adapter-lifecycle event codes awaiting drainAdapterEvents(). */
+    private val adapterEvents = ConcurrentLinkedQueue<Int>()
+
+    /**
+     * HV-10/HV-31: off-thread worker for advertising-retry backoff and for
+     * replaying advertise+scan after a Bluetooth off→on toggle — a
+     * `BroadcastReceiver.onReceive` runs on the main thread and must not make
+     * blocking BLE calls.
+     */
+    private val recovery: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "iris-ble-recovery").apply { isDaemon = true }
+        }
+
+    /** HV-10: per-advertise-handle count of `onStartFailure` retries so far. */
+    private val advertiseRetries = ConcurrentHashMap<Long, Int>()
+
+    /** HV-31: guards a single registration of [btStateReceiver]. */
+    private val btReceiverRegistered = AtomicBoolean(false)
+
+    private fun enqueueAdapterEvent(code: Int) {
+        while (adapterEvents.size >= MAX_PENDING) adapterEvents.poll()
+        adapterEvents.add(code)
+    }
 
     /** RSSI floor applied on the platform side (core filter default -95 dBm). */
     @Volatile
@@ -624,18 +675,75 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 throw InvalidArgument("advertisement payload produced no manufacturer data")
             }
             val handle = nextHandle.getAndIncrement()
-            val callback = object : AdvertiseCallback() {
-                override fun onStartFailure(errorCode: Int) {
-                    // Was `= Unit` — every legacy-budget overflow (errorCode 1,
-                    // ADVERTISE_FAILED_DATA_TOO_LARGE) failed completely
-                    // silently and looked identical to a successful start.
-                    iriscore.util.IrisLog.w("ble.advert", "startAdvertising failed errorCode=$errorCode")
-                    advertiseHandles.remove(handle)
+            advertiseRetries.remove(handle)
+            ensureBtStateReceiver()
+            launchAdvertising(handle, settings, adData)
+            handle.toULong()
+        }
+    }
+
+    /**
+     * HV-10/HV-31: (re)start one advertising set under [handle], installing an
+     * [AdvertiseCallback] whose `onStartFailure` schedules a bounded
+     * exponential-backoff retry for the transient error codes and, once those
+     * are exhausted, reports [EVT_ADVERTISING_GAVE_UP] to the core. Called from
+     * `startAdvertising`, from the retry timer, and from [btStateReceiver] on
+     * `STATE_ON`.
+     */
+    private fun launchAdvertising(
+        handle: Long,
+        settings: AdvertiseSettings,
+        adData: AdvertiseData,
+    ) {
+        val advertiser = bleManager?.adapter?.bluetoothLeAdvertiser ?: return
+        // Always stop any prior set on this handle first — required for
+        // TOO_MANY_ADVERTISERS recovery (a leaked set must be released before
+        // the OS will accept a new one).
+        quietly {
+            advertiseHandles.remove(handle)?.let { (a, cb) -> a.stopAdvertising(cb) }
+        }
+        val callback = object : AdvertiseCallback() {
+            override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
+                advertiseRetries.remove(handle)
+            }
+
+            override fun onStartFailure(errorCode: Int) {
+                iriscore.util.IrisLog.w("ble.advert", "startAdvertising failed errorCode=$errorCode")
+                advertiseHandles.remove(handle)
+                // 1 DATA_TOO_LARGE / 5 FEATURE_UNSUPPORTED are terminal.
+                val retryable = errorCode == AdvertiseCallback.ADVERTISE_FAILED_TOO_MANY_ADVERTISERS ||
+                    errorCode == AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED ||
+                    errorCode == AdvertiseCallback.ADVERTISE_FAILED_INTERNAL_ERROR
+                val attempt = advertiseRetries.getOrDefault(handle, 0)
+                if (retryable && attempt < ADVERTISE_RETRY_DELAYS_MS.size) {
+                    advertiseRetries[handle] = attempt + 1
+                    val delay = ADVERTISE_RETRY_DELAYS_MS[attempt]
+                    iriscore.util.IrisLog.w(
+                        "ble.advert",
+                        "scheduling advertising retry ${attempt + 1}/${ADVERTISE_RETRY_DELAYS_MS.size} in ${delay}ms",
+                    )
+                    quietly {
+                        recovery.schedule(
+                            { launchAdvertising(handle, settings, adData) },
+                            delay,
+                            TimeUnit.MILLISECONDS,
+                        )
+                    }
+                } else {
+                    iriscore.util.IrisLog.w(
+                        "ble.advert",
+                        "advertising retries exhausted (errorCode=$errorCode) — reporting to core",
+                    )
+                    enqueueAdapterEvent(EVT_ADVERTISING_GAVE_UP)
                 }
             }
-            advertiseHandles[handle] = advertiser to callback
+        }
+        advertiseHandles[handle] = advertiser to callback
+        try {
             permitted { advertiser.startAdvertising(settings, adData, callback) }
-            handle.toULong()
+        } catch (e: Exception) {
+            advertiseHandles.remove(handle)
+            iriscore.util.IrisLog.w("ble.advert", "startAdvertising threw: ${e.message}")
         }
     }
 
@@ -657,7 +765,65 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     gattServer?.close()
                     gattServer = null
                 }
+                // HV-10/HV-31: this transport is no longer advertising — drop
+                // the toggle receiver so a later STATE_ON does not try to
+                // resurrect an advertisement the core stopped.
+                advertiseRetries.clear()
+                if (btReceiverRegistered.compareAndSet(true, false)) {
+                    quietly { appContext.unregisterReceiver(btStateReceiver) }
+                }
             }
+        }
+    }
+
+    /**
+     * HV-31: a Bluetooth off→on toggle (or airplane mode) invalidates every
+     * scanner/advertiser/GATT-server handle at the OS level and fires nothing
+     * on our callbacks. The Wi-Fi Direct adapter has always listened for
+     * `WIFI_P2P_STATE_CHANGED`; the BLE adapter never did. On `STATE_OFF` drop
+     * the dead handles and tell the core (`EVT_BLUETOOTH_OFF` → transport
+     * Unavailable); on `STATE_ON` report `EVT_BLUETOOTH_ON` — the core re-drives
+     * `startAdvertising` (which reopens the GATT server) and forces a scan
+     * re-arm on its next discovery pass. Replaying from the core rather than
+     * inside `onReceive` keeps blocking BLE calls off the main thread and off a
+     * freshly-restarted, still-settling stack.
+     */
+    private val btStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
+            when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
+                BluetoothAdapter.STATE_OFF, BluetoothAdapter.STATE_TURNING_OFF -> {
+                    iriscore.util.IrisLog.w("ble.adapter", "Bluetooth OFF — dropping stale BLE handles")
+                    quietly { gattServer?.close() }
+                    gattServer = null
+                    scanHandles.clear()
+                    advertiseHandles.clear()
+                    scanStartTimes.clear()
+                    serviceCharacteristics.clear()
+                    serviceDiscoveryRetries.clear()
+                    negotiatedMtu.clear()
+                    gattWriteFailures.clear()
+                    connectionReady.clear()
+                    writeCompletion.clear()
+                    enqueueAdapterEvent(EVT_BLUETOOTH_OFF)
+                }
+                BluetoothAdapter.STATE_ON -> {
+                    iriscore.util.IrisLog.i("ble.adapter", "Bluetooth ON — core will re-advertise + re-scan")
+                    enqueueAdapterEvent(EVT_BLUETOOTH_ON)
+                }
+            }
+        }
+    }
+
+    private fun ensureBtStateReceiver() {
+        if (!btReceiverRegistered.compareAndSet(false, true)) return
+        quietly {
+            ContextCompat.registerReceiver(
+                appContext,
+                btStateReceiver,
+                IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
         }
     }
 
@@ -809,6 +975,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     override fun drainScanFailures(): List<Int> =
         FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(scanFailures) }
+
+    // HV-10/HV-31: adapter-lifecycle events (advertising gave up / Bluetooth
+    // off / Bluetooth on) — `BleTransport::discover_peers` follows the toggle.
+    override fun drainAdapterEvents(): List<Int> =
+        FfiCallTimeout.syncCall(onTimeout = emptyList()) { drain(adapterEvents) }
 
     /**
      * Atomically removes and returns every buffered item.

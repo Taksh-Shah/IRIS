@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 22 | 8 | 2 | 1 | 1 | 10 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 22 | 8 | 2 | 3 | 1 | 8 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,9 +69,17 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **99** | **14** | **9** | **1** | **2** | **73** |
+| **Total** | | **99** | **14** | **9** | **3** | **2** | **71** |
 
-**Last updated:** 2026-09-03 (Session 13 — **HV-98 🟢** — inbound reassembly
+**Last updated:** 2026-09-03 (Session 14 — **HV-10 + HV-31 🔬** (§5 group,
+advertising / adapter-state resilience): `btStateReceiver` for
+`BluetoothAdapter.ACTION_STATE_CHANGED` + bounded advertising-retry backoff +
+new `BleAdapter::drain_adapter_events()` (core follows a BT off→on toggle:
+`Unavailable` → re-advertise from a cached `NodeAdvertisement`). Coded,
+L1-green, APK builds — **iteration paused mid-Phase-T** (hardware attempts 1–2
+recovered 3/3 toggle cycles but a Kotlin-side replay stalled ~20 s; attempt 3
+moves the replay into the core, untested). Resume in `hardware_fix_log.md`
+Session 14.) · Previously: 2026-09-03 (Session 13 — **HV-98 🟢** — inbound reassembly
 poller now re-attaches after a drop + reconnect: announce-every-write on the
 Kotlin side, `accept_spawned` shared set cleared by `close_peer` on the Rust
 side. `iris_bench test_forced_drop_reconnect_10x` **10/10**, recovery ~3.5 s
@@ -828,7 +836,16 @@ comment). Document the collision-safety analysis.
 
 ### HV-10 — Advertising failure is logged and abandoned — no retry, no state signal
 
-- **Fix status:** ⬜
+- **Fix status:** 🔬 (Session 14, §5 group with HV-31 — coded, not yet
+  HW-verified; iteration paused mid-Phase-T)
+- **Progress:** `launchAdvertising()` extracted; `onStartFailure` schedules a
+  bounded exponential-backoff retry (1 s / 4 s / 10 s) for the transient codes
+  (`TOO_MANY_ADVERTISERS`, `ALREADY_STARTED`, `INTERNAL_ERROR`), always
+  `stopAdvertising` first; `DATA_TOO_LARGE` / `FEATURE_UNSUPPORTED` terminal.
+  After exhaustion → `drainAdapterEvents()` code `1`, which makes the core
+  re-drive `start_advertising` from its cached `NodeAdvertisement`. No hardware
+  trigger for `TOO_MANY_ADVERTISERS` yet — logic is code-review + negative
+  assertion only. See `hardware_fix_log.md` Session 14.
 - **Area:** `AndroidBleTransportAdapter.startAdvertising`
   (`AdvertiseCallback.onStartFailure`)
 - **Severity:** High · **HW gate:** 2 phones (force failure by over-sizing the ad
@@ -1572,7 +1589,20 @@ any transport, surface the PermissionNotice and set status to a distinct
 
 ### HV-31 — Airplane mode / Bluetooth toggle / Wi-Fi toggle: state-machine recovery
 
-- **Fix status:** ⬜
+- **Fix status:** 🔬 (Session 14, §5 group with HV-10 — coded, L1-green, NOT
+  yet HW-verified; iteration paused mid-Phase-T after attempt 3)
+- **Progress:** new `btStateReceiver` for `BluetoothAdapter.ACTION_STATE_CHANGED`
+  (mirrors the Wi-Fi Direct `p2pStateReceiver`). `STATE_OFF` → close the GATT
+  server + clear every stale handle/per-connection map + `drainAdapterEvents()`
+  code `2` (core → transport `Unavailable`, drop handles). `STATE_ON` →
+  `drainAdapterEvents()` code `3` (core → `Available` + re-drive
+  `start_advertising` from a cached `NodeAdvertisement` + force scan re-arm).
+  New `BleTransport.last_advertisement` cache; core `discover_peers` performs
+  the replay. L1 sim `hv31_bluetooth_toggle_marks_transport_unavailable_then_
+  recovers` passes. Hardware attempts 1–2 recovered functionally (3/3 toggle
+  cycles, 0.8–26 s) but a Kotlin-side replay stalled ~20 s on a still-settling
+  stack — attempt 3 moves the replay into the core (untested). Resume steps in
+  `hardware_fix_log.md` Session 14 ("STOPPED HERE").
 - **Area:** `AndroidBleTransportAdapter` (no `BluetoothAdapter` state receiver),
   `AndroidWifiDirectTransportAdapter.p2pStateReceiver` (has one),
   `AdapterLifecycle`

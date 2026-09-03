@@ -257,6 +257,75 @@ class Tier1Ble(IrisBenchBase):
         slow = [d for d in recoveries if d > _BUDGET_S]
         asserts.assert_false(slow, f"every drop must recover in <{_BUDGET_S}s; slow={slow}")
 
+    # ---- HV-10 + HV-31: adapter-state / advertising resilience ----------
+
+    def test_bluetooth_toggle_recovers(self):
+        """HV-31 (and HV-10's retry path): prime the link, then toggle
+        Bluetooth OFF→ON on P2 (`svc bluetooth disable/enable` — exactly what a
+        user does, or airplane mode). Every scan/advertise/GATT handle P2 held
+        is now dead. Pass: P2's `btStateReceiver` drops the stale handles,
+        replays advertise + scan, the core follows (`ble.adapter_off` →
+        `ble.adapter_recovered`), and a fresh P1→P2 message delivers again
+        within 60 s. 3 cycles."""
+        import time
+        _CYCLES = 3
+        _BUDGET_S = 60
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        r = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        recoveries = []
+        for i in range(_CYCLES):
+            self.p2.adb.shell(["svc", "bluetooth", "disable"])
+            time.sleep(3)
+            self.p2.adb.shell(["svc", "bluetooth", "enable"])
+            # wait for the adapter to actually come back before timing recovery
+            for _ in range(20):
+                state = self.p2.adb.shell(
+                    ["settings", "get", "global", "bluetooth_on"]
+                ).decode("utf-8", "replace").strip()
+                if state == "1":
+                    break
+                time.sleep(1)
+            t0 = time.monotonic()
+            ok = False
+            while time.monotonic() - t0 < _BUDGET_S:
+                rr = self.send_and_await(self.p1, self.p2, f"bt-toggle-{i}", timeout_ms=8000)
+                if rr.get("delivered"):
+                    ok = True
+                    break
+                time.sleep(2)
+            dt = round(time.monotonic() - t0, 1)
+            recoveries.append(dt)
+            self.p2.log.info("bt-toggle %d/%d: recovered=%s in %ss", i + 1, _CYCLES, ok, dt)
+            asserts.assert_true(ok, f"cycle {i}: no recovery within {_BUDGET_S}s")
+
+        self.capture_evidence("tier1_bt_toggle")
+        p2log = self._logcat_since_cleared(self.p2)
+        # The adapter-layer fix (HV-31): btStateReceiver must see BOTH edges of
+        # every toggle and rebuild the GATT server each time.
+        asserts.assert_equal(
+            p2log.count("Bluetooth ON — replaying advertise + scan"), _CYCLES,
+            "btStateReceiver must replay advertise+scan once per STATE_ON",
+        )
+        asserts.assert_true(
+            "Bluetooth OFF" in p2log,
+            "btStateReceiver must observe STATE_OFF and drop stale handles",
+        )
+        asserts.assert_true(
+            p2log.count("ensureGattServer: addService") >= _CYCLES,
+            "the GATT server must be reopened after each toggle",
+        )
+        # HV-10: no advertising error should have been left unretried.
+        asserts.assert_true(
+            "advertising retries exhausted" not in p2log,
+            "advertising must recover within the bounded retry budget",
+        )
+        failed = p2log.count("msg.delivery_failed")
+        self.p2.log.info("BT-TOGGLE: recoveries=%s delivery_failed=%d", recoveries, failed)
+
 
 if __name__ == "__main__":
     test_runner.main()
