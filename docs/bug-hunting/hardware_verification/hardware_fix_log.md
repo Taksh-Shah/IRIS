@@ -2277,6 +2277,8 @@ has no such query — the server callback is exactly what's missing).
 
 ## Session 14 — HV-10 + HV-31 (§5 advertising / adapter-state resilience group)
 
+_WIP commit `0875136` (2026-09-03) — mid-iteration, HV-10 + HV-31 remain 🔬._
+
 **Phase R — research.**
 
 The Android BLE adapter (`AndroidBleTransportAdapter`) can silently lose its
