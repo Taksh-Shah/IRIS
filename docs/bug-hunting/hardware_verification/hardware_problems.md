@@ -1287,7 +1287,7 @@ on the OEM server-disconnect callback. Coordinate with HV-93/HV-94.
 
 ### HV-99 — `connectGatt` reconnect probe blocks the full 30 s FFI budget when the peer is not advertising
 
-- **Fix status:** ✅ Fixed · HW-PENDING (partial) · commit <pending> · 2026-09-03
+- **Fix status:** ✅ Fixed · HW-PENDING (partial) · commit a645b90 · 2026-09-03
   · Session 14 · BT-toggle recovery: **never → ~24–41 s, 2/3 cycles < 60 s**
   (`test_bluetooth_toggle_recovers`). Four changes: `connectGatt` 12 s probe
   ceiling (was Android's fixed ~30 s); `CONNECT_BACKOFF_BASE` 5 s (was 30 s);
