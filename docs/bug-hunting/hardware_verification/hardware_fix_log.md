@@ -2590,7 +2590,8 @@ HV-99 ✅ HW-PENDING (partial) · candidates HV-99 opened→worked. Commits: 81e
 - **Blockers opened:** HV-31 (on HV-99). HV-99 partial (P1-side reconnect
   cadence + peripheral-side link-death detection still owed).
 - **Regression:** HV-98 `test_forced_drop_reconnect_10x` re-run after the HV-99
-  reconnect changes — (in progress).
+  reconnect changes — **PASS 10/10**, recoveries
+  [3.8, 3.7, 3.4, 3.5, 3.6, 3.5, 7.4, 3.7, 3.5, 3.5] s, 0 failed. No regression.
 - **Next session pickup:** HV-94 (zombie GATT link after peer process restart —
   test already written, `test_peer_process_restart_recovers`); then HV-12 (RSSI
   floor -85→-95, one constant threaded) and HV-13 (`known_addresses` LRU +
