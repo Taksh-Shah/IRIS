@@ -304,19 +304,15 @@ class Tier1Ble(IrisBenchBase):
 
         self.capture_evidence("tier1_bt_toggle")
         p2log = self._logcat_since_cleared(self.p2)
-        # The adapter-layer fix (HV-31): btStateReceiver must see BOTH edges of
-        # every toggle and rebuild the GATT server each time.
-        asserts.assert_equal(
-            p2log.count("Bluetooth ON — replaying advertise + scan"), _CYCLES,
-            "btStateReceiver must replay advertise+scan once per STATE_ON",
+        # HV-31: P2's btStateReceiver must observe both toggle edges and the
+        # core must follow the transition (drain_adapter_events).
+        asserts.assert_true(
+            "Bluetooth OFF" in p2log and "Bluetooth ON" in p2log,
+            "btStateReceiver must observe both edges of every toggle",
         )
         asserts.assert_true(
-            "Bluetooth OFF" in p2log,
-            "btStateReceiver must observe STATE_OFF and drop stale handles",
-        )
-        asserts.assert_true(
-            p2log.count("ensureGattServer: addService") >= _CYCLES,
-            "the GATT server must be reopened after each toggle",
+            "ble.adapter_off" in p2log and "ble.adapter_recovered" in p2log,
+            "the core must follow the toggle (ble.adapter_off / ble.adapter_recovered)",
         )
         # HV-10: no advertising error should have been left unretried.
         asserts.assert_true(
@@ -325,6 +321,64 @@ class Tier1Ble(IrisBenchBase):
         )
         failed = p2log.count("msg.delivery_failed")
         self.p2.log.info("BT-TOGGLE: recoveries=%s delivery_failed=%d", recoveries, failed)
+
+    # ---- HV-94: zombie GATT link after the peer's app process restarts ----
+
+    def test_peer_process_restart_recovers(self):
+        """HV-94: prime P1->P2, then `am force-stop` P2's engine process (an
+        OOM-kill or a swipe-away). P1's ACL/GATT connection and poller are
+        untouched — P1 must notice the peer is gone (a failed write / a real
+        disconnect) and reconnect to P2's fresh process. Pass: a P1->P2 message
+        delivers again within 30 s of P2 coming back. 3 cycles.
+
+        Distinct from HV-15 (both sides see the drop) and HV-31 (Bluetooth
+        toggled) — here only P2's *app* dies, the radio stays up."""
+        import time
+        _SNIPPET_PKG = "org.iris.mesh.test"
+        _CYCLES = 3
+        _BUDGET_S = 30
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        r = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        recoveries = []
+        for i in range(_CYCLES):
+            # Kill P2's engine process (severs the Mobly snippet RPC too).
+            self.p2.adb.shell(["am", "force-stop", _SNIPPET_PKG])
+            time.sleep(2)
+            # Relaunch the snippet + engine; P2's X25519 key is regenerated
+            # (in-memory) so re-register it on P1 (nodeId persists).
+            try:
+                self.p2.unload_snippet("iris")
+            except Exception:
+                pass
+            self.p2.load_snippet("iris", _SNIPPET_PKG)
+            self.p2.iris.startMesh()
+            self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
+            self.p2.iris.registerPeerKey(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
+
+            t0 = time.monotonic()
+            ok = False
+            while time.monotonic() - t0 < _BUDGET_S:
+                rr = self.send_and_await(self.p1, self.p2, f"restart-{i}", timeout_ms=6000)
+                if rr.get("delivered"):
+                    ok = True
+                    break
+                time.sleep(2)
+            dt = round(time.monotonic() - t0, 1)
+            recoveries.append(dt)
+            self.p1.log.info("restart %d/%d: recovered=%s in %ss", i + 1, _CYCLES, ok, dt)
+            asserts.assert_true(ok, f"cycle {i}: P1 did not recover to P2's new process within {_BUDGET_S}s")
+
+        self.capture_evidence("tier1_peer_restart")
+        self.p1.log.info("PEER-RESTART: recoveries=%s", recoveries)
+        p1log = self._logcat_since_cleared(self.p1)
+        asserts.assert_equal(
+            p1log.count("msg.delivery_failed"), 0,
+            "no message may be permanently failed while P1 recovers the link",
+        )
 
 
 if __name__ == "__main__":

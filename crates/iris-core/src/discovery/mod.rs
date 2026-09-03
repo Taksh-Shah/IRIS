@@ -143,7 +143,16 @@ struct ConnectBackoff {
 /// First retry stays at the normal scan cadence (no perceptible behavior
 /// change on a single transient failure); only a second consecutive failure
 /// starts backing off, doubling up to `CONNECT_BACKOFF_MAX`.
-const CONNECT_BACKOFF_BASE: Duration = Duration::from_secs(30);
+///
+/// HV-99: was 30 s. A peer that is merely rebooting Bluetooth, restarting its
+/// app, or briefly out of range is back in ~10–20 s — a 30 s *first* backoff
+/// step meant the recovery test's link took ~75 s to re-form (P1 aborted the
+/// connect probe at 12 s, then sat in a 30 s backoff while P2 was already
+/// advertising again). 5 s as the base still reaches minutes for a genuinely
+/// dead peer within ~5 attempts (5→10→20→40→80→160→300), at the cost of a few
+/// extra connect attempts over the first minute of an outage — the right trade
+/// for a resilience mesh.
+const CONNECT_BACKOFF_BASE: Duration = Duration::from_secs(5);
 const CONNECT_BACKOFF_MAX: Duration = Duration::from_secs(300);
 
 impl DiscoveryManager {
@@ -515,6 +524,11 @@ impl DiscoveryManager {
         }
         let this = self.clone();
         let handle = tokio::spawn(async move {
+            // HV-99: a cheap transport health tick, independent of the scan
+            // cadence, so a Bluetooth off→on toggle (surfaced only via the
+            // pull-based FFI drain) is acted on in ~5 s even while the mesh is
+            // linked and scanning on the 30 s `scan_interval`.
+            const HEALTH_POLL: Duration = Duration::from_secs(5);
             loop {
                 this.scan_once().await;
                 // HV-91: scan fast until a `connect()` has actually succeeded,
@@ -530,12 +544,25 @@ impl DiscoveryManager {
                 } else {
                     this.config.active_scan_interval
                 };
-                // HV-97: a `wake()` (link dropped / RETRY / drop_all_links)
-                // cuts the sleep short so recovery does not wait a full
-                // `scan_interval`.
-                tokio::select! {
-                    _ = tokio::time::sleep(sleep_for) => {}
-                    _ = this.wake.notified() => {}
+                // Spend the sleep in HEALTH_POLL slices, running poll_health on
+                // each; a `wake()` (link dropped / RETRY / drop_all_links) still
+                // cuts it short.
+                let deadline = tokio::time::Instant::now() + sleep_for;
+                loop {
+                    let now = tokio::time::Instant::now();
+                    if now >= deadline {
+                        break;
+                    }
+                    let slice = HEALTH_POLL.min(deadline - now);
+                    tokio::select! {
+                        _ = tokio::time::sleep(slice) => {
+                            let transports = this.transports.read().await.clone();
+                            for t in &transports {
+                                t.poll_health().await;
+                            }
+                        }
+                        _ = this.wake.notified() => { break; }
+                    }
                 }
             }
         });

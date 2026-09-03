@@ -521,4 +521,11 @@ pub trait Transport: Send + Sync + 'static {
     /// (HV-31/HV-33). Default no-op for transports where "drop the link" has no
     /// meaning distinct from `shutdown`.
     async fn drop_all_links(&self) {}
+
+    /// HV-99: a cheap liveness/health tick the discovery loop runs on a short
+    /// fixed interval (independent of the scan cadence), so a platform-surfaced
+    /// event — a Bluetooth off→on toggle, an advertiser that died — is acted on
+    /// in a few seconds even while the mesh is linked and scanning slowly.
+    /// Must NOT start a scan or block. Default no-op.
+    async fn poll_health(&self) {}
 }

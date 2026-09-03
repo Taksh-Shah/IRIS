@@ -115,6 +115,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         private const val SERVICE_DISCOVERY_RETRY_ATTEMPTS = 3
         private const val SERVICE_DISCOVERY_RETRY_DELAY_MS = 300L
 
+        /**
+         * HV-99: how long `connectGatt` waits for STATE_CONNECTED + service
+         * discovery before giving up. Android's own `autoConnect=false` direct
+         * connect has a fixed ~30 s stack timeout, which is far too long for a
+         * discovery-driven reconnect probe — a peer that is rebooting Bluetooth
+         * or briefly out of range blocks the discovery loop for 30 s per
+         * attempt (HV-31 attempt 3, `session-14-hv31c`:
+         * `connect_failed elapsed_ms=30002`). 12 s covers the HV-91 cold-start
+         * first connect (~6.5 s measured) with margin and lets the 3 s
+         * `active_scan_interval` retry own the cadence instead.
+         */
+        private const val CONNECT_READY_TIMEOUT_MS = 12_000L
+
         // HW-7: how long gattWrite() blocks waiting for the async
         // onCharacteristicWrite completion callback before giving up.
         // Generous relative to normal BLE write latency (single-digit to
@@ -834,7 +847,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // timed-out connect from a successful one, so it proceeded straight
         // to gattWrite() against a handle nothing was ever registered
         // under. syncCallOrThrow surfaces the overrun as Timeout instead.
-        return FfiCallTimeout.syncCallOrThrow {
+        return FfiCallTimeout.syncCallOrThrow(timeoutMs = CONNECT_READY_TIMEOUT_MS + 2_000L) {
             val adapter = bleManager?.adapter ?: throw AdapterOff()
             // The Rust bridge emits a bare 12-hex address ("AABBCCDDEEFF"), but
             // getRemoteDevice demands "AA:BB:CC:DD:EE:FF" and throws
@@ -857,11 +870,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // completed, or a failure. The outer syncCall's own timeout
             // (30s) is the backstop if neither ever arrives.
             try {
-                ready.get()
+                // HV-99: bounded — do not inherit Android's ~30 s direct-connect
+                // stack timeout for a discovery reconnect probe.
+                ready.get(CONNECT_READY_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
                 iriscore.util.IrisLog.d("ble.gatt", "connectGatt: ready resolved successfully")
+            } catch (e: java.util.concurrent.TimeoutException) {
+                iriscore.util.IrisLog.w("ble.gatt", "connectGatt: not ready within ${CONNECT_READY_TIMEOUT_MS}ms — aborting probe")
+                connectionReady.remove(gatt)
+                quietly { gatt.disconnect(); gatt.close() }
+                throw Timeout()
             } catch (e: java.util.concurrent.ExecutionException) {
                 iriscore.util.IrisLog.w("ble.gatt", "connectGatt: ready failed", e)
                 connectionReady.remove(gatt)
+                quietly { gatt.close() }
                 throw (e.cause as? Exception) ?: GattFailure("connect failed: ${e.cause}")
             }
             val handle = nextHandle.getAndIncrement()

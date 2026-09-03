@@ -2478,3 +2478,92 @@ unavailable_then_recovers` passes. HV-10 + HV-31 remain **🔬** (not verified).
   reconnect path (distinct from a user-initiated send, which can wait longer);
   or `connectGatt` with `autoConnect=false` + a 5–8 s ceiling, letting discovery
   own the retry loop.
+
+---
+
+## Session 14 (cont.) — HV-99 (prerequisite for HV-31 / HV-94) + HV-31 attempt 4
+
+**Phase R (HV-99).** Evidence from HV-31 attempts (`session-14-hv31{,b,c}`)
+already isolated the mechanism (see the blocker analysis above). Two fixes,
+smallest form:
+
+1. **`connectGatt` bounded probe timeout.** Android's `autoConnect=false`
+   direct connect has a fixed ~30 s stack timeout with no API to shorten it
+   (confirmed: developer.android.com `BluetoothDevice.connectGatt`; Nordic
+   Android-BLE-Library issues — the library implements its own connect timeout
+   for exactly this reason). The Kotlin `connectGatt` waited on `ready.get()`
+   with only the 30 s `FfiCallTimeout` backstop. Now `ready.get(12_000 ms)` —
+   covers the HV-91 cold-start first connect (~6.5 s measured) with margin, and
+   on timeout does `gatt.disconnect()` + `gatt.close()` and throws `Timeout`,
+   so the 3 s `active_scan_interval` discovery pass owns the retry cadence
+   instead of blocking 30 s per attempt.
+2. **Core tears down BLE links on `drain_adapter_events` code `2` (BT off).**
+   On the peripheral side nothing calls `close_peer` when the OS drops every
+   ACL, so `has_confirmed_link` stayed `true` and the discovery loop slept the
+   full 30 s `scan_interval` — the ~20 s late drain in attempt 3. Event `2` now
+   `close_peer`s every connection, so `has_confirmed_link` recomputes `false`
+   and the loop returns to the 3 s cadence, draining event `3` within one pass.
+
+**Phase D.** `AndroidBleTransportAdapter.CONNECT_READY_TIMEOUT_MS = 12_000`;
+`connectGatt` bounded wait + cleanup + `Timeout`. `ble.rs` event-2 handler
+`close_peer`s all connections (`links_dropped` in the `ble.adapter_off` event).
+iris-core **782** green. L1 `hv31_…` still green.
+
+**Phase T.** (rebuild + `test_bluetooth_toggle_recovers` — in progress)
+
+- ❌ Attempt 1 (hardware, `session-14-hv99`): the `connectGatt` 12 s ceiling
+  **works** — `connectGatt: not ready within 12000ms — aborting probe` →
+  `connect_failed elapsed_ms=12059` (was 30002) — and P1 then reconnects
+  cleanly (`connect_ok elapsed_ms=1330`). But cycle 0 still took ~75 s (> 60 s
+  budget). Evidence isolates the last contributor: a **30 s gap between P1's
+  connect abort (19:16:48) and its next attempt (19:17:18)** — the
+  `CONNECT_BACKOFF_BASE = 30 s` per-(transport,peer) backoff after the 2nd
+  consecutive failure. P2 was already advertising again well before P1 retried.
+- **Attempt 2:** `CONNECT_BACKOFF_BASE` 30 s → 5 s (doubles 5→10→20→40→80→160→300,
+  so a genuinely dead peer still backs off to minutes within ~5 attempts). The
+  three HV-99 pieces together: 12 s connect probe + event-2 link teardown +
+  5 s first backoff. iris-core **782** green. (rebuild + re-test in progress)
+
+- ❌ Attempt 2 (hardware, `session-14-hv99b/c`): the 5 s backoff shrank the
+  connect-retry gap (30 s → but P2's *core* still took **37 s** to drain the
+  adapter events at all — `Bluetooth ON` logged by Kotlin at T+5 s, core
+  `ble.adapter_recovered` at T+42 s). Root cause finally pinned: the events are
+  drained ONLY inside `discover_peers`, and while P2 is linked the discovery
+  loop sleeps the full 30 s `scan_interval` — and P2 never learns its link
+  died (peripheral side, HV-93), so it stays "linked" and keeps sleeping.
+  Circular: the `close_peer` that would drop the cadence to fast is itself
+  gated on the starved drain.
+- **Attempt 3:** break the circularity with a dedicated health tick.
+  - `Transport::poll_health(&self)` (default no-op) — a cheap, scan-free
+    liveness pass.
+  - `BleTransport::handle_adapter_events` extracted from `discover_peers`;
+    `poll_health` calls just that.
+  - The `DiscoveryManager` background loop now spends its inter-scan sleep in
+    5 s `HEALTH_POLL` slices, running `poll_health` on every transport each
+    slice (a `wake()` still cuts it short). So a Bluetooth toggle is acted on
+    in ≤ 5 s regardless of the 30 s linked scan cadence.
+  iris-core **782** / iris-android **7** green; `cargo build --workspace` clean.
+  (rebuild + re-test in progress)
+
+- Attempt 3 (hardware, `session-14-hv99d`): **major improvement, not yet the
+  bar.** `test_bluetooth_toggle_recovers`: cycle 0 recovered **24.0 s**, cycle 1
+  **40.8 s**, cycle 2 failed at 60 s. Was: never. P2's core now reacts to the
+  toggle in ~5 s every cycle (`ble.adapter_recovered` aligned with each toggle,
+  no advertiser exhaustion). The residual latency + the cycle-2 flake are on
+  **P1's reconnect side** — the connect-probe + per-peer backoff cadence and
+  beacon re-acquisition after the peer's radio bounces.
+
+**Outcome — §1 Phase I (3 attempts).** HV-99 → **✅ HW-PENDING (partial)**. The
+four changes land and are a large, strict improvement (BT-toggle recovery: never
+→ ~24–41 s, 2/3 cycles): (1) `connectGatt` 12 s probe ceiling (was 30 s);
+(2) `CONNECT_BACKOFF_BASE` 5 s (was 30 s); (3) BLE `drain_adapter_events` code 2
+tears down GATT links; (4) `Transport::poll_health` + a 5 s discovery health
+tick so an FFI-surfaced event is felt regardless of the scan cadence. The full
+10/10 < 60 s bar needs the P1-side reconnect cadence tightened further and,
+likely, peripheral-side link-death detection (HV-93/HV-94 family). HV-31 stays
+🔒 (its blocker, HV-99, is improved but open). Moving on per the loop's
+3-attempt rule.
+
+**Session 14 running total:** HV-98 🟢 · HV-10 ✅ HW-PENDING · HV-31 🔒 ·
+HV-99 ✅ HW-PENDING (partial) · candidates HV-99 opened→worked. Commits: 81e17cd,
+2bb6281, 0875136, 64ca2d2, f2858b5, + HV-99 commit next.

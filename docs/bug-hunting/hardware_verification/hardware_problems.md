@@ -60,7 +60,7 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 14 | 6 | 7 | 0 | 1 | 0 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 8 | 3 | 1 | 2 | 9 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 8 | 4 | 1 | 2 | 8 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
@@ -69,7 +69,7 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **100** | **14** | **10** | **1** | **3** | **72** |
+| **Total** | | **100** | **14** | **11** | **1** | **3** | **71** |
 
 **Last updated:** 2026-09-03 (Session 14 — **HV-10 ✅ HW-PENDING** (bounded
 advertising-retry backoff — no bench trigger for `TOO_MANY_ADVERTISERS`) +
@@ -1287,7 +1287,15 @@ on the OEM server-disconnect callback. Coordinate with HV-93/HV-94.
 
 ### HV-99 — `connectGatt` reconnect probe blocks the full 30 s FFI budget when the peer is not advertising
 
-- **Fix status:** ⬜ (found Session 14 during HV-31 attempt 3)
+- **Fix status:** ✅ Fixed · HW-PENDING (partial) · commit <pending> · 2026-09-03
+  · Session 14 · BT-toggle recovery: **never → ~24–41 s, 2/3 cycles < 60 s**
+  (`test_bluetooth_toggle_recovers`). Four changes: `connectGatt` 12 s probe
+  ceiling (was Android's fixed ~30 s); `CONNECT_BACKOFF_BASE` 5 s (was 30 s);
+  BLE `drain_adapter_events` code 2 tears down GATT links so the cadence drops
+  to fast; `Transport::poll_health` + a 5 s discovery health tick so an
+  FFI-surfaced adapter event is acted on regardless of the 30 s linked scan
+  interval. Full 10/10 < 60 s still needs the P1-side reconnect cadence
+  tightened + peripheral-side link-death detection (HV-93/HV-94 family).
 - **Area:** `AndroidBleTransportAdapter.connectGatt` (`FfiCallTimeout` budget /
   `connectionReady` wait), `ble.rs` `connect` / discovery retry cadence —
   interacts with HV-15, HV-31, HV-94

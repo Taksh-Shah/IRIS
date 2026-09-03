@@ -1143,6 +1143,79 @@ impl BleTransport {
         times.push_back(now);
         true
     }
+
+    /// HV-10/HV-31/HV-99: drain and act on the Kotlin adapter's lifecycle
+    /// events (Bluetooth off→on toggle, advertising-retry exhaustion). Called
+    /// both from `discover_peers` (every scan pass) and from `poll_health`
+    /// (a cheap 5 s tick) so a toggle is felt in ~5 s, not up to the 30 s
+    /// linked `scan_interval`.
+    ///   2 = BT off  → drop scan/adv handles + all GATT links, transport Unavailable
+    ///   3 = BT on   → transport Available, re-advertise from the cached beacon,
+    ///                 force a scan re-arm
+    ///   1 = advertising retries exhausted → re-drive advertising from the core
+    async fn handle_adapter_events(&self, adapter: &std::sync::Arc<dyn BleAdapter>) {
+        let mut readvertise = false;
+        for code in adapter.drain_adapter_events() {
+            match code {
+                2 => {
+                    *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    let dead: Vec<PeerId> = self
+                        .connections
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner())
+                        .keys()
+                        .copied()
+                        .collect();
+                    for peer in &dead {
+                        self.close_peer(peer, adapter.clone(), None);
+                    }
+                    self.set_state(TransportState::Unavailable);
+                    tracing::warn!(
+                        event = "ble.adapter_off",
+                        links_dropped = dead.len(),
+                        "Bluetooth turned off — transport Unavailable, handles + links dropped"
+                    );
+                }
+                3 => {
+                    *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                    if self.state() == TransportState::Unavailable {
+                        self.set_state(TransportState::Available);
+                    }
+                    readvertise = true;
+                    tracing::info!(
+                        event = "ble.adapter_recovered",
+                        "Bluetooth turned back on — re-advertising, forcing scan re-arm"
+                    );
+                }
+                1 => {
+                    readvertise = true;
+                    tracing::warn!(
+                        event = "ble.advertising_failed",
+                        "platform advertising retry exhausted — re-driving advertising from the core"
+                    );
+                }
+                _ => {}
+            }
+        }
+        if readvertise {
+            let info = self
+                .last_advertisement
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .clone();
+            if let Some(info) = info {
+                if let Err(e) = self.start_advertising(info).await {
+                    tracing::warn!(
+                        event = "ble.readvertise_failed",
+                        error = %e,
+                        "could not re-advertise after adapter event"
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -1193,66 +1266,10 @@ impl Transport for BleTransport {
                 }
             }
         }
-        // HV-10/HV-31: consume adapter-lifecycle events the Kotlin adapter
-        // surfaced. A Bluetooth off→on toggle (or airplane mode) invalidates
-        // every scan/advertise/GATT handle at the OS level; the platform adapter
-        // re-opens the GATT server and replays advertise+scan on `STATE_ON`, but
-        // the core's transport state must follow so manager selection and
-        // metrics reflect reality. `1` = the platform-side bounded advertising
-        // retry gave up (device invisible to peers — surface it, no state
-        // change since scan may still work).
-        let mut readvertise = false;
-        for code in adapter.drain_adapter_events() {
-            match code {
-                2 => {
-                    *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                    *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                    self.set_state(TransportState::Unavailable);
-                    tracing::warn!(
-                        event = "ble.adapter_off",
-                        "Bluetooth turned off — transport Unavailable, handles dropped"
-                    );
-                }
-                3 => {
-                    *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                    *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                    if self.state() == TransportState::Unavailable {
-                        self.set_state(TransportState::Available);
-                    }
-                    readvertise = true;
-                    tracing::info!(
-                        event = "ble.adapter_recovered",
-                        "Bluetooth turned back on — re-advertising, forcing scan re-arm"
-                    );
-                }
-                1 => {
-                    // The platform-side bounded retry gave up — give the core's
-                    // own bring-up one more shot before declaring us invisible.
-                    readvertise = true;
-                    tracing::warn!(
-                        event = "ble.advertising_failed",
-                        "platform advertising retry exhausted — re-driving advertising from the core"
-                    );
-                }
-                _ => {}
-            }
-        }
-        if readvertise {
-            let info = self
-                .last_advertisement
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .clone();
-            if let Some(info) = info {
-                if let Err(e) = self.start_advertising(info).await {
-                    tracing::warn!(
-                        event = "ble.readvertise_failed",
-                        error = %e,
-                        "could not re-advertise after adapter event"
-                    );
-                }
-            }
-        }
+        // HV-10/HV-31/HV-99: react to any Bluetooth off→on toggle the Kotlin
+        // adapter surfaced. Runs here AND on the cheap `poll_health` path so the
+        // reaction is not gated on the 30 s linked scan cadence.
+        self.handle_adapter_events(&adapter).await;
         const SCAN_REARM_EVERY: u64 = 5;
         let pass = self.scan_pass.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let want_rearm = {
@@ -1867,6 +1884,13 @@ impl Transport for BleTransport {
             count = dropped.len(),
             "test hook: dropped all GATT links, discovery will re-form them"
         );
+    }
+
+    async fn poll_health(&self) {
+        // HV-99: only the cheap adapter-event drain — never a scan.
+        if let Ok(adapter) = self.adapter() {
+            self.handle_adapter_events(&adapter).await;
+        }
     }
 }
 
