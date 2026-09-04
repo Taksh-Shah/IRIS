@@ -91,6 +91,62 @@ class Tier1Ble(IrisBenchBase):
         src.log.info("TIER1 %s SUMMARY: %s", label, json.dumps(summary))
         return summary, results
 
+    # ---- HV-28: Doze survival ----------------------------------------
+
+    def test_doze_survival(self):
+        """HV-28: with both phones screen-off and forced into deep Doze, the
+        foreground service + BLE pollers must keep the mesh alive. Pass:
+          - a P2->P1 message sent *while both are dozing* delivers (inbound
+            poller survived — not TTL-expired),
+          - a P1->P2 message right after wake delivers,
+          - 0 `msg.delivery_failed`.
+        ~12 min. Forces Doze with `dumpsys deviceidle force-idle` (needs
+        `battery unplug`)."""
+        import json
+        import time
+        _DOZE_MIN = 10
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        r = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        for ad in self.ads:
+            ad.adb.shell(["input", "keyevent", "KEYCODE_SLEEP"])
+            ad.adb.shell(["dumpsys", "battery", "unplug"])
+            ad.adb.shell(["dumpsys", "deviceidle", "force-idle"])
+            state = ad.adb.shell(["dumpsys", "deviceidle", "get", "deep"]).decode("utf-8", "replace").strip()
+            ad.log.info("deviceidle deep state: %s", state)
+
+        # Send P2->P1 while both are dozing; give it the full TTL window.
+        t0 = time.monotonic()
+        mid = self.p2.iris.sendText(self.p1.iris.nodeId(), "sent-while-dozing", 4)
+        time.sleep(_DOZE_MIN * 60)
+
+        # Wake, restore, and check.
+        for ad in self.ads:
+            ad.adb.shell(["dumpsys", "deviceidle", "unforce"])
+            ad.adb.shell(["dumpsys", "battery", "reset"])
+            ad.adb.shell(["input", "keyevent", "KEYCODE_WAKEUP"])
+        time.sleep(5)
+
+        doze_msg = json.loads(self.p1.iris.awaitDelivered(mid, 60_000))
+        self.p1.log.info("doze-sent message after %s min: %s", _DOZE_MIN, doze_msg)
+
+        post = self.send_and_await(self.p1, self.p2, "post-doze", timeout_ms=_DELIVER_TIMEOUT_MS)
+
+        self.capture_evidence("tier3_doze")
+        churn = {ad.label: self._logcat_since_cleared(ad) for ad in self.ads}
+        failed = {k: v.count("msg.delivery_failed") for k, v in churn.items()}
+        self.p1.log.info("DOZE: doze_delivered=%s post_delivered=%s failed=%s",
+                         doze_msg.get("delivered"), post.get("delivered"), failed)
+
+        asserts.assert_true(post.get("delivered"),
+                            f"a message right after wake must deliver; {post}")
+        asserts.assert_true(doze_msg.get("delivered"),
+                            "a message sent during Doze must eventually deliver (poller survived)")
+        asserts.assert_equal(sum(failed.values()), 0, f"no delivery_failed across Doze; {failed}")
+
     # ---- HV-7: central -> peripheral, 300 chars ------------------------
 
     def test_p1_to_p2_300char_10x(self):
