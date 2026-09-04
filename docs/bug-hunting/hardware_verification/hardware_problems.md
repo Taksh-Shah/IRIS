@@ -62,16 +62,18 @@ that remain are understood and logged.*
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 1 | 0 | 1 | 7 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 2 | 0 | 1 | 6 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 0 | 0 | 0 | 5 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **102** | **15** | **17** | **1** | **3** | **66** |
+| **Total** | | **102** | **15** | **18** | **1** | **3** | **65** |
 
-**Last updated:** 2026-09-03 (Session 17 — **HV-33 ✅ HW-PENDING** — Android GATT
+**Last updated:** 2026-09-03 (Session 17 � **HV-33 + HV-29 ✅ HW-PENDING**
+(GATT status classification; `MessageEngine::restart()` so the RETRY button
+revives the engine). — Android GATT
 status codes now classified (`133`/`8`/`62`/`22`/`19` transient → held +
 reconnect, not `DeliveryFailed` on one blip); the §2 30-minute zero-loss
 session is running (Tier 1→2 gate). Candidates HV-101 (autoConnect reconnect).)
@@ -517,17 +519,22 @@ alias, rebuilt `libiriscode.so` for all 3 ABIs.
 - **Area:** `cargo test -p iris-core --lib` (test harness, not product code)
 - **Severity:** Low (undermines "green tree after every commit") · **HW gate:** none
 
-**What:** the full parallel `cargo test -p iris-core --lib` failed twice in one
-autonomous session — once on
-`message_engine::tests::broadcast_is_delivered_and_also_relayed`, once on an
-unidentified test — both green on immediate re-run and in isolation. Consistent
-with a shared-resource / timing race between tests run in parallel (a global
-`static`, a fixed port/path, a `tokio::time` test without `start_paused`, or an
-`Instant`-based assertion with too tight a window).
+**What:** two separate problems in the `iris-core` test suite:
+1. **Flaky:** `message_engine::tests::broadcast_is_delivered_and_also_relayed`
+   fails ~3/5 full parallel `cargo test -p iris-core --lib` runs (Sessions
+   16–17), always green on re-run and in isolation — a shared-resource / timing
+   race under parallelism.
+2. **Stale:** `tests/tokio_behavior.rs` —
+   `message_engine_round_trip_delivers_under_paused_time` and
+   `engine_send_abort_clean_when_dropped_under_paused_time` fail at HEAD with
+   `Crypto(KeyUnavailable)`: PRY-33 / CROSS-003 made `seal_outbound` fail closed
+   and the file's `dev_engine` helper never registers a recipient key (the lib
+   tests' `alice_engine` does — `MemoryKeyDirectory` + `dir.insert(BOB, …)`).
 
-**Fix sketch:** run the suite ~15× to enumerate every test that ever fails;
-compare default parallelism vs `--test-threads=1`; isolate the shared resource
-or pause time. Do not paper over with retries or `#[ignore]`.
+**Fix sketch:** (1) run the suite ~15× to enumerate every flaky test; compare
+default parallelism vs `--test-threads=1`; isolate the shared resource / pause
+time. (2) give `tokio_behavior.rs::dev_engine` a `MemoryKeyDirectory` like
+`alice_engine`. Do not paper over with retries or `#[ignore]`.
 
 ---
 
@@ -1674,9 +1681,18 @@ delivery latency under Doze.
 
 ### HV-29 — `stop_all` / `start_all` / `reconnectMesh` cycle: verify the radios actually come back
 
-- **Fix status:** ⬜
-- **Area:** `engine.rs` `start_all` / `stop_all`, `MeshViewModel.reconnectMesh`
-  (`stopMesh(); ensureStarted()`), `MeshRepository`
+- **Fix status:** ✅ Fixed · HW-PENDING · commit b604c16 · 2026-09-03 · Session
+  17 · confirmed the bug by reading HEAD: `stop_all` → `MessageEngine::shutdown`
+  aborts the delivery/ack/gc loops (spawned once in `new_with_telemetry`);
+  `start_all` never revived them → RETRY = UI RUNNING, dead engine. Fix: an
+  idempotent `MessageEngine::restart()` re-spawning the three loops;
+  `IrisEngine::start_all` calls it + `discovery.wake()`. L1
+  `hv29_restart_after_shutdown_revives_the_background_loops`. HW test written
+  (`test_reconnect_mesh_cycle` — `stopMesh`/`startMesh` on the live `@Singleton`
+  engine ×3), pending a bench run.
+- **Was:** ⬜
+- **Area:** `iris-core` `MessageEngine::{shutdown,restart}`, `engine.rs`
+  `start_all` / `stop_all`, `MeshViewModel.reconnectMesh`, `MeshRepository`
 - **Severity:** High · **HW gate:** 2 phones, tap "RETRY" repeatedly
 
 **What:** `reconnectMesh()` calls `stopMesh()` (which reaches

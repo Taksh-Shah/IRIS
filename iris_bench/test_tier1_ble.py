@@ -402,6 +402,52 @@ class Tier1Ble(IrisBenchBase):
         failed = p2log.count("msg.delivery_failed")
         self.p2.log.info("BT-TOGGLE: recoveries=%s delivery_failed=%d", recoveries, failed)
 
+    # ---- HV-29: stopMesh/startMesh cycle on a live @Singleton engine ----
+
+    def test_reconnect_mesh_cycle(self):
+        """HV-29: `reconnectMesh()` (the RETRY button) does stopMesh()+startMesh()
+        on the SAME process / same @Singleton IrisEngine — stop_all() aborts the
+        engine's delivery/ack/gc loops and start_all() must bring them back
+        (`MessageEngine::restart()`). Distinct from
+        test_peer_process_restart_recovers, which force-stops the process (fresh
+        engine). Cycle P2 3x; each time a P1->P2 message must deliver again
+        within 20 s. Pass: 3/3, 0 msg.delivery_failed."""
+        import time
+        _CYCLES = 3
+        _BUDGET_S = 20
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        r = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        recoveries = []
+        for i in range(_CYCLES):
+            self.p2.iris.stopMesh()
+            time.sleep(2)
+            self.p2.iris.startMesh()
+            # keys are in-process (engine reused) — but re-register defensively.
+            self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
+            self.p2.iris.registerPeerKey(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
+            t0 = time.monotonic()
+            ok = False
+            while time.monotonic() - t0 < _BUDGET_S:
+                rr = self.send_and_await(self.p1, self.p2, f"retry-{i}", timeout_ms=6000)
+                if rr.get("delivered"):
+                    ok = True
+                    break
+                time.sleep(2)
+            dt = round(time.monotonic() - t0, 1)
+            recoveries.append(dt)
+            self.p1.log.info("retry-cycle %d/%d: recovered=%s in %ss", i + 1, _CYCLES, ok, dt)
+            asserts.assert_true(ok, f"cycle {i}: RETRY did not revive the mesh within {_BUDGET_S}s")
+
+        self.capture_evidence("tier3_reconnect_mesh")
+        p2log = self._logcat_since_cleared(self.p2)
+        self.p1.log.info("RECONNECT-MESH: recoveries=%s", recoveries)
+        asserts.assert_equal(p2log.count("msg.delivery_failed"), 0,
+                             "no message may be permanently failed across a RETRY")
+
     # ---- HV-94: zombie GATT link after the peer's app process restarts ----
 
     def test_peer_process_restart_recovers(self):
