@@ -3188,3 +3188,26 @@ handle `close_peer` already removed). The tick catching a genuinely-eaten OEM
 disconnect needs a scenario the bench cannot deterministically produce; the L1
 + this regression + Android's own ~20 s LL supervision timeout cover it.
 Status: ✅ HW-PENDING.
+
+---
+
+### Session 18 closeout
+
+- **Devices:** P1 = vivo V2205 (Android 15), P2 = vivo 2004 (Android 13).
+  Autonomous.
+- **Findings advanced:** **HV-27 + HV-48 ✅ HW-PENDING** (`4a2889b`) — the Tier-3
+  §5 connection-health group. `Transport::link_quality(peer)` from per-link
+  activity (BLE), `/diag` shows real Good/Fair/Poor, `score_transport`
+  deprioritises a quiet link to the target peer, and a 7 s Kotlin liveness tick
+  cross-checks handles against `getConnectedDevices(GATT)` to catch a silent
+  death the OEM callback eats. L1 ×2; forced-drop regression 10/10, 0
+  false-positives.
+- **🟢 count:** 15 (unchanged).
+- **Tier 3 status:** 9 findings — 5 ✅ (HV-27, HV-29, HV-30, HV-32, HV-33), 1 🔒
+  (HV-31), 3 ⬜ (HV-28, HV-34, plus HV-31's sibling). Tier 6 now has HV-48 ✅.
+- **Next session pickup:** HV-28 (`DiscoveryManager` cadence / the three pollers
+  vs Doze — needs a screen-off 30+ min run, ideal for the autonomous window),
+  then HV-34 (bonding/pairing — an architecture decision that **needs operator
+  input**: require BLE bonding for contacts, or keep MAC fully decoupled?). The
+  ~22 ✅ HW-PENDING findings across Sessions 14–18 each owe one targeted bench
+  run of their specific trigger. HV-96 stays 🔒.
