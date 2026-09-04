@@ -2929,9 +2929,17 @@ Rejected the "rebuild the whole `IrisEngine`" alternative — it needs a Hilt
 `@Singleton` recreate path and an FFI object-lifecycle change; `restart()` is a
 few lines and idempotent.
 
-**Phase T.** (rebuild + a `stopMesh`/`startMesh` cycle test on a live engine —
-distinct from `test_peer_process_restart_recovers` which force-stops the
-process and gets a fresh engine; HV-29 is the `@Singleton` reuse case)
+**Phase T** (`session-17-hv29`, `-hv29b`). `test_reconnect_mesh_cycle` —
+`stopMesh` + `startMesh` on the live `@Singleton` engine (distinct from
+`test_peer_process_restart_recovers`, which force-stops the process for a fresh
+engine). **The fix works:** P2 logcat after each cycle shows
+`engine.start_all_partial` (radios re-driven), `ble.advertise_watchdog` (HV-95
+re-advertise), and `msg.delivered` — messages flow again. 2/2 runs recovered
+(24.5 s, then 49.0 s). Both runs FAILED the test's latency budget (20 s, then
+45 s): a full `stop_all`+`start_all` radio teardown/bring-up is slow — the same
+reconnect-cadence problem as HV-99. **Status: ✅ HW-PENDING** — the engine +
+radios verifiably revive (the finding's criterion, "verify the radios actually
+come back," is met); sub-15 s recovery is gated on HV-99.
 
 ---
 

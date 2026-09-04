@@ -1702,9 +1702,9 @@ delivery latency under Doze.
   `start_all` never revived them → RETRY = UI RUNNING, dead engine. Fix: an
   idempotent `MessageEngine::restart()` re-spawning the three loops;
   `IrisEngine::start_all` calls it + `discovery.wake()`. L1
-  `hv29_restart_after_shutdown_revives_the_background_loops`. HW test written
-  (`test_reconnect_mesh_cycle` — `stopMesh`/`startMesh` on the live `@Singleton`
-  engine ×3), pending a bench run.
+  `hv29_restart_after_shutdown_revives_the_background_loops`. **HW: engine + radios verifiably revive** (`session-17-hv29b`: `start_all_partial`
+  + `advertise_watchdog` + `msg.delivered` after each `stopMesh`/`startMesh`;
+  2/2 recovered, 24.5 s + 49.0 s). Slow — sub-15 s recovery gated on HV-99.
 - **Was:** ⬜
 - **Area:** `iris-core` `MessageEngine::{shutdown,restart}`, `engine.rs`
   `start_all` / `stop_all`, `MeshViewModel.reconnectMesh`, `MeshRepository`
