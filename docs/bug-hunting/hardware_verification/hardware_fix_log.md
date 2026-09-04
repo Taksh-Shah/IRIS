@@ -2894,3 +2894,38 @@ the natural link blips it produces are the 133/8 evidence)
   reconnects markedly faster. IRIS uses `autoConnect=false` everywhere. Worth a
   measured A/B on the reconnect path (distinct from the first connect, which
   wants the fast direct attempt). Interacts with HV-99, HV-15, HV-34 (bonding).
+
+---
+
+## Session 17 (cont.) — HV-29 (`reconnectMesh` runs against a dead engine)
+
+**Phase R.** `MeshViewModel.reconnectMesh()` (the RETRY affordance, shown on the
+UNAVAILABLE path — the one users hit most) = `stopMesh()` + `ensureStarted()`.
+`stopMesh()` → `MeshRepository.stopMesh()` → `IrisEngine::stop_all()` which calls
+`engine.shutdown().await` + `t.shutdown()` ×3. `MessageEngine::shutdown()`
+(mod.rs:1232) drains and `abort()`s `self.tasks` — the delivery, ack and gc
+loops, all spawned exactly once in `MessageEngine::new_with_telemetry`
+(mod.rs:316-319). **Nothing re-spawns them.** `IrisEngine::start_all()` only
+re-drives `t.start_advertising()` per transport; it never touches the engine.
+So after a RETRY the radios come back but the engine's core loops are dead: the
+UI reports RUNNING (`startMesh()` sets the status), and nothing is delivered,
+ACKed or GC'd until the process restarts. This is the exact bug the `onCleared`
+comment says was fixed for rotation — `reconnectMesh` re-introduces it via a
+different path. (The `spawn_inbox_forwarder` tasks survive: `t.shutdown()` does
+not drop `incoming_tx`, so the broadcast stream stays open and the forwarder
+just blocks.)
+
+**Phase D.** `MessageEngine::restart(self: &Arc<Self>)` — idempotent; if
+`self.tasks` is empty, re-spawn `spawn_delivery_loop` / `spawn_ack_task` /
+`spawn_gc_task`. `IrisEngine::start_all` now calls `engine.restart().await`
+before the radio bring-up, plus `discovery.wake()` so a reconnect scan runs
+immediately. L1 `hv29_restart_after_shutdown_revives_the_background_loops`
+(3 loops → shutdown → 0 → restart → 3 → restart again → still 3; a message still
+processes after). iris-core **788**, iris-android **8**, workspace builds.
+Rejected the "rebuild the whole `IrisEngine`" alternative — it needs a Hilt
+`@Singleton` recreate path and an FFI object-lifecycle change; `restart()` is a
+few lines and idempotent.
+
+**Phase T.** (rebuild + a `stopMesh`/`startMesh` cycle test on a live engine —
+distinct from `test_peer_process_restart_recovers` which force-stops the
+process and gets a fresh engine; HV-29 is the `@Singleton` reuse case)

@@ -528,7 +528,16 @@ impl IrisEngine {
         let handle = self.handle.clone();
         let manager = self.manager.clone();
         let node_id = self.node_id;
+        let engine = self.engine.clone();
+        let discovery = self.discovery.clone();
         handle.block_on(async move {
+            // HV-29: `stop_all` (the app's RETRY) calls `engine.shutdown()`,
+            // which aborts the delivery / ack / gc loops. Bring them back before
+            // the radios, or a RETRY leaves the UI RUNNING with a dead engine.
+            engine.restart().await;
+            // and kick discovery so a reconnect scan runs now, not after the
+            // current `scan_interval` sleep.
+            discovery.wake();
             // Was `?`-propagated per transport in a loop: the first failure
             // aborted start_all() entirely, even if it was the LAST transport
             // tried and the other two had already succeeded. Confirmed on a

@@ -1235,6 +1235,24 @@ impl MessageEngine {
         }
     }
 
+    /// HV-29: re-spawn the delivery / ack / gc loops after a [`shutdown`].
+    /// Idempotent — a no-op if the loops are already running. `stop_all` +
+    /// `start_all` (the app's RETRY affordance) used to abort these three and
+    /// never bring them back: the UI reported RUNNING with a dead engine —
+    /// nothing delivered, nothing ACKed, nothing garbage-collected — until the
+    /// process restarted.
+    pub async fn restart(self: &Arc<Self>) {
+        let mut tasks = self.tasks.lock().await;
+        if !tasks.is_empty() {
+            return;
+        }
+        tasks.extend([
+            self.spawn_delivery_loop(),
+            self.spawn_ack_task(),
+            self.spawn_gc_task(),
+        ]);
+    }
+
     /// Encode an envelope for transport (fragmenting P4–P7 if the largest
     /// candidate transport cannot carry it). Returns payloads to send.
     async fn serialize_for_transport(
@@ -2062,6 +2080,31 @@ mod tests {
             ),
             "at the ceiling the relay must stop"
         );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn hv29_restart_after_shutdown_revives_the_background_loops() {
+        // HV-29: the app's RETRY does stop_all() -> start_all(); stop_all()
+        // calls engine.shutdown(), which aborts the delivery / ack / gc loops,
+        // and start_all() never brought them back — the UI reported RUNNING with
+        // a dead engine until the process restarted.
+        let (alice, _t) = alice_engine().await;
+        assert_eq!(alice.tasks.lock().await.len(), 3, "3 loops at construction");
+
+        alice.shutdown().await;
+        assert_eq!(alice.tasks.lock().await.len(), 0, "shutdown aborts all 3");
+
+        alice.restart().await;
+        assert_eq!(alice.tasks.lock().await.len(), 3, "restart re-spawns all 3");
+        alice.restart().await;
+        assert_eq!(alice.tasks.lock().await.len(), 3, "restart is idempotent");
+
+        // The revived delivery loop still accepts and processes work.
+        let out = alice
+            .deliver_or_relay(envelope_for(ALICE, MessagePriority::P3, b"post-restart"), PeerId(BOB))
+            .await
+            .expect("engine handles a message after restart");
+        assert!(matches!(out, InboundOutcome::Delivered));
     }
 
     #[tokio::test(flavor = "multi_thread")]
