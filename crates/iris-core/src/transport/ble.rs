@@ -25,8 +25,8 @@ use futures_util::stream::Stream;
 use tokio::sync::broadcast;
 
 use crate::message::{
-    DiscoveryConfig, IncomingMessage, MessagePriority, NodeAdvertisement, PeerId, PeerInfo,
-    SendReceipt, SerializedMessage, TransportLink,
+    DiscoveryConfig, IncomingMessage, LinkQuality, MessagePriority, NodeAdvertisement, PeerId,
+    PeerInfo, SendReceipt, SerializedMessage, TransportLink,
 };
 use crate::transport::ble_advert::{CapabilityBits, DiscoveryBeacon};
 use crate::transport::ble_att::{
@@ -726,6 +726,11 @@ pub struct BleTransport {
     /// different peers cannot collide on the same id space.
     connections:
         std::sync::Arc<std::sync::Mutex<std::collections::HashMap<PeerId, (GattHandle, u16, u16)>>>,
+    /// HV-27: last time a `gatt_write` to this peer succeeded. Drives
+    /// `link_quality()` (→ `NeighborTable` → `/diag`) so a link that has gone
+    /// quiet reads Fair/Poor instead of a hardcoded `Good`. Removed by
+    /// `close_peer`.
+    link_activity: std::sync::Mutex<std::collections::HashMap<PeerId, tokio::time::Instant>>,
     /// Per-peer async lock (BLE-2): concurrent `connect()` calls to the SAME
     /// peer serialize on this (BLE-RT-002 — exactly one GATT link/poller per
     /// peer), but connects to DIFFERENT peers run fully in parallel. The
@@ -860,6 +865,7 @@ impl BleTransport {
             adv_handle: std::sync::Mutex::new(None),
             last_advertisement: std::sync::Mutex::new(None),
             connections: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            link_activity: std::sync::Mutex::new(std::collections::HashMap::new()),
             connect_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
             pollers: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
             known_addresses: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
@@ -1174,6 +1180,11 @@ impl BleTransport {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .retain(|_, (pid, _)| pid != peer);
+        // HV-27: forget this link's activity timestamp.
+        self.link_activity
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .remove(peer);
         if let Some(p) = self.pollers.write().unwrap_or_else(|p| p.into_inner()).remove(peer) {
             p.abort();
         }
@@ -1929,6 +1940,11 @@ impl Transport for BleTransport {
         // BLE-10: count wire bytes actually sent (payload + per-frame ATT headers).
         let bytes_sent: usize = frames.iter().map(Vec::len).sum();
         self.ewma.record_send(bytes_sent); // MG-17
+        // HV-27: every frame of this message landed — the link is demonstrably alive.
+        self.link_activity
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(resolved_key, tokio::time::Instant::now());
         Ok(SendReceipt {
             peer_id: *peer,
             bytes_sent,
@@ -2009,6 +2025,34 @@ impl Transport for BleTransport {
         if let Ok(adapter) = self.adapter() {
             self.handle_adapter_events(&adapter).await;
         }
+    }
+
+    fn link_quality(&self, peer: &PeerId) -> Option<LinkQuality> {
+        // Resolve to whatever key `connections` / `link_activity` is stored
+        // under (real id or the discovery-time candidate) — same as `send()`.
+        let key = {
+            let conns = self.connections.lock().unwrap_or_else(|p| p.into_inner());
+            if conns.contains_key(peer) {
+                *peer
+            } else {
+                let cand = Self::candidate_key_for(peer);
+                if conns.contains_key(&cand) { cand } else { return None }
+            }
+        };
+        let last = *self
+            .link_activity
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(&key)?;
+        // Fresh traffic → the link is carrying data now. Quiet for a while →
+        // suspect (we have not confirmed it live, and the OEM disconnect
+        // callback is unreliable). Thresholds are generous so a normally-idle
+        // mesh link does not flap to Poor between user messages.
+        Some(match last.elapsed().as_secs() {
+            0..=15 => LinkQuality::Good,
+            16..=45 => LinkQuality::Fair,
+            _ => LinkQuality::Poor,
+        })
     }
 }
 
@@ -2716,6 +2760,37 @@ mod tests {
         adapter.inject_scan_failure(5);
         // still refused because the code-6 window has not elapsed
         assert!(t.discover_peers(DiscoveryConfig::default()).await.is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn hv27_link_quality_tracks_recent_activity() {
+        // HV-27: `LinkQuality` was hardcoded `Good` in discovery. It now reflects
+        // how long since a `gatt_write` to the peer last succeeded.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let peer = peer_with_mac(PeerId([27u8; 32]), "AA:BB:CC:DD:EE:27");
+        t.connect(&peer).await.expect("connect");
+        assert_eq!(t.link_quality(&peer.peer_id), None, "no traffic yet → no signal");
+
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([27u8; 16]),
+            priority: MessagePriority::P3,
+            payload: b"health".to_vec(),
+        };
+        t.send(&peer.peer_id, &msg).await.expect("send");
+        assert_eq!(t.link_quality(&peer.peer_id), Some(LinkQuality::Good), "just sent");
+
+        tokio::time::advance(Duration::from_secs(20)).await;
+        assert_eq!(t.link_quality(&peer.peer_id), Some(LinkQuality::Fair), "quiet 20 s");
+
+        tokio::time::advance(Duration::from_secs(40)).await;
+        assert_eq!(t.link_quality(&peer.peer_id), Some(LinkQuality::Poor), "quiet 60 s");
+
+        // A fresh send resets it; close_peer forgets it.
+        t.send(&peer.peer_id, &msg).await.expect("send again");
+        assert_eq!(t.link_quality(&peer.peer_id), Some(LinkQuality::Good));
+        t.close_peer(&peer.peer_id, adapter.clone(), None);
+        assert_eq!(t.link_quality(&peer.peer_id), None);
     }
 
     #[tokio::test]

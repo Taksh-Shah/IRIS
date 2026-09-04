@@ -3115,3 +3115,71 @@ case to `trace!` or drop it.
   (Doze/battery cadence, screen-off 30 min), HV-34 (bonding decision — needs
   operator input). The 4 findings above each owe one targeted bench run
   (procedures in this log). HV-96 stays 🔒.
+
+---
+
+## Session 18 (autonomous) — HV-27 (connection health) + HV-48
+
+**Phase R.** A BLE link is binary in `connections`; `LinkQuality` (Good/Fair/
+Poor/Excellent) exists in `NeighborTable` and is plumbed all the way to
+`/diag` (`FfiNeighborDiag.links = ["ble-android:Good"]`) — but
+`discovery/mod.rs:368` upserts a **hardcoded `LinkQuality::Good`**. It never
+reflects reality.
+
+Two failure modes:
+1. **Silently dead link.** Android's LL supervision timeout is hardcoded ~20 s
+   (Google issuetracker 37119344; Hubble Network; Argenox "Understanding BLE
+   Disconnections") — after that the controller *should* fire
+   `onConnectionStateChange(DISCONNECTED, status=8)`. On the vivo Funtouch
+   stacks that callback is unreliable (established HV-93/HV-94), so a peer that
+   walked out of range can stay "connected" past 20 s with no signal. HV-94's
+   client-side `drainDisconnectedHandles` forwards the callback *when it fires*;
+   nothing covers when it doesn't.
+2. **No "prefer the healthy link".** `select_transports` (HV-48) filters on the
+   transport's coarse `state()`; a transport with one dead link stays
+   `Connected` and keeps being picked.
+
+How others do it: BLE has no application keepalive primitive; the sanctioned
+liveness check with zero extra traffic is
+`BluetoothManager.getConnectedDevices(BluetoothProfile.GATT)` — the stack's own
+list of live connections. A characteristic **read** would also probe, but the
+IRIS characteristic is write-only and a write is a message frame to the
+receiver (would need a keepalive frame type — deferred).
+
+**Research outcome.** Minimal, no protocol change:
+(a) `BleTransport` tracks `link_activity: HashMap<PeerId, Instant>`, bumped on a
+    successful `gatt_write`; `Transport::link_quality(peer)` maps
+    `elapsed()` → Good (<15 s) / Fair (<45 s) / Poor. `discovery` uses it
+    instead of the hardcoded `Good`, so `/diag` shows real per-link health.
+(b) Kotlin: a ~7 s tick cross-checks `gattHandles` against
+    `getConnectedDevices(GATT)`; a handle the stack no longer lists →
+    `pendingDisconnectedHandles` (reuses HV-94's drain → accept-poller tears
+    the peer down). Catches the silent death the OEM callback misses.
+(c) HV-48 (selection consults `NeighborTable` link quality) — next, small.
+Rejected: an app-level keepalive frame (protocol change, radio cost) and a
+periodic `set_mtu` probe (`requestMtu` is once-per-connection on Android).
+
+**Phase D.**
+- `iris_core::transport`: `Transport::link_quality(&self, peer) -> Option<LinkQuality>`
+  (default `None`). `BleTransport` — `link_activity: Mutex<HashMap<PeerId,
+  tokio::time::Instant>>` bumped on every fully-successful `send()`, removed by
+  `close_peer`; `link_quality` maps `elapsed()` → Good (≤15 s) / Fair (≤45 s) /
+  Poor. `discovery/mod.rs` uses `transport.link_quality(peer).unwrap_or(Good)`
+  in the `NeighborTable` upsert — `/diag` now shows real per-link health.
+- **HV-48** (§5 companion): `score_transport` — when `req.target_peer` is set,
+  `-15` for a `Poor` / `-5` for a `Fair` link to that peer (bounded under the
+  20-pt state gap). `StubTransport::with_link_quality` for tests.
+- `AndroidBleTransportAdapter`: `ensureLivenessTick()` — a 7 s
+  `scheduleWithFixedDelay` (on the existing `recovery` executor, started on the
+  first `connectGatt`) cross-checks `gattHandles` against
+  `bleManager.getConnectedDevices(BluetoothProfile.GATT)`; a handle the stack no
+  longer lists is dead → `gatt.close()` + `pendingDisconnectedHandles` (HV-94
+  drain). Catches the silent death Android's ~20 s LL supervision timeout should
+  report but the OEM callback eats.
+- L1: `hv27_link_quality_tracks_recent_activity`,
+  `hv48_selection_prefers_the_transport_with_a_healthy_link_to_the_peer`.
+  iris-core **791**, `:app` Kotlin + JVM green.
+
+**Phase T.** (rebuild + `test_forced_drop_reconnect_10x` / a BT-toggle run — the
+liveness tick should log `liveness: handle N no longer stack-connected` and
+`close_peer` a silently-dead link faster than a failed user send)

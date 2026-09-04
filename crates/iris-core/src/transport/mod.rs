@@ -528,4 +528,13 @@ pub trait Transport: Send + Sync + 'static {
     /// in a few seconds even while the mesh is linked and scanning slowly.
     /// Must NOT start a scan or block. Default no-op.
     async fn poll_health(&self) {}
+
+    /// HV-27: how healthy *this transport's* link to `peer` currently is, from
+    /// per-link activity (recent successful traffic = healthy; long quiet =
+    /// suspect). `None` when the transport has no per-link signal — discovery
+    /// then assumes `Good`, the historical behaviour. Feeds the `NeighborTable`
+    /// and `/diag`, and (HV-48) transport selection.
+    fn link_quality(&self, _peer: &crate::message::PeerId) -> Option<crate::message::LinkQuality> {
+        None
+    }
 }

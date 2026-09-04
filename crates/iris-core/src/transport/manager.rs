@@ -281,6 +281,20 @@ pub fn score_transport(t: &dyn Transport, req: &TransportSelectionRequest) -> f3
         _ => -1000.0, // eliminates this transport
     };
 
+    // HV-48: `state()` is coarse — `Connected` just means "≥1 live link on this
+    // transport". If the request targets a specific peer and this transport's
+    // link to *that* peer has gone quiet (HV-27 `link_quality`), prefer a
+    // healthier transport for the same peer. Bounded well under the 20-pt
+    // state gap so it re-ranks between transports without demoting a
+    // Connected+Poor below an Available+Good on its own.
+    if let Some(peer) = &req.target_peer {
+        match t.link_quality(peer) {
+            Some(crate::message::LinkQuality::Poor) => score -= 15.0,
+            Some(crate::message::LinkQuality::Fair) => score -= 5.0,
+            _ => {}
+        }
+    }
+
     // Latency bonus for emergency messages.
     if req.priority.is_emergency() {
         score += 100.0 / (caps.typical_latency_ms as f32 + 1.0);
@@ -321,6 +335,8 @@ pub struct StubTransport {
     caps: TransportCapabilities,
     state: TransportState,
     cost: TransportCost,
+    /// HV-48: per-peer link quality this stub reports (default: none → `Good`).
+    link_quality: std::collections::HashMap<crate::message::PeerId, crate::message::LinkQuality>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -336,7 +352,16 @@ impl StubTransport {
             caps,
             state,
             cost,
+            link_quality: std::collections::HashMap::new(),
         }
+    }
+    pub fn with_link_quality(
+        mut self,
+        peer: crate::message::PeerId,
+        q: crate::message::LinkQuality,
+    ) -> Self {
+        self.link_quality.insert(peer, q);
+        self
     }
 }
 
@@ -418,6 +443,12 @@ impl Transport for StubTransport {
     }
     async fn shutdown(&self) -> Result<(), TransportError> {
         Ok(())
+    }
+    fn link_quality(
+        &self,
+        peer: &crate::message::PeerId,
+    ) -> Option<crate::message::LinkQuality> {
+        self.link_quality.get(peer).copied()
     }
 }
 
@@ -853,6 +884,57 @@ mod tests {
             "wideband",
             "large-message (>10 KB) must prefer higher-bandwidth transport"
         );
+    }
+
+    #[tokio::test]
+    async fn hv48_selection_prefers_the_transport_with_a_healthy_link_to_the_peer() {
+        // HV-48: both transports report `Connected` (≥1 live link somewhere),
+        // but only "healthy" has a Good link to *this* peer; "stale" is Poor.
+        // Selection must pick "healthy" even though state() is equal.
+        use crate::message::{LinkQuality, PeerId};
+        let peer = PeerId([0x48; 32]);
+        let mgr = TransportManager::new();
+        mgr.register(Arc::new(
+            StubTransport::new(
+                "stale",
+                free_caps(),
+                TransportState::Connected,
+                cost(3.0, 0.0, 100_000_000, 0.0),
+            )
+            .with_link_quality(peer, LinkQuality::Poor),
+        ))
+        .await
+        .unwrap();
+        mgr.register(Arc::new(
+            StubTransport::new(
+                "healthy",
+                free_caps(),
+                TransportState::Connected,
+                cost(3.0, 0.0, 100_000_000, 0.0),
+            )
+            .with_link_quality(peer, LinkQuality::Good),
+        ))
+        .await
+        .unwrap();
+
+        let mut request = req(MessagePriority::P4, 500, false);
+        request.target_peer = Some(peer);
+        let selected = mgr.select_transports(&request).await;
+        assert_eq!(
+            selected[0].transport_id.as_str(),
+            "healthy",
+            "the transport with the Good link to this peer must rank first"
+        );
+
+        // Directly: the Poor-link transport scores lower than the Good-link one
+        // for this peer, and neither penalty applies to a broadcast.
+        let stale = StubTransport::new("s", free_caps(), TransportState::Connected, cost(3.0, 0.0, 100_000_000, 0.0))
+            .with_link_quality(peer, LinkQuality::Poor);
+        let good = StubTransport::new("g", free_caps(), TransportState::Connected, cost(3.0, 0.0, 100_000_000, 0.0))
+            .with_link_quality(peer, LinkQuality::Good);
+        assert!(score_transport(&stale, &request) < score_transport(&good, &request));
+        let bcast = req(MessagePriority::P4, 500, false); // target_peer = None
+        assert_eq!(score_transport(&stale, &bcast), score_transport(&good, &bcast));
     }
 
     #[tokio::test]

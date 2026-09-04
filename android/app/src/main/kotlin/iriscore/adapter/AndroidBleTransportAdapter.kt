@@ -174,6 +174,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
          */
         private val ADVERTISE_RETRY_DELAYS_MS = longArrayOf(1_000L, 4_000L, 10_000L)
 
+        /** HV-27: how often the stale-link liveness cross-check runs. */
+        private const val LIVENESS_TICK_MS = 7_000L
+
         // HV-10/HV-31: adapter-lifecycle event codes surfaced to the core via
         // drainAdapterEvents() — mirror `iris_core::transport::ble` docs.
         private const val EVT_ADVERTISING_GAVE_UP = 1
@@ -308,6 +311,43 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
     /** HV-31: guards a single registration of [btStateReceiver]. */
     private val btReceiverRegistered = AtomicBoolean(false)
+
+    /** HV-27: guards a single start of the stale-link liveness tick. */
+    private val livenessTickStarted = AtomicBoolean(false)
+
+    /**
+     * HV-27: a silently-dead GATT link — peer walked out of range, RF glitch —
+     * should fire `onConnectionStateChange(DISCONNECTED)` once Android's ~20 s
+     * link-supervision timeout expires, but on the OEM stacks we target that
+     * callback is unreliable (HV-93/HV-94). Cross-check our live client handles
+     * against the stack's own connected-device list every few seconds; any
+     * handle the stack no longer lists is dead — feed it to the same
+     * `pendingDisconnectedHandles` drain HV-94 wired, so the Rust accept-poller
+     * tears the peer down and discovery reconnects, instead of the link sitting
+     * dead until the user's next send fails.
+     */
+    private fun ensureLivenessTick() {
+        if (!livenessTickStarted.compareAndSet(false, true)) return
+        recovery.scheduleWithFixedDelay({
+            try {
+                val mgr = bleManager ?: return@scheduleWithFixedDelay
+                if (gattHandles.isEmpty()) return@scheduleWithFixedDelay
+                val live = mgr.getConnectedDevices(BluetoothProfile.GATT).map { it.address }.toHashSet()
+                val stale = gattHandles.entries.filter { it.value.device.address !in live }
+                for (e in stale) {
+                    iriscore.util.IrisLog.w("ble.gatt", "liveness: handle ${e.key} no longer stack-connected — treating as disconnected")
+                    gattHandles.remove(e.key)
+                    serviceCharacteristics.remove(e.value)
+                    negotiatedMtu.remove(e.value)
+                    quietly { e.value.close() }
+                    while (pendingDisconnectedHandles.size >= MAX_PENDING) pendingDisconnectedHandles.poll()
+                    pendingDisconnectedHandles.add(e.key)
+                }
+            } catch (t: Throwable) {
+                iriscore.util.IrisLog.w("ble.gatt", "liveness tick threw: ${t.message}")
+            }
+        }, LIVENESS_TICK_MS, LIVENESS_TICK_MS, TimeUnit.MILLISECONDS)
+    }
 
     private fun enqueueAdapterEvent(code: Int) {
         while (adapterEvents.size >= MAX_PENDING) adapterEvents.poll()
@@ -936,6 +976,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             }
             val handle = nextHandle.getAndIncrement()
             gattHandles[handle] = gatt
+            ensureLivenessTick() // HV-27
             handle.toULong()
         }
     }

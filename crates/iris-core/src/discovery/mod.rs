@@ -363,9 +363,12 @@ impl DiscoveryManager {
         while let Some(peer) = futures_util::StreamExt::next(&mut stream).await {
             seen_this_pass += 1;
             seen_ids.push(peer.peer_id);
+            // HV-27: real per-link health where the transport reports it
+            // (BLE: from recent successful traffic), else the historical `Good`.
+            let quality = transport.link_quality(&peer.peer_id).unwrap_or(LinkQuality::Good);
             let ev = self
                 .table
-                .upsert(&peer, transport.transport_id(), LinkQuality::Good)
+                .upsert(&peer, transport.transport_id(), quality)
                 .await;
             if matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })) {
                 new_peers.push(peer.peer_id);
