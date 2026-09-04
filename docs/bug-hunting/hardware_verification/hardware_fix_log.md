@@ -3241,3 +3241,96 @@ dense-mesh optimisation deferred to a 3+-phone session with EXP-003 measurement.
 force-idle` (deep Doze), a P2→P1 message sent *during* Doze, ~10 min wait, wake,
 verify it delivered + a post-wake message delivers + 0 `msg.delivery_failed`.
 (running)
+
+---
+
+## Session 19 (cont.) — Phase R: HV-19 + HV-20 + HV-22 (§5 Wi-Fi Direct group)
+
+*(Research only — Tier 2 per §2 needs its own research phase; implementation is a
+dedicated session with the cold-start ×10 hardware test.)*
+
+### The mechanism
+
+**HV-19.** `WifiP2pManager` has two group-formation paths
+(developer.android.com "Create P2P connections with Wi-Fi Direct"; AOSP
+`WifiP2pConfig.java` android-29):
+- `connect(config)` → **GO negotiation**: the framework picks GO/GC; the app can
+  only *bias* via `groupOwnerIntent` 0–15, not decide. Two symmetric peers both
+  calling `connect` with the same intent → the protocol's own tie-break (random
+  + device address) resolves it, but only if they negotiate *with each other*.
+- `createGroup()` → **autonomous GO**: this device is unconditionally the owner;
+  others join without negotiation. If **both** peers `createGroup`, each owns a
+  separate group (own SSID/passphrase) and they can never join.
+
+`iris_core::transport::wifi_direct` (HEAD, `connect()` L1562-1615, RF-26 comment):
+`group_config.go_intent` defaults to `GO_INTENT_BALANCED = 7` for **both** peers,
+so both take the `go_intent > 7` == false branch → both call
+`adapter.join_group(...)` → **neither ever creates a group** → every `connect`
+fails. (The finding's title says "both createGroup"; the code's current failure
+mode is the mirror — both try to *join* a group nobody made. Same result: dead
+transport, which is the operator's "the Wi-Fi Direct connections create
+conflict".) The `go_intent` field and `GroupConfig` exist but are never set
+per-peer.
+
+**HV-20.** `AndroidWifiDirectTransportAdapter` generates `groupNetworkName`
+(`DIRECT-ir-iris%04x`) + `groupPassphrase` from `SecureRandom` **once per adapter
+instance**. Passing `setNetworkName`/`setPassphrase` to
+`WifiP2pConfig.Builder().createGroup(config)` (the API-29+ overload) forces a
+*non-persistent, custom-credential* group — the framework will NOT store/reuse
+it, so a restarted GO is a new group and the old client cannot rejoin. Plain
+`createGroup(channel, listener)` (+ `enablePersistentMode` where available) lets
+the framework manage a **persistent** group whose SSID/passphrase/roles survive a
+restart and enable renegotiation-free rejoin (AOSP: persistent P2P group stores
+credentials + GO/GC roles). Clients join via `connect(deviceAddress)` negotiation
+which never needs the app-level passphrase.
+
+**HV-22.** `p2pStateReceiver` on `WIFI_P2P_CONNECTION_CHANGED groupFormed=false`
+(HW-21) does `closeDataPath()` + clears cached state — correct — but nothing
+re-forms the group. The core drops to Degraded/Unavailable and only re-forms if
+the discovery loop re-notices the peer. Same gap as BLE HV-15/HV-31.
+
+### How it's solved elsewhere
+
+- **The standard deterministic-GO pattern** (multiple SO/blog sources; Android
+  docs): the *intended GO* calls `createGroup()` first, then both sides
+  `connect()`. The client's `connect(deviceAddress = GO's MAC)` against an
+  existing group sends a join *invitation*, not a fresh GO negotiation.
+- IRIS's own module doc frames Wi-Fi Direct as **"the data plane on the BLE
+  control plane"** — and BLE discovery already hands both peers each other's
+  PeerId before any Wi-Fi Direct call. So the election needs **no extra
+  round-trip**: compare PeerIds.
+
+### IRIS constraints
+
+Privacy model: the P2P device MAC is not identity (same as BLE). The election
+key must be the PeerId, which both peers already have from the BLE beacon.
+Transport-abstraction: `connect(peer)` is the single entry; the election must
+live inside it (or in a pre-`connect` hook), not leak into the manager.
+
+### Research outcome
+
+1. **Deterministic election by PeerId.** `WifiDirectTransport` stashes its own
+   node PeerId (from the first `start_advertising`). In `connect(peer)`: if
+   `local_peer_id < peer.peer_id` → **this node is GO** → `create_group()`
+   (plain, persistent, no custom creds — fixes HV-20) + `add_client(peer)`;
+   else → **GC** → `join_group(peer)`. Both peers independently reach the same
+   verdict, no negotiation. `go_intent` becomes advisory only (band-pin GO still
+   forces GO regardless).
+2. **HV-20:** drop `setNetworkName`/`setPassphrase`; `createGroup()` plain +
+   `enablePersistentMode` on API 29+. Remove the per-instance `SecureRandom`
+   fields.
+3. **HV-22:** on `groupFormed=false`, re-run the election with bounded backoff
+   (GO re-`createGroup`, GC re-`connect`), holding frames in the existing outbox.
+4. **Tie handling:** if a race still leaves two groups (both peers briefly GO
+   before discovery converges), the higher-PeerId peer detects it (sees the
+   lower-PeerId peer still as a GO / not its client) and `removeGroup()` +
+   `connect()`s down.
+
+Rejected: (a) framework `connect()` GO-negotiation for the common case — it's
+non-deterministic and the operator's complaint is *non-determinism*; (b) a
+dedicated BLE control-plane GO-negotiation message — unnecessary, the PeerIds
+are already exchanged.
+
+**HW verification (when implemented):** cold-start both phones 10×, alternating
+power-on order; within T s exactly one group; messages both ways every time
+(`dumpsys wifip2p` shows one `groupFormed: true`, correct GO).
