@@ -62,14 +62,14 @@ that remain are understood and logged.*
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 4 | 0 | 1 | 4 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 5 | 0 | 1 | 3 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
-| 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 0 | 0 | 0 | 5 |
+| 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **103** | **15** | **20** | **1** | **3** | **64** |
+| **Total** | | **103** | **15** | **22** | **1** | **3** | **62** |
 
 **Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
 HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
@@ -1647,8 +1647,23 @@ launch → read-with-timeout → attach), keeping the slot accounting correct.
 
 ### HV-27 — There is no "connection health" concept — a link is either in the map or not
 
-- **Fix status:** ⬜
-- **Area:** `ble.rs` `connections`, `wifi_direct.rs` link table, `TransportState`
+- **Fix status:** ✅ Fixed · HW-PENDING · commit 4a2889b · 2026-09-04 · Session
+  18 · §5 group with HV-48 · (a) `Transport::link_quality(peer)` — `BleTransport`
+  tracks `link_activity` (bumped per successful `send`, cleared by `close_peer`),
+  maps `elapsed()` → Good ≤15 s / Fair ≤45 s / Poor; `discovery` upserts the
+  real value so `/diag` shows per-link health instead of a hardcoded `Good`.
+  (b) `AndroidBleTransportAdapter.ensureLivenessTick()` — 7 s cross-check of live
+  handles against `getConnectedDevices(GATT)`; a handle the stack dropped →
+  `pendingDisconnectedHandles` (HV-94 drain) — catches the silent death the OEM
+  disconnect callback misses. L1 `hv27_link_quality_tracks_recent_activity`.
+  **Not done:** an application keepalive frame (protocol change) — a genuinely
+  idle link still can't be proactively probed without traffic; the liveness tick
+  + Android's ~20 s LL supervision timeout cover the "peer gone" case.
+  **HW-pending:** verify the tick logs `liveness: handle N no longer
+  stack-connected` and `close_peer`s faster than a failed send.
+- **Was:** ⬜
+- **Area:** `ble.rs` `link_activity` / `link_quality`, `discovery/mod.rs`,
+  `AndroidBleTransportAdapter.ensureLivenessTick`, `manager.rs` (HV-48)
 - **Severity:** High · **HW gate:** 2 phones
 
 **What:** a GATT/socket link is binary: present in `connections`/`links` or
@@ -2216,9 +2231,16 @@ the loser.
 
 ### HV-48 — `select_transports` runs on `TransportState`, which lags reality by a poll interval or more
 
-- **Fix status:** ⬜
-- **Area:** `manager.rs` `select_transports`, `AtomicState`, per-transport state
-  update paths
+- **Fix status:** ✅ Fixed · commit 4a2889b · 2026-09-04 · Session 18 · §5 group
+  with HV-27 · `score_transport` now applies `-15` (Poor) / `-5` (Fair) to a
+  transport whose `link_quality(req.target_peer)` (HV-27) has gone quiet —
+  bounded under the 20-pt `state()` gap so it re-ranks *between* transports for
+  the same peer without demoting a Connected transport below an Available one on
+  its own. L1 `hv48_selection_prefers_the_transport_with_a_healthy_link_to_the_peer`.
+  Verified end-to-end only when a 2nd transport is up (Tier 6); the L1 + HV-27's
+  bench check cover it for now.
+- **Was:** ⬜
+- **Area:** `manager.rs` `score_transport`, `Transport::link_quality`
 - **Severity:** Medium · **HW gate:** 2 phones
 
 **What:** selection filters on `state()` ∈ {Available, Degraded, Connected}.
