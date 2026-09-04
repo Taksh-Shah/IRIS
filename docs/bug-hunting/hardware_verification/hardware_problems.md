@@ -60,18 +60,22 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 8 | 1 | 2 | 3 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 8 | 0 | 0 | 0 | 0 | 8 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 1 | 0 | 1 | 7 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 0 | 0 | 0 | 5 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **101** | **15** | **15** | **1** | **3** | **67** |
+| **Total** | | **102** | **15** | **17** | **1** | **3** | **66** |
 
-**Last updated:** 2026-09-03 (Session 16 — **HV-95 ✅ HW-PENDING** —
+**Last updated:** 2026-09-03 (Session 17 — **HV-33 ✅ HW-PENDING** — Android GATT
+status codes now classified (`133`/`8`/`62`/`22`/`19` transient → held +
+reconnect, not `DeliveryFailed` on one blip); the §2 30-minute zero-loss
+session is running (Tier 1→2 gate). Candidates HV-101 (autoConnect reconnect).)
+· Previously: 2026-09-03 (Session 16 — **HV-95 ✅ HW-PENDING** —
 `ensureGattServer` now retries + returns a bool; `startAdvertising` fails loudly
 if the GATT server won't open (no more "connectable beacon with no server");
 core `ble.advertise_watchdog` re-drives advertising every 5 s if it's down.
@@ -1783,9 +1787,20 @@ wait for the worker, confirm what happens.
 
 ### HV-33 — GATT `133` and other opaque failure codes: no classification, no mitigation
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-PENDING · commit af265d0 · 2026-09-03 · Session
+  17 · `gatt_status_is_transient()` parses the `status=<n>` token the Kotlin
+  adapter embeds; `133` (GATT_ERROR), `8` (CONN_TIMEOUT), `62` (FAIL_ESTABLISH),
+  `22`/`19` (CONN_TERMINATE_*) → `NotConnected` (retryable + held: HV-7 retries
+  the frame, then `close_peer` + holds the message + reconnects — never
+  `DeliveryFailed` on one blip); `257` (GATT_FAILURE) + unknown stay `Protocol`.
+  Kotlin `onConnectionStateChange(DISCONNECTED)` now fails the in-flight write
+  immediately with the status (was: 12 s timeout). L1
+  `hv33_transient_gatt_status_codes_are_held_not_failed`. **HW-pending:** 133
+  needs connection churn to reproduce; the 30-min sustained session's natural
+  blips are the intended evidence. `autoConnect=true`-on-reconnect → **HV-101**.
+- **Was:** ⬜
 - **Area:** `AndroidBleTransportAdapter` `onConnectionStateChange` /
-  `onCharacteristicWrite` status handling, `gattWriteFailures`
+  `onCharacteristicWrite` status handling, `ble.rs::gatt_status_is_transient`
 - **Severity:** Medium · **HW gate:** 2 phones (133 reproduces under connection
   churn)
 
@@ -1821,6 +1836,30 @@ real reconnect reliability.
 **Fix sketch (research):** prototype an optional "trusted peer" bond for peers the
 user explicitly adds as contacts (ties into HV-56 contacts), measure reconnect
 reliability bonded vs unbonded on the bench, and decide.
+
+---
+
+### HV-101 — `connectGatt(autoConnect=true)` on the reconnect path (Android 14+ fast path)
+
+- **Fix status:** ⬜ (candidate, Session 17)
+- **Area:** `AndroidBleTransportAdapter.connectGatt`, `ble.rs` reconnect path,
+  interacts with HV-99, HV-15, HV-33, HV-34
+- **Severity:** Medium · **HW gate:** 2 phones, measured A/B on the reconnect path
+
+**What:** IRIS calls `device.connectGatt(ctx, autoConnect = false, …)`
+everywhere. Since Android 14 a direct (`false`) connect is throttled harder,
+while `autoConnect = true` (background connect, no fixed timeout) reconnects
+markedly faster to a previously-seen device
+(bleadvertiser.medium.com "Android 15 Broke BLE Reconnection Speed"). The *first*
+connect still wants the fast direct attempt (a background connect to a device
+that never appears hangs forever). Worth splitting: direct for discovery-fresh
+peers, `autoConnect = true` for a peer we had a link to and lost — the exact
+case HV-99's `CONNECT_BACKOFF` and HV-15's cached-address reconnect handle.
+
+**Fix sketch:** an `auto_connect: bool` on the `connect_gatt` FFI (or a separate
+`reconnect_gatt`), chosen by the core from whether `known_addresses` /
+`connect_backoff` already had this peer. Measure cold-connect vs reconnect
+latency bonded/unbonded (folds into HV-34).
 
 ---
 
