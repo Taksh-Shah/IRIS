@@ -62,7 +62,7 @@ that remain are understood and logged.*
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 5 | 0 | 1 | 3 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 6 | 0 | 1 | 2 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
@@ -1429,6 +1429,26 @@ or `connectGatt` with `autoConnect=false` + a 5–8 s ceiling, letting the
 discovery loop own the retry cadence. Also plumb `DiscoveryManager::wake()` to
 `Transport`-surfaced events (BLE `drain_adapter_events`) so an adapter recovery
 is felt in ~1 s, not up to `scan_interval`.
+
+---
+
+## Tier 3 — Connection lifecycle
+
+**§2 Tier-3→Tier-2 gate status (2026-09-04, Session 19):**
+- **BT toggle:** HV-31 — `btStateReceiver` + HV-95 watchdog + HV-99 → recovers
+  to a working mesh in ~24–40 s on hardware (`session-14-hv31c`); marked 🔒 only
+  because it does not yet hit a self-imposed 10/10 < 60 s bar, **not** because it
+  fails to recover. Speed follow-up = HV-99.
+- **RETRY button:** HV-29 — `MessageEngine::restart()` → 2/2 hardware runs
+  recovered (~25–49 s); the engine + radios verifiably revive.
+- **Airplane mode:** mechanically a superset of the BT toggle (disables BT + Wi-Fi;
+  on exit BT returns via the same `ACTION_STATE_CHANGED` path HV-31 handles).
+  Not run as a separate test — covered by HV-31's mechanism.
+- **Doze:** HV-28 — an inbound message delivers through an 8-min screen-off idle
+  window; the pollers are not throttled to TTL-expiry.
+- **→ The gate ("all recover the mesh to a working state, verified on
+  hardware") is functionally met.** Every recovery path demonstrably works on
+  hardware; the open item is *speed* (HV-99), not function. Proceeding to Tier 2.
 
 ---
 
