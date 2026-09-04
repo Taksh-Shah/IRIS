@@ -3539,8 +3539,68 @@ saw **two** inbound connections in one tick (P1's real handle `1846…` + one st
 registered in `pollers` **keyed by PeerId** — so the second `insert` returned and
 `.abort()`-ed the first, stranding whichever handle actually carried P1's frames
 (`onCharacteristicWriteRequest matchesIris=true` fired 10× post-restart, zero
-`ble.inbound_drain`). Fix: a dedicated `inbound_pollers: HashMap<GattHandle,
+`ble.inbound_drain`). Fix attempt: a dedicated `inbound_pollers: HashMap<GattHandle,
 AbortHandle>` — a second task for the *same* handle is a real re-attach; two
-distinct handles keep their own tasks. `shutdown` aborts + clears the map;
-`close_peer` aborts the one handle; the accept-poller's dead-handle loop aborts a
-vanished handle's task.
+distinct handles keep their own tasks.
+
+**HV-108 ABANDONED.** The handle-keyed change **regressed RETRY**
+(`test_reconnect_mesh_cycle` 5/5 → cycle 3 stall). A follow-up (close the GATT
+server in `BleTransport::shutdown`) also regressed RETRY (16.9 s then a cycle-3
+fail — rapid close/reopen churn on the vivo stack). Both reverted. The residual
+failure's real cause was the **double GATT server** — see HV-109.
+
+### ✅ HV-109 — one process-wide GATT server (the actual fix)
+
+**Web research** ([JimmyIoT — Service Change on BLE GATT Table](https://jimmywongiot.com/2021/05/25/service-change-on-ble-gatt-table/),
+GATT-cache-staleness threads): when a peripheral's GATT database changes, a
+connected central keeps a **stale handle map** and its writes miss — the
+Bluetooth spec's **Service Changed characteristic (`0x2A05`)** exists precisely
+to signal this, and Android never sends it for us. Combined with the earlier
+finding (a peripheral cannot drop the central's ACL), the conclusion is: **the
+GATT server must not be torn down on a mesh restart at all.**
+
+**Root cause (`session-20-hv108`/`-hv107-fix` logcat, `serverIf` 8 alive next to
+12):** `IrisSnippet.startMesh()` builds a brand-new `AndroidBleTransportAdapter`
+every call, and `stopAdvertising` `gattServer.close()`-d the old one. So a
+`stopMesh`+`startMesh` left **two** registered GATT servers; a central that kept
+its link wrote into the **old** adapter's `pendingGattWrites` queue, which the
+**new** engine's bridge never drained. `P1→P2` delivery was permanently dead
+after any peer restart where P1 kept its link (RETRY when only P2 restarts;
+permission re-grant).
+
+**Fix (commit `408f3d3`):** `sharedGattServer`, `sharedGattWrites`,
+`sharedAcceptedConnections`, `sharedGattServerCallback` and `deviceHash()` are
+now companion-object statics. `ensureSharedGattServer` opens the one server once;
+`stopAdvertising` no longer closes it (only the advertiser stops); only a real
+BT-off (`closeSharedGattServer`) tears it down, since the OS invalidates it then
+anyway. HV-97's "second stale server" is now structurally impossible.
+
+**Hardware verification — `session-20-hv109` + `session-20-hv109b`
+(P1 vivo V2205 / P2 vivo 2004, clean adb server between each test):**
+
+| test | finding(s) | result |
+|---|---|---|
+| `test_permission_revoke_demotes_then_recovers` | HV-30 | **PASS 3/3** — 0.7 / 32.8 / 40.9 s |
+| `test_reconnect_mesh_cycle` (RETRY) | HV-29 | **PASS 5/5** — 0.4 / 0.6 / 24.8 / 0.4 / 32.8 s |
+| `test_forced_drop_reconnect_10x` | HV-15 / HV-105 | **PASS 10/10** — 3.3–10.5 s |
+| `test_bluetooth_toggle_recovers` | HV-31 | **PASS 3/3** — 53.9 / 57.0 / 57.0 s (< 60 s) |
+
+0 `msg.delivery_failed` in every run. (One RETRY run mid-session errored with a
+Mobly `ProtocolError: No response from server` after ~15 BT-cycles + reinstalls
+— an adb/snippet infra flake, not a code failure; re-ran clean.)
+
+### Session 20 — final state
+
+**Promoted 🟢 this session:** HV-12, HV-15, HV-16, HV-28, HV-29, HV-30, HV-31,
+HV-99, HV-105, HV-106, HV-107, HV-109.
+**New findings:** HV-105, HV-106, HV-107, HV-108 (abandoned), HV-109.
+**Tier 3: CLOSED. §2 Tier-3→Tier-2 gate: MET.** Commits `618e673`, `aa85916`,
+`408f3d3`.
+**Tier 1:** 28 findings — 16 🟢, 6 ✅ (HV-10/11/13/95/97 at "no 2-phone trigger"
+ceiling), 1 🔬 (HV-96), 1 🔒 (HV-8 asymmetric-MTU deferred), 4 ⬜ (HV-9/17/18
+environment-gated, HV-108 N/A).
+**Follow-ups (not blocking):** HV-99 sub-30 s BT-toggle; HV-34 bonding (needs the
+operator's architecture decision); HV-101 (`autoConnect=true` reconnect), HV-104
+(poller consolidation + power rig).
+**Next tier: 2 — Wi-Fi Direct GO election (HV-19 + HV-20 + HV-22).** Phase-R note
+already written (Session 19, this log).

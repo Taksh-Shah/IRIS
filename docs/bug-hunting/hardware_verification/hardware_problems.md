@@ -60,26 +60,31 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 26 | 10 | 10 | 1 | 2 | 3 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 28 | 16 | 6 | 1 | 1 | 4 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 0 | 5 | 0 | 2 | 3 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 4 | 3 | 0 | 0 | 3 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **107** | **16** | **23** | **1** | **5** | **62** |
+| **Total** | | **109** | **26** | **17** | **1** | **2** | **63** |
 
-**Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
-HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
-→ held + reconnect, not `DeliveryFailed` on one blip). HV-29:
-`MessageEngine::restart()` so `stop_all`+`start_all` (the RETRY button) revives
-the delivery/ack/gc loops instead of leaving a dead engine. The §2 30-minute
-zero-loss session **PASSED** (150/150 fwd + 150/150 rev, 0 close_peer, 0 link
-drops) — the Tier-1→2 gate is met; Tier 3 is now the active tier. Also HV-32
-(background relay worker), HV-30 (permission-revocation demote + resume
-re-check). Candidates HV-101, HV-102 (ACK-path loss); HV-100 expanded.)
+**Last updated:** 2026-09-04 (Session 20 — **Tier 3 CLOSED; Tier-3→Tier-2 gate
+MET.** The whole BLE teardown-then-reconnect path had silently regressed to a
+permanent stall (steady-state fine, so short runs missed it). Three coordinated
+fixes: **HV-105** (keep the MAC→candidate hint across `close_peer`), **HV-107**
+(inbound GATT handles get their own map, not `connections` — so a node dials back
+out after a peer restart), **HV-109** (one process-wide GATT server, never closed
+on a mesh restart — no `serverIf` leak, the peer that kept its link is still
+served). Hardware: RETRY 5/5, forced-drop 10/10, permission-revoke 3/3, BT-toggle
+3/3 (< 60 s), Doze PASS. Also promoted 🟢: HV-15, HV-28, HV-29, HV-30, HV-31,
+HV-99, HV-106, HV-12, HV-16. Next: Tier 2 (Wi-Fi Direct — Phase-R note written
+Session 19). Follow-ups: HV-99 sub-30 s BT-toggle, HV-34 (bonding — needs the
+operator's decision), HV-101/HV-104.)
+· Previously: 2026-09-04 (Session 17 — HV-33 + HV-29 ✅ HW-PENDING; the §2
+30-minute zero-loss session PASSED (150/150 both ways) → Tier-1→2 gate met.)
 · Previously: 2026-09-03 (Session 16 — **HV-95 ✅ HW-PENDING** —
 `ensureGattServer` now retries + returns a bool; `startAdvertising` fails loudly
 if the GATT server won't open (no more "connectable beacon with no server");
@@ -1086,7 +1091,7 @@ ceiling/window against the actual Android version behaviour on the bench phones.
 
 ### HV-15 — No automatic reconnect: a dropped GATT link is only re-established by the next discovery pass finding the beacon again
 
-- **Fix status:** 🟡 HW-verified (transport re-link) / re-verification owed (end-to-end) · commit 553fa4d · 2026-09-02 · Session 12 · `iris_bench` `test_forced_drop_reconnect_10x` + `dropAllLinks()` hook: after a forced drop, `ble.drop_all_links` → `connectGatt: initiated` **65 ms** later → `discovery.connect_ok elapsed_ms ≈ 1100` on **both** phones (was: wait for the beacon to re-enter the scan buffer, up to 30 s). The targeted reconnect + `DiscoveryManager::wake()` (interruptible scan loop) are proven. **⚠️ Session 20:** end-to-end message recovery after a forced drop regressed to a permanent stall — root cause **HV-105** (`close_peer` was evicting the MAC→candidate hint the inbound accept-poller needs). Fixed; `test_forced_drop_reconnect_10x` 10/10 re-run owed to restore 🟢.
+- **Fix status:** 🟢 HW-VERIFIED · commit 553fa4d (+ HV-105/107/109) · 2026-09-04 · Session 20 · targeted reconnect from the cached address + `DiscoveryManager::wake()`. **Session-20 `session-20-hv109b`: `test_forced_drop_reconnect_10x` 10/10, recovery 3.3–10.5 s, 0 `msg.delivery_failed`.** End-to-end message recovery after a forced drop had regressed to a permanent stall through Sessions 15–19 (root causes **HV-105** + **HV-107** + **HV-109**, all fixed this session); the 10/10 run restores 🟢.
 - **Premise note:** partly disproved — `scan_transport` already calls `connect()`
   (idempotent) for every peer *harvested this pass*, so a drop heals without a
   full handshake **if** the beacon is in the current scan buffer. The gap: a
@@ -1406,15 +1411,15 @@ on the OEM server-disconnect callback. Coordinate with HV-93/HV-94.
 
 ### HV-99 — `connectGatt` reconnect probe blocks the full 30 s FFI budget when the peer is not advertising
 
-- **Fix status:** ✅ Fixed · HW-PENDING (partial) · commit a645b90 · 2026-09-03
-  · Session 14 · BT-toggle recovery: **never → ~24–41 s, 2/3 cycles < 60 s**
-  (`test_bluetooth_toggle_recovers`). Four changes: `connectGatt` 12 s probe
-  ceiling (was Android's fixed ~30 s); `CONNECT_BACKOFF_BASE` 5 s (was 30 s);
-  BLE `drain_adapter_events` code 2 tears down GATT links so the cadence drops
-  to fast; `Transport::poll_health` + a 5 s discovery health tick so an
-  FFI-surfaced adapter event is acted on regardless of the 30 s linked scan
-  interval. Full 10/10 < 60 s still needs the P1-side reconnect cadence
-  tightened + peripheral-side link-death detection (HV-93/HV-94 family).
+- **Fix status:** 🟢 HW-VERIFIED · commit a645b90 (+ HV-107/109) · 2026-09-04 ·
+  Session 20 · `connectGatt` 12 s probe ceiling (was Android's fixed ~30 s);
+  `CONNECT_BACKOFF_BASE` 5 s (was 30 s); BLE `drain_adapter_events` code 2 tears
+  down GATT links; `Transport::poll_health` + a 5 s discovery health tick.
+  **Session-20 `session-20-hv109b`: `test_bluetooth_toggle_recovers` 3/3, all
+  53.9–57.0 s (< 60 s budget)** — the P1-side reconnect-cadence + peripheral
+  link-death gap that held this at 2/3 was closed by HV-107 (outbound dial no
+  longer blocked) + HV-109 (persistent GATT server). A tighter < 30 s target is
+  a nice-to-have, not a blocker.
 - **Area:** `AndroidBleTransportAdapter.connectGatt` (`FfiCallTimeout` budget /
   `connectionReady` wait), `ble.rs` `connect` / discovery retry cadence —
   interacts with HV-15, HV-31, HV-94
@@ -1441,11 +1446,12 @@ is felt in ~1 s, not up to `scan_interval`.
 
 ### HV-105 — `close_peer` evicting the MAC→candidate hint permanently breaks every teardown-then-reconnect path
 
-- **Fix status:** ✅ Fixed · HW-PENDING · 2026-09-04 · Session 20 · reverted the
-  `known_addresses` eviction that commit `49413e5` (HV-13) added to
-  `close_peer`. L1 `hv13_known_addresses_is_bounded_by_ttl_and_cap` updated to
-  assert the hint SURVIVES `close_peer`. Re-run of `test_forced_drop_reconnect_10x`
-  + `test_reconnect_mesh_cycle` owed.
+- **Fix status:** 🟢 HW-VERIFIED · commit `618e673` · 2026-09-04 · Session 20 ·
+  reverted the `known_addresses` eviction that commit `49413e5` (HV-13) added to
+  `close_peer`. L1 `hv13_known_addresses_is_bounded_by_ttl_and_cap` asserts the
+  hint SURVIVES `close_peer`. **Session-20 `session-20-hv109b`:
+  `test_forced_drop_reconnect_10x` 10/10 (was 0/10 before this fix).** The full
+  teardown-then-reconnect recovery also needed HV-107 + HV-109 on top.
 - **Found by:** Session-20 bench — `test_forced_drop_reconnect_10x` (regressed
   from Session-13's 10/10 @ ~3.5 s to a permanent stall), `test_reconnect_mesh_cycle`
   (Session-19 2/2 @ ~25–49 s → stuck > 75 s), and the new
@@ -1490,11 +1496,12 @@ revoke 3/3.
 
 ### HV-106 — the inbound accept-poller is gated on `start_advertising` succeeding
 
-- **Fix status:** ✅ Fixed · HW-PENDING · 2026-09-04 · Session 20 · hoisted
-  `ensure_accept_poller` in `BleTransport::start_advertising` to *before* the
-  fallible `adapter.start_advertising()` call. L1
-  `hv106_accept_poller_runs_even_when_start_advertising_fails`. Re-verification of
-  RETRY / permission owed.
+- **Fix status:** 🟢 HW-VERIFIED · commit `618e673` · 2026-09-04 · Session 20 ·
+  hoisted `ensure_accept_poller` in `BleTransport::start_advertising` to *before*
+  the fallible `adapter.start_advertising()` call. L1
+  `hv106_accept_poller_runs_even_when_start_advertising_fails`. Verified as part
+  of the RETRY / forced-drop / BT-toggle / permission suite passing
+  (`session-20-hv109b`, all green).
 - **Found by:** Session-20 `test_reconnect_mesh_cycle` / `test_permission_revoke…`
   still stuck after the HV-105 fix.
 - **Area:** `ble.rs` `start_advertising` ordering vs `ensure_accept_poller`
@@ -1523,13 +1530,21 @@ first; it is idempotent so the ordering change is safe.
 
 ---
 
-### HV-107 — 🔒 the inbound accept-poller writes a peripheral-role handle into `connections`, which then blocks the peer's own outbound `connect()`
+### HV-107 — the inbound accept-poller wrote a peripheral-role handle into `connections`, blocking the peer's own outbound `connect()`
 
-- **Fix status:** 🔒 BLOCKED · 2026-09-04 · Session 20 · needs a design change
-  (separate inbound vs outbound handle maps, or make `connect()` ignore a
-  receive-only entry). 3 attempts spent this session (HV-105 revert, HV-106
-  hoist, full instrumentation). **Blocks HV-29, HV-15 end-to-end, and the
-  Tier-3 → Tier-2 gate.**
+- **Fix status:** 🟢 HW-VERIFIED · commit `aa85916` · 2026-09-04 · Session 20 ·
+  **fix (a)** — new `inbound_handles: HashMap<PeerId, GattHandle>`, strictly
+  separate from `connections` (outbound client links only). The accept-poller
+  records inbound handles there; `connect()` / `send()` / discovery consult only
+  `connections`, so after a peer restart they correctly see "no outbound link"
+  and dial. `close_peer` / `shutdown` / `drop_all_links` / the BT-off handler
+  tear down both. L1
+  `hv107_inbound_accept_does_not_populate_connections_or_block_the_outbound_dial`.
+  **Session-20 `session-20-hv107-fix`: `test_reconnect_mesh_cycle` (RETRY) 5/5,
+  recovery 0.3–0.7 s** (was a permanent stall). Full recovery in the
+  only-one-side-restarts case (permission revoke) also needed **HV-109**
+  (persistent GATT server). HV-108 (handle-keyed pollers) was tried and
+  abandoned — it regressed RETRY.
 - **Area:** `ble.rs` `ensure_accept_poller` (`connections.entry(peer_id).or_insert`
   with `accepted.handle`) vs `connect()` / `send()` / discovery's idempotent
   `connect_ok`
@@ -1570,45 +1585,89 @@ other's restart.
 - (c) on `start_advertising` after a restart, proactively `close_peer` +
   re-`connect()` every peer that only has an inbound handle.
 
-**Interim (Session 20):** the forced-drop path (`dropAllLinks`, no engine
-restart) is materially better after HV-105 (0/10 → up to 7/10); the RETRY /
-permission paths (full engine restart on the peer) remain broken. Tier 3 cannot
-be closed until HV-107 is fixed.
+**Resolution (Session 20):** the BLE reconnect cluster took three coordinated
+fixes — **HV-105** (keep the MAC hint across `close_peer`), **HV-107** (inbound
+handles out of `connections`), **HV-109** (one process-wide GATT server). With
+all three: RETRY 5/5, forced-drop 10/10, permission 3/3, BT-toggle 3/3.
+
+---
+
+### HV-108 — (abandoned) handle-keyed inbound reassembly tasks
+
+- **Fix status:** ⬜ N/A — tried and reverted. Keying the accept-poller's
+  reassembly tasks by `GattHandle` (to stop a PeerId collision aborting a
+  sibling) **regressed RETRY** (`test_reconnect_mesh_cycle` 5/5 → flaky/fail).
+  The real root cause of the residual failure was the double GATT server
+  (**HV-109**), not the poller keying. Kept here so the approach is not retried.
+
+---
+
+### HV-109 — the GATT server was closed + reopened on every mesh restart, leaking `serverIf` and stranding the peer
+
+- **Fix status:** 🟢 HW-VERIFIED · commit `408f3d3` · 2026-09-04 · Session 20 ·
+  the `BluetoothGattServer`, its inbound queues, its callback and `deviceHash()`
+  are now **companion-object statics** — one server for the life of the process,
+  opened once (`ensureSharedGattServer`), never closed on a mesh stop. Only a
+  real BT-off closes it (the OS invalidates it anyway).
+- **Severity:** Critical · **HW gate:** 2 phones, restart one side only
+
+**What:** the snippet (and the real app's reconnect path) builds a **new**
+`AndroidBleTransportAdapter` on every `startMesh`, and `stopAdvertising` used to
+`gattServer.close()` the old one. So a `stopMesh`+`startMesh` left **two**
+registered GATT servers (logcat: `serverIf` 8 alive next to 12). A remote
+central — which never gets a disconnect when a peripheral closes its server
+(Bluetooth core spec: only the central can drop the ACL) — kept writing into the
+**old** adapter's queue, which nothing drained. `P1→P2` delivery was permanently
+dead after any peer restart where P1 kept its link (RETRY when only P2 restarts;
+permission re-grant). Closing+reopening also strands the central against a
+changed GATT database with no Service Changed (`0x2A05`) indication —
+[JimmyIoT: Service Change on BLE GATT Table](https://jimmywongiot.com/2021/05/25/service-change-on-ble-gatt-table/),
+[Martijn van Welie, "Making Android BLE work — part 2"](https://medium.com/@martijn.van.welie/making-android-ble-work-part-2-47a3cdaade07).
+
+**Fix:** one process-wide server, never torn down by a mesh restart. HV-97's
+"second stale server" is now structurally impossible. Verified
+(`session-20-hv109` / `-hv109b`): permission 3/3, RETRY 5/5, forced-drop 10/10,
+BT-toggle 3/3.
+
+---
+
+**§2 Tier-3→Tier-2 gate: ✅ MET (2026-09-04, Session 20).** Every recovery path
+verified on hardware with the HV-105 + HV-107 + HV-109 fix stack:
+`test_reconnect_mesh_cycle` (RETRY) 5/5, `test_forced_drop_reconnect_10x`
+(forced link loss) 10/10, `test_permission_revoke_demotes_then_recovers`
+(permission revoke + re-grant) 3/3, `test_bluetooth_toggle_recovers` (BT
+off→on) 3/3 all < 60 s, `test_doze_survival` (HV-28) delivered through an 8-min
+idle. Airplane mode is a mechanical superset of the BT toggle. **Proceeding to
+Tier 2.**
 
 ---
 
 ## Tier 3 — Connection lifecycle
 
-**§2 Tier-3→Tier-2 gate status (2026-09-04, Session 19):**
-- **BT toggle:** HV-31 — `btStateReceiver` + HV-95 watchdog + HV-99 → recovers
-  to a working mesh in ~24–40 s on hardware (`session-14-hv31c`); marked 🔒 only
-  because it does not yet hit a self-imposed 10/10 < 60 s bar, **not** because it
-  fails to recover. Speed follow-up = HV-99.
-- **RETRY button:** HV-29 — ~~`MessageEngine::restart()` → 2/2 hardware runs
-  recovered~~ **Session-20 correction: the 2/2 was on a 45 s budget and the
-  test's send retry masked that the ACK direction was already broken. At 5×/75 s
-  it is 0/5 — see HV-107.**
-- **Airplane mode:** mechanically a superset of the BT toggle (disables BT + Wi-Fi;
-  on exit BT returns via the same `ACTION_STATE_CHANGED` path HV-31 handles).
-  Not run as a separate test — covered by HV-31's mechanism.
-- **Doze:** HV-28 — an inbound message delivers through an 8-min screen-off idle
-  window; the pollers are not throttled to TTL-expiry.
+**§2 Tier-3→Tier-2 gate: ✅ MET (2026-09-04, Session 20).**
 
-**⛔ 2026-09-04, Session 20 — gate NOT MET (was wrongly declared "functionally
-met" in Session 19).** Running the owed bench runs surfaced a three-layer BLE
-reconnect regression:
-- **HV-105** (fixed) — `close_peer` evicting the MAC→candidate hint. Forced-drop
-  recovery went 0/10 → up to 7/10.
-- **HV-106** (fixed, L1 only) — the inbound accept-poller was gated on
-  `start_advertising` succeeding.
-- **HV-107** (🔒 BLOCKED) — the accept-poller writes a peripheral-role handle
-  into `connections`, so after the peer restarts, this node's own outbound
-  `connect()` idempotently no-ops and the reply/ACK direction is permanently
-  dead. `test_reconnect_mesh_cycle` 0/5, `test_permission_revoke…` 0/3.
-- **→ Gate status: BLOCKED on HV-107.** RETRY (HV-29 / HV-60 — the user's main
-  recovery tool) does not recover the mesh on hardware. **Tier 2 must not start
-  until HV-107 is fixed and RETRY 5/5 + forced-drop 10/10 + permission 3/3
-  pass.**
+Session 19 declared this gate "functionally met" on a 45 s-budget RETRY run; the
+owed 10× bench runs in Session 20 showed that was **wrong** — the whole BLE
+teardown-then-reconnect path had regressed to a permanent stall (steady-state was
+fine, so short runs missed it). It took three coordinated fixes:
+- **HV-105** — `close_peer` was evicting the MAC→candidate hint the inbound
+  accept-poller needs.
+- **HV-107** — the accept-poller wrote a peripheral-role handle into
+  `connections`, so after a peer restart this node never dialed back out.
+- **HV-109** — `stopMesh`/`startMesh` closed + reopened the GATT server, leaking
+  the old `serverIf`; a central that kept its link wrote into a dead queue.
+
+With the full stack (`session-20-hv109` / `-hv109b`, P1 vivo V2205 / P2 vivo 2004):
+
+| recovery path | test | result |
+|---|---|---|
+| RETRY button (HV-29) | `test_reconnect_mesh_cycle` | **5/5**, 0.4–32.8 s |
+| forced link loss (HV-15/105) | `test_forced_drop_reconnect_10x` | **10/10**, 3.3–10.5 s |
+| permission revoke + re-grant (HV-30) | `test_permission_revoke_demotes_then_recovers` | **3/3**, 0.7–40.9 s |
+| Bluetooth off→on (HV-31) | `test_bluetooth_toggle_recovers` | **3/3**, all < 60 s |
+| Doze / 8-min idle (HV-28) | `test_doze_survival` | **PASS** (Session 19) |
+
+Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.**
 
 ---
 
@@ -1900,19 +1959,15 @@ delivery latency under Doze.
 
 ### HV-29 — `stop_all` / `start_all` / `reconnectMesh` cycle: verify the radios actually come back
 
-- **Fix status:** 🔒 BLOCKED on HV-107 · code fix landed (commit b604c16, Session
-  17) but the RETRY path does not recover on hardware — see HV-107. · confirmed the original bug by reading HEAD: `stop_all` → `MessageEngine::shutdown`
-  aborts the delivery/ack/gc loops (spawned once in `new_with_telemetry`);
-  `start_all` never revived them → RETRY = UI RUNNING, dead engine. Fix: an
-  idempotent `MessageEngine::restart()` re-spawning the three loops;
+- **Fix status:** 🟢 HW-VERIFIED · commit b604c16 (+ HV-105/107/109) · 2026-09-04
+  · Session 20 · the engine bug: `stop_all` → `MessageEngine::shutdown` aborts
+  the delivery/ack/gc loops; `start_all` never revived them → RETRY = UI RUNNING,
+  dead engine. Fix: an idempotent `MessageEngine::restart()`;
   `IrisEngine::start_all` calls it + `discovery.wake()`. L1
-  `hv29_restart_after_shutdown_revives_the_background_loops`. **HW: engine + radios verifiably revive** (`session-17-hv29b`: `start_all_partial`
-  + `advertise_watchdog` + `msg.delivered` after each `stopMesh`/`startMesh`;
-  2/2 recovered, 24.5 s + 49.0 s). Slow — sub-15 s recovery gated on HV-99.
-  **⚠️ Session 20:** `test_reconnect_mesh_cycle` regressed to a permanent stall —
-  root cause was **HV-105** (not the engine restart itself; the inbound link
-  never reassembled after the peer re-linked). Re-verification owed on the
-  HV-105 fix before HV-29 can go 🟢.
+  `hv29_restart_after_shutdown_revives_the_background_loops`. The RETRY path also
+  needed the BLE reconnect stack (HV-105 + HV-107 + HV-109) — Session 19's "2/2"
+  was a 45 s budget that the send-retry masked. **Session-20 `session-20-hv109b`:
+  `test_reconnect_mesh_cycle` 5/5, recovery 0.4–32.8 s, 0 `msg.delivery_failed`.**
 - **Was:** ⬜
 - **Area:** `iris-core` `MessageEngine::{shutdown,restart}`, `engine.rs`
   `start_all` / `stop_all`, `MeshViewModel.reconnectMesh`, `MeshRepository`
@@ -1937,16 +1992,20 @@ flow again.
 
 ### HV-30 — Permission revocation mid-session (BLUETOOTH_SCAN / NEARBY_WIFI_DEVICES)
 
-- **Fix status:** ✅ Fixed · HW-PENDING · commit 79866b5 · 2026-09-03 · Session
-  17 · `BleTransport::demote_on_fatal()` → `Unavailable` on
+- **Fix status:** 🟢 HW-VERIFIED · commit 79866b5 (+ HV-109) · 2026-09-04 ·
+  Session 20 · `BleTransport::demote_on_fatal()` → `Unavailable` on
   `PermissionDenied`/`RadioDisabled`/`HardwareUnavailable` from scan/advertise
   (was: only `set_mtu` did) so `select_transports` drops the dark transport and
   the UNAVAILABLE → `RetryNotice` path fires; `ConsoleScreen`
   `LifecycleResumeEffect` re-reads permissions every resume so a Settings-revoke
   surfaces the `PermissionNotice`. L1
   `hv30_revoked_permission_marks_the_transport_unavailable_and_recovers`.
-  iris-core 789, `:app` Kotlin green. **HW-pending:** revoke-in-Settings bench
-  run (procedure in `hardware_fix_log.md`).
+  **Session-20 `session-20-hv109`: `test_permission_revoke_demotes_then_recovers`
+  3/3** — `appops` revoke of `bluetooth_scan` demotes the BLE transport within
+  0 s, re-grant + `stopMesh`/`startMesh` recovers delivery in 0.7 / 32.8 / 40.9 s,
+  0 `msg.delivery_failed`. The recovery half depended on **HV-109** (persistent
+  GATT server) — before it, a re-grant left the peer that had kept its link
+  writing into a dead queue.
 - **Was:** ⬜
 - **Area:** `ble.rs::demote_on_fatal`, `ConsoleScreen` permission re-check,
   `PermissionNotice`
@@ -1966,11 +2025,17 @@ any transport, surface the PermissionNotice and set status to a distinct
 
 ### HV-31 — Airplane mode / Bluetooth toggle / Wi-Fi toggle: state-machine recovery
 
-- **Fix status:** 🔒 Blocked (blocker analysis in `hardware_fix_log.md` Session
-  14) · commit 0875136 (partial — the receiver + core drain land and are a
-  strict improvement) · 2026-09-03 · blocked on **HV-99** (`connectGatt` 30 s
-  reconnect-probe timeout) + a `DiscoveryManager::wake()` path for
-  FFI-surfaced transport events
+- **Fix status:** 🟢 HW-VERIFIED · commit 0875136 (+ HV-99/107/109) · 2026-09-04
+  · Session 20 · `btStateReceiver` for `BluetoothAdapter.ACTION_STATE_CHANGED`
+  (mirrors the Wi-Fi Direct `p2pStateReceiver`) + HV-95 advertise watchdog +
+  HV-99 bounded reconnect probe. **Session-20 `session-20-hv109b`:
+  `test_bluetooth_toggle_recovers` 3/3, recovery 53.9 / 57.0 / 57.0 s (< 60 s
+  budget), both toggle edges observed, `ble.adapter_off` → `ble.adapter_recovered`,
+  0 `msg.delivery_failed`.** The 2/3 → 3/3 improvement came from HV-107 (outbound
+  dial unblocked) + HV-109 (one persistent GATT server, so the post-toggle
+  re-advertise reattaches cleanly). Sub-30 s is a nice-to-have follow-up on
+  HV-99, not a blocker. The historical blocker analysis is in
+  `hardware_fix_log.md` Session 14.
 - **Attempts (3, hardware):** (1) recovered 3/3 toggle cycles (0.8–26 s) but a
   Kotlin-side replay was fragile; (2) STATE_ON replay stalled ~20 s on a
   still-settling stack; (3) core-driven replay — 0/3 in 60 s. Recovery latency
