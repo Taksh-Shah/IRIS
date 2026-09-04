@@ -62,14 +62,14 @@ that remain are understood and logged.*
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 2 | 0 | 1 | 6 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 3 | 0 | 1 | 5 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 0 | 0 | 0 | 5 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **102** | **15** | **18** | **1** | **3** | **65** |
+| **Total** | | **102** | **15** | **19** | **1** | **3** | **64** |
 
 **Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
 HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
@@ -1781,8 +1781,17 @@ server and restart scan/advertise. Mirror what the Wi-Fi Direct
 
 ### HV-32 — Two engines, one device: the app + the WorkManager relay worker
 
-- **Fix status:** ⬜
-- **Area:** `IrisBackgroundSyncWorker`, `WorkScheduler`, `MeshRepository`,
+- **Fix status:** ✅ Fixed · HW-PENDING · commit 17996d8 · 2026-09-03 · Session
+  17 · `IrisBleService.isRunning` (process-local `@Volatile` flag);
+  `IrisBackgroundSyncWorker.doWork()` returns `Result.retry()` without touching
+  `engine.get()` when the FGS is down — so a bare WorkManager process never
+  builds a second `@Singleton IrisEngine`. The relay outbox is durable and
+  drains when the service next comes up. `:app` Kotlin + JVM tests green.
+  **HW-pending:** the "kill app / trigger worker / confirm no 2nd engine" bench
+  run (procedure in `hardware_fix_log.md`). Starting the FGS from an expedited
+  worker is a documented follow-up.
+- **Was:** ⬜
+- **Area:** `IrisBleService`, `IrisBackgroundSyncWorker`, `MeshRepository`,
   `RelayOutbox`, `@Singleton IrisEngine`
 - **Severity:** Medium · **HW gate:** 1 phone, background 20+ min
 
