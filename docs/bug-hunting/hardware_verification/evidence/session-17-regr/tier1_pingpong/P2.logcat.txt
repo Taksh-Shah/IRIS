@@ -1,0 +1,480 @@
+--------- beginning of main
+09-04 07:26:18.013 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 5, "method": "nodeId", "params": []}
+09-04 07:26:18.014 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:18.016 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":5,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:18.073 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 6, "method": "awaitDelivered", "params": ["01a06a21897f73f39cd9be560c273ffb", 90000]}
+09-04 07:26:18.074 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:18.690 I/org.iris.mesh( 7901): Background concurrent copying GC freed 13MB AllocSpace bytes, 2(72KB) LOS objects, 72% free, 4735KB/16MB, paused 90us,40us total 126.796ms
+09-04 07:26:19.074 I/PlayCommon(17905): [127] Preparing logs for uploading
+09-04 07:26:19.078 I/PlayCommon(17905): [127] Connecting to server for timestamp: **********************************************
+09-04 07:26:19.087 E/PlayCommon(17905): [127] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 07:26:19.088 W/PlayCommon(17905): [127] No account for auth token provided
+09-04 07:26:19.088 I/PlayCommon(17905): [127] Connecting to server: *************************************************************
+09-04 07:26:19.090 E/PlayCommon(17905): [127] Failed to connect to server for log upload.
+09-04 07:26:19.637 D/iriscore( 7901): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 07:26:19.667 D/iriscore( 7901): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:26:19.682 D/BoundBrokerSvc( 8208): onUnbind: Intent { act=com.google.android.gms.feedback.internal.IFeedbackService dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsBoundBrokerService }
+09-04 07:26:19.687 D/iriscore( 7901): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:26:19.693 D/iriscore( 7901): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:26:20.477 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-04 07:26:20.477 D/BluetoothGattServer( 7901): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:26:20.478 D/IrisBleDiag( 7901): gattServer onConnectionStateChange device=5B:9C:2D:DA:B0:D4 status=0 newState=2
+09-04 07:26:20.794 D/BluetoothGattServer( 8126): onServerConnectionState() - status=0 serverIf=6 device=
+09-04 07:26:20.796 D/BluetoothGattServer( 7901): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:26:20.796 D/IrisBleDiag( 7901): gattServer onConnectionStateChange device=44:11:DE:71:A1:8C status=0 newState=2
+09-04 07:26:21.020 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:26:21.020 D/BluetoothGattServer( 7901): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:26:21.043 D/BoundBrokerSvc( 8208): onUnbind: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+09-04 07:26:21.352 D/iriscore( 7901): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:26:21.389 D/iriscore( 7901): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1732
+09-04 07:26:21.390 D/iriscore( 7901): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m1
+09-04 07:26:21.408 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=348 known=[4]
+09-04 07:26:21.521 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:26:21.524 D/BluetoothGattServer( 7901): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:26:21.641 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:26:21.643 D/BluetoothGattServer( 7901): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:26:21.754 D/BluetoothGattServer( 8126): onMtuChanged() - device=, mtu=517
+09-04 07:26:21.755 D/BluetoothGattServer( 7901): onMtuChanged() - device=, mtu=517
+09-04 07:26:21.837 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=350 responseNeeded=true
+09-04 07:26:21.842 D/BluetoothGattServer( 8126): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:26:21.858 D/BluetoothGattServer( 7901): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:26:23.025 I/PlayCommon(17905): [84] Preparing logs for uploading
+09-04 07:26:23.029 I/PlayCommon(17905): [84] Connecting to server for timestamp: **********************************************
+09-04 07:26:23.040 E/PlayCommon(17905): [84] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 07:26:23.098 W/Auth    ( 8126): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-04 07:26:23.098 W/Auth    ( 8126): dedt: Failed to process request
+09-04 07:26:23.098 W/Auth    ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:26:23.098 W/Auth    ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:26:23.098 W/Auth    ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:26:23.098 W/Auth    ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:26:23.104 E/AuthPII ( 8126): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-04 07:26:23.104 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	... 12 more
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	... 13 more
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:26:23.104 E/AuthPII ( 8126): Message is Error when calling server using GmsNetworkStack.
+09-04 07:26:23.104 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	... 12 more
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	... 13 more
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:26:23.104 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:26:23.104 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:26:23.105 I/Auth    ( 8126): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-04 07:26:23.106 W/Auth    ( 8126): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-04 07:26:23.106 W/Auth    ( 8126): aiic: GetToken failed with status code: NetworkError
+09-04 07:26:23.106 W/Auth    ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:26:23.106 W/Auth    ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:26:23.106 W/GLSActivity( 8126): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-04 07:26:23.115 E/PlayCommon(17905): [84] Failed to get auth token: java.io.IOException: NetworkError
+09-04 07:26:23.115 W/PlayCommon(17905): [84] Deferring log upload because couldn't retrieve auth token
+09-04 07:26:23.638 W/CCTFlatFileLogStore( 8126): Excessive logging: 8 events, 420255 bytes from log source STREAMZ_MOBILE_ASSISTANT last 2468s
+09-04 07:26:24.200 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:24.353 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:24.554 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21897f73f3 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:24.596 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21a36a7003 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:24.598 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:24.649 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":6,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>0\"}","callback":null,"error":null}
+09-04 07:26:24.661 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21a36a7003 [3mpriority[0m[2m=[0m4
+09-04 07:26:24.673 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 7, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<0", 4]}
+09-04 07:26:24.675 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:24.718 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21a3f27531 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:24.722 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:24.723 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":7,"result":"01a06a21a3f27531b90fb8f2ae747b75","callback":null,"error":null}
+09-04 07:26:24.857 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:24.930 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21a3f27531 [3mpriority[0m[2m=[0m4
+09-04 07:26:25.124 I/PlayCommon(17905): [123] Preparing logs for uploading
+09-04 07:26:25.128 I/PlayCommon(17905): [123] Connecting to server for timestamp: **********************************************
+09-04 07:26:25.133 E/PlayCommon(17905): [123] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 07:26:25.228 W/Auth    ( 8126): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-04 07:26:25.228 W/Auth    ( 8126): dedt: Failed to process request
+09-04 07:26:25.228 W/Auth    ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:26:25.228 W/Auth    ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:26:25.228 W/Auth    ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:26:25.228 W/Auth    ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:26:25.238 E/AuthPII ( 8126): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-04 07:26:25.238 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	... 12 more
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	... 13 more
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:26:25.238 E/AuthPII ( 8126): Message is Error when calling server using GmsNetworkStack.
+09-04 07:26:25.238 E/AuthPII ( 8126): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: bksu: Error requesting token.
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	... 12 more
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	... 13 more
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: dedt: Failed to process request
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:26:25.238 E/AuthPII ( 8126): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:26:25.238 E/AuthPII ( 8126): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:26:25.239 I/Auth    ( 8126): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-04 07:26:25.240 W/Auth    ( 8126): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-04 07:26:25.240 W/Auth    ( 8126): aiic: GetToken failed with status code: NetworkError
+09-04 07:26:25.240 W/Auth    ( 8126): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:26:25.240 W/Auth    ( 8126): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:26:25.240 W/GLSActivity( 8126): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-04 07:26:25.252 E/PlayCommon(17905): [123] Failed to get auth token: java.io.IOException: NetworkError
+09-04 07:26:25.252 W/PlayCommon(17905): [123] Deferring log upload because couldn't retrieve auth token
+09-04 07:26:25.393 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:25.449 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 8, "method": "nodeId", "params": []}
+09-04 07:26:25.451 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:25.456 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":8,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:25.470 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21a3f27531
+09-04 07:26:25.524 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 9, "method": "awaitDelivered", "params": ["01a06a21a6997a22873fd0fef7e416cc", 90000]}
+09-04 07:26:25.526 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:25.571 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:25.659 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:25.787 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21a6997a22 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:25.801 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21a83b7f92 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:25.805 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:25.833 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":9,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>1\"}","callback":null,"error":null}
+09-04 07:26:25.856 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 10, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<1", 4]}
+09-04 07:26:25.861 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:25.875 W/CCTFlatFileLogStore( 8126): Excessive logging: 1 events, 131972 bytes from log source STREAMZ_OPA_PROACTIVE last 0s
+09-04 07:26:25.875 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21a83b7f92 [3mpriority[0m[2m=[0m4
+09-04 07:26:25.906 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21a89a77d3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:25.913 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":10,"result":"01a06a21a89a77d38ad43fd33f653932","callback":null,"error":null}
+09-04 07:26:25.915 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:26.024 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:26.103 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21a89a77d3 [3mpriority[0m[2m=[0m4
+09-04 07:26:26.234 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 11, "method": "nodeId", "params": []}
+09-04 07:26:26.236 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:26.244 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":11,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:26.246 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:26.318 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 12, "method": "awaitDelivered", "params": ["01a06a21a9ad73b2a0d9b09d813599e7", 90000]}
+09-04 07:26:26.320 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:26.326 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21a89a77d3
+09-04 07:26:26.384 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:26.471 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:26.587 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21a9ad73b2 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:26.601 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21ab5c7a12 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:26.609 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:26.627 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":12,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>2\"}","callback":null,"error":null}
+09-04 07:26:26.649 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 13, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<2", 4]}
+09-04 07:26:26.652 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:26.684 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21ab5c7a12 [3mpriority[0m[2m=[0m4
+09-04 07:26:26.697 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21abac7a22 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:26.704 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":13,"result":"01a06a21abac7a228db07715ff011d5e","callback":null,"error":null}
+09-04 07:26:26.706 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:26.794 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:26.872 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21abac7a22 [3mpriority[0m[2m=[0m4
+09-04 07:26:26.967 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:27.024 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 14, "method": "nodeId", "params": []}
+09-04 07:26:27.026 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:27.030 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":14,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:27.054 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21abac7a22
+09-04 07:26:27.103 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 15, "method": "awaitDelivered", "params": ["01a06a21acca7663bf6f99f6a3a730dd", 90000]}
+09-04 07:26:27.105 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:27.146 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:27.237 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:27.300 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21acca7663 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:27.316 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21ae247910 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:27.320 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:27.408 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21ae247910 [3mpriority[0m[2m=[0m4
+09-04 07:26:27.412 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":15,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>3\"}","callback":null,"error":null}
+09-04 07:26:27.430 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 16, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<3", 4]}
+09-04 07:26:27.433 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:27.476 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21aeb97ff1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:27.482 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":16,"result":"01a06a21aeb97ff1adb1aec3c289c6c2","callback":null,"error":null}
+09-04 07:26:27.484 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:27.599 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:27.678 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21aeb97ff1 [3mpriority[0m[2m=[0m4
+09-04 07:26:27.821 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:27.904 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 17, "method": "nodeId", "params": []}
+09-04 07:26:27.907 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:27.914 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":17,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:27.958 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21aeb97ff1
+09-04 07:26:27.980 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 18, "method": "awaitDelivered", "params": ["01a06a21b0347d33bda985ffd1f224fa", 90000]}
+09-04 07:26:27.983 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:28.045 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:28.133 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:28.193 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21b0347d33 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:28.203 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21b1a17753 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:28.207 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:28.292 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":18,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>4\"}","callback":null,"error":null}
+09-04 07:26:28.309 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21b1a17753 [3mpriority[0m[2m=[0m4
+09-04 07:26:28.317 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 19, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<4", 4]}
+09-04 07:26:28.319 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:28.359 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21b22d75a3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:28.365 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":19,"result":"01a06a21b22d75a3abbcf5b53df12a94","callback":null,"error":null}
+09-04 07:26:28.365 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:28.454 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:28.532 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21b22d75a3 [3mpriority[0m[2m=[0m4
+09-04 07:26:28.630 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:28.686 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 20, "method": "nodeId", "params": []}
+09-04 07:26:28.688 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:28.694 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":20,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:28.696 I/hbox:interacto( 4536): oneway function results for code 2 on binder at 0xb400006ff0254570 will be dropped but finished with status UNKNOWN_TRANSACTION
+09-04 07:26:28.725 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21b22d75a3
+09-04 07:26:28.754 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 21, "method": "awaitDelivered", "params": ["01a06a21b3417770bfd115a1b608639e", 90000]}
+09-04 07:26:28.757 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:28.808 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:28.895 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:28.934 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21b3417770 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:28.942 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21b4867be3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:28.945 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:28.961 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":21,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>5\"}","callback":null,"error":null}
+09-04 07:26:28.962 D/BoundBrokerSvc( 8126): onUnbind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-04 07:26:28.968 D/BoundBrokerSvc( 8208): onUnbind: Intent { act=com.google.android.gms.onboardingconsent.api.ConsentManagerApiService.START dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsApiService }
+09-04 07:26:28.984 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 22, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<5", 4]}
+09-04 07:26:28.984 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:29.015 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21b4be7401 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:29.021 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":22,"result":"01a06a21b4be74018dfba984bc5bb107","callback":null,"error":null}
+09-04 07:26:29.025 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:29.027 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21b4867be3 [3mpriority[0m[2m=[0m4
+09-04 07:26:29.116 D/BoundBrokerSvc( 8208): onUnbind: Intent { act=com.google.android.gms.semanticlocationhistory.zeroparty.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsApiService }
+09-04 07:26:29.127 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:29.206 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21b4be7401 [3mpriority[0m[2m=[0m4
+09-04 07:26:29.306 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:29.343 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 23, "method": "nodeId", "params": []}
+09-04 07:26:29.345 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:29.353 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":23,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:29.386 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21b4be7401
+09-04 07:26:29.420 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 24, "method": "awaitDelivered", "params": ["01a06a21b5ce79f2aa45faff5d20768e", 90000]}
+09-04 07:26:29.422 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:29.491 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:29.574 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:29.639 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21b5ce79f2 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:29.655 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21b7477b11 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:29.659 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:29.729 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":24,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>6\"}","callback":null,"error":null}
+09-04 07:26:29.745 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 25, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<6", 4]}
+09-04 07:26:29.747 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21b7477b11 [3mpriority[0m[2m=[0m4
+09-04 07:26:29.748 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:29.790 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21b7c37fe1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:29.796 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":25,"result":"01a06a21b7c37fe1b4af6e952de9f12f","callback":null,"error":null}
+09-04 07:26:29.796 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:29.898 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:29.973 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21b7c37fe1 [3mpriority[0m[2m=[0m4
+09-04 07:26:30.070 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:30.120 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 26, "method": "nodeId", "params": []}
+09-04 07:26:30.122 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:30.130 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":26,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:30.159 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21b7c37fe1
+09-04 07:26:30.214 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 27, "method": "awaitDelivered", "params": ["01a06a21b8ec7b82a54a86e86be4c409", 90000]}
+09-04 07:26:30.216 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:30.218 D/BoundBrokerSvc( 8126): onUnbind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+09-04 07:26:30.254 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:30.340 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:30.401 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21b8ec7b82 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:30.416 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21ba4170d2 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:30.422 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:30.517 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21ba4170d2 [3mpriority[0m[2m=[0m4
+09-04 07:26:30.525 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":27,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>7\"}","callback":null,"error":null}
+09-04 07:26:30.548 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 28, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<7", 4]}
+09-04 07:26:30.551 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:30.592 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21bae77c62 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:30.597 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":28,"result":"01a06a21bae77c62ad4c0695856efeeb","callback":null,"error":null}
+09-04 07:26:30.598 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:30.704 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:30.781 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21bae77c62 [3mpriority[0m[2m=[0m4
+09-04 07:26:30.884 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:30.922 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 29, "method": "nodeId", "params": []}
+09-04 07:26:30.925 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:30.934 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":29,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:30.981 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21bae77c62
+09-04 07:26:31.014 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 30, "method": "awaitDelivered", "params": ["01a06a21bc027f40b928cd306b174d6c", 90000]}
+09-04 07:26:31.017 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:31.064 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:31.148 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:31.239 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21bc027f40 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:31.255 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21bd887da1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:31.259 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:31.326 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":30,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>8\"}","callback":null,"error":null}
+09-04 07:26:31.352 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 31, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<8", 4]}
+09-04 07:26:31.354 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:31.372 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21bd887da1 [3mpriority[0m[2m=[0m4
+09-04 07:26:31.388 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21be0773d0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:31.393 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":31,"result":"01a06a21be0773d08c29aa08c6a5286e","callback":null,"error":null}
+09-04 07:26:31.394 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:31.466 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:31.548 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21be0773d0 [3mpriority[0m[2m=[0m4
+09-04 07:26:31.645 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:31.713 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 32, "method": "nodeId", "params": []}
+09-04 07:26:31.715 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:26:31.723 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":32,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:26:31.776 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21be0773d0
+09-04 07:26:31.783 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 33, "method": "awaitDelivered", "params": ["01a06a21bf127623a263b00482901390", 90000]}
+09-04 07:26:31.784 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:26:31.826 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 07:26:31.913 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 07:26:32.020 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a21bf127623 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:26:32.036 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21c0957880 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:32.040 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:26:32.092 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":33,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>9\"}","callback":null,"error":null}
+09-04 07:26:32.121 V/org.iris.mesh.test.JsonRpcServer:54( 7901): Session 1 Received: {"id": 34, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<9", 4]}
+09-04 07:26:32.124 D/org.iris.mesh.test.SnippetManager:286( 7901): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 07:26:32.131 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21c0957880 [3mpriority[0m[2m=[0m4
+09-04 07:26:32.169 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a21c10e7041 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 07:26:32.175 V/org.iris.mesh.test.JsonRpcServer:116( 7901): Session 1 Sent: {"id":34,"result":"01a06a21c10e7041a7a428553c1ef576","callback":null,"error":null}
+09-04 07:26:32.175 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 07:26:32.286 D/iriscore( 7901): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 07:26:32.357 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a21c10e7041 [3mpriority[0m[2m=[0m4
+09-04 07:26:32.410 D/IrisBleDiag( 7901): onCharacteristicWriteRequest device=44:11:DE:71:A1:8C uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 07:26:32.517 I/iriscore( 7901): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06a21c10e7041
