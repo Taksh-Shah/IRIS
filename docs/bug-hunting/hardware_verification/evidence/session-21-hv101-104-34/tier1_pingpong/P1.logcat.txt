@@ -1,0 +1,688 @@
+--------- beginning of main
+09-04 18:49:44.508 W/logcat  ( 8812): type=1400 audit(0.0:371915): avc:  denied  { ioctl } for  path="socket:[68549072]" dev="sockfs" ino=68549072 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 18:49:44.508 W/logcat  ( 8812): type=1400 audit(0.0:371916): avc:  denied  { ioctl } for  path="socket:[68549072]" dev="sockfs" ino=68549072 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 18:49:44.512 W/logcat  ( 8812): type=1400 audit(0.0:371917): avc:  denied  { ioctl } for  path="socket:[68549072]" dev="sockfs" ino=68549072 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 18:49:44.512 W/logcat  ( 8812): type=1400 audit(0.0:371918): avc:  denied  { ioctl } for  path="socket:[68549072]" dev="sockfs" ino=68549072 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 18:49:44.550 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 18:49:44.550 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 18:49:44.623 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 5, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>0", 4]}
+09-04 18:49:44.624 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:49:44.664 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c933ff77832 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:49:44.667 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":5,"result":"01a06c933ff778329cf8e7bece93ca12","callback":null,"error":null}
+09-04 18:49:44.677 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:49:44.810 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:49:44.832 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:49:44.900 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:49:44.908 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c933ff77832 [3mpriority[0m[2m=[0m4
+09-04 18:49:45.090 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 6, "method": "nodeId", "params": []}
+09-04 18:49:45.091 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:49:45.093 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":6,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:49:45.157 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 7, "method": "awaitDelivered", "params": ["01a06c9342447da09d72ee0fbf461222", 90000]}
+09-04 18:49:45.161 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:49:45.172 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:45.222 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:45.223 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:45.226 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:45.227 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:45.233 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:46.367 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:47.419 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:47.419 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:47.419 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:47.431 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:47.704 I/PlayCommon(19131): [16745] Preparing logs for uploading
+09-04 18:49:47.708 I/PlayCommon(19131): [16745] Connecting to server for timestamp: https://play.googleapis.com/play/log/timestamp
+09-04 18:49:47.715 E/PlayCommon(19131): [16745] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 18:49:47.716 W/PlayCommon(19131): [16745] No account for auth token provided
+09-04 18:49:47.717 I/PlayCommon(19131): [16745] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+09-04 18:49:47.719 E/PlayCommon(19131): [16745] Failed to connect to server for log upload.
+09-04 18:49:48.563 I/PlayCommon(19131): [16752] Preparing logs for uploading
+09-04 18:49:48.568 I/PlayCommon(19131): [16752] Connecting to server for timestamp: https://play.googleapis.com/play/log/timestamp
+09-04 18:49:48.571 E/PlayCommon(19131): [16752] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 18:49:48.578 I/PlayCommon(19131): [16752] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+09-04 18:49:48.580 E/PlayCommon(19131): [16752] Failed to connect to server for log upload.
+09-04 18:49:48.686 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:48.688 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:48.688 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:49.632 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:49.633 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:49.644 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:49.956 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 18:49:49.958 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 18:49:50.221 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=47:df:c6:bd:a4:c7, cl_supp_feat=0000, aware=1
+09-04 18:49:50.222 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 18:49:50.222 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 18:49:50.224 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=47:DF:C6:BD:A4:C7
+09-04 18:49:50.225 D/BluetoothGattServer( 8689): onServerConnectionState() - status=0 serverIf=10 device=47:DF:C6:BD:A4:C7
+09-04 18:49:50.226 D/IrisBleDiag( 8689): gattServer onConnectionStateChange device=47:DF:C6:BD:A4:C7 status=0 newState=2
+09-04 18:49:50.305 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 18:49:50.395 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 18:49:50.488 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:50.602 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:50.606 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:49:50.607 D/BluetoothGattServer( 8689): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:49:50.654 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:50.655 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:50.666 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller picked up a remote central's inbound link [3mevent[0m[2m=[0m"ble.accept_new_connection" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:49:50.692 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:50.718 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:50.720 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:50.722 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:50.785 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:50.873 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:50.965 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.054 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.146 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.151 D/BluetoothGattServer( 8689): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=6 latency=0 timeout=500 status=0
+09-04 18:49:51.152 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=6 latency=0 timeout=500 status=0
+09-04 18:49:51.165 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:49:51.181 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.196 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.211 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.226 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:49:51.240 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.254 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.270 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.271 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 18:49:51.286 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.301 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:49:51.323 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.338 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.360 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:49:51.375 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:49:51.413 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 18:49:51.414 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (47:df:c6:bd:a4:c7), resulted MTU 517
+09-04 18:49:51.414 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 18:49:51.414 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 18:49:51.414 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 18:49:51.414 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=262
+09-04 18:49:51.415 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 18:49:51.415 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 18:49:51.415 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 18:49:51.415 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 18:49:51.418 D/BluetoothGattServer(11609): onMtuChanged() - device=47:DF:C6:BD:A4:C7, mtu=517
+09-04 18:49:51.419 D/BluetoothGattServer( 8689): onMtuChanged() - device=47:DF:C6:BD:A4:C7, mtu=517
+09-04 18:49:51.523 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:49:51.524 D/BluetoothGattServer( 8689): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:49:51.780 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:51.780 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:51.792 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:51.807 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:51.808 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:52.939 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:52.940 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:52.942 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:52.950 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:52.957 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:52.957 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:54.149 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:54.150 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:54.151 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:54.152 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:54.154 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6a:7c:4a:2d:fe:e4
+09-04 18:49:54.155 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6a:7c:4a:2d:fe:e4
+09-04 18:49:54.164 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:54.165 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:54.165 I/NearbyDiscovery(11609): (REDACTED) loadFastPairModule: checkFeaturesAreAvailable:%d
+09-04 18:49:54.166 I/NearbyDiscovery(11609): loadFastPairModule: FastPair module is downloaded. [CONTEXT service_id=265 ]
+09-04 18:49:54.553 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 18:49:54.555 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 18:49:55.292 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:55.293 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:55.293 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:55.294 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:55.295 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:55.296 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:55.306 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:56.290 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:56.291 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:56.292 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:56.301 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:56.478 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=5 cid=4:4
+09-04 18:49:56.479 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=47:df:c6:bd:a4:c7
+09-04 18:49:56.479 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0103 reason=0x0013
+09-04 18:49:56.479 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0104 reason=0x0013
+09-04 18:49:56.480 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0105 reason=0x0013
+09-04 18:49:56.480 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=6 connected=0 conn_id=0x0106 reason=0x0013
+09-04 18:49:56.480 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0108 reason=0x0013
+09-04 18:49:56.480 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0109 reason=0x0013
+09-04 18:49:56.481 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x010b reason=0x0013
+09-04 18:49:56.482 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x010c reason=0x0013
+09-04 18:49:56.483 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 18:49:56.483 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=47:DF:C6:BD:A4:C7
+09-04 18:49:56.484 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 18:49:56.485 D/BluetoothGattServer( 8689): onServerConnectionState() - status=0 serverIf=10 device=47:DF:C6:BD:A4:C7
+09-04 18:49:56.486 D/IrisBleDiag( 8689): gattServer onConnectionStateChange device=47:DF:C6:BD:A4:C7 status=0 newState=0
+09-04 18:49:56.489 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 18:49:56.491 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 18:49:56.492 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 18:49:57.308 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:57.309 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:57.310 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:57.312 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:57.323 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:58.431 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:58.434 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:49:58.434 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:58.436 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:49:58.439 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:58.441 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:49:58.444 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:49:58.450 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:49:59.740 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:00.684 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:00.715 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:00.715 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:01.717 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:02.964 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:02.965 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:02.966 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:02.967 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:02.968 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:02.977 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:03.001 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:03.002 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:03.964 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:03.966 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:03.975 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:04.559 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 18:50:04.560 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 18:50:04.972 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:04.974 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:04.975 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:04.978 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:04.981 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:05.018 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:05.018 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:06.133 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:06.134 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:06.135 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:06.136 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:06.144 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:07.275 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:07.275 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:07.275 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:07.276 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:07.276 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:07.283 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:08.316 W/CCTFlatFileLogStore(11609): Excessive logging: 2 events, 112667 bytes from log source STREAMZ_ANDROID_GSA last 289s
+09-04 18:50:08.429 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:08.430 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:08.431 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:08.432 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:08.444 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:09.368 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:09.369 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:09.388 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:09.389 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:09.399 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:10.633 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:10.742 I/PlayCommon(11372): [16054] Preparing logs for uploading
+09-04 18:50:10.749 I/PlayCommon(11372): [16054] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+09-04 18:50:10.757 E/PlayCommon(11372): [16054] Failed to connect to server for log upload.
+09-04 18:50:11.695 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:12.840 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:12.864 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:12.865 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:12.875 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:13.005 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.006 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.006 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.006 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.006 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.007 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.007 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.007 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.007 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.008 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.008 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.009 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.009 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.010 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.010 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.010 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.011 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.011 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.011 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.011 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.011 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 18:50:13.011 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m21
+09-04 18:50:13.030 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 18:50:13.887 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:13.888 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:13.891 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:13.892 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:13.893 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:13.907 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:14.563 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 18:50:14.564 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 18:50:15.039 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:15.042 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:15.043 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:15.043 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:15.044 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:15.058 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:15.101 D/iriscore( 8689): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 18:50:17.145 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:19.346 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:20.474 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:20.475 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:21.641 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:21.644 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:21.646 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:22.695 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:22.698 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6a:7c:4a:2d:fe:e4
+09-04 18:50:22.698 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6a:7c:4a:2d:fe:e4
+09-04 18:50:22.702 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:22.703 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:23.845 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:24.567 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 18:50:24.568 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 18:50:24.881 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:24.886 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:24.886 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:24.896 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:25.925 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+--------- beginning of system
+09-04 18:50:26.456 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 18:50:27.040 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:27.041 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:27.041 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:27.041 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:27.043 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:27.046 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:27.057 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:27.101 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 18:50:27.103 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 18:50:27.389 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=47:df:c6:bd:a4:c7, cl_supp_feat=0000, aware=1
+09-04 18:50:27.390 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 18:50:27.391 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 18:50:27.391 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=47:DF:C6:BD:A4:C7
+09-04 18:50:27.396 D/BluetoothGattServer( 8689): onServerConnectionState() - status=0 serverIf=10 device=47:DF:C6:BD:A4:C7
+09-04 18:50:27.397 D/IrisBleDiag( 8689): gattServer onConnectionStateChange device=47:DF:C6:BD:A4:C7 status=0 newState=2
+09-04 18:50:27.477 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 18:50:27.566 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 18:50:27.611 I/org.iris.mesh( 8689): Background concurrent copying GC freed 5505KB AllocSpace bytes, 0(0B) LOS objects, 54% free, 5188KB/11MB, paused 112us,48us total 104.158ms
+09-04 18:50:27.656 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:27.774 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:27.776 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:50:27.781 D/BluetoothGattServer( 8689): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:50:27.862 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:27.953 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.043 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.062 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:28.135 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.223 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.316 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.322 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=6 latency=0 timeout=500 status=0
+09-04 18:50:28.325 D/BluetoothGattServer( 8689): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=6 latency=0 timeout=500 status=0
+09-04 18:50:28.344 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:50:28.359 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.376 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.389 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.412 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:50:28.427 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.441 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.457 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.471 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.486 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:50:28.502 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.519 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.539 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 18:50:28.553 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 18:50:28.607 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 18:50:28.607 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (47:df:c6:bd:a4:c7), resulted MTU 517
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=262
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 18:50:28.608 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 18:50:28.611 D/BluetoothGattServer(11609): onMtuChanged() - device=47:DF:C6:BD:A4:C7, mtu=517
+09-04 18:50:28.615 D/BluetoothGattServer( 8689): onMtuChanged() - device=47:DF:C6:BD:A4:C7, mtu=517
+09-04 18:50:28.693 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:50:28.694 D/BluetoothGattServer( 8689): onConnectionUpdated() - Device=47:DF:C6:BD:A4:C7 interval=36 latency=0 timeout=500 status=0
+09-04 18:50:28.741 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:28.747 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:28.835 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:28.839 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:28.918 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:28.922 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:29.180 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m3
+09-04 18:50:29.181 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:29.181 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:29.181 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:29.296 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:29.297 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:29.344 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c933ff77832
+09-04 18:50:29.361 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c9342447da0 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:29.369 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93eeb17782 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:29.371 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:29.448 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:29.454 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93eeb17782 [3mpriority[0m[2m=[0m4
+09-04 18:50:29.474 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":7,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<0\"}","callback":null,"error":null}
+09-04 18:50:29.498 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 8, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>1", 4]}
+09-04 18:50:29.500 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:29.543 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93ef487063 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:29.546 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:29.549 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":8,"result":"01a06c93ef48706385437380f9889b62","callback":null,"error":null}
+09-04 18:50:29.628 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:29.647 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:29.719 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:29.726 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93ef487063 [3mpriority[0m[2m=[0m4
+09-04 18:50:29.820 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:29.822 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:29.867 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 9, "method": "nodeId", "params": []}
+09-04 18:50:29.868 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:29.870 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":9,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:29.902 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:29.903 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:29.933 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 10, "method": "awaitDelivered", "params": ["01a06c93f12c7440bb65c87ed44702e5", 90000]}
+09-04 18:50:29.938 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:29.945 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c93ef487063
+09-04 18:50:29.956 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:29.959 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:29.971 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:29.971 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:30.043 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:30.048 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:30.136 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:30.137 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:30.197 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c93f12c7440 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:30.212 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93f1f57cc0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:30.214 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:30.244 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":10,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<1\"}","callback":null,"error":null}
+09-04 18:50:30.266 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 11, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>2", 4]}
+09-04 18:50:30.269 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:30.305 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:30.310 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93f1f57cc0 [3mpriority[0m[2m=[0m4
+09-04 18:50:30.314 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93f2507f91 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:30.317 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":11,"result":"01a06c93f2507f918a3d55e8aab9e59c","callback":null,"error":null}
+09-04 18:50:30.323 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:30.346 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:30.347 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:30.356 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:30.360 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:30.393 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:30.413 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:30.484 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:30.490 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93f2507f91 [3mpriority[0m[2m=[0m4
+09-04 18:50:30.631 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:30.635 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:30.639 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 12, "method": "nodeId", "params": []}
+09-04 18:50:30.644 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:30.653 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":12,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:30.715 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 13, "method": "awaitDelivered", "params": ["01a06c93f44077b39791012636b86b7f", 90000]}
+09-04 18:50:30.719 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:30.765 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:30.765 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:30.768 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:30.772 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:30.814 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c93f2507f91
+09-04 18:50:30.852 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:30.857 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:30.876 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m2
+09-04 18:50:30.877 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:30.877 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:30.917 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c93f44077b3 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:30.930 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93f4c572c1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:30.933 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:31.024 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:31.031 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":13,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<2\"}","callback":null,"error":null}
+09-04 18:50:31.031 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93f4c572c1 [3mpriority[0m[2m=[0m4
+09-04 18:50:31.044 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 14, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>3", 4]}
+09-04 18:50:31.046 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:31.083 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93f5517fe2 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:31.091 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":14,"result":"01a06c93f5517fe299d2415dc7a4bc4b","callback":null,"error":null}
+09-04 18:50:31.095 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:31.157 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:31.174 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:31.181 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 18:50:31.248 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:31.255 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93f5517fe2 [3mpriority[0m[2m=[0m4
+09-04 18:50:31.350 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:31.355 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:31.375 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:31.376 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:31.407 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 15, "method": "nodeId", "params": []}
+09-04 18:50:31.409 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:31.418 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":15,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:31.435 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c93f5517fe2
+09-04 18:50:31.474 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 16, "method": "awaitDelivered", "params": ["01a06c93f73674d2b9e61e59ccf4fb64", 90000]}
+09-04 18:50:31.478 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:31.485 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:31.488 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:31.537 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:31.538 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:31.573 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:31.576 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:31.628 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:31.629 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:31.671 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c93f73674d2 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:31.681 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93f7b772c1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:31.684 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:31.744 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:31.750 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93f7b772c1 [3mpriority[0m[2m=[0m4
+09-04 18:50:31.788 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":16,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<3\"}","callback":null,"error":null}
+09-04 18:50:31.805 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 17, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>4", 4]}
+09-04 18:50:31.808 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:31.847 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93f84c7782 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:31.852 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":17,"result":"01a06c93f84c7782b2f8b93b63fe0018","callback":null,"error":null}
+09-04 18:50:31.852 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:31.924 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:31.940 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:32.014 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:32.020 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93f84c7782 [3mpriority[0m[2m=[0m4
+09-04 18:50:32.116 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:32.122 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:32.132 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:32.132 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:32.170 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 18, "method": "nodeId", "params": []}
+09-04 18:50:32.174 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:32.175 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c93f84c7782
+09-04 18:50:32.187 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":18,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:32.245 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 19, "method": "awaitDelivered", "params": ["01a06c93fa337422b86b16e7e8c2f788", 90000]}
+09-04 18:50:32.249 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:32.296 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:32.299 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:32.377 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:32.378 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:32.381 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:32.384 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:32.478 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:32.478 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:32.488 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:32.488 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:32.496 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:32.518 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c93fa337422 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:32.523 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:32.523 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:32.531 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93fb0670c0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:32.533 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:32.542 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 18:50:32.558 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":19,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<4\"}","callback":null,"error":null}
+09-04 18:50:32.580 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 20, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>5", 4]}
+09-04 18:50:32.583 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:32.600 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:32.607 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93fb0670c0 [3mpriority[0m[2m=[0m4
+09-04 18:50:32.631 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93fb567bc0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:32.634 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":20,"result":"01a06c93fb567bc094c9a1e849101241","callback":null,"error":null}
+09-04 18:50:32.640 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:32.734 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:32.750 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:32.823 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:32.829 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93fb567bc0 [3mpriority[0m[2m=[0m4
+09-04 18:50:32.926 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:32.933 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:32.954 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 21, "method": "nodeId", "params": []}
+09-04 18:50:32.956 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:32.967 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":21,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:32.973 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:32.974 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:33.014 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 22, "method": "awaitDelivered", "params": ["01a06c93fd3f741185d95fd3dc5d2ff5", 90000]}
+09-04 18:50:33.016 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:33.020 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c93fb567bc0
+09-04 18:50:33.059 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:33.061 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:33.154 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:33.155 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:33.192 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:33.196 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:33.228 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:33.229 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:33.276 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c93fd3f7411 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:33.289 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93fdfc7b91 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:33.293 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:33.323 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":22,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<5\"}","callback":null,"error":null}
+09-04 18:50:33.345 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 23, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>6", 4]}
+09-04 18:50:33.348 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:33.364 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:33.370 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93fdfc7b91 [3mpriority[0m[2m=[0m4
+09-04 18:50:33.394 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c93fe557a20 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:33.396 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":23,"result":"01a06c93fe557a208efd6f136891b066","callback":null,"error":null}
+09-04 18:50:33.407 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:33.499 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:33.511 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:33.590 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:33.596 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c93fe557a20 [3mpriority[0m[2m=[0m4
+09-04 18:50:33.688 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:33.692 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:33.709 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:33.714 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 24, "method": "nodeId", "params": []}
+09-04 18:50:33.717 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:33.727 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":24,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:33.740 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:33.741 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:33.780 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c93fe557a20
+09-04 18:50:33.785 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 25, "method": "awaitDelivered", "params": ["01a06c94003b75e388ed0340475d3cae", 90000]}
+09-04 18:50:33.788 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:33.828 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:33.832 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:33.903 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:33.905 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:33.913 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:33.917 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:34.017 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:34.018 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:34.075 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c94003b75e3 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:34.087 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c94011b7b90 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:34.090 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:34.173 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:34.180 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c94011b7b90 [3mpriority[0m[2m=[0m4
+09-04 18:50:34.193 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":25,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<6\"}","callback":null,"error":null}
+09-04 18:50:34.215 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 26, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>7", 4]}
+09-04 18:50:34.218 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:34.250 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c9401b37db0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:34.253 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":26,"result":"01a06c9401b37db08216164f06cfb686","callback":null,"error":null}
+09-04 18:50:34.263 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:34.353 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:34.373 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:34.445 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:34.451 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c9401b37db0 [3mpriority[0m[2m=[0m4
+09-04 18:50:34.543 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:34.546 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:34.567 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 27, "method": "nodeId", "params": []}
+09-04 18:50:34.568 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:34.572 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 18:50:34.572 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 18:50:34.573 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":27,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:34.621 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:34.623 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:34.634 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 28, "method": "awaitDelivered", "params": ["01a06c9403897ef19cb9495172d6419c", 90000]}
+09-04 18:50:34.636 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:34.678 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c9401b37db0
+09-04 18:50:34.683 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:34.687 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:34.709 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:34.711 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:34.770 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:34.773 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:34.795 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:34.797 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:34.800 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:34.802 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:34.815 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:34.815 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:34.824 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:34.857 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c9403897ef1 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:34.870 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c94042a7643 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:34.873 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:34.939 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:34.945 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":28,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<7\"}","callback":null,"error":null}
+09-04 18:50:34.946 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c94042a7643 [3mpriority[0m[2m=[0m4
+09-04 18:50:34.961 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 29, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>8", 4]}
+09-04 18:50:34.965 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:35.018 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c9404a97b83 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:35.021 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":29,"result":"01a06c9404a97b83a50f7f4d0c205a7c","callback":null,"error":null}
+09-04 18:50:35.024 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:35.118 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:35.134 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:35.209 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:35.216 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c9404a97b83 [3mpriority[0m[2m=[0m4
+09-04 18:50:35.309 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:35.313 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:35.334 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:35.334 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:35.339 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 30, "method": "nodeId", "params": []}
+09-04 18:50:35.341 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:35.346 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":30,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:35.362 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c9404a97b83
+09-04 18:50:35.399 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 31, "method": "awaitDelivered", "params": ["01a06c94068f7863bf13d6b055de0258", 90000]}
+09-04 18:50:35.403 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:35.451 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:35.455 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:35.492 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:35.493 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:35.535 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:35.540 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:35.582 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:35.583 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:35.619 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c94068f7863 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:35.630 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c94072377f1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:35.634 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:35.704 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:35.710 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c94072377f1 [3mpriority[0m[2m=[0m4
+09-04 18:50:35.711 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":31,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<8\"}","callback":null,"error":null}
+09-04 18:50:35.722 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 32, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END>9", 4]}
+09-04 18:50:35.724 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 18:50:35.766 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c94079a7fb3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m318 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:35.772 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":32,"result":"01a06c94079a7fb399c1972523f9a64e","callback":null,"error":null}
+09-04 18:50:35.777 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=512 known=[4]
+09-04 18:50:35.838 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:35.852 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=88 known=[4]
+09-04 18:50:35.902 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 44:82:1a:99:41:86
+09-04 18:50:35.903 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 2b:9f:28:ef:51:c8
+09-04 18:50:35.928 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:35.935 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c94079a7fb3 [3mpriority[0m[2m=[0m4
+09-04 18:50:35.961 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6d:38:4f:c8:71:9c
+09-04 18:50:35.962 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:35.962 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:52:0e:d9:54:fb
+09-04 18:50:35.971 I/NearbyDiscovery(11609): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-04 18:50:35.992 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 33, "method": "nodeId", "params": []}
+09-04 18:50:35.994 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 18:50:36.005 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":33,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 18:50:36.032 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 18:50:36.036 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 18:50:36.065 V/org.iris.mesh.test.JsonRpcServer:54( 8689): Session 1 Received: {"id": 34, "method": "awaitDelivered", "params": ["01a06c9409247bb398b06909500790dd", 90000]}
+09-04 18:50:36.069 D/org.iris.mesh.test.SnippetManager:286( 8689): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 18:50:36.097 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:36.098 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:36.120 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 514, lcid = 4
+09-04 18:50:36.125 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=512 responseNeeded=true
+09-04 18:50:36.137 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06c94079a7fb3
+09-04 18:50:36.177 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:36.178 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m frame accepted, awaiting more [3mevent[0m[2m=[0m"ble.inbound_partial" [3mhandle[0m[2m=[0m7200960309702445553
+09-04 18:50:36.253 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 90, lcid = 4
+09-04 18:50:36.258 D/IrisBleDiag( 8689): onCharacteristicWriteRequest device=47:DF:C6:BD:A4:C7 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=88 responseNeeded=true
+09-04 18:50:36.346 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7200960309702445553 [3mframes[0m[2m=[0m1
+09-04 18:50:36.347 D/iriscore( 8689): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7200960309702445553 [3mreceivers[0m[2m=[0m1
+09-04 18:50:36.385 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06c9409247bb3 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 18:50:36.395 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06c940a2178a1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 18:50:36.398 D/iriscore( 8689): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 18:50:36.468 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 18:50:36.476 I/iriscore( 8689): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06c940a2178a1 [3mpriority[0m[2m=[0m4
+09-04 18:50:36.481 V/org.iris.mesh.test.JsonRpcServer:116( 8689): Session 1 Sent: {"id":34,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"HV7-0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901-END<9\"}","callback":null,"error":null}
+09-04 18:50:36.512 I/adbd    ( 7207): adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''
+09-04 18:50:36.535 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent

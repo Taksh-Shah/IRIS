@@ -14,6 +14,7 @@ import iriscore.identity.X25519KeyProviderImpl
 import iriscore.identity.X25519StaticAd
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -34,6 +35,30 @@ class IrisSnippet : Snippet {
     }
     private val keystore by lazy { KeystoreEd25519(context) }
     private val x25519Provider by lazy { X25519KeyProviderImpl(X25519StaticAd(keystore)) }
+
+    /**
+     * HV-34: persisted "known peers" — nodeIdHex -> x25519PubHex. IRIS does no
+     * OS-level BLE bonding (research: bonding does not speed up reconnects, and
+     * the raw MAC is deliberately not identity — see PRIVACY_MODEL.md). The
+     * durable pairing is instead this app-level list: two devices that have
+     * exchanged identities stay "friends" across app restarts / reinstalls, and
+     * `startMesh` re-feeds every entry into the engine key directory so a fresh
+     * engine can seal addressed mail to them without the harness re-registering
+     * each run. (The real app's contacts UI is HV-56.)
+     */
+    private val knownPeersFile by lazy { File(context.filesDir, "iris_known_peers.json") }
+
+    @Synchronized
+    private fun loadKnownPeers(): JSONObject =
+        if (knownPeersFile.exists()) {
+            runCatching { JSONObject(knownPeersFile.readText()) }.getOrDefault(JSONObject())
+        } else JSONObject()
+
+    @Synchronized
+    private fun persistKnownPeer(peerIdHex: String, x25519PubHex: String) {
+        val o = loadKnownPeers().put(peerIdHex.lowercase(), x25519PubHex.lowercase())
+        knownPeersFile.writeText(o.toString())
+    }
 
     @Volatile private var engine: IrisEngine? = null
 
@@ -76,6 +101,12 @@ class IrisSnippet : Snippet {
                 }
             }
         })
+        // HV-34: re-feed every persisted known peer so a fresh engine can seal
+        // addressed mail to a "friend" without the harness re-registering.
+        val known = loadKnownPeers()
+        for (peerId in known.keys()) {
+            runCatching { e.registerPeerKey(peerId, known.getString(peerId)) }
+        }
         e.startAll()
         engine = e
         return snapshotJson()
@@ -102,9 +133,24 @@ class IrisSnippet : Snippet {
     @Rpc(description = "This node's 64-hex X25519 static public key (what a sender must encrypt to).")
     fun staticX25519(): String = x25519Provider.staticPublicKey().hex()
 
-    @Rpc(description = "Register a peer's X25519 static public key so addressed sends to it can be sealed (HV-89 interim).")
+    @Rpc(description = "Register a peer's X25519 static public key so addressed sends to it can be sealed (HV-89 interim). Also persists it as a known peer (HV-34).")
     fun registerPeerKey(peerIdHex: String, x25519PubHex: String) {
         (engine ?: error("startMesh first")).registerPeerKey(peerIdHex, x25519PubHex)
+        persistKnownPeer(peerIdHex, x25519PubHex)
+    }
+
+    @Rpc(description = "HV-34: persist a peer as a permanent 'friend' (nodeId + X25519 key). Survives app restart/reinstall; startMesh re-feeds it to the engine. Works before startMesh.")
+    fun addFriend(peerIdHex: String, x25519PubHex: String) {
+        persistKnownPeer(peerIdHex, x25519PubHex)
+        engine?.let { runCatching { it.registerPeerKey(peerIdHex, x25519PubHex) } }
+    }
+
+    @Rpc(description = "HV-34: the persisted known-peer map (nodeIdHex -> x25519Hex) as a JSON string.")
+    fun knownPeers(): String = loadKnownPeers().toString()
+
+    @Rpc(description = "HV-34: forget all persisted known peers (test hygiene).")
+    fun clearFriends() {
+        knownPeersFile.delete()
     }
 
     // ---- messaging -------------------------------------------------------

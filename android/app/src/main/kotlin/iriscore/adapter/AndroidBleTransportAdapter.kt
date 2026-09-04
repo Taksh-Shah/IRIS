@@ -932,9 +932,24 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             val device: BluetoothDevice = adapter.getRemoteDevice(mac)
             // Positional args: connectGatt is a Java method, so Kotlin named
             // arguments are not available for it.
-            val gatt = permitted { device.connectGatt(appContext, false, gattCallback) }
-                ?: throw DeviceNotFound()
-            iriscore.util.IrisLog.d("ble.gatt", "connectGatt: initiated, waiting for ready")
+            //
+            // HV-101: `autoConnect = false` is correct for every IRIS connect —
+            // discovery-driven reconnects are foreground/mesh-critical, and
+            // `autoConnect = true` is a power-optimised BACKGROUND path, not a
+            // faster one (bleadvertiserapp.medium.com "Android 15 Broke BLE
+            // Reconnection Speed"; the same source: re-bonding does not help
+            // reconnect latency either — HV-34). What the Android-14/15
+            // reconnect-stall fix actually needs is (a) an explicit transport,
+            // (b) a bounded connect watchdog, (c) exponential connect backoff,
+            // (d) status-133-is-transient handling — IRIS already has (b) via
+            // `connectionReady` + `CONNECT_READY_TIMEOUT_MS`, (c) via the core
+            // `DiscoveryManager` `connect_backoff` (5→10→20→40→80 s), and (d)
+            // via HV-33. (a) is this: pin `TRANSPORT_LE` so a dual-mode peer's
+            // stack never wastes the budget probing BR/EDR first.
+            val gatt = permitted {
+                device.connectGatt(appContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            } ?: throw DeviceNotFound()
+            iriscore.util.IrisLog.d("ble.gatt", "connectGatt: initiated (autoConnect=false, TRANSPORT_LE), waiting for ready")
             val ready = java.util.concurrent.CompletableFuture<Unit>()
             connectionReady[gatt] = ready
             // BLE-2: block this watchdog-pool thread (never the main/Binder

@@ -60,18 +60,27 @@ that remain are understood and logged.*
 | Tier | Theme | Total | 🟢 HW-verified | ✅ Fixed (HW pending) | 🔬 Under research | 🔒 Blocked | ⬜ Not started |
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
-| 1 | BLE single-hop reliability (the "sometimes works" core) | 28 | 16 | 6 | 1 | 1 | 4 |
+| 1 | BLE single-hop reliability (the "sometimes works" core) | 28 | 18 | 6 | 1 | 1 | 2 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 4 | 3 | 0 | 0 | 3 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 5 | 3 | 0 | 0 | 2 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **109** | **26** | **17** | **1** | **2** | **63** |
+| **Total** | | **109** | **29** | **17** | **1** | **2** | **60** |
 
-**Last updated:** 2026-09-04 (Session 20 — **Tier 3 CLOSED; Tier-3→Tier-2 gate
+**Last updated:** 2026-09-04 (Session 21 — **HV-34 + HV-101 + HV-104 closed,
+all 🟢 HW-verified.** HV-34: decided **no OS bonding** (research showed it does
+not help reconnect speed/reliability); built a persisted app-level "known
+peers" list instead (`test_known_peers_survive_engine_restart` PASS 3/3).
+HV-101: the "autoConnect=true is faster" premise was wrong per its own cited
+source — kept `autoConnect=false`, added `TRANSPORT_LE`. HV-104: consolidated
+N per-peer BLE inbound pollers into one transport-wide poller (part A; the
+battery-rig half stays deferred). RETRY improved to 0.3–0.5 s (was 0.4–32.8 s).
+Not proceeding to Tier 2 yet per the operator.)
+· Previously: 2026-09-04 (Session 20 — **Tier 3 CLOSED; Tier-3→Tier-2 gate
 MET.** The whole BLE teardown-then-reconnect path had silently regressed to a
 permanent stall (steady-state fine, so short runs missed it). Three coordinated
 fixes: **HV-105** (keep the MAC→candidate hint across `close_peer`), **HV-107**
@@ -2143,66 +2152,97 @@ with backoff (and try `autoConnect=true` on the 2nd attempt); `257`
 
 ---
 
-### HV-34 — Bonding/pairing: IRIS currently does neither, which limits address stability and background reconnect
+### HV-34 — Bonding/pairing: DECIDED — no OS bond; durable pairing is an app-level known-peer list
 
-- **Fix status:** ⬜
-- **Area:** design decision — `PRIVACY_MODEL.md`, `BLE_TRANSPORT_DESIGN.md`,
-  `AndroidBleTransportAdapter.connectGatt`
+- **Fix status:** 🟢 HW-VERIFIED · commit `<pending>` ·
+  2026-09-04 · Session 21 · **Decision: IRIS does NOT do OS-level BLE bonding.**
+  Research (2026-09-04) killed the main rationale — bonding does **not** speed up
+  or harden reconnects: *"Bonding is a security layer. The reconnection delay is
+  happening below that, at the connection establishment layer. Re-bonding adds
+  latency and user friction for zero gain"*
+  ([Android 15 BLE reconnection](https://bleadvertiserapp.medium.com/android-15-broke-ble-reconnection-speed-heres-the-fix-2525bda500e7)).
+  What bonding *would* give — RPA-rotation identity resolution (IRK) and
+  link-layer encryption — is either already handled (identity comes from the
+  **signed beacon `peer_short`** threaded through `known_addresses` /
+  `inbound_handles`, HV-13/HV-105/HV-107) or redundant (IRIS does its own E2E
+  crypto). Costs avoided: a system pairing dialog, a persistent bond record
+  (privacy give-back), an `ACTION_BOND_STATE_CHANGED` state machine, OEM
+  bonding flakiness.
+- **What was built instead:** a persisted app-level **known-peer list**
+  (`iris_bench` snippet: `addFriend` / `knownPeers` / `clearFriends` RPCs, stored
+  at `<filesDir>/iris_known_peers.json`; `startMesh` re-feeds every entry into
+  the engine key directory). Two devices that have exchanged identities stay
+  "friends" across app restart / reinstall — a fresh engine can seal addressed
+  mail to them with no re-registration. `registerPeerKey` also persists now, so
+  every bench run builds the list up. The real app's contacts UI is HV-56.
+- **HW:** `test_known_peers_survive_engine_restart` (`session-21-hv34-fix`) —
+  **PASS 3/3**, recoveries 9.5–38.9 s: register P1↔P2 as friends, bounce P2's
+  engine 3× with **no** `registerPeerKey`, addressed sends both ways still
+  seal + deliver from the persisted key alone.
+- **Revisit if:** a truly backgrounded IRIS (no foreground service) becomes a
+  requirement — the OS only auto-reconnects a *bonded* device in that state.
+- **Area:** `iris_bench` snippet `IrisSnippet`, `AndroidBleTransportAdapter.connectGatt`
+  (kept `autoConnect = false`), `PRIVACY_MODEL.md`
 - **Severity:** Medium (architectural) · **HW gate:** 2 phones
 
-**What:** IRIS treats the BLE MAC as non-identity and never bonds. Consequences:
-RPA rotation (HV-17), `autoConnect=true` is less reliable without a bond, and
-some OEM stacks throttle unbonded GATT connections harder. The upside is no
-pairing UX and better privacy. This trade-off has never been evaluated against
-real reconnect reliability.
+---
 
-**Fix sketch (research):** prototype an optional "trusted peer" bond for peers the
-user explicitly adds as contacts (ties into HV-56 contacts), measure reconnect
-reliability bonded vs unbonded on the bench, and decide.
+### HV-104 — BLE poller consolidation (+ battery profile — deferred to a rig)
+
+- **Fix status:** 🟢 HW-VERIFIED (part A) · commit `<pending>` ·
+  2026-09-04 · Session 21 · **the per-peer inbound pollers are now one
+  transport-wide poller.** Was one `tokio::spawn` per connected peer at a fixed
+  50 ms cadence (GAP-12): 8 peers = 8 tasks × 20 wakeups/s even fully idle, which
+  also kept the SoC out of its deeper sleep states. Now `ensure_accept_poller`
+  runs a single task that: (1) on a 500 ms housekeeping beat picks up newly
+  `accepted_connections()` and drains `drain_disconnected_handles()`; (2) on a
+  fast/idle beat (50 ms if *any* handle produced a frame in the last 2 s, else
+  500 ms) calls `drain_inbound_once`, which iterates every live `connections` +
+  `inbound_handles` entry, drains each handle, and reassembles into a per-handle
+  `Reassembler`. `spawn_inbound_poller` and the `pollers` map are deleted;
+  `connect()` just calls `ensure_accept_poller` (idempotent). Same shape the
+  Wi-Fi Aware transport already uses for its single poller.
+- **HW (`session-21-hv101-104-34`):** `test_pingpong_300char_10x` **PASS 10/10**
+  both ways; `test_forced_drop_reconnect_10x` **PASS 10/10** (3.5–14.5 s);
+  `test_reconnect_mesh_cycle` **PASS 5/5, 0.3–0.5 s** — *faster* than
+  Session 20's 0.4–32.8 s (also carries HV-101's `TRANSPORT_LE`). The
+  consolidated poller handles drop/reattach/multi-peer demux exactly as the
+  per-peer ones did. iris-core `cargo test` 793/793 (incl. `rt016` frame
+  de-mux, `hv98` re-attach, `hv107`, `large_message`, `out_of_order`).
+- **Deferred (part B, needs a rig):** the actual 30-min screen-off battery
+  measurement + adaptive idle cadence keyed on charge state / battery level.
+  Needs 3+ phones (to see the poller cost at scale) + the EXP-003 power rig.
+- **Area:** `ble.rs` `ensure_accept_poller` / `drain_inbound_once` (was
+  `spawn_inbound_poller` × N), EXP-003 battery rig
+- **Severity:** Medium (battery / scale) · **HW gate:** part A done on 2 phones;
+  part B needs 3+ phones + a power rig
 
 ---
 
-### HV-104 — BLE poller consolidation + battery profile (split out of HV-28)
+### HV-101 — reconnect-path connect hardening (Android 14/15 direct-connect stall)
 
-- **Fix status:** ⬜ (Session 19 — HV-28's deferred half)
-- **Area:** `ble.rs` `spawn_inbound_poller` (one task per connected peer at
-  50 ms active / 500 ms idle), EXP-003 battery rig
-- **Severity:** Medium (battery / scale) · **HW gate:** 3+ phones + a power
-  measurement rig
+- **Fix status:** 🟢 HW-VERIFIED · commit `<pending>` · 2026-09-04 ·
+  Session 21 · **the original premise (`autoConnect = true` reconnects faster)
+  is wrong** — re-reading the cited source
+  ([bleadvertiserapp.medium.com "Android 15 Broke BLE Reconnection Speed"](https://bleadvertiserapp.medium.com/android-15-broke-ble-reconnection-speed-heres-the-fix-2525bda500e7)):
+  *"autoConnect = true … is optimised for power, not speed. For foreground
+  reconnection where the user is waiting, autoConnect = false is always
+  correct."* And *"Re-bonding adds latency and user friction for zero gain"*
+  (→ HV-34). The real Android-15 change is stricter GATT connection-cache
+  validation that stalls the *first* reconnect 6–8 s; the fix is a state machine
+  with **(a) explicit transport, (b) a bounded connect watchdog, (c) exponential
+  connect backoff, (d) status-133-is-transient handling.** IRIS already has
+  (b) (`connectionReady` + `CONNECT_READY_TIMEOUT_MS = 12 s`, then
+  disconnect/close/throw), (c) (`DiscoveryManager::connect_backoff`:
+  5→10→20→40→80 s, capped), (d) (HV-33). **This change is (a):** pass
+  `BluetoothDevice.TRANSPORT_LE` to `connectGatt` so a dual-mode peer's stack
+  never wastes the budget probing BR/EDR first. `autoConnect` stays `false`
+  everywhere. No FFI change.
+- **Area:** `AndroidBleTransportAdapter.connectGatt`
+- **Severity:** Medium · **HW gate:** 2 phones (reconnect/forced-drop suite)
 
-**What:** HV-28 verified Doze does not stall *delivery*. Not yet done: (1) the
-per-peer inbound pollers should be consolidated into one transport-wide poller —
-at 8 peers that is 8 tasks × 16 wakeups/s idle, and it also keeps the SoC out of
-deeper sleep states (Wi-Fi Aware already did this — GAP-12 comment). (2) an
-actual 30-min screen-off battery-drain measurement with an idle 2-node mesh,
-and adaptive idle cadence keyed on charge state / battery level. Needs a dense
-mesh (to see the poller cost) and a power rig (EXP-003).
-
-**Fix sketch:** one `spawn_transport_poller` that drains every live handle in a
-round; keep the fast/idle split keyed on *any* peer's recent activity; expose an
-`adaptive` idle interval; benchmark before/after on the rig.
-
----
-
-### HV-101 — `connectGatt(autoConnect=true)` on the reconnect path (Android 14+ fast path)
-
-- **Fix status:** ⬜ (candidate, Session 17)
-- **Area:** `AndroidBleTransportAdapter.connectGatt`, `ble.rs` reconnect path,
-  interacts with HV-99, HV-15, HV-33, HV-34
-- **Severity:** Medium · **HW gate:** 2 phones, measured A/B on the reconnect path
-
-**What:** IRIS calls `device.connectGatt(ctx, autoConnect = false, …)`
-everywhere. Since Android 14 a direct (`false`) connect is throttled harder,
-while `autoConnect = true` (background connect, no fixed timeout) reconnects
-markedly faster to a previously-seen device
-(bleadvertiser.medium.com "Android 15 Broke BLE Reconnection Speed"). The *first*
-connect still wants the fast direct attempt (a background connect to a device
-that never appears hangs forever). Worth splitting: direct for discovery-fresh
-peers, `autoConnect = true` for a peer we had a link to and lost — the exact
-case HV-99's `CONNECT_BACKOFF` and HV-15's cached-address reconnect handle.
-
-**Fix sketch:** an `auto_connect: bool` on the `connect_gatt` FFI (or a separate
-`reconnect_gatt`), chosen by the core from whether `known_addresses` /
+**Superseded fix sketch:** an `auto_connect: bool` on the `connect_gatt` FFI /
+`reconnect_gatt`, chosen from whether `known_addresses` /
 `connect_backoff` already had this peer. Measure cold-connect vs reconnect
 latency bonded/unbonded (folds into HV-34).
 

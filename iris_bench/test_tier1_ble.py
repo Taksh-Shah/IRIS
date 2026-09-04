@@ -647,6 +647,58 @@ class Tier1Ble(IrisBenchBase):
         asserts.assert_equal(p2log.count("msg.delivery_failed"), 0,
                              "no message may be permanently failed across a permission revoke")
 
+    # ---- HV-34: persisted "known peers" (no OS bonding) ----
+
+    def test_known_peers_survive_engine_restart(self):
+        """HV-34: IRIS does no OS-level BLE bonding. The durable pairing is an
+        app-level known-peer list. Register P1<->P2 as friends, then bounce
+        ONLY P2's engine (the proven HV-29 RETRY shape — P1 anchors the link,
+        matching `test_reconnect_mesh_cycle`; a *simultaneous* dual-restart is
+        a cold mutual-discovery scenario, not what HV-34 is about) WITHOUT the
+        harness re-registering keys — `startMesh` must re-feed the persisted
+        friend keys so an addressed send still seals + delivers. 3 cycles."""
+        import json
+        import time
+
+        p1_id, p1_x = self.p1.iris.nodeId(), self.p1.iris.staticX25519()
+        p2_id, p2_x = self.p2.iris.nodeId(), self.p2.iris.staticX25519()
+        # Mutual friend registration (persisted to <filesDir>/iris_known_peers.json).
+        self.p1.iris.addFriend(p2_id, p2_x)
+        self.p2.iris.addFriend(p1_id, p1_x)
+        asserts.assert_true(
+            p2_id.lower() in json.loads(self.p1.iris.knownPeers()),
+            "P1 must have persisted P2 as a known peer",
+        )
+        asserts.assert_true(
+            p1_id.lower() in json.loads(self.p2.iris.knownPeers()),
+            "P2 must have persisted P1 as a known peer",
+        )
+        r = self.send_and_await(self.p1, self.p2, "friend-prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        recoveries = []
+        for i in range(3):
+            # Only P2 restarts — same shape as HV-29's proven RETRY test.
+            self.p2.iris.stopMesh()
+            time.sleep(1)
+            # NOTE: no registerPeerKey here — startMesh must load the friends.
+            self.p2.iris.startMesh()
+            t0 = time.monotonic()
+            fwd = rev = None
+            while time.monotonic() - t0 < 75:
+                fwd = self.send_and_await(self.p1, self.p2, f"friend-fwd-{i}", timeout_ms=6000)
+                rev = self.send_and_await(self.p2, self.p1, f"friend-rev-{i}", timeout_ms=6000)
+                if fwd.get("delivered") and rev.get("delivered"):
+                    break
+                time.sleep(2)
+            dt = round(time.monotonic() - t0, 1)
+            recoveries.append(dt)
+            asserts.assert_true(fwd.get("delivered"), f"cycle {i}: P1->P2 must seal from the persisted friend key; {fwd}")
+            asserts.assert_true(rev.get("delivered"), f"cycle {i}: P2->P1 must seal from the persisted friend key; {rev}")
+
+        self.p1.log.info("KNOWN-PEERS: recoveries=%s", recoveries)
+        self.capture_evidence("tier3_known_peers")
+
 
 if __name__ == "__main__":
     test_runner.main()
