@@ -1,0 +1,862 @@
+--------- beginning of main
+09-04 07:43:02.141 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 5, "method": "nodeId", "params": []}
+09-04 07:43:02.142 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:02.144 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":5,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:02.198 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 6, "method": "awaitDelivered", "params": ["01a06a30dbdb7da288a42481fa582792", 90000]}
+09-04 07:43:02.199 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:02.809 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:02.810 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:02.810 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=2
+09-04 07:43:02.900 D/BoundBrokerSvc( 9584): onUnbind: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+09-04 07:43:03.354 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:03.355 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:03.615 D/BluetoothGattServer( 9658): onMtuChanged() - device=, mtu=517
+09-04 07:43:03.615 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 07:43:03.617 D/BluetoothGattServer(10576): onMtuChanged() - device=, mtu=517
+09-04 07:43:03.644 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=4 len=348 known=[4]
+09-04 07:43:03.708 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:03.708 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=350 responseNeeded=true
+09-04 07:43:03.723 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:03.797 W/ssioncontrolle( 5561): Reducing the number of considered missed Gc histogram windows from 104 to 100
+09-04 07:43:05.309 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=292 responseNeeded=true
+09-04 07:43:05.467 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a30dbdb7da2 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:05.509 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a30e93b79a0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:05.513 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 07:43:05.593 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a30e93b79a0 [3mpriority[0m[2m=[0m4
+09-04 07:43:05.625 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":6,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"prime\"}","callback":null,"error":null}
+09-04 07:43:05.656 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 7, "method": "dropAllLinks", "params": []}
+09-04 07:43:05.658 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:05.684 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:05.687 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":7,"result":null,"callback":null,"error":null}
+09-04 07:43:05.692 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 8, "method": "nodeId", "params": []}
+09-04 07:43:05.694 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:05.698 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":8,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:05.725 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:05.732 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:05.734 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:05.738 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 9, "method": "awaitDelivered", "params": ["01a06a30e9be7b70932aca6a75494c7c", 6000]}
+09-04 07:43:05.740 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:06.683 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:06.684 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:06.684 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=0
+09-04 07:43:06.720 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:06.722 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:06.722 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=4E:21:9C:C1:23:7F status=0 newState=0
+09-04 07:43:07.145 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:07.146 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=75:E3:ED:D0:7B:60 status=0 newState=2
+09-04 07:43:07.152 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:07.675 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:07.676 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:07.976 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:07.989 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m2275
+09-04 07:43:07.990 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:07.990 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:07.991 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:07.991 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m4
+09-04 07:43:08.064 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:08.066 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:09.388 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-04 07:43:10.138 I/hbox:interacto( 4536): oneway function results for code 2 on binder at 0xb400006ff0251930 will be dropped but finished with status UNKNOWN_TRANSACTION
+09-04 07:43:10.366 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:10.367 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:10.368 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=2
+09-04 07:43:10.629 V/ClearcutMetricXmitter(15162): Transmission is done.
+09-04 07:43:10.631 V/ClearcutMetricXmitter(15162): Transmission is done.
+09-04 07:43:10.913 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:10.913 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:11.169 D/BluetoothGattServer( 9658): onMtuChanged() - device=, mtu=517
+09-04 07:43:11.170 D/BluetoothGattServer(10576): onMtuChanged() - device=, mtu=517
+09-04 07:43:11.221 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:11.224 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:11.780 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":9,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-04 07:43:11.859 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:12.009 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a30e9be7b70 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:12.022 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a3102ca7333 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:12.026 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=5 len=323 known=[5]
+09-04 07:43:12.116 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a3102ca7333 [3mpriority[0m[2m=[0m4
+09-04 07:43:12.798 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 10, "method": "nodeId", "params": []}
+09-04 07:43:12.801 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:12.808 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":10,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:12.862 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 11, "method": "awaitDelivered", "params": ["01a06a31058c75519b1cf89ba13fcf0d", 6000]}
+09-04 07:43:12.864 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:12.893 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:12.957 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a31058c7551 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:12.968 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a31067d7df2 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:12.974 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=5 len=323 known=[5]
+09-04 07:43:13.062 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a31067d7df2 [3mpriority[0m[2m=[0m4
+09-04 07:43:13.070 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":11,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-0\"}","callback":null,"error":null}
+09-04 07:43:13.132 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 12, "method": "dropAllLinks", "params": []}
+09-04 07:43:13.134 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:13.159 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:13.161 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":12,"result":null,"callback":null,"error":null}
+09-04 07:43:13.167 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 13, "method": "nodeId", "params": []}
+09-04 07:43:13.168 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:13.172 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":13,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:13.198 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:13.200 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:13.203 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:13.245 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 14, "method": "awaitDelivered", "params": ["01a06a3107067151a9835db2d39268ab", 6000]}
+09-04 07:43:13.247 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:14.156 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:14.157 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:14.157 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=0
+09-04 07:43:14.201 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:14.202 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:14.203 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=75:E3:ED:D0:7B:60 status=0 newState=0
+09-04 07:43:15.635 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:15.636 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:15.637 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=2
+09-04 07:43:15.685 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:15.686 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=4E:21:9C:C1:23:7F status=0 newState=2
+09-04 07:43:15.691 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:16.229 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:16.233 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:16.259 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:16.260 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:16.502 D/BluetoothGattServer( 9658): onMtuChanged() - device=, mtu=517
+09-04 07:43:16.503 D/BluetoothGattServer(10576): onMtuChanged() - device=, mtu=517
+09-04 07:43:16.556 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:16.562 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:16.564 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:16.574 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m3392
+09-04 07:43:16.575 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:16.576 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:16.576 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:16.576 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:16.577 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m5
+09-04 07:43:16.662 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:16.665 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:17.351 W/Settings( 9658): Setting airplane_mode_on has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+09-04 07:43:17.359 W/Settings( 9658): Setting airplane_mode_on has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+09-04 07:43:17.364 W/SystemServiceRegistry( 9658): No service published for: wifirtt
+09-04 07:43:19.298 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":14,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-04 07:43:19.434 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:19.888 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a3107067151 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:19.901 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a31219173d1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:19.906 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=6 len=323 known=[6]
+09-04 07:43:19.993 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a31219173d1 [3mpriority[0m[2m=[0m4
+09-04 07:43:20.304 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 15, "method": "nodeId", "params": []}
+09-04 07:43:20.305 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:20.314 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":15,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:20.381 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 16, "method": "awaitDelivered", "params": ["01a06a3122e4761182c24aa683595eee", 6000]}
+09-04 07:43:20.383 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:20.439 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:20.522 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a3122e47611 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:20.539 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a31240a7202 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:20.543 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=6 len=323 known=[6]
+09-04 07:43:20.589 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":16,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-1\"}","callback":null,"error":null}
+09-04 07:43:20.623 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a31240a7202 [3mpriority[0m[2m=[0m4
+09-04 07:43:20.642 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 17, "method": "dropAllLinks", "params": []}
+09-04 07:43:20.645 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:20.670 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:20.675 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":17,"result":null,"callback":null,"error":null}
+09-04 07:43:20.679 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 18, "method": "nodeId", "params": []}
+09-04 07:43:20.680 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:20.689 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":18,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:20.713 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:20.718 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:20.723 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:20.729 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 19, "method": "awaitDelivered", "params": ["01a06a31244b7c3198af2db8d39523a9", 6000]}
+09-04 07:43:20.730 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:21.681 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:21.682 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:21.682 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=75:E3:ED:D0:7B:60 status=0 newState=0
+09-04 07:43:21.698 W/iriscore(10576): iris.ble.gatt connectGatt: ready failed
+09-04 07:43:21.698 W/iriscore(10576): java.util.concurrent.ExecutionException: uniffi.iriscode.IrisFfiException$GattFailure: v1=disconnected before connect completed, status=11
+09-04 07:43:21.698 W/iriscore(10576): 	at java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:372)
+09-04 07:43:21.698 W/iriscore(10576): 	at java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2072)
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter.connectGatt_I7RO_PI$lambda$25(AndroidBleTransportAdapter.kt:964)
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter.$r8$lambda$pXUPng-0JDrCQOCh89LtvkdwzzI(Unknown Source:0)
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter$$ExternalSyntheticLambda3.invoke(D8$$SyntheticClass:0)
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout.syncCallOrThrow$lambda$3(AdapterLifecycle.kt:155)
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout.$r8$lambda$TyXyl5YrYoZ4Ej0H7_zMbe4KlDs(Unknown Source:0)
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout$$ExternalSyntheticLambda1.call(D8$$SyntheticClass:0)
+09-04 07:43:21.698 W/iriscore(10576): 	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+09-04 07:43:21.698 W/iriscore(10576): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:21.698 W/iriscore(10576): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:21.698 W/iriscore(10576): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:21.698 W/iriscore(10576): Caused by: uniffi.iriscode.IrisFfiException$GattFailure: v1=disconnected before connect completed, status=11
+09-04 07:43:21.698 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter$gattCallback$1.onConnectionStateChange(AndroidBleTransportAdapter.kt:511)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt$1$4.run(BluetoothGatt.java:283)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt.runOrQueueCallback(BluetoothGatt.java:825)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt.access$200(BluetoothGatt.java:49)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt$1.onClientConnectionState(BluetoothGatt.java:278)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.bluetooth.IBluetoothGattCallback$Stub.onTransact(IBluetoothGattCallback.java:201)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:21.698 W/iriscore(10576): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:21.708 W/iriscore(10576): [2miris_core::discovery[0m[2m:[0m failed to establish/confirm link with peer this scan pass — will retry next pass [3mevent[0m[2m=[0m"discovery.connect_failed" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer [3melapsed_ms[0m[2m=[0m1005
+09-04 07:43:21.709 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:21.712 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:21.712 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=4E:21:9C:C1:23:7F status=0 newState=0
+09-04 07:43:21.724 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:21.968 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:21.971 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:22.220 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:22.221 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:22.514 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:22.515 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:22.516 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=4E:21:9C:C1:23:7F status=0 newState=2
+09-04 07:43:23.055 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:23.057 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:23.389 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:23.404 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1695
+09-04 07:43:23.405 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:23.405 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:23.406 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:23.406 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m5
+09-04 07:43:23.485 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:23.487 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:23.798 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:24.326 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a31244b7c31 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:24.341 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a3132e67fc1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:24.347 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=7 len=323 known=[7]
+09-04 07:43:24.360 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":19,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-2\"}","callback":null,"error":null}
+09-04 07:43:24.432 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 20, "method": "dropAllLinks", "params": []}
+09-04 07:43:24.434 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:24.457 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:24.460 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":20,"result":null,"callback":null,"error":null}
+09-04 07:43:24.463 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 21, "method": "nodeId", "params": []}
+09-04 07:43:24.464 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:24.469 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":21,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:24.492 D/BluetoothLeScanner(10576): onScannerRegistered() - status=0 scannerId=9 mScannerId=0
+09-04 07:43:24.515 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 22, "method": "awaitDelivered", "params": ["01a06a31331470e3aa686e431cc34a2a", 6000]}
+09-04 07:43:24.516 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:24.517 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:24.518 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:24.528 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:25.071 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:25.073 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:25.325 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:25.339 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m830
+09-04 07:43:25.340 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:25.340 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:25.340 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:25.340 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m4
+09-04 07:43:25.426 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:25.426 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:25.427 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:25.428 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=0
+09-04 07:43:25.431 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:27.014 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:27.018 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:27.019 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=49:BE:D1:48:58:66 status=0 newState=2
+09-04 07:43:27.616 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:27.616 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:27.864 D/BluetoothGattServer( 9658): onMtuChanged() - device=, mtu=517
+09-04 07:43:27.865 D/BluetoothGattServer(10576): onMtuChanged() - device=, mtu=517
+09-04 07:43:27.948 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:27.952 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:29.629 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=7 len=323 known=[9]
+09-04 07:43:29.652 D/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-04 07:43:29.652 W/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06a3132e67fc1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-04 07:43:30.556 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":22,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-04 07:43:30.694 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:30.695 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:30.696 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=4E:21:9C:C1:23:7F status=0 newState=0
+09-04 07:43:30.704 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:30.960 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a31331470e3 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:30.976 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a314cd17672 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:30.977 D/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-04 07:43:30.977 W/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06a314cd17672 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-04 07:43:31.562 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 23, "method": "nodeId", "params": []}
+09-04 07:43:31.564 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:31.573 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":23,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:31.643 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 24, "method": "awaitDelivered", "params": ["01a06a314ee97560be0e8b144dbcff7e", 6000]}
+09-04 07:43:31.645 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:31.687 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:31.766 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a314ee97560 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:31.781 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a314ff67e60 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:31.781 D/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-04 07:43:31.781 W/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06a314ff67e60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-04 07:43:31.850 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":24,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-3\"}","callback":null,"error":null}
+09-04 07:43:31.911 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 25, "method": "dropAllLinks", "params": []}
+09-04 07:43:31.913 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:31.922 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m1
+09-04 07:43:31.926 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":25,"result":null,"callback":null,"error":null}
+09-04 07:43:31.930 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 26, "method": "nodeId", "params": []}
+09-04 07:43:31.932 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:31.937 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":26,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:31.956 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:31.959 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:32.012 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 27, "method": "awaitDelivered", "params": ["01a06a31505a73c1bfed06999ff3faca", 6000]}
+09-04 07:43:32.014 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:32.666 W/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m select_transports() returned no candidates for this peer — requeuing [3mevent[0m[2m=[0m"msg.no_transport_selected" [3mmessage_id[0m[2m=[0m01a06a3132e67fc1 [3mpriority[0m[2m=[0m4 [3mdest[0m[2m=[0mSome(ShortId([114, 221, 187, 184, 82, 138, 70, 170])) [3mattempt[0m[2m=[0m0
+09-04 07:43:33.308 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:33.308 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:33.309 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:33.310 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=4E:21:9C:C1:23:7F status=0 newState=2
+09-04 07:43:33.311 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:33.897 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:33.898 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:33.987 W/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m select_transports() returned no candidates for this peer — requeuing [3mevent[0m[2m=[0m"msg.no_transport_selected" [3mmessage_id[0m[2m=[0m01a06a314cd17672 [3mpriority[0m[2m=[0m4 [3mdest[0m[2m=[0mSome(ShortId([114, 221, 187, 184, 82, 138, 70, 170])) [3mattempt[0m[2m=[0m0
+09-04 07:43:34.000 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:34.000 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:34.015 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 07:43:34.201 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:34.216 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m2269
+09-04 07:43:34.216 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m1
+09-04 07:43:34.324 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:34.328 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:34.842 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=10 len=323 known=[10]
+09-04 07:43:34.908 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a314ff67e60 [3mpriority[0m[2m=[0m4
+09-04 07:43:35.082 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:35.140 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a31505a73c1 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:35.156 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a315d257ff1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:35.158 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=10 len=323 known=[10]
+09-04 07:43:35.223 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a315d257ff1 [3mpriority[0m[2m=[0m4
+09-04 07:43:35.240 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":27,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-4\"}","callback":null,"error":null}
+09-04 07:43:35.295 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 28, "method": "dropAllLinks", "params": []}
+09-04 07:43:35.297 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:35.320 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:35.323 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":28,"result":null,"callback":null,"error":null}
+09-04 07:43:35.330 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 29, "method": "nodeId", "params": []}
+09-04 07:43:35.332 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:35.337 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":29,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:35.353 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:35.356 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:35.363 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:35.393 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 30, "method": "awaitDelivered", "params": ["01a06a315d9477f3af3b5d0920e055e3", 6000]}
+09-04 07:43:35.395 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:35.677 W/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m select_transports() returned no candidates for this peer — requeuing [3mevent[0m[2m=[0m"msg.no_transport_selected" [3mmessage_id[0m[2m=[0m01a06a3132e67fc1 [3mpriority[0m[2m=[0m4 [3mdest[0m[2m=[0mSome(ShortId([114, 221, 187, 184, 82, 138, 70, 170])) [3mattempt[0m[2m=[0m0
+09-04 07:43:35.895 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:35.895 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:36.004 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:36.005 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:36.005 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=75:E3:ED:D0:7B:60 status=0 newState=0
+09-04 07:43:36.015 W/iriscore(10576): iris.ble.gatt connectGatt: ready failed
+09-04 07:43:36.015 W/iriscore(10576): java.util.concurrent.ExecutionException: uniffi.iriscode.IrisFfiException$GattFailure: v1=disconnected before connect completed, status=11
+09-04 07:43:36.015 W/iriscore(10576): 	at java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:372)
+09-04 07:43:36.015 W/iriscore(10576): 	at java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2072)
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter.connectGatt_I7RO_PI$lambda$25(AndroidBleTransportAdapter.kt:964)
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter.$r8$lambda$pXUPng-0JDrCQOCh89LtvkdwzzI(Unknown Source:0)
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter$$ExternalSyntheticLambda3.invoke(D8$$SyntheticClass:0)
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout.syncCallOrThrow$lambda$3(AdapterLifecycle.kt:155)
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout.$r8$lambda$TyXyl5YrYoZ4Ej0H7_zMbe4KlDs(Unknown Source:0)
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout$$ExternalSyntheticLambda1.call(D8$$SyntheticClass:0)
+09-04 07:43:36.015 W/iriscore(10576): 	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+09-04 07:43:36.015 W/iriscore(10576): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:36.015 W/iriscore(10576): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:36.015 W/iriscore(10576): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:36.015 W/iriscore(10576): Caused by: uniffi.iriscode.IrisFfiException$GattFailure: v1=disconnected before connect completed, status=11
+09-04 07:43:36.015 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter$gattCallback$1.onConnectionStateChange(AndroidBleTransportAdapter.kt:511)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt$1$4.run(BluetoothGatt.java:283)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt.runOrQueueCallback(BluetoothGatt.java:825)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt.access$200(BluetoothGatt.java:49)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt$1.onClientConnectionState(BluetoothGatt.java:278)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.bluetooth.IBluetoothGattCallback$Stub.onTransact(IBluetoothGattCallback.java:201)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:36.015 W/iriscore(10576): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:36.027 W/iriscore(10576): [2miris_core::discovery[0m[2m:[0m failed to establish/confirm link with peer this scan pass — will retry next pass [3mevent[0m[2m=[0m"discovery.connect_failed" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer [3melapsed_ms[0m[2m=[0m682
+09-04 07:43:36.043 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:36.576 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:36.577 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:36.697 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:36.698 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:36.826 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:36.839 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m810
+09-04 07:43:36.839 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:36.840 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:36.840 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m4
+09-04 07:43:36.932 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:36.932 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:37.034 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=11 len=323 known=[11]
+09-04 07:43:37.115 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a314cd17672 [3mpriority[0m[2m=[0m4
+09-04 07:43:38.483 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:38.695 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=11 len=323 known=[11]
+09-04 07:43:38.778 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a3132e67fc1 [3mpriority[0m[2m=[0m4
+09-04 07:43:38.900 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a315d9477f3 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:38.917 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a316bd47452 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:38.920 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=11 len=323 known=[11]
+09-04 07:43:39.005 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a316bd47452 [3mpriority[0m[2m=[0m4
+09-04 07:43:39.024 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":30,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-5\"}","callback":null,"error":null}
+09-04 07:43:39.070 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 31, "method": "dropAllLinks", "params": []}
+09-04 07:43:39.072 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:39.094 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:39.100 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":31,"result":null,"callback":null,"error":null}
+09-04 07:43:39.104 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 32, "method": "nodeId", "params": []}
+09-04 07:43:39.105 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:39.113 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":32,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:39.136 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:39.138 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:39.142 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:39.160 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 33, "method": "awaitDelivered", "params": ["01a06a316c4a7bd1b2fa09dd8c9e3d73", 6000]}
+09-04 07:43:39.161 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:39.418 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-04 07:43:39.477 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=7 device=
+09-04 07:43:39.478 D/BluetoothGattServer(10576): onServerConnectionState() - status=0 serverIf=8 device=
+09-04 07:43:39.478 D/IrisBleDiag(10576): gattServer onConnectionStateChange device=75:E3:ED:D0:7B:60 status=0 newState=0
+09-04 07:43:39.485 W/iriscore(10576): iris.ble.gatt connectGatt: ready failed
+09-04 07:43:39.485 W/iriscore(10576): java.util.concurrent.ExecutionException: uniffi.iriscode.IrisFfiException$GattFailure: v1=disconnected before connect completed, status=11
+09-04 07:43:39.485 W/iriscore(10576): 	at java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:372)
+09-04 07:43:39.485 W/iriscore(10576): 	at java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2072)
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter.connectGatt_I7RO_PI$lambda$25(AndroidBleTransportAdapter.kt:964)
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter.$r8$lambda$pXUPng-0JDrCQOCh89LtvkdwzzI(Unknown Source:0)
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter$$ExternalSyntheticLambda3.invoke(D8$$SyntheticClass:0)
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout.syncCallOrThrow$lambda$3(AdapterLifecycle.kt:155)
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout.$r8$lambda$TyXyl5YrYoZ4Ej0H7_zMbe4KlDs(Unknown Source:0)
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.FfiCallTimeout$$ExternalSyntheticLambda1.call(D8$$SyntheticClass:0)
+09-04 07:43:39.485 W/iriscore(10576): 	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+09-04 07:43:39.485 W/iriscore(10576): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:39.485 W/iriscore(10576): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:39.485 W/iriscore(10576): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:39.485 W/iriscore(10576): Caused by: uniffi.iriscode.IrisFfiException$GattFailure: v1=disconnected before connect completed, status=11
+09-04 07:43:39.485 W/iriscore(10576): 	at iriscore.adapter.AndroidBleTransportAdapter$gattCallback$1.onConnectionStateChange(AndroidBleTransportAdapter.kt:511)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt$1$4.run(BluetoothGatt.java:283)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt.runOrQueueCallback(BluetoothGatt.java:825)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt.access$200(BluetoothGatt.java:49)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.bluetooth.BluetoothGatt$1.onClientConnectionState(BluetoothGatt.java:278)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.bluetooth.IBluetoothGattCallback$Stub.onTransact(IBluetoothGattCallback.java:201)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:39.485 W/iriscore(10576): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:39.495 W/iriscore(10576): [2miris_core::discovery[0m[2m:[0m failed to establish/confirm link with peer this scan pass — will retry next pass [3mevent[0m[2m=[0m"discovery.connect_failed" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer [3melapsed_ms[0m[2m=[0m368
+09-04 07:43:39.510 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:39.675 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:39.676 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:40.220 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:40.221 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:40.344 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:40.345 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:40.454 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:40.470 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m973
+09-04 07:43:40.470 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-04 07:43:40.577 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:40.580 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:42.238 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:42.522 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a316c4a7bd1 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:42.538 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a3179fa7920 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:42.541 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=12 len=323 known=[12]
+09-04 07:43:42.589 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":33,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-6\"}","callback":null,"error":null}
+09-04 07:43:42.644 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 34, "method": "dropAllLinks", "params": []}
+09-04 07:43:42.646 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:42.650 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a3179fa7920 [3mpriority[0m[2m=[0m4
+09-04 07:43:42.666 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:42.672 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":34,"result":null,"callback":null,"error":null}
+09-04 07:43:42.676 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 35, "method": "nodeId", "params": []}
+09-04 07:43:42.678 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:42.683 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":35,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:42.688 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:42.702 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:42.708 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:42.719 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:42.736 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 36, "method": "awaitDelivered", "params": ["01a06a317a3e7e63916d764102d7ba68", 6000]}
+09-04 07:43:42.737 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:43.231 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:43.233 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:43.773 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:43.774 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:43.898 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:43.899 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:43.933 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:43.948 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1239
+09-04 07:43:43.948 W/iriscore(10576): [2miris_core::discovery[0m[2m:[0m failed to establish/confirm link with peer this scan pass — will retry next pass [3mevent[0m[2m=[0m"discovery.connect_failed" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport: required hardware not present on this device [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:43.948 W/iriscore(10576): [2miris_core::discovery[0m[2m:[0m failed to establish/confirm link with peer this scan pass — will retry next pass [3mevent[0m[2m=[0m"discovery.connect_failed" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport: peer not found [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:44.040 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:44.042 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:45.860 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:46.154 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a317a3e7e63 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:46.174 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a31882a7ba1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:46.179 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=13 len=323 known=[13]
+09-04 07:43:46.248 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a31882a7ba1 [3mpriority[0m[2m=[0m4
+09-04 07:43:46.265 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":36,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-7\"}","callback":null,"error":null}
+09-04 07:43:46.321 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 37, "method": "dropAllLinks", "params": []}
+09-04 07:43:46.324 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:46.345 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:46.349 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":37,"result":null,"callback":null,"error":null}
+09-04 07:43:46.355 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 38, "method": "nodeId", "params": []}
+09-04 07:43:46.356 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:46.370 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":38,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:46.396 D/BluetoothLeScanner(10576): onScannerRegistered() - status=0 scannerId=9 mScannerId=0
+09-04 07:43:46.426 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:46.428 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:46.432 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 39, "method": "awaitDelivered", "params": ["01a06a3188a675d28600d635b6de402a", 6000]}
+09-04 07:43:46.434 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:46.436 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:46.965 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:46.966 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:46.972 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:46.973 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:47.229 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:47.230 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:47.234 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:47.245 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m830
+09-04 07:43:47.245 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:47.245 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-04 07:43:47.325 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:47.328 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:47.618 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-04 07:43:47.618 W/Auth    ( 9658): dedt: Failed to process request
+09-04 07:43:47.618 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:47.618 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:47.618 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:47.618 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:47.624 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-04 07:43:47.624 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	... 12 more
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	... 13 more
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:47.624 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-04 07:43:47.624 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	... 12 more
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	... 13 more
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:47.624 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:47.624 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:47.625 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-04 07:43:47.626 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-04 07:43:47.626 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-04 07:43:47.626 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:47.626 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:47.626 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-04 07:43:48.445 D/BoundBrokerSvc( 9584): onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+09-04 07:43:49.000 I/org.iris.mesh(10576): Background concurrent copying GC freed 10MB AllocSpace bytes, 0(0B) LOS objects, 67% free, 5964KB/17MB, paused 79us,33us total 123.170ms
+09-04 07:43:49.252 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-04 07:43:49.252 W/Auth    ( 9658): dedt: Failed to process request
+09-04 07:43:49.252 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:49.252 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:49.252 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:49.252 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:49.259 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-04 07:43:49.259 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:49.259 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	... 12 more
+09-04 07:43:49.259 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	... 13 more
+09-04 07:43:49.259 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:49.259 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:49.259 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:49.260 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-04 07:43:49.260 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:49.260 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	... 12 more
+09-04 07:43:49.260 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	... 13 more
+09-04 07:43:49.260 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:49.260 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:49.260 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:49.261 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-04 07:43:49.262 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-04 07:43:49.262 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-04 07:43:49.262 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:49.262 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:49.262 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-04 07:43:49.316 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-04 07:43:49.316 W/Auth    ( 9658): dedt: Failed to process request
+09-04 07:43:49.316 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:49.316 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:49.316 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:49.316 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:49.320 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-04 07:43:49.320 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:49.320 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	... 12 more
+09-04 07:43:49.320 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	... 13 more
+09-04 07:43:49.320 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:49.320 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:49.320 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:49.321 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-04 07:43:49.321 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:49.321 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	... 12 more
+09-04 07:43:49.321 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	... 13 more
+09-04 07:43:49.321 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-04 07:43:49.321 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-04 07:43:49.321 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-04 07:43:49.321 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-04 07:43:49.322 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-04 07:43:49.322 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-04 07:43:49.322 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-04 07:43:49.322 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-04 07:43:49.323 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-04 07:43:49.508 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:49.779 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a3188a675d2 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:49.796 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a31965477c2 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:49.800 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=15 len=323 known=[15]
+09-04 07:43:49.864 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":39,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-8\"}","callback":null,"error":null}
+09-04 07:43:49.897 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a31965477c2 [3mpriority[0m[2m=[0m4
+09-04 07:43:49.913 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 40, "method": "dropAllLinks", "params": []}
+09-04 07:43:49.916 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#dropAllLinks
+09-04 07:43:49.936 W/iriscore(10576): [2miris_core::transport::ble[0m[2m:[0m test hook: dropped all GATT links, discovery will re-form them [3mevent[0m[2m=[0m"ble.drop_all_links" [3mcount[0m[2m=[0m2
+09-04 07:43:49.941 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":40,"result":null,"callback":null,"error":null}
+09-04 07:43:49.946 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 41, "method": "nodeId", "params": []}
+09-04 07:43:49.948 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 07:43:49.955 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":41,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-04 07:43:49.975 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 07:43:49.978 D/iriscore(10576): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 07:43:49.985 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 07:43:50.009 V/org.iris.mesh.test.JsonRpcServer:54(10576): Session 1 Received: {"id": 42, "method": "awaitDelivered", "params": ["01a06a3196ab70939a604191eaea8929", 6000]}
+09-04 07:43:50.010 D/org.iris.mesh.test.SnippetManager:286(10576): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 07:43:50.526 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:50.526 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:50.785 I/DGW     ( 9603): I[notifyPingFailure:2286] StreamGroupTransport[notifgateway] kill connection on ping timeout
+09-04 07:43:50.785 I/DGW     ( 9603): I[notifyStreamGroupError:1910] StreamGroupTransport[notifgateway] notify StreamGroup error: StreamGroupNetworkRequest failed - ping timeout error
+09-04 07:43:50.795 D/iriscore(10576): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 07:43:50.798 E/fbservices-stub:c( 9603): Unable to create output stream
+09-04 07:43:50.799 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-04 07:43:50.805 E/fbservices-stub:c( 9603): Unable to create output stream
+09-04 07:43:50.805 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-04 07:43:50.810 E/fbservices-stub:c( 9603): Unable to create output stream
+09-04 07:43:50.811 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-04 07:43:50.811 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m845
+09-04 07:43:50.811 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 07:43:50.811 D/iriscore(10576): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-04 07:43:50.814 E/fbservices-stub:c( 9603): Unable to create output stream
+09-04 07:43:50.815 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-04 07:43:50.927 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:50.928 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:51.466 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:51.467 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-04 07:43:51.743 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:51.745 D/BluetoothGattServer(10576): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-04 07:43:53.120 D/IrisBleDiag(10576): onCharacteristicWriteRequest device=49:BE:D1:48:58:66 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=300 responseNeeded=true
+09-04 07:43:53.221 W/fb4a.AppComponentFactory( 8934): Instantiating Service
+09-04 07:43:53.368 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06a3196ab7093 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 07:43:53.378 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06a31a4587aa3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 07:43:53.380 D/iriscore(10576): iris.ble.gatt gattWrite ENTER handle=16 len=323 known=[16]
+09-04 07:43:53.384 W/fb4a.FFLoggerHttpUploader( 8934): [AI] Failed to upload FFLogger payload
+09-04 07:43:53.436 V/org.iris.mesh.test.JsonRpcServer:116(10576): Session 1 Sent: {"id":42,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a\",\"payloadUtf8\":\"reconnect-9\"}","callback":null,"error":null}
+09-04 07:43:53.497 I/iriscore(10576): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06a31a4587aa3 [3mpriority[0m[2m=[0m4

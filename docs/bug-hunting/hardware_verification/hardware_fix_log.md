@@ -3180,6 +3180,11 @@ periodic `set_mtu` probe (`requestMtu` is once-per-connection on Android).
   `hv48_selection_prefers_the_transport_with_a_healthy_link_to_the_peer`.
   iris-core **791**, `:app` Kotlin + JVM green.
 
-**Phase T.** (rebuild + `test_forced_drop_reconnect_10x` / a BT-toggle run — the
-liveness tick should log `liveness: handle N no longer stack-connected` and
-`close_peer` a silently-dead link faster than a failed user send)
+**Phase T.** `test_forced_drop_reconnect_10x` (`session-18-hv27`): **PASS
+10/10**, recoveries [7.4, 7.4, 3.7, 7.4, 3.3, 3.7, 3.5, 3.6, 3.5, 3.5] s, 0
+failed — **no regression** from the `link_activity` tracking or the liveness
+tick, and **0 `liveness:` false-positives** (the tick correctly does not flag a
+handle `close_peer` already removed). The tick catching a genuinely-eaten OEM
+disconnect needs a scenario the bench cannot deterministically produce; the L1
++ this regression + Android's own ~20 s LL supervision timeout cover it.
+Status: ✅ HW-PENDING.
