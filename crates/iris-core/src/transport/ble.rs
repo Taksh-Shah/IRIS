@@ -359,6 +359,9 @@ pub struct SimulatedBleAdapter {
     adapter_events: std::sync::Mutex<Vec<i32>>,
     /// HV-95: fail the next `n` `start_advertising` calls (wedged GATT server).
     advertise_fail_first: std::sync::Mutex<u32>,
+    /// HV-30: when set, `start_scan` / `start_advertising` fail with
+    /// `PermissionDenied` (models a runtime grant revoked mid-session).
+    permission_revoked: std::sync::atomic::AtomicBool,
     /// HV-93/HV-98: accepted connections (a remote central dialled our GATT
     /// server) re-reported on every `accepted_connections()` drain until
     /// cleared — exactly how the Kotlin adapter re-announces on a write-gap.
@@ -497,11 +500,20 @@ impl SimulatedBleAdapter {
     pub fn fail_next_advertise(&self, n: u32) {
         *self.advertise_fail_first.lock().unwrap_or_else(|p| p.into_inner()) = n;
     }
+    /// HV-30: revoke (`true`) / restore (`false`) the runtime BLE permission —
+    /// `start_scan` / `start_advertising` fail `PermissionDenied` while revoked.
+    pub fn set_permission_revoked(&self, revoked: bool) {
+        self.permission_revoked
+            .store(revoked, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 #[cfg(any(test, feature = "test-support"))]
 impl BleAdapter for SimulatedBleAdapter {
     fn start_scan(&self, _filter: ScanFilter) -> Result<ScanHandle, BleError> {
+        if self.permission_revoked.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(BleError::PermissionDenied);
+        }
         // HW-1: was hardcoded ScanHandle(1) for every call — indistinguishable
         // from a re-arm reusing the same handle, which is exactly what let
         // the double-start-without-stop bug through every existing test.
@@ -518,6 +530,9 @@ impl BleAdapter for SimulatedBleAdapter {
             .push(handle);
     }
     fn start_advertising(&self, data: AdvertisementData) -> Result<AdvHandle, BleError> {
+        if self.permission_revoked.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(BleError::PermissionDenied);
+        }
         // HV-95: model a wedged stack that refuses to open the GATT server for
         // the first `n` calls (Kotlin's `startAdvertising` throws `Transport`
         // when `ensureGattServer` fails).
@@ -887,6 +902,30 @@ impl BleTransport {
             .unwrap()
             .clone()
             .ok_or(TransportError::HardwareUnavailable)
+    }
+
+    /// HV-30: a scan/advertise op that fails with a revoked runtime permission
+    /// or a disabled radio is not transient — the transport is dead until the
+    /// user acts. Mark it `Unavailable` so `select_transports` stops picking it
+    /// (every send would fail + requeue) and the UI's UNAVAILABLE / RetryNotice
+    /// path fires, instead of the UI showing RUNNING against a dark radio.
+    /// Returns the error unchanged.
+    fn demote_on_fatal(&self, err: TransportError) -> TransportError {
+        if matches!(
+            err,
+            TransportError::PermissionDenied { .. }
+                | TransportError::RadioDisabled
+                | TransportError::HardwareUnavailable
+        ) && self.state() != TransportState::Unavailable
+        {
+            tracing::warn!(
+                event = "ble.transport_unavailable",
+                reason = %err,
+                "BLE op failed fatally (permission revoked / radio off) — transport Unavailable"
+            );
+            self.set_state(TransportState::Unavailable);
+        }
+        err
     }
 
     /// HW-5: `self.connections` is keyed by the discovery-time candidate
@@ -1395,7 +1434,7 @@ impl Transport for BleTransport {
             if let Some(prior) = *scan_handle {
                 adapter.stop_scan(prior);
             }
-            let handle = adapter.start_scan(filter).map_err(to_transport_err)?;
+            let handle = adapter.start_scan(filter).map_err(|e| self.demote_on_fatal(to_transport_err(e)))?;
             *scan_handle = Some(handle);
         }
         // Drain the first max_peers scan results. BLE-13: drain(..).take(n)
@@ -1574,7 +1613,7 @@ impl Transport for BleTransport {
                 // accept.
                 connectable: true,
             })
-            .map_err(to_transport_err)?;
+            .map_err(|e| self.demote_on_fatal(to_transport_err(e)))?;
         *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
         // HW-9: becoming dialable is the natural point to also start
         // accepting — idempotent, so re-announcement (key rotation etc.)
@@ -2677,6 +2716,34 @@ mod tests {
         adapter.inject_scan_failure(5);
         // still refused because the code-6 window has not elapsed
         assert!(t.discover_peers(DiscoveryConfig::default()).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn hv30_revoked_permission_marks_the_transport_unavailable_and_recovers() {
+        // HV-30: a runtime grant revoked mid-session must take the transport out
+        // of manager selection (so sends stop failing + requeuing and the UI's
+        // UNAVAILABLE path fires), and restoring it + a re-advertise recovers.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let adv = NodeAdvertisement {
+            peer_id: PeerId([30u8; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        };
+        t.start_advertising(adv.clone()).await.expect("advertise ok");
+        assert_ne!(t.state(), TransportState::Unavailable);
+
+        adapter.set_permission_revoked(true);
+        // A scan pass under revoked permission demotes the transport.
+        let e = t.discover_peers(DiscoveryConfig::default()).await.map(|_| ());
+        assert!(matches!(e, Err(TransportError::PermissionDenied { .. })), "got {e:?}");
+        assert_eq!(t.state(), TransportState::Unavailable);
+
+        // Grant restored + re-advertise → back in play.
+        adapter.set_permission_revoked(false);
+        t.start_advertising(adv).await.expect("advertise recovers");
+        assert_eq!(t.state(), TransportState::Available);
     }
 
     #[test]

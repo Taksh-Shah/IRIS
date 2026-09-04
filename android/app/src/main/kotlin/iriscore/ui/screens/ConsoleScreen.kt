@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import iriscore.command.CommandRegistry
 import iriscore.command.ConsoleInputParser
@@ -94,6 +95,16 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         // Re-read from the system: permissions already held before the request
         // are absent from the result map.
         permissionsGranted = MeshPermissions.allGranted(context)
+    }
+
+    // HV-30: a runtime grant revoked from Settings while the app is backgrounded
+    // is otherwise never noticed — the composition's cached `permissionsGranted`
+    // stays true and the UI shows RUNNING against dark radios. Re-read on every
+    // resume; the core has already demoted the transport to Unavailable, so the
+    // RetryNotice fires and this surfaces the PermissionNotice to re-grant.
+    LifecycleResumeEffect(Unit) {
+        permissionsGranted = MeshPermissions.allGranted(context)
+        onPauseOrDispose { }
     }
 
     LaunchedEffect(permissionsGranted) {

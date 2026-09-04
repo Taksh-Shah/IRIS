@@ -2973,3 +2973,35 @@ the app (`am force-stop org.iris.mesh`), wait for / trigger the worker
 **no** second `iriscore` engine-start and the outbox is untouched; then open the
 app and confirm the message flushes. (not run this session — the bench phones
 are on the 30-min gate test)
+
+---
+
+## Session 17 (cont.) — HV-30 (permission revocation mid-session)
+
+**Phase R.** The adapters map `SecurityException` → `PermissionDenied` (good),
+but two gaps: (1) the BLE transport does not change state on it — `discover_peers`
+/ `start_advertising` just return the Err, so a transport that had `connections`
+stays `Connected`, `select_transports` keeps picking it, every send fails +
+requeues, and the UI shows RUNNING; only `set_mtu` (mid-connect) demoted on
+`PermissionDenied`. (2) `ConsoleScreen` reads `permissionsGranted` once at
+composition + on the request-result callback — a grant revoked from Settings
+while backgrounded is never re-checked on resume.
+
+**Phase D.**
+- `BleTransport::demote_on_fatal(err)` — on `PermissionDenied` / `RadioDisabled`
+  / `HardwareUnavailable` from a scan/advertise op, `set_state(Unavailable)` +
+  `event="ble.transport_unavailable"`, return the err unchanged. Wired into the
+  `start_scan` and `start_advertising` map_err. Now `select_transports` drops
+  the transport and the existing UNAVAILABLE → `RetryNotice` path fires; a
+  restored grant + re-advertise (RETRY → `start_all`, HV-29) recovers it.
+- `ConsoleScreen`: `LifecycleResumeEffect { permissionsGranted =
+  MeshPermissions.allGranted(context) }` — re-read on every resume, so a
+  mid-session revoke surfaces the `PermissionNotice`.
+- Sim: `SimulatedBleAdapter.set_permission_revoked(bool)`; L1
+  `hv30_revoked_permission_marks_the_transport_unavailable_and_recovers`.
+  iris-core **789**, workspace + `:app` Kotlin build green.
+
+**Phase T.** Bench (2 phones): with a link up, revoke BLUETOOTH_SCAN /
+BLUETOOTH_CONNECT on P2 in Settings → P2's status must go DOWN + show the
+permission notice within a resume; re-grant + tap RETRY → link re-forms. (not
+run this session — bench phones on the 30-min gate)
