@@ -61,7 +61,7 @@ that remain are understood and logged.*
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 28 | 18 | 6 | 1 | 1 | 2 |
-| 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
+| 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 3 | 0 | 0 | 6 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 5 | 3 | 0 | 0 | 2 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
@@ -69,9 +69,25 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **109** | **29** | **17** | **1** | **2** | **60** |
+| **Total** | | **109** | **29** | **20** | **1** | **2** | **57** |
 
-**Last updated:** 2026-09-04 (Session 21 — **HV-34 + HV-101 + HV-104 closed,
+**Last updated:** 2026-09-05 (Session 22 — **Tier 2 started, gate BLOCKED
+(not closed).** HV-19 (deterministic GO/GC election via PeerId comparison),
+HV-20 (persistent-mode credentials on the band-constrained path), and HV-22
+(lost-group detection + re-formation via a `poll_health` tick) all
+implemented and L1-verified (27 `wifi_direct` tests, 796 total `iris-core`),
+but the Tier-2 hardware gate cannot be met: Wi-Fi Direct DNS-SD discovery
+finds zero peers on both bench phones regardless of radio state (off→on
+enabled, then a full radio power-cycle — neither fixed it). Root cause
+attributed to HV-21 (PTR/TXT listeners never fire on either phone — fresh
+evidence this session) rather than HV-25 (concurrency evidence this session
+argues against it being the sole cause) or stale persisted P2P groups (a
+reflection-based clear attempt was blocked by the platform withholding
+`requestPersistentGroupInfo` data from non-privileged apps; reverted, not
+committed). See the `## Tier 2` gate note for full detail. Per the tier
+gate, do **not** proceed to Tier 6 until this is resolved or the operator
+explicitly re-prioritizes — continuing into HV-21's own fix sketch next.)
+· Previously: 2026-09-04 (Session 21 — **HV-34 + HV-101 + HV-104 closed,
 all 🟢 HW-verified.** HV-34: decided **no OS bonding** (research showed it does
 not help reconnect speed/reliability); built a persisted app-level "known
 peers" list instead (`test_known_peers_survive_engine_restart` PASS 3/3).
@@ -1682,9 +1698,62 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 
 ## Tier 2 — Wi-Fi Direct reliability & group-owner conflict
 
+> **Tier-2 gate status (Session 22, 2026-09-05): 🔒 BLOCKED, not closed.**
+> Loop §2 gate: "cold-start both phones 10× (alternating power-on order) →
+> exactly one group forms → messages flow both ways every time." HV-19's
+> election and HV-22's re-formation are implemented and pass all L1 tests
+> (27 `wifi_direct` unit tests, 796/796 `iris-core` total), but **cannot be
+> hardware-verified**: Wi-Fi Direct DNS-SD discovery finds `peers_seen=0` on
+> both bench phones in every attempt, so no group is ever reachable for the
+> election/re-formation logic to act on. Two real hardware attempts were
+> made this session (both failed the same way): a 2-cycle cold-start run
+> after enabling Wi-Fi (was off on both phones — fixed, but did not resolve
+> discovery) and a second 2-cycle run after a full radio power-cycle
+> (`svc wifi disable`/`enable`, confirmed via `dumpsys wifi`). A programmatic
+> attempt to clear P1's two persisted P2P groups (`dumpsys wifip2p`'s
+> `mGroups`, one of which references P2's exact device model — the leading
+> suspect for interference) via reflection into the hidden
+> `WifiP2pManager.requestPersistentGroupInfo`/`deletePersistentGroup` APIs
+> was attempted and abandoned: the call completes without error but returns
+> an empty group list to a non-privileged app despite
+> `dumpsys wifip2p`'s own `mWifiP2pStatsProto.numPersistentGroup=2` — i.e.
+> the platform silently withholds this data from a normal app, so this is
+> not a viable adb/code path (the experiment was reverted, not committed).
+> **Root cause is now attributed to HV-21** (DNS-SD listeners never fire on
+> either phone — evidence below) rather than HV-25 concurrency (ruled out as
+> the *sole* cause — see HV-25 note) or the persisted-group hypothesis
+> (blocked from confirmation, see above). Per the loop's 3-attempts rule this
+> is 2 of 3 permitted attempts on the same underlying blocker before a formal
+> escalation; the next step is HV-21's own fix sketch (carry identity over
+> the BLE control plane instead of depending on P2P DNS-SD TXT), not another
+> blind retry of cold-start. HV-19/HV-20/HV-22 code changes are being
+> committed on the strength of L1 verification with this HW-PENDING status
+> recorded, per the loop's own allowance for a blocked-but-documented finding
+> — they are not being marked 🟢.
+
 ### HV-19 — Two peers both call `createGroup` → GO/GO conflict; there is no election
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-PENDING (blocked, see below) · commit `<pending>`
+  · 2026-09-04 · Session 22 · **deterministic PeerId election.**
+  `WifiDirectTransport` now stashes its own PeerId (`local_peer_id`, from
+  `start_advertising`); `connect()`'s new `should_be_go(peer)` compares it
+  against the peer's candidate id (both converted to the same `peer_short`
+  candidate form — HW-17/DEC-WD-0007 — so it's a fair comparison) and exactly
+  one side creates. An explicit strong intent (`go_intent` above/below
+  `GO_INTENT_BALANCED`, e.g. fixed infra = 14, never-GO = 0) is still honoured
+  verbatim; the election only runs for the common balanced-vs-balanced default.
+  L1 `hv19_two_default_config_peers_elect_exactly_one_go` +
+  `hv19_election_is_symmetric_by_peer_id` (swap which id is higher, confirm the
+  *other* physical device becomes GO — HV-19's own "symmetry bugs only show
+  when you swap" note). Research:
+  [WifiP2pManager createGroup GO election is a known hard problem for apps](https://patents.justia.com/patent/20150163300)
+  ("It may be difficult to decide which device is to become the GO... users
+  need to make decisions"); the standard fix (multiple sources, IRIS's own
+  Session-19 research) is exactly this deterministic-comparison pattern.
+  **HW verification BLOCKED** — see the Tier-2 gate note below `## Tier 2`:
+  Wi-Fi Direct DNS-SD discovery finds **zero peers** on this bench, on both
+  phones, for an unrelated reason (HV-21/HV-25 territory) — the election logic
+  this fixes cannot even be reached until discovery itself works.
 - **Area:** `AndroidWifiDirectTransportAdapter.createGroup` /
   `createGroupWithBand`, `wifi_direct.rs` (GO intent), `WifiDirectTransport`
 - **Severity:** Critical · **HW gate:** 2 phones
@@ -1725,7 +1794,19 @@ which phone powers on first.
 
 ### HV-20 — Per-instance random group credentials make a persistent GO non-rejoinable
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed (narrower than originally scoped) · commit `<pending>`
+  · 2026-09-04 · Session 22 · re-reading `createGroupWithBand` at HEAD: the
+  custom `setNetworkName`/`setPassphrase` config only builds when a **specific
+  band is requested** (`bandId != null`, API 29+) — `GroupConfig::default()`'s
+  `band` is `Auto`, so the common default-config path already calls the plain
+  `createGroup(channel, listener)` overload, which per Android's own
+  documented behaviour IS the framework-managed **persistent** group (this is
+  what the deterministic-election test above actually exercises). The
+  band-constrained path added `.enablePersistentMode(true)` to its
+  `WifiP2pConfig.Builder` for the same guarantee when a band *is* pinned.
+  **Not independently HW-tested** — the bench doesn't pin a band, so this
+  path isn't exercised by the current tests; low risk, mirrors the documented
+  API contract exactly.
 - **Area:** `AndroidWifiDirectTransportAdapter.groupNetworkName` / `groupPassphrase`
 - **Severity:** High · **HW gate:** 2 phones, restart one
 
@@ -1747,7 +1828,22 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
 
 ### HV-21 — DNS-SD TXT-record discovery is OEM-fragile; the current code has three stacked workarounds and still races
 
-- **Fix status:** ⬜
+- **Fix status:** ⬜ · **Session 22 (2026-09-05) fresh evidence — root-cause
+  confirmed, not yet fixed:** ran the bench with a clean Wi-Fi radio
+  (`svc wifi disable`/`enable` on both phones, ruling out "radio just off" —
+  it *was* off going in, which explains earlier sessions' "radio switched
+  off" transport errors, but turning it on did not fix discovery) and full
+  `IrisWifiDirectDiag` logging across a ~3 min multi-cycle run on both
+  vivo phones (P1 Android 15, P2 Android 13). Result: `discoverServices()`/
+  `addServiceRequest()`/`addLocalService()` all return success (no
+  exceptions), but **zero** `IrisWifiDirectDiag` PTR/TXT listener log lines
+  fire on *either* phone for the entire session —
+  `discovery.scan_pass_complete transport=wifi-direct-0 peers_seen=0` every
+  pass. This is stronger and more specific than the original HW-13..16 notes
+  (which at least saw PTR fire without TXT): here neither listener fires at
+  all, on two same-vendor (vivo) phones, which the original finding's "OEM
+  variance" framing did not anticipate. This is the concrete blocker gating
+  the whole `## Tier 2` HW-verification gate — see the gate note below.
 - **Area:** `AndroidWifiDirectTransportAdapter` — `dnsSdServiceListener`,
   `dnsSdTxtRecordListener`, `serviceRequest`, `startDnsSd` (HW-13/14/15/16),
   `pendingServiceOnly` / `pendingTxtBeacons`
@@ -1782,7 +1878,21 @@ delivery is the single most OEM-variable part of Android Wi-Fi P2P.
 
 ### HV-22 — `WIFI_P2P_CONNECTION_CHANGED` false → immediate teardown, but no re-formation attempt
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-PENDING (blocked, see below) · commit `<pending>`
+  · 2026-09-04 · Session 22. `WifiDirectTransport` gained a `poll_health()`
+  override (generic ~5s health-tick call site already used by BLE's HV-99
+  fix, confirmed at `discovery/mod.rs:564`): it fetches the adapter's current
+  `group_info()` and tears down any link whose handle is no longer the GO or
+  a listed client, so a group lost at the OS level (Kotlin's own
+  `groupFormed=false` handling clears its cache, but nothing told core) is
+  detected and cleared within one tick — re-`connect()` then re-forms it
+  (respecting HV-19's election). L1 `hv22_poll_health_clears_a_lost_group_and_reconnect_reforms_it`:
+  forms a group, force-drops it via the adapter directly (simulating OS-level
+  loss), asserts `poll_health` clears the stale link, then asserts a fresh
+  `connect()` succeeds again. **HW verification BLOCKED for the same reason
+  as HV-19** — see the Tier-2 gate note below: discovery itself never finds a
+  peer on this bench, so no group ever forms in the first place for a
+  mid-session loss to be exercised against real hardware.
 - **Area:** `AndroidWifiDirectTransportAdapter.p2pStateReceiver`
   (`WIFI_P2P_CONNECTION_CHANGED_ACTION`, `else` branch — HW-21), `closeDataPath`
 - **Severity:** High · **HW gate:** 2 phones, move them apart
@@ -1864,6 +1974,16 @@ STA link to the P2P channel, drop the user's internet, or fail outright if the S
 is on an incompatible channel (DFS, regulatory). The module doc acknowledges this
 ("single-radio STA+P2P churn → Degraded"). It is not tested and there is no policy
 for "the user is on Wi-Fi and wants to keep it."
+
+**Session 22 (2026-09-05) evidence — concurrency is NOT the sole explanation:**
+during the HV-19/21/22 bench run, P1 was STA-associated to a home AP
+("Taksh tirth", 2417 MHz) the whole time while P2 had no STA association at
+all — yet **both** phones still saw `peers_seen=0`. If single-radio STA+P2P
+churn were the full story, P2 (no STA link to protect) should have discovered
+fine. It didn't. This doesn't rule HV-25 out as *a* contributing factor on
+P1, but it means HV-25 alone cannot explain the bench's zero-discovery
+blocker — HV-21 (DNS-SD listeners never firing on either phone) is the
+primary, better-evidenced cause.
 
 **Fix sketch:** query `WifiManager.isStaConcurrencyForMultiInternetSupported` /
 `isP2pSupported` and the STA channel; prefer BLE when P2P would disrupt an active

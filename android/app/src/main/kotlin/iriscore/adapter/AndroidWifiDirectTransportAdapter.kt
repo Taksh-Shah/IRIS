@@ -827,10 +827,17 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             p2pManagerOrThrow().createGroup(channel, listener)
             return
         }
+        // HV-20: the plain no-config `createGroup` overload above is already
+        // persistent per Android's own documented behaviour — but this
+        // custom-config path (only reached when a band is pinned) builds its
+        // own WifiP2pConfig, which defaults to non-persistent unless told
+        // otherwise. Without this, a restarted GO on this path would lose
+        // its group identity and a previously-joined client couldn't rejoin.
         val p2pConfig = WifiP2pConfig.Builder()
             .setNetworkName(groupNetworkName)
             .setPassphrase(groupPassphrase)
             .setGroupOperatingBand(bandId)
+            .enablePersistentMode(true)
             .build()
         p2pManagerOrThrow().createGroup(channel, p2pConfig, listener)
     }

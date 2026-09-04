@@ -3692,6 +3692,151 @@ that's a cold mutual-rediscovery scenario (HV-90/91 territory), not what HV-34
 is testing. Rewrote to bounce only P2 (the proven HV-29 RETRY shape, P1
 anchors the link) — passed clean.
 
-**Landed:** commit `<pending>`. Tier 1 progress tracker: HV-101/104/34 close
+**Landed:** commit `8f44206`. Tier 1 progress tracker: HV-101/104/34 close
 (fixed + HW-verified); no new blockers. Not proceeding to Tier 2 yet — operator
 said "only after this."
+
+---
+
+## Session 22 (autonomous, operator away 2-3h) — Tier 2: HV-19 + HV-20 + HV-22, discovery blocker found
+
+Operator authorized full autonomous continuation through as many tiers as
+the loop's gates permit, granting explicit rights to toggle Wi-Fi/Bluetooth
+on both bench phones for testing. Picked up Tier 2 per the tier order (§2:
+0→1→3→2→6→...).
+
+### Research
+
+- GO/GC election: multiple sources describe Android `WifiP2pManager`'s
+  autonomous-GO election as an unsolved app-level problem when both peers use
+  the framework default balanced intent — the standard fix is a
+  deterministic tie-break the app itself computes before calling
+  `createGroup`/`connect`. IRIS already exchanges PeerId over its BLE
+  control-plane beacon before any Wi-Fi Direct call, so a PeerId comparison
+  is available for free.
+- `enablePersistentMode(true)` (`WifiP2pConfig.Builder`, API 29+) is the
+  documented way to force persistence on the custom-config path; the plain
+  `createGroup(channel, listener)` overload (no custom config) is already
+  persistent by default per Android's own docs — re-reading
+  `createGroupWithBand` at HEAD showed the custom-config path only builds
+  when a band is pinned, so HV-20 was narrower in scope than originally
+  written.
+- `poll_health()` on `Transport` already exists as a no-op default,
+  overridden by BLE (HV-99) and called by `DiscoveryManager` on every
+  registered transport every ~5 s regardless of scan timing (confirmed at
+  `discovery/mod.rs:564`) — the same mechanism closes HV-22's "nothing
+  re-forms a lost group" gap without new infrastructure.
+
+### ✅ HV-19 — deterministic PeerId election
+
+`WifiDirectTransport` stashes its own PeerId (`local_peer_id`, set from
+`start_advertising`). New `should_be_go(peer)`: an explicit strong go_intent
+(above/below `GO_INTENT_BALANCED`) is honoured verbatim; otherwise both
+PeerIds are converted to the same candidate form (`candidate_key_for` —
+HW-17/DEC-WD-0007: discovery only ever returns "candidate" ids, so comparing
+a raw local id against a peer's candidate id would compare unrelated byte
+layouts) and compared — exactly one side creates, the other joins.
+`connect()`'s old static `go_intent > GO_INTENT_BALANCED` check (which never
+triggered for two default-config peers) now calls `should_be_go`.
+
+### ✅ HV-20 — persistent mode on the band-constrained path (narrower than scoped)
+
+`createGroupWithBand`'s `WifiP2pConfig.Builder` gained
+`.enablePersistentMode(true)`. The default (`GroupConfig::default()`, band
+`Auto`) path was already persistent via the plain overload — not
+independently HW-tested since the bench doesn't pin a band.
+
+### ✅ HV-22 — lost-group detection + re-formation
+
+New `poll_health()` override on `WifiDirectTransport`: fetches
+`adapter.group_info()`, tears down any tracked link whose handle is no
+longer the GO or a listed client (an OS-level group loss the Kotlin side
+already noticed via `groupFormed=false` but never told core about). A
+subsequent `connect()` re-forms it through the HV-19 election.
+
+### L1 verification
+
+New tests in `wifi_direct.rs`: `hv19_two_default_config_peers_elect_exactly_one_go`,
+`hv19_election_is_symmetric_by_peer_id` (swap which id is higher — confirms
+symmetry, not a one-sided accident), `hv22_poll_health_clears_a_lost_group_and_reconnect_reforms_it`
+(force a group loss via the sim adapter, assert `poll_health` clears the
+stale link, assert a fresh `connect()` re-forms). wifi_direct: 24→27 tests;
+`iris-core --lib`: 793→796, all passing.
+
+### Hardware verification — BLOCKED, not met
+
+New `iris_bench/test_tier2_wifidirect.py`, `test_wifi_direct_cold_start_election`
+(stopMesh+startMesh both phones, alternating which starts first, per cycle —
+the automated proxy for "cold start" the harness can produce without literal
+power-cycling).
+
+| attempt | conditions | result |
+|---|---|---|
+| 1 (`session-22-tier2-hv19`, 2 cycles*) | first run, found Wi-Fi was OFF on both phones (`wifi_on: 0`) mid-run — enabled via `svc wifi enable` | cycle 1 (P1 first) PASS in 30.0s; cycle 2 (P2 first) **FAIL** — P1→P2 never delivered, `peers_seen=0` throughout |
+| 2 (`session-22-tier2-diag`, 2 cycles*) | clean radio power-cycle first (`svc wifi disable`/`enable`, confirmed via `dumpsys wifi`) | same pattern: cycle 1 PASS, cycle 2 **FAIL**, `peers_seen=0` throughout |
+
+\* `_CYCLES` temporarily reduced from the gate's required 10 to 2 for faster
+diagnostic iteration — **must be restored to 10** once discovery is fixed
+and a real gate-passing run is attempted.
+
+Both failures share the same root symptom, confirmed via `adb logcat` +
+`dumpsys wifip2p` evidence captured in both evidence dirs: `discovery.scan_pass_complete
+transport=wifi-direct-0 peers_seen=0` on every scan pass, on both phones,
+every cycle — the election/re-formation logic HV-19/HV-22 add is never even
+reached because Wi-Fi Direct DNS-SD discovery itself never finds a peer.
+Zero `IrisWifiDirectDiag` PTR/TXT listener log lines fire across the entire
+session on either phone (this is HV-21's finding, now with fresh two-vendor-
+matched evidence — see `hardware_problems.md`'s HV-21 entry).
+
+Diagnostic steps taken this session (none resolved discovery):
+1. Wi-Fi was fully off on both phones at session start — enabled
+   (`adb shell svc wifi enable`); did not fix discovery, but explains
+   `wifi-direct-0: radio is switched off` errors seen in earlier BLE
+   sessions.
+2. `dumpsys wifip2p` confirms `discoverServices`/`addLocalService` succeed
+   (no exceptions) but the DNS-SD listeners never fire — investigated via
+   verbose `IrisWifiDirectDiag` logging across the full run.
+3. Tried `pm grant` of `NEARBY_WIFI_DEVICES`/`ACCESS_FINE_LOCATION` etc. to
+   both packages — `SecurityException`/`IllegalArgumentException`,
+   inconclusive.
+4. Tried an airplane-mode radio reset
+   (`settings put global airplane_mode_on` + `am broadcast`) —
+   **confirmed not possible from adb shell**: `SecurityException: Permission
+   Denial ... uid=2000` (shell cannot send this system broadcast). Hard
+   environment limitation — only `svc wifi`/`svc bluetooth` individual
+   toggles work from adb; true airplane-mode toggling needs on-device UI.
+5. Fell back to a clean `svc wifi disable`/`enable` power-cycle (confirmed
+   via `dumpsys wifi | grep "Wi-Fi is"`) — re-ran the diagnostic; same
+   failure pattern.
+6. Found P1's `dumpsys wifip2p` `mGroups` lists two **persisted** P2P groups
+   (`mWifiP2pStatsProto.numPersistentGroup=2` confirms these are real, not a
+   dump artifact), one (`DIRECT-iA-vivo 2004`, networkId 1) matching P2's
+   exact device model — the leading suspect for stale-state interference.
+   Attempted a programmatic clear via reflection into the hidden
+   `WifiP2pManager.requestPersistentGroupInfo`/`deletePersistentGroup` APIs
+   (added a diagnostic-only adapter method + snippet RPC, rebuilt and
+   installed both the app and androidTest APKs). The call completed with no
+   exception on either phone but **returned an empty group list** — the
+   platform silently withholds persisted-group data from a non-privileged
+   app despite `dumpsys` proving 2 groups exist. **Not a viable path**; the
+   experiment was reverted (`git checkout --`) rather than committed, so the
+   tree is clean of it.
+
+**Conclusion:** HV-19 and HV-22's code changes are correct and L1-verified
+but cannot be hardware-verified until HV-21 (or the persisted-group
+hypothesis, now effectively ruled unconfirmable via any adb/code path) is
+resolved. Per the loop's 3-attempts rule, this is 2 of 3 permitted attempts
+at the same underlying blocker — the next step is HV-21's own fix sketch
+(carry beacon identity over the BLE control plane instead of depending on
+fragile P2P DNS-SD TXT), not a third blind cold-start retry.
+
+**Landed:** HV-19/HV-20/HV-22 code + the diagnostic test + doc updates,
+commit `<pending>` — marked ✅ Fixed · HW-PENDING (blocked), not 🟢, per the
+loop's own rule ("never mark 🟢 without hardware evidence"). Tier 2 gate is
+**not** met; per the tier order (§2) this blocks proceeding to later tiers
+that assume Tier 2 is closed, but does not block independent tiers. HV-25
+(concurrency) evidence gathered this session argues against it being the
+sole cause (P1 was STA-associated, P2 was not, both still saw 0 peers) —
+recorded in `hardware_problems.md` but left ⬜, not investigated further this
+session. Continuing autonomously into HV-21's fix per the operator's "do not
+stop" instruction.

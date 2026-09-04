@@ -881,6 +881,9 @@ pub struct WifiDirectTransport {
     dropped_inbound: Arc<AtomicU64>,
     /// MG-17: EWMA goodput tracker.
     ewma: EwmaGoodput,
+    /// HV-19: this node's own PeerId, stashed from `start_advertising` — the
+    /// deterministic GO/GC election key. See `should_be_go`.
+    local_peer_id: StdMutex<Option<PeerId>>,
 }
 
 impl fmt::Debug for WifiDirectTransport {
@@ -923,6 +926,7 @@ impl WifiDirectTransport {
             discovery_until: StdMutex::new(None),
             dropped_inbound: Arc::new(AtomicU64::new(0)),
             ewma: EwmaGoodput::new(),
+            local_peer_id: StdMutex::new(None),
         }
     }
 
@@ -934,6 +938,43 @@ impl WifiDirectTransport {
         let mut t = Self::new(adapter);
         t.group_config = cfg;
         t
+    }
+
+    /// HV-19: deterministic GO/GC election for `peer`. Two symmetric peers at
+    /// the default `GO_INTENT_BALANCED` used to both take the GC/join branch
+    /// (`go_intent > GO_INTENT_BALANCED` is false for both) — neither ever
+    /// called `create_group()`, so `connect()` failed for every pair of
+    /// default-config nodes (the mirror of the finding's "both createGroup":
+    /// same dead-transport result). A strong explicit bias (fixed infra
+    /// `go_intent=14`, "never GO" `go_intent=0`) is still honoured verbatim —
+    /// this is only consulted when both ends of the decision are at the
+    /// balanced default, which is the common case (two phones, no configured
+    /// role). The election key is the PeerId both sides already have from the
+    /// BLE control-plane beacon (DEC-BLE-0006) — no extra round-trip, and it
+    /// is never the raw P2P MAC (DEC-WD-0007: MAC is not identity).
+    fn should_be_go(&self, peer_id: &PeerId) -> bool {
+        if self.group_config.go_intent > GO_INTENT_BALANCED {
+            return true;
+        }
+        if self.group_config.go_intent < GO_INTENT_BALANCED {
+            return false;
+        }
+        match *self.local_peer_id.lock().unwrap_or_else(|p| p.into_inner()) {
+            // HW-17: `peer_id` here is the TXT record's CANDIDATE id
+            // (`peer_short(real_pubkey)`, zero-padded — never the real 32-byte
+            // identity, same DEC-WD-0007 scheme `candidate_key_for` already
+            // handles for `links`/`send`). Comparing our own REAL id against
+            // the peer's CANDIDATE id would be comparing unrelated byte
+            // layouts — convert ours to the same candidate form first so both
+            // sides are comparing like with like. `peer_short` is a pure,
+            // deterministic function of the real pubkey, so this is still a
+            // fully symmetric, both-sides-agree comparator.
+            Some(local) => Self::candidate_key_for(&local) > *peer_id,
+            // We have not advertised yet (should not happen — start_advertising
+            // always precedes discovery/connect in practice) — join rather
+            // than risk a second autonomous GO.
+            None => false,
+        }
     }
 
     fn set_state(&self, new: TransportState) {
@@ -1311,6 +1352,52 @@ impl WifiDirectTransport {
 
 #[async_trait]
 impl Transport for WifiDirectTransport {
+    /// HV-22: `WIFI_P2P_CONNECTION_CHANGED_ACTION` with `groupFormed=false`
+    /// (HW-21) tears down the Kotlin adapter's own cached group state
+    /// (`closeDataPath` + `groupState.clear()`), but nothing told the CORE —
+    /// `self.links` still held the now-dead peer, so `connect()`'s "already
+    /// connected, reuse" short-circuit (HW-20's own fast path) kept returning
+    /// `Ok` forever without ever re-forming a group, and `send()`'s stale-link
+    /// sweep only fires when the whole radio goes unavailable, not "this one
+    /// group ended, the radio and DNS-SD are still fine." Same gap as BLE's
+    /// HV-15/HV-31: a state change the adapter itself detected does not, on
+    /// its own, unstick the transport-level bookkeeping.
+    ///
+    /// Called by `DiscoveryManager`'s transport-agnostic health tick (~5 s,
+    /// same cadence BLE's HV-99 fix uses) regardless of whether a scan is
+    /// due, so a lost group is felt well inside one `DISCOVERY_WINDOW`. Cross
+    /// -checks the adapter's live `group_info()` against every link we
+    /// believe is up; any link not backed by a real GO/client slot is torn
+    /// down via the existing `teardown_link` (which already handles the
+    /// last-link-drops-to-Degraded transition). The next `connect()` for that
+    /// peer then runs `should_be_go` fresh and re-forms the group — no
+    /// negotiation needed, the same PeerId comparison both sides made the
+    /// first time still agrees.
+    async fn poll_health(&self) {
+        let Ok(adapter) = self.adapter().await else { return };
+        let info = adapter.group_info().await;
+        let stale: Vec<PeerHandle> = {
+            let links = self.links.lock().unwrap_or_else(|p| p.into_inner());
+            links
+                .iter()
+                .filter(|l| match &info {
+                    Some(g) => g.go != l.handle && !g.clients.iter().any(|c| *c == l.handle),
+                    None => true, // no group at all anymore — every link is stale
+                })
+                .map(|l| l.handle)
+                .collect()
+        };
+        for h in stale {
+            tracing::warn!(
+                target: "iris.transport.wifi_direct",
+                event = "wifi_direct.group_lost",
+                handle = h.0,
+                "poll_health: link no longer backed by a live P2P group — tearing down for re-election"
+            );
+            self.teardown_link(&adapter, h).await;
+        }
+    }
+
     fn transport_id(&self) -> &crate::transport::TransportId {
         &self.id
     }
@@ -1432,6 +1519,11 @@ impl Transport for WifiDirectTransport {
         if self.permanently_unsupported.load(Ordering::SeqCst) {
             return Err(TransportError::HardwareUnavailable);
         }
+        // HV-19: stash our own PeerId — `connect()`'s deterministic GO/GC
+        // election compares it against the peer's. Both sides already have
+        // each other's PeerId from the BLE control-plane beacon before any
+        // Wi-Fi Direct call, so the election needs no extra round-trip.
+        *self.local_peer_id.lock().unwrap_or_else(|p| p.into_inner()) = Some(info.peer_id);
         self.ensure_started().await?;
         let adapter = self.adapter().await?;
         if !adapter.is_available() {
@@ -1446,10 +1538,12 @@ impl Transport for WifiDirectTransport {
         // with nothing at all for Kotlin to advertise.
         let mut caps = WifiDirectCapBits::empty();
         caps.set(WifiDirectCapBits::CLIENT_CAPABLE);
-        // RF-26: strict comparison — intent > balanced threshold so the default
-        // (GO_INTENT_BALANCED = 7) takes the GC/join path. Two nodes both at 7
-        // would otherwise both call create_group(), forming dual autonomous GOs
-        // that cannot join each other on real hardware.
+        // HV-19: this is only the beacon's static "can this node ever be GO"
+        // capability bit — informational for a peer's UI/diagnostics, not the
+        // per-connection GO/GC decision (that's `should_be_go`, evaluated fresh
+        // in `connect()` once the peer to elect against is known). A node at
+        // the balanced default is capable either way, so it does not set this
+        // bit purely from `go_intent`; only an explicit strong bias does.
         if self.group_config.go_intent > GO_INTENT_BALANCED {
             caps.set(WifiDirectCapBits::GROUP_OWNER_CAPABLE);
         }
@@ -1559,13 +1653,11 @@ impl Transport for WifiDirectTransport {
                 });
             }
         }
-        // Group formation: GO-biased config forms/keeps a persistent GO and
-        // invites the peer (p2p_invite); otherwise join the peer's group (GC).
-        // RF-26: strict comparison — intent > balanced threshold so the default
-        // (GO_INTENT_BALANCED = 7) takes the GC/join path. Two nodes both at 7
-        // would otherwise both call create_group(), forming dual autonomous GOs
-        // that cannot join each other on real hardware.
-        if self.group_config.go_intent > GO_INTENT_BALANCED {
+        // Group formation: the GO-elected side forms/keeps a persistent GO and
+        // invites the peer (p2p_invite); the other side joins the peer's group
+        // (GC). HV-19: `should_be_go` handles the common balanced-vs-balanced
+        // case by comparing PeerIds so exactly one side creates — see its doc.
+        if self.should_be_go(&peer.peer_id) {
             // Try the requested band; band-constrained GO creation fails → AUTO
             // fallback (AC-3, DEC-WD-0005).
             let mut cfg = self.group_config.clone();
@@ -1854,6 +1946,170 @@ mod tests {
             "sender attributed, not zero"
         );
         assert_eq!(got.peer_id, peer_a, "frame attributed to the real sender");
+    }
+
+    /// HV-19: two peers at the framework-default `GroupConfig` (both
+    /// `GO_INTENT_BALANCED`, no explicit role bias — the common "two phones,
+    /// nobody configured a role" case) used to both take the GC/join branch
+    /// and never form a group at all (`join_group` on a peer that never
+    /// `create_group()`-d fails "peer is not a group owner" — modeled by the
+    /// sim adapter above). `should_be_go`'s PeerId comparison must make
+    /// exactly one side create and the other join, so BOTH `connect()` calls
+    /// succeed with default configs on both ends.
+    #[tokio::test]
+    async fn hv19_two_default_config_peers_elect_exactly_one_go() {
+        let coord = Arc::new(SimP2pCoordinator::new());
+        let a = Arc::new(SimulatedWifiDirectAdapter::new(coord.clone()));
+        let b = Arc::new(SimulatedWifiDirectAdapter::new(coord.clone()));
+        // Neither side sets go_intent — both use the bare default.
+        let ta = WifiDirectTransport::with_group_config(Some(a.clone()), GroupConfig::default());
+        let tb = WifiDirectTransport::with_group_config(Some(b.clone()), GroupConfig::default());
+
+        // A's PeerId sorts higher than B's -> should_be_go elects A as GO.
+        ta.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0xFF; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+        tb.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0x01; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+
+        let a_sees_b: Vec<PeerInfo> =
+            ta.discover_peers(DiscoveryConfig::default()).await.unwrap().collect().await;
+        assert_eq!(a_sees_b.len(), 1);
+        let b_sees_a: Vec<PeerInfo> =
+            tb.discover_peers(DiscoveryConfig::default()).await.unwrap().collect().await;
+        assert_eq!(b_sees_a.len(), 1);
+
+        // The higher-PeerId side (A) creates; the lower (B) joins. Both must
+        // succeed — this is the exact scenario that used to deadlock both
+        // sides into the GC branch.
+        let a_link = ta.connect(&a_sees_b[0]).await;
+        assert!(a_link.is_ok(), "GO-elected side must form its group: {a_link:?}");
+        let b_link = tb.connect(&b_sees_a[0]).await;
+        assert!(b_link.is_ok(), "GC-elected side must join the now-live group: {b_link:?}");
+        assert_eq!(ta.state(), TransportState::Connected);
+        assert_eq!(tb.state(), TransportState::Connected);
+    }
+
+    /// HV-19: the election must be symmetric — swap which PeerId is higher and
+    /// the *other* physical device becomes GO. Guards against a fix that
+    /// happens to work only for one fixed ordering.
+    #[tokio::test]
+    async fn hv19_election_is_symmetric_by_peer_id() {
+        let coord = Arc::new(SimP2pCoordinator::new());
+        let a = Arc::new(SimulatedWifiDirectAdapter::new(coord.clone()));
+        let b = Arc::new(SimulatedWifiDirectAdapter::new(coord.clone()));
+        let ta = WifiDirectTransport::with_group_config(Some(a.clone()), GroupConfig::default());
+        let tb = WifiDirectTransport::with_group_config(Some(b.clone()), GroupConfig::default());
+
+        // This time B's PeerId sorts higher -> B must be the one to create.
+        ta.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0x01; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+        tb.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0xFF; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+
+        let a_sees_b: Vec<PeerInfo> =
+            ta.discover_peers(DiscoveryConfig::default()).await.unwrap().collect().await;
+        let b_sees_a: Vec<PeerInfo> =
+            tb.discover_peers(DiscoveryConfig::default()).await.unwrap().collect().await;
+
+        // B (higher id) creates first, then A (lower id, GC) joins.
+        let b_link = tb.connect(&b_sees_a[0]).await;
+        assert!(b_link.is_ok(), "B must be elected GO this time: {b_link:?}");
+        let a_link = ta.connect(&a_sees_b[0]).await;
+        assert!(a_link.is_ok(), "A must join B's group as GC: {a_link:?}");
+    }
+
+    /// HV-22: the OS tearing a group down (`groupFormed=false` on real
+    /// hardware; modeled here by the adapter itself losing the group, exactly
+    /// what Kotlin's `groupState.clear()` reaction produces) must not leave a
+    /// stale link in `self.links` forever. `poll_health` must notice the link
+    /// is no longer backed by a real group and tear it down; the *next*
+    /// `connect()` for that peer must then re-elect and re-form cleanly.
+    #[tokio::test]
+    async fn hv22_poll_health_clears_a_lost_group_and_reconnect_reforms_it() {
+        let coord = Arc::new(SimP2pCoordinator::new());
+        let a = Arc::new(SimulatedWifiDirectAdapter::new(coord.clone()));
+        let b = Arc::new(SimulatedWifiDirectAdapter::new(coord.clone()));
+        let ta = WifiDirectTransport::with_group_config(Some(a.clone()), GroupConfig::default());
+        let tb = WifiDirectTransport::with_group_config(Some(b.clone()), GroupConfig::default());
+
+        ta.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0xFF; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+        tb.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0x01; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: vec![],
+        })
+        .await
+        .unwrap();
+        let a_sees_b: Vec<PeerInfo> =
+            ta.discover_peers(DiscoveryConfig::default()).await.unwrap().collect().await;
+        let b_sees_a: Vec<PeerInfo> =
+            tb.discover_peers(DiscoveryConfig::default()).await.unwrap().collect().await;
+
+        // A is elected GO (higher PeerId); B joins.
+        ta.connect(&a_sees_b[0]).await.expect("A forms the group");
+        tb.connect(&b_sees_a[0]).await.expect("B joins the group");
+        assert_eq!(ta.state(), TransportState::Connected);
+
+        // The OS tears the group down out from under A (the adapter itself
+        // loses it — same effect as Kotlin's groupFormed=false handler).
+        a.remove_group().await.unwrap();
+
+        // Before poll_health: the stale link is still there (nothing has
+        // noticed yet) — this is the exact bug, made visible.
+        assert_eq!(
+            ta.links.lock().unwrap().len(),
+            1,
+            "sanity: the link is stale but not yet cleaned up"
+        );
+
+        ta.poll_health().await;
+
+        assert!(
+            ta.links.lock().unwrap().is_empty(),
+            "poll_health must clear a link no longer backed by a live group"
+        );
+        assert_ne!(
+            ta.state(),
+            TransportState::Connected,
+            "no live link left — must not still claim Connected"
+        );
+
+        // Re-connect must re-form cleanly (same election, same verdict).
+        let relink = ta.connect(&a_sees_b[0]).await;
+        assert!(relink.is_ok(), "re-connect after a cleared stale link must re-form: {relink:?}");
+        assert_eq!(ta.state(), TransportState::Connected);
     }
 
     /// WD-AC-2 — DNS-SD discovery: a subscribed transport matches every
