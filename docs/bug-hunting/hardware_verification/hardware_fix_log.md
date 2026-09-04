@@ -3250,7 +3250,7 @@ pollers so inbound frames TTL-expire — is **verified clear on hardware**: an
 inbound message sent while both phones idled screen-off for 8 min delivered, and
 the post-wake round-trip was 391 ms. The battery profile + the per-peer→
 transport-wide poller consolidation are a dense-mesh optimisation deferred to a
-3+-phone session with an EXP-003 battery rig. Commit <pending>.
+3+-phone session with an EXP-003 battery rig. Commit 56c0757.
 
 ---
 

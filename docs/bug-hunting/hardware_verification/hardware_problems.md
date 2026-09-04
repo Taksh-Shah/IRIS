@@ -1685,8 +1685,7 @@ transport.
 
 ### HV-28 — `DiscoveryManager` cadence, `poll_interval`, and the three per-transport pollers vs Doze / battery
 
-- **Fix status:** ✅ Delivery-under-Doze HW-verified · commit <pending> ·
-  2026-09-04 · Session 19 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13)
+- **Fix status:** ✅ Delivery-under-Doze HW-verified · commit 56c0757 · 2026-09-04 · Session 19 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13)
   · `test_doze_survival`: both phones screen-off + `battery unplug` + light Doze,
   a P2→P1 message sent *during* an 8-min idle window **delivered**, post-wake
   round-trip 391 ms, 0 `msg.delivery_failed`. The acute risk (Doze throttles the
