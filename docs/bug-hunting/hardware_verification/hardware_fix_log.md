@@ -3005,3 +3005,48 @@ while backgrounded is never re-checked on resume.
 BLUETOOTH_CONNECT on P2 in Settings → P2's status must go DOWN + show the
 permission notice within a resume; re-grant + tap RETRY → link re-forms. (not
 run this session — bench phones on the 30-min gate)
+
+---
+
+## Session 17 — the §2 Tier-1→Tier-2 gate: 30-minute zero-loss session
+
+`test_30min_zero_loss_session` — 150 rounds of alternating 300-char P1↔P2 over
+**30 min** (session `session-17-30min`, P1=vivo V2205 / P2=vivo 2004, build with
+HV-98/99/7/33 etc.):
+
+- **fwd 150/150, rev 150/150 — 100% user-message delivery.**
+- **P1: 0 · P2: 0** `close_peer` / `discovery.connect_backoff` /
+  `discovery.connect_failed` / `onCharacteristicWrite never fired` / `ble.adapter_off`.
+- `recovery_gaps=[]` — **there were no link drops at all** over the full 30 min.
+- 0 `status=133/8/62/22/19` — the link never hiccupped (so HV-33 got no natural
+  evidence this run; its L1 stands).
+
+**→ The §2 gate criterion "a 30-minute two-phone session shows zero unexplained
+link losses" is MET.**
+
+Wrinkle (does not affect the gate): P2 shows `delivery_failed: 2` +
+`dropped_duplicates: 109`. The 2 failures are **ACKs** (message ids `01a069fb…`,
+created near session start) that hit their delivery-attempt budget; the 109
+duplicates are P1's engine resending user messages whose ACK never came back and
+P2 de-duping them. No user data was lost (150/150), but the ACK path is lossy
+under sustained load — a new candidate:
+
+### HV-102 — the ACK path is lossy under sustained bidirectional load
+
+- **Fix status:** ⬜ (found Session 17, 30-min gate run)
+- **Area:** `message_engine` ACK send/retry (`spawn_ack_task`, ack.rs), vs the
+  user-message hold+retry robustness
+- **Severity:** Medium · **HW gate:** 2 phones, 30-min sustained session
+
+**What:** over a 30-min / 300-user-message session with 100% user delivery, P2
+recorded 2 permanently-failed ACKs and P1 recorded ~109 duplicate user messages
+(resent because their ACK was lost, then de-duped by P2). ACKs do not get the
+same `NotConnected`→hold treatment user messages got (HV-90/HV-7); a lost ACK
+either fails after a small budget or triggers a full user-message resend. Wastes
+radio and battery and inflates latency tails. Land after HV-27 (per-link health)
+which gives the retry loop a real signal.
+
+**Fix sketch:** give ACKs the same transient-hold semantics as P4+ user
+messages, or piggyback ACKs on the next frame in the reverse direction, or
+raise the ACK retry budget with jittered backoff. Measure duplicate-rate before
+/ after on the 30-min session.

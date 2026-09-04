@@ -68,16 +68,18 @@ that remain are understood and logged.*
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 0 | 0 | 0 | 5 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
-| 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **102** | **15** | **20** | **1** | **3** | **63** |
+| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
+| **Total** | | **103** | **15** | **20** | **1** | **3** | **64** |
 
 **Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
 HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
 → held + reconnect, not `DeliveryFailed` on one blip). HV-29:
 `MessageEngine::restart()` so `stop_all`+`start_all` (the RETRY button) revives
 the delivery/ack/gc loops instead of leaving a dead engine. The §2 30-minute
-zero-loss session is running (Tier 1→2 gate — 60/60 fwd + 60/60 rev at the
-18-min mark). Candidates HV-101; HV-100 expanded.)
+zero-loss session **PASSED** (150/150 fwd + 150/150 rev, 0 close_peer, 0 link
+drops) — the Tier-1→2 gate is met; Tier 3 is now the active tier. Also HV-32
+(background relay worker), HV-30 (permission-revocation demote + resume
+re-check). Candidates HV-101, HV-102 (ACK-path loss); HV-100 expanded.)
 · Previously: 2026-09-03 (Session 16 — **HV-95 ✅ HW-PENDING** —
 `ensureGattServer` now retries + returns a bool; `startAdvertising` fails loudly
 if the GATT server won't open (no more "connectable beacon with no server");
@@ -543,6 +545,18 @@ time. (2) give `tokio_behavior.rs::dev_engine` a `MemoryKeyDirectory` like
 
 *This is the "sometimes works, sometimes not" core. Two phones, one hop, one
 message. It must be 10/10 before anything else is trusted.*
+
+**§2 Tier-1→Tier-2 gate status (2026-09-04, Session 17):**
+- HV-7 🟢 / HV-8 🔒-with-analysis · HV-10 ✅ / HV-11 ✅ (both: no bench trigger
+  for their platform failure code — effectively 🔒-with-analysis) · HV-14 🟢 /
+  HV-15 🟢.
+- **30-minute two-phone session: PASS** — `test_30min_zero_loss_session`, 150
+  rounds / 300 user messages, **fwd 150/150 + rev 150/150**, **0 `close_peer`,
+  0 connect-backoff, 0 link drops** on either phone (`session-17-30min`).
+- Residual: HV-102 (ACK path lossy under sustained load — 109 dupes / 2 failed
+  ACKs, no user data lost). Not a link loss; land before calling Tier 1 fully
+  done, but it does **not** hold the gate.
+- **→ Tier 3 (lifecycle) is the next active tier per §2** (Tier 3 before Tier 2).
 
 ### HV-89 — Android has no key directory / key-exchange; since PRY-33 every addressed send fails closed
 

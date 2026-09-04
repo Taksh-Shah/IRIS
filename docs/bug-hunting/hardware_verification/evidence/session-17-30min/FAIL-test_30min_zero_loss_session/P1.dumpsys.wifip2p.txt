@@ -1,0 +1,179 @@
+WifiP2pService:
+ total records=6693
+ rec[0]: time=09-04 07:07:10.089 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[1]: time=09-04 07:07:10.598 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[2]: time=09-04 07:07:11.108 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[3]: time=09-04 07:07:11.619 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[4]: time=09-04 07:07:12.130 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[5]: time=09-04 07:07:42.206 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[6]: time=09-04 07:07:42.718 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[7]: time=09-04 07:07:43.228 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[8]: time=09-04 07:07:43.738 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[9]: time=09-04 07:07:44.248 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[10]: time=09-04 07:08:14.316 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[11]: time=09-04 07:08:14.828 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[12]: time=09-04 07:08:15.340 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[13]: time=09-04 07:08:15.852 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[14]: time=09-04 07:08:16.361 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[15]: time=09-04 07:08:46.492 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[16]: time=09-04 07:08:47.001 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[17]: time=09-04 07:08:47.512 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[18]: time=09-04 07:08:48.023 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[19]: time=09-04 07:08:48.532 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[20]: time=09-04 07:09:18.603 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[21]: time=09-04 07:09:19.110 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[22]: time=09-04 07:09:19.618 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[23]: time=09-04 07:09:20.128 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[24]: time=09-04 07:09:20.638 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[25]: time=09-04 07:09:50.714 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[26]: time=09-04 07:09:51.223 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[27]: time=09-04 07:09:51.733 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[28]: time=09-04 07:09:52.243 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[29]: time=09-04 07:09:52.753 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[30]: time=09-04 07:10:22.810 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[31]: time=09-04 07:10:23.326 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[32]: time=09-04 07:10:23.835 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[33]: time=09-04 07:10:24.344 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[34]: time=09-04 07:10:24.854 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[35]: time=09-04 07:10:54.940 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[36]: time=09-04 07:10:55.449 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[37]: time=09-04 07:10:55.957 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[38]: time=09-04 07:10:56.468 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[39]: time=09-04 07:10:56.978 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[40]: time=09-04 07:11:27.134 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[41]: time=09-04 07:11:27.645 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[42]: time=09-04 07:11:28.157 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[43]: time=09-04 07:11:28.670 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[44]: time=09-04 07:11:29.180 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[45]: time=09-04 07:11:59.254 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[46]: time=09-04 07:11:59.762 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[47]: time=09-04 07:12:00.274 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[48]: time=09-04 07:12:00.785 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[49]: time=09-04 07:12:01.297 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[50]: time=09-04 07:12:31.374 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[51]: time=09-04 07:12:31.883 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[52]: time=09-04 07:12:32.393 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[53]: time=09-04 07:12:32.908 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[54]: time=09-04 07:12:33.417 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[55]: time=09-04 07:13:03.484 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[56]: time=09-04 07:13:03.995 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[57]: time=09-04 07:13:04.504 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[58]: time=09-04 07:13:05.015 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[59]: time=09-04 07:13:05.525 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[60]: time=09-04 07:13:35.613 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[61]: time=09-04 07:13:36.121 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[62]: time=09-04 07:13:36.630 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[63]: time=09-04 07:13:37.139 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[64]: time=09-04 07:13:37.647 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[65]: time=09-04 07:14:07.776 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[66]: time=09-04 07:14:08.285 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[67]: time=09-04 07:14:08.796 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[68]: time=09-04 07:14:09.307 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[69]: time=09-04 07:14:09.817 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[70]: time=09-04 07:14:39.884 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[71]: time=09-04 07:14:40.395 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[72]: time=09-04 07:14:40.912 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[73]: time=09-04 07:14:41.421 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[74]: time=09-04 07:14:41.930 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[75]: time=09-04 07:15:12.008 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[76]: time=09-04 07:15:12.519 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[77]: time=09-04 07:15:13.029 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[78]: time=09-04 07:15:13.541 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[79]: time=09-04 07:15:14.050 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.ADD_SERVICE_REQUEST sender=org.iris.mesh(10406)
+ rec[80]: time=09-04 07:15:25.320 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[81]: time=09-04 07:15:25.828 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[82]: time=09-04 07:15:26.336 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[83]: time=09-04 07:15:26.846 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[84]: time=09-04 07:15:27.357 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[85]: time=09-04 07:15:27.382 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_LOCAL_SERVICES sender=org.iris.mesh(10406)
+ rec[86]: time=09-04 07:15:27.891 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_LOCAL_SERVICES sender=org.iris.mesh(10406)
+ rec[87]: time=09-04 07:15:28.399 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_LOCAL_SERVICES sender=org.iris.mesh(10406)
+ rec[88]: time=09-04 07:15:28.910 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_LOCAL_SERVICES sender=org.iris.mesh(10406)
+ rec[89]: time=09-04 07:15:29.419 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_LOCAL_SERVICES sender=org.iris.mesh(10406)
+ rec[90]: time=09-04 07:15:29.426 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_SERVICE_REQUESTS sender=org.iris.mesh(10406)
+ rec[91]: time=09-04 07:15:29.936 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_SERVICE_REQUESTS sender=org.iris.mesh(10406)
+ rec[92]: time=09-04 07:15:30.444 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_SERVICE_REQUESTS sender=org.iris.mesh(10406)
+ rec[93]: time=09-04 07:15:30.952 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_SERVICE_REQUESTS sender=org.iris.mesh(10406)
+ rec[94]: time=09-04 07:15:31.462 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.CLEAR_SERVICE_REQUESTS sender=org.iris.mesh(10406)
+ rec[95]: time=09-04 07:15:31.469 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[96]: time=09-04 07:15:31.979 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[97]: time=09-04 07:15:32.488 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[98]: time=09-04 07:15:33.004 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+ rec[99]: time=09-04 07:15:33.512 processed=DefaultState org=P2pDisabledState dest=<null> what=WifiP2pManager.REMOVE_GROUP sender=org.iris.mesh(10406)
+curState=P2pDisabledState
+mWifiP2pInfo groupFormed: false isGroupOwner: false groupOwnerAddress: null
+mGroup null
+mSavedPeerConfig 
+ address: 
+ wps:  setup: 0
+ BSSID: null
+ pin: null
+
+ groupOwnerIntent: -1
+ persist: -2
+ networkName: 
+ passphrase: <empty>
+ groupOwnerBand: 0
+ groupClientIpProvisioningMode: 0
+ joinExistingGroup: false
+mGroups 
+
+WifiP2pMetrics:
+mConnectionEvents:
+startTime=8-29 10:26:57.797, connectionType=LOCAL, wpsMethod=NA, durationTakenToConnectMillis=362, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=2412, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 10:36:6.367, connectionType=FRESH, wpsMethod=PBC, durationTakenToConnectMillis=46152, groupRole=UNKNOWN DURING CONNECT, tryCount=1, inviteToNeg=false, isCcWw=false, band=1, freq=0, sta freq=2412, uid=1000, connectivityLevelFailureCode=NONE
+startTime=8-29 10:57:34.454, connectionType=FRESH, wpsMethod=PBC, durationTakenToConnectMillis=15705, groupRole=UNKNOWN DURING CONNECT, tryCount=1, inviteToNeg=false, isCcWw=false, band=1, freq=0, sta freq=2412, uid=1000, connectivityLevelFailureCode=NONE
+startTime=8-29 11:7:11.158, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=229, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=2412, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 11:13:17.124, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=216, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=2412, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 11:32:20.813, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=268, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=2412, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 11:32:36.500, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=2, groupRole=UNKNOWN DURING CONNECT, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=2412, uid=1000, connectivityLevelFailureCode=NONE
+startTime=8-29 11:42:40.301, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=169, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=2412, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 11:49:38.884, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=194, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=0, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 12:12:43.976, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=203, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=0, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 12:16:8.894, connectionType=FRESH, wpsMethod=PBC, durationTakenToConnectMillis=120038, groupRole=UNKNOWN DURING CONNECT, tryCount=1, inviteToNeg=false, isCcWw=false, band=1, freq=0, sta freq=0, uid=1000, connectivityLevelFailureCode=TIMEOUT
+startTime=8-29 12:19:54.183, connectionType=FRESH, wpsMethod=PBC, durationTakenToConnectMillis=8322, groupRole=UNKNOWN DURING CONNECT, tryCount=1, inviteToNeg=false, isCcWw=false, band=1, freq=0, sta freq=2412, uid=1000, connectivityLevelFailureCode=NONE
+startTime=8-29 12:26:23.916, connectionType=FRESH, wpsMethod=PBC, durationTakenToConnectMillis=12474, groupRole=UNKNOWN DURING CONNECT, tryCount=1, inviteToNeg=false, isCcWw=false, band=1, freq=0, sta freq=0, uid=1000, connectivityLevelFailureCode=GROUP_REMOVED
+startTime=8-29 12:26:57.246, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=211, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=0, uid=10406, connectivityLevelFailureCode=NONE
+startTime=8-29 12:30:28.463, connectionType=REINVOKE, wpsMethod=NA, durationTakenToConnectMillis=699, groupRole=OWNER, tryCount=1, inviteToNeg=false, isCcWw=false, band=0, freq=0, sta freq=0, uid=10406, connectivityLevelFailureCode=NONE
+mGroupEvents:
+netId=1, startTime=08-29 10:26:58.159, channelFrequency=2412, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=483892, idleDurationMillis=483892
+netId=3, startTime=08-29 10:36:52.519, channelFrequency=2412, groupRole=GroupClient, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=1189260, idleDurationMillis=1189260
+netId=3, startTime=08-29 10:57:50.159, channelFrequency=2412, groupRole=GroupClient, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=432699, idleDurationMillis=432699
+netId=0, startTime=08-29 11:07:11.387, channelFrequency=2412, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=327653, idleDurationMillis=327653
+netId=0, startTime=08-29 11:13:17.340, channelFrequency=2412, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=1089350, idleDurationMillis=1089350
+netId=0, startTime=08-29 11:32:21.081, channelFrequency=2412, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=15421, idleDurationMillis=15421
+netId=0, startTime=08-29 11:32:36.502, channelFrequency=2412, groupRole=GroupOwner, numConnectedClients=1, numCumulativeClients=1, sessionDurationMillis=535357, idleDurationMillis=2968
+netId=0, startTime=08-29 11:42:40.470, channelFrequency=2412, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=381851, idleDurationMillis=381851
+netId=0, startTime=08-29 11:49:39.079, channelFrequency=5180, groupRole=GroupOwner, numConnectedClients=1, numCumulativeClients=1, sessionDurationMillis=1090987, idleDurationMillis=3294
+netId=0, startTime=08-29 12:12:44.179, channelFrequency=5180, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=147294, idleDurationMillis=147294
+netId=2, startTime=08-29 12:20:02.505, channelFrequency=5180, groupRole=GroupClient, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=345346, idleDurationMillis=345346
+netId=0, startTime=08-29 12:26:57.458, channelFrequency=5180, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=163909, idleDurationMillis=163909
+netId=0, startTime=08-29 12:30:29.162, channelFrequency=5180, groupRole=GroupOwner, numConnectedClients=0, numCumulativeClients=0, sessionDurationMillis=587788, idleDurationMillis=587788
+mWifiP2pStatsProto.numPersistentGroup=2
+mWifiP2pStatsProto.numTotalPeerScans=2
+mWifiP2pStatsProto.numTotalServiceScans=442
+VivoWifiP2pMetrics:
+FailedEventList:[]
+getConnectionFailedStep:unknown
+mLastVivoP2pConnectionEvent:VivoP2pConnectionEvent{connectionType=1, p2pConnectionConfig=
+ address: 
+ wps: null
+ groupOwnerIntent: -1
+ persist: -2
+ networkName: 
+ passphrase: <empty>
+ groupOwnerBand: 0
+ groupClientIpProvisioningMode: 0
+ joinExistingGroup: false, failureReason=0, isGroupOwner=1, fixOperation=0, fixResult=0, fixCounts=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], steps=[200, 251, 300, 303]}
+mAutonomousGroup true
+mJoinExistingGroup true
+mDiscoveryStarted false
+mListenStarted false
+mDetailedState IDLE
+mTemporarilyDisconnectedWifi false
+mServiceDiscReqId null
+mDeathDataByBinder {android.os.Binder@4696e4a=mUid=1000, deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda1@83f12f2, messenger=android.os.Messenger@3ccfd43, worksource=WorkSource{1000 android}, displayId=0, android.os.BinderProxy@249c322=mUid=10406, deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda1@ee31840, messenger=android.os.Messenger@3ccfd43, worksource=WorkSource{10406 org.iris.mesh}, displayId=0}
+mClientInfoList 2
+mActiveClients {10406=WorkSource{10406 org.iris.mesh}}
+mPeerAuthorizingTimestamp{}
+

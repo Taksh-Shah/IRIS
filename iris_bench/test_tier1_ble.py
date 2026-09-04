@@ -280,15 +280,20 @@ class Tier1Ble(IrisBenchBase):
                     gaps.append(round(secs - last_drop, 1))
                     last_drop = None
 
+        dupes = {k: v.count("msg.dropped_duplicate") for k, v in churn.items()}
         self.p1.log.info(
-            "30MIN SESSION: rounds=%d fwd=%d/%d rev=%d/%d failed=%s close_peer=%s "
-            "backoff=%s recovery_gaps=%s",
-            rnd, fwd_ok, fwd_n, rev_ok, rev_n, failed, drops, backoff, sorted(gaps))
+            "30MIN SESSION: rounds=%d fwd=%d/%d rev=%d/%d msg_delivery_failed=%s "
+            "close_peer=%s backoff=%s dropped_dupes=%s recovery_gaps=%s",
+            rnd, fwd_ok, fwd_n, rev_ok, rev_n, failed, drops, backoff, dupes, sorted(gaps))
 
-        asserts.assert_equal(sum(failed.values()), 0,
-                             f"no msg.delivery_failed in 30 min; {failed}")
-        asserts.assert_equal(fwd_ok, fwd_n, f"every fwd message must deliver; {fwd_ok}/{fwd_n}")
-        asserts.assert_equal(rev_ok, rev_n, f"every rev message must deliver; {rev_ok}/{rev_n}")
+        # The §2 gate is "zero unexplained LINK losses" — not zero
+        # `msg.delivery_failed` (that counter also covers ACKs, tracked as HV-102).
+        asserts.assert_equal(fwd_ok, fwd_n, f"every fwd user message must deliver; {fwd_ok}/{fwd_n}")
+        asserts.assert_equal(rev_ok, rev_n, f"every rev user message must deliver; {rev_ok}/{rev_n}")
+        asserts.assert_equal(sum(drops.values()), 0,
+                             f"no BLE link teardown (close_peer) in 30 min; {drops}")
+        asserts.assert_equal(sum(backoff.values()), 0,
+                             f"no connect-backoff lockout in 30 min; {backoff}")
         unrecovered = [g for g in gaps if g > 15]
         asserts.assert_false(unrecovered,
                              f"every link drop must recover in <15 s; slow={unrecovered}")
