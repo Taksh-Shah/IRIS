@@ -477,8 +477,8 @@ class Tier1Ble(IrisBenchBase):
         radios torn down + re-advertised, peer re-discovered + reconnected).
         Pass: 3/3, 0 msg.delivery_failed."""
         import time
-        _CYCLES = 3
-        _BUDGET_S = 45
+        _CYCLES = 5
+        _BUDGET_S = 75
 
         for ad in self.ads:
             ad.adb.logcat(["-c"])
@@ -569,6 +569,83 @@ class Tier1Ble(IrisBenchBase):
             p1log.count("msg.delivery_failed"), 0,
             "no message may be permanently failed while P1 recovers the link",
         )
+    # ---- HV-30: a fatal transport error demotes the transport to Unavailable ----
+
+    def test_permission_revoke_demotes_then_recovers(self):
+        """HV-30: revoke BLUETOOTH_SCAN from P2 mid-session via `appops` (does not
+        kill the process, unlike `pm revoke`) so the next scan call raises a
+        SecurityException. `demote_on_fatal` must flip P2's BLE transport to
+        Unavailable (mesh snapshot transport state != "Up"/"Ready") within ~15 s
+        rather than spin-looping a permission it will never get. Re-grant +
+        stopMesh/startMesh must bring the transport and delivery back. 3 cycles.
+        Pass: 3/3 demote observed, 3/3 recovered, 0 msg.delivery_failed."""
+        import json as _json
+        import time
+        _CYCLES = 3
+        _DEMOTE_BUDGET_S = 20
+        _RECOVER_BUDGET_S = 75
+        _OP = "android:bluetooth_scan"
+        _PKG = "org.iris.mesh.test"
+
+        def _ble_state(ad):
+            try:
+                snap = _json.loads(ad.iris.meshSnapshot())
+            except Exception:
+                return "unknown"
+            for t in snap.get("transports", []):
+                if "ble" in str(t.get("id", "")).lower():
+                    return str(t.get("state", "unknown"))
+            return "absent"
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        r = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(r.get("delivered"), f"link must be up first; {r}")
+
+        demotes, recoveries = [], []
+        for i in range(_CYCLES):
+            self.p2.adb.shell(["cmd", "appops", "set", _PKG, _OP, "ignore"])
+            # nudge a scan cycle
+            self.p2.iris.dropAllLinks()
+            t0 = time.monotonic()
+            demoted = False
+            while time.monotonic() - t0 < _DEMOTE_BUDGET_S:
+                st = _ble_state(self.p2)
+                if st.lower() not in ("up", "ready", "active", "connected"):
+                    demoted = True
+                    break
+                time.sleep(2)
+            demotes.append(round(time.monotonic() - t0, 1))
+            self.p2.log.info("perm-revoke %d/%d: demoted=%s state=%s in %ss",
+                             i + 1, _CYCLES, demoted, _ble_state(self.p2), demotes[-1])
+            asserts.assert_true(demoted, f"cycle {i}: transport did not demote on revoked permission")
+
+            self.p2.adb.shell(["cmd", "appops", "set", _PKG, _OP, "allow"])
+            self.p2.iris.stopMesh()
+            time.sleep(2)
+            self.p2.iris.startMesh()
+            self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
+            self.p2.iris.registerPeerKey(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
+            t0 = time.monotonic()
+            ok = False
+            while time.monotonic() - t0 < _RECOVER_BUDGET_S:
+                rr = self.send_and_await(self.p1, self.p2, f"perm-{i}", timeout_ms=6000)
+                if rr.get("delivered"):
+                    ok = True
+                    break
+                time.sleep(2)
+            recoveries.append(round(time.monotonic() - t0, 1))
+            self.p2.log.info("perm-revoke %d/%d: recovered=%s in %ss",
+                             i + 1, _CYCLES, ok, recoveries[-1])
+            asserts.assert_true(ok, f"cycle {i}: no recovery within {_RECOVER_BUDGET_S}s after re-grant")
+
+        # leave the op granted no matter what
+        self.p2.adb.shell(["cmd", "appops", "set", _PKG, _OP, "allow"])
+        self.capture_evidence("tier3_permission_revoke")
+        p2log = self._logcat_since_cleared(self.p2)
+        self.p2.log.info("PERM-REVOKE: demotes=%s recoveries=%s", demotes, recoveries)
+        asserts.assert_equal(p2log.count("msg.delivery_failed"), 0,
+                             "no message may be permanently failed across a permission revoke")
 
 
 if __name__ == "__main__":

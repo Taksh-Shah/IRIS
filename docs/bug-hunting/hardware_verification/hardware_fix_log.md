@@ -3344,3 +3344,163 @@ are already exchanged.
 **HW verification (when implemented):** cold-start both phones 10×, alternating
 power-on order; within T s exactly one group; messages both ways every time
 (`dumpsys wifip2p` shows one `groupFormed: true`, correct GO).
+
+---
+
+## Session 20 (autonomous) — owed Tier-0/1/3 bench runs; found + fixed HV-105
+
+**Devices:** P1 = vivo V2205 (Android 15, API 35) · P2 = vivo 2004 (Android 13,
+API 33). Both on USB, BT-cycled before every run.
+
+**Goal (operator):** run all the owed L3 bench runs to promote the ✅ HW-PENDING
+findings in Tier 0 → Tier 1 → Tier 3 to 🟢, close those tiers, *then* Tier 2.
+
+### Tier-1 evidence run (`session-20-tier1`)
+
+| test | result |
+|---|---|
+| `test_pingpong_300char_10x` | **PASS** — fwd 10/10, rev 10/10, 0 churn |
+| `test_sustained_session_recovers_fast` | **PASS** — 40/40 both ways, 0 recovery gaps |
+| `test_forced_drop_reconnect_10x` | **FAIL** — drop 0 never recovered (was 10/10 @ ~3.5 s on `81e17cd`, Session 13) |
+
+Steady-state BLE single-hop is rock-solid. → promoted **HV-12** (unified −95 RSSI
+floor) and **HV-16** (UUID wire agreement, transitively proven by the 10/10 GATT
+exchange) to 🟢. HV-97 (per-run evidence dir) also confirmed working every run.
+
+### Tier-3 owed runs (`session-20-tier3`) — both FAILED
+
+| test | result |
+|---|---|
+| `test_reconnect_mesh_cycle` (HV-29) | **FAIL** — cycle 0 stuck > 75 s (was 2/2 @ ~25–49 s, Session 19) |
+| `test_permission_revoke_demotes_then_recovers` (HV-30, new) | **FAIL** — stuck > 75 s after re-grant |
+
+Three teardown-then-reconnect tests failing in one session → stopped promoting,
+switched to root-cause (loop Phase I).
+
+### ❌→✅ HV-105 — `close_peer` evicting the MAC hint breaks all reconnect
+
+**Evidence (`session-20-tier3/FAIL-test_reconnect_mesh_cycle`):**
+- P2 `startMesh` → `onServiceAdded handle=51 uuid=01000000…` — GATT server back.
+- P1 (`5F:56:7F:82:A7:08`) re-links and its writes reach P2:
+  `onCharacteristicWriteRequest device=5F:56:7F:82:A7:08 matchesIris=true len=294`
+  repeats every ~8 s (the send retry cadence) for the full 75 s window.
+- **P2 emits no `msg.delivered`.** Every `send_and_await` → `{delivered:false}`.
+- P2's own client dial to P1 also fails each pass
+  (`GattFailure: disconnected before connect completed, status=11` →
+  `discovery.connect_failed … not connected to peer`), so neither the inbound
+  reassembly nor a fresh P2→P1 link completes.
+
+**Root cause:** `close_peer` (HV-13, commit `49413e5`) had been evicting
+`(P1-MAC → P1-candidate-PeerId)` from `known_addresses`. The inbound
+accept-poller (`ensure_accept_poller`) resolves an incoming MAC to a PeerId
+*only* through that map; with the hint gone and P2's own next scan not yet
+having re-seen P1's beacon, it falls back to `synthesize_unknown_peer_id(mac)`,
+the per-peer poller map goes inconsistent, and delivery to the engine never
+completes. Session 13's ~3.5 s recovery worked *because* the hint survived the
+drop. Steady-state was never affected (no `close_peer` fires), which is why
+Sessions 13–19's shorter runs missed it.
+
+**Fix (Phase D, minimal):** `close_peer` no longer touches `known_addresses`.
+HV-13's real bugs (unbounded growth, a MAC the OS later rotates) are already
+covered by the TTL (300 s) + cap (128) sweep in `discover_peers` — a stale hint
+self-expires in 5 min, and a candidate id is not a trust boundary (the inbound
+envelope is signed by its real sender). L1
+`hv13_known_addresses_is_bounded_by_ttl_and_cap` updated to assert the hint
+**survives** `close_peer`. `cargo test -p iris-core --lib` (hv13/27/30/33/48/95/97/98)
+8/8 green.
+
+**Landed:** `crates/iris-core/src/transport/ble.rs` (`close_peer`, the L1 test),
+`iris_bench/test_tier1_ble.py` (`test_reconnect_mesh_cycle` budget 45→75 s ×5,
+new `test_permission_revoke_demotes_then_recovers`). `.so` rebuilt
+(`cargo ndk -t arm64-v8a`), APKs reassembled. Commit `<pending>`.
+
+### Re-run after HV-105 fix
+
+| test | before HV-105 | after HV-105 |
+|---|---|---|
+| `test_forced_drop_reconnect_10x` | 0/10 (permanent stall) | **flaky 1–7/10**, recoveries 3.3–7.5 s |
+| `test_reconnect_mesh_cycle` (RETRY) | 0/5 | **0/5** |
+| `test_permission_revoke_demotes_then_recovers` | 0/3 | **0/3** |
+
+So HV-105 was real but not the whole story. Two more layers:
+
+### ❌→✅ HV-106 — accept-poller gated on `start_advertising` success
+
+`session-20-hv105/FAIL-test_reconnect_mesh_cycle` P2 logcat: after `startMesh`,
+`adapter.start_advertising()` transiently fails (`ble.advertise_watchdog`),
+`start_advertising` returns `Err` via `?` **before** reaching
+`self.ensure_accept_poller(adapter)` — so no accept-poller for the fresh engine.
+Fix: hoisted `ensure_accept_poller` above the fallible advertise call (idempotent
+guard makes it safe). L1 `hv106_accept_poller_runs_even_when_start_advertising_fails`.
+Rebuilt + re-ran → RETRY still 0/5.
+
+### ❌ HV-107 (🔒 BLOCKED) — inbound handle in `connections` blocks the outbound dial
+
+Added tracing to the accept-poller / inbound-poller / engine inbound path;
+`session-20-hv107-trace` P2 logcat shows the P1→P2 direction **works** end to
+end after a restart:
+```
+ble.accept_poller_started
+ble.accept_new_connection handle=6592571535507831764
+ble.inbound_drain handle=6592571535507831764 frames=1
+ble.inbound_delivered handle=6592571535507831764 receivers=1
+msg.delivered message_id=01a06b508cb07d80 priority=4 hops=0
+```
+The break is the **reply/ACK direction**. The accept-poller also runs
+`connections.entry(peer).or_insert((accepted.handle, …))` where `accepted.handle`
+is a peripheral-role key (`deviceHash(MAC)`), not a client handle. Then:
+1. P2 discovery: `connections` has the peer → `discovery.connect_ok` no-op → P2
+   never dials P1 as a client.
+2. P2 engine ACK send → `send()` resolves that entry →
+   `gatt_write(deviceHash(MAC))` → not in the client `gattHandles` map →
+   `NotConnected` (`msg.transport_send_failed: not connected to peer`;
+   `connectGatt … status=11` on the later real dial attempts).
+3. P1's `awaitDelivered` never gets the ACK → `send_and_await` times out even
+   though P2 received the message.
+
+The HW-9 comment on that `or_insert` assumes "a `connect()` inserts a real value
+first" — true on cold symmetric bring-up, **false when one side keeps a live
+inbound link across the other's restart** (the OEM GATT server never fires a
+disconnect — HV-93/94).
+
+**3 attempts spent (HV-105 revert, HV-106 hoist, full instrumentation) →
+stopping per loop Phase I.** HV-107 needs a design change (separate
+inbound-handle map, or make `connect()`/`send()` ignore a receive-only entry and
+still dial). Marked 🔒. **HV-29 → 🔒 (blocked on HV-107). Tier-3 → Tier-2 gate
+is NOT met. Tier 2 not started.**
+
+**Landed this session:** `crates/iris-core/src/transport/ble.rs` — HV-105
+(`close_peer` no longer evicts `known_addresses`), HV-106 (`ensure_accept_poller`
+hoisted), inbound-path tracing (`ble.accept_poller_started` /
+`ble.accept_new_connection` / `ble.inbound_drain` / `ble.inbound_delivered` /
+`ble.inbound_no_subscriber` / `ble.inbound_partial` / `ble.inbound_malformed`),
+L1 tests `hv106_*` + `hv13_*` rewrite.
+`iris_bench/test_tier1_ble.py` — `test_reconnect_mesh_cycle` 45→75 s ×5, new
+`test_permission_revoke_demotes_then_recovers`. `.so` + APK rebuilt, both phones.
+
+**Promoted to 🟢 (steady-state, unaffected by the reconnect cluster):** HV-12
+(unified −95 RSSI floor — pingpong 10/10 + sustained 40/40), HV-16 (UUID wire
+agreement — transitively proven by the 10/10 GATT exchange).
+
+**Owed when HV-107 is fixed:** forced-drop 10/10 < 15 s, RETRY 5/5, permission
+3/3 → then Tier-1→2 + Tier-3→2 gates met → Tier 2 (HV-19/20/22, Phase-R note
+already written in Session 19).
+
+### Session 20 closeout
+
+- **Tier 0:** effectively closed — every ✅ is inherently CI/host-only (HV-1/4/5/
+  81/82/85/87: build/doc/sim fixes with no hardware scenario); 🟢: HV-2/3/6/84/
+  86/88; 🔒 HV-83 (satellite, post-v1); 🟡 HV-89 (interim key-dir); ⬜ HV-100
+  (flaky-test investigation, not a bench run).
+- **Tier 1:** 10 🟢, HV-10/11/95/97/99-partial at ✅ ceiling (no reproducible
+  2-phone trigger, documented per finding), HV-13/105/106 ✅ HW-pending, HV-15
+  🟡, HV-8 🔒, HV-96 🔬, HV-9/17/18 ⬜ (RF-noise / RPA / headset — environment
+  gated). **HV-107 🔒 is the one hard blocker.**
+- **Tier 3:** HV-28 🟢 (Doze, Session 19). HV-27/32/33 → ✅ ceiling (L1/L2 done,
+  no isolated 2-phone trigger — same rationale as HV-10/11). HV-29/30 🔒 on
+  HV-107. HV-31 🔒 on HV-99 (speed). HV-34 needs the operator's bonding
+  decision. HV-101/HV-104 candidates.
+- **Verdict:** Tier 3 cannot be closed this session. **HV-107 is a genuine BLE
+  reconnect regression that needs a focused session** (inbound/outbound GATT
+  handle separation). Everything else in Tiers 0/1/3 is either 🟢 or 🔒/⬜ with a
+  written reason. Not proceeding to Tier 2.

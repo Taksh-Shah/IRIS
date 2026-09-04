@@ -1027,15 +1027,23 @@ impl BleTransport {
                 let mine = adapter.drain_gatt_writes(handle);
                 if !mine.is_empty() {
                     last_activity = std::time::Instant::now();
+                    tracing::debug!(
+                        event = "ble.inbound_drain",
+                        handle = handle.0,
+                        frames = mine.len(),
+                        "inbound poller drained frames"
+                    );
                 }
                 for w in mine {
                     // Reject frames addressed to another characteristic.
                     if w.char_uuid != IRIS_WRITE_CHARACTERISTIC {
+                        tracing::debug!(event = "ble.inbound_wrong_char", handle = handle.0, "frame for another characteristic dropped");
                         continue;
                     }
                     match recon.push(&w.data, std::time::Instant::now()) {
                         Ok(Some(payload)) => {
                             // BLE-16: count frames dropped due to no subscriber.
+                            let n = incoming.receiver_count();
                             if incoming.send(IncomingMessage {
                                 peer_id,
                                 transport_id: tid.0.clone(),
@@ -1043,10 +1051,17 @@ impl BleTransport {
                                 received_at: std::time::Instant::now(),
                             }).is_err() {
                                 dropped_inbound.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                tracing::warn!(event = "ble.inbound_no_subscriber", handle = handle.0, receivers = n, "reassembled message dropped — no subscriber");
+                            } else {
+                                tracing::debug!(event = "ble.inbound_delivered", handle = handle.0, receivers = n, "reassembled message pushed to engine");
                             }
                         }
-                        Ok(None) => {} // awaiting more chunks
-                        Err(_) => {}   // malformed frame dropped (adversarial-safe)
+                        Ok(None) => {
+                            tracing::debug!(event = "ble.inbound_partial", handle = handle.0, "frame accepted, awaiting more");
+                        }
+                        Err(_) => {
+                            tracing::debug!(event = "ble.inbound_malformed", handle = handle.0, "frame rejected by reassembler");
+                        }
                     }
                 }
             }
@@ -1079,12 +1094,18 @@ impl BleTransport {
         // guards against a duplicate poller for a *still-live* connection.
         let spawned = self.accept_spawned.clone();
         let task = tokio::spawn(async move {
+            tracing::debug!(event = "ble.accept_poller_started", "accept-poller task running");
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 for accepted in adapter.accepted_connections() {
                     if !spawned.lock().unwrap_or_else(|p| p.into_inner()).insert(accepted.handle) {
                         continue;
                     }
+                    tracing::debug!(
+                        event = "ble.accept_new_connection",
+                        handle = accepted.handle.0,
+                        "accept-poller spawning inbound reassembly poller for a remote central"
+                    );
                     let peer_id = known_addresses
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
@@ -1174,12 +1195,19 @@ impl BleTransport {
         // gets reused on the next connect), only for not growing forever
         // across a long-lived node's peer churn.
         self.connect_locks.lock().unwrap_or_else(|p| p.into_inner()).remove(peer);
-        // HV-13: drop this peer's MAC→candidate hints too — the link is gone
-        // and the MAC may be re-assigned before we re-discover the peer.
-        self.known_addresses
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .retain(|_, (pid, _)| pid != peer);
+        // HV-105: do NOT evict this peer's MAC→candidate hint here. The inbound
+        // accept-poller (`ensure_accept_poller`) resolves an incoming MAC to its
+        // real candidate PeerId *through* `known_addresses`; if a transient drop
+        // (forced link loss, peer RETRY / stopMesh+startMesh) evicts the hint
+        // and the peer then re-links to our GATT server before our own next
+        // scan re-sees its beacon, the poller falls back to a synthesized peer
+        // id and the reconnected inbound frames never reassemble to a delivery.
+        // HV-13's actual bug (unbounded growth + a MAC the OS later rotates) is
+        // fully covered by the TTL (300 s) + cap (128) sweep in `discover_peers`
+        // — a rotated MAC's stale hint expires on its own within 5 min. Session
+        // 13's forced-drop recovery was ~3.5 s *because* this hint survived the
+        // drop; the eager eviction added in 49413e5 regressed every
+        // teardown-then-reconnect path to a permanent stall (Session 20).
         // HV-27: forget this link's activity timestamp.
         self.link_activity
             .lock()
@@ -1584,6 +1612,17 @@ impl Transport for BleTransport {
 
     async fn start_advertising(&self, info: NodeAdvertisement) -> Result<(), TransportError> {
         let adapter = self.adapter()?;
+        // HV-106: start accepting inbound connections BEFORE the fallible
+        // `adapter.start_advertising()` below. A peer that is already connected
+        // to our GATT server (common after our own `stopMesh`/`startMesh` — the
+        // OEM server rarely fires a disconnect, so the remote central keeps its
+        // link and keeps writing) must keep being serviced even if re-advertising
+        // transiently fails. Gating the accept-poller on advertising success
+        // meant that after a RETRY the inbound half of the link went permanently
+        // dead: writes reached `onCharacteristicWriteRequest` but nothing drained
+        // them. Idempotent — the guard in `ensure_accept_poller` no-ops a second
+        // call.
+        self.ensure_accept_poller(adapter.clone());
         // HV-31: keep it so `discover_peers` can re-advertise after a BT toggle.
         *self.last_advertisement.lock().unwrap_or_else(|p| p.into_inner()) = Some(info.clone());
         // Re-announcement (e.g. after identity/key rotation) must stop any prior
@@ -1626,10 +1665,8 @@ impl Transport for BleTransport {
             })
             .map_err(|e| self.demote_on_fatal(to_transport_err(e)))?;
         *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = Some(handle);
-        // HW-9: becoming dialable is the natural point to also start
-        // accepting — idempotent, so re-announcement (key rotation etc.)
-        // never spawns a second accept-poller alongside the first.
-        self.ensure_accept_poller(adapter);
+        // HV-106: the accept-poller was already ensured above, before the
+        // fallible advertise call — nothing to do here.
         // GAP-3: if a previous shutdown() left the transport Unavailable, recover
         // to Available so a stop→start cycle re-enters manager selection.
         // The state never goes above Unavailable on the bring-up path, so this
@@ -2616,10 +2653,36 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn hv13_known_addresses_is_bounded_and_evicted_on_close() {
-        // HV-13: the MAC→candidate hint map used to grow unbounded and keep a
-        // stale mapping after the peer's link dropped (its MAC may be
-        // re-assigned before re-discovery).
+    async fn hv106_accept_poller_runs_even_when_start_advertising_fails() {
+        // HV-106: a peer already connected to our GATT server (it kept its link
+        // across our stopMesh/startMesh — the OEM server rarely fires a
+        // disconnect) must keep being serviced even if our own re-advertise
+        // transiently fails. The accept-poller must NOT be gated on the fallible
+        // `adapter.start_advertising()` call.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        adapter.fail_next_advertise(1);
+        let t = BleTransport::new(Some(adapter.clone()));
+        let adv = NodeAdvertisement {
+            peer_id: PeerId([71u8; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        };
+        assert!(t.start_advertising(adv).await.is_err(), "advertise leg fails");
+        assert!(t.adv_handle.lock().unwrap().is_none(), "no advertise handle");
+        assert!(
+            t.accept_poller.lock().unwrap().is_some(),
+            "the inbound accept-poller must be running regardless of the advertise failure",
+        );
+    }
+
+    #[tokio::test]
+    async fn hv13_known_addresses_is_bounded_by_ttl_and_cap() {
+        // HV-13: the MAC→candidate hint map used to grow unbounded. The cap
+        // (128) + TTL (300 s) sweep in `discover_peers` bounds it.
+        // HV-105: `close_peer` must NOT evict the hint — the inbound
+        // accept-poller resolves a re-linking peer's MAC through it, and a
+        // transient drop must not permanently break reassembly.
         let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
         let t = BleTransport::new(Some(adapter.clone()));
         let mut caps = CapabilityBits::empty();
@@ -2652,10 +2715,12 @@ mod tests {
         let candidate = DiscoveryBeacon { capabilities: caps, peer_short: short, freshness_minutes: 0 }
             .candidate_peer_id();
         assert!(t.known_addresses.lock().unwrap().values().any(|(p, _)| *p == candidate));
+        // HV-105: the hint SURVIVES close_peer so a re-linking peer still
+        // resolves to its real candidate id (not a synthesized one).
         t.close_peer(&candidate, adapter.clone(), None);
         assert!(
-            !t.known_addresses.lock().unwrap().values().any(|(p, _)| *p == candidate),
-            "close_peer must drop the peer's MAC hint"
+            t.known_addresses.lock().unwrap().values().any(|(p, _)| *p == candidate),
+            "close_peer must NOT drop the MAC hint (HV-105) — the accept-poller needs it across a transient drop"
         );
     }
 
