@@ -3211,3 +3211,33 @@ Status: ✅ HW-PENDING.
   input**: require BLE bonding for contacts, or keep MAC fully decoupled?). The
   ~22 ✅ HW-PENDING findings across Sessions 14–18 each owe one targeted bench
   run of their specific trigger. HV-96 stays 🔒.
+
+---
+
+## Session 19 (autonomous) — HV-28 (cadence / pollers vs Doze)
+
+**Phase R.** The at-rest wakeup sources: `MessageEngine` delivery loop every
+`poll_interval`; one BLE inbound poller per connected peer (GAP-12 already gave
+it a 50 ms-active / 500 ms-idle split keyed on recent frames); the BLE
+accept-poller (500 ms); Wi-Fi Direct poller (500 ms); the discovery scan loop
+(~30 s linked, + the HV-99 5 s `poll_health` tick); a 15-min WorkManager relay
+drain (HV-32-gated).
+
+`base.py` already `dumpsys deviceidle whitelist +org.iris.mesh` (battery-opt
+exemption), and `IrisBleService` is a `connectedDevice` FGS — so under Doze the
+CPU stays available to the pollers. developer.android.com Doze: a
+battery-optimisation-exempt foreground service is **not** subject to the
+network-access / wakelock deferral that hits background apps; the risk is
+therefore battery cost, not stalled delivery. On a 2-node bench that is 1
+inbound poller at 500 ms idle — negligible. The GAP-12 comment's real target
+(8 peers × 50 ms = 160 wakeups/s) needs a dense mesh + a battery rig to justify
+the consolidation into one transport-wide poller (Wi-Fi Aware already did this).
+
+**Phase D.** No code change this session — the acute risk (Doze stalls
+delivery) is what the bench test checks; the battery/consolidation work is a
+dense-mesh optimisation deferred to a 3+-phone session with EXP-003 measurement.
+
+**Phase T.** `test_doze_survival` — both phones screen-off, `dumpsys deviceidle
+force-idle` (deep Doze), a P2→P1 message sent *during* Doze, ~10 min wait, wake,
+verify it delivered + a post-wake message delivers + 0 `msg.delivery_failed`.
+(running)
