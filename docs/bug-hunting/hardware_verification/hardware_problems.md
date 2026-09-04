@@ -71,12 +71,13 @@ that remain are understood and logged.*
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
 | **Total** | | **102** | **15** | **18** | **1** | **3** | **65** |
 
-**Last updated:** 2026-09-03 (Session 17 � **HV-33 + HV-29 ✅ HW-PENDING**
-(GATT status classification; `MessageEngine::restart()` so the RETRY button
-revives the engine). — Android GATT
-status codes now classified (`133`/`8`/`62`/`22`/`19` transient → held +
-reconnect, not `DeliveryFailed` on one blip); the §2 30-minute zero-loss
-session is running (Tier 1→2 gate). Candidates HV-101 (autoConnect reconnect).)
+**Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
+HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
+→ held + reconnect, not `DeliveryFailed` on one blip). HV-29:
+`MessageEngine::restart()` so `stop_all`+`start_all` (the RETRY button) revives
+the delivery/ack/gc loops instead of leaving a dead engine. The §2 30-minute
+zero-loss session is running (Tier 1→2 gate — 60/60 fwd + 60/60 rev at the
+18-min mark). Candidates HV-101; HV-100 expanded.)
 · Previously: 2026-09-03 (Session 16 — **HV-95 ✅ HW-PENDING** —
 `ensureGattServer` now retries + returns a bool; `startAdvertising` fails loudly
 if the GATT server won't open (no more "connectable beacon with no server");
