@@ -456,6 +456,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 serviceDiscoveryRetries.remove(gatt)
                 negotiatedMtu.remove(gatt)
                 gattWriteFailures.remove(gatt)
+                // HV-33: fail any in-flight write on this connection now, with
+                // the numeric GATT status, instead of letting it burn the full
+                // GATT_WRITE_TIMEOUT_MS. The core classifies the code (133/8/62/
+                // 22/19 → transient hold + reconnect; else Protocol).
+                writeCompletion.remove(gatt)
+                    ?.completeExceptionally(GattFailure("gatt write failed status=$status (link dropped)"))
                 // BLE-2: a disconnect before onServicesDiscovered ever ran
                 // means the connect attempt failed outright (refused, out of
                 // range, ACL timeout, ...) — surface that to connectGatt()'s

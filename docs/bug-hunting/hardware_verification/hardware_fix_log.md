@@ -2842,3 +2842,55 @@ HV-95 -> ✅ HW-PENDING. Commit 5939a91.
   execution (not `--test-threads=1`-guarded). Low priority, not blocking, but
   it undermines "green tree after every commit". Investigate: run the suite
   10× under `--test-threads=1` vs default; bisect the offending pair.
+
+---
+
+## Session 17 (autonomous) — HV-33 (opaque GATT status codes) + the §2 30-min gate
+
+### The 30-minute zero-loss session (§2 Tier-1→Tier-2 gate)
+`iris_bench test_30min_zero_loss_session` — new: alternating 300-char P1↔P2
+every ~12 s for 30 min (~150 rounds); asserts 100% delivery each way, 0
+`msg.delivery_failed`, every `close_peer` recovers < 15 s. (running)
+
+### HV-33 — GATT `133` and other opaque failure codes: no classification
+
+**Phase R.** `onCharacteristicWrite` / `onConnectionStateChange` encode
+`status=<n>`; the Rust `to_transport_err` mapped **any** `GattFailure` that
+wasn't a known "link not ready" string to `Protocol` (terminal) → `send()`'s
+per-frame loop treats it as non-retryable → `close_peer` + `DeliveryFailed` on
+the first blip. Android GATT status codes (sources:
+`android.bluetooth.BluetoothGatt`, AOSP `gatt_api.h`, arstagaev/BLE-Status-Codes,
+Martijn van Welie "Making Android BLE work pt.2", crickshaw.dev "Surviving
+GATT_ERROR 133", dev.to/ble_advertiser):
+- `133` (0x85 GATT_ERROR) — catch-all, **usually transient** (HCI cmd failed /
+  link dropped mid-op / degraded controller); the canonical "just retry".
+- `8` (0x08 GATT_CONN_TIMEOUT) — supervision timeout: peer restarted / range.
+- `62` (0x3E CONN_FAIL_ESTABLISH) — could not establish.
+- `22` (0x16 CONN_TERMINATE_LOCAL_HOST) — Android tore it down.
+- `19` (0x13 CONN_TERMINATE_PEER_USER) — peer disconnected gracefully.
+- `257` (0x101 GATT_FAILURE) + others — genuine, stay `Protocol`.
+bitchat / Nordic / RxAndroidBle all treat 133 (and the CONN_* family) as
+retryable, close the handle, never reuse the `BluetoothGatt`.
+
+**Phase D.** `gatt_status_is_transient(msg)` parses the `status=<n>` token;
+folded into `gatt_failure_is_link_not_ready` so 133/8/62/22/19 map to
+`NotConnected` (retryable + held — HV-90/HV-7: 3× frame retry, then `close_peer`
++ hold the message + reconnect, never `DeliveryFailed` on one blip). Kotlin
+`onConnectionStateChange(DISCONNECTED)` now also fails the in-flight
+`writeCompletion` with the numeric status immediately (was: burn the full 12 s
+`GATT_WRITE_TIMEOUT_MS`). L1 `hv33_transient_gatt_status_codes_are_held_not_failed`.
+iris-core **787**, workspace builds.
+`autoConnect=true`-on-retry (bleadvertiser "Android 15 broke reconnection
+speed") is a bigger behaviour change — **HV-101 candidate**, not this commit.
+
+**Phase T.** (rebuild + a sustained/ping-pong pass after the 30-min session —
+the natural link blips it produces are the 133/8 evidence)
+
+### HV-101 — `connectGatt(autoConnect=true)` on reconnect (Android 14+ faster path)
+
+- **Fix status:** ⬜ (candidate, Session 17). bleadvertiser "Android 15 Broke
+  BLE Reconnection Speed": since Android 14 a direct `autoConnect=false`
+  reconnect is throttled; `autoConnect=true` (background connect, no timeout)
+  reconnects markedly faster. IRIS uses `autoConnect=false` everywhere. Worth a
+  measured A/B on the reconnect path (distinct from the first connect, which
+  wants the fast direct attempt). Interacts with HV-99, HV-15, HV-34 (bonding).

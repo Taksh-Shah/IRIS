@@ -2018,6 +2018,40 @@ fn gatt_failure_is_link_not_ready(msg: &str) -> bool {
         // gatt connection" — that means the handle itself is wrong/gone and
         // retrying it is pointless; it must fail over, not hold.)
         || msg.contains("onCharacteristicWrite never fired")
+        // HV-33: classify the numeric Android GATT status the Kotlin adapter
+        // embeds as `status=<n>`. A `GattFailure` carrying one of the transient
+        // codes is a link that dropped or a controller that hiccuped, not a
+        // framing fault — hold + reconnect, do not `DeliveryFailed`.
+        || gatt_status_is_transient(msg)
+}
+
+/// HV-33: Android GATT status codes that mean "the link / controller had a
+/// transient problem — retry", as opposed to a genuine protocol/framing fault.
+/// Sources: `android.bluetooth.BluetoothGatt` + AOSP `gatt_api.h`;
+/// arstagaev/BLE-Status-Codes; Martijn van Welie "Making Android BLE work pt.2";
+/// crickshaw.dev "Surviving GATT_ERROR 133"; dev.to/ble_advertiser GATT-133.
+///   `133` (0x85 GATT_ERROR)          — catch-all, usually transient (HCI cmd
+///                                      failed / link dropped mid-op / degraded
+///                                      controller); the canonical "just retry".
+///   `8`   (0x08 GATT_CONN_TIMEOUT)   — link supervision timeout: peer restarted
+///                                      / out of range / lost — reconnect.
+///   `62`  (0x3E CONN_FAIL_ESTABLISH) — could not establish — retry.
+///   `22`  (0x16 CONN_TERMINATE_LOCAL_HOST) — Android tore it down; if we still
+///                                      want the peer, reconnect.
+///   `19`  (0x13 CONN_TERMINATE_PEER_USER)  — peer disconnected gracefully;
+///                                      normal, reconnect only if still
+///                                      discovered (the per-peer connect backoff
+///                                      keeps this from spinning).
+/// `257` (0x101 GATT_FAILURE) and anything else stay a `Protocol` fault.
+fn gatt_status_is_transient(msg: &str) -> bool {
+    let Some(rest) = msg.split("status=").nth(1) else { return false };
+    let code: i64 = rest
+        .trim_start()
+        .split(|c: char| !c.is_ascii_digit() && c != '-')
+        .next()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    matches!(code, 133 | 8 | 62 | 22 | 19)
 }
 
 /// Parse `"AA:BB:CC:DD:EE:FF"` into a `BleAddress`.
@@ -2102,6 +2136,34 @@ mod tests {
             to_transport_err(BleError::GattFailure("bad frame: truncated".into())),
             TransportError::Protocol(_)
         ));
+    }
+
+    #[test]
+    fn hv33_transient_gatt_status_codes_are_held_not_failed() {
+        // HV-33: 133 (GATT_ERROR), 8 (CONN_TIMEOUT), 62 (FAIL_ESTABLISH),
+        // 22 (LOCAL_HOST terminate), 19 (PEER_USER terminate) on a *write* are a
+        // dropped/hiccuping link — hold + reconnect. Before this they hit the
+        // `GattFailure(m) => Protocol(m)` arm and `send()` failed the message +
+        // tore the peer down on the first blip.
+        for code in [133, 8, 62, 22, 19] {
+            let m = format!("gatt write failed status={code}");
+            let e = to_transport_err(BleError::GattFailure(m.clone()));
+            assert_eq!(e, TransportError::NotConnected, "{m:?}");
+            assert!(e.is_retryable(), "{m:?} must be retryable");
+        }
+        // 257 (GATT_FAILURE) and unknown codes stay a Protocol fault.
+        for code in [257, 129, 1] {
+            assert!(
+                matches!(
+                    to_transport_err(BleError::GattFailure(format!("gatt write failed status={code}"))),
+                    TransportError::Protocol(_)
+                ),
+                "status={code} must stay Protocol"
+            );
+        }
+        // The parser only fires on a real `status=<n>` token.
+        assert!(!gatt_status_is_transient("bad frame: truncated"));
+        assert!(!gatt_status_is_transient("status=abc"));
     }
 
     #[tokio::test(start_paused = true)]
