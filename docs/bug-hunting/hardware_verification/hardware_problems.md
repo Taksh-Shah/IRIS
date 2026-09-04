@@ -62,14 +62,14 @@ that remain are understood and logged.*
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 3 | 0 | 1 | 5 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 4 | 0 | 1 | 4 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 0 | 0 | 0 | 5 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 16 | 0 | 0 | 0 | 0 | 16 |
-| **Total** | | **102** | **15** | **19** | **1** | **3** | **64** |
+| **Total** | | **102** | **15** | **20** | **1** | **3** | **63** |
 
 **Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
 HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
@@ -1715,9 +1715,19 @@ flow again.
 
 ### HV-30 — Permission revocation mid-session (BLUETOOTH_SCAN / NEARBY_WIFI_DEVICES)
 
-- **Fix status:** ⬜
-- **Area:** adapter `permitted { }` / `PermissionDenied` mapping, `MeshViewModel`
-  permission flow, `ConsoleScreen` PermissionNotice
+- **Fix status:** ✅ Fixed · HW-PENDING · commit 79866b5 · 2026-09-03 · Session
+  17 · `BleTransport::demote_on_fatal()` → `Unavailable` on
+  `PermissionDenied`/`RadioDisabled`/`HardwareUnavailable` from scan/advertise
+  (was: only `set_mtu` did) so `select_transports` drops the dark transport and
+  the UNAVAILABLE → `RetryNotice` path fires; `ConsoleScreen`
+  `LifecycleResumeEffect` re-reads permissions every resume so a Settings-revoke
+  surfaces the `PermissionNotice`. L1
+  `hv30_revoked_permission_marks_the_transport_unavailable_and_recovers`.
+  iris-core 789, `:app` Kotlin green. **HW-pending:** revoke-in-Settings bench
+  run (procedure in `hardware_fix_log.md`).
+- **Was:** ⬜
+- **Area:** `ble.rs::demote_on_fatal`, `ConsoleScreen` permission re-check,
+  `PermissionNotice`
 - **Severity:** Medium · **HW gate:** 2 phones, revoke in Settings mid-session
 
 **What:** the adapters map `SecurityException` → `PermissionDenied` (good), but the
