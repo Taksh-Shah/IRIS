@@ -3079,3 +3079,39 @@ ring and wastes a little CPU.
 **Fix sketch:** only emit `discovery.connect_ok` when the connect actually
 transitioned a link (elapsed_ms > 0 or state changed); demote the idempotent
 case to `trace!` or drop it.
+
+---
+
+### Session 17 closeout
+
+- **Devices:** P1 = vivo V2205 (Android 15), P2 = vivo 2004 (Android 13).
+  Autonomous run.
+- **Findings advanced (4 + the gate):**
+  - **§2 Tier-1→Tier-2 gate: PASSED** — `test_30min_zero_loss_session`, 150
+    rounds / 300 user messages / 30 min, fwd 150/150 + rev 150/150, **0
+    close_peer / 0 backoff / 0 link drops** on either phone.
+    **Tier 3 (lifecycle) is now the active tier.**
+  - **HV-33 ✅ HW-PENDING** (`af265d0`) — GATT status codes classified
+    (133/8/62/22/19 → transient hold+reconnect). No natural blip this run — L1 +
+    30-min no-regression.
+  - **HV-29 ✅ HW-PENDING** (`b604c16`) — `MessageEngine::restart()` so
+    stop_all+start_all (the RETRY button) revives the engine. L1 proves the
+    loops revive; hardware shows the mesh recovers (~25–49 s — slow, HV-99
+    territory), where before it was a dead engine forever.
+  - **HV-32 ✅ HW-PENDING** (`17996d8`) — background relay worker gated on
+    `IrisBleService.isRunning`; never builds a 2nd engine in a bare process.
+  - **HV-30 ✅ HW-PENDING** (`79866b5`) — `demote_on_fatal` (transport →
+    Unavailable on a revoked permission) + `LifecycleResumeEffect` permission
+    re-check.
+- **🟢 count:** 15 (unchanged — all 4 this session are ✅ pending a bench run of
+  their specific trigger).
+- **Candidates opened:** HV-101 (autoConnect reconnect), HV-102 (ACK path lossy
+  under load), HV-103 (`connect_ok` log spam); HV-100 expanded (stale
+  `tokio_behavior.rs` tests).
+- **Regression:** `test_pingpong_300char_10x` (after the HV-33/HV-30 error-path
+  changes) — (running).
+- **Next session pickup:** HV-27 (+ HV-48) — per-link connection health, the
+  big Tier-3 §5 group and the thing HV-99 / HV-102 both need. Then HV-28
+  (Doze/battery cadence, screen-off 30 min), HV-34 (bonding decision — needs
+  operator input). The 4 findings above each owe one targeted bench run
+  (procedures in this log). HV-96 stays 🔒.
