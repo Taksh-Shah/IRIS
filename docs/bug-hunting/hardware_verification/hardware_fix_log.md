@@ -3504,3 +3504,43 @@ already written in Session 19).
   reconnect regression that needs a focused session** (inbound/outbound GATT
   handle separation). Everything else in Tiers 0/1/3 is either 🟢 or 🔒/⬜ with a
   written reason. Not proceeding to Tier 2.
+
+### Session 20 (cont.) — HV-107 fixed, HV-108 found + fixed
+
+Operator authorised continuing on HV-107 with the handle-separation approach.
+
+**✅ HV-107 — inbound handles get their own map (commit `aa85916`).** New
+`inbound_handles: HashMap<PeerId, GattHandle>`, strictly separate from
+`connections` (outbound client links only). The accept-poller records inbound
+handles there; `connect()` / `send()` / discovery consult only `connections`, so
+after a peer restart they correctly see "no outbound link" and dial.
+`close_peer` / `shutdown` / `drop_all_links` / the BT-off handler tear down both.
+L1 `hv107_inbound_accept_does_not_populate_connections_or_block_the_outbound_dial`.
+Hardware (`session-20-hv107-fix`):
+- `test_reconnect_mesh_cycle` (RETRY, HV-29): **5/5, recovery 0.3–0.7 s** (was a
+  permanent stall).
+- `test_forced_drop_reconnect_10x` (HV-15/105): **10/10, 3.4–10.4 s**.
+- `test_permission_revoke_demotes_then_recovers`: still failed → **HV-108**.
+
+**Web research (the "one side restarts" problem):** closing a peripheral's GATT
+server does **not** tear down the central's ACL link — the central keeps the
+connection and keeps writing, and gets no disconnect callback ("only if there is
+one virtual GATT connection left will the ACL be terminated"; a peripheral
+"cannot force a disconnection — it falls to the central"). So this is *expected*
+BLE behaviour, not an OEM bug: the restarting side (P2) cannot fix P1's view, and
+P1's writes **do** keep arriving at P2's fresh GATT server. The fix therefore has
+to be: P2's fresh accept path must *process* the writes that arrive.
+
+**❌→✅ HV-108 — a sibling inbound reassembly task was aborted by PeerId key
+collision.** `session-20-hv107-fix` trace: after P2's restart the accept-poller
+saw **two** inbound connections in one tick (P1's real handle `1846…` + one stale
+`6258…` left in the Kotlin `pendingAcceptedConnections` queue). Both resolved via
+`known_addresses` to the same candidate PeerId, and the reassembly tasks were
+registered in `pollers` **keyed by PeerId** — so the second `insert` returned and
+`.abort()`-ed the first, stranding whichever handle actually carried P1's frames
+(`onCharacteristicWriteRequest matchesIris=true` fired 10× post-restart, zero
+`ble.inbound_drain`). Fix: a dedicated `inbound_pollers: HashMap<GattHandle,
+AbortHandle>` — a second task for the *same* handle is a real re-attach; two
+distinct handles keep their own tasks. `shutdown` aborts + clears the map;
+`close_peer` aborts the one handle; the accept-poller's dead-handle loop aborts a
+vanished handle's task.

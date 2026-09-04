@@ -1,0 +1,1308 @@
+--------- beginning of main
+09-04 14:47:57.986 W/logcat  ( 3340): type=1400 audit(0.0:370193): avc:  denied  { ioctl } for  path="socket:[68314674]" dev="sockfs" ino=68314674 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 14:47:57.990 W/logcat  ( 3340): type=1400 audit(0.0:370194): avc:  denied  { ioctl } for  path="socket:[68314674]" dev="sockfs" ino=68314674 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 14:47:57.990 W/logcat  ( 3340): type=1400 audit(0.0:370195): avc:  denied  { ioctl } for  path="socket:[68314674]" dev="sockfs" ino=68314674 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 14:47:57.990 W/logcat  ( 3340): type=1400 audit(0.0:370196): avc:  denied  { ioctl } for  path="socket:[68314674]" dev="sockfs" ino=68314674 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 14:47:58.515 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:47:58.515 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:47:59.088 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:47:59.090 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:47:59.091 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:de:82:da:0d:e0
+09-04 14:47:59.091 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:de:82:da:0d:e0
+09-04 14:48:00.244 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:00.245 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:00.346 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register d5f5a127-01c5-189a-4ae1-f4b060c4e4a4
+09-04 14:48:00.346 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:48:00.365 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=73:de:82:da:0d:e0 is_direct 1
+09-04 14:48:00.366 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=73:de:82:da:0d:e0, cl_supp_feat=0000, aware=1
+09-04 14:48:00.366 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:48:00.366 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:48:00.493 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:48:00.765 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:de:82:da:0d:e0
+09-04 14:48:00.766 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:48:00.766 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:48:00.767 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:48:00.767 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:00.768 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:00.768 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:00.768 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:01.021 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:01.024 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:48:01.024 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:01.025 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:01.027 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:DE:82:DA:0D:E0
+09-04 14:48:01.110 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:48:01.149 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=70:2c:b5:fd:5e:30, cl_supp_feat=0000, aware=1
+09-04 14:48:01.153 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:48:01.193 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:48:01.194 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:01.197 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:48:01.283 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:48:01.286 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:48:01.286 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:48:01.375 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:48:01.376 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.376 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:48:01.462 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:01.465 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:01.553 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:01.556 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.556 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:48:01.559 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:DE:82:DA:0D:E0 interval=6 latency=0 timeout=500 status=0
+09-04 14:48:01.573 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.573 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:48:01.593 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:01.609 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.609 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 14:48:01.624 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.624 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 14:48:01.638 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:01.641 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:01.653 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:01.669 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:01.683 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.684 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 14:48:01.697 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 14:48:01.698 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0030, e_handle=0xffff
+09-04 14:48:01.713 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.713 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0030, e_handle=0xffff
+09-04 14:48:01.728 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:01.732 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:01.744 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.744 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x0033, e_handle=0xffff
+09-04 14:48:01.758 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:01.759 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:48:01.780 I/bt_stack(12286): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest73:de:82:da:0d:e0 conn_id=0x000c
+09-04 14:48:01.780 I/bt_stack(12286): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 73:de:82:da:0d:e0
+09-04 14:48:01.780 I/bt_stack(12286): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:12 mtu:517 user mtu 517
+09-04 14:48:01.795 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-04 14:48:01.795 I/bt_stack(12286): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (73:de:82:da:0d:e0) MTU 517
+09-04 14:48:01.795 I/bt_stack(12286): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-04 14:48:01.821 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:01.848 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:48:01.913 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.005 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.104 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=6 latency=0 timeout=500 status=0
+09-04 14:48:02.108 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.122 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:02.136 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.151 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.166 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.167 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:02.181 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:02.193 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:DE:82:DA:0D:E0 interval=36 latency=0 timeout=500 status=0
+09-04 14:48:02.197 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.210 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.227 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.241 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.256 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:02.272 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.288 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.301 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:02.316 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:02.354 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 14:48:02.355 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (70:2c:b5:fd:5e:30), resulted MTU 517
+09-04 14:48:02.355 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 14:48:02.355 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 14:48:02.355 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 14:48:02.355 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=263
+09-04 14:48:02.356 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 14:48:02.356 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 14:48:02.356 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 14:48:02.356 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 14:48:02.361 D/BluetoothGattServer(11609): onMtuChanged() - device=70:2C:B5:FD:5E:30, mtu=517
+09-04 14:48:02.392 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 350, lcid = 4
+09-04 14:48:02.425 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=36 latency=0 timeout=500 status=0
+09-04 14:48:04.141 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:04.142 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:de:82:da:0d:e0
+09-04 14:48:04.145 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:de:82:da:0d:e0
+09-04 14:48:04.309 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:48:04.636 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:48:05.344 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:05.346 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6b:15:f9:5b:2e:82
+09-04 14:48:05.884 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:48:05.884 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.885 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.888 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:48:05.888 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.889 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.890 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:05.974 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:48:06.017 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:48:06.018 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:06.024 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:48:06.025 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.025 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.025 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.025 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.025 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.026 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.026 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.026 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:48:06.063 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:06.064 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:48:06.151 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:06.151 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:48:06.242 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:06.332 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:06.333 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:48:06.431 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:06.431 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:48:06.432 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:06.434 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:DE:82:DA:0D:E0 interval=6 latency=0 timeout=500 status=0
+09-04 14:48:06.450 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:06.464 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:06.465 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:48:06.574 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:DE:82:DA:0D:E0 interval=36 latency=0 timeout=500 status=0
+09-04 14:48:06.646 I/.android.gms.ui(17369): Explicit concurrent copying GC freed 112KB AllocSpace bytes, 0(0B) LOS objects, 29% free, 4788KB/6836KB, paused 235us,72us total 199.339ms
+09-04 14:48:07.292 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=4 cid=4:4
+09-04 14:48:07.293 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=70:2c:b5:fd:5e:30
+09-04 14:48:07.293 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0103 reason=0x0013
+09-04 14:48:07.293 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0104 reason=0x0013
+09-04 14:48:07.293 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0105 reason=0x0013
+09-04 14:48:07.294 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0107 reason=0x0013
+09-04 14:48:07.294 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0108 reason=0x0013
+09-04 14:48:07.294 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0109 reason=0x0013
+09-04 14:48:07.294 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x010b reason=0x0013
+09-04 14:48:07.294 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x010c reason=0x0013
+09-04 14:48:07.295 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:07.295 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:48:07.304 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 14:48:07.307 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 14:48:07.309 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 14:48:07.312 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 14:48:08.518 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:48:08.519 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:48:11.169 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:48:11.170 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.170 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.170 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.170 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.170 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.170 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.171 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.171 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.207 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.210 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:48:11.298 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:48:11.387 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:48:11.387 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:48:11.477 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.478 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:48:11.567 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:11.657 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.658 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:48:11.751 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.752 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:48:11.756 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:DE:82:DA:0D:E0 interval=6 latency=0 timeout=500 status=0
+09-04 14:48:11.772 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:48:11.785 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.786 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0xffff
+09-04 14:48:11.801 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.802 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0xffff
+09-04 14:48:11.818 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 64, lcid = 4
+09-04 14:48:11.839 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.839 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x002f, e_handle=0xffff
+09-04 14:48:11.854 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 14:48:11.869 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:48:11.869 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:48:12.001 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:DE:82:DA:0D:E0 interval=36 latency=0 timeout=500 status=0
+09-04 14:48:12.046 I/bt_stack(12286): [INFO:gatt_api.cc(1785)] GATT_Disconnect conn_id=0x000c
+09-04 14:48:12.047 I/bt_stack(12286): [INFO:bta_gattc_act.cc(804)] bta_gattc_closeLocal close event client_if: 0x0c, conn_id: 12, reason: 0
+09-04 14:48:12.047 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:48:12.047 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=73:de:82:da:0d:e0
+09-04 14:48:12.582 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:48:12.583 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:12.583 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:12.583 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:12.583 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:12.584 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:12.584 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:12.584 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73de82da0de0 for reading, error: No such file or directory
+09-04 14:48:13.624 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=5 cid=4:4
+09-04 14:48:13.624 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=73:de:82:da:0d:e0
+09-04 14:48:13.625 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:48:13.625 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:48:13.625 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:48:13.625 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:48:13.625 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:48:13.625 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:48:13.626 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:48:13.626 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:13.630 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:DE:82:DA:0D:E0
+09-04 14:48:13.631 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 14:48:13.636 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 14:48:13.637 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 14:48:13.639 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 14:48:18.520 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:48:18.522 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:48:20.813 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:20.815 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:22.831 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:22.831 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:23.977 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:23.979 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:26.280 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:26.282 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:28.533 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:48:28.535 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:48:29.548 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 63:d1:ca:0c:c6:a0
+09-04 14:48:29.548 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 63:d1:ca:0c:c6:a0
+09-04 14:48:30.563 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:30.564 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:31.713 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:31.714 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:31.925 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 9bbbe9d6-2f95-971a-4bdd-68a5d956ff1b
+09-04 14:48:31.925 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:48:31.939 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=6b:15:f9:5b:2e:82 is_direct 1
+09-04 14:48:31.939 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=6b:15:f9:5b:2e:82, cl_supp_feat=0000, aware=1
+09-04 14:48:31.940 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:48:31.940 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:48:32.527 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:32.528 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:32.577 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:48:32.818 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:32.819 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:33.106 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:33.106 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:33.235 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=70:2c:b5:fd:5e:30, cl_supp_feat=0000, aware=1
+09-04 14:48:33.237 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:48:33.279 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:48:33.280 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:48:33.370 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:48:33.460 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:48:33.548 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.639 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.728 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.779 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=6 latency=0 timeout=500 status=0
+09-04 14:48:33.779 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.795 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.810 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.827 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.847 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.863 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:33.877 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.899 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.914 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.928 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:33.943 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.959 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:33.974 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:34.012 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:34.027 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:34.042 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:34.057 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:34.071 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:48:34.086 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:48:34.124 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 14:48:34.125 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (70:2c:b5:fd:5e:30), resulted MTU 517
+09-04 14:48:34.125 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 14:48:34.125 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 14:48:34.125 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 14:48:34.125 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=263
+09-04 14:48:34.126 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 14:48:34.126 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 14:48:34.126 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 14:48:34.126 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 14:48:34.132 D/BluetoothGattServer(11609): onMtuChanged() - device=70:2C:B5:FD:5E:30, mtu=517
+09-04 14:48:34.217 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=36 latency=0 timeout=500 status=0
+09-04 14:48:34.240 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:34.240 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:35.098 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:35.098 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:35.999 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:36.000 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:36.572 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:36.572 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:37.430 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:37.431 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:37.716 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:37.718 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:38.539 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:48:38.541 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:48:38.575 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:38.576 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:39.711 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:39.712 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:39.997 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:39.997 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:40.850 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:40.851 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:41.992 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:41.994 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:42.284 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:42.284 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:42.581 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:42.582 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:43.726 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:43.726 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:43.936 I/bt_stack(12286): [INFO:bta_gattc_act.cc(439)] Cancel GATT client direct connection
+09-04 14:48:43.936 I/bt_stack(12286): [INFO:gatt_api.cc(1730)] GATT_CancelConnect: gatt_if:12, address: 6b:15:f9:5b:2e:82, direct:1
+09-04 14:48:43.936 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=6b:15:f9:5b:2e:82
+09-04 14:48:43.937 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:48:43.937 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:48:43.937 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:48:43.937 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:48:43.937 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:48:43.938 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:48:43.938 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:48:43.938 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x000c reason=0x0016
+09-04 14:48:43.938 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:48:43.939 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:48:43.939 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:43.939 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:48:43.940 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=6b:15:f9:5b:2e:82
+09-04 14:48:43.942 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=6B:15:F9:5B:2E:82
+09-04 14:48:43.959 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:43.962 W/NearbyPresence(11609): BleGattServerProviderV1: Device never transitioned to STATE_CONNECTED! [CONTEXT service_id=317 ]
+09-04 14:48:43.982 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 09ccba32-7461-50ea-f7e8-7629050da79f
+09-04 14:48:43.982 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:48:44.001 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=73:de:82:da:0d:e0 is_direct 1
+09-04 14:48:44.002 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=73:de:82:da:0d:e0, cl_supp_feat=0000, aware=1
+09-04 14:48:44.002 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:48:44.002 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:48:44.819 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:44.820 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:45.109 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:45.109 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:45.441 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:45.442 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:45.964 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:45.965 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:46.295 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:46.295 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:47.453 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:47.454 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:47.722 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:47.722 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:48.545 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:48:48.546 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:48:48.591 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:48.592 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:48.870 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:48.871 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:49.725 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:49.727 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:50.012 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:50.012 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:50.872 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:50.874 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:51.149 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:51.151 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:52.006 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:52.008 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:52.287 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:52.287 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:53.147 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:53.149 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:53.430 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:53.430 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:53.993 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 63:d1:ca:0c:c6:a0
+09-04 14:48:53.994 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 63:d1:ca:0c:c6:a0
+09-04 14:48:54.293 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:54.293 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:54.572 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:54.573 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:55.433 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:55.434 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:55.723 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:55.724 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:48:55.992 I/bt_stack(12286): [INFO:bta_gattc_act.cc(439)] Cancel GATT client direct connection
+09-04 14:48:55.992 I/bt_stack(12286): [INFO:gatt_api.cc(1730)] GATT_CancelConnect: gatt_if:12, address: 73:de:82:da:0d:e0, direct:1
+09-04 14:48:55.992 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=73:de:82:da:0d:e0
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:48:55.993 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:48:55.994 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x000c reason=0x0016
+09-04 14:48:55.994 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:48:55.994 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:48:55.994 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:55.994 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:DE:82:DA:0D:E0
+09-04 14:48:55.995 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:48:55.995 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=73:de:82:da:0d:e0
+09-04 14:48:55.996 W/NearbyPresence(11609): BleGattServerProviderV1: Device never transitioned to STATE_CONNECTED! [CONTEXT service_id=317 ]
+09-04 14:48:56.003 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 63:d1:ca:0c:c6:a0
+09-04 14:48:56.005 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 63:d1:ca:0c:c6:a0
+09-04 14:48:56.006 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:48:58.338 E/BluetoothServiceJni(12286): alarmFiredNative() - Alarm fired with callback not set!
+09-04 14:48:58.550 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:48:58.551 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:00.584 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:00.585 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:02.202 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register b7713248-2ea5-6b10-e4bf-104006ac0055
+09-04 14:49:02.202 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=11
+09-04 14:49:02.264 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 81bcba17-f7f2-2c07-0c1f-c0aca8a7b998
+09-04 14:49:02.264 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:49:02.279 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=76:a8:f2:71:e7:54 is_direct 1
+09-04 14:49:02.279 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=76:a8:f2:71:e7:54, cl_supp_feat=0000, aware=1
+09-04 14:49:02.279 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:49:02.279 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:49:03.100 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:03.101 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:49:03.101 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:49:03.101 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:49:03.101 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:03.102 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:03.296 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_76a8f271e754 for reading, error: No such file or directory
+09-04 14:49:03.296 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=76:A8:F2:71:E7:54
+09-04 14:49:03.298 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:49:03.298 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:49:03.299 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:49:03.388 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:49:03.472 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:49:03.564 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:49:03.564 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:49:03.654 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:03.654 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:49:03.743 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:03.838 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:03.839 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:49:03.841 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=76:A8:F2:71:E7:54 interval=6 latency=0 timeout=500 status=0
+09-04 14:49:03.859 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:03.859 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:49:03.874 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:03.888 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:03.888 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 14:49:03.903 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:03.904 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 14:49:03.922 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:03.940 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:03.956 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:03.970 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:03.971 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 14:49:03.985 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 14:49:03.986 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0030, e_handle=0xffff
+09-04 14:49:04.000 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:04.001 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0030, e_handle=0xffff
+09-04 14:49:04.016 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:04.029 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:04.030 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x0033, e_handle=0xffff
+09-04 14:49:04.046 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:04.046 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:49:04.074 I/bt_stack(12286): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest76:a8:f2:71:e7:54 conn_id=0x000c
+09-04 14:49:04.074 I/bt_stack(12286): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 76:a8:f2:71:e7:54
+09-04 14:49:04.074 I/bt_stack(12286): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:12 mtu:517 user mtu 517
+09-04 14:49:04.090 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-04 14:49:04.090 I/bt_stack(12286): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (76:a8:f2:71:e7:54) MTU 517
+09-04 14:49:04.090 I/bt_stack(12286): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-04 14:49:04.151 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=76:A8:F2:71:E7:54 interval=36 latency=0 timeout=500 status=0
+09-04 14:49:04.777 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:49:04.908 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:49:04.912 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:49:05.000 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:49:05.387 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:05.387 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:05.814 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:49:06.257 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:49:06.257 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.258 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.263 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:49:06.264 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.264 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.264 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.264 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.264 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.264 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.265 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.265 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.267 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:49:06.353 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:49:06.443 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:49:06.444 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:49:06.489 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:49:06.524 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:49:06.525 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.525 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.525 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.525 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.525 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.526 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.526 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.526 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:49:06.528 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:06.530 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 76:a8:f2:71:e7:54
+09-04 14:49:06.533 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.533 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:49:06.621 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:06.713 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.713 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:49:06.808 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.808 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:49:06.812 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=76:A8:F2:71:E7:54 interval=6 latency=0 timeout=500 status=0
+09-04 14:49:06.830 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:49:06.853 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.853 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0xffff
+09-04 14:49:06.875 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.875 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0xffff
+09-04 14:49:06.888 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.888 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:49:06.910 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:49:06.934 I/bt_stack(12286): [INFO:gatt_api.cc(1785)] GATT_Disconnect conn_id=0x000c
+09-04 14:49:06.935 I/bt_stack(12286): [INFO:bta_gattc_act.cc(804)] bta_gattc_closeLocal close event client_if: 0x0c, conn_id: 12, reason: 0
+09-04 14:49:06.935 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:49:06.935 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=76:a8:f2:71:e7:54
+09-04 14:49:06.987 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=76:A8:F2:71:E7:54 interval=36 latency=0 timeout=500 status=0
+09-04 14:49:07.749 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=6 cid=4:4
+09-04 14:49:07.750 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=70:2c:b5:fd:5e:30
+09-04 14:49:07.750 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0103 reason=0x0013
+09-04 14:49:07.750 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0104 reason=0x0013
+09-04 14:49:07.750 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0105 reason=0x0013
+09-04 14:49:07.751 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0107 reason=0x0013
+09-04 14:49:07.751 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0108 reason=0x0013
+09-04 14:49:07.751 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0109 reason=0x0013
+09-04 14:49:07.751 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x010b reason=0x0013
+09-04 14:49:07.752 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:07.755 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:49:07.755 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 14:49:07.757 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 14:49:07.760 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 14:49:07.762 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 14:49:07.977 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=7 cid=4:4
+09-04 14:49:07.978 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=76:a8:f2:71:e7:54
+09-04 14:49:07.979 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:49:07.979 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:49:07.979 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:49:07.979 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:49:07.979 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:49:07.979 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:49:07.980 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:49:07.980 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:07.985 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=76:A8:F2:71:E7:54
+09-04 14:49:07.987 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 14:49:07.987 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 14:49:07.988 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 14:49:07.989 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 14:49:08.555 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:49:08.556 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:16.456 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:16.459 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:18.559 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:49:18.560 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:18.744 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:18.746 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:24.163 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:24.164 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+--------- beginning of system
+09-04 14:49:24.587 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 14:49:26.406 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:26.407 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:26.409 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:26.409 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:28.349 I/Process ( 2760): Sending signal. PID: 2760 SIG: 9
+09-04 14:49:28.564 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:49:28.564 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:29.590 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:29.591 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:31.889 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:31.890 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:34.390 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register eaf1037f-2f99-02f2-4851-1f2c62f207a2
+09-04 14:49:34.391 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:49:34.408 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=76:a8:f2:71:e7:54 is_direct 1
+09-04 14:49:34.408 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=76:a8:f2:71:e7:54, cl_supp_feat=0000, aware=1
+09-04 14:49:34.408 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:49:34.409 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:49:34.508 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:34.508 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:34.635 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 14:49:34.995 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:34.997 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:35.574 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:35.574 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:36.172 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:36.172 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:36.457 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:36.458 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:36.550 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:36.552 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:37.311 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:37.311 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:37.597 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:37.597 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:38.456 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:38.458 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:38.568 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:49:38.569 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:38.584 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:38.585 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:38.700 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:38.700 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:38.964 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:49:39.567 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=70:2c:b5:fd:5e:30, cl_supp_feat=0000, aware=1
+09-04 14:49:39.570 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:49:39.606 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:49:39.607 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:49:39.697 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:49:39.790 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:49:39.846 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:39.846 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:39.881 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:39.968 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.108 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.114 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=6 latency=0 timeout=500 status=0
+09-04 14:49:40.128 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.133 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:40.134 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:40.142 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.157 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.172 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.187 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.202 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:49:40.222 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.239 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.259 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.277 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:49:40.293 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.310 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.323 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.338 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.353 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:49:40.367 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.383 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.399 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:49:40.413 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:49:40.465 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 14:49:40.466 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (70:2c:b5:fd:5e:30), resulted MTU 517
+09-04 14:49:40.466 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 14:49:40.467 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 14:49:40.467 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 14:49:40.467 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=263
+09-04 14:49:40.467 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 14:49:40.467 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 14:49:40.467 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 14:49:40.468 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 14:49:40.475 D/BluetoothGattServer(11609): onMtuChanged() - device=70:2C:B5:FD:5E:30, mtu=517
+09-04 14:49:40.547 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=36 latency=0 timeout=500 status=0
+09-04 14:49:40.618 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:40.619 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:40.995 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:40.996 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:41.274 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:41.275 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:42.198 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:42.199 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:42.463 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:42.464 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:42.656 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:42.657 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:43.314 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:43.314 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:43.609 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:43.610 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:43.893 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:43.894 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:44.695 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 14:49:44.738 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:44.738 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:44.739 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:44.742 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:45.037 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:45.037 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:45.891 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:45.892 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:46.401 I/bt_stack(12286): [INFO:bta_gattc_act.cc(439)] Cancel GATT client direct connection
+09-04 14:49:46.401 I/bt_stack(12286): [INFO:gatt_api.cc(1730)] GATT_CancelConnect: gatt_if:12, address: 76:a8:f2:71:e7:54, direct:1
+09-04 14:49:46.401 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=76:a8:f2:71:e7:54
+09-04 14:49:46.402 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:49:46.402 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:49:46.402 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:49:46.402 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:49:46.402 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:49:46.403 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:49:46.403 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:49:46.403 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x000c reason=0x0016
+09-04 14:49:46.403 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:49:46.404 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=76:A8:F2:71:E7:54
+09-04 14:49:46.404 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:49:46.404 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:46.404 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:49:46.405 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=76:a8:f2:71:e7:54
+09-04 14:49:46.405 W/NearbyPresence(11609): BleGattServerProviderV1: Device never transitioned to STATE_CONNECTED! [CONTEXT service_id=317 ]
+09-04 14:49:46.420 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:46.442 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register fae3939b-31c2-5f18-5bc0-121eeae7c1a4
+09-04 14:49:46.442 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:49:46.465 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=76:a8:f2:71:e7:54 is_direct 1
+09-04 14:49:46.465 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=76:a8:f2:71:e7:54, cl_supp_feat=0000, aware=1
+09-04 14:49:46.465 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:49:46.466 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:49:46.730 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:46.731 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:47.282 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:47.283 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:47.565 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:47.566 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:47.901 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:47.902 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:48.573 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:49:48.574 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:48.759 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:48.761 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:48.771 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:48.772 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:49.049 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:49.049 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:49.905 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:49.906 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:50.187 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:50.188 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:50.854 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:50.855 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:51.001 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:51.001 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:51.338 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:51.339 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:52.486 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:52.487 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:52.488 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:52.777 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:52.777 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:52.848 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:52.848 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:53.918 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:53.918 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:54.208 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:54.208 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:54.756 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 14:49:54.929 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:54.930 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:49:55.017 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:55.018 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:55.345 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:55.346 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:55.916 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:55.916 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:56.498 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:56.498 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:57.351 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:57.351 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:57.634 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:57.635 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:57.924 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:57.924 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:49:58.001 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 09:a9:f6:81:5a:c7
+09-04 14:49:58.001 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 09:a9:f6:81:5a:c7
+09-04 14:49:58.450 I/bt_stack(12286): [INFO:bta_gattc_act.cc(439)] Cancel GATT client direct connection
+09-04 14:49:58.450 I/bt_stack(12286): [INFO:gatt_api.cc(1730)] GATT_CancelConnect: gatt_if:12, address: 76:a8:f2:71:e7:54, direct:1
+09-04 14:49:58.450 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=76:a8:f2:71:e7:54
+09-04 14:49:58.451 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:49:58.451 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:49:58.451 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:49:58.451 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:49:58.451 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:49:58.452 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:49:58.452 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:49:58.452 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x000c reason=0x0016
+09-04 14:49:58.452 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=76:A8:F2:71:E7:54
+09-04 14:49:58.452 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:49:58.453 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:49:58.453 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:58.453 W/NearbyPresence(11609): BleGattServerProviderV1: Device never transitioned to STATE_CONNECTED! [CONTEXT service_id=317 ]
+09-04 14:49:58.453 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:49:58.454 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=76:a8:f2:71:e7:54
+09-04 14:49:58.468 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:49:58.577 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:49:58.578 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:49:58.717 I/NearbyDiscovery(11609): FastPair: isDestroyable: Scanner is alive. [CONTEXT service_id=265 ]
+09-04 14:49:58.718 I/NearbyDiscovery(11609): DiscoveryService: Skip stopSelf(), fast pair controller is not destroyable. [CONTEXT service_id=265 ]
+09-04 14:50:03.073 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:50:03.074 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:50:03.074 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:03.076 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:04.610 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 0152e5ee-6254-58e2-2609-5f837870007c
+09-04 14:50:04.610 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:50:04.632 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=73:d6:f7:56:52:75 is_direct 1
+09-04 14:50:04.632 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=73:d6:f7:56:52:75, cl_supp_feat=0000, aware=1
+09-04 14:50:04.632 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:50:04.632 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:50:05.042 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:05.043 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:50:05.043 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:50:05.043 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:50:05.043 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:05.044 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:05.063 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:50:05.064 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 61:b1:12:cd:e5:76
+09-04 14:50:05.261 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_73d6f7565275 for reading, error: No such file or directory
+09-04 14:50:05.261 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:D6:F7:56:52:75
+09-04 14:50:05.263 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:50:05.264 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:50:05.264 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:50:05.351 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:50:05.438 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:50:05.528 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:50:05.529 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:50:05.619 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.620 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:50:05.708 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:05.803 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.803 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:50:05.807 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:D6:F7:56:52:75 interval=6 latency=0 timeout=500 status=0
+09-04 14:50:05.823 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.823 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:50:05.838 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:05.853 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.854 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 14:50:05.869 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.869 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 14:50:05.886 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:05.906 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:05.921 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:05.921 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:50:05.936 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.936 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 14:50:05.950 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 14:50:05.950 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0030, e_handle=0xffff
+09-04 14:50:05.966 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:05.966 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0030, e_handle=0xffff
+09-04 14:50:05.981 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:06.004 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:06.004 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x0033, e_handle=0xffff
+09-04 14:50:06.019 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:06.019 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:50:06.047 I/bt_stack(12286): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest73:d6:f7:56:52:75 conn_id=0x000c
+09-04 14:50:06.047 I/bt_stack(12286): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 73:d6:f7:56:52:75
+09-04 14:50:06.048 I/bt_stack(12286): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:12 mtu:517 user mtu 517
+09-04 14:50:06.063 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-04 14:50:06.064 I/bt_stack(12286): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (73:d6:f7:56:52:75) MTU 517
+09-04 14:50:06.064 I/bt_stack(12286): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-04 14:50:06.170 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:D6:F7:56:52:75 interval=36 latency=0 timeout=500 status=0
+09-04 14:50:06.202 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:06.338 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:50:06.399 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:06.401 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:07.239 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:07.260 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:07.260 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:07.371 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:07.550 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:50:07.824 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:08.092 I/PlayCommon(19131): [16745] Preparing logs for uploading
+09-04 14:50:08.098 I/PlayCommon(19131): [16745] Connecting to server for timestamp: https://play.googleapis.com/play/log/timestamp
+09-04 14:50:08.107 E/PlayCommon(19131): [16745] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 14:50:08.108 W/PlayCommon(19131): [16745] No account for auth token provided
+09-04 14:50:08.112 I/PlayCommon(19131): [16745] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+09-04 14:50:08.115 E/PlayCommon(19131): [16745] Failed to connect to server for log upload.
+09-04 14:50:08.183 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:08.398 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:08.398 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:08.407 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:08.494 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:50:08.581 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:50:08.582 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:50:08.625 I/PlayCommon(19131): [16752] Preparing logs for uploading
+09-04 14:50:08.628 I/PlayCommon(19131): [16752] Connecting to server for timestamp: https://play.googleapis.com/play/log/timestamp
+09-04 14:50:08.631 E/PlayCommon(19131): [16752] Failed to connect to server for server timestamp: java.net.UnknownHostException: Unable to resolve host "play.googleapis.com": No address associated with hostname
+09-04 14:50:08.637 I/PlayCommon(19131): [16752] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+09-04 14:50:08.640 E/PlayCommon(19131): [16752] Failed to connect to server for log upload.
+09-04 14:50:09.173 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:50:09.544 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:09.544 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 73:d6:f7:56:52:75
+09-04 14:50:09.752 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:50:09.752 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.753 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.753 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.753 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.753 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.753 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.753 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.754 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.757 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:50:09.758 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.758 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.758 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.758 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.758 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.758 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.759 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.759 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.761 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:50:09.850 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:50:09.938 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:50:09.939 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:50:09.975 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:50:09.976 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.976 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.976 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.976 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.976 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.976 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.977 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.977 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:09.984 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:50:10.029 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:10.029 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:50:10.120 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:10.209 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:10.209 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:50:10.303 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:10.303 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:50:10.306 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:D6:F7:56:52:75 interval=6 latency=0 timeout=500 status=0
+09-04 14:50:10.322 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:50:10.337 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:10.337 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0xffff
+09-04 14:50:10.353 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:10.354 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0xffff
+09-04 14:50:10.368 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:10.368 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:50:10.482 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=73:D6:F7:56:52:75 interval=36 latency=0 timeout=500 status=0
+09-04 14:50:11.242 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=8 cid=4:4
+09-04 14:50:11.243 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=70:2c:b5:fd:5e:30
+09-04 14:50:11.243 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0103 reason=0x0013
+09-04 14:50:11.243 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0104 reason=0x0013
+09-04 14:50:11.243 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0105 reason=0x0013
+09-04 14:50:11.244 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0107 reason=0x0013
+09-04 14:50:11.244 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0108 reason=0x0013
+09-04 14:50:11.244 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0109 reason=0x0013
+09-04 14:50:11.244 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x010b reason=0x0013
+09-04 14:50:11.244 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x010c reason=0x0013
+09-04 14:50:11.245 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:11.246 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:50:11.248 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 14:50:11.251 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 14:50:11.254 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 14:50:11.254 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 14:50:12.549 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:50:12.571 I/bt_stack(12286): [INFO:gatt_api.cc(1785)] GATT_Disconnect conn_id=0x000c
+09-04 14:50:12.571 I/bt_stack(12286): [INFO:bta_gattc_act.cc(804)] bta_gattc_closeLocal close event client_if: 0x0c, conn_id: 12, reason: 0
+09-04 14:50:12.572 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:50:12.572 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=73:d6:f7:56:52:75
+09-04 14:50:12.589 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(323)] bta_gattc_deregister: Deregister Failed unknown client cif
+09-04 14:50:13.152 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:50:13.153 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:13.370 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=70:2c:b5:fd:5e:30, cl_supp_feat=0000, aware=1
+09-04 14:50:13.372 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=70:2C:B5:FD:5E:30
+09-04 14:50:13.409 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:50:13.410 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:50:13.501 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:50:13.589 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=9 cid=4:4
+09-04 14:50:13.590 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=73:d6:f7:56:52:75
+09-04 14:50:13.590 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:50:13.590 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:50:13.591 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:50:13.591 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:50:13.591 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:50:13.591 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:50:13.591 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:50:13.593 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:13.593 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:D6:F7:56:52:75
+09-04 14:50:13.594 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 14:50:13.594 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:50:13.596 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 14:50:13.596 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 14:50:13.596 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 14:50:13.597 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 14:50:13.679 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.770 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.861 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.913 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=6 latency=0 timeout=500 status=0
+09-04 14:50:13.916 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.934 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.954 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.971 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:13.986 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.000 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:50:14.014 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.031 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.045 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.059 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:50:14.075 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.090 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.105 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.120 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.135 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:50:14.148 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.165 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.181 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 14:50:14.201 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 14:50:14.224 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 14:50:14.224 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (70:2c:b5:fd:5e:30), resulted MTU 517
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=263
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 14:50:14.225 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 14:50:14.231 D/BluetoothGattServer(11609): onMtuChanged() - device=70:2C:B5:FD:5E:30, mtu=517
+09-04 14:50:14.343 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:2C:B5:FD:5E:30 interval=36 latency=0 timeout=500 status=0
+09-04 14:50:15.105 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:50:15.106 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:15.106 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:15.106 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:15.107 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:15.107 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:15.107 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:15.107 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:16.734 W/TimedProcessReaper(  599): Current importance is: 300
+09-04 14:50:16.735 D/TimedProcessReaper(  599): Attempted to reap process, but was too important
+09-04 14:50:18.587 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:50:18.588 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:50:19.338 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 14:50:19.338 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:19.338 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:19.339 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:19.339 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:19.339 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:19.339 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:19.339 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 14:50:24.317 I/Finsky  (19131): [16735] AIM: AppInfoManager-Perf > Destroying AppInfoManager ...
+09-04 14:50:25.899 I/Finsky  (19131): [16736] AIM: AppInfoManager-Perf > Destroying AppInfoManager ...
+09-04 14:50:28.276 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:28.278 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:28.590 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:50:28.592 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:50:29.420 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:29.421 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:30.559 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:30.559 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:30.692 I/PlayCommon(11372): [16054] Preparing logs for uploading
+09-04 14:50:30.700 I/PlayCommon(11372): [16054] Connecting to server: https://play.googleapis.com/play/log?format=raw&proto_v2=true
+09-04 14:50:30.706 E/PlayCommon(11372): [16054] Failed to connect to server for log upload.
+09-04 14:50:35.993 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:35.994 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:36.723 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 505d8071-c141-c343-142e-b3fb6deeab4e
+09-04 14:50:36.723 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:50:36.741 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=73:d6:f7:56:52:75 is_direct 1
+09-04 14:50:36.742 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=73:d6:f7:56:52:75, cl_supp_feat=0000, aware=1
+09-04 14:50:36.742 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:50:36.742 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:50:37.088 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:37.089 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:37.373 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:37.374 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:38.566 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:38.566 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:38.597 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:50:38.597 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:50:38.853 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:38.854 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:39.705 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:39.705 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:39.997 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:39.997 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:40.288 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:40.289 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:41.146 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:41.147 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:41.440 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:41.441 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:41.527 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:41.528 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:41.678 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:41.680 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:42.592 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:42.593 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:42.866 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:42.866 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:43.728 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:43.732 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:44.011 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:44.011 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:44.870 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:44.871 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:44.956 I/PhenotypeProcessReaper(29955): Memory state is: 200
+09-04 14:50:45.159 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:45.160 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:45.651 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:45.652 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:45.652 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:46.306 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:46.306 W/printstats(12286): process:com.android.bluetooth tag:_V_bt_bte print:2317 lines
+09-04 14:50:46.307 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:46.590 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:46.590 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:47.689 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:47.690 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:47.697 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:47.701 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:48.036 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:48.039 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:48.326 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:48.326 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:48.600 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:50:48.602 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:50:48.734 I/bt_stack(12286): [INFO:bta_gattc_act.cc(439)] Cancel GATT client direct connection
+09-04 14:50:48.734 I/bt_stack(12286): [INFO:gatt_api.cc(1730)] GATT_CancelConnect: gatt_if:12, address: 73:d6:f7:56:52:75, direct:1
+09-04 14:50:48.735 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=73:d6:f7:56:52:75
+09-04 14:50:48.735 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:50:48.735 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:50:48.735 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:50:48.735 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:50:48.736 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:50:48.736 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:50:48.736 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:50:48.736 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x000c reason=0x0016
+09-04 14:50:48.736 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:50:48.737 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:50:48.737 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:48.737 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:50:48.737 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=73:d6:f7:56:52:75
+09-04 14:50:48.742 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:D6:F7:56:52:75
+09-04 14:50:48.746 W/NearbyPresence(11609): BleGattServerProviderV1: Device never transitioned to STATE_CONNECTED! [CONTEXT service_id=317 ]
+09-04 14:50:48.752 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:50:48.776 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register e711eb98-0616-0f97-16ac-98d6524c1d0c
+09-04 14:50:48.777 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:50:48.800 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=73:d6:f7:56:52:75 is_direct 1
+09-04 14:50:48.801 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=73:d6:f7:56:52:75, cl_supp_feat=0000, aware=1
+09-04 14:50:48.801 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:50:48.802 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:50:49.432 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:49.432 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:49.679 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:49.680 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:49.716 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:49.716 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:50.909 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:50.910 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:51.762 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:51.762 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:51.764 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:51.768 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:52.056 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:52.057 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:52.346 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:52.347 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:53.506 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:53.507 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:53.796 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:53.797 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:53.798 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:53.799 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 54:fe:9a:91:8b:6c
+09-04 14:50:54.074 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:54.074 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:54.644 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:54.647 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:54.935 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:54.935 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:55.218 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:55.219 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:56.072 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:56.074 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:57.223 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:57.224 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:57.510 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:57.510 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:58.366 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:58.366 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:58.606 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:50:58.607 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:50:58.648 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:58.649 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:59.802 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:50:59.803 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:51:00.095 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:51:00.096 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:51:00.786 I/bt_stack(12286): [INFO:bta_gattc_act.cc(439)] Cancel GATT client direct connection
+09-04 14:51:00.787 I/bt_stack(12286): [INFO:gatt_api.cc(1730)] GATT_CancelConnect: gatt_if:12, address: 73:d6:f7:56:52:75, direct:1
+09-04 14:51:00.787 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=73:d6:f7:56:52:75
+09-04 14:51:00.787 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0003 reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0004 reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0005 reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=7 connected=0 conn_id=0x0007 reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0008 reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0009 reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=11 connected=0 conn_id=0x000b reason=0x0016
+09-04 14:51:00.788 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x000c reason=0x0016
+09-04 14:51:00.789 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:51:00.789 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:51:00.789 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:51:00.789 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=73:D6:F7:56:52:75
+09-04 14:51:00.789 I/bt_stack(12286): [INFO:bta_gattc_act.cc(435)] Cancel GATT client background connection
+09-04 14:51:00.790 E/bt_stack(12286): [ERROR:bta_gattc_utils.cc(624)] bta_gattc_mark_bg_conn unable to find the bg connection mask for bd_addr=73:d6:f7:56:52:75
+09-04 14:51:00.791 W/NearbyPresence(11609): BleGattServerProviderV1: Device never transitioned to STATE_CONNECTED! [CONTEXT service_id=317 ]
+09-04 14:51:00.807 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:51:03.886 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 3777d840-1e96-9ddd-510a-403977cbc64a
+09-04 14:51:03.886 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=11
+09-04 14:51:04.841 I/Finsky  (19131): [16721] Stats for Executor: LightweightExecutor xrb@a605855[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 3045]
+09-04 14:51:04.842 I/Finsky  (19131): [16721] Stats for Executor: BlockingExecutor xrb@fcbaba4[Running, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 765]
+09-04 14:51:04.896 I/Finsky  (19131): [16721] Stats for Executor: bgExecutor xrb@3857c1f[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 11222]
+09-04 14:51:05.541 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:51:05.542 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:51:05.547 I/Finsky  (19131): [16721] Stats for Executor: GrpcBackgroundExecutor xrb@e009d2c[Running, pool size = 3, active threads = 0, queued tasks = 0, completed tasks = 3]
+09-04 14:51:07.033 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 46b5a95d-7f41-b545-e740-598b13b0dfb2
+09-04 14:51:07.033 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 14:51:07.054 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=12, address=77:d6:41:9b:01:8d is_direct 1
+09-04 14:51:07.055 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=77:d6:41:9b:01:8d, cl_supp_feat=0000, aware=1
+09-04 14:51:07.055 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 14:51:07.056 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 14:51:08.065 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:d6:41:9b:01:8d
+09-04 14:51:08.065 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 14:51:08.065 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 14:51:08.066 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 14:51:08.066 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:51:08.067 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 14:51:08.258 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_77d6419b018d for reading, error: No such file or directory
+09-04 14:51:08.260 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 14:51:08.261 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=6 device=77:D6:41:9B:01:8D
+09-04 14:51:08.261 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 14:51:08.350 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 14:51:08.438 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:51:08.528 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 14:51:08.529 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 14:51:08.610 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 14:51:08.611 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 14:51:08.617 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.618 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 14:51:08.708 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:51:08.802 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.803 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 14:51:08.805 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=77:D6:41:9B:01:8D interval=6 latency=0 timeout=500 status=0
+09-04 14:51:08.815 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.815 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 14:51:08.830 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:51:08.847 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.848 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 14:51:08.861 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.861 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 14:51:08.876 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:51:08.891 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:51:08.906 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:51:08.921 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.921 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 14:51:08.936 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 14:51:08.936 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=3, s_handle=0x0030, e_handle=0xffff
+09-04 14:51:08.950 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.951 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=4, s_handle=0x0030, e_handle=0xffff
+09-04 14:51:08.966 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 14:51:08.981 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.981 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000c, disc_type=5, s_handle=0x0033, e_handle=0xffff
+09-04 14:51:08.997 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 14:51:08.997 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 14:51:09.025 I/bt_stack(12286): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest77:d6:41:9b:01:8d conn_id=0x000c
+09-04 14:51:09.025 I/bt_stack(12286): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 77:d6:41:9b:01:8d
+09-04 14:51:09.025 I/bt_stack(12286): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:12 mtu:517 user mtu 517
+09-04 14:51:09.040 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-04 14:51:09.041 I/bt_stack(12286): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (77:d6:41:9b:01:8d) MTU 517
+09-04 14:51:09.041 I/bt_stack(12286): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-04 14:51:09.114 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=77:D6:41:9B:01:8D interval=36 latency=0 timeout=500 status=0
+09-04 14:51:09.565 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:51:09.694 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:51:09.787 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:51:09.919 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:51:10.687 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:51:10.778 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:51:10.910 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 14:51:11.725 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:51:11.858 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 14:51:12.030 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4

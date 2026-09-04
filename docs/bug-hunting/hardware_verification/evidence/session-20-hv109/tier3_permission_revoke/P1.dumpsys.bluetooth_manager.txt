@@ -1,0 +1,561 @@
+Bluetooth Status
+  enabled: true
+  state: ON
+  address: F4:63:FC:19:DB:DF
+  name: vivo Y35
+  time since enabled: 00:02:59.878
+
+Enable log:
+  09-04 11:41:29.808  Enabled  due to APPLICATION_REQUEST by android
+  09-04 12:05:17.188 Disabled  due to APPLICATION_REQUEST by android
+  09-04 12:05:18.378  Enabled  due to APPLICATION_REQUEST by android
+  09-04 12:09:49.412 Disabled  due to APPLICATION_REQUEST by android
+  09-04 12:09:53.302  Enabled  due to APPLICATION_REQUEST by android
+  09-04 12:15:58.648 Disabled  due to APPLICATION_REQUEST by android
+  09-04 12:16:02.519  Enabled  due to APPLICATION_REQUEST by android
+  09-04 12:30:53.137 Disabled  due to APPLICATION_REQUEST by android
+  09-04 12:30:57.151  Enabled  due to APPLICATION_REQUEST by android
+  09-04 12:43:45.681 Disabled  due to APPLICATION_REQUEST by android
+  09-04 12:43:49.583  Enabled  due to APPLICATION_REQUEST by android
+  09-04 12:56:12.449 Disabled  due to APPLICATION_REQUEST by android
+  09-04 12:56:16.321  Enabled  due to APPLICATION_REQUEST by android
+  09-04 13:19:27.453 Disabled  due to APPLICATION_REQUEST by android
+  09-04 13:19:31.345  Enabled  due to APPLICATION_REQUEST by android
+  09-04 13:36:11.968 Disabled  due to APPLICATION_REQUEST by android
+  09-04 13:36:15.860  Enabled  due to APPLICATION_REQUEST by android
+  09-04 13:47:14.349 Disabled  due to APPLICATION_REQUEST by android
+  09-04 13:47:18.253  Enabled  due to APPLICATION_REQUEST by android
+  09-04 14:02:01.626 Disabled  due to APPLICATION_REQUEST by android
+  09-04 14:02:05.522  Enabled  due to APPLICATION_REQUEST by android
+
+Bluetooth crashed 0 times
+
+1 BLE app registered
+  com.google.android.gms
+
+BluetoothManagerService:
+  mEnable:true
+  mQuietEnable:false
+  mEnableExternal:true
+  mQuietEnableExternal:false
+
+
+AdapterProperties
+  Name: vivo Y35
+  Address: F4:63:FC:19:DB:DF
+  ScanMode: SCAN_MODE_CONNECTABLE
+  ConnectionState: STATE_DISCONNECTED
+  State: ON
+  MaxConnectedAudioDevices: 5
+  A2dpOffloadEnabled: true
+  Discovering: false
+  DiscoveryEndMs: 0
+  Bonded devices:
+mSnoopLogSettingAtEnable = empty
+mDefaultSnoopLogSettingAtEnable = null
+
+AdapterState:
+ total records=64
+ rec[0]: time=09-04 13:19:27.761 processed=OnState org=OnState dest=TurningOffState what=2(0x2) USER_TURN_OFF
+ rec[1]: time=09-04 13:19:27.948 processed=TurningOffState org=TurningOffState dest=<null> what=13(0xd) Unknown message (13)
+ rec[2]: time=09-04 13:19:28.233 processed=TurningOffState org=TurningOffState dest=BleOnState what=6(0x6) BREDR_STOPPED
+ rec[3]: time=09-04 13:19:31.365 processed=BleOnState org=BleOnState dest=TurningOnState what=1(0x1) USER_TURN_ON
+ rec[4]: time=09-04 13:19:31.799 processed=TurningOnState org=TurningOnState dest=OnState what=5(0x5) BREDR_STARTED
+ rec[5]: time=09-04 13:36:12.279 processed=OnState org=OnState dest=TurningOffState what=2(0x2) USER_TURN_OFF
+ rec[6]: time=09-04 13:36:12.604 processed=TurningOffState org=TurningOffState dest=<null> what=13(0xd) Unknown message (13)
+ rec[7]: time=09-04 13:36:12.881 processed=TurningOffState org=TurningOffState dest=BleOnState what=6(0x6) BREDR_STOPPED
+ rec[8]: time=09-04 13:36:15.871 processed=BleOnState org=BleOnState dest=TurningOnState what=1(0x1) USER_TURN_ON
+ rec[9]: time=09-04 13:36:16.332 processed=TurningOnState org=TurningOnState dest=OnState what=5(0x5) BREDR_STARTED
+ rec[10]: time=09-04 13:47:14.659 processed=OnState org=OnState dest=TurningOffState what=2(0x2) USER_TURN_OFF
+ rec[11]: time=09-04 13:47:14.865 processed=TurningOffState org=TurningOffState dest=<null> what=13(0xd) Unknown message (13)
+ rec[12]: time=09-04 13:47:15.228 processed=TurningOffState org=TurningOffState dest=BleOnState what=6(0x6) BREDR_STOPPED
+ rec[13]: time=09-04 13:47:18.272 processed=BleOnState org=BleOnState dest=TurningOnState what=1(0x1) USER_TURN_ON
+ rec[14]: time=09-04 13:47:18.761 processed=TurningOnState org=TurningOnState dest=OnState what=5(0x5) BREDR_STARTED
+ rec[15]: time=09-04 14:02:01.938 processed=OnState org=OnState dest=TurningOffState what=2(0x2) USER_TURN_OFF
+ rec[16]: time=09-04 14:02:02.117 processed=TurningOffState org=TurningOffState dest=<null> what=13(0xd) Unknown message (13)
+ rec[17]: time=09-04 14:02:02.526 processed=TurningOffState org=TurningOffState dest=BleOnState what=6(0x6) BREDR_STOPPED
+ rec[18]: time=09-04 14:02:05.541 processed=BleOnState org=BleOnState dest=TurningOnState what=1(0x1) USER_TURN_ON
+ rec[19]: time=09-04 14:02:05.959 processed=TurningOnState org=TurningOnState dest=OnState what=5(0x5) BREDR_STARTED
+curState=OnState
+
+SilenceDeviceManager:
+  Address            | Is silenced?
+
+Profile: GattService
+  mAdvertisingServiceUuids:
+  mMaxScanFilters: 0
+
+Registered App
+  Scanner:
+      app_if: 7, appName: com.vivo.tws.vivotws
+      app_if: 8, appName: com.google.uid.shared:10175
+      app_if: 9, appName: com.google.uid.shared:10175
+      app_if: 11, appName: org.iris.mesh
+  Client:
+      app_if: 12, appName: org.iris.mesh
+  Server:
+      app_if: 6, appName: com.google.uid.shared:10175
+      app_if: 10, appName: org.iris.mesh
+
+
+GATT Scanner Map
+  Entries: 3
+
+  com.vivo.tws.vivotws (Registered)
+  LE scans (started/stopped)                                  : 21 / 20
+  Scan time in ms (active/suspend/total)                      : 10738372 / 0 / 10738372
+  Scan time with mode in ms (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 10738372 / 0 / 0 / 0
+  Scan mode counter (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 21 / 0 / 0 / 0
+  Score                                                       : 1073837
+  Total number of results                                     : 0
+  Last 5 scans                                                :
+    09-04 12:43:50 - 743170ms Forced Filter 0 results (7) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[8] ManufacturerDataMask=[8] ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[9] ManufacturerDataMask=[9] ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00008486-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00000837-0000-1000-8000-00805f9b34fb ]
+    09-04 12:56:16 - 1391344ms Forced Filter 0 results (6) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[8] ManufacturerDataMask=[8] ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[9] ManufacturerDataMask=[9] ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00008486-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00000837-0000-1000-8000-00805f9b34fb ]
+    09-04 13:19:31 - 1000942ms Forced Filter 0 results (6) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[8] ManufacturerDataMask=[8] ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[9] ManufacturerDataMask=[9] ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00008486-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00000837-0000-1000-8000-00805f9b34fb ]
+    09-04 13:36:16 - 658751ms Forced Filter 0 results (7) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[8] ManufacturerDataMask=[8] ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[9] ManufacturerDataMask=[9] ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00008486-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00000837-0000-1000-8000-00805f9b34fb ]
+    09-04 13:47:18 - 883632ms Forced Filter 0 results (6) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[8] ManufacturerDataMask=[8] ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[9] ManufacturerDataMask=[9] ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00008486-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00000837-0000-1000-8000-00805f9b34fb ]
+  Ongoing scans                                               :
+    09-04 14:02:06 - 179322ms Filter 0 results (7) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[8] ManufacturerDataMask=[8] ]
+      └ BluetoothLeScanFilter [ ManufacturerId=2103 ManufacturerData=[9] ManufacturerDataMask=[9] ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00008486-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceUuid=00000837-0000-1000-8000-00805f9b34fb ]
+  Application ID                     : 7
+  UUID                               : 197e806b-e1ae-4b14-97f5-2d4cb0ce1d6d
+  Connections: 0
+
+  org.iris.mesh (Registered)
+  LE scans (started/stopped)                                  : 82 / 81
+  Scan time in ms (active/suspend/total)                      : 4711497 / 12164168 / 16875665
+  Scan time with mode in ms (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 4711497 / 0 / 0 / 0
+  Scan mode counter (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 82 / 0 / 0 / 0
+  Score                                                       : 471149
+  Total number of results                                     : 2883
+  Last 5 scans                                                :
+    09-04 13:43:56 - 29360ms 16 results (11) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+    09-04 13:48:10 - 73944ms 67 results (11) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+    09-04 13:49:24 - 97272ms 199 results (11) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+    09-04 13:51:54 - 102312ms 135 results (11) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+    09-04 14:02:58 - 102861ms 176 results (11) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+  Ongoing scans                                               :
+    09-04 14:04:41 - 24393ms 56 results (11) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+  Application ID                     : 11
+  UUID                               : 2de6fdbf-e5aa-4572-a1c9-80958038a1b0
+  Connections: 0
+
+  com.google.uid.shared:10175 (Registered)
+  LE scans (started/stopped)                                  : 45 / 43
+  Scan time in ms (active/suspend/total)                      : 20661613 / 0 / 20661613
+  Scan time with mode in ms (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 12644731 / 0 / 0 / 7837610
+  Scan mode counter (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 29 / 0 / 0 / 179288
+  Score                                                       : 2831995
+  Total number of results                                     : 601
+  Last 5 scans                                                :
+    09-04 13:19:32 - 1000802ms Forced Filter 45 results (9) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000feaa-0000-1000-8000-00805f9b34fb ServiceData=[64] ServiceDataMask=[-16] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fff6-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fe2c-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+    09-04 13:36:16 - 658329ms Forced Filter 0 results (8) CB Regular Scan
+      └ Scan Config: [ ScanMode=AMBIENT_DISCOVERY, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceUuid=0000fef3-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fef3-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+    09-04 13:36:16 - 658683ms Forced Filter 34 results (9) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000feaa-0000-1000-8000-00805f9b34fb ServiceData=[64] ServiceDataMask=[-16] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fff6-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fe2c-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+    09-04 13:47:18 - 883145ms Forced Filter 15 results (8) CB Regular Scan
+      └ Scan Config: [ ScanMode=AMBIENT_DISCOVERY, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceUuid=0000fef3-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fef3-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+    09-04 13:47:19 - 883551ms Forced Filter 39 results (9) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000feaa-0000-1000-8000-00805f9b34fb ServiceData=[64] ServiceDataMask=[-16] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fff6-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fe2c-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+  Ongoing scans                                               :
+    09-04 14:02:06 - 179272ms Filter 2 results (8) CB Regular Scan
+      └ Scan Config: [ ScanMode=AMBIENT_DISCOVERY, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceUuid=0000fef3-0000-1000-8000-00805f9b34fb ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fef3-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+    09-04 14:02:06 - 179231ms Filter 8 results (9) CB Regular Scan
+      └ Scan Config: [ ScanMode=LOW_POWER, callbackType=ALL_MATCHES ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000feaa-0000-1000-8000-00805f9b34fb ServiceData=[64] ServiceDataMask=[-16] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fff6-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+      └ BluetoothLeScanFilter [ ServiceDataUuid=0000fe2c-0000-1000-8000-00805f9b34fb ServiceData=[0] ServiceDataMask=[0] ]
+  Application ID                     : 8
+  UUID                               : 74b983eb-5204-4fa8-82d5-4a78624dc658
+  Connections: 0
+
+GATT Client Map
+  Entries: 1
+
+  org.iris.mesh (Registered)
+  LE scans (started/stopped)                                  : 0 / 0
+  Scan time in ms (active/suspend/total)                      : 0 / 0 / 0
+  Scan time with mode in ms (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 0 / 0 / 0 / 0
+  Scan mode counter (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 0 / 0 / 0 / 0
+  Score                                                       : 0
+  Total number of results                                     : 0
+  Application ID                     : 12
+  UUID                               : 566b88ae-4dac-4be5-bbdf-a65771444314
+  Connections: 1
+    09-04 14:03:05 - 119662ms : 56:4E:23:31:46:08 (268)
+
+GATT Server Map
+  Entries: 2
+
+  org.iris.mesh (Registered)
+  LE scans (started/stopped)                                  : 0 / 0
+  Scan time in ms (active/suspend/total)                      : 0 / 0 / 0
+  Scan time with mode in ms (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 0 / 0 / 0 / 0
+  Scan mode counter (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 0 / 0 / 0 / 0
+  Score                                                       : 0
+  Total number of results                                     : 0
+  Application ID                     : 10
+  UUID                               : afeb006c-ac86-4d03-8945-5590aabf3312
+  Connections: 2
+    09-04 14:03:05 - 119668ms : 56:4E:23:31:46:08 (266)
+    09-04 14:03:21 - 104134ms : 41:E0:0A:13:39:4C (10)
+
+  com.google.uid.shared:10175 (Registered)
+  LE scans (started/stopped)                                  : 0 / 0
+  Scan time in ms (active/suspend/total)                      : 0 / 0 / 0
+  Scan time with mode in ms (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 0 / 0 / 0 / 0
+  Scan mode counter (Opp/LowPower/Balanced/LowLatency/AmbientDiscovery):0 / 0 / 0 / 0 / 0
+  Score                                                       : 0
+  Total number of results                                     : 0
+  Application ID                     : 6
+  UUID                               : d36e6159-c9fc-491c-bd87-1e3a1c008871
+  Connections: 2
+    09-04 14:03:21 - 104136ms : 41:E0:0A:13:39:4C (6)
+    09-04 14:03:05 - 119670ms : 56:4E:23:31:46:08 (262)
+
+GATT Handle Map
+  Entries: 9
+  Requests: 0
+  6: [40] Service 0000fcf1-0000-1000-8000-00805f9b34fb, started true
+  6: [42]   Characteristic fe2c1237-8366-4814-8eb0-01de32100bea
+  6: [43]     Descriptor 00002902-0000-1000-8000-00805f9b34fb
+  6: [44] Service 0000fef3-0000-1000-8000-00805f9b34fb, started true
+  6: [46]   Characteristic 00000100-0004-1000-8000-001a11000102
+  6: [47]     Descriptor 00002902-0000-1000-8000-00805f9b34fb
+  6: [49]   Characteristic 00000100-0004-1000-8000-001a11000101
+  10: [50] Service 01000000-0000-0000-0000-000000000000, started true
+  10: [52]   Characteristic 3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e
+
+Profile: HeadsetService
+  mMaxHeadsetConnections: 5
+  DefaultMaxHeadsetConnections: 5
+  mActiveDevice: null
+  isInbandRingingEnabled: true
+  isInbandRingingSupported: true
+  mInbandRingingRuntimeDisable: false
+  mAudioRouteAllowed: true
+  mVoiceRecognitionStarted: false
+  mVoiceRecognitionTimeoutEvent: null
+  mVirtualCallStarted: false
+  mDialingOutTimeoutEvent: null
+  mForceScoAudio: false
+  mCreated: true
+  mStarted: true
+  isAudioOn: false
+  Telecom.isInCall(): false
+  Telecom.isRinging(): false
+
+Profile: A2dpService
+  mActiveDevice: null
+AVRCP:
+  mMediaAttributes: [MediaAttributes: none]
+  mCurrentPlayState: PlaybackState {state=PAUSED(2), position=-1, buffered position=0, speed=0.0, updated=5806260321, actions=0, custom actions=[], active item id=-1, error=null}
+  mPlayStatusChangedNT: 1
+  mTrackChangedNT: 1
+  mLastStateUpdate: 5806260321
+  mSongLengthMs: 0
+  mPlaybackIntervalMs: 0
+  mPlayPosChangedNT: 1
+  mNextPosMs: -1
+  mPrevPosMs: -1
+  mFeatures: 0
+  mRemoteVolume: -1
+  mLastRemoteVolume: -1
+  mLastDirection: 0
+  mAudioStreamMax: 15
+  mVolCmdSetInProgress: false
+  mVolCmdAdjustInProgress: false
+  mAbsVolRetryTimes: 0
+  mMediaAttributes: [MediaAttributes: none]
+  mCurrentPlayState: PlaybackState {state=PAUSED(2), position=-1, buffered position=0, speed=0.0, updated=5806260321, actions=0, custom actions=[], active item id=-1, error=null}
+  mPlayStatusChangedNT: 1
+  mTrackChangedNT: 1
+  mLastStateUpdate: 5806260321
+  mSongLengthMs: 0
+  mPlaybackIntervalMs: 0
+  mPlayPosChangedNT: 1
+  mNextPosMs: -1
+  mPrevPosMs: -1
+  mFeatures: 0
+  mRemoteVolume: -1
+  mLastRemoteVolume: -1
+  mLastDirection: 0
+  mAudioStreamMax: 15
+  mVolCmdSetInProgress: false
+  mVolCmdAdjustInProgress: false
+  mAbsVolRetryTimes: 0
+  mMediaAttributes: [MediaAttributes: none]
+  mCurrentPlayState: PlaybackState {state=PAUSED(2), position=-1, buffered position=0, speed=0.0, updated=5806260321, actions=0, custom actions=[], active item id=-1, error=null}
+  mPlayStatusChangedNT: 1
+  mTrackChangedNT: 1
+  mLastStateUpdate: 5806260321
+  mSongLengthMs: 0
+  mPlaybackIntervalMs: 0
+  mPlayPosChangedNT: 1
+  mNextPosMs: -1
+  mPrevPosMs: -1
+  mFeatures: 0
+  mRemoteVolume: -1
+  mLastRemoteVolume: -1
+  mLastDirection: 0
+  mAudioStreamMax: 15
+  mVolCmdSetInProgress: false
+  mVolCmdAdjustInProgress: false
+  mAbsVolRetryTimes: 0
+  mMediaAttributes: [MediaAttributes: none]
+  mCurrentPlayState: PlaybackState {state=PAUSED(2), position=-1, buffered position=0, speed=0.0, updated=5806260321, actions=0, custom actions=[], active item id=-1, error=null}
+  mPlayStatusChangedNT: 1
+  mTrackChangedNT: 1
+  mLastStateUpdate: 5806260321
+  mSongLengthMs: 0
+  mPlaybackIntervalMs: 0
+  mPlayPosChangedNT: 1
+  mNextPosMs: -1
+  mPrevPosMs: -1
+  mFeatures: 0
+  mRemoteVolume: -1
+  mLastRemoteVolume: -1
+  mLastDirection: 0
+  mAudioStreamMax: 15
+  mVolCmdSetInProgress: false
+  mVolCmdAdjustInProgress: false
+  mAbsVolRetryTimes: 0
+  mMediaAttributes: [MediaAttributes: none]
+  mCurrentPlayState: PlaybackState {state=PAUSED(2), position=-1, buffered position=0, speed=0.0, updated=5806260321, actions=0, custom actions=[], active item id=-1, error=null}
+  mPlayStatusChangedNT: 1
+  mTrackChangedNT: 1
+  mLastStateUpdate: 5806260321
+  mSongLengthMs: 0
+  mPlaybackIntervalMs: 0
+  mPlayPosChangedNT: 1
+  mNextPosMs: -1
+  mPrevPosMs: -1
+  mFeatures: 0
+  mRemoteVolume: -1
+  mLastRemoteVolume: -1
+  mLastDirection: 0
+  mAudioStreamMax: 15
+  mVolCmdSetInProgress: false
+  mVolCmdAdjustInProgress: false
+  mAbsVolRetryTimes: 0
+  
+  Media Players:
+    #1: MediaPlayerInfo com.android.bbkmusic (as 'Music') Type = 1, SubType = 0, Status = 0 Feature Bits [40 41 42 44 45 47 48 58 59 62 65 67] Controller: null
+    #2: MediaPlayerInfo com.google.android.googlequicksearchbox (as 'Google') Type = 1, SubType = 0, Status = 0 Feature Bits [40 41 42 44 45 47 48 58] Controller: null
+    #3: MediaPlayerInfo com.google.android.youtube (as 'YouTube') Type = 1, SubType = 0, Status = 0 Feature Bits [40 41 42 44 45 47 48 58] Controller: null
+    #4: MediaPlayerInfo com.brave.browser (as 'Brave') Type = 1, SubType = 0, Status = 0 Feature Bits [40 41 42 44 45 47 48 58] Controller: null
+    #5: MediaPlayerInfo com.spotify.music (as 'Spotify') Type = 1, SubType = 0, Status = 0 Feature Bits [40 41 42 44 45 47 48 58] Controller: null
+    #6: MediaPlayerInfo in.mohalla.sharechat (as 'ShareChat') Type = 1, SubType = 0, Status = 0 Feature Bits [40 41 42 44 45 47 48 58] Controller: null
+  
+  AddressedPlayer info:
+  mLastTrackIdSent: -1
+  mNowPlayingList: 0 elements
+  
+  Runtime Blacklisted Devices (absolute volume):
+    None
+
+Profile: HidHostService
+  mTargetDevice: null
+  mInputDevices:
+
+Profile: PanService
+  mMaxPanDevices: 5
+  mPanIfName: bt-pan
+  mTetherOn: false
+  mPanDevices:
+
+Profile: BluetoothMapService
+  mRemoteDevice: null
+  sRemoteDeviceName: null
+  mState: 0
+  mAppObserver: com.android.bluetooth.map.BluetoothMapAppObserver@3350bcd
+  mIsWaitingAuthorization: false
+  mRemoveTimeoutMsg: false
+  mPermission: 0
+  mAccountChanged: false
+  mBluetoothMnsObexClient: null
+  mMasInstanceMap:
+    null : MasId: 0 Uri:null SMS/MMS:true
+  mEnabledAccounts:
+
+Profile: AvrcpTargetService:
+AvrcpTargetService not running
+Profile: HidDeviceService
+
+Profile: BluetoothOppService
+
+Profile: BluetoothPbapService
+
+Profile: HearingAidService
+
+Connection Events:
+  09-04 14:04:41.016 CONNECTED    56:4e:23:31:46:08
+  09-04 14:04:41.016 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:21.286 CONNECTED    41:e0:0a:13:39:4c
+  09-04 14:03:10.522 DISCONNECTED 41:e0:0a:13:39:4c reason=19
+  09-04 14:03:10.522 DISCONNECTED 41:e0:0a:13:39:4c reason=19
+  09-04 14:03:10.522 DISCONNECTED 41:e0:0a:13:39:4c reason=19
+  09-04 14:03:10.522 DISCONNECTED 41:e0:0a:13:39:4c reason=19
+
+Bond Events: 
+  Total Number of events: 0
+
+A2DP State:
+  TxQueue:
+  Counts (enqueue/dequeue/readbuf)                        : 0 / 0 / 0
+  Last update time ago in ms (enqueue/dequeue/readbuf)    : 0 / 0 / 0
+  Frames per packet (total/max/ave)                       : 0 / 0 / 0
+  Counts (flushed/dropped/dropouts)                       : 0 / 0 / 0
+  Counts (max dropped)                                    : 0
+  Last update time ago in ms (flushed/dropped)            : 0 / 0
+  Counts (underflow)                                      : 0
+  Bytes (underflow)                                       : 0
+  Last update time ago in ms (underflow)                  : 0
+  Enqueue deviation counts (overdue/premature)            : 0 / 0
+  Enqueue overdue scheduling time in ms (total/max/ave)   : 0 / 0 / 0
+  Enqueue premature scheduling time in ms (total/max/ave) : 0 / 0 / 0
+  Dequeue deviation counts (overdue/premature)            : 0 / 0
+  Dequeue overdue scheduling time in ms (total/max/ave)   : 0 / 0 / 0
+  Dequeue premature scheduling time in ms (total/max/ave) : 0 / 0 / 0
+
+Bluetooth Config:
+  Config Source: Original file
+  Devices loaded: 3
+  File created/tagged: 
+  File source: Empty
+
+Bluetooth HF Client BTA Statistics
+
+Bluetooth Wakelock Statistics:
+  Is acquired                    : false
+  Acquired/released count        : 3608 / 3608
+  Acquired/released error count  : 0 / 0
+  Last acquire/release error code: 0 / 0
+  Last acquired time (ms)        : 8
+  Acquired time min/max/avg (ms) : 0 / 3001 / 25
+  Total acquired time (ms)       : 93342
+  Total run time (ms)            : 22998036
+
+Bluetooth Memory Allocation Statistics:
+  Total allocated/free/used counts : 0 / 0 / 0
+  Total allocated/free/used octets : 0 / 0 / 0
+
+Bluetooth Alarms Statistics:
+  Total Alarms: 5
+
+  Alarm : btm_ble_addr.refresh_raddr_timer (SINGLE)
+    Action counts (sched/resched/exec/cancel)      : 36 / 0 / 0 / 0
+    Deviation counts (overdue/premature)           : 0 / 0
+    Time in ms (since creation/interval/remaining) : 557679 / 579200 / 21521
+    Callback execution time in ms (total/max/avg)  : 0 / 0 / 0
+    Overdue scheduling time in ms (total/max/avg)  : 0 / 0 / 0
+    Premature scheduling time in ms (total/max/avg): 0 / 0 / 0
+
+  Alarm : btm_ble.adv_raddr_timer (PERIODIC)
+    Action counts (sched/resched/exec/cancel)      : 34 / 25 / 0 / 33
+    Deviation counts (overdue/premature)           : 0 / 0
+    Time in ms (since creation/interval/remaining) : 127342 / 445531 / 318189
+    Callback execution time in ms (total/max/avg)  : 0 / 0 / 0
+    Overdue scheduling time in ms (total/max/avg)  : 0 / 0 / 0
+    Premature scheduling time in ms (total/max/avg): 0 / 0 / 0
+
+  Alarm : btm_ble.adv_raddr_timer (PERIODIC)
+    Action counts (sched/resched/exec/cancel)      : 38 / 26 / 0 / 37
+    Deviation counts (overdue/premature)           : 0 / 0
+    Time in ms (since creation/interval/remaining) : 179243 / 574972 / 395729
+    Callback execution time in ms (total/max/avg)  : 0 / 0 / 0
+    Overdue scheduling time in ms (total/max/avg)  : 0 / 0 / 0
+    Premature scheduling time in ms (total/max/avg): 0 / 0 / 0
+
+  Alarm : btm_ble.adv_raddr_timer (PERIODIC)
+    Action counts (sched/resched/exec/cancel)      : 24 / 32 / 0 / 23
+    Deviation counts (overdue/premature)           : 0 / 0
+    Time in ms (since creation/interval/remaining) : 127336 / 587600 / 460264
+    Callback execution time in ms (total/max/avg)  : 0 / 0 / 0
+    Overdue scheduling time in ms (total/max/avg)  : 0 / 0 / 0
+    Premature scheduling time in ms (total/max/avg): 0 / 0 / 0
+
+  Alarm : btm_ble.adv_raddr_timer (PERIODIC)
+    Action counts (sched/resched/exec/cancel)      : 40 / 3 / 0 / 39
+    Deviation counts (overdue/premature)           : 0 / 0
+    Time in ms (since creation/interval/remaining) : 179221 / 650827 / 471606
+    Callback execution time in ms (total/max/avg)  : 0 / 0 / 0
+    Overdue scheduling time in ms (total/max/avg)  : 0 / 0 / 0
+    Premature scheduling time in ms (total/max/avg): 0 / 0 / 0
+
+Hearing Aid Manager:
+  Hearing Aid Audio HAL:
+    Counts (underflow)                                      : 0
+    Bytes (underflow)                                       : 0
+    Last update time ago in ms (underflow)                  : 0
+
+: Hearing Access Service Client:
+  no instance
+
+
+connection_manager state:
+
+	no Low Energy connection attempts
+
+BT Quality Report Events: 
+Event queue is empty.

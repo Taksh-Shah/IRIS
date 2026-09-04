@@ -182,6 +182,145 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         private const val EVT_ADVERTISING_GAVE_UP = 1
         private const val EVT_BLUETOOTH_OFF = 2
         private const val EVT_BLUETOOTH_ON = 3
+
+        // ---- HV-109: process-wide GATT server -----------------------------
+        // The GATT *server* (and everything a remote central's connection to it
+        // depends on) is a process resource, not an engine resource. Closing it
+        // on `stopMesh` / re-opening it on `startMesh` was wrong on two counts:
+        //   (1) the snippet builds a NEW AndroidBleTransportAdapter on every
+        //       startMesh, so the OLD adapter's server leaked (`serverIf` 8 seen
+        //       alive next to 12 in logcat) and a central still connected to it
+        //       kept writing into a queue nobody drained;
+        //   (2) closing a peripheral's GATT server does NOT drop the central's
+        //       ACL link (Bluetooth core spec — only the central can), so the
+        //       central keeps a STALE handle map to a database that just changed
+        //       — exactly what the spec's Service Changed characteristic (0x2A05)
+        //       exists to signal, and Android never sends it for us.
+        // Fix: one server for the life of the process, opened once, never closed
+        // here. Its inbound queues + the callback live here too so writes route
+        // regardless of which adapter instance is currently "live".
+        @Volatile
+        private var sharedGattServer: BluetoothGattServer? = null
+
+        /** Drained by the Rust accept-poller via accepted_connections(). */
+        val sharedAcceptedConnections = ConcurrentLinkedQueue<FfiAcceptedConnection>()
+
+        /** Drained by the Rust inbound reassembly poller via incoming_gatt_writes(). */
+        val sharedGattWrites = ConcurrentLinkedQueue<FfiGattWriteEvent>()
+
+        /** AND-RT-113: collision-resistant per-device FFI `handle` for server writes. */
+        fun deviceHash(device: BluetoothDevice): ULong {
+            val address = device.address.replace(":", "").lowercase()
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest(address.toByteArray(Charsets.US_ASCII))
+            return (ByteBuffer.wrap(digest).long and Long.MAX_VALUE).toULong()
+        }
+
+        private val sharedGattServerCallback = object : BluetoothGattServerCallback() {
+            override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
+                android.util.Log.d(
+                    "IrisBleDiag",
+                    "gattServer onConnectionStateChange device=${device.address} status=$status newState=$newState",
+                )
+                if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    while (sharedAcceptedConnections.size >= MAX_PENDING) sharedAcceptedConnections.poll()
+                    sharedAcceptedConnections.add(
+                        FfiAcceptedConnection(handle = deviceHash(device), address = device.address),
+                    )
+                }
+            }
+
+            override fun onCharacteristicWriteRequest(
+                device: BluetoothDevice,
+                requestId: Int,
+                characteristic: BluetoothGattCharacteristic,
+                preparedWrite: Boolean,
+                responseNeeded: Boolean,
+                offset: Int,
+                value: ByteArray,
+            ) {
+                android.util.Log.d(
+                    "IrisBleDiag",
+                    "onCharacteristicWriteRequest device=${device.address} uuid=${characteristic.uuid} " +
+                        "matchesIris=${characteristic.uuid == IRIS_CHARACTERISTIC_UUID} len=${value.size} " +
+                        "responseNeeded=$responseNeeded",
+                )
+                if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
+                    // HV-93/HV-98: on several OEM stacks the GATT server never
+                    // fires onConnectionStateChange for an inbound LE link, so
+                    // the write itself is the only reliable "this peer is
+                    // talking to us" signal — announce on EVERY IRIS write. The
+                    // Rust accept-poller de-dups (`accept_spawned`).
+                    val h = deviceHash(device)
+                    while (sharedAcceptedConnections.size >= MAX_PENDING) sharedAcceptedConnections.poll()
+                    sharedAcceptedConnections.add(FfiAcceptedConnection(handle = h, address = device.address))
+                    while (sharedGattWrites.size >= MAX_PENDING) sharedGattWrites.poll()
+                    sharedGattWrites.add(
+                        FfiGattWriteEvent(
+                            handle = h,
+                            charUuid = characteristic.uuid.toString(),
+                            data = value,
+                        ),
+                    )
+                }
+                if (responseNeeded) {
+                    try {
+                        sharedGattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+                    } catch (_: Throwable) {
+                    }
+                }
+            }
+        }
+
+        /**
+         * Open the one process-wide GATT server (once) and serve the IRIS
+         * transport characteristic. Idempotent; never closed on mesh-stop.
+         * HV-95: bounded retry for a wedged OEM stack.
+         */
+        fun ensureSharedGattServer(bleManager: BluetoothManager?, appContext: Context): Boolean {
+            if (sharedGattServer != null) return true
+            synchronized(this) {
+                if (sharedGattServer != null) return true
+                repeat(3) { attempt ->
+                    val server = bleManager?.openGattServer(appContext, sharedGattServerCallback)
+                    if (server == null) {
+                        iriscore.util.IrisLog.w("ble.gatt", "ensureSharedGattServer: openGattServer null (attempt ${attempt + 1}/3)")
+                        Thread.sleep(150L)
+                        return@repeat
+                    }
+                    val service = BluetoothGattService(IRIS_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+                    service.addCharacteristic(
+                        BluetoothGattCharacteristic(
+                            IRIS_CHARACTERISTIC_UUID,
+                            BluetoothGattCharacteristic.PROPERTY_WRITE or
+                                BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
+                                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                            BluetoothGattCharacteristic.PERMISSION_WRITE,
+                        ),
+                    )
+                    val added = server.addService(service)
+                    iriscore.util.IrisLog.d("ble.gatt", "ensureSharedGattServer: addService -> $added")
+                    if (added) {
+                        sharedGattServer = server
+                        return true
+                    }
+                    try { server.close() } catch (_: Throwable) {}
+                    Thread.sleep(150L)
+                }
+                iriscore.util.IrisLog.w("ble.gatt", "ensureSharedGattServer: no server after 3 attempts — stack may be wedged")
+                return false
+            }
+        }
+
+        /** HV-109: only on a real BT-off (the OS has already invalidated it). */
+        fun closeSharedGattServer() {
+            synchronized(this) {
+                try { sharedGattServer?.close() } catch (_: Throwable) {}
+                sharedGattServer = null
+                sharedGattWrites.clear()
+                sharedAcceptedConnections.clear()
+            }
+        }
     }
 
     private val appContext: Context = context.applicationContext
@@ -204,17 +343,11 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
     // whole backing array — O(n^2) churn precisely when the core has stopped
     // draining and the buffer is growing.
     private val pendingScanResults = ConcurrentLinkedQueue<FfiScanResult>()
-    private val pendingGattWrites = ConcurrentLinkedQueue<FfiGattWriteEvent>()
 
-    // HW-9: connections accepted by our own GATT SERVER — a remote central
-    // dialed US — drained by the Rust accept-poller via
-    // accepted_connections(). Previously nothing queued these at all: the
-    // GATT server callback had no onConnectionStateChange override, so a
-    // peripheral-role connection existed at the platform level (writes
-    // landed in pendingGattWrites just fine) with no signal anywhere that
-    // it had happened, meaning no per-connection poller was ever spawned to
-    // drain it on the Rust side.
-    private val pendingAcceptedConnections = ConcurrentLinkedQueue<FfiAcceptedConnection>()
+    // HV-109: the GATT-server inbound queues are process-wide (companion) so a
+    // central's writes route no matter which adapter instance is currently live.
+    private val pendingGattWrites get() = sharedGattWrites
+    private val pendingAcceptedConnections get() = sharedAcceptedConnections
 
     // AND-RT-111: IRIS characteristic cached by onServicesDiscovered (async);
     // negotiated MTU + last client-write status tracked per connection.
@@ -539,160 +672,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
      * those writes are DRAINed by the core bridge via `incomingGattWrites()`
      * (proj-BLE-1 — never a MutexGuard across FFI).
      */
-    @Volatile
-    private var gattServer: BluetoothGattServer? = null
-
-    // HV-93/HV-98: the accept path is driven off observed inbound writes, not
-    // the OEM GATT-server connection callback (unreliable on Funtouch et al.):
-    // `onCharacteristicWriteRequest` announces the accepted connection on every
-    // IRIS write; the Rust accept-poller de-dups a handle it already polls and
-    // clears it on `close_peer`, so the first write after a drop re-spawns.
-
-    private val gattServerCallback = object : BluetoothGattServerCallback() {
-        override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
-            // HW-9: this override did not exist at all before — the GATT
-            // server had no way to tell the Rust core "a remote central
-            // just dialed us." Queueing the accepted connection here is
-            // what lets `accepted_connections()` (drained by the new
-            // Rust-side accept-poller in ble.rs) spawn a reassembly poller
-            // for it, exactly as connect_gatt()'s own central-role
-            // connections already get one.
-            android.util.Log.d(
-                "IrisBleDiag",
-                "gattServer onConnectionStateChange device=${device.address} status=$status newState=$newState",
-            )
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                while (pendingAcceptedConnections.size >= MAX_PENDING) pendingAcceptedConnections.poll()
-                pendingAcceptedConnections.add(
-                    FfiAcceptedConnection(handle = deviceHash(device), address = device.address),
-                )
-            }
-        }
-
-        override fun onCharacteristicWriteRequest(
-            device: BluetoothDevice,
-            requestId: Int,
-            characteristic: BluetoothGattCharacteristic,
-            preparedWrite: Boolean,
-            responseNeeded: Boolean,
-            offset: Int,
-            value: ByteArray,
-        ) {
-            // HW-9 investigation: this callback previously had zero tracing —
-            // a sender-side msg.sent success gave no way to tell whether the
-            // write ever reached the peer's GATT server at all, versus
-            // arriving and being silently dropped/misrouted downstream.
-            android.util.Log.d(
-                "IrisBleDiag",
-                "onCharacteristicWriteRequest device=${device.address} uuid=${characteristic.uuid} " +
-                    "matchesIris=${characteristic.uuid == IRIS_CHARACTERISTIC_UUID} len=${value.size} " +
-                    "responseNeeded=$responseNeeded",
-            )
-            if (characteristic.uuid == IRIS_CHARACTERISTIC_UUID) {
-                // HV-93/HV-98: on several OEM stacks BluetoothGattServerCallback
-                // .onConnectionStateChange never fires for an inbound LE
-                // connection — neither for its start (HV-93) nor its drop
-                // (HV-98). The write request itself is the only reliable "this
-                // peer is talking to us" signal, so announce the accepted
-                // connection on EVERY IRIS write. The Rust accept-poller
-                // de-dups a handle that already has a live inbound poller
-                // (`accept_spawned`), and — since HV-98 — `close_peer` removes
-                // the handle from that set, so the first write after a drop
-                // re-spawns the poller. A redundant announce for a still-live
-                // connection is a cheap no-op (bounded queue, drained every
-                // 500 ms). A time-gated re-announce was tried first and was
-                // fragile when drops came < 1.5 s apart (HV-98 attempt 1).
-                val h = deviceHash(device)
-                while (pendingAcceptedConnections.size >= MAX_PENDING) pendingAcceptedConnections.poll()
-                pendingAcceptedConnections.add(
-                    FfiAcceptedConnection(handle = h, address = device.address),
-                )
-                // Bounded: if the core stops draining, drop the oldest rather
-                // than growing without limit.
-                while (pendingGattWrites.size >= MAX_PENDING) pendingGattWrites.poll()
-                pendingGattWrites.add(
-                    FfiGattWriteEvent(
-                        handle = deviceHash(device),
-                        charUuid = characteristic.uuid.toString(),
-                        data = value,
-                    ),
-                )
-            }
-            // Only the platform contract's "response needed" writes get a reply;
-            // an unsolicited sendResponse on a WRITE_NO_RESPONSE write is a
-            // protocol violation on the GATT server side.
-            if (responseNeeded) {
-                // Binder thread: nothing above can catch a throw here.
-                quietly {
-                    gattServer?.sendResponse(
-                        device,
-                        requestId,
-                        BluetoothGatt.GATT_SUCCESS,
-                        offset,
-                        null,
-                    )
-                }
-            }
-        }
-    }
-
-    /**
-     * AND-RT-113: collision-resistant per-device key used as the FFI `handle`
-     * projection for server writes. A 64-bit SHA-256 digest over the MAC bytes
-     * replaces the 31-bit `hashCode()` (whose collisions misattribute frames
-     * across peers).
-     */
-    private fun deviceHash(device: BluetoothDevice): ULong {
-        val address = device.address.replace(":", "").lowercase()
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(address.toByteArray(Charsets.US_ASCII))
-        return (ByteBuffer.wrap(digest).long and Long.MAX_VALUE).toULong()
-    }
-
-    /**
-     * Open the process-scoped GATT server once and serve the IRIS transport
-     * characteristic. Returns true iff a server is now live.
-     *
-     * HV-95: `openGattServer` returns null (and `addService` returns false) when
-     * the OEM Bluetooth stack is wedged — seen after heavy connect/disconnect
-     * churn + reinstalls. The old code logged and returned, and `startAdvertising`
-     * carried on: the node then broadcast a connectable IRIS beacon it could not
-     * serve, so every peer connect failed "characteristic not yet discovered"
-     * forever (the HV-92 symptom, wrong cause). Now a bounded retry, and the
-     * boolean lets `startAdvertising` fail loudly so the core records
-     * `ble-android` as not-started rather than half-up.
-     */
-    private fun ensureGattServer(): Boolean {
-        if (gattServer != null) return true
-        repeat(3) { attempt ->
-            val server = bleManager?.openGattServer(appContext, gattServerCallback)
-            if (server == null) {
-                iriscore.util.IrisLog.w("ble.gatt", "ensureGattServer: openGattServer returned null (attempt ${attempt + 1}/3)")
-                Thread.sleep(150L)
-                return@repeat
-            }
-            val service = BluetoothGattService(IRIS_SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
-            service.addCharacteristic(
-                BluetoothGattCharacteristic(
-                    IRIS_CHARACTERISTIC_UUID,
-                    BluetoothGattCharacteristic.PROPERTY_WRITE or
-                        BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
-                        BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                    BluetoothGattCharacteristic.PERMISSION_WRITE,
-                ),
-            )
-            val added = server.addService(service)
-            iriscore.util.IrisLog.d("ble.gatt", "ensureGattServer: addService(IRIS_SERVICE_UUID=$IRIS_SERVICE_UUID) -> $added")
-            if (added) {
-                gattServer = server
-                return true
-            }
-            quietly { server.close() }
-            Thread.sleep(150L)
-        }
-        iriscore.util.IrisLog.w("ble.gatt", "ensureGattServer: no GATT server after 3 attempts — the Bluetooth stack may be wedged")
-        return false
-    }
+    // HV-109: the GATT server, its callback, its inbound queues and `deviceHash`
+    // all live in the companion object now — one server for the life of the
+    // process, shared by every adapter instance the snippet/app builds. See the
+    // companion block for the full rationale.
+    private fun ensureGattServer(): Boolean =
+        ensureSharedGattServer(bleManager, appContext)
 
     private val advertiseHandles = ConcurrentHashMap<Long, Pair<BluetoothLeAdvertiser, AdvertiseCallback>>()
 
@@ -856,17 +841,14 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     advertiser.stopAdvertising(callback)
                 }
             }
-            // HV-97: also tear down the GATT server. It is opened lazily in
-            // ensureGattServer() and was never closed — so a stopMesh -> new
-            // AndroidBleTransportAdapter -> startMesh cycle left the OS with a
-            // second, stale BluetoothGattServer registered, which wedged
-            // inbound connections on the OEM stack (back-to-back iris_bench
-            // tests in one process failed for exactly this).
+            // HV-109: do NOT close the GATT server here. It is a process
+            // resource, shared across every adapter instance (companion
+            // `sharedGattServer`); a remote central's connection to it survives
+            // a peripheral-side `close()` anyway (Bluetooth core spec), so
+            // closing it only stranded that central against a database it
+            // couldn't re-discover. HV-97's "second stale server" is now
+            // impossible — there is only ever one. Only the advertiser stops.
             if (advertiseHandles.isEmpty()) {
-                quietly {
-                    gattServer?.close()
-                    gattServer = null
-                }
                 // HV-10/HV-31: this transport is no longer advertising — drop
                 // the toggle receiver so a later STATE_ON does not try to
                 // resurrect an advertisement the core stopped.
@@ -896,8 +878,10 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
                 BluetoothAdapter.STATE_OFF, BluetoothAdapter.STATE_TURNING_OFF -> {
                     iriscore.util.IrisLog.w("ble.adapter", "Bluetooth OFF — dropping stale BLE handles")
-                    quietly { gattServer?.close() }
-                    gattServer = null
+                    // HV-109: the OS invalidates the GATT server on a real BT-off,
+                    // so drop the shared one here — `ensureSharedGattServer`
+                    // reopens it when the core re-advertises after BT-on.
+                    closeSharedGattServer()
                     scanHandles.clear()
                     advertiseHandles.clear()
                     scanStartTimes.clear()

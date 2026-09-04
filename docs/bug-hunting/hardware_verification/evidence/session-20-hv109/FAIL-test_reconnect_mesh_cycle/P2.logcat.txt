@@ -1,0 +1,5 @@
+--------- beginning of main
+09-04 14:06:20.268 V/org.iris.mesh.test.JsonRpcServer:54(11788): Session 1 Received: {"id": 1, "method": "stopMesh", "params": []}
+09-04 14:06:20.269 D/org.iris.mesh.test.SnippetManager:286(11788): Invoking RPC method class iriscore.snippet.IrisSnippet#stopMesh
+09-04 14:06:20.270 V/org.iris.mesh.test.JsonRpcServer:116(11788): Session 1 Sent: {"id":1,"result":null,"callback":null,"error":null}
+09-04 14:06:20.285 D/ProfileInstaller(11788): Installing profile for org.iris.mesh
