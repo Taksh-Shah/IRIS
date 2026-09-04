@@ -62,14 +62,14 @@ that remain are understood and logged.*
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 23 | 9 | 9 | 1 | 1 | 3 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 9 | 0 | 6 | 0 | 1 | 2 |
+| 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 0 | 6 | 0 | 1 | 3 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **103** | **15** | **23** | **1** | **3** | **61** |
+| **Total** | | **104** | **15** | **23** | **1** | **3** | **62** |
 
 **Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
 HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
@@ -1930,6 +1930,28 @@ real reconnect reliability.
 **Fix sketch (research):** prototype an optional "trusted peer" bond for peers the
 user explicitly adds as contacts (ties into HV-56 contacts), measure reconnect
 reliability bonded vs unbonded on the bench, and decide.
+
+---
+
+### HV-104 — BLE poller consolidation + battery profile (split out of HV-28)
+
+- **Fix status:** ⬜ (Session 19 — HV-28's deferred half)
+- **Area:** `ble.rs` `spawn_inbound_poller` (one task per connected peer at
+  50 ms active / 500 ms idle), EXP-003 battery rig
+- **Severity:** Medium (battery / scale) · **HW gate:** 3+ phones + a power
+  measurement rig
+
+**What:** HV-28 verified Doze does not stall *delivery*. Not yet done: (1) the
+per-peer inbound pollers should be consolidated into one transport-wide poller —
+at 8 peers that is 8 tasks × 16 wakeups/s idle, and it also keeps the SoC out of
+deeper sleep states (Wi-Fi Aware already did this — GAP-12 comment). (2) an
+actual 30-min screen-off battery-drain measurement with an idle 2-node mesh,
+and adaptive idle cadence keyed on charge state / battery level. Needs a dense
+mesh (to see the poller cost) and a power rig (EXP-003).
+
+**Fix sketch:** one `spawn_transport_poller` that drains every live handle in a
+round; keep the fast/idle split keyed on *any* peer's recent activity; expose an
+`adaptive` idle interval; benchmark before/after on the rig.
 
 ---
 
