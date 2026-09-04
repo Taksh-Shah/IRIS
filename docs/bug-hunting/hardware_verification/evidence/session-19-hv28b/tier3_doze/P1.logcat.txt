@@ -1,0 +1,798 @@
+--------- beginning of main
+09-04 11:42:31.026 W/logcat  ( 2257): type=1400 audit(0.0:365742): avc:  denied  { ioctl } for  path="socket:[67752850]" dev="sockfs" ino=67752850 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 11:42:31.030 W/logcat  ( 2257): type=1400 audit(0.0:365743): avc:  denied  { ioctl } for  path="socket:[67752850]" dev="sockfs" ino=67752850 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 11:42:31.030 W/logcat  ( 2257): type=1400 audit(0.0:365744): avc:  denied  { ioctl } for  path="socket:[67752850]" dev="sockfs" ino=67752850 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 11:42:31.156 V/org.iris.mesh.test.JsonRpcServer:54(32530): Session 1 Received: {"id": 5, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "prime", 4]}
+09-04 11:42:31.157 D/org.iris.mesh.test.SnippetManager:286(32530): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 11:42:31.196 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b0c1d3d7ce3 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m21 [3mttl_secs[0m[2m=[0m3600
+09-04 11:42:31.197 D/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-04 11:42:31.198 W/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06b0c1d3d7ce3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-04 11:42:31.199 V/org.iris.mesh.test.JsonRpcServer:116(32530): Session 1 Sent: {"id":5,"result":"01a06b0c1d3d7ce38e9e775bf0d2717d","callback":null,"error":null}
+09-04 11:42:33.370 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:42:33.384 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:42:33.399 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 11:42:34.210 D/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-04 11:42:34.211 W/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06b0c1d3d7ce3 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-04 11:42:34.328 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:34.329 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:35.465 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:42:35.466 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:42:36.477 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:42:36.489 D/CompatibilityChangeReporter(32530): Compat change id reported: 265103382; UID 10406; state: ENABLED
+09-04 11:42:36.491 D/BluetoothGatt(32530): connect() - device: 70:CF:AA:A3:41:A6, auto: false, eattSupport: false
+09-04 11:42:36.492 D/BluetoothGatt(32530): registerApp()
+09-04 11:42:36.494 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 11:42:36.495 D/BluetoothGatt(32530): registerApp() - UUID=2ff266f5-d53e-4b71-973b-d08244f20947
+09-04 11:42:36.501 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 1503459c-8e3b-f907-7e34-1e34e72e6b53
+09-04 11:42:36.501 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=11
+09-04 11:42:36.503 D/iriscore(32530): iris.ble.gatt connectGatt: initiated, waiting for ready
+09-04 11:42:36.503 D/BluetoothGatt(32530): onClientRegistered() - status=0 clientIf=11
+09-04 11:42:36.514 I/bt_stack(12286): [INFO:gatt_api.cc(1648)] GATT_Connect gatt_if=11, address=70:cf:aa:a3:41:a6 is_direct 1
+09-04 11:42:36.514 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=70:cf:aa:a3:41:a6, cl_supp_feat=0000, aware=1
+09-04 11:42:36.515 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(262)] btm_add_dev_to_controller adding RPA into white list
+09-04 11:42:36.515 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(483)] conn_int_min:24, conn_int_max:40
+09-04 11:42:36.548 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 11:42:36.556 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:42:36.557 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:42:37.145 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=76:62:75:03:cb:36, cl_supp_feat=0000, aware=1
+09-04 11:42:37.147 D/BluetoothGattServer(32530): onServerConnectionState() - status=0 serverIf=6 device=76:62:75:03:CB:36
+09-04 11:42:37.147 D/IrisBleDiag(32530): gattServer onConnectionStateChange device=76:62:75:03:CB:36 status=0 newState=2
+09-04 11:42:37.149 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:37.149 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=76:62:75:03:CB:36
+09-04 11:42:37.151 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 11:42:37.151 I/bt_stack(12286): [INFO:connection_manager.cc(286)] lower the scan parameters used for connecting
+09-04 11:42:37.151 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(282)] btm_add_dev_to_controller removing RPA from white list
+09-04 11:42:37.151 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 11:42:37.152 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 11:42:37.190 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 11:42:37.190 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 11:42:37.248 W/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m select_transports() returned no candidates for this peer — requeuing [3mevent[0m[2m=[0m"msg.no_transport_selected" [3mmessage_id[0m[2m=[0m01a06b0c1d3d7ce3 [3mpriority[0m[2m=[0m4 [3mdest[0m[2m=[0mSome(ShortId([55, 130, 235, 115, 92, 159, 18, 128])) [3mattempt[0m[2m=[0m0
+09-04 11:42:37.280 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 11:42:37.371 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 11:42:37.419 E/bt_stack(12286): [ERROR:bta_gattc_db_storage.cc(79)] bta_gattc_load_db: can't open GATT cache file /data/misc/bluetooth/gatt_cache_70cfaaa341a6 for reading, error: No such file or directory
+09-04 11:42:37.420 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=70:CF:AA:A3:41:A6
+09-04 11:42:37.420 D/BluetoothGattServer(32530): onServerConnectionState() - status=0 serverIf=6 device=70:CF:AA:A3:41:A6
+09-04 11:42:37.420 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 11:42:37.421 D/IrisBleDiag(32530): gattServer onConnectionStateChange device=70:CF:AA:A3:41:A6 status=0 newState=2
+09-04 11:42:37.421 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 11:42:37.422 D/BluetoothGatt(32530): onClientConnectionState() - status=0 clientIf=11 device=70:CF:AA:A3:41:A6
+09-04 11:42:37.422 D/BluetoothGatt(32530): discoverServices() - device: 70:CF:AA:A3:41:A6
+09-04 11:42:37.460 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.510 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 11:42:37.550 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.599 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 11:42:37.640 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.654 W/getenforce( 2466): type=1400 audit(0.0:365746): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:42:37.689 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 21, lcid = 4
+09-04 11:42:37.689 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 11:42:37.693 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=76:62:75:03:CB:36 interval=6 latency=0 timeout=500 status=0
+09-04 11:42:37.693 D/BluetoothGattServer(32530): onConnectionUpdated() - Device=76:62:75:03:CB:36 interval=6 latency=0 timeout=500 status=0
+09-04 11:42:37.705 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.720 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.735 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.750 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.766 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.781 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:37.781 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 11:42:37.782 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 11:42:37.795 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.811 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.825 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.841 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 11:42:37.856 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.868 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 11:42:37.871 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.886 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.901 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.915 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 11:42:37.933 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.945 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.958 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:37.958 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 11:42:37.964 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 11:42:37.975 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 11:42:38.028 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 11:42:38.029 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (76:62:75:03:cb:36), resulted MTU 517
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=266
+09-04 11:42:38.029 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=267
+09-04 11:42:38.031 D/BluetoothGattServer(32530): onMtuChanged() - device=76:62:75:03:CB:36, mtu=517
+09-04 11:42:38.031 D/BluetoothGattServer(11609): onMtuChanged() - device=76:62:75:03:CB:36, mtu=517
+09-04 11:42:38.049 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.050 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 11:42:38.068 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 350, lcid = 4
+09-04 11:42:38.073 D/IrisBleDiag(32530): onCharacteristicWriteRequest device=76:62:75:03:CB:36 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=348 responseNeeded=true
+09-04 11:42:38.138 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 11:42:38.237 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.237 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 11:42:38.239 D/BluetoothGattServer(32530): onConnectionUpdated() - Device=70:CF:AA:A3:41:A6 interval=6 latency=0 timeout=500 status=0
+09-04 11:42:38.239 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:CF:AA:A3:41:A6 interval=6 latency=0 timeout=500 status=0
+09-04 11:42:38.241 D/BluetoothGatt(32530): onConnectionUpdated() - Device=70:CF:AA:A3:41:A6 interval=6 latency=0 timeout=500 status=0
+09-04 11:42:38.259 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.259 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 11:42:38.272 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 11:42:38.287 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 11:42:38.302 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 11:42:38.317 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.317 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 11:42:38.332 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 11:42:38.332 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=3, s_handle=0x0030, e_handle=0xffff
+09-04 11:42:38.347 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.348 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=4, s_handle=0x0030, e_handle=0xffff
+09-04 11:42:38.362 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 11:42:38.365 D/BluetoothGattServer(32530): onConnectionUpdated() - Device=76:62:75:03:CB:36 interval=36 latency=0 timeout=500 status=0
+09-04 11:42:38.365 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=76:62:75:03:CB:36 interval=36 latency=0 timeout=500 status=0
+09-04 11:42:38.377 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.377 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000b, disc_type=5, s_handle=0x0033, e_handle=0xffff
+09-04 11:42:38.392 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 11:42:38.393 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 11:42:38.402 D/BluetoothGatt(32530): onSearchComplete() = Device=70:CF:AA:A3:41:A6 Status=0
+09-04 11:42:38.403 D/iriscore(32530): iris.ble.gatt connectGatt: ready resolved successfully
+09-04 11:42:38.416 D/BluetoothGatt(32530): configureMTU() - device: 70:CF:AA:A3:41:A6 mtu: 517
+09-04 11:42:38.422 I/bt_stack(12286): [INFO:gatt_api.cc(964)] GATTC_TryMtuRequest70:cf:aa:a3:41:a6 conn_id=0x000b
+09-04 11:42:38.422 I/bt_stack(12286): [INFO:gatt_api.cc(993)] GATTC_TryMtuRequestMTU not yet updated for 70:cf:aa:a3:41:a6
+09-04 11:42:38.422 I/bt_stack(12286): [INFO:gatt_api.cc(921)] GATTC_ConfigureMTUConfiguring ATT mtu size conn_id:11 mtu:517 user mtu 517
+09-04 11:42:38.424 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1982
+09-04 11:42:38.426 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 11:42:38.426 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-04 11:42:38.444 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 3, msg_len = 2, lcid = 4
+09-04 11:42:38.444 I/bt_stack(12286): [INFO:gatt_cl.cc(1162)] Local pending MTU 517, Remote (70:cf:aa:a3:41:a6) MTU 517
+09-04 11:42:38.444 I/bt_stack(12286): [INFO:gatt_cl.cc(1198)] MTU Exchange resulted in: 517
+09-04 11:42:38.446 D/BluetoothGatt(32530): onConfigureMTU() - Device=70:CF:AA:A3:41:A6 mtu=517 status=0
+09-04 11:42:38.471 D/iriscore(32530): iris.ble.gatt gattWrite ENTER handle=4 len=350 known=[4]
+09-04 11:42:38.520 D/BluetoothGattServer(32530): onConnectionUpdated() - Device=70:CF:AA:A3:41:A6 interval=36 latency=0 timeout=500 status=0
+09-04 11:42:38.520 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=70:CF:AA:A3:41:A6 interval=36 latency=0 timeout=500 status=0
+09-04 11:42:38.523 D/BluetoothGatt(32530): onConnectionUpdated() - Device=70:CF:AA:A3:41:A6 interval=36 latency=0 timeout=500 status=0
+09-04 11:42:38.553 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 11:42:38.713 I/FusedLocation(11609): (REDACTED) location delivery to %s blocked - too close
+09-04 11:42:38.717 I/FusedLocation(11609): (REDACTED) location delivery to %s blocked - too close
+09-04 11:42:39.575 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:39.575 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:40.272 D/iriscore(32530): iris.ble.gatt gattWrite ENTER handle=4 len=292 known=[4]
+09-04 11:42:40.398 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 11:42:40.403 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b0c1d3d7ce3 [3mpriority[0m[2m=[0m4
+09-04 11:42:40.483 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 11:42:40.485 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 11:42:40.619 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 11:42:40.621 D/IrisBleDiag(32530): onCharacteristicWriteRequest device=76:62:75:03:CB:36 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 11:42:40.778 I/GoogleInputMethodService(29955): GoogleInputMethodService.onFinishInput():2361 
+09-04 11:42:40.785 I/Module  (29955): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-04 11:42:40.809 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06b0c1d3d7ce3
+09-04 11:42:40.867 I/NearbySharing(11609): Screen is locked
+09-04 11:42:40.882 I/NearbySharing(11609): Stopping scanning because the screen is locked and no background sync is active.
+09-04 11:42:40.882 I/NearbySharing(11609): SendProvider: Stopping discovery.
+09-04 11:42:40.893 I/NearbySharing(11609): NearbySharing Internal event SendManagerEnd
+09-04 11:42:40.893 I/NearbySharing(11609): Scanning has stopped.
+09-04 11:42:40.911 I/NearbySharing(11609): Stopping Fast Init advertisement because we're not scanning in the foreground.
+09-04 11:42:40.968 W/AidlConversionCppNdk( 7811): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:42:40.975 W/AidlConversionCppNdk(20281): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:42:40.976 W/AidlConversionCppNdk( 9211): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:42:40.995 W/AidlConversionCppNdk(30169): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+--------- beginning of system
+09-04 11:42:41.035 D/BatteryStatsService( 1680): notePemString  noteWhich: 49,arg1: -2, arg2: -1, arg3: 663, arg4: 320, name: com.android.systemui
+09-04 11:42:41.035 D/BatteryStatsService( 1680): notePemString  noteWhich: 49,arg1: -2, arg2: -1, arg3: 663, arg4: 540, name: com.android.systemui
+09-04 11:42:41.036 D/BatteryStatsService( 1680): notePemString  noteWhich: 49,arg1: -2, arg2: -1, arg3: 663, arg4: 320, name: com.android.systemui
+09-04 11:42:41.060 D/BatteryStatsService( 1680): notePemString  noteWhich: 49,arg1: 1080, arg2: 2408, arg3: 663, arg4: 540, name: com.android.systemui
+09-04 11:42:41.060 D/BatteryStatsService( 1680): notePemString  noteWhich: 49,arg1: 1080, arg2: 2408, arg3: 663, arg4: 320, name: com.android.systemui
+09-04 11:42:41.101 W/AidlConversionCppNdk(12286): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:42:41.110 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:41.111 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:41.112 I/NearbySharing(11609): [NS_DEBUG] DiscoveryController stopped.
+09-04 11:42:41.131 I/NearbyConnections(11609): Client 197060544 requested discovery to stop.
+09-04 11:42:41.135 I/NearbyMediums(11609): In ScanningCancellationFlag, service-id=NearbySharing is the last scanner to stop scanning. The flag has been cancelled.
+09-04 11:42:41.157 I/NearbyDiscovery(11609): (REDACTED) FastPairDisplayObserver: %s -> %s
+09-04 11:42:41.188 I/NearbyMediums(11609): Stopped BLE scanning, service-id=NearbySharing
+09-04 11:42:41.188 I/NearbyMediums(11609): [WifiAwareManagerHelper] Can't stop WiFi Aware subscribing because it was never started.
+09-04 11:42:41.188 I/NearbyMediums(11609): Can't stop NFC discovery because it was never started.
+09-04 11:42:41.195 I/NearbyConnections(11609): No longer listening to visibility changes for client 197060544
+09-04 11:42:41.207 I/NearbySharing(11609): Start advertising with mode SCREEN_OFF certificate visibility SELF_SHARE data usage preference ONLINE, bt advertising false, vendorId 0, deviceName included: false
+09-04 11:42:41.207 I/NearbySharing(11609): Uwb feature is off.
+09-04 11:42:41.208 I/NearbySharing(11609): Updating advertising options for [ebsl@532ac18, dwyl@b01d688] providers
+09-04 11:42:41.208 I/NearbySharing(11609): Updating advertising options: AdvertisingOptions{mode=SCREEN_OFF, dataUsage=2, flowId=0, uwbSenderInfo=[], deviceType=1, bluetoothClassicEnabled=false, useStableIdentifiers=false, allowGattConnections=false, allowBleL2capConnections=false, vendorId=0, advertisePlaintextDeviceName=false, isPinCodeEnabled=false, listenOnly=false}
+09-04 11:42:41.208 I/NearbySharing(11609): ReceiveProvider: Received request to update advertising.
+09-04 11:42:41.208 I/NearbySharing(11609): Updating advertising options: AdvertisingOptions{mode=SCREEN_OFF, dataUsage=2, flowId=0, uwbSenderInfo=[], deviceType=1, bluetoothClassicEnabled=false, useStableIdentifiers=false, allowGattConnections=false, allowBleL2capConnections=false, vendorId=0, advertisePlaintextDeviceName=false, isPinCodeEnabled=false, listenOnly=false}
+09-04 11:42:41.208 I/NearbySharing(11609): Advertising has started with mode SCREEN_OFF, Bt enabled : false
+09-04 11:42:41.208 I/NearbySharing(11609): Stopping FastInitiation scanning because the screen is locked.
+09-04 11:42:41.222 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(323)] bta_gattc_deregister: Deregister Failed unknown client cif
+09-04 11:42:41.230 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:42:41.232 D/BatteryStatsService( 1680): notePemString  noteWhich: 49,arg1: 1080, arg2: 2408, arg3: 663, arg4: 540, name: com.android.systemui
+09-04 11:42:41.250 I/NearbySharing(11609): Stopped scanning for FastInitiation
+09-04 11:42:41.256 I/NearbyDiscovery(11609): (REDACTED) FastPairDisplayObserver: %s -> %s
+09-04 11:42:41.259 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:41.260 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:42:41.295 I/NearbySharing(11609): Fast Initiation Scanning has stopped
+09-04 11:42:41.296 I/NearbySharing(11609): Dismissing HUN as there's no device nearby.
+09-04 11:42:41.392 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Stopping scan, %s
+09-04 11:42:41.394 I/NearbySharing(11609): Stopping scanning because the screen is locked and no background sync is active.
+09-04 11:42:41.401 I/NearbySharing(11609): Stopping Fast Init advertisement because we're not scanning in the foreground.
+09-04 11:42:41.414 I/BatteryStatsImpl( 1680): Resetting battery stats: level=91 status=2 dischargeLevel=91 lowAmount=8 highAmount=9
+09-04 11:42:41.418 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:42:41.418 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:42:41.440 I/BatteryStatsHistory( 1680): ********** CLEARING HISTORY!
+09-04 11:42:41.460 I/NearbySharing(11609): Failed to advertise because we're already advertising with mode SCREEN_OFF, certificate visibility SELF_SHARE data usage preference ONLINE, and bt advertising false with vendorId 0
+09-04 11:42:41.460 I/NearbySharing(11609): Stopping FastInitiation scanning because the screen is locked.
+09-04 11:42:41.461 I/NearbySharing(11609): Fast Initiation Scanning has stopped
+09-04 11:42:41.461 I/NearbySharing(11609): Loading certificates with visibility SELF_SHARE
+09-04 11:42:41.461 I/NearbySharing(11609): Dismissing HUN as there's no device nearby.
+09-04 11:42:41.462 I/NearbySharing(11609): Saving the private certificate to file nearby_sharing_private_certificate_file_for_self.
+09-04 11:42:41.468 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:42:41.471 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:41.473 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:42:41.493 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:42:41.499 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:42:41.502 I/NearbySharing(11609): Network state changed: NetworkState(isRestricted=false, isOnline=false, isCongested=false, isMetered=false, isWifiConnected=false)
+09-04 11:42:41.502 I/NearbySharing(11609): Network state changed: NetworkState(isRestricted=false, isOnline=false, isCongested=false, isMetered=false, isWifiConnected=false)
+09-04 11:42:41.502 I/NearbySharing(11609): WEBRTC disabled: dataUsage ONLINE
+09-04 11:42:41.540 I/NearbyConnections(11609): ClientProxy(0p:com.google.android.gms.nearby.sharing) allow WebRtc to use mobile data.
+09-04 11:42:41.540 I/NearbyConnections(11609): Client 197060544 requested to update advertising options.
+09-04 11:42:41.553 I/Nearby  (11609): (REDACTED) Note nearby client %s for operation %s
+09-04 11:42:41.561 I/NearbyConnections(11609): [PcpManager] In updateAdvertisingOptions() advertisingMediums:[BLE] upgradeMediums:[USB, WIFI_LAN, WIFI_DIRECT, WIFI_AWARE, WIFI_HOTSPOT, BLE_L2CAP, BLUETOOTH, BLE, NFC] requireRegisterWifiStatusChangedCallback:true
+09-04 11:42:41.582 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.handleBroadcast():184 onReceive() : Action = android.intent.action.SCREEN_OFF
+09-04 11:42:41.582 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.updateCountryInfo():200 updateCountryInfo(), notifyAnyway = false
+09-04 11:42:41.583 I/VoiceImeUtils(29955): VoiceImeUtils.sendStopVoiceEventToInputBundle():517 dispatching STOP_VOICE_IME [RD]
+09-04 11:42:41.585 I/InputBundle(29955): InputBundle.consumeEvent():1058 Skip consuming an event as imeStatus is INACTIVE
+09-04 11:42:41.573 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:41.594 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Start scanning internally, %s
+09-04 11:42:41.594 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.594 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.594 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.595 I/Module  (29955): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-04 11:42:41.604 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.604 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.605 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.608 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 03eb6f4b-7b82-799d-94ef-6fe44fa15aca
+09-04 11:42:41.608 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=8
+09-04 11:42:41.609 D/BluetoothLeScanner(11609): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-04 11:42:41.625 I/NearbyConnections(11609): Instant Connection Security key rotated.
+09-04 11:42:41.625 I/NearbyConnections(11609): Scheduled invalidation of the HPKE key alarm (delayMillis:8000) for client 197060544
+09-04 11:42:41.626 I/NearbyConnections(11609): Get local endpoint id from random generation E2W3 (last:S2CC) for client 197060544
+09-04 11:42:41.626 I/NearbyConnections(11609): generateRxInstantConnectionAdvBytes() returns null due to not supporting extended advertisements
+09-04 11:42:41.646 D/BtGatt.AdvertiseManager(12286): stopAdvertisingSet() android.os.BinderProxy@8044ed4
+09-04 11:42:41.648 D/BluetoothLeAdvertiser(11609):  Total bytes: size:10
+09-04 11:42:41.648 D/BluetoothLeAdvertiser(11609):  Total bytes: size:10
+09-04 11:42:41.650 D/BtGatt.AdvertiseManager(12286): startAdvertisingSet() - reg_id=-50, callback: android.os.BinderProxy@5839b58, interval 160, callingPkg com.google.android.gms
+09-04 11:42:41.653 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Start scanning, mode=%s
+09-04 11:42:41.665 D/BtGatt.AdvertiseManager(12286): onAdvertisingSetStarted() - regId=-50, advertiserId=1, status=0
+09-04 11:42:41.675 I/NearbyMediums(11609): [InstantOnLostManager] Start instant onLost legacy advertising, hashes = [ 0xe5 0xe1 0x3d 0x85 ].
+09-04 11:42:41.676 I/NearbyMediums(11609): Successfully stopped BLE advertising for service NearbySharing
+09-04 11:42:41.694 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(323)] bta_gattc_deregister: Deregister Failed unknown client cif
+09-04 11:42:41.701 D/BluetoothLeAdvertiser(11609):  Total bytes: size:31
+09-04 11:42:41.706 D/BtGatt.AdvertiseManager(12286): startAdvertisingSet() - reg_id=-51, callback: android.os.BinderProxy@d1d9d17, interval 1600, callingPkg com.google.android.gms
+09-04 11:42:41.722 D/BtGatt.AdvertiseManager(12286): onAdvertisingSetStarted() - regId=-51, advertiserId=5, status=0
+09-04 11:42:41.726 D/WM-BatteryChrgTracker( 7811): Received android.os.action.DISCHARGING
+09-04 11:42:41.729 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=a45eaadb-96a2-43c4-b07c-822bbbb5e6b3, generation=81)
+09-04 11:42:41.730 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=45ddde49-c0ad-40d3-83d2-9adef90a463c, generation=51)
+09-04 11:42:41.730 I/NearbyMediums(11609): Started BLE Legacy advertising. Regular Header Advertised : false, Fast Advertised : true, AdvertisingSettings : BleAdvertisingSetting{powerLevel= LOW_POWER, isConnectable= false, isPrivateGatt= true}, isAcceptingConnection : false
+09-04 11:42:41.730 I/NearbyMediums(11609): Successfully started BLE advertising of size 23 for service NearbySharing, deviceToken : [ 0xa8 0xdf ].
+09-04 11:42:41.730 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5657)
+09-04 11:42:41.731 W/NearbyMediums(11609): [WifiNetworkV2] WifiStatusChangedCallback was not registered for NearbySharing.
+09-04 11:42:41.731 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9719)
+09-04 11:42:41.732 I/NearbySharing(11609): [broadcast provider] advertising options updated (BroadcastProviderOptions(powerLevel=1, flowId=5161776211532949675, uwbSenderInfo=[], deviceType=1, advertisingMediums=[4], upgradeMediums=[11, 5, 8, 6, 3, 10, 2, 4, 7], useStableIdentifiers=false, allowBluetoothRadioToggling=false, allowWifiRadioToggling=false, enableBleL2capListening=false, allowGattConnections=false, enableFastAdvertisement=true, listenOnly=false)).
+09-04 11:42:41.732 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9721)
+09-04 11:42:41.732 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9723)
+09-04 11:42:41.732 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9725)
+09-04 11:42:41.733 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5658)
+09-04 11:42:41.733 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5659)
+09-04 11:42:41.734 I/NearbySharing(11609): NearbySharing Internal event ReceiveManagerUpdate(mode=1, isEveryoneMode=false, dataUsage=2, useQrCode=false, success=true)
+09-04 11:42:41.734 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9727)
+09-04 11:42:41.734 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5660)
+09-04 11:42:41.734 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9729)
+09-04 11:42:41.735 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5661)
+09-04 11:42:41.735 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9731)
+09-04 11:42:41.740 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9733)
+09-04 11:42:41.740 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5662)
+09-04 11:42:41.740 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9737)
+09-04 11:42:41.740 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5663)
+09-04 11:42:41.741 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9739)
+09-04 11:42:41.741 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9741)
+09-04 11:42:41.741 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5664)
+09-04 11:42:41.742 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9743)
+09-04 11:42:41.742 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5665)
+09-04 11:42:41.743 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5666)
+09-04 11:42:41.745 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9745)
+09-04 11:42:41.746 I/NearbySharing(11609): [ClearcutLog] ADVERTISE_DEVICE_PRESENCE_START sessionId=0 flowId=5161776211532949675 sessionStatus: 1, visibility: 4
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5667)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9747)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5668)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9749)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9753)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9755)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5669)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9757)
+09-04 11:42:41.746 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5670)
+09-04 11:42:41.747 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9761)
+09-04 11:42:41.797 I/BatchScanningManager(11609): (REDACTED) Starting batch scanner in %d seconds.
+09-04 11:42:41.837 I/NearbyDiscovery(11609): (REDACTED) FastPairHandler: Received action %s
+09-04 11:42:41.877 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:41.878 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:41.893 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:42:41.895 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:41.896 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:42:41.896 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Stopping scan, %s
+09-04 11:42:41.905 I/NearbyDiscovery(11609): FastPairController: onSystemStateChanged: skip due to flag disabled [CONTEXT service_id=265 ]
+09-04 11:42:41.947 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.handleBroadcast():184 onReceive() : Action = android.intent.action.SCREEN_ON
+09-04 11:42:41.948 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.updateCountryInfo():200 updateCountryInfo(), notifyAnyway = false
+09-04 11:42:41.948 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.948 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.948 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.948 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.948 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.948 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:41.999 D/WM-BatteryChrgTracker(31816): Received android.os.action.DISCHARGING
+09-04 11:42:42.001 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 4efd3390-3825-0b24-2ce5-3c7dad1bcf68
+09-04 11:42:42.001 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=8
+09-04 11:42:42.004 D/WM-GreedyScheduler(31816): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=87ec597a-d700-4242-9108-976fbc3f9ae0, generation=0)
+09-04 11:42:42.010 I/BatchScanningManager(11609): Batch scanner stopped/cancelled (if it was running/scheduled). [CONTEXT service_id=284 ]
+09-04 11:42:42.013 I/NearbyDiscovery(11609): (REDACTED) FastPairHandler: Received action %s
+09-04 11:42:42.016 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:42:42.018 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:42.021 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:42:42.022 I/bt_stack(12286): [INFO:btm_ble_adv_filter.cc(838)] BTM_LE_PF_set UUID MASK is empty 
+09-04 11:42:42.023 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:42.024 I/bt_stack(12286): [INFO:btm_ble_adv_filter.cc(838)] BTM_LE_PF_set UUID MASK is empty 
+09-04 11:42:42.024 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Start scanning internally, %s
+09-04 11:42:42.028 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 00df964f-e776-ea94-57c7-61acc41b6f88
+09-04 11:42:42.028 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=9
+09-04 11:42:42.028 D/BluetoothLeScanner(11609): onScannerRegistered() - status=0 scannerId=9 mScannerId=0
+09-04 11:42:42.032 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Start scanning, mode=%s
+09-04 11:42:42.032 I/NearbyDiscovery(11609): FastPairController: onSystemStateChanged: skip due to flag disabled [CONTEXT service_id=265 ]
+09-04 11:42:42.188 V/org.iris.mesh.test.JsonRpcServer:54(32530): Session 1 Received: {"id": 6, "method": "nodeId", "params": []}
+09-04 11:42:42.189 D/org.iris.mesh.test.SnippetManager:286(32530): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 11:42:42.190 V/org.iris.mesh.test.JsonRpcServer:116(32530): Session 1 Sent: {"id":6,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 11:42:42.237 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 306, lcid = 4
+09-04 11:42:42.239 D/IrisBleDiag(32530): onCharacteristicWriteRequest device=76:62:75:03:CB:36 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=304 responseNeeded=true
+09-04 11:42:42.278 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message delivered to final recipient [3mevent[0m[2m=[0m"msg.delivered" [3mmessage_id[0m[2m=[0m01a06b0c48c17bb0 [3mpriority[0m[2m=[0m4 [3mhops[0m[2m=[0m0
+09-04 11:42:42.289 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b0c48a67842 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m32 [3mttl_secs[0m[2m=[0m3600
+09-04 11:42:42.291 D/iriscore(32530): iris.ble.gatt gattWrite ENTER handle=4 len=323 known=[4]
+09-04 11:42:42.377 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 11:42:42.380 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b0c48a67842 [3mpriority[0m[2m=[0m4
+09-04 11:42:42.719 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:42.719 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:42:43.682 D/BtGatt.AdvertiseManager(12286): stopAdvertisingSet() android.os.BinderProxy@5839b58
+09-04 11:42:43.724 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:42:43.725 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:42:48.425 I/NearbyDiscovery(11609): (REDACTED) FastPairDisplayObserver: %s -> %s
+09-04 11:42:48.429 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:42:48.433 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:48.436 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:48.475 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:42:48.481 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:42:48.482 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:48.482 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:42:48.482 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Stopping scan, %s
+09-04 11:42:48.642 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:48.643 W/SQLiteLog(10441): (28) double-quoted string literal: "en"
+09-04 11:42:48.667 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.handleBroadcast():184 onReceive() : Action = android.intent.action.SCREEN_OFF
+09-04 11:42:48.667 I/VoiceImeUtils(29955): VoiceImeUtils.sendStopVoiceEventToInputBundle():517 dispatching STOP_VOICE_IME [RD]
+09-04 11:42:48.667 I/InputBundle(29955): InputBundle.consumeEvent():1058 Skip consuming an event as imeStatus is INACTIVE
+09-04 11:42:48.667 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:48.667 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:48.667 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:48.667 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:48.668 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:48.668 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:42:48.668 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.updateCountryInfo():200 updateCountryInfo(), notifyAnyway = false
+09-04 11:42:48.668 I/Module  (29955): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-04 11:42:48.708 I/BatchScanningManager(11609): (REDACTED) Starting batch scanner in %d seconds.
+09-04 11:42:48.709 I/NearbyDiscovery(11609): (REDACTED) FastPairHandler: Received action %s
+09-04 11:42:48.711 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:42:48.713 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:42:48.714 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:42:48.714 I/NearbyDiscovery(11609): FastPairController: onSystemStateChanged: skip due to flag disabled [CONTEXT service_id=265 ]
+09-04 11:42:49.628 I/NearbyConnections(11609): Invalidate cached hpkeKey for client 197060544
+09-04 11:42:53.756 W/libc    ( 3765): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:42:53.754 W/getprop ( 3765): type=1400 audit(0.0:365900): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:42:58.710 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 11:42:58.710 I/NearbyPresence(11609): (REDACTED) %s verified [!=] new request %s does not equal to the old request %s
+09-04 11:42:58.710 I/NearbyPresence(11609): (REDACTED) BleAdvertiseProviderController: request.isRequested() %s
+09-04 11:42:58.710 I/NearbyPresence(11609): (REDACTED) %s: stopping existing advertisement(s) %s,
+09-04 11:42:58.917 D/BtGatt.AdvertiseManager(12286): stopAdvertisingSet() android.os.BinderProxy@5d2587d
+09-04 11:42:58.919 I/NearbyPresence(11609): (REDACTED) %s: successfully stopped advertising
+09-04 11:42:58.928 I/NearbyPresence(11609): (REDACTED) %s: Nearby Presence stops mac rotation scheduler.
+09-04 11:42:59.007 I/fpp     (11609): device=V2205, txOffset=0
+09-04 11:42:59.007 I/NearbyPresence(11609): (REDACTED) %s: Creating Rust V0 advertisement
+09-04 11:42:59.013 I/NearbyPresence(11609): (REDACTED) %s: Broadcast with parameter %s
+09-04 11:42:59.014 D/BluetoothLeAdvertiser(11609):  Total bytes: size:26
+09-04 11:42:59.019 D/BtGatt.AdvertiseManager(12286): startAdvertisingSet() - reg_id=-52, callback: android.os.BinderProxy@fa1180f, interval 400, callingPkg com.google.android.gms
+09-04 11:42:59.021 I/NearbyPresence(11609): (REDACTED) %s successfully started advertising %s
+09-04 11:42:59.031 I/AlarmManager(11609): setExactAndAllowWhileIdle [name: NearbyBleWakeup type: 0 triggerAtMillis: 1788503040031]
+09-04 11:42:59.034 D/BtGatt.AdvertiseManager(12286): onAdvertisingSetStarted() - regId=-52, advertiserId=1, status=0
+09-04 11:42:59.370 W/getenforce( 3811): type=1400 audit(0.0:365901): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:08.608 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 11:43:08.610 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 11:43:08.610 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 11:43:08.611 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 11:43:08.611 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m4
+09-04 11:43:08.629 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:43:09.830 W/getenforce( 4310): type=1400 audit(0.0:365903): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:10.673 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:43:16.359 W/TimedProcessReaper(  599): Current importance is: 300
+09-04 11:43:16.360 D/TimedProcessReaper(  599): Attempted to reap process, but was too important
+09-04 11:43:19.013 W/libc    ( 4706): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:43:19.010 W/getprop ( 4706): type=1400 audit(0.0:365905): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:20.310 W/getenforce( 4734): type=1400 audit(0.0:365906): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:30.305 E/BluetoothServiceJni(12286): alarmFiredNative() - Alarm fired with callback not set!
+09-04 11:43:30.722 W/getenforce( 5152): type=1400 audit(0.0:365926): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:30.870 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:43:40.722 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 9f459142-4cca-276b-54c2-8f008f3ff5c5
+09-04 11:43:40.722 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=8
+09-04 11:43:40.723 D/BluetoothLeScanner(32530): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-04 11:43:40.742 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:43:40.754 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:43:40.915 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:43:41.206 W/getenforce( 5615): type=1400 audit(0.0:365928): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:42.795 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:43:44.268 W/libc    ( 5863): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:43:44.262 W/getprop ( 5863): type=1400 audit(0.0:365930): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:43:51.622 W/getenforce( 5989): type=1400 audit(0.0:365931): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:01.874 W/getenforce( 6295): type=1400 audit(0.0:365933): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:02.880 I/.android.gms.ui(17369): Explicit concurrent copying GC freed 775KB AllocSpace bytes, 5(100KB) LOS objects, 29% free, 4802KB/6850KB, paused 302us,78us total 196.399ms
+09-04 11:44:09.537 W/libc    ( 6565): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:44:09.534 W/getprop ( 6565): type=1400 audit(0.0:365935): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:11.070 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:44:12.825 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:44:12.835 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:44:14.878 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:44:21.135 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:44:22.402 W/getenforce( 6842): type=1400 audit(0.0:365938): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:32.594 W/getenforce( 7120): type=1400 audit(0.0:366023): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:34.771 W/libc    ( 7229): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:44:34.766 W/getprop ( 7229): type=1400 audit(0.0:366025): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:42.958 W/getenforce( 7384): type=1400 audit(0.0:366026): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:44:43.486 D/BoundBrokerSvc(11609): onUnbind: Intent { act=com.google.android.gms.cast.firstparty.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-04 11:44:44.901 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:44:44.913 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:44:46.952 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:44:53.374 W/getenforce( 7698): type=1400 audit(0.0:366028): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:00.024 W/libc    ( 7997): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:45:00.018 W/getprop ( 7997): type=1400 audit(0.0:366030): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:03.510 W/getenforce( 8029): type=1400 audit(0.0:366031): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:16.977 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:45:16.997 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:45:19.044 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:45:24.102 W/getenforce( 8675): type=1400 audit(0.0:366035): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:25.270 W/libc    ( 8772): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:45:25.266 W/getprop ( 8772): type=1400 audit(0.0:366037): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:31.594 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:45:41.670 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:45:44.674 W/getenforce( 9312): type=1400 audit(0.0:366047): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:48.734 I/NearbyDiscovery(11609): FastPair: isDestroyable: Scanner is alive. [CONTEXT service_id=265 ]
+09-04 11:45:48.735 I/NearbyDiscovery(11609): DiscoveryService: Skip stopSelf(), fast pair controller is not destroyable. [CONTEXT service_id=265 ]
+09-04 11:45:49.072 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:45:49.086 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:45:50.536 W/libc    ( 9618): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:45:50.530 W/getprop ( 9618): type=1400 audit(0.0:366049): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:45:51.153 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:46:01.895 I/Finsky  (11072): [16022] Stats for Executor: LightweightExecutor xrb@a1ab348[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 4657]
+09-04 11:46:01.896 I/Finsky  (11072): [16022] Stats for Executor: BlockingExecutor xrb@f3b3b63[Running, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 915]
+09-04 11:46:01.899 I/Finsky  (11072): [16022] Stats for Executor: bgExecutor xrb@9175a8[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 15784]
+09-04 11:46:01.900 I/Finsky  (11072): [16022] Stats for Executor: GrpcBackgroundExecutor xrb@7faac48[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 5]
+09-04 11:46:01.902 I/Finsky:quick_launch(11372): [16033] Stats for Executor: bgExecutor xrb@9e2a360[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 87]
+09-04 11:46:01.905 I/Finsky:quick_launch(11372): [16033] Stats for Executor: LightweightExecutor xrb@f83798d[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 70]
+09-04 11:46:01.906 I/Finsky:quick_launch(11372): [16033] Stats for Executor: BlockingExecutor xrb@de338fe[Running, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 8]
+09-04 11:46:05.286 W/getenforce(10037): type=1400 audit(0.0:366052): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:46:15.781 W/libc    (10338): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:46:15.778 W/getprop (10338): type=1400 audit(0.0:366056): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:46:21.213 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 626fc115-26bb-451e-8023-81b21de8aa2e
+09-04 11:46:21.213 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=8
+09-04 11:46:21.215 D/BluetoothLeScanner(32530): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-04 11:46:21.236 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:46:21.259 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:46:23.322 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:46:25.986 W/getenforce(10625): type=1400 audit(0.0:366057): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:46:35.514 D/BoundBrokerSvc(11609): onUnbind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-04 11:46:36.226 W/getenforce(10884): type=1400 audit(0.0:366059): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.gms
+09-04 11:46:41.037 W/libc    (11142): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:46:41.034 W/getprop (11142): type=1400 audit(0.0:366061): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:46:42.069 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:46:46.646 W/getenforce(11178): type=1400 audit(0.0:366062): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:46:52.134 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:46:53.352 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:46:53.372 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:46:55.433 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:46:56.866 W/getenforce(11614): type=1400 audit(0.0:366064): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:06.298 W/libc    (11941): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:47:06.294 W/getprop (11941): type=1400 audit(0.0:366066): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:07.174 W/getenforce(11961): type=1400 audit(0.0:366067): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:17.538 W/getenforce(12247): type=1400 audit(0.0:366069): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:25.470 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:47:25.482 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:47:25.483 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(556)=>[I] http/task/regular/create/start
+09-04 11:47:25.484 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(591)=>[I] http/task/regular/create/execute
+09-04 11:47:25.489 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(614)=>[I] http/task/regular/create/success
+09-04 11:47:25.524 E/msys    (31816): E[N data-request]_HandleDataResponse(2117)=>Data request error for task CD8A1384-70CC-444A-968C-FBFE961FDD73 (response type 1): java.net.ConnectException: Failed to connect to /57.144.147.32:443
+09-04 11:47:25.539 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(556)=>[I] http/task/regular/create/start
+09-04 11:47:25.541 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(591)=>[I] http/task/regular/create/execute
+09-04 11:47:25.542 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(614)=>[I] http/task/regular/create/success
+09-04 11:47:25.550 E/msys    (31816): E[N data-request]_HandleDataResponse(2117)=>Data request error for task 07F8085E-1FE5-487E-A897-21D025F50048 (response type 1): java.net.ConnectException: Failed to connect to /57.144.211.32:443
+09-04 11:47:25.552 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(556)=>[I] http/task/regular/create/start
+09-04 11:47:25.552 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(591)=>[I] http/task/regular/create/execute
+09-04 11:47:25.552 E/msys    (31816): E[N WCIHTTPImplNetworkSession]WCIHTTPTaskImplCreateRegular(614)=>[I] http/task/regular/create/success
+09-04 11:47:25.571 E/msys    (31816): E[N data-request]_HandleDataResponse(2117)=>Data request error for task 1A148AA8-0AC3-4192-99BA-EA89B8592441 (response type 1): java.net.UnknownHostException: Unable to resolve host "dit.whatsapp.net": No address associated with hostname
+09-04 11:47:25.572 E/msys    (31816): E[I wam]_WAMTransportPrivateLogUploadMessageWithDefaultLevel(55)=>privatestats/wameta/transport/buffer/send response failed, no more endpoints
+09-04 11:47:27.543 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:47:27.910 W/getenforce(12625): type=1400 audit(0.0:366071): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:31.534 W/libc    (12828): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:47:31.530 W/getprop (12828): type=1400 audit(0.0:366073): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:32.373 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:47:39.019 I/org.iris.mesh(32530): Waiting for a blocking GC ProfileSaver
+09-04 11:47:39.058 I/org.iris.mesh(32530): WaitForGcToComplete blocked ProfileSaver on Background for 39.149ms
+09-04 11:47:42.435 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:47:46.241 I/ndroid.gms:snet(13403): Explicit concurrent copying GC freed 571KB AllocSpace bytes, 4(80KB) LOS objects, 34% free, 3867KB/5915KB, paused 371us,70us total 187.778ms
+09-04 11:47:46.518 D/BoundBrokerSvc(11609): onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-04 11:47:47.309 D/BoundBrokerSvc(11609): onUnbind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+09-04 11:47:48.670 W/getenforce(13188): type=1400 audit(0.0:366076): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:53.174 I/AiAiStatsd( 5283): No op: the most recent atoms from the date 2026-09-02 have been uploaded.
+09-04 11:47:56.795 W/libc    (13468): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:47:56.790 W/getprop (13468): type=1400 audit(0.0:366078): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:57.577 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:47:57.599 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:47:58.974 W/getenforce(13495): type=1400 audit(0.0:366079): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:47:59.650 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:48:09.354 W/getenforce(13892): type=1400 audit(0.0:366081): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:19.714 W/getenforce(14208): type=1400 audit(0.0:366083): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:22.030 W/libc    (14325): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:48:22.026 W/getprop (14325): type=1400 audit(0.0:366085): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:27.260 W/TimedProcessReaper(16916): Current importance is: 400
+09-04 11:48:27.263 W/TimedProcessReaper(16916): Killing process to refresh configuration
+09-04 11:48:27.271 I/Process (16916): Sending signal. PID: 16916 SIG: 9
+09-04 11:48:27.518 W/TimedProcessReaper(15572): Current importance is: 400
+09-04 11:48:27.520 W/TimedProcessReaper(15572): Killing process to refresh configuration
+09-04 11:48:27.531 I/Process (15572): Sending signal. PID: 15572 SIG: 9
+09-04 11:48:27.669 I/Zygote  (26753): Process 25116 exited due to signal 9 (Killed)
+09-04 11:48:29.672 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:48:29.686 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:48:30.030 W/getenforce(14477): type=1400 audit(0.0:366093): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:31.720 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:48:31.720 I/iriscore(32530): [2miris_core::discovery[0m[2m:[0m peer evicted from neighbor table (TTL expired) [3mevent[0m[2m=[0m"discovery.peer_lost" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff
+09-04 11:48:34.803 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 7a114e76-93bf-68fe-d037-beb276c24bd7
+09-04 11:48:34.803 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=8
+09-04 11:48:34.807 D/BluetoothLeScanner(32530): onScannerRegistered() - status=0 scannerId=8 mScannerId=0
+09-04 11:48:34.834 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:48:34.850 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:48:34.863 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-04 11:48:40.332 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 11:48:40.462 W/getenforce(14729): type=1400 audit(0.0:366095): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:47.289 W/libc    (14955): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:48:47.286 W/getprop (14955): type=1400 audit(0.0:366097): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:50.726 W/getenforce(14981): type=1400 audit(0.0:366098): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:48:51.296 I/.gms.persistent(11609): Explicit concurrent copying GC freed 15MB AllocSpace bytes, 2(40KB) LOS objects, 49% free, 16MB/33MB, paused 485us,135us total 483.992ms
+09-04 11:48:51.312 W/.gms.persistent(11609): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~slwe8bucttu3MiaPdJU9Fw==/org.iris.mesh-NhN5sun9NEpm0A_Tk4G3HQ==/base.apk' with 1 weak references
+09-04 11:49:00.950 W/getenforce(15227): type=1400 audit(0.0:366100): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:04.883 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:49:04.901 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:49:06.961 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:49:11.334 W/getenforce(15489): type=1400 audit(0.0:366102): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:12.548 W/libc    (15547): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:49:12.546 W/getprop (15547): type=1400 audit(0.0:366104): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:12.803 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:49:21.654 W/getenforce(15739): type=1400 audit(0.0:366105): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:22.847 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:49:23.861 I/id.gms.unstable(20263): Explicit concurrent copying GC freed 278KB AllocSpace bytes, 0(0B) LOS objects, 60% free, 3979KB/10123KB, paused 254us,90us total 174.434ms
+09-04 11:49:31.970 W/getenforce(15990): type=1400 audit(0.0:366107): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:32.887 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:49:36.996 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:49:37.019 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:49:37.820 W/libc    (16280): Access denied finding property "persist.adb.tls_server.enable"
+09-04 11:49:37.818 W/getprop (16280): type=1400 audit(0.0:366109): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:39.092 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:49:42.310 W/getenforce(16303): type=1400 audit(0.0:366110): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:42.933 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 11:49:52.654 W/getenforce(16613): type=1400 audit(0.0:366112): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-04 11:49:55.372 I/PhenotypeProcessReaper(11072): Memory state is: 400
+09-04 11:49:55.374 I/PhenotypeProcessReaper(11072): Killing process to refresh experiment configuration
+09-04 11:49:55.381 I/Process (11072): Sending signal. PID: 11072 SIG: 9
+09-04 11:49:55.531 W/ProcessReaper(24511): Memory state is: 400
+09-04 11:49:55.532 W/ProcessReaper(24511): Killing process to refresh experiment configuration
+09-04 11:49:55.538 I/Process (24511): Sending signal. PID: 24511 SIG: 9
+09-04 11:49:57.350 I/Process (13613): Sending signal. PID: 13613 SIG: 9
+09-04 11:49:57.421 I/Process (16197): Sending signal. PID: 16197 SIG: 9
+09-04 11:49:57.708 I/Process (28480): Sending signal. PID: 28480 SIG: 9
+09-04 11:50:09.126 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:50:09.142 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:50:11.202 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:50:41.234 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-04 11:50:41.257 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 11:50:42.515 I/NearbyDiscovery(11609): (REDACTED) FastPairDisplayObserver: %s -> %s
+09-04 11:50:42.522 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:50:42.524 I/PkModeUpdater(29955): PkModeUpdater.refreshDevices():206 refreshing devices
+09-04 11:50:42.536 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:50:42.545 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:50:42.557 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:50:42.605 I/imation:drawing(16902): Using generational CollectorTypeCC GC.
+09-04 11:50:42.630 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:50:42.630 D/BoundBrokerSvc(11609): onRebind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-04 11:50:42.630 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:50:42.663 D/nativeloader(16902): Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+09-04 11:50:42.672 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:42.724 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:50:42.726 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Start scanning internally, %s
+09-04 11:50:42.740 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register d2259d96-3246-75be-de2c-ef7ad8fc384b
+09-04 11:50:42.740 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=9
+09-04 11:50:42.741 D/BluetoothLeScanner(11609): onScannerRegistered() - status=0 scannerId=9 mScannerId=0
+09-04 11:50:42.753 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:42.765 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: Start scanning, mode=%s
+09-04 11:50:42.799 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:42.809 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.handleBroadcast():184 onReceive() : Action = android.intent.action.SCREEN_ON
+09-04 11:50:42.810 I/DeviceStatusMonitor(29955): DeviceStatusMonitor.updateCountryInfo():200 updateCountryInfo(), notifyAnyway = false
+09-04 11:50:42.810 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:50:42.810 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:50:42.810 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:50:42.810 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:50:42.810 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:50:42.810 I/InputBundle(29955): InputBundle.switchToKeyboardDirectly():531 switchToKeyboardDirectly(): KeyboardTypeAndPayload(keyboardType=prime, payload=null)
+09-04 11:50:42.821 D/CompatibilityChangeReporter(16902): Compat change id reported: 171979766; UID 1000; state: ENABLED
+09-04 11:50:42.821 D/CompatibilityChangeReporter(16902): Compat change id reported: 242716250; UID 1000; state: ENABLED
+09-04 11:50:42.837 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:42.850 I/NetworkScheduler.Stats(11609): (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+09-04 11:50:42.891 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 68faac04-17ce-44ec-8187-ed479eb78f4a
+09-04 11:50:42.892 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=10
+09-04 11:50:42.917 I/bt_stack(12286): [INFO:btm_ble_adv_filter.cc(838)] BTM_LE_PF_set UUID MASK is empty 
+09-04 11:50:42.929 D/CellBroadcastReceiver( 4560): onReceive Intent { act=android.intent.action.SERVICE_STATE flg=0x1000010 cmp=com.google.android.cellbroadcastreceiver/com.android.cellbroadcastreceiver.CellBroadcastReceiver (has extras) }
+09-04 11:50:42.929 I/bt_stack(12286): [INFO:btm_ble_adv_filter.cc(838)] BTM_LE_PF_set UUID MASK is empty 
+09-04 11:50:42.936 D/CellBroadcastReceiver( 4560): onServiceStateChanged, ss: 0
+09-04 11:50:42.937 D/CellBroadcastReceiver( 4560): networkOperator: 40405
+09-04 11:50:42.940 D/CellBroadcastReceiver( 4560): update supported roaming operator as 
+09-04 11:50:42.944 D/BoundBrokerSvc(11609): onBind: Intent { act=com.google.android.gms.findmydevice.spot.locationreporting.BatchScanningGmsTaskService.ACTION_TASK_READY dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+09-04 11:50:42.944 D/BoundBrokerSvc(11609): Loading bound service for intent: Intent { act=com.google.android.gms.findmydevice.spot.locationreporting.BatchScanningGmsTaskService.ACTION_TASK_READY dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+09-04 11:50:42.961 I/gtau    (11609): (REDACTED) Added autobatch scan callback, count = %d
+09-04 11:50:42.962 I/gtau    (11609): Starting autobatch scan. [CONTEXT service_id=284 ]
+09-04 11:50:42.964 I/bt_stack(12286): [INFO:gatt_api.cc(1422)] GATT_Register 9e3067af-4152-6442-f09e-d394b864f07f
+09-04 11:50:42.964 I/bt_stack(12286): [INFO:gatt_api.cc(1443)] allocated gatt_if=12
+09-04 11:50:42.964 D/BluetoothLeScanner(11609): onScannerRegistered() - status=0 scannerId=12 mScannerId=0
+09-04 11:50:42.974 D/nativeloader(16902): Configuring clns-shared-4 for other apk /system/app/GlobalAnimation/GlobalAnimation.apk. target_sdk_version=34, uses_libraries=, library_path=/system/app/GlobalAnimation/lib/arm64:/system/app/GlobalAnimation/GlobalAnimation.apk!/lib/arm64-v8a:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user_de/0/com.vivo.globalanimation:/system/app/GlobalAnimation:/system/lib64:/system_ext/lib64
+09-04 11:50:42.975 I/BatchScanningManager(11609): Batch scanner stopped/cancelled (if it was running/scheduled). [CONTEXT service_id=284 ]
+09-04 11:50:42.976 I/NetworkScheduler.Stats(11609): (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+09-04 11:50:42.975 I/BatchScanningManager(11609): (REDACTED) Batch scanner started. Stopping in %d seconds or when the screen turns on.
+09-04 11:50:42.989 I/NearbyDiscovery(11609): (REDACTED) FastPairHandler: Received action %s
+09-04 11:50:42.992 I/NearbyDiscovery(11609): (REDACTED) PureOffloadFastPairScanner: eventType=%s, isInternalReq=%s, isScanning=%s, isScanningAllowed=%s
+09-04 11:50:42.996 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: isScreenOn=%s, isLocationEnabled=%s, disableLocationRequirement=%s, isDiscoveryScanningEnabled=%s, during24GhzWifiWarmingUpPeriod=%s
+09-04 11:50:42.996 D/BoundBrokerSvc(11609): onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.locationreporting.BatchScanningGmsTaskService.ACTION_TASK_READY dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentInternalBoundBrokerService }
+09-04 11:50:42.997 I/NearbyDiscovery(11609): (REDACTED) ApFastPairScanner: eventType=%s, intReq=%s, scanning=%s, scanAllowed=%s, bleEnabled=%s, lockScanRate=%s, startScanningByLowPowerMode=%s
+09-04 11:50:42.997 I/NearbyDiscovery(11609): FastPairController: onSystemStateChanged: skip due to flag disabled [CONTEXT service_id=265 ]
+09-04 11:50:43.002 I/NetworkScheduler.Stats(11609): (REDACTED) Task %s/%s started execution. cause:%s exec_start_elapsed_seconds: %s
+09-04 11:50:43.004 I/NetworkScheduler.Stats(11609): (REDACTED) Task %s/%s finished executing. cause:%s result: %s elapsed_millis: %s uptime_millis: %s exec_start_elapsed_seconds: %s
+09-04 11:50:43.010 D/nativeloader(16902): Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+09-04 11:50:43.012 W/AidlConversionCppNdk(12286): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:50:43.014 W/AidlConversionCppNdk( 7811): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:50:43.015 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:43.018 W/AidlConversionCppNdk(30169): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:50:43.020 W/AidlConversionCppNdk(20281): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:50:43.024 V/GraphicsEnvironment(16902): Currently set values for:
+09-04 11:50:43.024 V/GraphicsEnvironment(16902):   angle_gl_driver_selection_pkgs=[]
+09-04 11:50:43.024 V/GraphicsEnvironment(16902):   angle_gl_driver_selection_values=[]
+09-04 11:50:43.025 V/GraphicsEnvironment(16902): ANGLE GameManagerService for com.vivo.globalanimation: false
+09-04 11:50:43.025 V/GraphicsEnvironment(16902): com.vivo.globalanimation is not listed in per-application setting
+09-04 11:50:43.025 V/GraphicsEnvironment(16902): Neither updatable production driver nor prerelease driver is supported.
+09-04 11:50:43.031 W/AidlConversionCppNdk( 9211): aidl2legacy_AudioChannelLayout_audio_channel_mask_t: no legacy output audio_channel_mask_t found for AudioChannelLayout{layoutMask: 16}
+09-04 11:50:43.087 D/CellBroadcastReceiver( 4560): onReceive Intent { act=android.intent.action.SERVICE_STATE flg=0x1000010 cmp=com.google.android.cellbroadcastreceiver/com.android.cellbroadcastreceiver.CellBroadcastReceiver (has extras) }
+09-04 11:50:43.088 D/CellBroadcastReceiver( 4560): onServiceStateChanged, ss: 0
+09-04 11:50:43.088 D/CellBroadcastReceiver( 4560): networkOperator: 40405
+09-04 11:50:43.088 D/CellBroadcastReceiver( 4560): update supported roaming operator as 
+09-04 11:50:43.089 W/ContextImpl(16902): Calling a method in the system process without a qualified user: android.app.ContextImpl.bindService:2034 android.content.ContextWrapper.bindService:861 com.vivo.globalanimation.DrawingService.onCreate:6 android.app.ActivityThread.handleCreateService:5222 android.app.ActivityThread.-$$Nest$mhandleCreateService:0 
+09-04 11:50:43.105 D/VivoConfigStore(16902): init begin
+09-04 11:50:43.108 I/android_os_HwBinder(16902): HwBinder: Starting thread pool for getting: vendor.vivo.hardware.configstore@1.0::IVivoConfigStore/default
+09-04 11:50:43.110 D/VivoConfigStore(16902): key:vivo.software.multilandscape isCached is true and value is true
+09-04 11:50:43.113 D/VivoConfigStore(16902): key:vivo.software.multiwindow.splitminimize isCached is false and systemuid value is false
+09-04 11:50:43.113 D/VivoConfigStore(16902): key:vivo.software.ml.freedrag isCached is true and value is true
+09-04 11:50:43.113 D/VivoConfigStore(16902): key:vivo.software.ml.unasso isCached is false and systemuid value is false
+09-04 11:50:43.113 D/VivoConfigStore(16902): key:vivo.software.virtualmultilands isCached is true and value is true
+09-04 11:50:43.114 D/VivoConfigStore(16902): key:vivo.software.hovermode isCached is false and systemuid value is false
+09-04 11:50:43.115 D/VivoConfigStore(16902): key:vivo.software.splithover isCached is false and systemuid value is false
+09-04 11:50:43.116 D/VivoConfigStore(16902): key:vivo.software.multiwindow.splitcompat isCached is false and systemuid value is false
+09-04 11:50:43.118 D/DragManager(16902): DragManager construct in
+09-04 11:50:43.129 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:43.134 D/VivoConfigStore(16902): key:vivo.software.nightmode isCached is true and value is true
+09-04 11:50:43.138 D/CompatibilityChangeReporter(16902): Compat change id reported: 237531167; UID 1000; state: DISABLED
+09-04 11:50:43.140 W/OpenGLRenderer(16902): Unknown dataspace 0
+09-04 11:50:43.176 D/WM-BatteryChrgTracker( 7811): Received android.os.action.CHARGING
+09-04 11:50:43.187 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=a45eaadb-96a2-43c4-b07c-822bbbb5e6b3, generation=81)
+09-04 11:50:43.188 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=45ddde49-c0ad-40d3-83d2-9adef90a463c, generation=51)
+09-04 11:50:43.188 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5657)
+09-04 11:50:43.189 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9719)
+09-04 11:50:43.189 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9721)
+09-04 11:50:43.189 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9723)
+09-04 11:50:43.193 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9725)
+09-04 11:50:43.194 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5658)
+09-04 11:50:43.194 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5659)
+09-04 11:50:43.194 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9727)
+09-04 11:50:43.196 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5660)
+09-04 11:50:43.197 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9729)
+09-04 11:50:43.198 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5661)
+09-04 11:50:43.199 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9731)
+09-04 11:50:43.200 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9733)
+09-04 11:50:43.201 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5662)
+09-04 11:50:43.202 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9737)
+09-04 11:50:43.203 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5663)
+09-04 11:50:43.203 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9739)
+09-04 11:50:43.204 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9741)
+09-04 11:50:43.204 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5664)
+09-04 11:50:43.205 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9743)
+09-04 11:50:43.205 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5665)
+09-04 11:50:43.206 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5666)
+09-04 11:50:43.207 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9745)
+09-04 11:50:43.208 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5667)
+09-04 11:50:43.209 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9747)
+09-04 11:50:43.209 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5668)
+09-04 11:50:43.210 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9749)
+09-04 11:50:43.213 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9753)
+09-04 11:50:43.213 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9755)
+09-04 11:50:43.214 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5669)
+09-04 11:50:43.214 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9757)
+09-04 11:50:43.215 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=91688ace-3ce3-425a-bca2-1cc65a101a11, generation=5670)
+09-04 11:50:43.216 D/WM-GreedyScheduler( 7811): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=40b68299-c0a7-484f-bd7d-eec82bd9becd, generation=9761)
+09-04 11:50:43.223 W/libc    (16902): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): QUALCOMM build                   : 0a31cc5b53, I80d2918b26
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): Build Date                       : 09/27/23
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): OpenGL ES Shader Compiler Version: EV031.32.02.17
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): Local Branch                     : 
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): Remote Branch                    : 
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): Remote Branch                    : 
+09-04 11:50:43.227 I/AdrenoGLES-0(16902): Reconstruct Branch               : 
+09-04 11:50:43.228 I/AdrenoGLES-0(16902): Build Config                     : S P 10.0.7 AArch64
+09-04 11:50:43.228 I/AdrenoGLES-0(16902): Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+09-04 11:50:43.247 I/AdrenoGLES-0(16902): PFP: 0x016ee197, ME: 0x00000000
+09-04 11:50:43.316 E/OpenGLRenderer(16902): Unable to match the desired swap behavior.
+09-04 11:50:43.328 D/iriscore(32530): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 11:50:43.650 D/AudioManager(12286): dispatching onPlaybackConfigChanged()
+09-04 11:50:43.681 D/WM-BatteryChrgTracker(31816): Received android.os.action.CHARGING
+09-04 11:50:43.685 D/WM-GreedyScheduler(31816): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=87ec597a-d700-4242-9108-976fbc3f9ae0, generation=0)
+09-04 11:50:44.521 W/WindowOnBackDispatcher(16902): sendCancelIfRunning: isInProgress=falsecallback=android.view.ViewRootImpl$$ExternalSyntheticLambda19@94fcf27
+09-04 11:50:44.855 I/PhenotypeProcessReaper(29955): Memory state is: 200
+09-04 11:50:44.991 I/gtau    (11609): Stopping autobatch scan. [CONTEXT service_id=284 ]
+09-04 11:50:45.003 I/gtau    (11609): (REDACTED) Removed autobatch scan callback, count = %d
+09-04 11:50:45.596 I/oid.apps.photos(17000): Using generational CollectorTypeCC GC.
+09-04 11:50:45.611 D/nativeloader(17000): Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+09-04 11:50:45.629 D/CompatibilityChangeReporter(17000): Compat change id reported: 171979766; UID 10192; state: ENABLED
+09-04 11:50:45.630 D/CompatibilityChangeReporter(17000): Compat change id reported: 242716250; UID 10192; state: ENABLED
+09-04 11:50:45.643 D/nativeloader(17000): Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/lib/arm64:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/base.apk!/lib/arm64-v8a:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.xxhdpi.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.apps.photos
+09-04 11:50:45.644 D/nativeloader(17000): Extending system_exposed_libraries: libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+09-04 11:50:45.690 W/oid.apps.photos(17000): Failed to find entry 'classes.dex': Entry not found
+09-04 11:50:45.691 W/oid.apps.photos(17000): Failed to find entry 'classes.dex': Entry not found
+09-04 11:50:45.691 W/oid.apps.photos(17000): Failed to find entry 'classes.dex': Entry not found
+09-04 11:50:45.692 D/nativeloader(17000): Configuring clns-5 for other apk /data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/base.apk:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.arm64_v8a.apk:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.en.apk:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.xxhdpi.apk. target_sdk_version=37, uses_libraries=libOpenCL.so:libcdsprpc.so:libOpenCL.so, library_path=/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/lib/arm64:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/base.apk!/lib/arm64-v8a:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ
+09-04 11:50:45.703 D/nativeloader(17000): Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+09-04 11:50:45.713 V/GraphicsEnvironment(17000): Currently set values for:
+09-04 11:50:45.713 V/GraphicsEnvironment(17000):   angle_gl_driver_selection_pkgs=[]
+09-04 11:50:45.713 V/GraphicsEnvironment(17000):   angle_gl_driver_selection_values=[]
+09-04 11:50:45.713 V/GraphicsEnvironment(17000): ANGLE GameManagerService for com.google.android.apps.photos: false
+09-04 11:50:45.713 V/GraphicsEnvironment(17000): com.google.android.apps.photos is not listed in per-application setting
+09-04 11:50:45.713 V/GraphicsEnvironment(17000): Neither updatable production driver nor prerelease driver is supported.
+09-04 11:50:45.733 D/CompatibilityChangeReporter(17000): Compat change id reported: 183155436; UID 10192; state: ENABLED
+09-04 11:50:45.790 D/nativeloader(17000): Load /data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/lib/arm64/libnative_crash_handler_jni.so using class loader ns clns-5 (caller=/data/app/~~9g5saLybot-EpIJDhztBjw==/com.google.android.apps.photos-TRyEJ6VLZBPN5n8P6m-rjQ==/base.apk!classes2.dex): ok
+09-04 11:50:45.819 D/CompatibilityChangeReporter(17000): Compat change id reported: 194532703; UID 10192; state: ENABLED
+09-04 11:50:45.820 D/CompatibilityChangeReporter(17000): Compat change id reported: 253665015; UID 10192; state: ENABLED
+09-04 11:50:45.863 D/VivoConfigStore(17000): init begin
+09-04 11:50:45.872 D/VivoConfigStore(17000): key:vivo.software.multilandscape isCached is true and value is true
+09-04 11:50:45.874 D/VivoConfigStore(17000): key:vivo.software.multiwindow.splitminimize isCached is false and normal value is false
+09-04 11:50:45.874 D/VivoConfigStore(17000): key:vivo.software.ml.freedrag isCached is true and value is true
+09-04 11:50:45.875 D/VivoConfigStore(17000): key:vivo.software.ml.unasso isCached is false and normal value is false
+09-04 11:50:45.875 D/VivoConfigStore(17000): key:vivo.software.virtualmultilands isCached is true and value is true
+09-04 11:50:45.876 D/VivoConfigStore(17000): key:vivo.software.hovermode isCached is false and normal value is false
+09-04 11:50:45.878 D/VivoConfigStore(17000): key:vivo.software.splithover isCached is false and normal value is false
+09-04 11:50:45.880 D/VivoConfigStore(17000): key:vivo.software.multiwindow.splitcompat isCached is false and normal value is false
+09-04 11:50:45.885 D/DragManager(17000): DragManager construct in
+09-04 11:50:45.912 D/VivoConfigStore(17000): key:vivo.software.nightmode isCached is true and value is true
+09-04 11:50:45.915 D/CompatibilityChangeReporter(17000): Compat change id reported: 210923482; UID 10192; state: ENABLED
+09-04 11:50:45.965 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:50:45.966 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:50:46.061 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:50:46.062 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:32:48:d2:f3:8e
+09-04 11:50:47.166 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:50:47.167 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:cf:aa:a3:41:a6
+09-04 11:50:47.800 V/org.iris.mesh.test.JsonRpcServer:54(32530): Session 1 Received: {"id": 7, "method": "awaitDelivered", "params": ["01a06b0c48c17bb09a456777b1ce3ac4", 90000]}
+09-04 11:50:47.805 D/org.iris.mesh.test.SnippetManager:286(32530): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-04 11:50:47.809 V/org.iris.mesh.test.JsonRpcServer:116(32530): Session 1 Sent: {"id":7,"result":"{\"delivered\":true,\"latencyMs\":-1,\"priority\":4,\"senderHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"payloadUtf8\":\"sent-while-idle\"}","callback":null,"error":null}
+09-04 11:50:47.830 V/org.iris.mesh.test.JsonRpcServer:54(32530): Session 1 Received: {"id": 8, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "post-idle", 4]}
+09-04 11:50:47.834 D/org.iris.mesh.test.SnippetManager:286(32530): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 11:50:47.879 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b13b1667231 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m25 [3mttl_secs[0m[2m=[0m3600
+09-04 11:50:47.886 V/org.iris.mesh.test.JsonRpcServer:116(32530): Session 1 Sent: {"id":8,"result":"01a06b13b1667231988e0a9ca271e79f","callback":null,"error":null}
+09-04 11:50:47.888 D/iriscore(32530): iris.ble.gatt gattWrite ENTER handle=4 len=298 known=[4]
+09-04 11:50:48.017 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 11:50:48.023 I/iriscore(32530): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b13b1667231 [3mpriority[0m[2m=[0m4
+09-04 11:50:48.194 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 11:50:48.198 D/IrisBleDiag(32530): onCharacteristicWriteRequest device=76:62:75:03:CB:36 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true

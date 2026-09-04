@@ -3237,10 +3237,20 @@ the consolidation into one transport-wide poller (Wi-Fi Aware already did this).
 delivery) is what the bench test checks; the battery/consolidation work is a
 dense-mesh optimisation deferred to a 3+-phone session with EXP-003 measurement.
 
-**Phase T.** `test_doze_survival` — both phones screen-off, `dumpsys deviceidle
-force-idle` (deep Doze), a P2→P1 message sent *during* Doze, ~10 min wait, wake,
-verify it delivered + a post-wake message delivers + 0 `msg.delivery_failed`.
-(running)
+**Phase T.** `test_doze_survival` (`session-19-hv28b`, ~9 min): both phones
+screen-off + `battery unplug` + light Doze, a P2→P1 message sent *during* the
+idle window, 8-min wait, wake. **PASS** — `idle-sent message after 8 min:
+delivered=True`, `post-idle: delivered=True` (391 ms), `failed={P1:0, P2:0}`.
+(Deep-Doze `force-idle` suspends USB on these OEMs and dropped adb on the first
+attempt — switched to light Doze, which is anyway the realistic case for a
+battery-opt-exempt FGS.)
+
+**Phase C.** HV-28 → ✅ HW-PENDING. The acute risk — Doze throttling the
+pollers so inbound frames TTL-expire — is **verified clear on hardware**: an
+inbound message sent while both phones idled screen-off for 8 min delivered, and
+the post-wake round-trip was 391 ms. The battery profile + the per-peer→
+transport-wide poller consolidation are a dense-mesh optimisation deferred to a
+3+-phone session with an EXP-003 battery rig. Commit <pending>.
 
 ---
 

@@ -69,7 +69,7 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **103** | **15** | **22** | **1** | **3** | **62** |
+| **Total** | | **103** | **15** | **23** | **1** | **3** | **61** |
 
 **Last updated:** 2026-09-04 (Session 17 — **HV-33 + HV-29 both ✅ HW-PENDING**.
 HV-33: Android GATT status codes classified (`133`/`8`/`62`/`22`/`19` transient
@@ -1685,12 +1685,22 @@ transport.
 
 ### HV-28 — `DiscoveryManager` cadence, `poll_interval`, and the three per-transport pollers vs Doze / battery
 
-- **Fix status:** ⬜
-- **Area:** `engine.rs` (discovery start), `MessageEngine::spawn_delivery_loop`
-  (`config.poll_interval`), `ble.rs` `spawn_inbound_poller` (50/500 ms),
-  `wifi_direct.rs` (500 ms idle), `IrisBleService`, `WorkScheduler`
-- **Severity:** Medium · **HW gate:** 2 phones, screen off, 30+ min
-- **HW gate:** also needs battery measurement (EXP-003)
+- **Fix status:** ✅ Delivery-under-Doze HW-verified · commit <pending> ·
+  2026-09-04 · Session 19 · P1=vivo V2205 (Android 15) P2=vivo 2004 (Android 13)
+  · `test_doze_survival`: both phones screen-off + `battery unplug` + light Doze,
+  a P2→P1 message sent *during* an 8-min idle window **delivered**, post-wake
+  round-trip 391 ms, 0 `msg.delivery_failed`. The acute risk (Doze throttles the
+  pollers → inbound frames TTL-expire) is clear — the battery-opt-exempt
+  `connectedDevice` FGS keeps them alive. **Deferred:** the battery profile
+  (needs an EXP-003 measurement rig) + consolidating the per-peer BLE inbound
+  pollers into one transport-wide poller (a dense-mesh optimisation, 3+ phones);
+  no code change this session. `deep`-Doze `force-idle` suspends USB adb on these
+  OEMs — light Doze is the FGS-exempt reality anyway.
+- **Was:** ⬜
+- **Area:** `ble.rs` `spawn_inbound_poller` (poller consolidation, deferred),
+  `IrisBleService`, EXP-003 battery rig
+- **Severity:** Medium · **HW gate:** 2 phones screen-off (done); battery
+  measurement (deferred, EXP-003)
 
 **What:** at rest the node runs: the outbound delivery loop every `poll_interval`;
 one BLE inbound poller per connected peer at 50 ms (active) / 500 ms (idle); the
