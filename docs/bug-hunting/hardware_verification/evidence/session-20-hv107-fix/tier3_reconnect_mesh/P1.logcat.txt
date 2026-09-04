@@ -1,0 +1,1108 @@
+--------- beginning of main
+09-04 13:20:31.118 W/logcat  (25268): type=1400 audit(0.0:368173): avc:  denied  { ioctl } for  path="socket:[68092652]" dev="sockfs" ino=68092652 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 13:20:31.122 W/logcat  (25268): type=1400 audit(0.0:368174): avc:  denied  { ioctl } for  path="socket:[68092652]" dev="sockfs" ino=68092652 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 13:20:31.126 W/logcat  (25268): type=1400 audit(0.0:368175): avc:  denied  { ioctl } for  path="socket:[68092652]" dev="sockfs" ino=68092652 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 13:20:31.126 W/logcat  (25268): type=1400 audit(0.0:368176): avc:  denied  { ioctl } for  path="socket:[68092652]" dev="sockfs" ino=68092652 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-04 13:20:31.256 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 5, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "prime", 4]}
+09-04 13:20:31.257 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 13:20:31.294 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b65d65f79a0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m21 [3mttl_secs[0m[2m=[0m3600
+09-04 13:20:31.296 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":5,"result":"01a06b65d65f79a0aecc782ee789f987","callback":null,"error":null}
+09-04 13:20:31.303 D/iriscore(25200): iris.ble.gatt gattWrite ENTER handle=4 len=292 known=[4]
+09-04 13:20:31.395 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 13:20:31.401 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b65d65f79a0 [3mpriority[0m[2m=[0m4
+09-04 13:20:31.634 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 325, lcid = 4
+09-04 13:20:31.638 D/IrisBleDiag(25200): onCharacteristicWriteRequest device=61:FE:43:F5:CB:F9 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=323 responseNeeded=true
+09-04 13:20:31.671 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m inbound poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m2651434601292679129 [3mframes[0m[2m=[0m1
+09-04 13:20:31.672 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m2651434601292679129 [3mreceivers[0m[2m=[0m1
+09-04 13:20:31.780 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:31.780 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:31.845 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m positive acknowledgement received [3mevent[0m[2m=[0m"msg.acknowledged" [3mmessage_id[0m[2m=[0m01a06b65d65f79a0
+09-04 13:20:32.085 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 13:20:32.086 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:20:32.668 I/bt_stack(12286): [INFO:btsnoop.cc(588)] clear_l2cap_whitelist: Clearing whitelist from l2cap channel. conn_handle=3 cid=4:4
+09-04 13:20:32.669 I/bt_stack(12286): [INFO:gatt_attr.cc(570)] gatt_connect_cback: remove untrusted client status, bda=61:fe:43:f5:cb:f9
+09-04 13:20:32.669 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=3 connected=0 conn_id=0x0103 reason=0x0013
+09-04 13:20:32.669 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=4 connected=0 conn_id=0x0104 reason=0x0013
+09-04 13:20:32.669 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=5 connected=0 conn_id=0x0105 reason=0x0013
+09-04 13:20:32.670 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=6 connected=0 conn_id=0x0106 reason=0x0013
+09-04 13:20:32.670 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=8 connected=0 conn_id=0x0108 reason=0x0013
+09-04 13:20:32.670 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=9 connected=0 conn_id=0x0109 reason=0x0013
+09-04 13:20:32.670 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=12 connected=0 conn_id=0x010c reason=0x0013
+09-04 13:20:32.670 W/bt_stack(12286): [WARNING:bta_gattc_act.cc(1547)] bta_gattc_conn_cback: cif=13 connected=0 conn_id=0x010d reason=0x0013
+09-04 13:20:32.672 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 13:20:32.674 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=61:FE:43:F5:CB:F9
+09-04 13:20:32.675 D/BluetoothGattServer(25200): onServerConnectionState() - status=0 serverIf=10 device=61:FE:43:F5:CB:F9
+09-04 13:20:32.676 D/IrisBleDiag(25200): gattServer onConnectionStateChange device=61:FE:43:F5:CB:F9 status=0 newState=0
+09-04 13:20:32.677 D/BluetoothGattServer(25200): onServerConnectionState() - status=0 serverIf=11 device=61:FE:43:F5:CB:F9
+09-04 13:20:32.678 D/IrisBleDiag(25200): gattServer onConnectionStateChange device=61:FE:43:F5:CB:F9 status=0 newState=0
+09-04 13:20:32.680 W/LeAudioService(12286): getLeAudioService(): service is NULL
+09-04 13:20:32.684 I/NearbyPresence(11609): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-04 13:20:32.686 I/NearbyPresence(11609): (REDACTED) %s: removing device: %s
+09-04 13:20:32.687 I/NearbyPresence(11609): (REDACTED) %s verified [==] new request %s equals to the old request
+09-04 13:20:35.188 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 0a:59:a7:1c:59:43
+09-04 13:20:35.225 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:35.226 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:35.226 I/NearbyConnections(11609): Found BleAdvertisement [ 0x23 0x36 0x54 0x31 0x4d 0x11 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ] (with EndpointId 6T1M and EndpointInfo [ 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ])
+09-04 13:20:35.246 I/NearbyConnections(11609): ClientProxy(197060544 0p:com.google.android.gms.nearby.sharing) reporting onEndpointFound(6T1M)
+09-04 13:20:35.247 I/NearbyConnections(11609): ClientProxy(197060544) reporting onEndpointDistanceChanged(6T1M, UNKNOWN)
+09-04 13:20:35.250 I/NearbySharing(11609): NearbySharing Internal event EndpointDiscovered(endpointId=6T1M)
+09-04 13:20:37.292 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:37.294 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:38.146 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 13:20:38.148 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 13:20:38.289 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=61:fe:43:f5:cb:f9, cl_supp_feat=0000, aware=1
+09-04 13:20:38.292 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=61:FE:43:F5:CB:F9
+09-04 13:20:38.293 D/BluetoothGattServer(25200): onServerConnectionState() - status=0 serverIf=11 device=61:FE:43:F5:CB:F9
+09-04 13:20:38.293 D/IrisBleDiag(25200): gattServer onConnectionStateChange device=61:FE:43:F5:CB:F9 status=0 newState=2
+09-04 13:20:38.297 D/BluetoothGattServer(25200): onServerConnectionState() - status=0 serverIf=10 device=61:FE:43:F5:CB:F9
+09-04 13:20:38.298 D/IrisBleDiag(25200): gattServer onConnectionStateChange device=61:FE:43:F5:CB:F9 status=0 newState=2
+09-04 13:20:38.334 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:20:38.335 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 13:20:38.396 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:38.396 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:38.396 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:38.422 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:20:38.512 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:20:38.603 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:20:38.692 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.785 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.837 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=61:FE:43:F5:CB:F9 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:38.838 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=61:FE:43:F5:CB:F9 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:38.838 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=61:FE:43:F5:CB:F9 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:38.840 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.855 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.870 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.885 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.899 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.914 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.929 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:20:38.945 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.959 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.974 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:38.990 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:20:39.006 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.020 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.036 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.048 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.065 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:20:39.080 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.095 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.110 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.125 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.140 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.156 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:20:39.172 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:20:39.215 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 13:20:39.216 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (61:fe:43:f5:cb:f9), resulted MTU 517
+09-04 13:20:39.216 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 13:20:39.216 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 13:20:39.216 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 13:20:39.216 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=262
+09-04 13:20:39.217 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 13:20:39.217 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 13:20:39.217 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 13:20:39.217 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=269
+09-04 13:20:39.223 D/BluetoothGattServer(11609): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:20:39.223 D/BluetoothGattServer(25200): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:20:39.224 D/BluetoothGattServer(25200): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:20:39.327 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=61:FE:43:F5:CB:F9 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:39.328 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=61:FE:43:F5:CB:F9 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:39.328 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=61:FE:43:F5:CB:F9 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:39.509 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:39.510 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:39.527 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:39.528 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:40.616 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:20:40.617 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:20:41.775 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 11:89:53:99:a3:47
+09-04 13:20:42.090 I/NearbyMediums(11609): Found Fast Ble Advertisements :
+09-04 13:20:42.090 I/NearbyMediums(11609): BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x36 0x54 0x31 0x4d 0x11 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ], deviceToken=[ 0x83 0xd2 ], rxAdvertisement=null } : 2 times.
+09-04 13:20:42.090 I/NearbyMediums(11609): Total 2 fast advertisements from 1 unique advertisers.
+09-04 13:20:42.091 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:20:43.140 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:20:43.140 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.141 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.144 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 13:20:43.145 W/printstats(12286): process:com.android.bluetooth tag:_V_bt_bte print:1263 lines
+09-04 13:20:43.146 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:20:43.147 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.148 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.148 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.148 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.148 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.148 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.149 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.149 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:43.149 D/BluetoothGatt(25200): onServiceChanged() - Device=5E:31:72:F6:C1:F1
+09-04 13:20:43.237 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 13:20:43.321 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 61, lcid = 4
+09-04 13:20:43.322 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 13:20:43.410 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.410 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 13:20:43.501 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:43.592 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.592 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 13:20:43.684 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.684 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 13:20:43.688 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:43.689 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:43.689 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:43.692 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:43.706 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:43.728 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.728 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 13:20:43.743 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.743 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 13:20:43.758 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 64, lcid = 4
+09-04 13:20:43.773 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.773 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 13:20:43.788 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 13:20:43.788 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0030, e_handle=0x0032
+09-04 13:20:43.802 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.803 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0030, e_handle=0x0032
+09-04 13:20:43.820 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:43.840 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.840 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0033, e_handle=0xffff
+09-04 13:20:43.854 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.855 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0033, e_handle=0xffff
+09-04 13:20:43.870 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:43.885 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.886 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x0036, e_handle=0xffff
+09-04 13:20:43.899 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:43.899 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 13:20:44.016 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:44.017 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:44.017 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:44.021 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:44.905 I/PhenotypeProcessReaper(29955): Memory state is: 200
+09-04 13:20:45.216 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 6, "method": "registerPeerKey", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "8f1270637205b19de04c06ad593d5502257ddafa25b2022a051c696dad645978"]}
+09-04 13:20:45.217 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-04 13:20:45.223 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":6,"result":null,"callback":null,"error":null}
+09-04 13:20:45.229 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 7, "method": "nodeId", "params": []}
+09-04 13:20:45.234 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 13:20:45.242 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":7,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 13:20:45.246 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 8, "method": "staticX25519", "params": []}
+09-04 13:20:45.249 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-04 13:20:45.255 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":8,"result":"f747df2e66fd3da23dde3e37a8948254c9e64b46d3527e3ad3e3d174e30cdf00","callback":null,"error":null}
+09-04 13:20:45.295 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 9, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "retry-0", 4]}
+09-04 13:20:45.298 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 13:20:45.346 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b660d447c91 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m23 [3mttl_secs[0m[2m=[0m3600
+09-04 13:20:45.349 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":9,"result":"01a06b660d447c91b87b927c9a173b7a","callback":null,"error":null}
+09-04 13:20:45.367 D/iriscore(25200): iris.ble.gatt gattWrite ENTER handle=4 len=294 known=[4]
+09-04 13:20:45.494 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 13:20:45.498 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b660d447c91 [3mpriority[0m[2m=[0m4
+09-04 13:20:47.217 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 11:89:53:99:a3:47
+09-04 13:20:47.692 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 13:20:47.693 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (61:fe:43:f5:cb:f9), resulted MTU 517
+09-04 13:20:47.693 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 13:20:47.693 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 13:20:47.693 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 13:20:47.693 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=262
+09-04 13:20:47.693 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 13:20:47.694 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 13:20:47.694 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 13:20:47.694 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=269
+09-04 13:20:47.696 D/BluetoothGattServer(25200): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:20:47.697 D/BluetoothGattServer(25200): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:20:47.698 D/BluetoothGattServer(11609): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:20:51.532 W/com.whatsapp(31816): Reducing the number of considered missed Gc histogram windows from 592 to 100
+09-04 13:20:52.096 I/NearbyMediums(11609): Found Fast Ble Advertisements :
+09-04 13:20:52.096 I/NearbyMediums(11609): BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x36 0x54 0x31 0x4d 0x11 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ], deviceToken=[ 0x83 0xd2 ], rxAdvertisement=null } : 1 times.
+09-04 13:20:52.096 I/NearbyMediums(11609): Total 1 fast advertisements from 1 unique advertisers.
+09-04 13:20:52.098 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:20:52.759 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:52.763 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:52.764 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:20:52.765 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:20:52.769 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:52.771 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:53.891 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:20:53.893 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:20:53.894 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:53.895 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:53.895 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:53.896 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:53.898 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:20:53.898 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:20:55.571 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 350, lcid = 4
+09-04 13:20:55.578 D/IrisBleDiag(25200): onCharacteristicWriteRequest device=61:FE:43:F5:CB:F9 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=348 responseNeeded=true
+09-04 13:20:55.656 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m inbound poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m2651434601292679129 [3mframes[0m[2m=[0m1
+09-04 13:20:55.673 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m2651434601292679129 [3mreceivers[0m[2m=[0m1
+09-04 13:20:57.075 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:57.076 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:57.076 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:57.078 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:57.638 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:20:57.638 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.639 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.639 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.639 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.639 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.639 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.640 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.640 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:20:57.640 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:20:57.640 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.641 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.644 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 13:20:57.647 D/BluetoothGatt(25200): onServiceChanged() - Device=5E:31:72:F6:C1:F1
+09-04 13:20:57.736 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 13:20:57.825 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 101, lcid = 4
+09-04 13:20:57.826 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 13:20:57.914 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:57.914 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 13:20:58.005 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:58.096 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.096 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 13:20:58.160 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:20:58.162 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:20:58.166 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:20:58.171 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:20:58.187 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.187 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 13:20:58.191 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:58.191 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:58.192 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:58.194 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:20:58.203 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:58.217 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.217 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 13:20:58.232 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.233 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 13:20:58.248 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 64, lcid = 4
+09-04 13:20:58.262 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.263 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 13:20:58.278 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 13:20:58.278 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0030, e_handle=0x0032
+09-04 13:20:58.291 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.292 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0030, e_handle=0x0032
+09-04 13:20:58.308 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:58.323 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.324 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0033, e_handle=0x0035
+09-04 13:20:58.336 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.337 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0033, e_handle=0x0035
+09-04 13:20:58.353 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:58.369 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.369 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0036, e_handle=0x0038
+09-04 13:20:58.388 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.389 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0036, e_handle=0x0038
+09-04 13:20:58.403 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:58.419 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.419 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0039, e_handle=0xffff
+09-04 13:20:58.434 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.434 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0039, e_handle=0xffff
+09-04 13:20:58.449 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:20:58.464 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.464 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x003c, e_handle=0xffff
+09-04 13:20:58.479 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:20:58.479 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 13:20:58.593 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:58.593 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:58.594 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:58.594 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:20:59.391 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:20:59.391 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:59.393 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:20:59.592 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.593 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.593 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.593 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.593 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.594 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.595 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.595 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.595 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.596 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.596 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.598 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.598 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.598 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.598 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.599 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.600 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:20:59.600 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m17
+09-04 13:20:59.616 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 13:20:59.701 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 10, "method": "registerPeerKey", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "8f1270637205b19de04c06ad593d5502257ddafa25b2022a051c696dad645978"]}
+09-04 13:20:59.705 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-04 13:20:59.725 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":10,"result":null,"callback":null,"error":null}
+09-04 13:20:59.730 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 11, "method": "nodeId", "params": []}
+09-04 13:20:59.732 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 13:20:59.739 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":11,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 13:20:59.743 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 12, "method": "staticX25519", "params": []}
+09-04 13:20:59.745 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-04 13:20:59.750 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":12,"result":"f747df2e66fd3da23dde3e37a8948254c9e64b46d3527e3ad3e3d174e30cdf00","callback":null,"error":null}
+09-04 13:20:59.791 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 13, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "retry-1", 4]}
+09-04 13:20:59.794 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 13:20:59.842 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b6645e37863 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m23 [3mttl_secs[0m[2m=[0m3600
+09-04 13:20:59.847 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":13,"result":"01a06b6645e37863a5ecfe645ca892af","callback":null,"error":null}
+09-04 13:20:59.858 D/iriscore(25200): iris.ble.gatt gattWrite ENTER handle=4 len=294 known=[4]
+09-04 13:20:59.938 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 13:20:59.945 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b6645e37863 [3mpriority[0m[2m=[0m4
+09-04 13:21:01.682 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 13:21:02.102 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 13:21:02.104 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:21:02.110 I/NearbyConnections(11609): Processing lost BlePeripheral BlePeripheral{advertisement=BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x36 0x54 0x31 0x4d 0x11 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ], deviceToken=[ 0x83 0xd2 ], rxAdvertisement=null }, dctAdvertisement=null, address=null, psm=0, deviceToken=<ByteString@945ef50 size=2 contents="\203\322">, isSecondProfile=false, rxInstantConnectionAdv=null}.
+09-04 13:21:02.114 I/NearbyConnections(11609): Lost BleEndpoint for BlePeripheral BlePeripheral{advertisement=BleAdvertisement { version=2, socketVersion=2, isFast=true, serviceIdHash=null, data=[ 0x23 0x36 0x54 0x31 0x4d 0x11 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ], deviceToken=[ 0x83 0xd2 ], rxAdvertisement=null }, dctAdvertisement=null, address=null, psm=0, deviceToken=<ByteString@945ef50 size=2 contents="\203\322">, isSecondProfile=false, rxInstantConnectionAdv=null} (with EndpointId 6T1M and EndpointInfo [ 0x32 0xf6 0xfb 0x58 0xdc 0x06 0x80 0x4e 0x15 0x27 0xab 0x32 0x44 0xcf 0x4e 0x75 0x05 ]).
+09-04 13:21:02.119 I/NearbyConnections(11609): ClientProxy(197060544) reporting onEndpointLost(6T1M)
+09-04 13:21:02.122 I/NearbySharing(11609): NearbySharing Internal event EndpointLost(endpointId=6T1M)
+09-04 13:21:03.694 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:03.694 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:04.735 I/Finsky  (19131): [16721] Stats for Executor: LightweightExecutor xrb@a605855[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 1682]
+09-04 13:21:04.737 I/Finsky  (19131): [16721] Stats for Executor: BlockingExecutor xrb@fcbaba4[Running, pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 414]
+09-04 13:21:04.795 I/Finsky  (19131): [16721] Stats for Executor: bgExecutor xrb@3857c1f[Running, pool size = 4, active threads = 0, queued tasks = 0, completed tasks = 5906]
+09-04 13:21:04.842 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:04.842 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:05.441 I/Finsky  (19131): [16721] Stats for Executor: GrpcBackgroundExecutor xrb@e009d2c[Running, pool size = 2, active threads = 0, queued tasks = 0, completed tasks = 2]
+09-04 13:21:05.902 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:05.903 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:05.903 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:05.904 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:05.908 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:05.908 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:08.208 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:08.210 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:08.212 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:08.213 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:08.214 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:08.215 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:08.237 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:08.237 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:09.336 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:09.338 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:09.339 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:09.342 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:09.343 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:09.345 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:11.466 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:11.468 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:12.090 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:12.090 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.091 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.094 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 13:21:12.094 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:12.095 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.095 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.095 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.095 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.096 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.096 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.096 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.096 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:12.098 D/BluetoothGatt(25200): onServiceChanged() - Device=5E:31:72:F6:C1:F1
+09-04 13:21:12.110 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 13:21:12.111 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:21:12.182 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 13:21:12.271 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 141, lcid = 4
+09-04 13:21:12.271 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 13:21:12.359 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.360 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 13:21:12.437 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:12.441 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:12.448 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.455 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:12.456 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:12.459 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:12.460 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:12.482 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:12.482 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:12.540 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.540 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 13:21:12.634 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.634 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 13:21:12.638 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:12.638 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:12.643 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:12.645 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:12.655 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.669 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.669 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 13:21:12.685 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.685 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 13:21:12.700 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 64, lcid = 4
+09-04 13:21:12.713 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.714 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 13:21:12.730 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 13:21:12.730 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0030, e_handle=0x0032
+09-04 13:21:12.745 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.746 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0030, e_handle=0x0032
+09-04 13:21:12.760 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.776 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.777 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0033, e_handle=0x0035
+09-04 13:21:12.796 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.797 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0033, e_handle=0x0035
+09-04 13:21:12.812 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.829 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.829 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0036, e_handle=0x0038
+09-04 13:21:12.842 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.843 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0036, e_handle=0x0038
+09-04 13:21:12.857 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.872 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.873 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0039, e_handle=0x003b
+09-04 13:21:12.887 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.888 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0039, e_handle=0x003b
+09-04 13:21:12.902 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.916 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.917 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x003c, e_handle=0x003e
+09-04 13:21:12.933 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.933 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x003c, e_handle=0x003e
+09-04 13:21:12.948 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:12.963 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.963 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x003f, e_handle=0xffff
+09-04 13:21:12.976 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:12.977 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x003f, e_handle=0xffff
+09-04 13:21:12.993 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:13.007 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:13.008 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x0042, e_handle=0xffff
+09-04 13:21:13.029 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:13.030 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 13:21:13.175 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:13.176 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:13.176 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:13.179 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:13.586 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:13.586 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:13.596 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:13.597 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:13.608 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:13.609 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:13.763 I/bt_stack(12286): [INFO:btm_ble_connection_establishment.cc(200)] btm_ble_conn_complete: unable to match and resolve random address
+09-04 13:21:13.765 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 13:21:14.118 I/bt_stack(12286): [INFO:gatt_attr.cc(1306)] gatt_sr_init_cl_status: bda=44:a0:e7:eb:4c:a5, cl_supp_feat=0000, aware=1
+09-04 13:21:14.118 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:21:14.119 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 13:21:14.124 D/BluetoothGattServer(25200): onServerConnectionState() - status=0 serverIf=10 device=44:A0:E7:EB:4C:A5
+09-04 13:21:14.124 D/BluetoothGattServer(11609): onServerConnectionState() - status=0 serverIf=7 device=44:A0:E7:EB:4C:A5
+09-04 13:21:14.125 D/BluetoothGattServer(25200): onServerConnectionState() - status=0 serverIf=11 device=44:A0:E7:EB:4C:A5
+09-04 13:21:14.125 D/IrisBleDiag(25200): gattServer onConnectionStateChange device=44:A0:E7:EB:4C:A5 status=0 newState=2
+09-04 13:21:14.126 D/IrisBleDiag(25200): gattServer onConnectionStateChange device=44:A0:E7:EB:4C:A5 status=0 newState=2
+09-04 13:21:14.199 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 14, "method": "registerPeerKey", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "8f1270637205b19de04c06ad593d5502257ddafa25b2022a051c696dad645978"]}
+09-04 13:21:14.202 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-04 13:21:14.222 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":14,"result":null,"callback":null,"error":null}
+09-04 13:21:14.226 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 15, "method": "nodeId", "params": []}
+09-04 13:21:14.229 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 13:21:14.235 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":15,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 13:21:14.240 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 16, "method": "staticX25519", "params": []}
+09-04 13:21:14.242 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-04 13:21:14.250 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:21:14.250 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":16,"result":"f747df2e66fd3da23dde3e37a8948254c9e64b46d3527e3ad3e3d174e30cdf00","callback":null,"error":null}
+09-04 13:21:14.286 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 17, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "retry-2", 4]}
+09-04 13:21:14.290 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 13:21:14.331 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b667e827b91 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m23 [3mttl_secs[0m[2m=[0m3600
+09-04 13:21:14.334 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":17,"result":"01a06b667e827b9190cd86ab26ea5eaa","callback":null,"error":null}
+09-04 13:21:14.339 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:21:14.351 D/iriscore(25200): iris.ble.gatt gattWrite ENTER handle=4 len=294 known=[4]
+09-04 13:21:14.491 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 16, msg_len = 6, lcid = 4
+09-04 13:21:14.494 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:14.496 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:14.496 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:14.518 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 13:21:14.524 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b667e827b91 [3mpriority[0m[2m=[0m4
+09-04 13:21:14.582 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:14.634 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m accept-poller spawning inbound reassembly poller for a remote central [3mevent[0m[2m=[0m"ble.accept_new_connection" [3mhandle[0m[2m=[0m3274951369414497607
+09-04 13:21:14.673 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:14.763 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:14.852 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:14.944 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.038 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.041 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:15.042 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:15.045 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:15.056 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.071 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.086 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:21:15.101 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.116 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.131 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.146 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:21:15.161 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.177 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.191 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.208 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.221 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:21:15.236 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.254 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.273 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.296 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.311 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.326 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 8, msg_len = 6, lcid = 4
+09-04 13:21:15.341 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 4, msg_len = 4, lcid = 4
+09-04 13:21:15.393 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 13:21:15.394 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (44:a0:e7:eb:4c:a5), resulted MTU 517
+09-04 13:21:15.394 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=515
+09-04 13:21:15.394 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=516
+09-04 13:21:15.394 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=517
+09-04 13:21:15.394 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=518
+09-04 13:21:15.395 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=520
+09-04 13:21:15.395 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=521
+09-04 13:21:15.395 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=524
+09-04 13:21:15.395 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=525
+09-04 13:21:15.398 D/BluetoothGattServer(11609): onMtuChanged() - device=44:A0:E7:EB:4C:A5, mtu=517
+09-04 13:21:15.400 D/BluetoothGattServer(25200): onMtuChanged() - device=44:A0:E7:EB:4C:A5, mtu=517
+09-04 13:21:15.400 D/BluetoothGattServer(25200): onMtuChanged() - device=44:A0:E7:EB:4C:A5, mtu=517
+09-04 13:21:15.473 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:15.476 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:15.476 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=44:A0:E7:EB:4C:A5 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:15.879 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:15.879 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:15.879 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:15.900 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:15.901 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:15.942 I/org.iris.mesh(25200): Background concurrent copying GC freed 5582KB AllocSpace bytes, 0(0B) LOS objects, 53% free, 5309KB/11MB, paused 698us,50us total 113.729ms
+09-04 13:21:16.312 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 13:21:16.313 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (61:fe:43:f5:cb:f9), resulted MTU 517
+09-04 13:21:16.313 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=259
+09-04 13:21:16.313 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=260
+09-04 13:21:16.313 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=261
+09-04 13:21:16.313 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=262
+09-04 13:21:16.314 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=264
+09-04 13:21:16.314 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=265
+09-04 13:21:16.314 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=268
+09-04 13:21:16.314 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=269
+09-04 13:21:16.316 D/BluetoothGattServer(11609): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:21:16.318 D/BluetoothGattServer(25200): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:21:16.322 D/BluetoothGattServer(25200): onMtuChanged() - device=61:FE:43:F5:CB:F9, mtu=517
+09-04 13:21:16.872 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:16.872 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:18.018 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:18.019 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:18.019 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:18.021 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:19.061 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:19.061 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:19.063 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:19.063 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:19.064 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:19.065 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:19.071 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:19.071 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:19.078 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:19.078 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:20.259 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:20.261 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:20.261 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:20.263 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:20.264 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:20.264 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:20.291 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:20.291 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:21.364 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:21.366 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:21.367 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:21:21.368 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:21:21.369 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:21.369 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:22.115 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 13:21:22.117 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:21:22.490 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:22.491 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:22.492 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:22.493 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:22.505 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:22.505 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:22.517 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:22.518 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:22.538 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:22.538 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:23.465 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:23.468 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:23.472 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:23.472 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:24.534 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:24.535 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:24.536 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:24.540 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:24.541 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:24.545 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:24.548 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 350, lcid = 4
+09-04 13:21:24.554 D/IrisBleDiag(25200): onCharacteristicWriteRequest device=61:FE:43:F5:CB:F9 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=348 responseNeeded=true
+09-04 13:21:24.555 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:24.556 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:24.557 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:24.558 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:24.670 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m inbound poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m2651434601292679129 [3mframes[0m[2m=[0m1
+09-04 13:21:24.680 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m2651434601292679129 [3mreceivers[0m[2m=[0m1
+09-04 13:21:25.663 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:25.664 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:25.680 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:25.681 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:25.704 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:25.705 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:25.728 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:25.728 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:26.588 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:26.589 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.589 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.589 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.589 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.590 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.590 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.590 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.590 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.591 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:26.591 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.591 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:26.592 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:26.593 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.593 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.593 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.593 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.593 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.593 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.594 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.594 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.596 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 13:21:26.599 D/BluetoothGatt(25200): onServiceChanged() - Device=5E:31:72:F6:C1:F1
+09-04 13:21:26.672 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 13:21:26.761 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 181, lcid = 4
+09-04 13:21:26.761 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 13:21:26.778 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:26.778 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:26.784 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:26.784 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:26.808 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:26.808 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:26.823 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:26.823 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:26.839 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:26.840 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:26.848 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:26.848 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 13:21:26.849 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 13:21:26.857 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:26.857 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:26.860 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:26.862 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:26.881 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:26.881 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:26.940 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.029 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.030 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 13:21:27.123 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.124 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 13:21:27.128 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:27.133 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:27.136 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:27.139 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.136 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:27.151 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.151 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 13:21:27.168 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.168 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 13:21:27.183 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 64, lcid = 4
+09-04 13:21:27.197 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.198 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 13:21:27.213 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 13:21:27.213 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0030, e_handle=0x0032
+09-04 13:21:27.227 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.228 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0030, e_handle=0x0032
+09-04 13:21:27.242 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.257 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.258 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0033, e_handle=0x0035
+09-04 13:21:27.272 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.272 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0033, e_handle=0x0035
+09-04 13:21:27.287 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.302 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.302 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0036, e_handle=0x0038
+09-04 13:21:27.317 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.318 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0036, e_handle=0x0038
+09-04 13:21:27.333 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.349 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.349 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0039, e_handle=0x003b
+09-04 13:21:27.369 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.370 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0039, e_handle=0x003b
+09-04 13:21:27.385 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.399 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.400 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x003c, e_handle=0x003e
+09-04 13:21:27.416 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.416 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x003c, e_handle=0x003e
+09-04 13:21:27.430 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.445 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.446 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x003f, e_handle=0x0041
+09-04 13:21:27.459 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.460 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x003f, e_handle=0x0041
+09-04 13:21:27.474 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.490 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.490 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0042, e_handle=0x0044
+09-04 13:21:27.505 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.505 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0042, e_handle=0x0044
+09-04 13:21:27.519 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.534 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.534 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0045, e_handle=0xffff
+09-04 13:21:27.551 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.551 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0045, e_handle=0xffff
+09-04 13:21:27.565 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:27.579 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.580 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x0048, e_handle=0xffff
+09-04 13:21:27.596 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:27.596 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 13:21:27.724 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:27.725 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:27.727 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:27.727 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:27.876 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:27.876 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:27.939 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:27.939 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:28.668 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 18, "method": "registerPeerKey", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "8f1270637205b19de04c06ad593d5502257ddafa25b2022a051c696dad645978"]}
+09-04 13:21:28.671 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-04 13:21:28.687 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":18,"result":null,"callback":null,"error":null}
+09-04 13:21:28.691 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 19, "method": "nodeId", "params": []}
+09-04 13:21:28.693 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 13:21:28.698 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":19,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 13:21:28.700 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 20, "method": "staticX25519", "params": []}
+09-04 13:21:28.701 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-04 13:21:28.705 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":20,"result":"f747df2e66fd3da23dde3e37a8948254c9e64b46d3527e3ad3e3d174e30cdf00","callback":null,"error":null}
+09-04 13:21:28.743 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 21, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "retry-3", 4]}
+09-04 13:21:28.749 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 13:21:28.788 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b66b6fa7bd1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m23 [3mttl_secs[0m[2m=[0m3600
+09-04 13:21:28.791 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":21,"result":"01a06b66b6fa7bd1abd0aa6247a45fc9","callback":null,"error":null}
+09-04 13:21:28.804 D/iriscore(25200): iris.ble.gatt gattWrite ENTER handle=4 len=294 known=[4]
+09-04 13:21:28.936 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 13:21:28.942 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b66b6fa7bd1 [3mpriority[0m[2m=[0m4
+09-04 13:21:29.014 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:29.015 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:29.026 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:29.027 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:30.043 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:30.044 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:30.045 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:30.046 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:30.047 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:30.050 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:30.862 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 2, msg_len = 2, lcid = 4
+09-04 13:21:30.862 I/bt_stack(12286): [INFO:gatt_sr.cc(976)] MTU 517 request from remote (44:a0:e7:eb:4c:a5), resulted MTU 517
+09-04 13:21:30.863 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=515
+09-04 13:21:30.863 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=516
+09-04 13:21:30.863 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=517
+09-04 13:21:30.863 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=518
+09-04 13:21:30.863 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=520
+09-04 13:21:30.864 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=521
+09-04 13:21:30.864 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=524
+09-04 13:21:30.864 W/bt_stack(12286): [WARNING:gatt_utils.cc(1015)] Call back not found for application conn_id=525
+09-04 13:21:30.866 D/BluetoothGattServer(25200): onMtuChanged() - device=44:A0:E7:EB:4C:A5, mtu=517
+09-04 13:21:30.867 D/BluetoothGattServer(11609): onMtuChanged() - device=44:A0:E7:EB:4C:A5, mtu=517
+09-04 13:21:30.869 D/BluetoothGattServer(25200): onMtuChanged() - device=44:A0:E7:EB:4C:A5, mtu=517
+09-04 13:21:31.190 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:31.190 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:31.738 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.739 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.740 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.741 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.742 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.744 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.745 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.745 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.745 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.745 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.745 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.745 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.760 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.760 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.760 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.761 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.762 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.763 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.764 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.764 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0med6de2c93918d5e1049eea7f6fc97dd9ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-04 13:21:31.764 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m63
+09-04 13:21:31.773 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-04 13:21:31.810 E/BluetoothServiceJni(12286): alarmFiredNative() - Alarm fired with callback not set!
+09-04 13:21:32.122 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 13:21:32.124 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:21:32.335 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:32.336 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:33.490 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:33.491 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:33.491 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:33.493 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:33.493 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:33.494 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:33.494 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:33.496 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:33.545 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:21:33.547 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:21:33.863 D/iriscore(25200): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=2 (Other)
+09-04 13:21:34.493 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:34.493 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:34.495 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:34.495 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+--------- beginning of system
+09-04 13:21:34.636 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-04 13:21:35.643 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:35.644 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:21:35.646 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:4d:4f:29:20:ff
+09-04 13:21:35.647 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:35.648 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:35.650 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:35.655 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:36.658 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:36.669 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:36.672 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:36.679 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:36.688 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:36.689 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:37.810 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:37.812 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:37.812 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:37.815 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:37.815 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:37.816 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:38.941 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:38.942 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:38.943 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:38.944 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:38.944 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:38.945 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:38.946 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:38.948 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:38.950 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 48:d9:62:8e:1c:44
+09-04 13:21:38.962 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 18, msg_len = 350, lcid = 4
+09-04 13:21:38.965 D/IrisBleDiag(25200): onCharacteristicWriteRequest device=44:A0:E7:EB:4C:A5 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=348 responseNeeded=true
+09-04 13:21:39.338 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m inbound poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m3274951369414497607 [3mframes[0m[2m=[0m1
+09-04 13:21:39.339 D/iriscore(25200): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m3274951369414497607 [3mreceivers[0m[2m=[0m1
+09-04 13:21:39.948 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:39.950 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 50:6e:38:78:58:56
+09-04 13:21:39.999 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:39.999 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:40.010 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:40.011 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:40.021 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:40.021 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:40.037 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:40.037 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:40.050 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:40.050 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:41.065 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:41.066 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.066 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.066 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.066 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.067 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.067 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.067 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.067 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.068 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:41.068 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.068 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.068 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.069 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.069 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.069 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.069 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.069 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1913)] bta_gattc_process_indicate: indication/notif for unknown device, ignore
+09-04 13:21:41.069 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 29, msg_len = 6, lcid = 4
+09-04 13:21:41.069 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.070 E/bt_stack(12286): [ERROR:bta_gattc_act.cc(1664)] bta_gattc_process_srvc_chg_ind: service changed s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.073 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=1, s_handle=0x0001, e_handle=0xffff
+09-04 13:21:41.075 D/BluetoothGatt(25200): onServiceChanged() - Device=5E:31:72:F6:C1:F1
+09-04 13:21:41.127 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 13, lcid = 4
+09-04 13:21:41.149 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:41.150 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:41.159 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:41.162 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:41.172 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:41.172 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:41.180 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:41.180 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:41.194 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6c:72:13:83:8b:cf
+09-04 13:21:41.194 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6c:72:13:83:8b:cf
+09-04 13:21:41.198 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:41.199 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:41.202 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:b8:3f:d8:fe:36
+09-04 13:21:41.203 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:b8:3f:d8:fe:36
+09-04 13:21:41.212 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:41.212 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 53:e0:51:21:73:54
+09-04 13:21:41.220 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 17, msg_len = 221, lcid = 4
+09-04 13:21:41.220 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0001, e_handle=0x0007
+09-04 13:21:41.310 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.310 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0001, e_handle=0x0007
+09-04 13:21:41.400 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.489 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.490 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0014, e_handle=0x001a
+09-04 13:21:41.586 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.586 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0014, e_handle=0x001a
+09-04 13:21:41.590 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:41.592 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:41.592 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:41.598 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=6 latency=0 timeout=500 status=0
+09-04 13:21:41.605 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.606 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 13:21:41.620 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.620 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0028, e_handle=0x002f
+09-04 13:21:41.634 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.634 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0028, e_handle=0x002f
+09-04 13:21:41.650 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 64, lcid = 4
+09-04 13:21:41.664 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.664 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x002f, e_handle=0x002f
+09-04 13:21:41.680 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 5, msg_len = 5, lcid = 4
+09-04 13:21:41.681 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0030, e_handle=0x0032
+09-04 13:21:41.694 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.695 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0030, e_handle=0x0032
+09-04 13:21:41.709 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.723 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.724 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0033, e_handle=0x0035
+09-04 13:21:41.740 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.740 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0033, e_handle=0x0035
+09-04 13:21:41.755 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.771 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.772 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0036, e_handle=0x0038
+09-04 13:21:41.794 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.795 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0036, e_handle=0x0038
+09-04 13:21:41.814 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.830 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.830 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0039, e_handle=0x003b
+09-04 13:21:41.844 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.844 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0039, e_handle=0x003b
+09-04 13:21:41.861 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.882 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.883 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x003c, e_handle=0x003e
+09-04 13:21:41.897 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.898 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x003c, e_handle=0x003e
+09-04 13:21:41.912 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.927 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.928 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x003f, e_handle=0x0041
+09-04 13:21:41.943 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.943 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x003f, e_handle=0x0041
+09-04 13:21:41.944 I/Logger  (12286): ensure_log_file ret:188 acc:0
+09-04 13:21:41.957 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:41.973 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.974 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0042, e_handle=0x0044
+09-04 13:21:41.986 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:41.986 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0042, e_handle=0x0044
+09-04 13:21:42.004 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:42.026 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.026 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0045, e_handle=0x0047
+09-04 13:21:42.048 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.048 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0045, e_handle=0x0047
+09-04 13:21:42.062 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:42.079 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.079 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x0048, e_handle=0x004a
+09-04 13:21:42.099 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.099 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x0048, e_handle=0x004a
+09-04 13:21:42.114 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:42.127 I/NearbyMediums(11609): No BLE Fast/GATT advertisements found in the latest cycle.
+09-04 13:21:42.129 I/NearbyMediums(11609): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-04 13:21:42.130 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.130 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=3, s_handle=0x004b, e_handle=0xffff
+09-04 13:21:42.146 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.146 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=4, s_handle=0x004b, e_handle=0xffff
+09-04 13:21:42.161 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 9, msg_len = 22, lcid = 4
+09-04 13:21:42.183 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.184 I/bt_stack(12286): [INFO:gatt_api.cc(1086)] GATTC_Discover conn_id=0x000d, disc_type=5, s_handle=0x004e, e_handle=0xffff
+09-04 13:21:42.193 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:42.194 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5e:31:72:f6:c1:f1
+09-04 13:21:42.205 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 1, msg_len = 4, lcid = 4
+09-04 13:21:42.205 I/bt_stack(12286): [INFO:bta_gattc_cache.cc(230)] bta_gattc_explore_srvc_finished: service discovery finished
+09-04 13:21:42.235 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 46:ff:7c:af:6b:dc
+09-04 13:21:42.348 D/BluetoothGattServer(11609): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:42.348 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:42.350 D/BluetoothGattServer(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:42.350 D/BluetoothGatt(25200): onConnectionUpdated() - Device=5E:31:72:F6:C1:F1 interval=36 latency=0 timeout=500 status=0
+09-04 13:21:42.801 I/bt_stack(12286): [INFO:btm_ble_bgconn.cc(450)] Already connection initiated (or) No Pending connections(or) Resources of lcb are exhausted
+09-04 13:21:42.865 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:42.865 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:42.866 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:42.867 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:42.887 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:42.887 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 47:02:3c:0d:fe:85
+09-04 13:21:42.890 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:42.890 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 77:31:25:e9:01:3b
+09-04 13:21:42.911 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:b8:3f:d8:fe:36
+09-04 13:21:42.911 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 5d:b8:3f:d8:fe:36
+09-04 13:21:42.918 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6c:72:13:83:8b:cf
+09-04 13:21:42.919 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6c:72:13:83:8b:cf
+09-04 13:21:42.923 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:42.923 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 6f:43:81:f0:3e:4f
+09-04 13:21:43.147 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 22, "method": "registerPeerKey", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "8f1270637205b19de04c06ad593d5502257ddafa25b2022a051c696dad645978"]}
+09-04 13:21:43.151 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-04 13:21:43.165 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":22,"result":null,"callback":null,"error":null}
+09-04 13:21:43.169 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 23, "method": "nodeId", "params": []}
+09-04 13:21:43.170 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-04 13:21:43.175 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":23,"result":"72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a","callback":null,"error":null}
+09-04 13:21:43.178 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 24, "method": "staticX25519", "params": []}
+09-04 13:21:43.179 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-04 13:21:43.184 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":24,"result":"f747df2e66fd3da23dde3e37a8948254c9e64b46d3527e3ad3e3d174e30cdf00","callback":null,"error":null}
+09-04 13:21:43.219 V/org.iris.mesh.test.JsonRpcServer:54(25200): Session 1 Received: {"id": 25, "method": "sendText", "params": ["3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca", "retry-4", 4]}
+09-04 13:21:43.221 D/org.iris.mesh.test.SnippetManager:286(25200): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-04 13:21:43.262 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06b66ef817f62 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m23 [3mttl_secs[0m[2m=[0m3600
+09-04 13:21:43.265 V/org.iris.mesh.test.JsonRpcServer:116(25200): Session 1 Sent: {"id":25,"result":"01a06b66ef817f62830615fbeee3ccf2","callback":null,"error":null}
+09-04 13:21:43.273 D/iriscore(25200): iris.ble.gatt gattWrite ENTER handle=4 len=294 known=[4]
+09-04 13:21:43.335 I/bt_stack(12286): [INFO:gatt_main.cc(1727)] gatt_data_process op_code = 19, msg_len = 0, lcid = 4
+09-04 13:21:43.341 I/iriscore(25200): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06b66ef817f62 [3mpriority[0m[2m=[0m4
+09-04 13:21:44.014 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:44.014 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 70:16:57:08:17:8f
+09-04 13:21:44.017 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0
+09-04 13:21:44.018 I/bt_stack(12286): [INFO:btm_ble_gap.cc(3399)] btm_ble_process_adv_pkt_cont Data Complete 7e:a8:64:86:7d:e0

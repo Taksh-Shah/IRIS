@@ -731,6 +731,19 @@ pub struct BleTransport {
     /// quiet reads Fair/Poor instead of a hardcoded `Good`. Removed by
     /// `close_peer`.
     link_activity: std::sync::Mutex<std::collections::HashMap<PeerId, tokio::time::Instant>>,
+    /// HV-107: GATT handles for connections a REMOTE central dialed to OUR GATT
+    /// server (inbound / peripheral role). Kept strictly separate from
+    /// `connections` (outbound-only — client links THIS node dialed). An inbound
+    /// peripheral handle can never carry a client `gatt_write`, so it must not
+    /// live in `connections`: doing so made `connect()` see the peer as "already
+    /// connected" and skip the real outbound dial, and `send()` resolve to a
+    /// handle it could not write — so after the peer restarted (RETRY /
+    /// permission re-grant, where the OEM GATT server never fires a disconnect)
+    /// this node kept receiving from the peer but could never send or ACK back.
+    /// Consulted only by the accept-poller's reassembly path; torn down by
+    /// `close_peer` / `shutdown` / `drop_all_links` alongside `connections`.
+    inbound_handles:
+        std::sync::Arc<std::sync::Mutex<std::collections::HashMap<PeerId, GattHandle>>>,
     /// Per-peer async lock (BLE-2): concurrent `connect()` calls to the SAME
     /// peer serialize on this (BLE-RT-002 — exactly one GATT link/poller per
     /// peer), but connects to DIFFERENT peers run fully in parallel. The
@@ -866,6 +879,7 @@ impl BleTransport {
             last_advertisement: std::sync::Mutex::new(None),
             connections: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             link_activity: std::sync::Mutex::new(std::collections::HashMap::new()),
+            inbound_handles: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             connect_locks: std::sync::Mutex::new(std::collections::HashMap::new()),
             pollers: std::sync::Arc::new(std::sync::RwLock::new(std::collections::HashMap::new())),
             known_addresses: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
@@ -1084,6 +1098,7 @@ impl BleTransport {
         }
         let known_addresses = self.known_addresses.clone();
         let connections = self.connections.clone();
+        let inbound_handles = self.inbound_handles.clone();
         let pollers = self.pollers.clone();
         let incoming_tx = self.incoming_tx.clone();
         let tid = self.id.clone();
@@ -1112,21 +1127,18 @@ impl BleTransport {
                         .get(&accepted.address)
                         .map(|(pid, _)| *pid)
                         .unwrap_or_else(|| BleTransport::synthesize_unknown_peer_id(&accepted.address));
-                    // Registered under whatever MTU `set_mtu` would default
-                    // to — the peripheral role never proactively negotiates
-                    // (only the central side calls `requestMtu`), so this is
-                    // a size assumption, not a measured value, exactly like
-                    // `MTU_DEFAULT`'s existing use as a pre-negotiation
-                    // fallback elsewhere in this file. HV-8 (wire the GATT
-                    // server's `onMtuChanged` here) is deferred — with
-                    // symmetric discovery a `connect()` to this peer inserts a
-                    // real value first and this `.entry().or_insert()` is a
-                    // no-op; raising it perturbs the resolve-vs-accept race.
-                    connections
+                    // HV-107: record the inbound handle in its OWN map, never
+                    // `connections`. `connections` is outbound-only (client
+                    // links this node dialed); a peripheral-role handle here
+                    // makes `connect()` skip the real dial and `send()` resolve
+                    // to a handle it cannot write — so the peer's reply/ACK
+                    // path dies after any peer restart. The reassembly poller
+                    // below is driven purely by `accepted.handle`; it needs no
+                    // `connections` entry.
+                    inbound_handles
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
-                        .entry(peer_id)
-                        .or_insert((accepted.handle, crate::transport::ble_att::MTU_DEFAULT, 0u16));
+                        .insert(peer_id, accepted.handle);
                     let abort = BleTransport::spawn_inbound_poller(
                         incoming_tx.clone(),
                         adapter.clone(),
@@ -1147,14 +1159,28 @@ impl BleTransport {
                 // call `disconnect_gatt` — the OS already closed the link.
                 for dead in adapter.drain_disconnected_handles() {
                     spawned.lock().unwrap_or_else(|p| p.into_inner()).remove(&dead);
+                    // The dead handle may be an outbound link (`connections`) or
+                    // an inbound one (`inbound_handles`, HV-107) — check both.
                     let peer_id = connections
                         .lock()
                         .unwrap_or_else(|p| p.into_inner())
                         .iter()
                         .find(|(_, (h, _, _))| *h == dead)
-                        .map(|(p, _)| *p);
+                        .map(|(p, _)| *p)
+                        .or_else(|| {
+                            inbound_handles
+                                .lock()
+                                .unwrap_or_else(|p| p.into_inner())
+                                .iter()
+                                .find(|(_, h)| **h == dead)
+                                .map(|(p, _)| *p)
+                        });
                     if let Some(pid) = peer_id {
                         connections
+                            .lock()
+                            .unwrap_or_else(|p| p.into_inner())
+                            .remove(&pid);
+                        inbound_handles
                             .lock()
                             .unwrap_or_else(|p| p.into_inner())
                             .remove(&pid);
@@ -1189,6 +1215,14 @@ impl BleTransport {
             // the accepted connection on the post-reconnect write-gap), a fresh
             // inbound reassembly poller IS spawned — the OEM GATT server never
             // fires the disconnect callback that would otherwise clear it.
+            self.accept_spawned.lock().unwrap_or_else(|p| p.into_inner()).remove(&handle);
+        }
+        // HV-107: an inbound (peripheral-role) handle for the same peer, if any,
+        // is torn down on the same terms — otherwise a `drop_all_links` / RETRY
+        // would leave the stale inbound poller running and its handle stuck in
+        // `accept_spawned`, so the re-linking peer never gets a fresh poller.
+        if let Some(handle) = self.inbound_handles.lock().unwrap_or_else(|p| p.into_inner()).remove(peer) {
+            adapter.disconnect_gatt(handle);
             self.accept_spawned.lock().unwrap_or_else(|p| p.into_inner()).remove(&handle);
         }
         // Not load-bearing for correctness (a stale empty-Mutex entry just
@@ -1286,13 +1320,26 @@ impl BleTransport {
                 2 => {
                     *self.scan_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
                     *self.adv_handle.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                    let dead: Vec<PeerId> = self
-                        .connections
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner())
-                        .keys()
-                        .copied()
-                        .collect();
+                    let dead: Vec<PeerId> = {
+                        // HV-107: outbound + inbound both die on a BT-off.
+                        let mut ks: Vec<PeerId> = self
+                            .connections
+                            .lock()
+                            .unwrap_or_else(|p| p.into_inner())
+                            .keys()
+                            .copied()
+                            .collect();
+                        ks.extend(
+                            self.inbound_handles
+                                .lock()
+                                .unwrap_or_else(|p| p.into_inner())
+                                .keys()
+                                .copied(),
+                        );
+                        ks.sort_unstable();
+                        ks.dedup();
+                        ks
+                    };
                     for peer in &dead {
                         self.close_peer(peer, adapter.clone(), None);
                     }
@@ -2022,15 +2069,23 @@ impl Transport for BleTransport {
         // across a stop/start cycle.
         self.accept_spawned.lock().unwrap_or_else(|p| p.into_inner()).clear();
         self.set_state(TransportState::Unavailable);
-        // Disconnect every live GATT link (RED-0009-01).
+        // Disconnect every live GATT link (RED-0009-01) — outbound and, HV-107,
+        // inbound.
         let adapter = self.adapter()?;
-        let handles: Vec<GattHandle> = self
+        let mut handles: Vec<GattHandle> = self
             .connections
             .lock()
             .unwrap()
             .drain()
             .map(|(_, (h, ..))| h)
             .collect();
+        handles.extend(
+            self.inbound_handles
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .drain()
+                .map(|(_, h)| h),
+        );
         for h in handles {
             adapter.disconnect_gatt(h);
         }
@@ -2045,7 +2100,26 @@ impl Transport for BleTransport {
     async fn drop_all_links(&self) {
         let Ok(adapter) = self.adapter() else { return };
         let dropped: Vec<PeerId> = {
-            self.connections.lock().unwrap_or_else(|p| p.into_inner()).keys().copied().collect()
+            // HV-107: both outbound (`connections`) and inbound (`inbound_handles`)
+            // peers must be torn down so the reconnect re-forms a clean link
+            // in both directions.
+            let mut ks: Vec<PeerId> = self
+                .connections
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .keys()
+                .copied()
+                .collect();
+            ks.extend(
+                self.inbound_handles
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .keys()
+                    .copied(),
+            );
+            ks.sort_unstable();
+            ks.dedup();
+            ks
         };
         for peer in &dropped {
             self.close_peer(peer, adapter.clone(), None);
@@ -2674,6 +2748,76 @@ mod tests {
             t.accept_poller.lock().unwrap().is_some(),
             "the inbound accept-poller must be running regardless of the advertise failure",
         );
+    }
+
+    #[tokio::test]
+    async fn hv107_inbound_accept_does_not_populate_connections_or_block_the_outbound_dial() {
+        use crate::transport::ble_att::encode_frame;
+        // HV-107: an inbound (peripheral-role) connection a remote central
+        // dialed to our GATT server must NOT land in `connections`. If it does,
+        // `connect()` treats the peer as "already connected" and never dials
+        // out, and `send()` resolves to a handle it cannot write — so after the
+        // peer restarts (RETRY / permission re-grant) this node keeps receiving
+        // but can never reply/ACK. The handle belongs in `inbound_handles`.
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = std::sync::Arc::new(BleTransport::new(Some(adapter.clone())));
+        t.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([72u8; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        })
+        .await
+        .unwrap();
+
+        let handle = GattHandle(88);
+        let addr = BleAddress([7, 7, 7, 7, 7, 7]);
+        let mut incoming = t.incoming_messages();
+        adapter.inject_accepted_connection(handle, addr);
+        adapter.inject_write(
+            handle,
+            IRIS_WRITE_CHARACTERISTIC,
+            encode_frame(1, 0, 1, b"rx".len(), b"rx").unwrap(),
+        );
+        // Inbound delivery works…
+        let got = tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
+        assert_eq!(got.expect("inbound must deliver").unwrap().payload, b"rx");
+
+        // …but `connections` stays empty — the peer is only in `inbound_handles`.
+        assert!(
+            t.connections.lock().unwrap().is_empty(),
+            "an inbound accept must NOT create a `connections` entry (HV-107)",
+        );
+        assert_eq!(
+            t.inbound_handles.lock().unwrap().len(),
+            1,
+            "the inbound handle is tracked in its own map",
+        );
+
+        // So the peer's own PeerInfo still needs a real outbound dial:
+        // `send()` (addressed by any id resolving to that inbound peer) must
+        // report NotConnected, not resolve to the un-writable peripheral handle.
+        let inbound_pid = *t.inbound_handles.lock().unwrap().keys().next().unwrap();
+        let msg = SerializedMessage {
+            message_id: crate::protocol::MessageId::from([73u8; 16]),
+            priority: MessagePriority::P2,
+            payload: b"ack".to_vec(),
+        };
+        assert_eq!(
+            t.send(&inbound_pid, &msg).await.unwrap_err(),
+            TransportError::NotConnected,
+            "send to an inbound-only peer must be NotConnected so discovery dials a real client link",
+        );
+
+        // And a real `connect()` to that peer actually dials (does not no-op on
+        // the phantom entry) — after it, `send()` succeeds.
+        let peer = peer_with_mac(inbound_pid, "07:07:07:07:07:07");
+        t.connect(&peer).await.unwrap();
+        assert!(
+            t.connections.lock().unwrap().contains_key(&inbound_pid),
+            "connect() must establish a real outbound client link",
+        );
+        assert!(t.send(&inbound_pid, &msg).await.is_ok(), "reply path is live after the dial");
     }
 
     #[tokio::test]
