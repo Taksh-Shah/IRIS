@@ -213,6 +213,86 @@ class Tier1Ble(IrisBenchBase):
         asserts.assert_false(slow, f"every drop must recover in <15s; slow={slow}")
 
 
+    def test_30min_zero_loss_session(self):
+        """§2 Tier-1→Tier-2 gate: a 30-minute two-phone session must show
+        ZERO unexplained link losses. Alternating 300-char P1<->P2 every ~12 s
+        for 30 min (~150 rounds). Pass:
+          - 100% delivered each way (a resilience mesh at 1 m on a bench must
+            not drop a single message in half an hour),
+          - 0 `msg.delivery_failed`,
+          - every `close_peer` / server-disconnect is followed by a delivery
+            within 15 s (an *explained*, recovered loss is allowed; an
+            unrecovered one is not),
+          - no `discovery.connect_backoff` lockout that outlasts the session.
+        This is a long test (~32 min). Run it as its own invocation."""
+        import re as _re
+        import time
+
+        _MINUTES = 30
+        _PERIOD_S = 12
+        deadline = time.monotonic() + _MINUTES * 60
+
+        for ad in self.ads:
+            ad.adb.logcat(["-c"])
+        prime = self.send_and_await(self.p1, self.p2, "prime", timeout_ms=_DELIVER_TIMEOUT_MS)
+        asserts.assert_true(prime.get("delivered"), f"link must be up first; {prime}")
+
+        rnd = 0
+        fwd_ok = rev_ok = fwd_n = rev_n = 0
+        while time.monotonic() < deadline:
+            rnd += 1
+            t0 = time.monotonic()
+            a = self.send_and_await(self.p1, self.p2, f"{_PAYLOAD_300}>{rnd}",
+                                    timeout_ms=_DELIVER_TIMEOUT_MS)
+            fwd_n += 1
+            fwd_ok += 1 if a.get("delivered") else 0
+            b = self.send_and_await(self.p2, self.p1, f"{_PAYLOAD_300}<{rnd}",
+                                    timeout_ms=_DELIVER_TIMEOUT_MS)
+            rev_n += 1
+            rev_ok += 1 if b.get("delivered") else 0
+            if rnd % 10 == 0:
+                self.p1.log.info("30MIN round %d (%.0f min left): fwd=%d/%d rev=%d/%d",
+                                 rnd, (deadline - time.monotonic()) / 60,
+                                 fwd_ok, fwd_n, rev_ok, rev_n)
+            spent = time.monotonic() - t0
+            if spent < _PERIOD_S:
+                time.sleep(_PERIOD_S - spent)
+
+        self.capture_evidence("tier1_30min")
+        churn = {ad.label: self._logcat_since_cleared(ad) for ad in self.ads}
+        failed = {k: v.count("msg.delivery_failed") for k, v in churn.items()}
+        drops = {k: v.count("close_peer") for k, v in churn.items()}
+        backoff = {k: v.count("discovery.connect_backoff") for k, v in churn.items()}
+
+        # recovery gaps: server disconnect (newState=0) -> next msg.delivered.
+        gaps = []
+        for _lbl, txt in churn.items():
+            ev = []
+            for m in _re.finditer(r"(\d\d:\d\d:\d\d\.\d+).*?(newState=0|msg\.delivered)", txt):
+                ts = m.group(1)
+                secs = int(ts[0:2]) * 3600 + int(ts[3:5]) * 60 + float(ts[6:])
+                ev.append((secs, m.group(2)))
+            last_drop = None
+            for secs, kind in ev:
+                if kind == "newState=0":
+                    last_drop = secs
+                elif kind == "msg.delivered" and last_drop is not None:
+                    gaps.append(round(secs - last_drop, 1))
+                    last_drop = None
+
+        self.p1.log.info(
+            "30MIN SESSION: rounds=%d fwd=%d/%d rev=%d/%d failed=%s close_peer=%s "
+            "backoff=%s recovery_gaps=%s",
+            rnd, fwd_ok, fwd_n, rev_ok, rev_n, failed, drops, backoff, sorted(gaps))
+
+        asserts.assert_equal(sum(failed.values()), 0,
+                             f"no msg.delivery_failed in 30 min; {failed}")
+        asserts.assert_equal(fwd_ok, fwd_n, f"every fwd message must deliver; {fwd_ok}/{fwd_n}")
+        asserts.assert_equal(rev_ok, rev_n, f"every rev message must deliver; {rev_ok}/{rev_n}")
+        unrecovered = [g for g in gaps if g > 15]
+        asserts.assert_false(unrecovered,
+                             f"every link drop must recover in <15 s; slow={unrecovered}")
+
     def test_forced_drop_reconnect_10x(self):
         """HV-14/HV-15: prime the link, then `dropAllLinks()` on BOTH phones
         (radio stays up — advertising/scanning continue) and time how long
