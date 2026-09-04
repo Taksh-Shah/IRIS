@@ -37,11 +37,13 @@ class IrisBleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                isRunning = false
                 stopSelf()
                 return START_NOT_STICKY
             }
         }
         startForegroundCompat()
+        isRunning = true
         if (scanSession == null) {
             BleScanSession(this).also {
                 it.start()
@@ -52,6 +54,7 @@ class IrisBleService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         scanSession?.stop()
         scanSession = null
         super.onDestroy()
@@ -96,6 +99,19 @@ class IrisBleService : Service() {
         const val CHANNEL_ID = "iris_mesh_links"
         private const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "iriscore.service.STOP"
+
+        /**
+         * HV-32: `true` between `onStartCommand` and `onDestroy`. The mesh
+         * engine + radios are only alive while this foreground service is —
+         * `IrisBackgroundSyncWorker` reads this to avoid building a SECOND
+         * `@Singleton IrisEngine` in a bare background process (new tokio
+         * runtime, no FGS, radios can't come up) just to drain the relay
+         * outbox. Process-local (a fresh process starts `false`), which is
+         * exactly the signal we want.
+         */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
 
         fun start(context: Context) {
             val intent = Intent(context, IrisBleService::class.java)

@@ -2929,3 +2929,47 @@ few lines and idempotent.
 **Phase T.** (rebuild + a `stopMesh`/`startMesh` cycle test on a live engine —
 distinct from `test_peer_process_restart_recovers` which force-stops the
 process and gets a fresh engine; HV-29 is the `@Singleton` reuse case)
+
+---
+
+## Session 17 (cont.) — HV-32 (two engines, one device)
+
+**Phase R.** `IrisBackgroundSyncWorker` (15-min periodic) → `doWork()` →
+`repository.drainRelayOutbox()` → `engine.get().sendText(...)`.
+`engine` is `Lazy<IrisEngine>` in a `@Singleton MeshRepository`. When
+WorkManager runs the worker in a **fresh process** (the app was killed),
+`engine.get()` constructs a brand-new `IrisEngine` — its own tokio runtime,
+`DiscoveryManager::start()`, three transport bridges — but `sendText` never
+calls `start_all()`, so the radios are never brought up (no FGS in a bare
+worker process; Android 12+ forbids `startForeground` from most background
+contexts). The queued mail lands in the engine's storage, the delivery loop
+spins on `NotConnected`, and the process is reaped. If the real app then
+restarts it builds *another* engine with the same node id. Never observed on a
+device — the finding is "this path is untested and probably broken."
+
+developer.android.com: a `CoroutineWorker` gets no FGS by default;
+`setForeground`/`getForegroundInfo` (expedited work) is the only sanctioned way,
+and `connectedDevice` FGS from an expedited job is allowed on API 31+ but
+tightened again on API 34. Nordic/AndroidX guidance: do not do radio work from a
+plain periodic worker.
+
+**Phase D (smallest safe change).**
+- `IrisBleService.isRunning: Boolean` (`@Volatile`, companion, `private set`) —
+  `true` between `onStartCommand` and `onDestroy`. Process-local, so a fresh
+  worker process correctly reads `false`.
+- `IrisBackgroundSyncWorker.doWork()`: `if (!IrisBleService.isRunning)
+  return Result.retry()` **before** touching `engine.get()`. The relay outbox is
+  durable (`RelayOutbox`); it drains when the FGS next comes up
+  (`MeshViewModel.ensureStarted` and the RETRY path both call
+  `drainRelayOutbox`). No second engine is ever built in a background process.
+- Starting the FGS from the worker (expedited job) is the richer fix but needs a
+  bench test on API 33/35 — left as a follow-up note on the finding.
+
+`:app:compileDebugKotlin` + `:app:testDebugUnitTest` (JVM) green.
+
+**Phase T.** Bench procedure (1 phone, ~20 min): queue a P0 relay message, kill
+the app (`am force-stop org.iris.mesh`), wait for / trigger the worker
+(`adb shell cmd jobscheduler run -f org.iris.mesh <id>`), confirm logcat shows
+**no** second `iriscore` engine-start and the outbox is untouched; then open the
+app and confirm the message flushes. (not run this session — the bench phones
+are on the 30-min gate test)
