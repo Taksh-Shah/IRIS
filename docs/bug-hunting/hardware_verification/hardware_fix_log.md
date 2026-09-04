@@ -2883,8 +2883,11 @@ iris-core **787**, workspace builds.
 `autoConnect=true`-on-retry (bleadvertiser "Android 15 broke reconnection
 speed") is a bigger behaviour change — **HV-101 candidate**, not this commit.
 
-**Phase T.** (rebuild + a sustained/ping-pong pass after the 30-min session —
-the natural link blips it produces are the 133/8 evidence)
+**Phase T.** The 30-min session (`session-17-30min`) produced **zero** link
+blips (0 `status=133/8`, 0 `close_peer`) — no natural evidence this run. HV-33's
+classification stands on the L1 test + the 30-min regression (100% delivery, no
+regression from the changed error mapping). Re-verify opportunistically when a
+future run does hiccup. Status: ✅ HW-PENDING (natural-trigger evidence owed).
 
 ### HV-101 — `connectGatt(autoConnect=true)` on reconnect (Android 14+ faster path)
 
