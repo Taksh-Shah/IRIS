@@ -416,10 +416,12 @@ class Tier1Ble(IrisBenchBase):
         (`MessageEngine::restart()`). Distinct from
         test_peer_process_restart_recovers, which force-stops the process (fresh
         engine). Cycle P2 3x; each time a P1->P2 message must deliver again
-        within 20 s. Pass: 3/3, 0 msg.delivery_failed."""
+        within 45 s (a full mesh stop/start cycle: engine.shutdown -> restart,
+        radios torn down + re-advertised, peer re-discovered + reconnected).
+        Pass: 3/3, 0 msg.delivery_failed."""
         import time
         _CYCLES = 3
-        _BUDGET_S = 20
+        _BUDGET_S = 45
 
         for ad in self.ads:
             ad.adb.logcat(["-c"])

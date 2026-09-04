@@ -3053,3 +3053,21 @@ which gives the retry loop a real signal.
 messages, or piggyback ACKs on the next frame in the reverse direction, or
 raise the ACK retry budget with jittered backoff. Measure duplicate-rate before
 / after on the 30-min session.
+
+### HV-103 — `discovery.connect_ok` logged on every idempotent reconnect pass (log spam)
+
+- **Fix status:** ⬜ (found Session 17, HV-29 evidence)
+- **Area:** `discovery/mod.rs` `attempt_connect` / the HV-15 cached-address
+  reconnect retry
+- **Severity:** Low · **HW gate:** none
+
+**What:** after a `stopMesh`/`startMesh` cycle (and generally while a link is
+re-forming) P2's logcat fills with `discovery.connect_ok … elapsed_ms=0`
+("idempotent no-op if already connected") — dozens per second for ~1 s at a time,
+repeated each discovery pass. `connect()` being idempotent is correct; logging a
+success event for a no-op is not. Buries the real events in `/diag`'s recent-events
+ring and wastes a little CPU.
+
+**Fix sketch:** only emit `discovery.connect_ok` when the connect actually
+transitioned a link (elapsed_ms > 0 or state changed); demote the idempotent
+case to `trace!` or drop it.
