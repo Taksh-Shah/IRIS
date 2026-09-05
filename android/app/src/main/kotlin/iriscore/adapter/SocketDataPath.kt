@@ -55,6 +55,23 @@ internal class FramedSocketLink(
     private val onClosed: (Throwable?) -> Unit = {},
 ) : Closeable {
 
+    init {
+        // HV-74: with no keepalive, a peer that vanishes without a TCP
+        // FIN/RST (walks out of Wi-Fi Direct range, radio glitch — the
+        // common case here, not a graceful close) left `readLoop`'s
+        // `readFully` blocked forever: the link stayed in the registry,
+        // `p2p_send` kept "succeeding" into a dead write buffer until it
+        // filled, and the drop was only noticed reactively on a later
+        // write. `SO_KEEPALIVE` is standard TCP hygiene for exactly this —
+        // the OS eventually probes an idle connection and reports RST/ETIMEDOUT
+        // on a truly dead peer, which surfaces here as the same IOException
+        // path `readLoop`/`send` already handle. An application-level
+        // heartbeat with a finite, frame-resetting `soTimeout` (the other
+        // half of this finding's fix sketch) would detect it faster, but is
+        // a real protocol addition — not attempted in this pass.
+        runCatching { socket.keepAlive = true }
+    }
+
     private val output = DataOutputStream(socket.getOutputStream().buffered())
     private val input = DataInputStream(socket.getInputStream().buffered())
     private val writeMutex = Mutex()

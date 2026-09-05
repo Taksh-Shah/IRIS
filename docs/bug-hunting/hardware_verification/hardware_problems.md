@@ -67,9 +67,9 @@ that remain are understood and logged.*
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
-| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 0 | 0 | 0 | 9 |
-| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **109** | **31** | **21** | **1** | **2** | **54** |
+| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 1 | 0 | 0 | 8 |
+| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 1 | 0 | 0 | 16 |
+| **Total** | | **109** | **31** | **23** | **1** | **2** | **52** |
 
 **Last updated:** 2026-09-05 (Session 22, continued — **Tier 8: HV-54 + HV-55
 closed, 🟢 HW-verified.** Both are UI-only fixes, independent of the Tier-2
@@ -3019,7 +3019,18 @@ read aloud/copy to the other person. This is unusable beyond a one-off demo.
 
 ### HV-57 — Received messages have no reply affordance
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW-adjacent · commit `f3d21c2` · 2026-09-05 ·
+  Session 23. `IrisMessage` gained an optional `onReply` callback — tapping
+  a received message row calls `MeshViewModel.replyTo(senderId)`, which sets
+  `_recipient.value` exactly like the already-hardware-verified `/to
+  <peerId>` command path (same underlying assignment, same
+  `ConsoleEntry.system("RECIPIENT", ...)` echo, just a different trigger).
+  Deliberately minimal — no `ContactStore`, no name resolution — HV-56 stays
+  open for that. **Not independently HW-tested via an actual tap gesture**
+  this session (P2→P1 delivery and the `/to`-then-send path were exercised
+  live on hardware while diagnosing a coordinate-mapping issue in the test
+  tooling, but the tap-to-reply gesture itself wasn't separately exercised);
+  the code path it delegates to is the same one already proven working.
 - **Area:** `ConsoleScreen.ConsoleRow` / `IrisMessage`, `MeshViewModel.submit`
 - **Severity:** High (drives the "one-way only" perception) · **HW gate:** 2 phones
 
@@ -3417,7 +3428,28 @@ carrying a coarse time estimate in the beacon and computing skew per peer.
 
 ### HV-74 — Wi-Fi Direct TCP socket has no keepalive; a half-open socket hangs the read loop forever
 
-- **Fix status:** ⬜ · **Home tier:** 2 · groups with HV-27
+- **Fix status:** ✅ Fixed (part 1 of 2 — SO_KEEPALIVE only) · HW-PENDING ·
+  commit `<pending>` · 2026-09-05 · Session 23. `FramedSocketLink`'s `init`
+  now sets `socket.keepAlive = true` — this covers both consumers of the
+  shared `SocketDataPath` (Wi-Fi Direct's TCP-over-GO and Wi-Fi Aware's NDP
+  socket), since the class is shared between them (see the file's own doc
+  comment). This is standard TCP hygiene the code previously omitted
+  entirely; the OS will now eventually probe a silent connection and report
+  the death, surfacing through the same `IOException` path `readLoop`/`send`
+  already handle. **Not done this pass**: an application-level heartbeat
+  frame + a finite, frame-resetting post-handshake `soTimeout` (the fix
+  sketch's other half) — that's a real protocol addition (both ends must
+  agree on a heartbeat cadence and tolerance), bigger in scope, and left for
+  a future session; `SO_KEEPALIVE` alone is a real, low-risk improvement on
+  its own. **Not independently HW-tested**: neither Wi-Fi Direct nor Wi-Fi
+  Aware has a live socket on this bench right now (Direct is blocked by the
+  HV-21 discovery defect; Aware reports "not supported on this device" for
+  both bench phones) — verified via the existing
+  `FramedSocketLinkTest` suite (unchanged, all passing) and a clean
+  `assembleDebug`, not a real half-open-socket hardware scenario.
+- **Area:** `SocketDataPath.FramedSocketLink` (`readLoop` blocks in
+  `input.readFully`; `socket.soTimeout = 0` after handshake; no `SO_KEEPALIVE`),
+  `AndroidWifiDirectTransportAdapter.connectToGroupOwner` / `ensureGroupServer`
 - **Area:** `SocketDataPath.FramedSocketLink` (`readLoop` blocks in
   `input.readFully`; `socket.soTimeout = 0` after handshake; no `SO_KEEPALIVE`),
   `AndroidWifiDirectTransportAdapter.connectToGroupOwner` / `ensureGroupServer`
