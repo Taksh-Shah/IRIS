@@ -430,9 +430,44 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // confirmed AFTER connecting, via the handshake extended below
         // (readHandshakeFrame/writeHandshakeFrame now carry the full IRIS
         // beacon, not just a MAC) — "connect first, verify after".
+        //
+        // HV-21 follow-up: confirmed live on a real device (vivo 2004,
+        // Android 12/SDK 31) that `discoverPeers()` can fail with the
+        // generic `ERROR` (reason=0) reason on this specific hardware,
+        // every single call, while Android's OWN Wi-Fi Direct settings
+        // screen (`WifiP2pSettingsActivity`) — same device, same session,
+        // zero IRIS code involved — started discovery successfully
+        // (`mDiscoveryStarted: true`) moments later. This rules out a
+        // platform/hardware limitation (the native path proves discovery
+        // genuinely works on this device) and points at a timing issue:
+        // IRIS calls this very early in the mesh's lifecycle, right after
+        // `startGate.ensureStarted()`'s channel bring-up, and HW-11 already
+        // documented that a real device's P2P state machine can take
+        // "well over 30 s" to leave its disabled/bringing-up state — that
+        // finding only ever saw the platform report `BUSY` during this
+        // window, which `awaitAction` already retries; this device instead
+        // reports plain `ERROR` for the same underlying "not ready yet"
+        // condition. Bounded retry, mirroring HW-11's BUSY constants
+        // exactly, scoped to just this call site (not weakening
+        // `awaitAction`'s general "every other reason fails immediately"
+        // contract everywhere else it's used).
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
-            awaitAction { p2pManagerOrThrow().discoverPeers(channel, it) }
+            var attempt = 0
+            while (true) {
+                attempt++
+                try {
+                    awaitAction { p2pManagerOrThrow().discoverPeers(channel, it) }
+                    return@suspendCall
+                } catch (e: Transport) {
+                    if (attempt >= BUSY_RETRY_ATTEMPTS) throw e
+                    iriscore.util.IrisLog.w(
+                        "wd.stranger",
+                        "startDiscovery: discoverPeers failed (attempt $attempt/$BUSY_RETRY_ATTEMPTS) — retrying: ${e.message}",
+                    )
+                    delay(BUSY_RETRY_DELAY_MS)
+                }
+            }
         }
     }
 

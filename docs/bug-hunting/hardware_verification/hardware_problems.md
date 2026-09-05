@@ -2067,9 +2067,27 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
   BLE, not Wi-Fi Direct, in an 80-second run — consistent with (not
   contradicted by) this session's earlier finding that native discovery on
   this hardware took *minutes*, not seconds. Not yet confirmed working
-  end-to-end; a longer-duration test is the immediate next step before
-  concluding whether this works or needs further iteration. That is the
-  last piece before the Tier-2 hardware gate can be attempted again.
+  end-to-end.
+  **🔒 Blocked, same session — a real, isolated defect found and 4 serious
+  fix attempts made.** Found and fixed a genuine bug along the way: a
+  failed DNS-SD registration was killing `wifi-direct-0`'s startup entirely
+  on P2 (now non-fatal, confirmed fixed via a clean 4-minute run with zero
+  such failures). But P2's actual `discoverPeers()` call itself fails with
+  generic `ERROR` on **every single attempt** — confirmed NOT caused by:
+  Bluetooth/Wi-Fi coexistence (ruled out with BT fully off), a wedged radio
+  (ruled out via a clean power-cycle), an early-bringup timing race (ruled
+  out — added a bounded retry mirroring HW-11's own precedent, it never
+  once succeeded), or a stale channel conflict with the Settings app
+  (ruled out — tested with Settings force-stopped and P2 fully isolated,
+  no P1 involved). Critically, Android's own native Wi-Fi Direct settings
+  screen starts discovery FINE on this same P2, same session — proving
+  this is not a hardware/OS-wide limitation, just something specific to
+  IRIS's own call context that hasn't been identified yet. Full blocker
+  analysis with all 4 attempts in `hardware_fix_log.md`. Per the loop's
+  3-attempts rule, marked `🔒 Blocked` rather than continuing to guess.
+  Recommended next steps: test from IRIS's real foreground UI (not the
+  Mobly bench-harness's instrumented-test context); check for an OriginOS
+  update on P2; test against a third, different-OEM phone.
 - **Area:** `AndroidWifiDirectTransportAdapter` — `dnsSdServiceListener`,
   `dnsSdTxtRecordListener`, `serviceRequest`, `startDnsSd` (HW-13/14/15/16),
   `pendingServiceOnly` / `pendingTxtBeacons`

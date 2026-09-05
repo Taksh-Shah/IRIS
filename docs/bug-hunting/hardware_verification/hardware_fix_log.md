@@ -4627,3 +4627,86 @@ a third, different-OEM phone to isolate whether it's phone-specific or
 pairwise, per the standing recommendation already on file.
 
 **Landed:** commit `4ecc60c`.
+
+### 🔒 Blocked — P2's `discoverPeers()` fails every call; 4 attempts made, root cause not found
+
+Per the operator's request, researched Bluetooth/Wi-Fi coexistence
+(real, cited phenomenon on combo chips sharing the 2.4 GHz band — 2.4 GHz
+P2P social channels 1/6/11 are the same band BT uses) as a candidate cause
+for the discovery blocker, and tested it directly rather than staying
+theoretical.
+
+**Attempt 1 — Bluetooth off.** Disabled Bluetooth on both phones (`svc
+bluetooth disable`), re-ran the 4-minute patience test. Result: **P2's
+`discoverPeers()` failed on every single attempt** with `WifiP2p action
+failed reason=0 (Other)` — a NEW, more specific symptom than the earlier
+"peers_seen=0" (this is the discovery call itself erroring out, not merely
+finding nothing). Rules out BT coexistence as the (sole) cause — BT was
+completely off and the failure persisted identically.
+
+**Attempt 2 — radio power-cycle.** `svc wifi disable`/`enable` on P2 to
+reset a possibly-wedged P2P subsystem. Re-ran: **same failure, 18×** across
+the run. Rules out a transient/one-off wedge.
+
+**Attempt 3 — isolate IRIS vs. platform.** With IRIS's own calls still
+failing, opened Android's native Wi-Fi Direct settings screen
+(`WifiP2pSettingsActivity`) on the SAME phone, same session — it started
+discovery successfully (`mDiscoveryStarted: true`, no error). This is the
+key finding: **the platform genuinely can discover peers on this device**;
+the failure is specific to IRIS's own call context, not a hardware/OS-wide
+limitation. Implemented a bounded retry for this specific call site
+(mirroring HW-11's BUSY-retry shape exactly, since the leading hypothesis
+was "P2P state machine still warming up, reporting ERROR instead of BUSY
+on this device"). Re-ran: **still failed, now 85 error occurrences** across
+5-attempt retry bursts — the retry never once succeeded, ruling out a
+transient/early-bringup timing explanation. (Bounded retry code itself is
+kept — it is a correct, low-risk defensive addition per HW-11's precedent
+regardless of whether it explains THIS specific failure, and does not
+regress anything.)
+
+**Attempt 4 — stale channel from the Settings screen.** Since the Settings
+screen had been opened multiple times earlier this session without
+properly backing out, `dumpsys wifip2p`'s `mActiveClients`/
+`mClientInfoList` showed 3 registered clients including
+`com.android.settings`. Force-stopped Settings entirely
+(`mClientInfoList` confirmed back down to 1), then ran IRIS's snippet in
+complete isolation (P2 only, no P1 involved, ruling out any P1-side
+interaction). Result: **same failure, 7 more occurrences**, immediately.
+Rules out a lingering-channel conflict with the Settings app.
+
+**What was NOT the cause** (ruled out across these 4 attempts + earlier
+session evidence): Bluetooth/Wi-Fi coexistence, a wedged/stale radio state
+recoverable by a power-cycle, an early-bringup timing race, and a
+conflicting stale channel registration from another app. Also checked and
+confirmed fine: `ACCESS_FINE_LOCATION` granted, location mode = high
+accuracy (3), `Looper.getMainLooper()` used for `WifiP2pManager.initialize`
+(same as an Activity would use).
+
+**Current best understanding**: something about the specific process/UID/
+call context IRIS's snippet or app runs under (as opposed to a system
+Settings activity) causes `WifiP2pManager.discoverPeers()` to fail with
+generic `ERROR` on this specific device (vivo 2004, Android 12/SDK 31) —
+P1 (vivo V2205, Android 15) has never shown this failure once, across
+either device's entire test history this session. This may be an
+OriginOS-specific restriction (e.g. a foreground/background app
+distinction, an undocumented per-package P2P throttle, or a signature/
+privileged-app carve-out the Settings app benefits from that a normal app
+cannot obtain) that would require either AOSP/vendor source access this
+session doesn't have, or direct experimentation this loop's automated
+harness can't easily drive (e.g. comparing against a *foreground Activity*
+UI calling `discoverPeers()`, vs. the current instrumented-test/background-
+service context — untested, a real next step).
+
+Per the loop's 3-serious-attempts rule (4 were made here): marking this
+`🔒 Blocked` rather than continuing to guess. **Recommended next steps**:
+(1) test `discoverPeers()` from IRIS's actual foreground Activity/UI (not
+the Mobly snippet's instrumented-test context) to see if the failure is
+specific to how the bench harness runs the app; (2) check for a vivo
+OriginOS system update on P2; (3) test P2's Wi-Fi Direct against a third,
+different-OEM phone to isolate whether this is P2-specific or pairwise;
+(4) if accessible, capture a full `bugreport` during a failing
+`discoverPeers()` call for vendor-level diagnostic strings AOSP's public
+API surface doesn't expose.
+
+**Landed:** commit `<pending>` (the bounded-retry code, kept as a correct
+defensive addition per HW-11's precedent, plus this blocker analysis).
