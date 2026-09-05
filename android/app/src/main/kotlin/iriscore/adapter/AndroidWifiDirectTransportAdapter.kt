@@ -1125,21 +1125,31 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     // the specific failed call after a short backoff is correct here in a
     // way blind retry is not: every OTHER failure reason (P2P_UNSUPPORTED,
     // ERROR, a permission denial) still fails immediately, unchanged.
-    private suspend fun awaitAction(failureContext: String? = null, launch: (WifiP2pManager.ActionListener) -> Unit) =
-        actionMutex.withLock {
-            var attempt = 0
-            while (true) {
-                attempt++
-                try {
-                    awaitActionOnce(failureContext, launch)
-                    return@withLock
-                } catch (e: Transport) {
-                    val busy = e.message?.contains("reason=$WIFI_P2P_BUSY") == true
-                    if (!busy || attempt >= BUSY_RETRY_ATTEMPTS) throw e
-                    delay(BUSY_RETRY_DELAY_MS)
-                }
+    private suspend fun awaitAction(failureContext: String? = null, launch: (WifiP2pManager.ActionListener) -> Unit) {
+        // HV-23: the BUSY backoff `delay` used to run INSIDE `actionMutex.withLock`,
+        // so a caller stuck retrying a BUSY platform action (HW-11: up to
+        // BUSY_RETRY_ATTEMPTS * BUSY_RETRY_DELAY_MS = 2.5s, and every other
+        // caller queued behind that one during platform bring-up) held the
+        // mutex for the ENTIRE backoff window, serializing every other
+        // Wi-Fi Direct operation (including start/startDnsSd/startDiscovery)
+        // behind it. The mutex only needs to protect "one platform action in
+        // flight at a time" (HW-7's constraint) — it does not need to also
+        // cover the sleep between retries of the SAME action. Acquiring the
+        // lock fresh per attempt still guarantees at most one in-flight
+        // action, but lets other queued callers interleave during the sleep.
+        var attempt = 0
+        while (true) {
+            attempt++
+            try {
+                actionMutex.withLock { awaitActionOnce(failureContext, launch) }
+                return
+            } catch (e: Transport) {
+                val busy = e.message?.contains("reason=$WIFI_P2P_BUSY") == true
+                if (!busy || attempt >= BUSY_RETRY_ATTEMPTS) throw e
+                delay(BUSY_RETRY_DELAY_MS)
             }
         }
+    }
 
     private suspend fun awaitActionOnce(failureContext: String?, launch: (WifiP2pManager.ActionListener) -> Unit) {
         suspendCancellableCoroutine { cont ->

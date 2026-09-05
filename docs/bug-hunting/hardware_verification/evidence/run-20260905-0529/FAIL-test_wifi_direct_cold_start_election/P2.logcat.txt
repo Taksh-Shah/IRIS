@@ -1,0 +1,970 @@
+--------- beginning of main
+09-05 05:29:10.403 D/ProfileInstaller(31191): Installing profile for org.iris.mesh
+09-05 05:29:11.753 D/BluetoothGattServer(31191): onServerConnectionState() - status=0 serverIf=7 device=
+09-05 05:29:11.753 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=6 device=
+09-05 05:29:11.753 D/IrisBleDiag(31191): gattServer onConnectionStateChange device=4E:F7:2D:5B:2D:A2 status=0 newState=2
+09-05 05:29:11.879 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-05 05:29:11.896 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-05 05:29:11.897 D/iriscore(31191): iris.ble.gatt connectGatt: initiated (autoConnect=false, TRANSPORT_LE), waiting for ready
+09-05 05:29:12.048 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m transport poller picked up a remote central's inbound link [3mevent[0m[2m=[0m"ble.accept_new_connection" [3mhandle[0m[2m=[0m7566994734316732269
+09-05 05:29:12.339 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-05 05:29:12.340 D/BluetoothGattServer(31191): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-05 05:29:12.622 D/BluetoothGattServer( 9658): onMtuChanged() - device=, mtu=517
+09-05 05:29:12.623 D/BluetoothGattServer(31191): onMtuChanged() - device=, mtu=517
+09-05 05:29:12.713 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-05 05:29:12.716 D/BluetoothGattServer(31191): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-05 05:29:12.753 D/BluetoothGattServer( 9658): onServerConnectionState() - status=0 serverIf=6 device=
+09-05 05:29:12.755 D/BluetoothGattServer(31191): onServerConnectionState() - status=0 serverIf=7 device=
+09-05 05:29:12.756 D/IrisBleDiag(31191): gattServer onConnectionStateChange device=79:BE:6B:7E:50:47 status=0 newState=2
+09-05 05:29:13.129 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m transport poller picked up a remote central's inbound link [3mevent[0m[2m=[0m"ble.accept_new_connection" [3mhandle[0m[2m=[0m8269296894994061254
+09-05 05:29:13.338 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-05 05:29:13.340 D/BluetoothGattServer(31191): onConnectionUpdated() - Device= interval=6 latency=0 timeout=500 status=0
+09-05 05:29:13.486 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 5, "method": "stopMesh", "params": []}
+09-05 05:29:13.487 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#stopMesh
+09-05 05:29:13.615 D/IrisBleDiag(31191): onCharacteristicWriteRequest device=4E:F7:2D:5B:2D:A2 uuid=3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e matchesIris=true len=350 responseNeeded=true
+09-05 05:29:13.657 D/iriscore(31191): iris.ble.gatt connectGatt: ready resolved successfully
+09-05 05:29:13.684 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m1820
+09-05 05:29:13.684 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:13.685 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-05 05:29:13.716 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=4 len=348 known=[4]
+09-05 05:29:13.752 D/BluetoothGattServer( 9658): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-05 05:29:13.759 D/BluetoothGattServer(31191): onConnectionUpdated() - Device= interval=36 latency=0 timeout=500 status=0
+09-05 05:29:13.805 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m transport poller task running [3mevent[0m[2m=[0m"ble.accept_poller_started"
+09-05 05:29:13.874 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m transport poller picked up a remote central's inbound link [3mevent[0m[2m=[0m"ble.accept_new_connection" [3mhandle[0m[2m=[0m7566994734316732269
+09-05 05:29:13.906 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m transport poller drained frames [3mevent[0m[2m=[0m"ble.inbound_drain" [3mhandle[0m[2m=[0m7566994734316732269 [3mframes[0m[2m=[0m1
+09-05 05:29:13.907 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m reassembled message pushed to engine [3mevent[0m[2m=[0m"ble.inbound_delivered" [3mhandle[0m[2m=[0m7566994734316732269 [3mreceivers[0m[2m=[0m1
+09-05 05:29:14.515 D/BoundBrokerSvc( 9658): onUnbind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-05 05:29:14.812 D/BoundBrokerSvc( 9584): onUnbind: Intent { act=com.google.android.gms.feedback.internal.IFeedbackService dat=chimera-action: cmp=com.google.android.gms/.chimera.GmsBoundBrokerService }
+09-05 05:29:14.852 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-05 05:29:14.852 W/Auth    ( 9658): dedt: Failed to process request
+09-05 05:29:14.852 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:14.852 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:14.852 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:14.852 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:14.856 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-05 05:29:14.856 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:14.856 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	... 12 more
+09-05 05:29:14.856 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	... 13 more
+09-05 05:29:14.856 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:14.856 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:14.856 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:14.857 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-05 05:29:14.857 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:14.857 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	... 12 more
+09-05 05:29:14.857 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	... 13 more
+09-05 05:29:14.857 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:14.857 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:14.857 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:14.857 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-05 05:29:14.858 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-05 05:29:14.858 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-05 05:29:14.858 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:14.858 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:14.858 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-05 05:29:16.028 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-05 05:29:16.028 W/Auth    ( 9658): dedt: Failed to process request
+09-05 05:29:16.028 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:16.028 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:16.028 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:16.028 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:16.033 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-05 05:29:16.033 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	... 12 more
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	... 13 more
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:16.033 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-05 05:29:16.033 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	... 12 more
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	... 13 more
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:16.033 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:16.033 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:16.034 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-05 05:29:16.034 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-05 05:29:16.034 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-05 05:29:16.034 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:16.034 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:16.035 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-05 05:29:16.237 D/BoundBrokerSvc( 9584): onUnbind: Intent { act=com.google.android.gms.safetynet.service.START pkg=com.google.android.gms }
+09-05 05:29:17.734 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":5,"result":null,"callback":null,"error":null}
+09-05 05:29:19.097 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 6, "method": "startMesh", "params": []}
+09-05 05:29:19.100 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#startMesh
+09-05 05:29:19.105 W/SystemServiceRegistry(31191): No service published for: wifiaware
+09-05 05:29:19.235 D/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m transport poller task running [3mevent[0m[2m=[0m"ble.accept_poller_started"
+09-05 05:29:19.246 W/iriscore(31191): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-05 05:29:19.270 W/iriscore(31191): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-aware-0" [3merror[0m[2m=[0mtransport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)
+09-05 05:29:19.279 D/BluetoothLeScanner(31191): onScannerRegistered() - status=0 scannerId=10 mScannerId=0
+09-05 05:29:19.291 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-05 05:29:19.296 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-05 05:29:19.304 W/iriscore(31191): [2miriscode::engine[0m[2m:[0m transport failed to start; trying the others [3mevent[0m[2m=[0m"engine.start_transport_failed" [3mtransport[0m[2m=[0m"wifi-direct-0" [3merror[0m[2m=[0mtransport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)
+09-05 05:29:19.304 W/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh started with a subset of transports [3mevent[0m[2m=[0m"engine.start_all_partial" [3mstarted[0m[2m=[0m["ble-android"] [3mfailed[0m[2m=[0m["wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)", "wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)"]
+09-05 05:29:19.305 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Unavailable", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-05 05:29:19.305 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0m
+09-05 05:29:19.312 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":6,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Unavailable\",\"batteryMa\":80}],\"neighbors\":[],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"ble.accept_poller_started\",\"detail\":\"transport poller task running\"},{\"level\":\"WARN\",\"event\":\"ble.advertise_watchdog\",\"detail\":\"advertising was expected but no handle is live — re-driving\"},{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-aware-0 error=transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-direct-0 error=transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_all_partial\",\"detail\":\"mesh started with a subset of transports started=[\\\"ble-android\\\"] failed=[\\\"wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\\\", \\\"wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)\\\"]\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.find: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=wifi-direct-0 peers_seen=0\"},{\"level\":\"DEBUG\",\"event\":\"ble.accept_new_connection\",\"detail\":\"transport poller picked up a remote central's inbound link handle=7566994734316732269\"},{\"level\":\"DEBUG\",\"event\":\"ble.accept_new_connection\",\"detail\":\"transport poller picked up a remote central's inbound link handle=8269296894994061254\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirm
+09-05 05:29:19.314 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 7, "method": "nodeId", "params": []}
+09-05 05:29:19.315 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-05 05:29:19.318 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":7,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-05 05:29:19.320 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 8, "method": "staticX25519", "params": []}
+09-05 05:29:19.322 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#staticX25519
+09-05 05:29:19.325 D/WifiP2pManager(31191): Ignored { id=43 when=0 what=139313 target=android.net.wifi.p2p.WifiP2pManager$Channel$P2pHandler }
+09-05 05:29:19.325 D/WifiP2pManager(31191): Ignored { id=44 when=0 what=139313 target=android.net.wifi.p2p.WifiP2pManager$Channel$P2pHandler }
+09-05 05:29:19.326 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":8,"result":"d06afa7774735d740254addf350e7af76f2f785b886bc3c05d749f7e033bce64","callback":null,"error":null}
+09-05 05:29:19.339 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=0 (Other)
+09-05 05:29:19.349 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-05 05:29:19.357 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-05 05:29:19.365 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-05 05:29:19.375 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 9, "method": "registerPeerKey", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "baf0a2e19625acc0c7244989c12aac138845aee54ffd4281522cabeeaaf71b46"]}
+09-05 05:29:19.376 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#registerPeerKey
+09-05 05:29:19.383 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":9,"result":null,"callback":null,"error":null}
+09-05 05:29:19.387 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 10, "method": "nodeId", "params": []}
+09-05 05:29:19.388 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-05 05:29:19.390 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":10,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-05 05:29:19.475 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 11, "method": "awaitDelivered", "params": ["01a06edccd3f7bc38fc8bce7401270a3", 6000]}
+09-05 05:29:19.479 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-05 05:29:22.422 D/iriscore(31191): iris.ble.gatt connectGatt: initiated (autoConnect=false, TRANSPORT_LE), waiting for ready
+09-05 05:29:22.424 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-05 05:29:22.426 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-05 05:29:22.451 D/iriscore(31191): iris.ble.gatt connectGatt: ready resolved successfully
+09-05 05:29:22.461 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m51
+09-05 05:29:22.461 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:22.461 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m2
+09-05 05:29:22.476 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=4 len=348 known=[4]
+09-05 05:29:23.957 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-05 05:29:23.957 W/Auth    ( 9658): dedt: Failed to process request
+09-05 05:29:23.957 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:23.957 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:23.957 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:23.957 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:23.962 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-05 05:29:23.962 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:23.962 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	... 12 more
+09-05 05:29:23.962 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	... 13 more
+09-05 05:29:23.962 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:23.962 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:23.962 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:23.964 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-05 05:29:23.964 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:23.964 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	... 12 more
+09-05 05:29:23.964 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	... 13 more
+09-05 05:29:23.964 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:23.964 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:29:23.964 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:29:23.965 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-05 05:29:23.966 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-05 05:29:23.966 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-05 05:29:23.966 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:29:23.966 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:29:23.966 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-05 05:29:25.520 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":11,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-05 05:29:25.536 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 12, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "wd-rev-0", 4]}
+09-05 05:29:25.539 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-05 05:29:25.603 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m24 [3mttl_secs[0m[2m=[0m3600
+09-05 05:29:25.607 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":12,"result":"01a06edce5747ed1991763bbbf5e3e1e","callback":null,"error":null}
+09-05 05:29:25.609 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=4 len=297 known=[4]
+09-05 05:29:26.056 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=4 len=297 known=[4]
+09-05 05:29:26.753 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=4 len=297 known=[4]
+09-05 05:29:26.948 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:26.948 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:27.756 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=4 len=348 known=[]
+09-05 05:29:29.980 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:29.981 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:31.712 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 13, "method": "meshSnapshot", "params": []}
+09-05 05:29:31.713 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#meshSnapshot
+09-05 05:29:31.716 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[FfiNeighborDiag { peer_id_hex: "25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff", state: "LinkedUp", links: ["ble-android:Good"] }] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-05 05:29:31.716 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0m
+09-05 05:29:31.729 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":13,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[{\"peerIdHex\":\"25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff\",\"state\":\"LinkedUp\",\"links\":[\"ble-android:Good\"]}],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-aware-0 error=transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=ble-android peers_seen=0\"},{\"level\":\"WARN\",\"event\":\"engine.start_transport_failed\",\"detail\":\"transport failed to start; trying the others transport=wifi-direct-0 error=transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"WARN\",\"event\":\"engine.start_all_partial\",\"detail\":\"mesh started with a subset of transports started=[\\\"ble-android\\\"] failed=[\\\"wifi-aware-0: transport error: wifi-aware-0.start_advertising: transport io error: wifiaware.start: not supported on this device (Other)\\\", \\\"wifi-direct-0: transport error: wifi-direct-0.start_advertising: transport io error: wifi_direct.dns_sd: transport error: WifiP2p action failed reason=0 (Other)\\\"]\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.find: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.scan_pass_complete\",\"detail\":\"discovery pass complete for this transport transport=wifi-direct-0 peers_seen=0\"},{\"level\":\"DEBUG\",\"event\":\"ble.accept_new_connection\",\"detail\":\"transport poller picked up a remote central's inbound link handle=7566994734316732269\"},{\"level\":\"DEBUG\",\"event\":\"ble.accept_new_connection\",\"detail\":\"transport poller picked up a remote central's inbound link handle=8269296894994061254\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=1820\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live
+09-05 05:29:33.000 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:33.003 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:33.748 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 14, "method": "nodeId", "params": []}
+09-05 05:29:33.749 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-05 05:29:33.758 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":14,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-05 05:29:33.821 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 15, "method": "awaitDelivered", "params": ["01a06edd055d7092adaf2cf990fe6c84", 6000]}
+09-05 05:29:33.824 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-05 05:29:36.035 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:36.036 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:36.829 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-05 05:29:39.054 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:39.055 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:39.871 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":15,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-05 05:29:39.895 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 16, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "wd-rev-0", 4]}
+09-05 05:29:39.898 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-05 05:29:39.938 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m24 [3mttl_secs[0m[2m=[0m3600
+09-05 05:29:39.939 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:39.939 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:39.945 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":16,"result":"01a06edd1d897b60af5cf28a031897e9","callback":null,"error":null}
+09-05 05:29:42.061 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:42.061 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): Error reading dmabuf proc dmabuf_rss [CONTEXT ratelimit_period="1 MINUTES" skipped=2 ]
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): java.io.FileNotFoundException: /proc/4389/dmabuf_rss: open failed: ENOENT (No such file or directory)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at libcore.io.IoBridge.open(IoBridge.java:574)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.io.FileInputStream.<init>(FileInputStream.java:179)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at yru.a(SourceFile:8)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at vsz.d(SourceFile:34)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at vss.a(SourceFile:223)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at zde.d(SourceFile:3)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at zdg.run(SourceFile:47)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:524)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:348)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at jok.run(SourceFile:56)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): Caused by: android.system.ErrnoException: open failed: ENOENT (No such file or directory)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at libcore.io.Linux.open(Native Method)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at libcore.io.ForwardingOs.open(ForwardingOs.java:568)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at libcore.io.BlockGuardOs.open(BlockGuardOs.java:274)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at libcore.io.ForwardingOs.open(ForwardingOs.java:568)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at android.app.ActivityThread$AndroidOs.open(ActivityThread.java:8272)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	at libcore.io.IoBridge.open(IoBridge.java:560)
+09-05 05:29:42.154 W/PrimesLoggerHolder( 4389): 	... 13 more
+09-05 05:29:42.205 V/ClearcutMetricXmitter( 4389): Transmission is done.
+09-05 05:29:42.958 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:42.959 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:43.856 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.858 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.859 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.859 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.860 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.860 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.860 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.860 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.860 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.861 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.861 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.861 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.861 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.861 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.861 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.862 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.862 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.862 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.862 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.862 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:43.863 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m20
+09-05 05:29:43.863 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport: shutting down
+09-05 05:29:43.863 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport: shutting down
+09-05 05:29:45.096 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:45.097 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:45.983 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:45.985 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:46.054 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 17, "method": "meshSnapshot", "params": []}
+09-05 05:29:46.057 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#meshSnapshot
+09-05 05:29:46.066 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Available", estimated_battery_ma: 3.0, bandwidth_available_bps: 1000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[FfiNeighborDiag { peer_id_hex: "25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff", state: "LinkedUp", links: ["ble-android:Good"] }] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 0, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-05 05:29:46.067 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0m
+09-05 05:29:46.094 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":17,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Available\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[{\"peerIdHex\":\"25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff\",\"state\":\"LinkedUp\",\"links\":[\"ble-android:Good\"]}],\"messages\":{\"sent\":0,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edce5747ed1 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edce5747ed1 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edce5747ed1 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"INFO\",\"event\":\"msg.created\",\"detail\":\"message created and persisted message_id=01a06edd1d897b60 priority=4 size_bytes=24 ttl_secs=3600\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edd1d897b60 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edce5747ed1 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edd1d897b60 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connect
+09-05 05:29:48.104 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:48.105 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:48.111 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 18, "method": "nodeId", "params": []}
+09-05 05:29:48.113 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-05 05:29:48.122 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":18,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-05 05:29:48.181 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 19, "method": "awaitDelivered", "params": ["01a06edd3d74722389cd21b1db41f4bc", 6000]}
+09-05 05:29:48.183 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-05 05:29:49.031 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:49.032 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:51.113 I/BleAdvertiser( 9658): Start advertising [CONTEXT service_id=284 ]
+09-05 05:29:51.122 I/AlarmManager( 9658): setAndAllowWhileIdle [name: SpotEddystoneAdvertisement type: 0 triggerAtMillis: 1788567566122]
+09-05 05:29:51.141 I/BleAdvertiser( 9658): (REDACTED) Start advertising,  txPower=%d, status=%d
+09-05 05:29:51.149 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:51.150 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:52.077 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:52.080 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:54.153 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:54.154 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:54.224 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":19,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-05 05:29:54.246 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 20, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "wd-rev-0", 4]}
+09-05 05:29:54.252 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-05 05:29:54.293 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06edd559a72f0 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m24 [3mttl_secs[0m[2m=[0m3600
+09-05 05:29:54.294 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:54.294 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd559a72f0 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:54.300 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":20,"result":"01a06edd559a72f08393ec24ce1fa402","callback":null,"error":null}
+09-05 05:29:55.117 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:55.120 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:57.182 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:57.183 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:57.340 D/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-05 05:29:57.341 W/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a06edd559a72f0 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-05 05:29:57.842 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-05 05:29:57.849 D/iriscore(31191): iris.ble.gatt connectGatt: initiated (autoConnect=false, TRANSPORT_LE), waiting for ready
+09-05 05:29:57.858 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport io error: wifi_direct.find: transport error: WifiP2p action failed reason=0 (Other)
+09-05 05:29:57.876 D/iriscore(31191): iris.ble.gatt connectGatt: ready resolved successfully
+09-05 05:29:57.886 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m56
+09-05 05:29:57.886 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.886 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.886 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.886 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.887 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.888 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.888 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.888 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.888 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.888 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.889 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:29:57.890 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m30
+09-05 05:29:58.177 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=5 len=297 known=[5]
+09-05 05:29:58.307 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06edd1d897b60 [3mpriority[0m[2m=[0m4
+09-05 05:30:00.230 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=5 len=297 known=[5]
+09-05 05:30:00.331 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06edce5747ed1 [3mpriority[0m[2m=[0m4
+09-05 05:30:00.391 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 21, "method": "meshSnapshot", "params": []}
+09-05 05:30:00.393 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#meshSnapshot
+09-05 05:30:00.397 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=5 len=297 known=[5]
+09-05 05:30:00.398 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Connected", estimated_battery_ma: 3.0, bandwidth_available_bps: 283, congestion_level: 0.2 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[FfiNeighborDiag { peer_id_hex: "25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff", state: "LinkedUp", links: ["ble-android:Good"] }] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 2, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-05 05:30:00.398 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0miris.messages.sent_total=2
+09-05 05:30:00.434 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":21,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Connected\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[{\"peerIdHex\":\"25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff\",\"state\":\"LinkedUp\",\"links\":[\"ble-android:Good\"]}],\"messages\":{\"sent\":2,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{\"iris.messages.sent_total\":2},\"recentEvents\":[{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edd1d897b60 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edce5747ed1 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edd559a72f0 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.find: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=56\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffff
+09-05 05:30:00.467 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06edd559a72f0 [3mpriority[0m[2m=[0m4
+09-05 05:30:01.773 D/BoundBrokerSvc( 9584): onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+09-05 05:30:02.441 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 22, "method": "nodeId", "params": []}
+09-05 05:30:02.444 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#nodeId
+09-05 05:30:02.454 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":22,"result":"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca","callback":null,"error":null}
+09-05 05:30:02.518 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 23, "method": "awaitDelivered", "params": ["01a06edd757079b1a78a056f0f2a3854", 6000]}
+09-05 05:30:02.520 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#awaitDelivered
+09-05 05:30:04.756 I/DGW     ( 9603): I[notifyPingFailure:2286] StreamGroupTransport[notifgateway] kill connection on ping timeout
+09-05 05:30:04.757 I/DGW     ( 9603): I[notifyStreamGroupError:1910] StreamGroupTransport[notifgateway] notify StreamGroup error: StreamGroupNetworkRequest failed - ping timeout error
+09-05 05:30:04.772 E/fbservices-stub:c( 9603): Unable to create output stream
+09-05 05:30:04.773 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-05 05:30:04.783 E/fbservices-stub:c( 9603): Unable to create output stream
+09-05 05:30:04.784 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-05 05:30:04.791 E/fbservices-stub:c( 9603): Unable to create output stream
+09-05 05:30:04.791 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-05 05:30:04.796 E/fbservices-stub:c( 9603): Unable to create output stream
+09-05 05:30:04.796 E/fbservices-stub:g( 9603): Unsuccessful upload. response code=-1
+09-05 05:30:06.849 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-05 05:30:08.564 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":23,"result":"{\"delivered\":false,\"timeoutMs\":6000}","callback":null,"error":null}
+09-05 05:30:08.592 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 24, "method": "sendText", "params": ["72ddbbb8528a46aaf073694253f502ac21b183fd574a1660a6f35e2d46b9fe9a", "wd-rev-0", 4]}
+09-05 05:30:08.596 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#sendText
+09-05 05:30:08.646 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message created and persisted [3mevent[0m[2m=[0m"msg.created" [3mmessage_id[0m[2m=[0m01a06edd8da57a01 [3mpriority[0m[2m=[0m4 [3msize_bytes[0m[2m=[0m24 [3mttl_secs[0m[2m=[0m3600
+09-05 05:30:08.652 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":24,"result":"01a06edd8da57a018e1305b2bc8dd93e","callback":null,"error":null}
+09-05 05:30:08.655 D/iriscore(31191): iris.ble.gatt gattWrite ENTER handle=5 len=297 known=[5]
+09-05 05:30:08.837 I/iriscore(31191): [2miris_core::message_engine[0m[2m:[0m message handed to transport [3mevent[0m[2m=[0m"msg.sent" [3mmessage_id[0m[2m=[0m01a06edd8da57a01 [3mpriority[0m[2m=[0m4
+09-05 05:30:09.417 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 25, "method": "meshSnapshot", "params": []}
+09-05 05:30:09.419 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#meshSnapshot
+09-05 05:30:09.426 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh snapshot [3mevent[0m[2m=[0m"iris.diag" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mtransports[0m[2m=[0m[FfiTransportDiag { id: "ble-android", display_name: "BLE (Android)", state: "Connected", estimated_battery_ma: 3.0, bandwidth_available_bps: 3038, congestion_level: 0.2 }, FfiTransportDiag { id: "wifi-aware-0", display_name: "Wi-Fi Aware", state: "Unavailable", estimated_battery_ma: 25.0, bandwidth_available_bps: 20000000, congestion_level: 0.0 }, FfiTransportDiag { id: "wifi-direct-0", display_name: "Wi-Fi Direct", state: "Available", estimated_battery_ma: 80.0, bandwidth_available_bps: 10000000, congestion_level: 0.0 }] [3mneighbors[0m[2m=[0m[FfiNeighborDiag { peer_id_hex: "25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff", state: "LinkedUp", links: ["ble-android:Good"] }] [3mmessages[0m[2m=[0mFfiMessageMetrics { sent: 4, delivered: 0, relayed: 0, dropped_duplicates: 0, expired: 0, delivery_failed: 0 }
+09-05 05:30:09.427 I/iriscore(31191): [2miriscode::engine[0m[2m:[0m mesh kpi [3mevent[0m[2m=[0m"iris.kpi" [3mnode[0m[2m=[0m3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca [3mcounters[0m[2m=[0miris.messages.sent_total=4
+09-05 05:30:09.466 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":25,"result":"{\"running\":true,\"nodeIdHex\":\"3782eb735c9f128050b0ba17d1bd15ae01ec9c47ed56a96748e53a2f803c31ca\",\"transports\":[{\"id\":\"ble-android\",\"state\":\"Connected\",\"batteryMa\":3},{\"id\":\"wifi-aware-0\",\"state\":\"Unavailable\",\"batteryMa\":25},{\"id\":\"wifi-direct-0\",\"state\":\"Available\",\"batteryMa\":80}],\"neighbors\":[{\"peerIdHex\":\"25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff\",\"state\":\"LinkedUp\",\"links\":[\"ble-android:Good\"]}],\"messages\":{\"sent\":4,\"delivered\":0,\"relayed\":0,\"expired\":0,\"deliveryFailed\":0},\"counters\":{\"iris.messages.sent_total\":4},\"recentEvents\":[{\"level\":\"DEBUG\",\"event\":\"msg.transport_send_failed\",\"detail\":\"transport.send() failed for this fragment transport=ble-android error=transport: not connected to peer\"},{\"level\":\"WARN\",\"event\":\"msg.all_sends_failed\",\"detail\":\"every ranked transport rejected the send — requeuing message_id=01a06edd559a72f0 priority=4 attempt=0 ranked_transports=1 last_error=ble-android: transport: not connected to peer\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-aware-0 error=transport io error: wifiaware.start: not supported on this device (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.discover_peers_failed\",\"detail\":\"discover_peers() failed for this pass; skipping this transport this round transport=wifi-direct-0 error=transport io error: wifi_direct.find: transport error: WifiP2p action failed reason=0 (Other)\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=56\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if already connected) peer=25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff transport=ble-android elapsed_ms=0\"},{\"level\":\"DEBUG\",\"event\":\"discovery.connect_ok\",\"detail\":\"link to known peer confirmed live (idempotent no-op if alrea
+09-05 05:30:13.919 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.920 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.920 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.920 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.920 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.920 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.920 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.921 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.921 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.921 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.921 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.921 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.921 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.922 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.922 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.922 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.922 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.923 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.923 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.923 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.923 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.923 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.923 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.924 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.924 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m link to known peer confirmed live (idempotent no-op if already connected) [3mevent[0m[2m=[0m"discovery.connect_ok" [3mpeer[0m[2m=[0m25a73bbb8a7fa1e948d44c2d27bbf084ffffffffffffffffffffffffffffffff [3mtransport[0m[2m=[0mble-android [3melapsed_ms[0m[2m=[0m0
+09-05 05:30:13.924 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m25
+09-05 05:30:13.924 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport: shutting down
+09-05 05:30:13.924 D/iriscore(31191): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-direct-0 [3merror[0m[2m=[0mtransport: shutting down
+09-05 05:30:15.014 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-05 05:30:15.014 W/Auth    ( 9658): dedt: Failed to process request
+09-05 05:30:15.014 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:15.014 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:15.014 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:15.014 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:15.017 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-05 05:30:15.017 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:15.017 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	... 12 more
+09-05 05:30:15.017 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	... 13 more
+09-05 05:30:15.017 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:15.017 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:15.017 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:15.018 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-05 05:30:15.018 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:15.018 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	... 12 more
+09-05 05:30:15.018 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	... 13 more
+09-05 05:30:15.018 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:15.018 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:15.018 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:15.019 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-05 05:30:15.020 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-05 05:30:15.020 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-05 05:30:15.020 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:15.020 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:15.021 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-05 05:30:15.677 V/org.iris.mesh.test.JsonRpcServer:54(31191): Session 1 Received: {"id": 26, "method": "stopMesh", "params": []}
+09-05 05:30:15.680 D/org.iris.mesh.test.SnippetManager:286(31191): Invoking RPC method class iriscore.snippet.IrisSnippet#stopMesh
+09-05 05:30:15.975 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-05 05:30:15.975 W/Auth    ( 9658): dedt: Failed to process request
+09-05 05:30:15.975 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:15.975 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:15.975 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:15.975 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:15.980 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-05 05:30:15.980 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	... 12 more
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	... 13 more
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:15.980 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-05 05:30:15.980 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	... 12 more
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	... 13 more
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:15.980 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:15.980 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:15.981 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-05 05:30:15.981 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-05 05:30:15.981 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-05 05:30:15.981 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:15.981 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:15.981 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-05 05:30:16.234 W/Auth    ( 9658): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-05 05:30:16.234 W/Auth    ( 9658): dedt: Failed to process request
+09-05 05:30:16.234 W/Auth    ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:16.234 W/Auth    ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:16.234 W/Auth    ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:16.234 W/Auth    ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:16.246 E/AuthPII ( 9658): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-05 05:30:16.246 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:16.246 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	... 12 more
+09-05 05:30:16.246 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	... 13 more
+09-05 05:30:16.246 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:16.246 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:16.246 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:16.247 E/AuthPII ( 9658): Message is Error when calling server using GmsNetworkStack.
+09-05 05:30:16.247 E/AuthPII ( 9658): bksu: Error when calling server using GmsNetworkStack.
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:16.247 E/AuthPII ( 9658): Caused by: bksu: Error requesting token.
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	... 12 more
+09-05 05:30:16.247 E/AuthPII ( 9658): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	... 13 more
+09-05 05:30:16.247 E/AuthPII ( 9658): Caused by: dedt: Failed to process request
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at java.lang.Thread.run(Thread.java:1119)
+09-05 05:30:16.247 E/AuthPII ( 9658): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-05 05:30:16.247 E/AuthPII ( 9658): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-05 05:30:16.247 I/Auth    ( 9658): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-05 05:30:16.248 W/Auth    ( 9658): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-05 05:30:16.248 W/Auth    ( 9658): aiic: GetToken failed with status code: NetworkError
+09-05 05:30:16.248 W/Auth    ( 9658): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at android.os.Binder.transact(Binder.java:1064)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-05 05:30:16.248 W/Auth    ( 9658): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-05 05:30:16.248 W/GLSActivity( 9658): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-05 05:30:19.913 V/org.iris.mesh.test.JsonRpcServer:116(31191): Session 1 Sent: {"id":26,"result":null,"callback":null,"error":null}

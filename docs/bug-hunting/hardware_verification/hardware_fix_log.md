@@ -3840,3 +3840,38 @@ sole cause (P1 was STA-associated, P2 was not, both still saw 0 peers) —
 recorded in `hardware_problems.md` but left ⬜, not investigated further this
 session. Continuing autonomously into HV-21's fix per the operator's "do not
 stop" instruction.
+
+### Operator check-in: HV-25 follow-up test (mid-session)
+
+Operator, watching remotely, suggested testing whether P1's STA association
+to "Taksh tirth" was suppressing Wi-Fi Direct discovery, and forgot that
+network on P1 entirely to enable the test. Re-ran
+`test_wifi_direct_cold_start_election` with both phones confirmed
+STA-disconnected. Result: **unchanged** — `wifi-direct-0 peers_seen=0` for
+the whole run on both phones. One message did get marked delivered, but
+`meshSnapshot` shows it went over `ble-android`, not Wi-Fi Direct — a BLE
+fallback, not evidence of a P2P connection. This closes out HV-25 as the
+explanation for the current blocker (recorded in `hardware_problems.md`'s
+HV-25 entry); HV-21 remains the primary, best-evidenced cause.
+
+### ✅ HV-23 (part a) — release `actionMutex` during BUSY backoff sleep
+
+`awaitAction`'s retry loop used to hold `actionMutex.withLock { ... }`
+around its *entire* body, including the `delay(BUSY_RETRY_DELAY_MS)` between
+BUSY retries — so one caller's BUSY backoff (up to 2.5 s) blocked every
+other queued Wi-Fi Direct call, including `start`/`startDnsSd`/
+`startDiscovery` during platform bring-up (HW-11's own finding: a real
+Samsung S24 Ultra took 30+ s to leave `P2pDisabledState`). Restructured to
+acquire the mutex fresh per attempt inside the loop rather than around it —
+same one-action-in-flight guarantee (HW-7), but other callers can now run
+during the sleep. Parts (b)/(c) of HV-23's fix sketch (gate on
+`WIFI_P2P_STATE_ENABLED`, surface a "warming up" state) not attempted — this
+bench doesn't reproduce the cited 30s+ stall to verify against, and (a)
+removes the worst behaviour on its own. Verified by clean rebuild + install
+on both phones; not independently hardware-tested (no BUSY condition
+reproducible on this bench).
+
+**Landed:** commit `<pending>`. Continuing per the operator's "do not stop"
+instruction; next candidate is HV-24 (GO port collision) or HV-21's own fix
+(carry beacon identity over BLE instead of P2P DNS-SD TXT) if time and scope
+permit before the session window closes.

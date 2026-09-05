@@ -61,7 +61,7 @@ that remain are understood and logged.*
 |---|---|---:|---:|---:|---:|---:|---:|
 | 0 | Test-integrity & instrumentation — you cannot fix what you cannot see | 15 | 6 | 7 | 0 | 1 | 1 |
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 28 | 18 | 6 | 1 | 1 | 2 |
-| 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 3 | 0 | 0 | 6 |
+| 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 4 | 0 | 0 | 5 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 5 | 3 | 0 | 0 | 2 |
 | 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
@@ -69,7 +69,7 @@ that remain are understood and logged.*
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **109** | **29** | **20** | **1** | **2** | **57** |
+| **Total** | | **109** | **29** | **21** | **1** | **2** | **56** |
 
 **Last updated:** 2026-09-05 (Session 22 — **Tier 2 started, gate BLOCKED
 (not closed).** HV-19 (deterministic GO/GC election via PeerId comparison),
@@ -1912,7 +1912,25 @@ already exists) rather than failing them.
 
 ### HV-23 — `awaitAction` serializes all `WifiP2pManager` calls on one mutex; a slow platform bring-up blocks everything for up to 30 s each
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed (part a only) · HW-PENDING · 2026-09-05 · Session 22.
+  `awaitAction`'s BUSY-retry `delay` used to run *inside*
+  `actionMutex.withLock { ... }` — a caller retrying a BUSY platform action
+  held the mutex for its entire backoff window (up to 2.5 s,
+  `BUSY_RETRY_ATTEMPTS × BUSY_RETRY_DELAY_MS`), serializing every other
+  Wi-Fi Direct call (including `start`/`startDnsSd`/`startDiscovery`) behind
+  it. Restructured so the mutex is acquired fresh per attempt
+  (`actionMutex.withLock { awaitActionOnce(...) }` inside the retry loop,
+  not wrapping the loop) — still at most one platform action in flight at a
+  time (HW-7's constraint, unchanged), but other queued callers can now run
+  during another call's BUSY backoff sleep. Parts (b) (gate first action on
+  `WIFI_P2P_STATE_ENABLED` instead of spin-retrying `BUSY`) and (c) (surface
+  a "warming up" transient state) not attempted this session — lower value
+  once (a) removes the worst blocking behaviour, and this bench doesn't
+  reproduce the cited Samsung S24 Ultra's 30s+ bring-up stall to verify
+  against. **Not independently HW-tested** — no BUSY condition reproducible
+  on this (vivo) bench; a correctness fix verified by code inspection and a
+  clean rebuild, not by a hardware BUSY-condition test.
+- **Area:** `AndroidWifiDirectTransportAdapter.awaitAction` / `actionMutex` /
 - **Area:** `AndroidWifiDirectTransportAdapter.awaitAction` / `actionMutex` /
   BUSY retry (HW-11), `FfiCallTimeout`
 - **Severity:** Medium · **HW gate:** Samsung-class device (HW-11 cites S24 Ultra)
@@ -1984,6 +2002,19 @@ fine. It didn't. This doesn't rule HV-25 out as *a* contributing factor on
 P1, but it means HV-25 alone cannot explain the bench's zero-discovery
 blocker — HV-21 (DNS-SD listeners never firing on either phone) is the
 primary, better-evidenced cause.
+
+**Follow-up test (operator suggestion, same session):** operator had P1
+forget the "Taksh tirth" network entirely (not just disconnect) and asked to
+re-test. Re-ran with both phones confirmed STA-disconnected
+(`dumpsys wifi`: P1 `DISCONNECTED`/no active network, P2 already had none).
+Result: **unchanged** — `wifi-direct-0 peers_seen=0` on both phones for the
+whole run. The one message that *did* get marked delivered in this run went
+over `ble-android` (`meshSnapshot` shows `"links":["ble-android:Good"]`), not
+Wi-Fi Direct — confirming this was a BLE fallback delivery, not a Wi-Fi
+Direct connection, and that Wi-Fi Direct discovery is broken independent of
+STA/AP association state. This closes out HV-25 as a contributing-cause
+candidate for the current blocker: it may still matter in other scenarios,
+but it is not why this bench sees zero Wi-Fi Direct peers.
 
 **Fix sketch:** query `WifiManager.isStaConcurrencyForMultiInternetSupported` /
 `isP2pSupported` and the STA channel; prefer BLE when P2P would disrupt an active
