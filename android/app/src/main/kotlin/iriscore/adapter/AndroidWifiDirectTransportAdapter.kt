@@ -457,6 +457,19 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * skipped via [attemptedAddresses].
      */
     private suspend fun onPeersChanged() {
+        // HV-21 correction: Wi-Fi Direct is a strict star topology — one
+        // Group Owner, N clients, GC-to-GC has no direct link (research:
+        // "GO can connect with multiple devices at the same time but GCs
+        // can only connect to GO"). Once this node is already in a group
+        // (either role), a plain `connect()` to a THIRD device is not the
+        // right primitive to add them — as a GC we cannot also independently
+        // group with someone else without first leaving; as the GO, adding a
+        // peer to the EXISTING group is `add_client`'s job (GO-side invite),
+        // not a fresh `connect()` call, which would instead attempt to
+        // negotiate a completely separate second group. Skip autonomous
+        // connects entirely while grouped; a future finding can wire GO-side
+        // invite-into-existing-group for additional strangers.
+        if (groupState.snapshot() != null) return
         val channel = startGate.ensureStarted() ?: return
         p2pManagerOrThrow().requestPeers(channel) { peers ->
             for (device in peers.deviceList) {

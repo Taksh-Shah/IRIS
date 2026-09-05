@@ -4544,6 +4544,62 @@ activity, that would be new, real evidence pointing at something in the
 implementation (vs. this session's evidence, which only shows the timing
 window was too short to tell).
 
-**Landed:** commit `<pending>`. Not marked `✅` or `🟢` — genuinely
+**Landed:** commit `80cb8f5`. Not marked `✅` or `🟢` — genuinely
 untested end-to-end pending a longer-duration hardware run. Documenting
 transparently per the loop's own rule against overclaiming.
+
+### Follow-up: 4-minute patience run found a REAL bug (not a timing artifact)
+
+Per the operator's request, did deeper web research before continuing:
+Wi-Fi Direct spec (GO Negotiation three-way handshake, GO Intent + tie-break
+bit), the star-topology constraint ("GO can connect with multiple devices
+at the same time but GCs can only connect to GO" — confirmed by multiple
+independent sources), and — critically — that **stock Android cannot
+participate in two Wi-Fi Direct groups concurrently at all** (multi-group
+research explicitly confirms: "currently Multi-Group communication cannot
+be implemented directly by using Wi-Fi Direct API on Android system... the
+wifi driver of commercial devices doesn't allow a device to participate
+concurrently in two Wi-Fi Direct groups").
+
+Ran a 4-minute patience test (vs. the earlier 45 s/cycle budget) to
+distinguish "just needs more time" from "actually broken": **21 peer scans
+over 4 minutes, still zero peers found, on either phone.** This is real
+evidence, not a timing artifact — `WIFI_P2P_PEERS_CHANGED_ACTION` never
+fired once on either phone across the whole run.
+
+Root cause found in the SAME logcat: on P2, `engine.start_transport_failed`
+— `wifi-direct-0.start_advertising` threw `WifiP2p action failed reason=0
+(Other)` **at the DNS-SD registration step**, which `ensure_started()`/
+`start_advertising()` (`wifi_direct.rs`) propagated as **fatal** (`?`),
+meaning `wifi-direct-0` never left `Unavailable` on P2 at all this run —
+no peer scan on P2 could ever have found P1 regardless of how long we
+waited, because the transport itself never started.
+
+### ✅ Fix: DNS-SD registration is no longer load-bearing — made best-effort
+
+Since discovery no longer depends on DNS-SD at all (this session's
+stranger-discovery pivot replaced it with plain `discoverPeers()`), a
+DNS-SD registration failure has no reason to take the whole transport down.
+`wifi_direct.rs`'s `ensure_started()` and `start_advertising()`: `start_dns_sd`
+failures are now logged (`tracing::warn!`) and non-fatal instead of
+`?`-propagated. The txt_record bytes are unaffected either way — Kotlin's
+`pendingOwnBeacon` (what the handshake now sends) is set before the
+platform registration call, regardless of whether that registration
+succeeds.
+
+**Second correctness fix, from the multi-group research above**:
+`onPeersChanged()` was calling `connect()` for every newly-seen device
+unconditionally — including while already in a group, which stock Android
+cannot support (a second `connect()` while grouped would either fail or
+destabilize the existing group, and per the star-topology fact, a GC
+can only ever talk to its own GO anyway). Added a guard: skip autonomous
+connects entirely while `groupState.snapshot() != null`. Adding an
+additional peer to an EXISTING group (GO-side invite via `add_client`) is
+the correct primitive for that case — not yet wired, left as a follow-up
+finding, not silently done wrong.
+
+`cargo test -p iris-core --lib`: 802/802 (unaffected). Rebuilt and
+reinstalled on both phones; re-running the 4-minute patience test to
+confirm the fix.
+
+**Landed:** commit `<pending>`.

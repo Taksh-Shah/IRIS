@@ -1142,10 +1142,23 @@ impl WifiDirectTransport {
         // itself only runs once at engine startup and never re-fires to
         // restore it).
         if !self.dns_sd_bootstrapped.swap(true, Ordering::SeqCst) {
-            adapter
-                .start_dns_sd(Vec::new())
-                .await
-                .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
+            // HV-21 (Session 24, stranger-discovery pivot): DNS-SD service
+            // discovery is no longer how peers find each other at all
+            // (`discover_peers` never depends on it now — see
+            // `start_advertising`'s own note) — this registration is
+            // legacy/vestigial. It used to be `?`-propagated as fatal,
+            // which took the WHOLE transport down when it failed
+            // (confirmed live: `WifiP2p action failed reason=0` on a real
+            // device killed `wifi-direct-0` at startup before any discovery
+            // could even be attempted — the transport never left
+            // `Unavailable`). Best-effort now: log and continue.
+            if let Err(e) = adapter.start_dns_sd(Vec::new()).await {
+                tracing::warn!(
+                    target: "iris.transport.wifi_direct",
+                    error = %e,
+                    "start_dns_sd (bootstrap) failed — non-fatal, DNS-SD is no longer required for discovery"
+                );
+            }
         }
         self.spawn_poller(adapter.clone()).await?;
         if self.state.load() == TransportState::Unavailable {
@@ -1557,10 +1570,19 @@ impl Transport for WifiDirectTransport {
                 .as_secs()
                 / 60) as u16,
         );
-        adapter
-            .start_dns_sd(txt_record)
-            .await
-            .map_err(|e| Self::classify_error("wifi_direct.dns_sd", e))?;
+        // HV-21: same reasoning as ensure_started's bootstrap call above —
+        // this txt_record is still useful (it's exactly the bytes the
+        // post-connect handshake now carries as the beacon, via Kotlin's
+        // `pendingOwnBeacon`, which is set regardless of whether the
+        // platform registration below succeeds), but the registration
+        // itself is no longer load-bearing for discovery. Best-effort.
+        if let Err(e) = adapter.start_dns_sd(txt_record).await {
+            tracing::warn!(
+                target: "iris.transport.wifi_direct",
+                error = %e,
+                "start_dns_sd (advertise) failed — non-fatal, DNS-SD is no longer required for discovery"
+            );
+        }
         Ok(())
     }
 
