@@ -1707,6 +1707,57 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 
 ## Tier 2 — Wi-Fi Direct reliability & group-owner conflict
 
+> **Design pivot (operator, 2026-09-05, Session 24 continued): Wi-Fi Direct
+> must identify total strangers on its own, not only peers already known via
+> BLE.** The MAC-carry-over-BLE design (this session's earlier work,
+> committed as `20055ce`/`cb92c82`) has a real range gap: BLE's range
+> (~10–30 m) is much shorter than Wi-Fi Direct's (~100 m+), so a stranger's
+> phone reachable only over Wi-Fi Direct — outside BLE range entirely —
+> would never be identified or connected under that design, since
+> identification happens over BLE first. The operator has asked for Wi-Fi
+> Direct to be able to discover and connect to a phone it has never seen
+> over BLE at all, at its own native range.
+>
+> **New design:** connect first, verify after — instead of filtering
+> `discoverPeers()`'s results down to already-BLE-known MACs before ever
+> calling `connect()`, connect to *any* nearby Wi-Fi-Direct-capable device
+> found, then run an application-layer identity handshake over the actual
+> socket once connected (the post-connect MAC handshake `AndroidWifiDirect
+> TransportAdapter.connectToGroupOwner`/`ensureGroupServer` already does —
+> `writeHandshakeFrame`/`readHandshakeFrame` — is the mechanism to extend:
+> carry the full IRIS discovery beacon instead of just a MAC string). If the
+> peer answers with a valid IRIS beacon, keep the link and register it as a
+> normal peer; if it doesn't respond correctly (not an IRIS device, or a
+> malformed/foreign response) within a bounded timeout, disconnect
+> immediately and never surface anything to the user. This makes Wi-Fi
+> Direct fully independent of BLE for stranger discovery — it uses its own
+> native range — while still never trusting a random nearby device before
+> the socket-level handshake confirms it's really running IRIS.
+> **Consequence for the MAC-carry-over-BLE work**: not wasted — it stays
+> useful as a fast-path optimization (a peer already known via BLE can be
+> connected to directly, skipping the connect-first-verify-after handshake
+> round trip), but is no longer the *only* way Wi-Fi Direct identifies a
+> peer. The `connect()`-to-everyone-found approach is exactly why the
+> Invitation-Procedure/fresh-negotiation research below still matters: a
+> genuine stranger has no prior persisted group with us, so `connect()`
+> against them is guaranteed to take the fresh GO Negotiation path (no
+> dialog), never the Invitation Procedure (which only applies to a
+> *remembered* group) — the stranger case is actually the SAFER case for
+> the "no popup" requirement, not a riskier one.
+>
+> **Not yet implemented** — this is the current design target, documented
+> here before code changes per the loop's research-before-code rule; next
+> session's work is: (1) extend the post-connect handshake frame to carry
+> the full beacon (not just the MAC) and validate it on both
+> `connectToGroupOwner` (client) and `ensureGroupServer` (GO) sides, with a
+> bounded timeout and immediate silent disconnect on failure/mismatch;
+> (2) replace `discoverServices`/DNS-SD with plain `discoverPeers()` +
+> `requestPeers()`, attempting the handshake-verify connect against every
+> discovered device (bounded concurrency, per the existing
+> `MAX_CONCURRENT_LINKS` cap) rather than filtering by a known-BLE-MAC list
+> first; (3) keep the BLE-MAC fast path as an optional direct-connect
+> shortcut when a peer is already known that way.
+
 > **Hard requirement (operator, 2026-09-05, Session 24): no OS-level "Invitation
 > to connect" prompt may ever reach the user.** While diagnosing the discovery
 > blocker, a native Android Wi-Fi Direct connection was observed forming
