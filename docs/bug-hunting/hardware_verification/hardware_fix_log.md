@@ -4708,5 +4708,208 @@ different-OEM phone to isolate whether this is P2-specific or pairwise;
 `discoverPeers()` call for vendor-level diagnostic strings AOSP's public
 API surface doesn't expose.
 
-**Landed:** commit `<pending>` (the bounded-retry code, kept as a correct
+**Landed:** commit `c7daad2` (the bounded-retry code, kept as a correct
 defensive addition per HW-11's precedent, plus this blocker analysis).
+
+### 🎉 UNBLOCKED — the "blocker" was a test-harness artifact, not a real defect
+
+Per the operator's standing instruction to research the internet at each
+failure: searched for the exact symptom ("discoverPeers works in Settings,
+fails in app, generic ERROR"). Findings pointed at a foreground-context
+requirement ("discoverPeers() is designed to work with a foreground
+activity context... background service calls would fail"). Tested it
+directly: launched IRIS's **real UI app** (`iriscore.ui.MainActivity`, a
+genuine foreground Activity) on P2 instead of running it through the Mobly
+instrumented-test snippet (which has NO Activity — `am instrument` only).
+
+**Result: P2's `discoverPeers()` immediately started working** —
+`mDiscoveryStarted: true`, `scan_pass_complete transport=wifi-direct-0`
+every ~3 s with zero `reason=0` errors, where the identical build via the
+Mobly snippet had failed on every single call. **The entire "P2 discovery
+blocker" was the bench harness's execution context**, not IRIS's code:
+vivo OriginOS (Android 12) gates `WifiP2pManager.discoverPeers()` behind
+"the calling app has a foreground Activity" — which the real shipping app
+always has (its console screen), but the instrumented-test process never
+does.
+
+**Implication for the harness (HV-2 follow-up)**: `iris_bench`'s Wi-Fi
+Direct tests need IRIS running with its Activity foregrounded, not just
+the snippet's `startMesh()` RPC — otherwise every Tier-2 test on an
+OriginOS-class device is testing a code path the real app never hits.
+
+### First real Wi-Fi Direct discovery — and a GO-negotiation collision
+
+With BOTH phones running the real UI app: **P1 discovered P2
+(`0a:2f:af:24:5f:98` "vivo 2004") and P2 discovered P1
+(`f6:63:fc:9a:db:e0` "vivo Y35")** — the first successful IRIS-driven
+Wi-Fi Direct peer discovery in this entire multi-session effort. Both
+called `connect()` within the same second (19:13:58 on both) — and **no
+group formed**, both stuck at `groupFormed: false` / `mDetailedState:
+IDLE` 90 s later.
+
+Researched: this is the classic symmetric-`connect()` collision — the same
+class of bug HV-19's deterministic election fixed for the
+already-identified-peer path. Per the Wi-Fi Direct spec the GO Negotiation
+three-way handshake + tie-breaker bit is *supposed* to resolve it, but on
+real Android two simultaneous outgoing `connect()` calls reliably deadlock
+(each side has a pending outgoing GO Negotiation Request and rejects the
+incoming one).
+
+### ✅ Fix: MAC-based initiation tie-break in `onPeersChanged()`
+
+Only the peer with the **lexicographically-lower Wi-Fi P2P MAC** calls
+`connect()`; the higher-MAC side stays passive and waits to be pulled in
+as a client (its existing `WIFI_P2P_CONNECTION_CHANGED` →
+`onGroupFormed` handler stands the data path up). A node that doesn't yet
+know its own MAC stays passive too (safer than racing). This is HV-19's
+exact approach — deterministic, symmetric, no coordination needed —
+applied to the pre-identity stranger case using the MAC that IS known
+before connecting.
+
+Rebuilt, reinstalled, both phones relaunched with the real UI.
+
+### ❌ MAC tie-break unworkable — a normal app can't read its own Wi-Fi P2P MAC
+
+The MAC tie-break above deadlocked: **both phones reported
+`myDeviceAddress == null`** and both stayed passive ("our MAC is
+higher/unknown, waiting"). Added a `requestDeviceInfo()` call (API 29+) to
+fetch the local `WifiP2pDevice` directly instead of waiting on the
+broadcast — **still null on both phones**.
+
+Researched: this is a hard Android privacy restriction, not a bug.
+`WifiP2pDevice#deviceAddress` for the LOCAL device only returns a real MAC
+if the app holds `android.permission.LOCAL_MAC_ADDRESS` — a
+**signature|privileged** permission a normal app can never obtain. Since
+Android 6, `WifiInfo.getMacAddress()` / `BluetoothAdapter.getAddress()` /
+the local `WifiP2pDevice.deviceAddress` all return the constant
+`02:00:00:00:00:00` for normal apps. So **there is no shared coordinate
+two normal IRIS apps can both compute to break the connect() race
+deterministically** — HV-19's PeerId tie-break worked only because
+identity was already known there; here it isn't, and the MAC is
+unavailable.
+
+### ✅ Fix: random-backoff collision resolution (the standard CSMA answer)
+
+Rewrote `onPeersChanged()`: for each newly-discovered peer, schedule the
+`connect()` after a **uniform random delay in [0, 6 s)** rather than
+firing immediately; right before actually calling `connect()`, re-check
+whether a group has already formed (the other side may have won the race)
+and skip if so. `connect()`'s `onFailure` clears the per-address attempt
+timestamp immediately so the next `WIFI_P2P_PEERS_CHANGED_ACTION` retries
+with a fresh random backoff; a `connect()` that neither failed nor formed
+a group is retried after 20 s. This is exactly the deadlock-avoidance
+mechanism CSMA/CD and 802.11 themselves use — no shared coordinate
+needed, the two sides' random delays desync within a round or two so
+exactly one `connect()` lands first, and its GO negotiation completes
+without a competing outgoing request from the other side.
+
+(`connectAttempts: ConcurrentHashMap<String, Long>` replaced the old
+`attemptedAddresses` set; `requestDeviceInfo()` kept — harmless, and still
+useful for the handshake's own `awaitMyDeviceAddress()` on any device
+where the local MAC *is* somehow available.)
+
+`cargo test -p iris-core --lib`: 802/802 (Kotlin-only change). Rebuilt,
+reinstalled, both phones relaunched — waiting on a `groupFormed: true`.
+
+**Landed:** commit `<pending>`.
+
+### Session continuation — group forms, but the data path & 3 more fixes
+
+**1. `WIFI_P2P_CONNECTION_CHANGED_ACTION` extras are null on Android 10+.**
+The OS group formed (`dumpsys wifip2p` → `groupFormed: true`, real
+`192.168.49.x` IPs) but IRIS's `onGroupFormed` never ran — the broadcast's
+`EXTRA_WIFI_P2P_INFO` / `EXTRA_WIFI_P2P_GROUP` are null on API 29+.
+Researched (Android docs + SO): you must call
+`requestConnectionInfo()` / `requestGroupInfo()` from the receiver.
+Rewrote the handler to do that inside a `callbackScope.launch { }` (the
+`startGate.ensureStarted()` it needs is `suspend`), falling back to the raw
+extras when a channel isn't available. → `onGroupFormed` now fires.
+
+**2. Random backoff still collided too often.** Two runs in a row both
+phones fired `connect()` within ~2 s and no group formed. Research
+confirmed the no-OS-dialog path needs *both* sides to `connect()` (WPS PBC
+on both ends = auto-accept), so the answer is to *order* the two calls,
+not suppress one. `deviceName` ("vivo Y35" / "vivo 2004") is the only
+coordinate both sides can read for themselves — `deviceAddress` is
+anonymized (HV-19). **Lower name dials at +400 ms and drives negotiation;
+higher name dials at +3500 ms and joins the in-progress negotiation.**
+Identical/unknown names fall back to random backoff.
+`WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` was observed to never deliver a
+non-blank `deviceName` on this bench, so added `seedDeviceInfo()` —
+`requestDeviceInfo()` (API 29+) pulls the same `WifiP2pDevice` the peer
+sees. → group now forms reliably (`mine=vivo Y35` / `mine=vivo 2004` in
+the logs, exactly one initiator).
+
+**3. Wi-Fi Direct and BLE minted DIFFERENT candidate PeerIds for the same
+peer.** `WifiDirectTxtRecord::candidate_peer_id()` /
+`WifiDirectAdapter::candidate_key_for()` zero-padded the 16-byte
+`peer_short` to 32; BLE's `DiscoveryBeacon::candidate_peer_id()` pads with
+**`0xFF`** (BLE-8 sentinel). Confirmed live: P1's `/diag` showed the SAME
+device as two neighbors — `…dd9ffff…` (`ble-android`) and `…dd90000…`
+(`wifi-direct-0`). Changed both Wi-Fi Direct candidate forms to the `0xFF`
+sentinel. → after the fix, one reconciled neighbor:
+`state: "LinkedUp", links: ["ble-android:Poor", "wifi-direct-0:Good"]`,
+and with BT off, `links: ["wifi-direct-0:Good"]` alone.
+
+**Verified so far (BT disabled on both phones, Wi-Fi Direct the only
+transport):**
+- Discovery: `peers_seen` 0 → 1 both directions.
+- Group forms, exactly one GO, no invitation dialog.
+- Bidirectional TCP handshake completes (both sides publish a discovery
+  match → `discover_peers()` yields the peer on both).
+- `/diag`: `wifi-direct-0` `state: "Connected"`, neighbor `"LinkedUp"`
+  with `wifi-direct-0:Good` as the *only* link.
+
+**4. Socket data path — fully verified working.** Added `wd.data`-tagged
+logging across the whole socket path. With BLE off, one `/to` + message
+from P1 produced:
+```
+P1  wd.data onGroupFormed isGO=false goAddr=192.168.49.1 …
+P1  wd.data connectToGroupOwner: dialing GO /192.168.49.1:47631 …
+P1  wd.data connectToGroupOwner: handshake ok, goBeaconLen=22
+P1  wd.data attachLink: socket live for handle=1
+P2  wd.data ensureGroupServer: listening on GO port 47631
+P2  wd.data GO accepted client … handshake ok
+P2  wd.data attachLink: socket live for handle=1
+P1  msg.created → wd.data p2pSend handle=1 len=311 -> socket ok → msg.sent
+P2  wd.data incoming: frame len=311 from handle=1
+```
+Both the mesh handshake (cap 348 B + Bloom filter ~180 KB) AND user
+messages traverse the Wi-Fi Direct socket, both directions, handle=1 on
+both sides (reconciles despite anonymised `02:00:00:00:00:00` MACs — one
+peer, `peerHandleFor` deterministic). `/diag` throughput on the live link:
+**63 Mbps measured**. Also fixed: the client now publishes its discovery
+match under the GO's MAC directly (was gated on `peerDevices[handle]`,
+never populated by the plain-`discoverPeers` path).
+
+**5. `beaconCandidatePeerIdHex` zero-padded — same bug as fix 3, Kotlin
+side.** The shared helper (Wi-Fi Aware + Wi-Fi Direct) zero-pads the
+candidate PeerId; Wi-Fi Direct's Rust discovery path now uses the `0xFF`
+sentinel (fix 3), so an inbound frame's `verifiedCache` attribution used a
+PeerId the neighbour table had never seen. Added
+`wifiDirectCandidatePeerIdHex` (0xFF upper half) for the Wi-Fi Direct
+adapter's `verifiedCache` entry.
+
+**6. The engine's entire `tracing::debug!` output was filtered out.** The
+cdylib is `[lib] name = "iriscode"`, so `engine.rs` events carry the
+module path `iriscode::…` — the logging filter's `iris_android=debug`
+directive matched **nothing**, so `android: inbound rejected: {e}` (the
+one line that says *why* an inbound message is dropped) and every other
+engine debug line was invisible for the entire hardware-verification
+effort. Filter now includes `iriscode=debug`.
+
+**Still open — inbound message not delivered to the app.** The frame
+reaches P2's `incoming()` (fix 4 log) but P2 never logs `msg.delivered`.
+With fix 6 deployed, the next run will finally show the
+`android: inbound rejected: …` reason. Fixes 3 + 5 (PeerId reconciliation)
+are the leading hypothesis. Build + deploy done; diagnosis continues next
+session.
+
+**Also fixed in passing:** `FfiBleAdapter for FakeFfi` (bridge.rs test
+mock) was missing `set_identify_payload` since `cb92c82` — `cargo test -p
+iris-android --lib` didn't compile. One-line stub added.
+
+`cargo test -p iris-core --lib transport::` 234/234, `ble_advert::` 11/11;
+`cargo test -p iris-android --lib` 8/8. `.so` rebuilt for all three ABIs.
+
+**Landed:** commit `<pending>` (fixes 1–6 + logging + test-mock stub).

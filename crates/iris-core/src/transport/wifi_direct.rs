@@ -1058,7 +1058,11 @@ impl WifiDirectTransport {
     /// `ble.rs`'s `candidate_key_for`.
     fn candidate_key_for(real_peer: &PeerId) -> PeerId {
         let short = crate::identity::peer_id::peer_short(&real_peer.0);
-        let mut id = [0u8; 32];
+        // HV-21: 0xFF upper half — must match
+        // `WifiDirectTxtRecord::candidate_peer_id` and BLE's
+        // `DiscoveryBeacon::candidate_peer_id` (BLE-8) so `self.links` (keyed
+        // by the discovery candidate id) resolves for a real-`PeerId` send.
+        let mut id = [0xFFu8; 32];
         id[..16].copy_from_slice(&short);
         PeerId(id)
     }

@@ -27,8 +27,14 @@ static INIT: Once = Once::new();
 /// is the real default, not just a fallback: `debug` for this project's own
 /// crates (where the useful events live) and `info` for everything else
 /// (dependency noise at `debug` is not worth the log volume on a phone).
+// HV-21: the cdylib is `[lib] name = "iriscode"`, so this crate's tracing
+// events carry the module path `iriscode::…`, NOT `iris_android::…` — the old
+// `iris_android=debug` directive matched nothing and every `tracing::debug!`
+// in engine.rs (including `android: inbound rejected: {e}`, the one line that
+// says WHY an inbound message was dropped) was silently filtered out. Keep
+// both names so the intent survives a future rename.
 #[cfg_attr(not(target_os = "android"), allow(dead_code))]
-const DEFAULT_FILTER: &str = "info,iris_core=debug,iris_android=debug";
+const DEFAULT_FILTER: &str = "info,iris_core=debug,iris_android=debug,iriscode=debug";
 
 /// Install the logcat bridge. Call once at engine construction, before
 /// anything that might emit a `tracing` event worth seeing (i.e. first thing

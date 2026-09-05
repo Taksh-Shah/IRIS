@@ -672,6 +672,7 @@ mod tests {
         fn drain_adapter_events(&self) -> Vec<i32> {
             Vec::new()
         }
+        fn set_identify_payload(&self, _data: Vec<u8>) {}
     }
 
     fn hex32(byte: u8) -> String {

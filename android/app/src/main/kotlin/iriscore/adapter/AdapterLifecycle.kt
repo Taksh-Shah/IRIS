@@ -478,3 +478,21 @@ internal fun beaconCandidatePeerIdHex(beacon: ByteArray): String? {
     beacon.copyInto(padded, 0, 4, 20)
     return iriscore.util.PeerIdCodec.toHex(padded)
 }
+
+/**
+ * HV-21: the Wi-Fi Direct candidate PeerId — identical to
+ * [beaconCandidatePeerIdHex] except the upper 16 bytes are the `0xFF`
+ * sentinel, matching Rust's `WifiDirectTxtRecord::candidate_peer_id()` and
+ * BLE's `DiscoveryBeacon::candidate_peer_id()` (BLE-8). The neighbour table
+ * and envelope layer key on that form; a zero-padded id (Wi-Fi Aware's
+ * convention, what the plain helper produces) makes an inbound Wi-Fi Direct
+ * frame unattributable and it is dropped before delivery.
+ */
+internal fun wifiDirectCandidatePeerIdHex(beacon: ByteArray): String? {
+    if (beacon.size < 22) return null
+    if (beacon[0].toInt() != 1) return null
+    if (beacon[3].toInt() != 0) return null
+    val padded = ByteArray(32) { 0xFF.toByte() }
+    beacon.copyInto(padded, 0, 4, 20)
+    return iriscore.util.PeerIdCodec.toHex(padded)
+}

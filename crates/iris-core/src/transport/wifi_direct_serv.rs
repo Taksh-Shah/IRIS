@@ -172,11 +172,19 @@ impl WifiDirectTxtRecord {
         })
     }
 
-    /// Surface the short id as a zero-padded `PeerId` for the discovery stream
-    /// (candidate hint only — full identity is resolved on the verified
-    /// advertisement / envelope path, DEC-WD-0007).
+    /// Surface the short id as a `PeerId` for the discovery stream (candidate
+    /// hint only — full identity is resolved on the verified advertisement /
+    /// envelope path, DEC-WD-0007).
+    ///
+    /// HV-21: upper 16 bytes are `0xFF`, the exact sentinel
+    /// [`crate::transport::ble_advert::DiscoveryBeacon::candidate_peer_id`]
+    /// uses (BLE-8). Both transports discovering the same physical peer must
+    /// mint the *same* candidate `PeerId` or the neighbor table carries two
+    /// disjoint entries for one device and routing can only ever see the link
+    /// that happened to win the dedup. A zero upper half also collided with the
+    /// "unknown sender" sentinel `PeerId([0u8; 32])`.
     pub fn candidate_peer_id(&self) -> PeerId {
-        let mut id = [0u8; 32];
+        let mut id = [0xFFu8; 32];
         id[..16].copy_from_slice(&self.peer_short);
         PeerId(id)
     }
@@ -321,7 +329,8 @@ mod tests {
         let parsed = WifiDirectTxtRecord::parse(&b).unwrap();
         let id = parsed.candidate_peer_id();
         assert_eq!(&id.0[..16], &short);
-        assert_eq!(&id.0[16..], &[0u8; 16]);
+        // HV-21: 0xFF sentinel upper half, matching BLE's candidate_peer_id.
+        assert_eq!(&id.0[16..], &[0xFFu8; 16]);
     }
 
     #[test]

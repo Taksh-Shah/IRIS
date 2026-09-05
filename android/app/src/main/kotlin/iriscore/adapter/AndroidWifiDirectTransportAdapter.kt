@@ -125,6 +125,38 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
          * [MAX_HANDSHAKE_BYTES].
          */
         private const val MAX_HANDSHAKE_BEACON_BYTES = 512
+
+        /**
+         * HV-21 collision resolution: upper bound on the random delay
+         * before an autonomous `connect()` from [onPeersChanged]. Two
+         * symmetric IRIS nodes each pick a uniform random delay in
+         * `[0, this)` — wide enough that they reliably desync within a
+         * round or two so exactly one `connect()` lands first.
+         */
+        private const val CONNECT_BACKOFF_MAX_MS = 6_000L
+
+        /**
+         * HV-21: a device whose last `connect()` attempt neither failed
+         * (`onFailure`) nor formed a group is re-attempted only after this
+         * long — long enough for a genuine GO negotiation + WPS exchange to
+         * complete (seconds), short enough that a stalled attempt is
+         * retried promptly.
+         */
+        private const val CONNECT_RETRY_AFTER_MS = 20_000L
+
+        /**
+         * HV-21: when `deviceName` gives a stable ordering, the lower-named
+         * node dials almost immediately (drives GO negotiation)...
+         */
+        private const val COLLISION_INITIATOR_DELAY_MS = 400L
+
+        /**
+         * ...and the higher-named node waits out the window it takes GO
+         * negotiation to actually start on the initiator before dialing
+         * itself, so its `connect()` joins the in-progress negotiation (WPS
+         * PBC, no dialog) rather than starting a second, colliding one.
+         */
+        private const val COLLISION_FOLLOWER_DELAY_MS = 3_500L
     }
 
     private val appContext: Context = context.applicationContext
@@ -224,13 +256,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val peerDevices = ConcurrentHashMap<Long, String>() // handle -> P2P device address
 
     /**
-     * HV-21: device addresses this session has already tried (or is
-     * already linked to) via [onPeersChanged]'s autonomous `connect()` —
-     * a `ConcurrentHashMap.newKeySet()`-backed set so `.add()` is the
-     * atomic "was this new" check (avoids a spurious second `connect()` for
-     * a device still mid-negotiation from the previous scan pass).
+     * HV-21: P2P device address -> `SystemClock.elapsedRealtime()` of the
+     * last autonomous `connect()` attempt from [onPeersChanged]. A device
+     * is re-attempted only after [CONNECT_RETRY_AFTER_MS] with no group
+     * formed (or immediately if `connect()`'s `onFailure` fired) — the
+     * random-backoff collision-resolution loop.
      */
-    private val attemptedAddresses: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val connectAttempts = ConcurrentHashMap<String, Long>()
     private val discoveredMatches = ConcurrentLinkedQueue<FfiDirectPeerDiscovery>()
     private val pendingTxtBeacons = ConcurrentHashMap<String, ByteArray>()
     // HW-14: `DnsSdServiceResponseListener`/`DnsSdTxtRecordListener` firing
@@ -280,6 +312,15 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     @Volatile
     private var myDeviceAddress: String? = null
 
+    /**
+     * This node's Wi-Fi Direct device name (e.g. "vivo Y35") from
+     * `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION`. Unlike `deviceAddress`, the name
+     * is NOT anonymized for a normal app — so it is the one shared, visible
+     * coordinate both symmetric IRIS nodes can order themselves by to break
+     * the GO-negotiation collision (see [onPeersChanged]).
+     */
+    private var myDeviceName: String? = null
+
     private val p2pStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -294,6 +335,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                     val device = intent.getParcelableExtra<android.net.wifi.p2p.WifiP2pDevice>(
                         WifiP2pManager.EXTRA_WIFI_P2P_DEVICE,
                     )
+                    device?.deviceName?.takeIf { it.isNotBlank() }?.let { myDeviceName = it }
                     device?.deviceAddress?.let {
                         myDeviceAddress = it
                         // HV-21: publish for the BLE transport's beacon — see
@@ -306,34 +348,51 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                     callbackScope.launch { onPeersChanged() }
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
-                    val group = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)
-                    val info = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
-                    // Group formation is the only point at which the GO address
-                    // and this node's role are known — stand the data path up here.
-                    if (info != null && info.groupFormed) {
-                        group?.let { groupState.update(it) }
-                        callbackScope.launch { onGroupFormed(info, group) }
-                    } else {
-                        // HW-21: this branch never existed — the receiver
-                        // was confirmed live to keep p2p_send()-ing (and
-                        // Rust's connect() reuse check kept short-circuiting
-                        // Ok) against a group that had already gone away at
-                        // the OS level, surfacing as "not connected to peer"
-                        // only on the NEXT send attempt, reactively, after
-                        // the failure already happened — this is exactly
-                        // the ACK path's symptom (fails to reply moments
-                        // after successfully receiving a message on the
-                        // same, by-then-stale, link). Researched pattern
-                        // (Android's own WIFI_P2P_CONNECTION_CHANGED_ACTION
-                        // docs + WifiP2pInfo.groupFormed): a `false` here
-                        // IS the platform's own disconnect signal — tear
-                        // down the data path and clear cached group state
-                        // immediately instead of waiting to discover it the
-                        // hard way. Reuses the exact cleanup shutdown()
-                        // already performs on a deliberate teardown.
-                        closeDataPath()
-                        groupState.clear()
-                        cachedGoAddr = null
+                    // HV-21: the `EXTRA_WIFI_P2P_INFO` / `EXTRA_WIFI_P2P_GROUP`
+                    // intent extras are unreliable on Android 10+ (confirmed
+                    // live: a real group formed — `dumpsys wifip2p` showed
+                    // `groupFormed: true`, `CONNECTED` — but `info` came back
+                    // null in the broadcast, so `onGroupFormed` never ran
+                    // and the TCP data path was never stood up). Android's
+                    // own docs now say to call `requestConnectionInfo()` /
+                    // `requestGroupInfo()` from this receiver instead of
+                    // reading the extras. Do that; fall back to the extras
+                    // only if the async calls somehow yield nothing.
+                    val extraInfo = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
+                    val extraGroup = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)
+                    callbackScope.launch {
+                        val channel = startGate.ensureStarted()
+                        // HW-21: a `false`/absent groupFormed IS the
+                        // platform's own disconnect signal — tear the data
+                        // path down and clear cached group state
+                        // immediately rather than discovering it the hard
+                        // way on the next send. Reuses shutdown()'s cleanup.
+                        fun teardown() {
+                            closeDataPath()
+                            groupState.clear()
+                            cachedGoAddr = null
+                        }
+                        if (channel == null) {
+                            if (extraInfo != null && extraInfo.groupFormed) {
+                                extraGroup?.let { groupState.update(it) }
+                                onGroupFormed(extraInfo, extraGroup)
+                            } else {
+                                teardown()
+                            }
+                            return@launch
+                        }
+                        p2pManagerOrThrow().requestConnectionInfo(channel) { info ->
+                            val effective = info?.takeIf { it.groupFormed } ?: extraInfo?.takeIf { it.groupFormed }
+                            if (effective != null) {
+                                p2pManagerOrThrow().requestGroupInfo(channel) { group ->
+                                    val g = group ?: extraGroup
+                                    g?.let { groupState.update(it) }
+                                    callbackScope.launch { onGroupFormed(effective, g) }
+                                }
+                            } else {
+                                teardown()
+                            }
+                        }
                     }
                 }
             }
@@ -489,7 +548,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * spec's Invitation Procedure for a REMEMBERED group, which a genuine
      * stranger can never be on). Bounded by [MAX_CONCURRENT_LINKS] via the
      * existing group-client cap; a device already linked or mid-connect is
-     * skipped via [attemptedAddresses].
+     * skipped via [connectAttempts]'s time-gate.
      */
     private suspend fun onPeersChanged() {
         // HV-21 correction: Wi-Fi Direct is a strict star topology — one
@@ -506,28 +565,89 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // invite-into-existing-group for additional strangers.
         if (groupState.snapshot() != null) return
         val channel = startGate.ensureStarted() ?: return
+        if (myDeviceName.isNullOrBlank()) seedDeviceInfo(channel)
         p2pManagerOrThrow().requestPeers(channel) { peers ->
+            val now = SystemClock.elapsedRealtime()
             for (device in peers.deviceList) {
                 val address = device.deviceAddress ?: continue
-                if (!attemptedAddresses.add(address)) continue
+                // HV-21 collision resolution (research-driven): when BOTH
+                // phones discover each other and BOTH call `connect()`
+                // within the same second — which is exactly what two
+                // symmetric IRIS nodes do — the GO negotiation collides
+                // and NEITHER group forms (each side holds a pending
+                // outgoing GO Negotiation Request and rejects the incoming
+                // one). HV-19's fix for the identified-peer path was a
+                // deterministic PeerId tie-break; a MAC-based equivalent is
+                // impossible here because **a normal app cannot read its
+                // own Wi-Fi P2P MAC on Android 6+** (privacy: local API
+                // returns `02:00:00:00:00:00` without the signature-only
+                // `LOCAL_MAC_ADDRESS` permission — confirmed live, both
+                // `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` and
+                // `requestDeviceInfo` returned null/anonymized on this
+                // bench). The standard collision-resolution answer with no
+                // shared coordinate is **random backoff**: wait a random
+                // interval, and only `connect()` if no group has formed in
+                // the meantime; on failure or a stalled negotiation, retry
+                // after another random interval. Statistically the two
+                // sides desync within 2–3 rounds and one wins cleanly.
+                val last = connectAttempts[address]
+                if (last != null && now - last < CONNECT_RETRY_AFTER_MS) continue
+                connectAttempts[address] = now
+                // HV-21 collision resolution (research-driven): a purely random
+                // backoff still collides too often — two symmetric nodes pick
+                // nearby values and BOTH connect() calls enter GO negotiation
+                // within the ~2 s window it takes negotiation to actually
+                // start, deadlocking (each holds a pending outgoing request,
+                // rejects the incoming one; confirmed live — group never
+                // forms). The no-OS-dialog requirement means BOTH sides must
+                // ultimately call connect() (WPS PBC on both ends = auto-accept,
+                // no "Invitation to connect" dialog), so the fix is to *order*
+                // the two calls, not suppress one. `deviceName` is the only
+                // coordinate both sides share and can read for themselves
+                // (deviceAddress is anonymized to a normal app — HV-19). Lower
+                // name dials first and drives negotiation; higher name waits
+                // out the negotiation-start window then dials too, joining the
+                // in-progress negotiation instead of racing a fresh one.
+                // Identical or unknown names fall back to random backoff.
+                val mine = myDeviceName
+                val theirs = device.deviceName
+                val backoffMs = when {
+                    mine.isNullOrBlank() || theirs.isNullOrBlank() || mine == theirs ->
+                        (Math.random() * CONNECT_BACKOFF_MAX_MS).toLong()
+                    mine < theirs -> COLLISION_INITIATOR_DELAY_MS
+                    else -> COLLISION_FOLLOWER_DELAY_MS
+                }
                 iriscore.util.IrisLog.d(
                     "wd.stranger",
-                    "onPeersChanged: new device $address (${device.deviceName}) — attempting connect",
+                    "onPeersChanged: device $address ($theirs) mine=$mine — scheduling connect in ${backoffMs}ms",
                 )
-                val config = WifiP2pConfig().apply { deviceAddress = address }
-                p2pManagerOrThrow().connect(
-                    channel,
-                    config,
-                    object : WifiP2pManager.ActionListener {
-                        override fun onSuccess() {}
-                        override fun onFailure(reason: Int) {
-                            // Free the slot so a later scan pass can retry —
-                            // BUSY/transient failures must not permanently
-                            // blacklist a real nearby device.
-                            attemptedAddresses.remove(address)
-                        }
-                    },
-                )
+                callbackScope.launch {
+                    delay(backoffMs)
+                    // Re-check under the post-backoff state: the other side
+                    // may have already won the race and formed the group.
+                    if (groupState.snapshot() != null) {
+                        iriscore.util.IrisLog.d("wd.stranger", "connect to $address skipped — a group formed during backoff")
+                        return@launch
+                    }
+                    val ch = startGate.ensureStarted() ?: return@launch
+                    val config = WifiP2pConfig().apply { deviceAddress = address }
+                    iriscore.util.IrisLog.d("wd.stranger", "connect to $address — initiating now")
+                    p2pManagerOrThrow().connect(
+                        ch,
+                        config,
+                        object : WifiP2pManager.ActionListener {
+                            override fun onSuccess() {}
+                            override fun onFailure(reason: Int) {
+                                // Clear immediately so the next
+                                // `onPeersChanged` retries (with a fresh
+                                // random backoff) rather than waiting out
+                                // CONNECT_RETRY_AFTER_MS.
+                                connectAttempts.remove(address)
+                                iriscore.util.IrisLog.w("wd.stranger", "connect to $address failed reason=$reason — will retry")
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -617,7 +737,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // HV-21: a torn-down group frees every device this session had
             // attempted — otherwise a stranger whose handshake failed (or
             // who simply lost the group) could never be retried.
-            attemptedAddresses.clear()
+            connectAttempts.clear()
         }
     }
 
@@ -659,7 +779,14 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         FfiCallTimeout.suspendCall {
             val handle = peer.toLong()
             val link = links.get(handle)
-            if (link != null && link.send(payload)) return@suspendCall
+            if (link != null && link.send(payload)) {
+                iriscore.util.IrisLog.d("wd.data", "p2pSend handle=$handle len=${payload.size} -> socket ok")
+                return@suspendCall
+            }
+            iriscore.util.IrisLog.w(
+                "wd.data",
+                "p2pSend handle=$handle len=${payload.size} — no live socket (link=${link != null}, accepts=${groupRegistry.accepts(handle)}); queueing/erroring",
+            )
             // FFI-2: this used to always fall through to the outbox and
             // return normally, whether the group was still forming (the
             // legitimate "not yet" case) or the peer's link had already
@@ -687,6 +814,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // Closed-group prune (RT-109): only frames for live group members surface.
             for (peer in groupRegistry.openHandles()) {
                 for (frame in inbox.drain(peer)) {
+                    iriscore.util.IrisLog.d("wd.data", "incoming: frame len=${frame.size} from handle=$peer")
                     drained.add(
                         FfiIncomingWifiDirectData(
                             sender = verifiedCache.verifiedPeerIdFor(peer)?.hexToBytes(),
@@ -794,8 +922,31 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             throw NotSupported()
         }
         registerStateReceiver()
+        seedDeviceInfo(channel)
         availability.setAvailable(true)
         return channel
+    }
+
+    /**
+     * HV-21: `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` was observed live to never
+     * deliver a non-blank `deviceName` on this bench (both phones logged
+     * `mine=null`), leaving the collision tie-break in [onPeersChanged] with
+     * no coordinate. `requestDeviceInfo` (API 29+) pulls the SAME
+     * `WifiP2pDevice` the peer sees — its `deviceName` matches the peer's
+     * `device.deviceName` exactly (unlike `Settings.Global.device_name` or
+     * `Build.MODEL`, both confirmed to diverge from the advertised P2P name).
+     */
+    @Suppress("MissingPermission")
+    private fun seedDeviceInfo(channel: WifiP2pManager.Channel) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        runCatching {
+            p2pManager?.requestDeviceInfo(channel) { device ->
+                device?.deviceName?.takeIf { it.isNotBlank() }?.let { myDeviceName = it }
+                device?.deviceAddress
+                    ?.takeIf { it.isNotBlank() && it != "02:00:00:00:00:00" }
+                    ?.let { myDeviceAddress = it }
+            }
+        }
     }
 
     private fun registerStateReceiver() {
@@ -896,7 +1047,15 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         val handle = peerHandleFor(address)
         // AND-RT-108: remember the candidate beacon identity (DEC-WA-0007) so the
         // inbound drain can attribute frames to a 64-hex PeerId.
-        beaconCandidatePeerIdHex(beacon)?.let { verifiedCache.rememberVerified(handle, it) }
+        // HV-21: MUST use the SAME 0xFF-sentinel upper half that
+        // `WifiDirectTxtRecord::candidate_peer_id()` (Rust discovery path) and
+        // BLE's `DiscoveryBeacon::candidate_peer_id()` (BLE-8) produce — the
+        // shared `beaconCandidatePeerIdHex` helper zero-pads (Wi-Fi Aware's
+        // convention), so an inbound Wi-Fi Direct frame was attributed to a
+        // PeerId the neighbour table / envelope layer had never seen and the
+        // message was silently dropped (confirmed live: frame reached the
+        // adapter, `msg.delivered` never fired).
+        wifiDirectCandidatePeerIdHex(beacon)?.let { verifiedCache.rememberVerified(handle, it) }
         // FFI-19: `registrationType` is whatever the platform's DNS-SD
         // responder echoes back (observed to carry a trailing ".local."
         // suffix and other framework-version-dependent quirks) — not the
@@ -1035,11 +1194,18 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         // tests (which assert a dotted-quad) unrepresentative of real
         // device behaviour.
         cachedGoAddr = info.groupOwnerAddress?.hostAddress
+        iriscore.util.IrisLog.d(
+            "wd.data",
+            "onGroupFormed isGO=${info.isGroupOwner} goAddr=$cachedGoAddr ownerMac=${group?.owner?.deviceAddress} clients=${group?.clientList?.size}",
+        )
         if (info.isGroupOwner) {
             ensureGroupServer()
         } else {
-            val goAddress = info.groupOwnerAddress ?: return
-            connectToGroupOwner(goAddress, peerHandleFor(group?.owner?.deviceAddress))
+            val goAddress = info.groupOwnerAddress ?: run {
+                iriscore.util.IrisLog.w("wd.data", "onGroupFormed client: groupOwnerAddress null — cannot dial")
+                return
+            }
+            connectToGroupOwner(goAddress, group?.owner?.deviceAddress, peerHandleFor(group?.owner?.deviceAddress))
         }
     }
 
@@ -1071,9 +1237,11 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 bind(java.net.InetSocketAddress(FramedSocketServer.WIFI_DIRECT_GO_PORT))
             }
         }.getOrNull() ?: run {
+            iriscore.util.IrisLog.w("wd.data", "ensureGroupServer: bind to GO port ${FramedSocketServer.WIFI_DIRECT_GO_PORT} FAILED")
             availability.setAvailable(false)
             return
         }
+        iriscore.util.IrisLog.d("wd.data", "ensureGroupServer: listening on GO port ${FramedSocketServer.WIFI_DIRECT_GO_PORT}")
         groupServer = FramedSocketServer(server, callbackScope) { socket ->
             // Bounded blocking read/write for the handshake — a slow or
             // malicious client must not be able to stall the accept loop
@@ -1102,6 +1270,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             // garbage here simply never yields a `PeerInfo`; the link stays
             // open but inert (harmless: nothing ever addresses messages to
             // an unresolved handle).
+            iriscore.util.IrisLog.d("wd.data", "GO accepted client: mac=$clientMac beaconLen=${clientBeacon.size} — handshake ok")
             publishDiscoveredMatch(clientMac, clientBeacon)
             val handle = peerHandleFor(clientMac)
             callbackScope.launch { attachLink(handle, socket) }
@@ -1115,12 +1284,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * after" for a peer discovered via plain `discoverPeers()` with no
      * prior identity at all.
      */
-    private suspend fun connectToGroupOwner(address: InetAddress, handle: Long) {
+    private suspend fun connectToGroupOwner(address: InetAddress, goMac: String?, handle: Long) {
         if (links.get(handle) != null) return
         // FFI-3: the GO cannot identify an accepted socket's peer by MAC on
         // its own — tell it who we are as the first thing on the wire, in
         // the same MAC-string form discovery already keys peerHandleFor by.
-        val myMac = awaitMyDeviceAddress() ?: return
+        val myMac = awaitMyDeviceAddress() ?: run {
+            iriscore.util.IrisLog.w("wd.data", "connectToGroupOwner: own device address never arrived — cannot handshake")
+            return
+        }
+        iriscore.util.IrisLog.d("wd.data", "connectToGroupOwner: dialing GO $address:${FramedSocketServer.WIFI_DIRECT_GO_PORT} as $myMac")
         val goBeacon = withContext(Dispatchers.IO) {
             runCatching {
                 val socket = Socket().apply {
@@ -1134,16 +1307,25 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 val (_, beacon) = readHandshakeFrame(socket)
                 socket.soTimeout = 0
                 socket to beacon
+            }.onFailure {
+                iriscore.util.IrisLog.w("wd.data", "connectToGroupOwner: dial/handshake to $address FAILED", it)
             }.getOrNull()
         } ?: return
         val (socket, beacon) = goBeacon
+        iriscore.util.IrisLog.d("wd.data", "connectToGroupOwner: handshake ok with GO $address, goBeaconLen=${beacon.size}")
         // HV-21: the GO's own address, not this node's — peerHandleFor(myMac)
         // would mint/resolve the WRONG handle (ours, not theirs). `handle`
         // (the param) is already the GO's discovery handle; publish under
         // its address so publishDiscoveredMatch's own peerHandleFor lookup
         // resolves back to the SAME handle rather than minting a new one.
-        peerDevices[handle]?.let { goAddress -> publishDiscoveredMatch(goAddress, beacon) }
+        val goAddress = peerDevices[handle] ?: goMac
+        if (goAddress != null) {
+            publishDiscoveredMatch(goAddress, beacon)
+        } else {
+            iriscore.util.IrisLog.w("wd.data", "connectToGroupOwner: no GO MAC to publish discovery match under — Rust send() will not resolve this link")
+        }
         attachLink(handle, socket)
+        iriscore.util.IrisLog.d("wd.data", "connectToGroupOwner: link attached handle=$handle")
     }
 
     /**
@@ -1224,6 +1406,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         )
         links.put(handle, link)
         groupRegistry.opened(handle)
+        iriscore.util.IrisLog.d("wd.data", "attachLink: socket live for handle=$handle")
         for (frame in outbox.drain(handle)) {
             if (!link.send(frame)) {
                 // Link died mid-flush: put the frame back and stop draining.
