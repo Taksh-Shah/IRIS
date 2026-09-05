@@ -4392,3 +4392,76 @@ suppressed. Rejected alternative: shrinking `peer_short` to make room for
 the MAC in the existing 22-byte advertisement — rejected because it weakens
 candidate-id collision resistance for a wire-format hack, when the GATT
 path already exists as prior art (iOS) and has no such tradeoff.
+
+### ✅ Phase D — GATT-carry implemented and HW-verified (no regression)
+
+Added a new read-only `IRIS_IDENTIFY_CHARACTERISTIC_UUID`
+(`02000000-0000-0000-0000-000000000000`, byte-matching `ble.rs`'s
+`IRIS_IDENTIFY_CHARACTERISTIC`) to Android's real GATT server
+(`ensureSharedGattServer`) — previously this path existed only for iOS
+(`DEC-BLE-002-0002`); Android had never needed it since its beacon rides
+the advertisement. Added `onCharacteristicReadRequest` to the shared GATT
+server callback, serving a process-wide `sharedIdentifyPayload: ByteArray`.
+
+Cross-layer wiring, one coherent change:
+- `BleAdapter` trait (core): new `set_identify_payload(&self, data: Vec<u8>)`
+  default no-op (mirrors the `accepted_connections`/`drain_*` pattern —
+  only real bridges + `SimulatedBleAdapter` override it).
+- `ble.rs::start_advertising`: builds a SECOND beacon (v2, MAC folded in
+  from `self.wifi_direct_mac` when known) and calls
+  `adapter.set_identify_payload(...)` with it, right before the ad-beacon
+  call (which stays pinned to `None`/v1/22 bytes, per the prior fix).
+- `FfiBleAdapter` (uniffi, `crates/iris-android/src/ffi/ble_adapter.rs`):
+  new `set_identify_payload(&self, data: Vec<u8>)` method (required, not
+  defaulted — foreign-exported traits' Kotlin implementor must supply
+  every method); `SimBle` test mock updated.
+- `BleBridge` (`crates/iris-android/src/bridge.rs`): forwards the core
+  trait call to the FFI trait.
+- Kotlin (`AndroidBleTransportAdapter.kt`): `override fun
+  setIdentifyPayload(data: ByteArray)` stores into `sharedIdentifyPayload`.
+- uniffi bindings regenerated (`uniffi-bindgen generate --library
+  target/debug/iriscode.dll --language kotlin`), diffed — clean,
+  isolated addition to the `FfiBleAdapter` callback vtable (method
+  checksums shift for everything after it in the interface, which is
+  expected uniffi behaviour, not a sign of an unrelated change).
+
+**A self-caught simulator bug surfaced while adding L1 coverage**: the new
+`identify_payload_carries_the_wifi_direct_mac_once_known` test initially
+failed — `SimulatedBleAdapter::start_advertising` had a pre-existing line
+that auto-mirrored the advertised `service_data` into `identify_data` on
+every call (`"the beacon the peer reads is the beacon this node
+advertises"`, BLE-RT-C005's original assumption, true when there was only
+one beacon) — this silently clobbered the deliberately-different
+`set_identify_payload` call moments earlier back down to the plain 22-byte
+form. Removed the auto-mirror; `set_identify_payload` is now the only path
+that sets `identify_data`. Updated the one test that depended on the old
+auto-mirror (`c005_sim_serves_advertised_beacon_on_identify_read` →
+`c005_transport_serves_the_advertised_beacon_on_identify_read`) to go
+through the real `BleTransport::start_advertising` instead of calling the
+raw adapter method directly — this actually exercises the real BLE-RT-C005
+guarantee (the transport builds both payloads from the same source data)
+rather than a lower-level sim-only contract that no longer holds.
+
+**L1**: `iris-core --lib` 800 → 802 (two new tests:
+`hv21_wifi_direct_mac_does_not_grow_the_legacy_advertisement`,
+`identify_payload_carries_the_wifi_direct_mac_once_known`), all passing.
+`iris-android` builds clean (both the new required `FfiBleAdapter` method
+and its `SimBle` mock).
+
+**Hardware verification (P1 vivo V2205 Android 15, P2 vivo 2004
+Android 12/SDK31)**: `test_pingpong_300char_10x` — **PASS 10/10 both ways**
+after installing the build with the new GATT characteristic registered on
+both phones; `grep -c errorCode=1` / `GattFailure` on both phones' full-session
+logcat: **zero** — confirms adding the characteristic to the shared GATT
+server doesn't destabilize the existing write characteristic / accept-poller
+path it shares a service with.
+
+**Landed:** commit `<pending>`. This closes the MAC-carry half of HV-21.
+**Still open**: the Wi-Fi Direct Kotlin side itself — replacing
+`discoverServices`/`addServiceRequest`/the two DNS-SD listeners with
+`discoverPeers()` + a `WIFI_P2P_PEERS_CHANGED_ACTION` receiver calling
+`requestPeers()`, filtering results against the MACs now available via
+BLE's `transport_addresses`, and connecting only to a match (keeping
+`connect()` on the fresh-negotiation path per the Invitation Procedure
+research above). That is the last piece before Tier 2's hardware gate can
+even be attempted again.

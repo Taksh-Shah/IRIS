@@ -226,6 +226,10 @@ impl BleAdapter for BleBridge {
         self.ffi.set_mtu(handle.0, mtu).map_err(ffi_err_to_ble)
     }
 
+    fn set_identify_payload(&self, data: Vec<u8>) {
+        self.ffi.set_identify_payload(data);
+    }
+
     fn drain_gatt_writes(&self, handle: GattHandle) -> Vec<GattWriteEvent> {
         // BLE-4: `self.writes` used to be `clear()`-ed and refilled on every
         // call — a one-shot FFI drain masquerading as a persistent, shared

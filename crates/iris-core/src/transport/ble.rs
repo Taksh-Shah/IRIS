@@ -295,6 +295,17 @@ pub trait BleAdapter: Send + Sync + 'static {
     ///   3 = Bluetooth adapter turned ON — the platform adapter has replayed
     ///       advertise + scan; the transport can leave `Unavailable`
     /// Default empty so non-Android implementors keep compiling.
+    /// HV-21/DEC-BLE-0008: set the bytes an inbound `gatt_read` of
+    /// `IRIS_IDENTIFY_CHARACTERISTIC` should serve — the local node's own
+    /// beacon, rebuilt with the real Wi-Fi Direct MAC folded in when known
+    /// (unlike the advertisement, which stays legacy-sized, this GATT path
+    /// has no ~31-byte ceiling). Called from `start_advertising` and again
+    /// from `set_local_wifi_direct_mac`. Default no-op: only Android's real
+    /// GATT server (and iOS's, once implemented) needs to act on it —
+    /// `SimulatedBleAdapter`'s many test-local delegating wrappers keep
+    /// compiling unchanged.
+    fn set_identify_payload(&self, _data: Vec<u8>) {}
+
     fn drain_adapter_events(&self) -> Vec<i32> {
         Vec::new()
     }
@@ -544,14 +555,18 @@ impl BleAdapter for SimulatedBleAdapter {
             }
         }
         *self.last_ad_raw.lock().unwrap_or_else(|p| p.into_inner()) = Some(data.clone());
-        // A real adapter that advertises an IRIS discovery beacon serves the
-        // SAME beacon via the GATT identification characteristic on the
-        // connect-to-identify path (DEC-BLE-002-0002). Mirror that in the sim:
-        // the beacon the peer reads is the beacon this node advertises
-        // (BLE-RT-C005) — no separate injection needed for the honest path.
-        if !data.service_data.is_empty() {
-            *self.identify_data.lock().unwrap_or_else(|p| p.into_inner()) = data.service_data.clone();
-        }
+        // HV-21/DEC-BLE-0008 correction: this used to mirror the advertised
+        // `service_data` straight into `identify_data` on the theory that
+        // "the beacon the peer reads is the beacon this node advertises"
+        // (BLE-RT-C005) — true when there was only one beacon. Now
+        // `ble.rs::start_advertising` calls `set_identify_payload` with a
+        // DELIBERATELY different (potentially MAC-carrying) payload
+        // immediately before this call; mirroring here would silently
+        // clobber that back to the legacy-sized advertised form on every
+        // (re-)advertise, which is exactly backwards. `set_identify_payload`
+        // is the only path that sets `identify_data` now — tests that want
+        // the old "identify mirrors the advert" behaviour (no MAC involved)
+        // should call `inject_identify_read` explicitly.
         let wire = if self.ios_mode.load(std::sync::atomic::Ordering::Relaxed) {
             // iOS `startAdvertising(_:)` transmits ONLY local name + service
             // UUIDs — never service data (RES-0024 DI-1). The beacon rides the
@@ -674,6 +689,9 @@ impl BleAdapter for SimulatedBleAdapter {
             }
         }
         Ok(self.identify_data.lock().unwrap_or_else(|p| p.into_inner()).clone())
+    }
+    fn set_identify_payload(&self, data: Vec<u8>) {
+        *self.identify_data.lock().unwrap_or_else(|p| p.into_inner()) = data;
     }
     fn set_mtu(&self, _handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
         Ok(mtu)
@@ -1720,16 +1738,24 @@ impl Transport for BleTransport {
         // carry the beacon at all, see `discover_peers`'s `gatt_read` call),
         // which has no such size ceiling — not the broadcast advertisement.
         let wifi_direct_mac: Option<[u8; 6]> = None;
-        let beacon = DiscoveryBeacon::build(
+        let freshness_now = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+            / 60) as u16;
+        let beacon = DiscoveryBeacon::build(caps, peer_short, freshness_now, wifi_direct_mac);
+        // HV-21/DEC-BLE-0008: the GATT identify-characteristic read has no
+        // ~31-byte ceiling (L2CAP fragmentation, bounded only by the
+        // negotiated ATT MTU) — serve the v2 form there, with the real MAC
+        // folded in when known, so a peer that reads it (already how iOS
+        // gets the beacon at all, DEC-BLE-002-0002) learns our Wi-Fi Direct
+        // address without the advertisement ever growing.
+        adapter.set_identify_payload(DiscoveryBeacon::build(
             caps,
             peer_short,
-            (std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs()
-                / 60) as u16,
-            wifi_direct_mac,
-        );
+            freshness_now,
+            *self.wifi_direct_mac.lock().unwrap_or_else(|p| p.into_inner()),
+        ));
         let handle = adapter
             .start_advertising(AdvertisementData {
                 local_name: info.hostname,
@@ -3288,6 +3314,9 @@ mod tests {
         fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
             self.inner.gatt_read(handle, char_uuid)
         }
+        fn set_identify_payload(&self, data: Vec<u8>) {
+            self.inner.set_identify_payload(data);
+        }
         fn set_mtu(&self, handle: GattHandle, mtu: u16) -> Result<u16, BleError> {
             self.inner.set_mtu(handle, mtu)
         }
@@ -3939,11 +3968,12 @@ mod tests {
     /// (`ADVERTISE_FAILED_DATA_TOO_LARGE` on every attempt, both bench
     /// phones). The broadcast beacon is therefore pinned back to `None` for
     /// the MAC regardless of what `set_local_wifi_direct_mac` was told —
-    /// carrying the MAC over the air needs the GATT identify-characteristic
-    /// path instead (no size ceiling there), which is not yet implemented.
-    /// This test asserts the CURRENT, correct behaviour: learning the MAC
-    /// re-triggers advertising (the plumbing works) but the broadcast
-    /// payload does not grow.
+    /// carrying the MAC over the air instead uses the GATT
+    /// identify-characteristic path (no size ceiling there — see
+    /// `identify_payload_carries_the_wifi_direct_mac_once_known` below).
+    /// This test asserts the broadcast side specifically: learning the MAC
+    /// re-triggers advertising (the plumbing works) but the OTA payload
+    /// does not grow.
     #[tokio::test]
     async fn hv21_wifi_direct_mac_does_not_grow_the_legacy_advertisement() {
         let adapter = std::sync::Arc::new(RecordingBleAdapter::default());
@@ -3974,6 +4004,39 @@ mod tests {
         assert_eq!(
             second.wifi_direct_mac, None,
             "the MAC must not appear in the over-the-air advertisement, whatever set_local_wifi_direct_mac was told"
+        );
+    }
+
+    /// HV-21/DEC-BLE-0008: the GATT identify-characteristic payload (served
+    /// via `gatt_read(IRIS_IDENTIFY_CHARACTERISTIC)`, no advertisement size
+    /// ceiling) DOES carry the real Wi-Fi Direct MAC once known — the
+    /// complement to the advertisement-side test above, which asserts the
+    /// MAC must NOT appear there.
+    #[tokio::test]
+    async fn identify_payload_carries_the_wifi_direct_mac_once_known() {
+        let adapter = std::sync::Arc::new(RecordingBleAdapter::default());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let adv = NodeAdvertisement {
+            peer_id: PeerId([0x63; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        };
+        t.start_advertising(adv).await.unwrap();
+        let before = DiscoveryBeacon::parse(
+            &adapter.inner.gatt_read(GattHandle(1), IRIS_IDENTIFY_CHARACTERISTIC).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(before.wifi_direct_mac, None, "no MAC known yet");
+
+        t.set_local_wifi_direct_mac([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]).await;
+
+        let raw = adapter.inner.gatt_read(GattHandle(1), IRIS_IDENTIFY_CHARACTERISTIC).unwrap();
+        let after = DiscoveryBeacon::parse(&raw).unwrap();
+        assert_eq!(
+            after.wifi_direct_mac,
+            Some([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]),
+            "the GATT identify payload must carry the MAC once known, unlike the advertisement"
         );
     }
 
@@ -4326,49 +4389,41 @@ mod tests {
         );
     }
 
-    /// BLE-RT-C005 regression: the sim's GATT server serves the beacon this
-    /// node ADVERTISED (advertise → read handoff), so a connect-to-identify
-    /// probe against a simulated peer resolves the peer's real advertised
-    /// beacon without a test-only injection setter.
+    /// BLE-RT-C005 regression, updated for HV-21/DEC-BLE-0008: the
+    /// simulator no longer auto-mirrors the advertised `service_data` into
+    /// the identify characteristic (it used to, on the now-outdated
+    /// assumption that there was only ever one beacon) — `ble.rs`'s real
+    /// `start_advertising` is what wires them explicitly via
+    /// `set_identify_payload`, deliberately building the identify payload
+    /// from the SAME `peer_short`/`caps`/`freshness` as the advertisement
+    /// (just with the Wi-Fi Direct MAC folded in when known — HV-21). This
+    /// test now exercises the real transport method, which is the actual
+    /// BLE-RT-C005 guarantee: an honest connect-to-identify probe resolves
+    /// what this node is really advertising, not a disconnected test-only
+    /// injection — no `Some(mac)` case here (no known-peers-mac-aware
+    /// case), so the ad and the identify payload are still byte-identical.
     #[tokio::test]
-    async fn c005_sim_serves_advertised_beacon_on_identify_read() {
-        let peer = std::sync::Arc::new(SimulatedBleAdapter::new());
-        let mut caps = CapabilityBits::empty();
-        caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, [0xC5; 16], 0, None);
-        peer.start_advertising(AdvertisementData {
-            local_name: Some("iris-peer".to_string()),
-            service_uuid: Some(IRIS_SERVICE_UUID),
-            service_data: beacon.clone(),
-            connectable: true,
+    async fn c005_transport_serves_the_advertised_beacon_on_identify_read() {
+        let adapter = std::sync::Arc::new(RecordingBleAdapter::default());
+        let t = BleTransport::new(Some(adapter.clone()));
+        t.start_advertising(NodeAdvertisement {
+            peer_id: PeerId([0xC5; 32]),
+            public_ip_addr: None,
+            hostname: Some("iris-peer".to_string()),
+            tags: Vec::new(),
         })
+        .await
         .unwrap();
-        // iOS leg probes the peer's identify characteristic directly.
-        let handle = peer.connect_gatt(BleAddress([0xC5; 6])).unwrap();
-        let served = peer
+        let advertised = adapter.started_adv.lock().unwrap_or_else(|p| p.into_inner()).last().unwrap().service_data.clone();
+        let handle = adapter.inner.connect_gatt(BleAddress([0xC5; 6])).unwrap();
+        let served = adapter
+            .inner
             .gatt_read(handle, IRIS_IDENTIFY_CHARACTERISTIC)
             .expect("identify read must be served");
-        peer.disconnect_gatt(handle);
+        adapter.inner.disconnect_gatt(handle);
         assert_eq!(
-            served, beacon,
-            "sim GATT server must serve exactly the advertised beacon (BLE-RT-C005)"
+            served, advertised,
+            "an honest connect-to-identify probe must resolve exactly what this node is advertising (BLE-RT-C005), with no known Wi-Fi Direct MAC to differ by"
         );
-        // iOS-mode advertising (empty service data) does NOT clobber the
-        // served identify value — the beacon still rides the characteristic.
-        let peer_ios = std::sync::Arc::new(SimulatedBleAdapter::new());
-        peer_ios.simulate_ios();
-        peer_ios
-            .start_advertising(AdvertisementData {
-                local_name: Some("iris-peer".to_string()),
-                service_uuid: Some(IRIS_SERVICE_UUID),
-                service_data: beacon.clone(),
-                connectable: true,
-            })
-            .unwrap();
-        let h2 = peer_ios.connect_gatt(BleAddress([0xC6; 6])).unwrap();
-        let served2 = peer_ios
-            .gatt_read(h2, IRIS_IDENTIFY_CHARACTERISTIC)
-            .expect("ios-mode identify read must be served");
-        assert_eq!(served2, beacon, "ios-mode serve path must hold");
     }
 }

@@ -92,6 +92,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         val IRIS_CHARACTERISTIC_UUID: UUID = UUID.fromString("3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e")
 
         /**
+         * Must byte-match `iris_core::transport::ble::IRIS_IDENTIFY_CHARACTERISTIC`
+         * (`Uuid([2, 0, 0, ...])` -> `02000000-0000-0000-0000-000000000000`).
+         * HV-21/DEC-BLE-0008: read-only, served with this node's own
+         * beacon (rebuilt with the real Wi-Fi Direct MAC folded in once
+         * known — `set_identify_payload`, called from `ble.rs::
+         * start_advertising`). Previously iOS-only (DEC-BLE-002-0002,
+         * CoreBluetooth can't put service data in an advertisement at all);
+         * Android now serves it too so a peer can learn our Wi-Fi Direct
+         * MAC without the 31-byte legacy advertising ceiling.
+         */
+        val IRIS_IDENTIFY_CHARACTERISTIC_UUID: UUID = UUID.fromString("02000000-0000-0000-0000-000000000000")
+
+        /**
          * HW-6: bounded retry for the legacy (API <33) `writeCharacteristic`
          * boolean-return path — a `false` return means another GATT
          * operation was still in flight, not a dead link. A handful of
@@ -208,6 +221,18 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         /** Drained by the Rust inbound reassembly poller via incoming_gatt_writes(). */
         val sharedGattWrites = ConcurrentLinkedQueue<FfiGattWriteEvent>()
 
+        /**
+         * HV-21/DEC-BLE-0008: bytes served on a read of
+         * [IRIS_IDENTIFY_CHARACTERISTIC_UUID] — set via [setIdentifyPayload],
+         * called from Rust's `ble.rs::start_advertising` (and again from
+         * `set_local_wifi_direct_mac`) with this node's own beacon, rebuilt
+         * with the real Wi-Fi Direct MAC folded in once known. Process-wide
+         * like the GATT server itself (HV-109) — a remote central's read can
+         * land on any adapter instance's shared server.
+         */
+        @Volatile
+        private var sharedIdentifyPayload: ByteArray = ByteArray(0)
+
         /** AND-RT-113: collision-resistant per-device FFI `handle` for server writes. */
         fun deviceHash(device: BluetoothDevice): ULong {
             val address = device.address.replace(":", "").lowercase()
@@ -270,6 +295,27 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     }
                 }
             }
+
+            override fun onCharacteristicReadRequest(
+                device: BluetoothDevice,
+                requestId: Int,
+                offset: Int,
+                characteristic: BluetoothGattCharacteristic,
+            ) {
+                // HV-21/DEC-BLE-0008: only IRIS_IDENTIFY_CHARACTERISTIC_UUID
+                // is ever registered as readable (see ensureSharedGattServer)
+                // — the UUID check here is defensive, matching the pattern
+                // the write handler above already uses.
+                val value = if (characteristic.uuid == IRIS_IDENTIFY_CHARACTERISTIC_UUID) {
+                    sharedIdentifyPayload
+                } else {
+                    ByteArray(0)
+                }
+                try {
+                    sharedGattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                } catch (_: Throwable) {
+                }
+            }
         }
 
         /**
@@ -296,6 +342,15 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                                 BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
                                 BluetoothGattCharacteristic.PROPERTY_NOTIFY,
                             BluetoothGattCharacteristic.PERMISSION_WRITE,
+                        ),
+                    )
+                    // HV-21/DEC-BLE-0008: read-only identify characteristic —
+                    // see IRIS_IDENTIFY_CHARACTERISTIC_UUID's doc.
+                    service.addCharacteristic(
+                        BluetoothGattCharacteristic(
+                            IRIS_IDENTIFY_CHARACTERISTIC_UUID,
+                            BluetoothGattCharacteristic.PROPERTY_READ,
+                            BluetoothGattCharacteristic.PERMISSION_READ,
                         ),
                     )
                     val added = server.addService(service)
@@ -1069,6 +1124,10 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // known, falling back to the requested value.
             negotiatedMtu[gatt]?.toUShort() ?: mtu
         }
+    }
+
+    override fun setIdentifyPayload(data: ByteArray) {
+        sharedIdentifyPayload = data
     }
 
     override fun incomingGattWrites(): List<FfiGattWriteEvent> =

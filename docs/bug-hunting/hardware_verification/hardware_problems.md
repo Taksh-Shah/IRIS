@@ -1975,15 +1975,33 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
   original size. Re-verified via `test_pingpong_300char_10x` on both phones:
   fwd=10/10, rev=9/10 (ordinary flakiness, not a regression), zero
   `errorCode=1` advertise failures (was continuous before the fix). Full
-  detail in `hardware_fix_log.md`'s Session 24 entry. **The MAC is not yet
-  actually carried over the air** (legacy advertising can't fit it) — it
-  needs the GATT identify-characteristic fallback path instead (already
-  used when the beacon can't fit the ad at all), not yet implemented. The
-  Wi-Fi Direct side (replacing `discoverServices`/DNS-SD with
-  `discoverPeers()`/`requestPeers()`) has not been touched yet — the
-  operator asked for proper internet research on the AOSP `WifiP2pManager`
-  discovery/GATT-carry design before further code changes, given this
-  session's regression.
+  detail in `hardware_fix_log.md`'s Session 24 entry.
+  **Later same session — MAC-carry half CLOSED, HW-verified.** Per the
+  operator's request, did proper web research first (WifiP2pManager
+  `discoverPeers`/`requestPeers` contract; confirmed the Wi-Fi Direct
+  "Invitation to connect" dialog is specifically the spec's Invitation
+  Procedure for *remembered/persistent* groups, not fresh GO Negotiation —
+  explains the dialog seen during Session 22/23 diagnosis and reframes the
+  fix as "keep connect() on the fresh-negotiation path", not "suppress a
+  dialog"; confirmed GATT reads have no ~31-byte ceiling, spec-grounded).
+  Implemented: a new read-only GATT characteristic on Android's real GATT
+  server (`IRIS_IDENTIFY_CHARACTERISTIC_UUID`, previously iOS-only),
+  `BleAdapter::set_identify_payload` (core, FFI, bridge, Kotlin — full
+  cross-layer wire), called from `start_advertising` with a v2 beacon
+  (MAC included when known) served alongside the still-22-byte
+  advertisement. Caught and fixed a second, simulator-only bug in the same
+  pass (a stale auto-mirror in `SimulatedBleAdapter` that clobbered the new
+  explicit `set_identify_payload` value) via a dedicated new L1 test before
+  it could hide the real behaviour. `iris-core --lib`: 802/802 passing.
+  **HW-verified**: `test_pingpong_300char_10x` PASS 10/10 both ways on P1+P2
+  after installing the build with the characteristic live; zero
+  `errorCode=1`/`GattFailure` across the full session — the new GATT
+  service addition does not destabilize the existing write-characteristic/
+  accept-poller path it shares a service with. **Still open**: the Wi-Fi
+  Direct Kotlin side itself — replacing `discoverServices`/DNS-SD with
+  `discoverPeers()`/`requestPeers()`, filtering results against the MACs
+  now available via BLE, and connecting only to a match. That is the last
+  piece before the Tier-2 hardware gate can be attempted again.
 - **Area:** `AndroidWifiDirectTransportAdapter` — `dnsSdServiceListener`,
   `dnsSdTxtRecordListener`, `serviceRequest`, `startDnsSd` (HW-13/14/15/16),
   `pendingServiceOnly` / `pendingTxtBeacons`

@@ -648,7 +648,7 @@ internal interface UniffiCallbackInterfaceFfiBleAdapterMethod7 : com.sun.jna.Cal
     fun callback(`uniffiHandle`: Long,`handle`: Long,`mtu`: Short,`uniffiOutReturn`: ShortByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiBleAdapterMethod8 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiBleAdapterMethod9 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
@@ -663,6 +663,9 @@ internal interface UniffiCallbackInterfaceFfiBleAdapterMethod12 : com.sun.jna.Ca
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiBleAdapterMethod13 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiBleAdapterMethod14 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiCryptoSignerMethod0 : com.sun.jna.Callback {
@@ -780,7 +783,7 @@ internal open class UniffiVTableCallbackInterfaceFfiInboxListener(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "incomingGattWrites", "scanResults", "acceptedConnections", "drainScanFailures", "drainDisconnectedHandles", "drainAdapterEvents")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "startScan", "stopScan", "startAdvertising", "stopAdvertising", "connectGatt", "disconnectGatt", "gattWrite", "setMtu", "setIdentifyPayload", "incomingGattWrites", "scanResults", "acceptedConnections", "drainScanFailures", "drainDisconnectedHandles", "drainAdapterEvents")
 internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -792,12 +795,13 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
     @JvmField internal var `disconnectGatt`: UniffiCallbackInterfaceFfiBleAdapterMethod5? = null,
     @JvmField internal var `gattWrite`: UniffiCallbackInterfaceFfiBleAdapterMethod6? = null,
     @JvmField internal var `setMtu`: UniffiCallbackInterfaceFfiBleAdapterMethod7? = null,
-    @JvmField internal var `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
-    @JvmField internal var `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
-    @JvmField internal var `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
-    @JvmField internal var `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
-    @JvmField internal var `drainDisconnectedHandles`: UniffiCallbackInterfaceFfiBleAdapterMethod12? = null,
-    @JvmField internal var `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod13? = null,
+    @JvmField internal var `setIdentifyPayload`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
+    @JvmField internal var `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
+    @JvmField internal var `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
+    @JvmField internal var `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
+    @JvmField internal var `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod12? = null,
+    @JvmField internal var `drainDisconnectedHandles`: UniffiCallbackInterfaceFfiBleAdapterMethod13? = null,
+    @JvmField internal var `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod14? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -810,13 +814,14 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `disconnectGatt`: UniffiCallbackInterfaceFfiBleAdapterMethod5? = null,
         `gattWrite`: UniffiCallbackInterfaceFfiBleAdapterMethod6? = null,
         `setMtu`: UniffiCallbackInterfaceFfiBleAdapterMethod7? = null,
-        `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
-        `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
-        `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
-        `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
-        `drainDisconnectedHandles`: UniffiCallbackInterfaceFfiBleAdapterMethod12? = null,
-        `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod13? = null,
-    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,`drainScanFailures`,`drainDisconnectedHandles`,`drainAdapterEvents`,), Structure.ByValue
+        `setIdentifyPayload`: UniffiCallbackInterfaceFfiBleAdapterMethod8? = null,
+        `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod9? = null,
+        `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod10? = null,
+        `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod11? = null,
+        `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod12? = null,
+        `drainDisconnectedHandles`: UniffiCallbackInterfaceFfiBleAdapterMethod13? = null,
+        `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod14? = null,
+    ): UniffiVTableCallbackInterfaceFfiBleAdapter(`uniffiFree`,`uniffiClone`,`startScan`,`stopScan`,`startAdvertising`,`stopAdvertising`,`connectGatt`,`disconnectGatt`,`gattWrite`,`setMtu`,`setIdentifyPayload`,`incomingGattWrites`,`scanResults`,`acceptedConnections`,`drainScanFailures`,`drainDisconnectedHandles`,`drainAdapterEvents`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiBleAdapter) {
         `uniffiFree` = other.`uniffiFree`
@@ -829,6 +834,7 @@ internal open class UniffiVTableCallbackInterfaceFfiBleAdapter(
         `disconnectGatt` = other.`disconnectGatt`
         `gattWrite` = other.`gattWrite`
         `setMtu` = other.`setMtu`
+        `setIdentifyPayload` = other.`setIdentifyPayload`
         `incomingGattWrites` = other.`incomingGattWrites`
         `scanResults` = other.`scanResults`
         `acceptedConnections` = other.`acceptedConnections`
@@ -1059,6 +1065,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_set_mtu(
     ): Int
+    external fun uniffi_iriscode_checksum_method_ffibleadapter_set_identify_payload(
+    ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_incoming_gatt_writes(
     ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_scan_results(
@@ -1221,6 +1229,8 @@ external fun uniffi_iriscode_fn_method_ffibleadapter_gatt_write(`ptr`: Long,`han
 ): Unit
 external fun uniffi_iriscode_fn_method_ffibleadapter_set_mtu(`ptr`: Long,`handle`: Long,`mtu`: Short,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
+external fun uniffi_iriscode_fn_method_ffibleadapter_set_identify_payload(`ptr`: Long,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_ffibleadapter_incoming_gatt_writes(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_ffibleadapter_scan_results(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1497,22 +1507,25 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffibleadapter_set_mtu() != 21093) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_incoming_gatt_writes() != 64008) {
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_set_identify_payload() != 24889) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_scan_results() != 691) {
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_incoming_gatt_writes() != 57468) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_accepted_connections() != 36488) {
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_scan_results() != 56153) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_scan_failures() != 34163) {
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_accepted_connections() != 49663) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_disconnected_handles() != 57673) {
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_scan_failures() != 20025) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_adapter_events() != 55751) {
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_disconnected_handles() != 42000) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_ffibleadapter_drain_adapter_events() != 30924) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_fficryptosigner_sign() != 46084) {
@@ -2321,6 +2334,14 @@ public interface FfiBleAdapter {
     fun `setMtu`(`handle`: kotlin.ULong, `mtu`: kotlin.UShort): kotlin.UShort
     
     /**
+     * HV-21/DEC-BLE-0008: bytes to serve on a read of
+     * `IRIS_IDENTIFY_CHARACTERISTIC` — this node's own beacon, rebuilt with
+     * the real Wi-Fi Direct MAC folded in when known. Called from
+     * `ble.rs::start_advertising` (and again from `set_local_wifi_direct_mac`).
+     */
+    fun `setIdentifyPayload`(`data`: kotlin.ByteArray)
+    
+    /**
      * Drain inbound GATT writes (projection of the MutexGuard drain).
      */
     fun `incomingGattWrites`(): List<FfiGattWriteEvent>
@@ -2565,6 +2586,24 @@ open class FfiBleAdapterImpl: Disposable, AutoCloseable, FfiBleAdapter
     }
     )
     }
+    
+
+    
+    /**
+     * HV-21/DEC-BLE-0008: bytes to serve on a read of
+     * `IRIS_IDENTIFY_CHARACTERISTIC` — this node's own beacon, rebuilt with
+     * the real Wi-Fi Direct MAC folded in when known. Called from
+     * `ble.rs::start_advertising` (and again from `set_local_wifi_direct_mac`).
+     */override fun `setIdentifyPayload`(`data`: kotlin.ByteArray)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_ffibleadapter_set_identify_payload(
+        it,
+        FfiConverterByteArray.lower(`data`),_status)
+}
+    }
+    
     
 
     
@@ -2814,7 +2853,19 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             )
         }
     }
-    internal object `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod8 {
+    internal object `setIdentifyPayload`: UniffiCallbackInterfaceFfiBleAdapterMethod8 {
+        override fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`setIdentifyPayload`(
+                    FfiConverterByteArray.lift(`data`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `incomingGattWrites`: UniffiCallbackInterfaceFfiBleAdapterMethod9 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -2825,7 +2876,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod9 {
+    internal object `scanResults`: UniffiCallbackInterfaceFfiBleAdapterMethod10 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -2836,7 +2887,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod10 {
+    internal object `acceptedConnections`: UniffiCallbackInterfaceFfiBleAdapterMethod11 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -2847,7 +2898,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod11 {
+    internal object `drainScanFailures`: UniffiCallbackInterfaceFfiBleAdapterMethod12 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -2858,7 +2909,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `drainDisconnectedHandles`: UniffiCallbackInterfaceFfiBleAdapterMethod12 {
+    internal object `drainDisconnectedHandles`: UniffiCallbackInterfaceFfiBleAdapterMethod13 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -2869,7 +2920,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod13 {
+    internal object `drainAdapterEvents`: UniffiCallbackInterfaceFfiBleAdapterMethod14 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiBleAdapter.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -2904,6 +2955,7 @@ internal object uniffiCallbackInterfaceFfiBleAdapter {
         `disconnectGatt`,
         `gattWrite`,
         `setMtu`,
+        `setIdentifyPayload`,
         `incomingGattWrites`,
         `scanResults`,
         `acceptedConnections`,

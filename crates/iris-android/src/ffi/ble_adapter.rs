@@ -73,6 +73,11 @@ pub trait FfiBleAdapter: Send + Sync + 'static {
     fn gatt_write(&self, handle: u64, char_uuid: String, data: Vec<u8>)
         -> Result<(), IrisFfiError>;
     fn set_mtu(&self, handle: u64, mtu: u16) -> Result<u16, IrisFfiError>;
+    /// HV-21/DEC-BLE-0008: bytes to serve on a read of
+    /// `IRIS_IDENTIFY_CHARACTERISTIC` — this node's own beacon, rebuilt with
+    /// the real Wi-Fi Direct MAC folded in when known. Called from
+    /// `ble.rs::start_advertising` (and again from `set_local_wifi_direct_mac`).
+    fn set_identify_payload(&self, data: Vec<u8>);
     /// Drain inbound GATT writes (projection of the MutexGuard drain).
     fn incoming_gatt_writes(&self) -> Vec<FfiGattWriteEvent>;
     /// Drain scan results (projection of the MutexGuard drain).
@@ -123,6 +128,7 @@ pub(crate) mod tests {
         fn set_mtu(&self, _h: u64, mtu: u16) -> Result<u16, IrisFfiError> {
             Ok(mtu.max(512))
         }
+        fn set_identify_payload(&self, _data: Vec<u8>) {}
         fn incoming_gatt_writes(&self) -> Vec<FfiGattWriteEvent> {
             Vec::new()
         }
