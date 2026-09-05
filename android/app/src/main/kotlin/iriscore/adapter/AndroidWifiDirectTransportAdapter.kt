@@ -277,7 +277,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                     val device = intent.getParcelableExtra<android.net.wifi.p2p.WifiP2pDevice>(
                         WifiP2pManager.EXTRA_WIFI_P2P_DEVICE,
                     )
-                    device?.deviceAddress?.let { myDeviceAddress = it }
+                    device?.deviceAddress?.let {
+                        myDeviceAddress = it
+                        // HV-21: publish for the BLE transport's beacon — see
+                        // iriscore.util.LocalWifiDirectAddress's doc.
+                        iriscore.util.LocalWifiDirectAddress.address = it
+                        iriscore.util.LocalWifiDirectAddress.onChanged?.invoke(it)
+                    }
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     val group = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)

@@ -79,5 +79,20 @@ object IrisCoreModule {
         @NodeId nodeId: ByteArray,
         signer: FfiCryptoSigner,
         x25519Provider: FfiX25519KeyProvider,
-    ): IrisEngine = IrisEngine.newWithX25519(ble, aware, direct, nodeId, signer, x25519Provider)
+    ): IrisEngine {
+        val engine = IrisEngine.newWithX25519(ble, aware, direct, nodeId, signer, x25519Provider)
+        // HV-21: forward this device's own Wi-Fi Direct MAC into the engine
+        // as soon as the platform tells the adapter what it is — BLE's
+        // discovery beacon folds it in (DEC-BLE-0008). The engine is a
+        // Hilt singleton built once, so registering the callback here
+        // covers the whole process lifetime; push the value immediately if
+        // it's already known (e.g. a second engine build after a restart).
+        iriscore.util.LocalWifiDirectAddress.onChanged = { mac ->
+            runCatching { engine.setLocalWifiDirectMac(mac) }
+        }
+        iriscore.util.LocalWifiDirectAddress.address?.let { mac ->
+            runCatching { engine.setLocalWifiDirectMac(mac) }
+        }
+        return engine
+    }
 }

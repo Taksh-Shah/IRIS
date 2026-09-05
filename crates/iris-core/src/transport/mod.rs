@@ -529,6 +529,15 @@ pub trait Transport: Send + Sync + 'static {
     /// Must NOT start a scan or block. Default no-op.
     async fn poll_health(&self) {}
 
+    /// HV-21: tell this transport the local device's Wi-Fi Direct (P2P) MAC,
+    /// once the platform has told the app what it is. Only the BLE transport
+    /// acts on this (it re-publishes its discovery beacon with the address
+    /// included, so a peer can match a plain `discoverPeers()` result back to
+    /// an already-BLE-known IRIS peer without depending on Wi-Fi Direct's own
+    /// DNS-SD service discovery — see `ble_advert.rs`'s DEC-BLE-0008 doc
+    /// comment for why). Default no-op for every other transport.
+    async fn set_local_wifi_direct_mac(&self, _mac: [u8; 6]) {}
+
     /// HV-27: how healthy *this transport's* link to `peer` currently is, from
     /// per-link activity (recent successful traffic = healthy; long quiet =
     /// suspect). `None` when the transport has no per-link signal — discovery

@@ -1,0 +1,230 @@
+--------- beginning of main
+09-05 06:27:58.935 W/logcat  (17999): type=1400 audit(0.0:377353): avc:  denied  { ioctl } for  path="socket:[69584466]" dev="sockfs" ino=69584466 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-05 06:27:58.939 W/logcat  (17999): type=1400 audit(0.0:377354): avc:  denied  { ioctl } for  path="socket:[69584466]" dev="sockfs" ino=69584466 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-05 06:27:58.939 W/logcat  (17999): type=1400 audit(0.0:377355): avc:  denied  { ioctl } for  path="socket:[69584466]" dev="sockfs" ino=69584466 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-05 06:27:58.939 W/logcat  (17999): type=1400 audit(0.0:377356): avc:  denied  { ioctl } for  path="socket:[69584466]" dev="sockfs" ino=69584466 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-05 06:28:00.359 W/libc    (18004): Access denied finding property "persist.adb.tls_server.enable"
+09-05 06:28:00.355 W/getprop (18004): type=1400 audit(0.0:377357): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:02.247 W/getenforce(18026): type=1400 audit(0.0:377358): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:02.251 W/Thread-46(14045): type=1400 audit(0.0:377359): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:02.439 D/BluetoothGattServer( 9951): onServerConnectionState() - status=0 serverIf=6 device=6E:09:9E:A7:3A:7E
+09-05 06:28:02.561 D/BluetoothGattServer( 9951): onServerConnectionState() - status=0 serverIf=6 device=79:7B:BF:D3:7B:AB
+09-05 06:28:02.980 D/BluetoothGattServer( 9951): onConnectionUpdated() - Device=6E:09:9E:A7:3A:7E interval=6 latency=0 timeout=500 status=0
+09-05 06:28:03.083 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:28:03.083 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:28:03.348 D/BluetoothGattServer( 9951): onMtuChanged() - device=6E:09:9E:A7:3A:7E, mtu=517
+09-05 06:28:03.504 D/BluetoothGattServer( 9951): onConnectionUpdated() - Device=79:7B:BF:D3:7B:AB interval=6 latency=0 timeout=500 status=0
+09-05 06:28:03.618 D/BluetoothGattServer( 9951): onConnectionUpdated() - Device=6E:09:9E:A7:3A:7E interval=36 latency=0 timeout=500 status=0
+09-05 06:28:03.717 D/BluetoothGattServer( 9951): onConnectionUpdated() - Device=79:7B:BF:D3:7B:AB interval=36 latency=0 timeout=500 status=0
+09-05 06:28:07.640 I/TracingHelper(15530): (REDACTED) Mismatched RequestContext found for module %s. Module id from RequestContext is %s
+09-05 06:28:07.657 D/BoundBrokerSvc( 9951): onRebind: Intent { act=com.google.android.gms.libs.gmscorelogger.service.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentDirectBootAwareApiService }
+09-05 06:28:08.354 I/NearbySharing( 9951): ReceiveProvider: Received request to stop advertising.
+09-05 06:28:08.356 I/NearbySharing( 9951): Advertising has stopped
+09-05 06:28:08.358 I/NearbySharing( 9951): NearbySharing Internal event ReceiveManagerStopBroadcast
+09-05 06:28:08.361 I/NearbyConnections( 9951): Client 71558621 requested advertising to stop.
+09-05 06:28:08.362 I/NearbySharing( 9951): NearbySharing Internal event ReceiveManagerEnd
+09-05 06:28:08.370 I/NearbySharing( 9951): [ClearcutLog] ADVERTISE_DEVICE_PRESENCE_END sessionId=0 flowId=1488714460478767212 
+09-05 06:28:08.381 D/BluetoothLeAdvertiser( 9951):  Total bytes: size:10
+09-05 06:28:08.384 D/BluetoothLeAdvertiser( 9951):  Total bytes: size:10
+09-05 06:28:08.389 I/NearbySharing( 9951): Start advertising with mode BACKGROUND certificate visibility SELF_SHARE data usage preference ONLINE, bt advertising false, vendorId 0, deviceName included: false
+09-05 06:28:08.392 I/NearbySharing( 9951): Uwb feature is off.
+09-05 06:28:08.393 I/NearbySharing( 9951): Updating advertising options for [ebsl@62480f6, dwyl@a49e9a3] providers
+09-05 06:28:08.395 I/NearbySharing( 9951): ReceiveProvider: Received request to start advertising.
+09-05 06:28:08.397 I/NearbySharing( 9951): Advertising has started with mode BACKGROUND, Bt enabled : false
+09-05 06:28:08.414 I/NearbyMediums( 9951): [InstantOnLostManager] Start instant onLost legacy advertising, hashes = [ 0x85 0x04 0xdf 0xb6 ].
+09-05 06:28:08.416 I/NearbyMediums( 9951): Successfully stopped BLE advertising for service NearbySharing
+09-05 06:28:08.422 I/NearbyMediums( 9951): Stopped accepting Bluetooth Classic connections for NearbySharing.
+09-05 06:28:08.422 I/NearbyMediums( 9951): Can't stop accepting Wifi connections because it was never started.
+09-05 06:28:08.422 I/NearbyMediums( 9951): Can't stop accepting WiFi connections because it was never started.
+09-05 06:28:08.423 I/NearbyMediums( 9951): Can't stop NFC advertising because it was never started.
+09-05 06:28:08.423 I/NearbyMediums( 9951): Skipping stop accepting connections: we are not currently accepting WebRTC connections for NearbySharing.
+09-05 06:28:08.423 I/NearbyMediums( 9951): [WifiNetworkV2] WifiStatusChangedCallback unregistered for NearbySharing (wifiStatusChangedCallbacks.size:0)
+09-05 06:28:08.437 I/Nearby  ( 9951): (REDACTED) Successfully shutdown executor %s.
+09-05 06:28:08.453 I/NearbySharing( 9951): Loading certificates with visibility SELF_SHARE
+09-05 06:28:08.453 I/NearbySharing( 9951): Saving the private certificate to file nearby_sharing_private_certificate_file_for_self.
+09-05 06:28:08.468 I/NearbySharing( 9951): Network state changed: NetworkState(isRestricted=false, isOnline=false, isCongested=false, isMetered=false, isWifiConnected=false)
+09-05 06:28:08.468 I/NearbySharing( 9951): Network state changed: NetworkState(isRestricted=false, isOnline=false, isCongested=false, isMetered=false, isWifiConnected=false)
+09-05 06:28:08.468 I/NearbySharing( 9951): WEBRTC disabled: dataUsage ONLINE
+09-05 06:28:08.471 I/NearbyConnections( 9951): ClientProxy(0p:com.google.android.gms.nearby.sharing) allow WebRtc to use mobile data.
+09-05 06:28:08.472 I/NearbyConnections( 9951): Client 71558621 requested advertising to start.
+09-05 06:28:08.473 I/NearbyConnections( 9951): 71558621 0p:com.google.android.gms.nearby.sharing startAdvertising in nc mode.
+09-05 06:28:08.477 I/Nearby  ( 9951): (REDACTED) Note nearby client %s for operation %s
+09-05 06:28:08.481 I/NearbyConnections( 9951): [PcpManager] In startAdvertising() advertisingMediums:[WIFI_DIRECT, WIFI_HOTSPOT, WIFI_AWARE, WIFI_LAN, BLE] upgradeMediums:[USB, WIFI_LAN, WIFI_DIRECT, WIFI_AWARE, WIFI_HOTSPOT, BLE_L2CAP, BLUETOOTH, BLE, NFC] listener:198035549
+09-05 06:28:08.512 I/NearbyConnections( 9951): Instant Connection Security key rotated.
+09-05 06:28:08.513 I/NearbyConnections( 9951): Scheduled invalidation of the HPKE key alarm (delayMillis:8000) for client 71558621
+09-05 06:28:08.513 I/NearbyConnections( 9951): Get local endpoint id from random generation LOV2 (last:null) for client 71558621
+09-05 06:28:08.513 I/NearbyConnections( 9951): generateRxInstantConnectionAdvBytes() returns null due to not supporting extended advertisements
+09-05 06:28:08.520 I/NearbyMediums( 9951): Started accepting Bluetooth Classic connections for NearbySharing.
+09-05 06:28:08.528 D/BluetoothLeAdvertiser( 9951):  Total bytes: size:31
+09-05 06:28:08.548 I/NearbyMediums( 9951): Started BLE Legacy advertising. Regular Header Advertised : false, Fast Advertised : true, AdvertisingSettings : BleAdvertisingSetting{powerLevel= BALANCED_POWER, isConnectable= false, isPrivateGatt= true}, isAcceptingConnection : false
+09-05 06:28:08.549 I/NearbyMediums( 9951): Successfully started BLE advertising of size 23 for service NearbySharing, deviceToken : [ 0x26 0x18 ].
+09-05 06:28:08.553 W/NearbyMediums( 9951): MEDIUM_ERROR [DEVICE][WIFI_LAN][START_LISTENING_INCOMING_CONNECTION][MEDIUM_NOT_AVAILABLE][WITHOUT_CONNECTED_WIFI_NETWORK], service-id=NearbySharing
+09-05 06:28:08.554 W/NearbyConnections( 9951): In startWifiLanAdvertising([ 0x32 0xf3 0xfd 0xca 0x66 0x4c 0x72 0xf2 0x93 0xfe 0xf9 0x7f 0x27 0x59 0x51 0xe8 0x88 ]), client 71558621 failed to start listening for incoming Wifi LAN connections to ServiceId NearbySharing
+09-05 06:28:08.560 I/NearbyMediums( 9951): [WifiNetworkV2] WifiStatusChangedCallback registered for NearbySharing (wifiStatusChangedCallbacks.size:1)
+09-05 06:28:08.561 I/NearbySharing( 9951): [broadcast provider] advertising started.
+09-05 06:28:08.561 I/NearbySharing( 9951): [broadcast controller] started.
+09-05 06:28:08.562 I/NearbySharing( 9951): [ReceiveManager] started.
+09-05 06:28:08.563 I/NearbySharing( 9951): NearbySharing Internal event ReceiveManagerStart(mode=2, isEveryoneMode=false, dataUsage=2, useQrCode=false, success=true)
+09-05 06:28:08.564 I/NearbySharing( 9951): [ClearcutLog] ADVERTISE_DEVICE_PRESENCE_START sessionId=0 flowId=3390776009796159632 sessionStatus: 1, visibility: 4
+09-05 06:28:11.951 W/getenforce(18297): type=1400 audit(0.0:377360): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:11.951 W/Thread-51(14045): type=1400 audit(0.0:377361): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:13.084 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:28:13.084 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:28:16.513 I/NearbyConnections( 9951): Invalidate cached hpkeKey for client 71558621
+09-05 06:28:21.551 W/getenforce(18543): type=1400 audit(0.0:377362): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:21.555 W/Thread-58(14045): type=1400 audit(0.0:377363): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:23.085 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:28:23.085 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:28:25.598 W/libc    (18784): Access denied finding property "persist.adb.tls_server.enable"
+09-05 06:28:25.591 W/getprop (18784): type=1400 audit(0.0:377364): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:28.500 W/earchbox:search(10305): Reducing the number of considered missed Gc histogram windows from 398 to 100
+09-05 06:28:28.562 V/ClearcutMetricXmitter(10305): Transmission is done.
+09-05 06:28:28.566 V/ClearcutMetricXmitter(10305): Transmission is done.
+09-05 06:28:28.568 V/ClearcutMetricXmitter(10305): Transmission is done.
+09-05 06:28:28.570 V/ClearcutMetricXmitter(10305): Transmission is done.
+09-05 06:28:28.573 V/ClearcutMetricXmitter(10305): Transmission is done.
+--------- beginning of system
+09-05 06:28:28.856 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-05 06:28:30.441 D/BoundBrokerSvc(10041): onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+09-05 06:28:31.103 W/getenforce(18816): type=1400 audit(0.0:377365): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:31.107 W/Thread-64(14045): type=1400 audit(0.0:377366): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:32.913 I/IPCThreadState(10051): oneway function results for code 2 on binder at 0xb400007636d477e0 will be dropped but finished with status UNKNOWN_TRANSACTION
+09-05 06:28:33.086 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:28:33.086 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:28:38.532 E/fnqf    (10305): (REDACTED) Trace %s timed out after %d ms. Complete trace: %s
+09-05 06:28:38.532 E/fnqf    (10305): fnrq: 
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.Read PersonalResponseProtoStore(Started After:8)
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.Update PersonalResponseProtoStore(Started After:8)
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.Synclet: internalCoreCorporaSync(Started After:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.NoAccountWorkerFactory startWork()(Started After:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork()(Started After:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork()(Started After:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	at tk_trace.WorkManager:TikTokListenableWorker startWork(Started After:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.java.com.google.android.libraries.search.assistant.requestcontext.shared.geller.proto.GellerCorpusSyncListenerServiceOnSyncCompleted(unfinished)(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.Synclet: assistantSharedCorporaSync 8445 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.GELLER_CLEANUP_END(unfinished)(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.Synclet: gellerInternalCleanup 1962 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.GELLER_CLEANUP_RESULT(unfinished)(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.Synclet: gellerInternalCleanup 1962 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.GET_FILE_GROUPS_BY_FILTER_FINISHED(unfinished)(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.Synclet: MultiModelAutoUpdateSynclet 974 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.GET_FILE_GROUPS_BY_FILTER_FINISHED(unfinished)(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.Synclet: MultiModelAutoUpdateSynclet 974 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.GET_FILE_GROUPS_BY_FILTER_FINISHED(unfinished)(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.Synclet: MultiModelAutoUpdateSynclet 974 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.532 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.GET_FILE_GROUPS_BY_FILTER_START(unfinished)(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.Synclet: MultiModelAutoUpdateSynclet 974 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.GET_FILE_GROUPS_BY_FILTER_START(unfinished)(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.Synclet: MultiModelAutoUpdateSynclet 974 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.GET_FILE_GROUPS_BY_FILTER_START(unfinished)(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.Synclet: MultiModelAutoUpdateSynclet 974 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.GELLER_CLEANUP_DATABASE(unfinished)(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.Synclet: gellerInternalCleanup 1962 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.NoAccountWorkerFactory startWork() 9274 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker startWork() 9278 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.WorkManager:TikTokListenableWorker startWork 2 ms(Unknown Source:0)
+09-05 06:28:38.533 E/fnqf    (10305): 	Suppressed: fnrp: 
+09-05 06:28:38.533 E/fnqf    (10305): 		at tk_trace.Suppressed exceptions exceeds the limit 10, additional unfinished spans will not be reported(Unknown Source:0)
+09-05 06:28:38.906 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-05 06:28:40.631 W/getenforce(19075): type=1400 audit(0.0:377381): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:40.635 W/Thread-69(14045): type=1400 audit(0.0:377382): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:43.087 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:28:43.087 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:28:50.191 W/getenforce(19357): type=1400 audit(0.0:377383): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:50.195 W/Thread-76(14045): type=1400 audit(0.0:377384): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:28:50.805 W/libc    (19393): Access denied finding property "persist.adb.tls_server.enable"
+09-05 06:28:50.799 W/getprop (19393): type=1400 audit(0.0:377385): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0
+09-05 06:28:53.089 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:28:53.089 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:28:59.699 W/Thread-82(14045): type=1400 audit(0.0:377387): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:03.090 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:29:03.090 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:29:09.271 W/getenforce(19950): type=1400 audit(0.0:377388): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:09.271 W/Thread-88(14045): type=1400 audit(0.0:377389): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:13.091 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:29:13.092 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:29:16.055 W/libc    (20172): Access denied finding property "persist.adb.tls_server.enable"
+09-05 06:29:16.051 W/getprop (20172): type=1400 audit(0.0:377390): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:18.871 W/getenforce(20195): type=1400 audit(0.0:377391): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:18.871 W/Thread-94(14045): type=1400 audit(0.0:377392): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:23.093 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:29:23.094 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:29:28.447 W/getenforce(20439): type=1400 audit(0.0:377393): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:28.451 W/Thread-100(14045): type=1400 audit(0.0:377394): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:33.100 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:29:33.100 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:29:33.102 I/Process (16966): Sending signal. PID: 16966 SIG: 9
+09-05 06:29:38.075 W/getenforce(20729): type=1400 audit(0.0:377403): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:38.079 W/Thread-106(14045): type=1400 audit(0.0:377404): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:41.278 W/libc    (20914): Access denied finding property "persist.adb.tls_server.enable"
+09-05 06:29:41.271 W/getprop (20914): type=1400 audit(0.0:377405): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:42.927 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''
+09-05 06:29:43.056 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color,raw:dumpsys bluetooth_manager'
+09-05 06:29:43.106 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 06:29:43.106 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 06:29:43.179 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color,raw:dumpsys wifip2p'
+09-05 06:29:43.813 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d''
+09-05 06:29:45.199 D/BluetoothGattServer( 9951): onServerConnectionState() - status=0 serverIf=6 device=79:7B:BF:D3:7B:AB
+09-05 06:29:45.202 I/NearbyPresence( 9951): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-05 06:29:45.203 I/NearbyPresence( 9951): (REDACTED) %s: removing device: %s
+09-05 06:29:45.204 I/NearbyPresence( 9951): (REDACTED) %s verified [==] new request %s equals to the old request
+09-05 06:29:45.209 I/NearbyPresence( 9951): (REDACTED) isApfV6Mandated: result=%b (hardware=%b [vendorApiLevel=%d, isPixel9=%b], software=%b [version=%d, min=%d])
+09-05 06:29:45.210 I/NearbyPresence( 9951): (REDACTED) APF v6 device, screen is %s, apf v6 mandated: %s
+09-05 06:29:45.210 I/NearbyPresence( 9951): (REDACTED) %s verified [==] new request %s equals to the old request
+09-05 06:29:47.631 W/getenforce(20989): type=1400 audit(0.0:377406): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:47.635 W/Thread-112(14045): type=1400 audit(0.0:377407): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 06:29:49.460 D/BluetoothGattServer( 9951): onServerConnectionState() - status=0 serverIf=6 device=6E:09:9E:A7:3A:7E
+09-05 06:29:49.461 I/NearbyPresence( 9951): (REDACTED) %s: Oob connection disconnected. Device: %s
+09-05 06:29:49.461 I/NearbyPresence( 9951): (REDACTED) %s: removing device: %s
+09-05 06:29:49.462 I/NearbyPresence( 9951): (REDACTED) %s verified [==] new request %s equals to the old request
+09-05 06:29:49.462 I/NearbyPresence( 9951): (REDACTED) isApfV6Mandated: result=%b (hardware=%b [vendorApiLevel=%d, isPixel9=%b], software=%b [version=%d, min=%d])
+09-05 06:29:49.462 I/NearbyPresence( 9951): (REDACTED) APF v6 device, screen is %s, apf v6 mandated: %s
+09-05 06:29:49.462 I/NearbyPresence( 9951): (REDACTED) %s verified [==] new request %s equals to the old request
+09-05 06:29:52.598 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''

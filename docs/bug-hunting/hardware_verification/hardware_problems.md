@@ -1958,6 +1958,32 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
   carry the 22-byte IRIS beacon over BLE (already the identity channel) to
   identify *which* discovered P2P device is an IRIS peer, rather than
   relying on a TXT record this hardware never delivers.
+  **Session 24 (2026-09-05) — plumbing half implemented, HW-verified no
+  regression; discovery rewrite still open.** Extended the BLE beacon codec
+  (`ble_advert.rs`) with an optional Wi-Fi Direct MAC field (DEC-BLE-0008),
+  wired the WifiDirect adapter to publish the local P2P MAC and the engine
+  to receive it (`setLocalWifiDirectMac`, uniffi bindings regenerated), and
+  made BLE's `discover_peers()` surface a peer's MAC via
+  `transport_addresses`. **Self-caught regression during hardware
+  verification**: a first attempt let the beacon grow to 28 bytes, which
+  broke live BLE advertising outright (`ADVERTISE_FAILED_DATA_TOO_LARGE` on
+  every attempt, both phones — legacy BLE advertising's real ~31-byte
+  ceiling, not the 251 B the module doc mistakenly cited). Root-caused to a
+  second bug (`build()` always emitted 28 bytes regardless of whether a MAC
+  was actually given) and fixed properly — `build()` now emits the plain
+  22-byte v1 form when no MAC is given, matching the beacon's byte-for-byte
+  original size. Re-verified via `test_pingpong_300char_10x` on both phones:
+  fwd=10/10, rev=9/10 (ordinary flakiness, not a regression), zero
+  `errorCode=1` advertise failures (was continuous before the fix). Full
+  detail in `hardware_fix_log.md`'s Session 24 entry. **The MAC is not yet
+  actually carried over the air** (legacy advertising can't fit it) — it
+  needs the GATT identify-characteristic fallback path instead (already
+  used when the beacon can't fit the ad at all), not yet implemented. The
+  Wi-Fi Direct side (replacing `discoverServices`/DNS-SD with
+  `discoverPeers()`/`requestPeers()`) has not been touched yet — the
+  operator asked for proper internet research on the AOSP `WifiP2pManager`
+  discovery/GATT-carry design before further code changes, given this
+  session's regression.
 - **Area:** `AndroidWifiDirectTransportAdapter` — `dnsSdServiceListener`,
   `dnsSdTxtRecordListener`, `serviceRequest`, `startDnsSd` (HW-13/14/15/16),
   `pendingServiceOnly` / `pendingTxtBeacons`

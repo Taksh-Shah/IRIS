@@ -1031,6 +1031,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_send_text(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_set_local_wifi_direct_mac(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_snapshot(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_start_all(
@@ -1185,6 +1187,8 @@ external fun uniffi_iriscode_fn_method_irisengine_register_peer_key(`ptr`: Long,
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_send_text(`ptr`: Long,`recipientHex`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr`: Long,`macStr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_start_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1449,6 +1453,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_send_text() != 50109) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_set_local_wifi_direct_mac() != 16563) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_snapshot() != 60241) {
@@ -6349,6 +6356,19 @@ public interface IrisEngineInterface {
     fun `sendText`(`recipientHex`: kotlin.String, `text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray
     
     /**
+     * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
+     * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
+     * has delivered it. Only the BLE transport acts on this (default no-op
+     * elsewhere, same shape as `poll_health`/`drop_all_links`) — it folds
+     * the address into its discovery beacon so Wi-Fi Direct's own
+     * `discoverPeers()` results can be matched back to an already-BLE-known
+     * IRIS peer, replacing the DNS-SD service discovery this hardware never
+     * resolves (DEC-BLE-0008). `mac_str` accepts the platform's own
+     * colon-separated form ("aa:bb:cc:dd:ee:ff") or bare 12-hex.
+     */
+    fun `setLocalWifiDirectMac`(`macStr`: kotlin.String)
+    
+    /**
      * HV-3: point-in-time diagnostic of the mesh — registered transports and
      * their state/cost, known neighbours and their live links, and the
      * message-engine counters. Also emitted to logcat (`iris.diag`) so a
@@ -6570,6 +6590,30 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     }
     )
     }
+    
+
+    
+    /**
+     * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
+     * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
+     * has delivered it. Only the BLE transport acts on this (default no-op
+     * elsewhere, same shape as `poll_health`/`drop_all_links`) — it folds
+     * the address into its discovery beacon so Wi-Fi Direct's own
+     * `discoverPeers()` results can be matched back to an already-BLE-known
+     * IRIS peer, replacing the DNS-SD service discovery this hardware never
+     * resolves (DEC-BLE-0008). `mac_str` accepts the platform's own
+     * colon-separated form ("aa:bb:cc:dd:ee:ff") or bare 12-hex.
+     */
+    @Throws(IrisFfiException::class)override fun `setLocalWifiDirectMac`(`macStr`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(
+        it,
+        FfiConverterString.lower(`macStr`),_status)
+}
+    }
+    
     
 
     

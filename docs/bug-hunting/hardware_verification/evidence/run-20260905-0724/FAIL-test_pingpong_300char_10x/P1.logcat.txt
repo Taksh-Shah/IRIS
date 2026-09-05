@@ -1,0 +1,65 @@
+--------- beginning of main
+09-05 07:37:16.472 I/Finsky  (13541): [2] amgd - Received: android.intent.action.PACKAGE_ADDED, [wPEv349_ea7T9NVrIjjZnqkFoaHRcBl6tTxwVjqG2YI]
+09-05 07:37:16.476 I/Finsky  (13541): [18016] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=0, cacheMissCount=1. Missed  in cache (limit 10) : [org.iris.mesh.test]
+09-05 07:37:16.484 I/Finsky  (13541): [18020] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=1, cacheMissCount=0. Missed  in cache (limit 10) : []
+09-05 07:37:16.485 I/Finsky  (13541): [18016] AIM: Got app ownership map. App counts: . Unique apps: 0
+09-05 07:37:16.485 E/Finsky  (13541): [18016] [Counters] attempted to use a non-positive increment for: 4752
+09-05 07:37:16.486 E/Finsky  (13541): [18016] [Counters] attempted to use a non-positive increment for: 4753
+09-05 07:37:16.499 I/Finsky  (13541): [2] AIM: AppInfoCacheUpdater -> invalidating apps: [org.iris.mesh.test]
+09-05 07:37:16.499 I/Finsky  (13541): [2] AIM: AppInfoManager-Perf > getApps > called for 1 apps
+09-05 07:37:16.500 I/AppBackupStateCleanupIO(10041): Backup state cleanup on uninstall is disabled. [CONTEXT service_id=229 ]
+09-05 07:37:16.500 I/FraudProtectUtils(10041): Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+09-05 07:37:16.501 I/FraudProtectUtils(10041): (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+09-05 07:37:16.501 I/PackageInstallIntentOp(10041): (REDACTED) Package %s is not a bank app. Skipping updates.
+09-05 07:37:16.502 I/Finsky  (13541): [18019] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=0, cacheMissCount=1. Missed  in cache (limit 10) : [org.iris.mesh.test]
+09-05 07:37:16.503 I/Finsky  (13541): [18211] [ContentSync] finished, scheduled=false
+09-05 07:37:16.516 I/Finsky  (13541): [18017] AIM: Got app ownership map. App counts: . Unique apps: 0
+09-05 07:37:16.516 E/Finsky  (13541): [18017] [Counters] attempted to use a non-positive increment for: 4752
+09-05 07:37:16.535 I/Finsky  (13541): [18020] AIM: Got app ownership map. App counts: . Unique apps: 0
+09-05 07:37:16.538 E/Finsky  (13541): [18020] [Counters] attempted to use a non-positive increment for: 4752
+09-05 07:37:16.539 E/Finsky  (13541): [18020] [Counters] attempted to use a non-positive increment for: 4753
+09-05 07:37:16.539 E/Finsky  (13541): [18017] [Counters] attempted to use a non-positive increment for: 4753
+09-05 07:37:16.540 I/Finsky  (13541): [2] DTU: Received onPackageAdded, replacing: true
+09-05 07:37:16.540 I/Fitness ( 9951): (REDACTED) FitCleanupIntentOperation received Intent %s
+09-05 07:37:16.543 I/ProximityAuth( 9951): [RecentAppsMediator] Package added: (user=UserHandle{0}) org.iris.mesh.test
+09-05 07:37:16.556 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.557 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.558 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.558 I/Finsky  (13541): [2] amgd - Received: android.intent.action.PACKAGE_ADDED, [wPEv349_ea7T9NVrIjjZnqkFoaHRcBl6tTxwVjqG2YI]
+09-05 07:37:16.558 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.563 I/Auth    (10041): (REDACTED) [SupervisedAccountIntentOperation] onHandleIntent: %s
+09-05 07:37:16.564 W/AppInstallOperation(10041): FDL Migration::InstallIntentOperation by FDL Module [CONTEXT service_id=77 ]
+09-05 07:37:16.565 I/FraudProtectUtils(10041): Not in testing population, skipping local test bank apps. [CONTEXT service_id=469 ]
+09-05 07:37:16.565 I/FraudProtectUtils(10041): (REDACTED) Latest bank app list size: %d, %s isBankApp: false
+09-05 07:37:16.565 I/PackageInstallIntentOp(10041): (REDACTED) Package %s is not a bank app. Skipping updates.
+09-05 07:37:16.569 I/NearbyDiscovery(10041): (REDACTED) processGrantSlicePermission: %s
+09-05 07:37:16.572 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.574 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color,raw:am force-stop org.iris.mesh'
+09-05 07:37:16.576 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.577 I/PkModeUpdater( 9894): PkModeUpdater.refreshDevices():206 refreshing devices
+09-05 07:37:16.579 I/Finsky  (13541): [2] amgd - Deduping intent android.intent.action.PACKAGE_ADDED
+09-05 07:37:16.581 I/Finsky  (13541): [2] amgd - Received: android.intent.action.PACKAGE_ADDED, [wPEv349_ea7T9NVrIjjZnqkFoaHRcBl6tTxwVjqG2YI]
+09-05 07:37:16.583 W/SQLiteLog(10041): (28) double-quoted string literal: "org.iris.mesh.test"
+09-05 07:37:16.595 I/Finsky  (13541): [2] amgd - Deduping intent android.intent.action.PACKAGE_ADDED
+09-05 07:37:16.596 I/Finsky  (13541): [18004] RECEIVER_PACKAGE_MONITOR#logWorkEndAndFinishGoAsync: SUCCESS
+09-05 07:37:16.665 I/Finsky  (13541): [18019] AIM: AppInfoManager-Perf > OnDeviceAppInfo > cacheHitCount=1, cacheMissCount=0. Missed  in cache (limit 10) : []
+09-05 07:37:16.763 I/Finsky  (13541): [18019] AIM: Got app ownership map. App counts: . Unique apps: 0
+09-05 07:37:16.764 E/Finsky  (13541): [18019] [Counters] attempted to use a non-positive increment for: 4752
+09-05 07:37:16.807 E/Finsky  (13541): [18016] [Counters] attempted to use a non-positive increment for: 4753
+09-05 07:37:16.814 I/Finsky  (13541): [18017] AIM: AppInfoManager-Perf > ItemModel > CacheSize=39, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+09-05 07:37:16.819 I/Finsky  (13541): [18019] AIM: AppInfoManager-Perf > ItemModel > CacheSize=39, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+09-05 07:37:16.832 I/Finsky  (13541): [18016] AIM: AppInfoManager-Perf > ItemModel > CacheSize=39, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+09-05 07:37:16.867 I/Finsky  (13541): [18017] AIM: AppInfoManager-Perf > getApps > data collection finished
+09-05 07:37:16.870 I/Finsky  (13541): [18017] AIM: AppInfoManager-Perf > maybeDestroyAppInfoManager is called. actives = 1
+09-05 07:37:16.873 I/Finsky  (13541): [18016] AIM: AppInfoManager-Perf > getApps > data collection finished
+09-05 07:37:16.875 I/Finsky  (13541): [18016] AIM: AppInfoManager-Perf > maybeDestroyAppInfoManager is called. actives = 0
+09-05 07:37:16.879 I/Finsky  (13541): [18017] AIM: AppInfoManager-Perf > ItemModel > CacheSize=39, cacheHitCount=0, cacheMissCount=0, total appsWithNoServerDataCount=0. Missed  in cache (limit 10) : []
+09-05 07:37:23.544 W/libc    (20612): Access denied finding property "persist.adb.tls_server.enable"
+09-05 07:37:23.539 W/getprop (20612): type=1400 audit(0.0:379207): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 07:37:24.031 D/BoundBrokerSvc( 9951): onUnbind: Intent { act=com.google.android.gms.findmydevice.spot.service.locationreport.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-05 07:37:24.116 I/NearbyMediums( 9951): No BLE Fast/GATT advertisements found in the latest cycle.
+09-05 07:37:24.119 I/NearbyMediums( 9951): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+09-05 07:37:25.075 W/getenforce(20632): type=1400 audit(0.0:379208): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 07:37:25.079 W/Thread-2669(14045): type=1400 audit(0.0:379209): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-05 07:37:26.899 E/AbstractLogEventBuilder(13541): The provided ProductIdOrigin 3 is not one of the process-level expected values: 1 or 2
+09-05 07:37:28.929 I/adbd    (24046): adbd service requested 'shell,v2,TERM=xterm-256color:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''

@@ -1,0 +1,1 @@
+<AndroidDevice|10BCA20F4M000BB> Encountered socket error "[WinError 10053] An established connection was aborted by the software in your host machine" sending RPC message "{"id": 19, "method": "meshSnapshot", "params": []}"

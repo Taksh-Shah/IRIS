@@ -4187,3 +4187,208 @@ highest-value remaining work — it unblocks the entire Tier-2 gate
 dependency, call it out per §6; HV-58 delivery status — needs FFI/ack.rs
 plumbing, sized as substantial in this session's research, do carefully;
 HV-73 clock skew; HV-78 dumpsys capture).
+
+---
+
+## Session 24 — HV-21 fix, first half: beacon/FFI plumbing (with a self-caught regression)
+
+Devices: P1 (vivo V2205, Android 15, `10BCA20F4M000BB`), P2 (vivo 2004,
+Android 12/SDK 31, `b2fbcd39`).
+
+### Phase D — implemented the plumbing half of HV-21's confirmed fix
+
+Per last session's Phase R note: extended `ble_advert.rs`'s `DiscoveryBeacon`
+with an optional Wi-Fi Direct MAC field (DEC-BLE-0008), wired
+`AndroidWifiDirectTransportAdapter`'s `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION`
+handler to publish the local P2P MAC into a new shared
+`iriscore.util.LocalWifiDirectAddress` object, added a `Transport::
+set_local_wifi_direct_mac` default-no-op trait method (BLE overrides it),
+a new `IrisEngine.setLocalWifiDirectMac` FFI method (uniffi bindings
+regenerated via `uniffi-bindgen generate --library target/debug/iriscode.dll
+--language kotlin`, diffed to confirm an isolated addition), and wired the
+production Hilt module (`IrisCoreModule`) + the `iris_bench` snippet to
+forward the callback into the engine. Also made BLE's own `discover_peers()`
+surface a peer's advertised Wi-Fi Direct MAC via the existing
+`transport_addresses` convention, so a future cross-transport consumer can
+read it without a new `PeerInfo` field.
+
+### ❌ Self-caught regression: the v2 beacon broke live BLE advertising
+
+Built and installed on both phones to hardware-verify no BLE regression
+(this is a change to an already-hardened, heavily-tested transport) before
+touching Wi-Fi Direct's Kotlin side at all. First `test_pingpong_300char_10x`
+run: **hard failure** — `iris.ble.advert startAdvertising failed
+errorCode=1` (`ADVERTISE_FAILED_DATA_TOO_LARGE`) on *every* advertise
+attempt, both phones, the whole run, ending in a snippet crash
+(`ProtocolError: No response from server`).
+
+Root cause: legacy BLE advertising (what `AndroidBleTransportAdapter`
+actually uses — `BluetoothLeAdvertiser`/`AdvertiseSettings`, never the
+extended path; `EXTENDED_ADV` in the beacon's capability bits is
+advisory-only and switches nothing) has a hard ~31-byte total payload
+ceiling (flags + service-UUID + service-data AD structures). The original
+22-byte beacon already used most of that budget on purpose (the module
+doc's "fits the legacy 251 B" comment turned out to describe a *different*,
+irrelevant ceiling — corrected in this session). Growing the beacon to 28
+bytes to carry a MAC pushed it over.
+
+Two bugs, not one, caused this:
+1. **Design bug**: I didn't gate the wire size on the OTA path's real
+   constraint before writing code — should have sized the legacy
+   advertising budget first (Phase R gap this session, corrected now).
+2. **Implementation bug, worse**: `DiscoveryBeacon::build()` was written to
+   *always* emit the 28-byte v2 form regardless of whether the
+   `wifi_direct_mac` argument was `Some` or `None` (it just zero-filled the
+   MAC field when `None` instead of omitting it) — so pinning
+   `start_advertising`'s call site back to `None` (my first attempted fix)
+   changed *nothing* on the wire and the hardware test still failed
+   identically. Caught by a dedicated test
+   (`hv21_wifi_direct_mac_does_not_grow_the_legacy_advertisement`) asserting
+   the actual byte length, not just the parsed field — the earlier
+   `build_parse_round_trip`-style tests only checked parsed values, which
+   `parse()` correctly reconstructed as `None` even from a bogus all-zero-MAC
+   28-byte payload, masking the real defect.
+
+### ✅ Fix: `build()` only emits v2 when a MAC is actually given
+
+`DiscoveryBeacon::build` now emits the legacy 22-byte v1 form (version byte
+= 1) when `wifi_direct_mac` is `None`, and the 28-byte v2 form (version byte
+= 2) only when `Some`. `ble.rs::start_advertising` passes `None` — so the
+broadcast beacon is unchanged from before this session, 22 bytes, and the
+MAC is **not actually carried over the air yet**. The plumbing to *store*
+the local MAC (`set_local_wifi_direct_mac`, `LocalWifiDirectAddress`) is in
+place and inert; carrying it needs the GATT identify-characteristic
+fallback path (already used when the ad payload can't carry the beacon at
+all — see `discover_peers`'s `gatt_read` call), which has no such size
+ceiling. That wiring is queued for the next session, documented in
+`ble_advert.rs`'s updated module doc comment.
+
+**Hardware verification (re-run after the fix):** `test_pingpong_300char_10x`
+— fwd=10/10, rev=9/10 (same ordinary flakiness rate as every prior BLE
+session, not a regression); confirmed via `grep -c errorCode=1` on both
+phones' logcat: **zero** advertise failures on either device (was
+continuous on both before the fix).
+
+**Landed:** commit `<pending>`. This closes the plumbing half of HV-21;
+the actual Wi-Fi Direct discovery rewrite (`discoverPeers()`/`requestPeers()`
+replacing DNS-SD, plus the GATT-based MAC carry) is still open — the
+operator has asked for it to be preceded by proper internet research this
+time (AOSP `WifiP2pManager` source, `discoverPeers`/`requestPeers` contract,
+GATT characteristic design patterns) before further code changes, per the
+lesson from this session's regression.
+
+### Phase R (proper, web-research-first) — HV-21's remaining half: discovery rewrite + MAC carry
+
+Per the operator's explicit request, before any further code: 5 targeted
+web searches, reasoned together rather than just collected.
+
+1. **`discoverPeers`/`requestPeers` contract** ([WifiP2pManager reference,
+   mirrored copy](https://stuff.mit.edu/afs/sipb/project/android/docs/reference/android/net/wifi/p2p/WifiP2pManager.html)):
+   confirms the exact flow already assumed — `discoverPeers()` starts a
+   scan that "stays active until the device starts connecting to a peer,
+   forms a p2p group, or `stopPeerDiscovery()`"; the app listens for
+   `WIFI_P2P_PEERS_CHANGED_ACTION` and calls `requestPeers()` to get a
+   `WifiP2pDeviceList` via `PeerListListener.onPeersAvailable`. This is a
+   plain, well-documented, non-DNS-SD path — the mechanism this session
+   already proved live on hardware works, just not yet wired into IRIS.
+
+2. **Does `connect()` show a user-facing "Invitation to connect" dialog,
+   and can it be avoided?** ([search summary citing the WPS/persistent-group
+   literature](https://patents.justia.com/patent/10362452),
+   [Persistent Network Negotiation for P2P](https://patents.justia.com/patent/20160173586)):
+   the Wi-Fi Direct spec defines **two distinct join mechanisms** — GO
+   **Negotiation** (fresh, never-paired devices; standard WPS push-button
+   handshake, no manual per-connection user prompt on stock AOSP) and the
+   **Invitation Procedure** (used specifically when a P2P device recognizes
+   "having formed a persistent group with a corresponding peer in the
+   past" — i.e. rejoining a *remembered* group). Cross-referencing this
+   against this session's own bench evidence: P1's `dumpsys wifip2p` showed
+   **two stale persisted groups** from earlier test sessions, one naming
+   P2's exact model — meaning any `connect()` between these two bench
+   phones right now is liable to route through the Invitation Procedure
+   (because Android already "remembers" a prior pairing), not fresh GO
+   Negotiation, which is very plausibly *why* the operator saw an
+   "Invitation to connect" system prompt during diagnosis. This reframes
+   last session's finding: the dialog is not an unavoidable Android
+   limitation for a fresh connection — it is specifically the
+   remembered-group code path, which stale persisted groups from repeated
+   testing put us on. Multiple independent sources agree there is no
+   documented API to suppress the Invitation Procedure's own dialog once
+   that path is taken — so the fix is to **not be on that path**: call
+   `removeGroup()`/avoid ever leaving a persisted group behind (already
+   partly covered by HV-20's `enablePersistentMode` decision — re-examine
+   whether IRIS should in fact avoid Android's own group-persistence for
+   its OWN groups, distinct from the OS's *remembered peer* bookkeeping,
+   which is a separate, less controllable mechanism) and, where a stale
+   remembered group is already present (as it is on this bench right now),
+   there is a real (if reflection-based) `deletePersistentGroup()` API a
+   [Google Groups thread](https://groups.google.com/g/wi-fi-direct/c/9oDq_jCmIZI)
+   confirms other developers have used via reflection — this session
+   already attempted that path (Session 22) and found it returns an empty
+   list to non-privileged apps on this specific hardware, a dead end
+   already documented; the actionable takeaway instead is **structural**:
+   design IRIS's own `connect()` calls to always be fresh GO Negotiation
+   (no persistent-group reliance on the *peer* side of the relationship,
+   only on IRIS's own group credentials per HV-20), so the Invitation
+   Procedure's dialog is never the path taken regardless of what stale
+   state exists.
+
+3. **GATT characteristic payload vs advertisement payload ceiling**
+   ([BLE packet deep dive](https://novelbits.io/deep-dive-ble-packets-events/),
+   [BLE advertising best practices](https://reelyactive.github.io/diy/best-practices-ble-advertising-data/)):
+   confirms this session's hardware-caught bug's root cause independently —
+   legacy advertising payload is capped at 31 bytes total (Core Spec v4 Part
+   A §1.4), while GATT characteristic reads use L2CAP fragmentation/
+   reassembly and are bounded only by the negotiated ATT MTU (hundreds of
+   bytes routinely) — confirming the GATT-carry design (not growing the
+   advertisement) is the correct, spec-grounded fix, not a workaround.
+
+4. **IRIS's own existing GATT-identify precedent**: `ble.rs` already has an
+   `IRIS_IDENTIFY_CHARACTERISTIC` (`DEC-BLE-002-0002`) read path — but
+   re-reading the code at HEAD (not just the doc comments) shows this is
+   **iOS-only today**: `SimulatedBleAdapter`'s `ios_mode`/`identify_data`
+   fields exist purely for the iOS CoreBluetooth leg (which cannot put
+   service data in an advertisement at all, so it identifies
+   connect-then-read instead — DEC-BLE-002-0002). `AndroidBleTransportAdapter
+   .kt` has **no GATT server characteristic registered for this UUID at
+   all** — Android has never needed it, since its beacon rides in the
+   advertisement. Carrying the Wi-Fi Direct MAC over GATT for Android
+   therefore means **adding** a real characteristic to Android's GATT
+   server (new work, not reusing an existing Android code path as
+   Session 24's earlier note assumed) — corrected here before implementing.
+
+5. **What comparable apps do** (Google's own Nearby Connections API,
+   [overview](https://developers.google.com/nearby/connections)): Nearby
+   Connections' pre-connection phase has both sides *independently accept
+   or reject* a connection request as a symmetric authentication step —
+   i.e. Google's own production P2P framework treats an explicit
+   accept/reject as normal and by design, not something to hide from the
+   user. IRIS's constraint (operator: "no OS-level invitation dialog should
+   ever reach the user") is stricter than Google's own comparable API's
+   behavior. This is worth flagging honestly rather than silently trying to
+   route around it: **within stock AOSP's documented behavior, avoiding the
+   dialog is achievable (fresh GO Negotiation, per point 2) but not
+   guaranteed to hold on every OEM** (this bench's own vivo OriginOS has
+   already shown several stock-Android deviations this session — persisted
+   group churn, DNS-SD not resolving). The correct scope for THIS fix is:
+   make IRIS's own connect() calls always take the fresh-negotiation path
+   (avoid relying on / creating peer-side persistent groups), and treat a
+   dialog appearing on real hardware, if it recurs after that, as its own
+   new tracked finding with fresh evidence — not something to keep
+   guessing at in the abstract.
+
+**Research outcome:** replace `discoverServices`/`addServiceRequest`/the two
+DNS-SD listeners with `discoverPeers()` + a `WIFI_P2P_PEERS_CHANGED_ACTION`
+receiver calling `requestPeers()`; filter the returned `WifiP2pDeviceList`
+against P2P MACs already known via BLE (the `transport_addresses` beacon
+data landed this session) before ever calling `connect()`, so IRIS never
+attempts to connect to a random non-IRIS P2P device; carry the local P2P
+MAC to peers via a **new** Android GATT server characteristic (mirroring
+`IRIS_IDENTIFY_CHARACTERISTIC`'s existing iOS design, extended to Android)
+rather than growing the advertisement; and keep `connect()` calls on the
+fresh-negotiation path (no dependence on OS-level persisted peer groups) so
+the Invitation Procedure's dialog is structurally avoided rather than
+suppressed. Rejected alternative: shrinking `peer_short` to make room for
+the MAC in the existing 22-byte advertisement — rejected because it weakens
+candidate-id collision resistance for a wire-format hack, when the GATT
+path already exists as prior art (iOS) and has no such tradeoff.

@@ -28,7 +28,7 @@ use crate::message::{
     DiscoveryConfig, IncomingMessage, LinkQuality, MessagePriority, NodeAdvertisement, PeerId,
     PeerInfo, SendReceipt, SerializedMessage, TransportLink,
 };
-use crate::transport::ble_advert::{CapabilityBits, DiscoveryBeacon};
+use crate::transport::ble_advert::{BEACON_LEN, CapabilityBits, DiscoveryBeacon};
 use crate::transport::ble_att::{
     AttSegmenter, BLE_MAX_MESSAGE_CONSERVATIVE, Reassembler, MAX_MESSAGE_BYTES, REASSEMBLY_TTL,
 };
@@ -713,6 +713,11 @@ pub struct BleTransport {
     /// core loop otherwise re-drives advertising — it is a one-shot at
     /// `start_all`).
     last_advertisement: std::sync::Mutex<Option<NodeAdvertisement>>,
+    /// HV-21: this device's own Wi-Fi Direct MAC, once
+    /// `set_local_wifi_direct_mac` has been told it — folded into the
+    /// discovery beacon (DEC-BLE-0008) so a peer can match a plain
+    /// `discoverPeers()` result back to an already-BLE-known IRIS peer.
+    wifi_direct_mac: std::sync::Mutex<Option<[u8; 6]>>,
     /// GATT handles + negotiated ATT MTU per connected peer — one connection
     /// per peer is reused for all sends (AC-9; RES-0019 R6.4/G2 bounds
     /// GATT-client churn). MTU is per-link (BLE-RT-003), never global.
@@ -870,6 +875,7 @@ impl BleTransport {
             scan_handle: std::sync::Mutex::new(None),
             scan_pass: std::sync::atomic::AtomicU64::new(0),
             adv_handle: std::sync::Mutex::new(None),
+            wifi_direct_mac: std::sync::Mutex::new(None),
             last_advertisement: std::sync::Mutex::new(None),
             connections: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
             link_activity: std::sync::Mutex::new(std::collections::HashMap::new()),
@@ -1576,7 +1582,7 @@ impl Transport for BleTransport {
                 Some(b) => b,
                 None => continue,
             };
-            let mut addresses = Vec::with_capacity(1);
+            let mut addresses = Vec::with_capacity(2);
             addresses.push((
                 "ble".to_string(),
                 format!(
@@ -1589,6 +1595,24 @@ impl Transport for BleTransport {
                     r.address.0[5]
                 ),
             ));
+            // HV-21/DEC-BLE-0008: a peer's own Wi-Fi Direct MAC, carried in
+            // its beacon (v2) — surfaced here via the existing
+            // `transport_addresses` convention ("transport id" -> address)
+            // rather than a new `PeerInfo` field, so the Wi-Fi Direct
+            // transport (or whatever aggregates cross-transport discovery
+            // results, e.g. a future `NeighborTable` consumer) can match a
+            // plain `discoverPeers()`-found device's MAC back to this
+            // already-BLE-known `PeerId` without depending on Wi-Fi
+            // Direct's own DNS-SD service discovery.
+            if let Some(mac) = beacon.wifi_direct_mac {
+                addresses.push((
+                    "wifi-direct-0".to_string(),
+                    format!(
+                        "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+                    ),
+                ));
+            }
             let candidate_id = beacon.candidate_peer_id();
             // BLE-22: skip peers that do not advertise GATT unicast support —
             // they cannot participate in the IRIS data path.
@@ -1675,6 +1699,27 @@ impl Transport for BleTransport {
             caps.set(CapabilityBits::EXTENDED_ADV);
         }
         let peer_short = crate::identity::peer_id::peer_short(&info.peer_id.0);
+        // HV-21 correction (Session 24, same session): the v2 beacon (28 B)
+        // was confirmed on real hardware to push legacy BLE advertising over
+        // its payload ceiling — `startAdvertising failed errorCode=1`
+        // (ADVERTISE_FAILED_DATA_TOO_LARGE) on BOTH bench phones, every
+        // single advertise attempt, the moment this shipped. The Kotlin
+        // adapter uses legacy `BluetoothLeAdvertiser`/`AdvertiseSettings`
+        // (`AndroidBleTransportAdapter.startAdvertising`), never the
+        // extended path — `EXTENDED_ADV` in `caps` is advisory-only,
+        // nothing here actually switches advertising mode. Legacy adverts
+        // are ceilinged at 31 bytes total (flags + service-UUID + this
+        // service-data AD structure); the original 22-byte beacon already
+        // used most of that budget deliberately (the module doc's own "fits
+        // the legacy 251 B" comment — mis-stated ceiling, corrected here to
+        // the real legacy limit). The broadcast beacon therefore MUST NOT
+        // grow — `wifi_direct_mac` stays `None` on this path. `parse` still
+        // accepts a v2 payload (harmless, unused for now); a future session
+        // needs to carry the MAC over the GATT identify-characteristic
+        // fallback path instead (already used when the advert payload can't
+        // carry the beacon at all, see `discover_peers`'s `gatt_read` call),
+        // which has no such size ceiling — not the broadcast advertisement.
+        let wifi_direct_mac: Option<[u8; 6]> = None;
         let beacon = DiscoveryBeacon::build(
             caps,
             peer_short,
@@ -1683,6 +1728,7 @@ impl Transport for BleTransport {
                 .unwrap_or_default()
                 .as_secs()
                 / 60) as u16,
+            wifi_direct_mac,
         );
         let handle = adapter
             .start_advertising(AdvertisementData {
@@ -2097,6 +2143,23 @@ impl Transport for BleTransport {
         // HV-99: only the cheap adapter-event drain — never a scan.
         if let Ok(adapter) = self.adapter() {
             self.handle_adapter_events(&adapter).await;
+        }
+    }
+
+    /// HV-21: fold the local Wi-Fi Direct MAC into the discovery beacon. If
+    /// advertising is already live, re-publish immediately (mirrors the
+    /// identity-rotation re-announce path, BLE-15) so a peer that already
+    /// scanned us before the MAC was known picks it up on the next scan
+    /// pass rather than waiting for an unrelated re-advertise trigger.
+    async fn set_local_wifi_direct_mac(&self, mac: [u8; 6]) {
+        *self.wifi_direct_mac.lock().unwrap_or_else(|p| p.into_inner()) = Some(mac);
+        let info = self
+            .last_advertisement
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
+        if let Some(info) = info {
+            let _ = self.start_advertising(info).await;
         }
     }
 
@@ -2638,7 +2701,7 @@ mod tests {
         let short = crate::identity::peer_id::peer_short(&peer_id.0);
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, short, 0);
+        let beacon = DiscoveryBeacon::build(caps, short, 0, None);
         adapter.inject_scan_result(
             BleAddress([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
             beacon,
@@ -2798,11 +2861,11 @@ mod tests {
         let peer_id = PeerId([0x0F; 32]);
         let short = crate::identity::peer_id::peer_short(&peer_id.0);
         let mac = BleAddress([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01]);
-        adapter.inject_scan_result(mac, DiscoveryBeacon::build(caps, short, 0), -60);
+        adapter.inject_scan_result(mac, DiscoveryBeacon::build(caps, short, 0, None), -60);
         // …plus a burst of ambient IRIS beacons well over the cap.
         for i in 0..(KNOWN_ADDR_CAP as u16 + 40) {
             let bmac = BleAddress([(i >> 8) as u8, i as u8, 0x33, 0x33, 0x33, 0x33]);
-            adapter.inject_scan_result(bmac, DiscoveryBeacon::build(caps, [i as u8; 16], 0), -60);
+            adapter.inject_scan_result(bmac, DiscoveryBeacon::build(caps, [i as u8; 16], 0, None), -60);
         }
         let _ = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
 
@@ -2816,10 +2879,15 @@ mod tests {
         }
 
         // Re-discover just our real peer so it survives the cap, then close it.
-        adapter.inject_scan_result(mac, DiscoveryBeacon::build(caps, short, 0), -60);
+        adapter.inject_scan_result(mac, DiscoveryBeacon::build(caps, short, 0, None), -60);
         let _ = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
-        let candidate = DiscoveryBeacon { capabilities: caps, peer_short: short, freshness_minutes: 0 }
-            .candidate_peer_id();
+        let candidate = DiscoveryBeacon {
+            capabilities: caps,
+            peer_short: short,
+            freshness_minutes: 0,
+            wifi_direct_mac: None,
+        }
+        .candidate_peer_id();
         assert!(t.known_addresses.lock().unwrap().values().any(|(p, _)| *p == candidate));
         // HV-105: the hint SURVIVES close_peer so a re-linking peer still
         // resolves to its real candidate id (not a synthesized one).
@@ -2849,7 +2917,7 @@ mod tests {
         let short = crate::identity::peer_id::peer_short(&real_peer_id.0);
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, short, 0);
+        let beacon = DiscoveryBeacon::build(caps, short, 0, None);
         adapter.inject_scan_result(BleAddress([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]), beacon, -60);
 
         let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
@@ -2876,6 +2944,56 @@ mod tests {
             t.send(&real_peer_id, &msg).await.is_ok(),
             "send() must resolve the real PeerId to the connection stored under its derived candidate key"
         );
+    }
+
+    /// HV-21/DEC-BLE-0008: a discovered peer's beacon carrying a Wi-Fi
+    /// Direct MAC surfaces it in `transport_addresses` under the
+    /// `"wifi-direct-0"` key — the mechanism the (future) Wi-Fi Direct
+    /// discovery rewrite matches a plain `discoverPeers()` result against.
+    /// A peer whose beacon carries no MAC yet must not fabricate one.
+    #[tokio::test]
+    async fn discovered_peer_wifi_direct_mac_surfaces_in_transport_addresses() {
+        let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let mut caps = CapabilityBits::empty();
+        caps.set(CapabilityBits::GATT_UNICAST);
+
+        let with_mac = DiscoveryBeacon::build(
+            caps,
+            [0x11; 16],
+            0,
+            Some([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]),
+        );
+        adapter.inject_scan_result(BleAddress([1, 0, 0, 0, 0, 0]), with_mac, -50);
+        let without_mac = DiscoveryBeacon::build(caps, [0x22; 16], 0, None);
+        adapter.inject_scan_result(BleAddress([2, 0, 0, 0, 0, 0]), without_mac, -50);
+
+        let mut stream = t.discover_peers(DiscoveryConfig::default()).await.unwrap();
+        let mut seen = Vec::new();
+        while let Ok(Some(p)) =
+            tokio::time::timeout(Duration::from_millis(200), stream.next()).await
+        {
+            seen.push(p);
+        }
+        assert_eq!(seen.len(), 2);
+
+        let has_mac = seen
+            .iter()
+            .find(|p| p.transport_addresses.iter().any(|(k, _)| k == "wifi-direct-0"))
+            .expect("the peer whose beacon carried a MAC must surface it");
+        assert!(
+            has_mac
+                .transport_addresses
+                .contains(&("wifi-direct-0".to_string(), "AA:BB:CC:DD:EE:FF".to_string())),
+            "wifi-direct-0 address must be the exact MAC from the beacon: {:?}",
+            has_mac.transport_addresses
+        );
+
+        let no_mac = seen
+            .iter()
+            .find(|p| !p.transport_addresses.iter().any(|(k, _)| k == "wifi-direct-0"))
+            .expect("the peer whose beacon carried no MAC must not have one fabricated");
+        assert_eq!(no_mac.transport_addresses.len(), 1, "only the ble address, no wifi-direct-0 entry");
     }
 
     #[tokio::test]
@@ -3324,7 +3442,7 @@ mod tests {
         let t = BleTransport::new_ios(Some(adapter.clone()));
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, [7u8; 16], 0);
+        let beacon = DiscoveryBeacon::build(caps, [7u8; 16], 0, None);
         adapter.inject_identify_read(beacon.clone());
         // An iOS advertisement with an EMPTY payload (UUID + local name only).
         adapter.inject_scan_result(BleAddress([0x11; 6]), Vec::new(), -60);
@@ -3367,7 +3485,7 @@ mod tests {
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
         caps.set(CapabilityBits::ADVERTISE_BROADCAST);
-        let beacon = DiscoveryBeacon::build(caps, [9u8; 16], 0);
+        let beacon = DiscoveryBeacon::build(caps, [9u8; 16], 0, None);
         // Android leg: ad-carried payload.
         let android = std::sync::Arc::new(SimulatedBleAdapter::new());
         android.inject_scan_result(BleAddress([0x01; 6]), beacon.clone(), -50);
@@ -3815,6 +3933,50 @@ mod tests {
         assert_eq!(stopped[0], AdvHandle(1));
     }
 
+    /// HV-21/DEC-BLE-0008 (corrected, same session — see `start_advertising`'s
+    /// own comment): a v2, MAC-carrying beacon was found on real hardware to
+    /// exceed legacy BLE advertising's payload ceiling
+    /// (`ADVERTISE_FAILED_DATA_TOO_LARGE` on every attempt, both bench
+    /// phones). The broadcast beacon is therefore pinned back to `None` for
+    /// the MAC regardless of what `set_local_wifi_direct_mac` was told —
+    /// carrying the MAC over the air needs the GATT identify-characteristic
+    /// path instead (no size ceiling there), which is not yet implemented.
+    /// This test asserts the CURRENT, correct behaviour: learning the MAC
+    /// re-triggers advertising (the plumbing works) but the broadcast
+    /// payload does not grow.
+    #[tokio::test]
+    async fn hv21_wifi_direct_mac_does_not_grow_the_legacy_advertisement() {
+        let adapter = std::sync::Arc::new(RecordingBleAdapter::default());
+        let t = BleTransport::new(Some(adapter.clone()));
+        let adv = NodeAdvertisement {
+            peer_id: PeerId([0x62; 32]),
+            public_ip_addr: None,
+            hostname: None,
+            tags: Vec::new(),
+        };
+        t.start_advertising(adv.clone()).await.unwrap();
+        let first = DiscoveryBeacon::parse(
+            &adapter.started_adv.lock().unwrap_or_else(|p| p.into_inner()).last().unwrap().service_data,
+        )
+        .unwrap();
+        assert_eq!(first.wifi_direct_mac, None, "no MAC known yet");
+
+        t.set_local_wifi_direct_mac([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]).await;
+
+        let started = adapter.started_adv.lock().unwrap_or_else(|p| p.into_inner());
+        let second_data = &started.last().unwrap().service_data;
+        assert_eq!(
+            second_data.len(),
+            BEACON_LEN,
+            "the broadcast beacon must stay at the legacy-safe 22-byte length, never grow to carry the MAC"
+        );
+        let second = DiscoveryBeacon::parse(second_data).unwrap();
+        assert_eq!(
+            second.wifi_direct_mac, None,
+            "the MAC must not appear in the over-the-air advertisement, whatever set_local_wifi_direct_mac was told"
+        );
+    }
+
     /// discover_peers honors a caller-provided max_peers cap (BLE-RT-013).
     #[tokio::test]
     async fn rt013_discovery_enforces_max_peers() {
@@ -3831,6 +3993,7 @@ mod tests {
                     },
                     [i; 16],
                     0,
+                    None,
                 ),
                 -40,
             );
@@ -4120,7 +4283,7 @@ mod tests {
         caps.set(CapabilityBits::GATT_UNICAST);
         for i in 0..10u8 {
             let addr = BleAddress([i, 0xBB, 0, 0, 0, 0]);
-            let beacon = DiscoveryBeacon::build(caps, [i; 16], 0);
+            let beacon = DiscoveryBeacon::build(caps, [i; 16], 0, None);
             adapter.inject_identify_read_for_address(addr, beacon);
             adapter.inject_scan_result(addr, Vec::new(), -50);
         }
@@ -4172,7 +4335,7 @@ mod tests {
         let peer = std::sync::Arc::new(SimulatedBleAdapter::new());
         let mut caps = CapabilityBits::empty();
         caps.set(CapabilityBits::GATT_UNICAST);
-        let beacon = DiscoveryBeacon::build(caps, [0xC5; 16], 0);
+        let beacon = DiscoveryBeacon::build(caps, [0xC5; 16], 0, None);
         peer.start_advertising(AdvertisementData {
             local_name: Some("iris-peer".to_string()),
             service_uuid: Some(IRIS_SERVICE_UUID),

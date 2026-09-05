@@ -705,6 +705,31 @@ impl IrisEngine {
             Ok(())
         })
     }
+
+    /// HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
+    /// once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
+    /// has delivered it. Only the BLE transport acts on this (default no-op
+    /// elsewhere, same shape as `poll_health`/`drop_all_links`) — it folds
+    /// the address into its discovery beacon so Wi-Fi Direct's own
+    /// `discoverPeers()` results can be matched back to an already-BLE-known
+    /// IRIS peer, replacing the DNS-SD service discovery this hardware never
+    /// resolves (DEC-BLE-0008). `mac_str` accepts the platform's own
+    /// colon-separated form ("aa:bb:cc:dd:ee:ff") or bare 12-hex.
+    pub fn set_local_wifi_direct_mac(&self, mac_str: &str) -> Result<(), IrisFfiError> {
+        let mac = decode_mac_hex(mac_str)
+            .ok_or_else(|| IrisFfiError::InvalidArgument("mac must be 6 bytes, hex or colon-separated".into()))?;
+        let handle = self.handle.clone();
+        let manager = self.manager.clone();
+        let ids = self.transports.clone();
+        handle.block_on(async move {
+            for id in ids {
+                if let Some(t) = manager.get(&id).await {
+                    t.set_local_wifi_direct_mac(mac).await;
+                }
+            }
+            Ok(())
+        })
+    }
 }
 
 impl IrisEngine {
@@ -733,6 +758,21 @@ fn decode_hex32(hex: &str) -> Option<[u8; 32]> {
     }
     let mut b = [0u8; 32];
     for (i, pair) in hex.as_bytes().chunks(2).enumerate() {
+        let s = std::str::from_utf8(pair).ok()?;
+        b[i] = u8::from_str_radix(s, 16).ok()?;
+    }
+    Some(b)
+}
+
+/// Decode a Wi-Fi Direct MAC, accepting either colon-separated
+/// ("aa:bb:cc:dd:ee:ff") or bare 12-hex form.
+fn decode_mac_hex(s: &str) -> Option<[u8; 6]> {
+    let stripped: String = s.chars().filter(|c| *c != ':').collect();
+    if stripped.len() != 12 {
+        return None;
+    }
+    let mut b = [0u8; 6];
+    for (i, pair) in stripped.as_bytes().chunks(2).enumerate() {
         let s = std::str::from_utf8(pair).ok()?;
         b[i] = u8::from_str_radix(s, 16).ok()?;
     }

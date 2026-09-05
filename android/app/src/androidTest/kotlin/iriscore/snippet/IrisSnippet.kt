@@ -88,6 +88,15 @@ class IrisSnippet : Snippet {
             signer,
             x25519Provider,
         )
+        // HV-21: same wiring as the production Hilt module (IrisCoreModule) —
+        // the snippet builds its own engine instance, so it needs its own
+        // registration.
+        iriscore.util.LocalWifiDirectAddress.onChanged = { mac ->
+            runCatching { e.setLocalWifiDirectMac(mac) }
+        }
+        iriscore.util.LocalWifiDirectAddress.address?.let { mac ->
+            runCatching { e.setLocalWifiDirectMac(mac) }
+        }
         e.subscribeInbox(object : FfiInboxListener {
             override fun onMessage(message: FfiIncomingMessage) {
                 val idHex = message.messageId.hex()
