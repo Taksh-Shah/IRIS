@@ -1730,6 +1730,37 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 > committed on the strength of L1 verification with this HW-PENDING status
 > recorded, per the loop's own allowance for a blocked-but-documented finding
 > — they are not being marked 🟢.
+>
+> **Update (same session, later): root cause is platform/OEM-level, not an
+> IRIS bug.** To isolate whether IRIS's own DNS-SD code path was at fault, we
+> opened Android's own built-in Wi-Fi Direct settings screen on both phones
+> (`com.android.settings/.Settings$WifiP2pSettingsActivity` — found via
+> `dumpsys package com.android.settings | grep -i p2p`) — this uses the
+> stock AOSP `discoverPeers()`/`PeerListListener` path with **zero IRIS code
+> involved**. Result: `dumpsys wifip2p`'s `mDiscoveryStarted` went `true` on
+> both phones, `numTotalPeerScans` incremented (proving a real scan ran), but
+> after 35+ seconds of waiting **no `mPeers`/device-list section ever
+> appeared in the dump on either phone** — the stock Android P2P UI finds
+> zero peers between these two specific phones, the same symptom IRIS sees.
+> This reframes the blocker: it is very unlikely to be fixable by any
+> IRIS-side code change (HV-21's BLE-carries-identity fix sketch would still
+> leave discovery itself broken, since discovery is what finds the peer to
+> connect to in the first place — carrying identity differently doesn't
+> conjure a peer that the radio never sees). The remaining candidates are
+> environmental/hardware, outside this loop's code-fix scope: (a) an OEM
+> (vivo OriginOS) P2P stack restriction not yet identified, (b) a genuine
+> RF/channel incompatibility between these two specific phones' Wi-Fi Direct
+> radios, (c) regulatory-domain or country-code mismatch affecting P2P social
+> channels, or (d) a firmware bug requiring an OS update. **Recommended next
+> steps for the operator** (not adb-automatable): check for a pending
+> vivo/OriginOS system update on either phone; try the two phones extremely
+> close (<0.3 m, no obstruction) in case of a weak P2P antenna path; if
+> possible, test one of these two phones' Wi-Fi Direct against a **third,
+> different-OEM** phone to isolate whether the fault is phone-specific or
+> pairwise. Tier-2 hardware verification remains blocked pending one of
+> these; continuing autonomously into Tier 8 (Shell UX) per §2's explicit
+> allowance to work it in parallel, since it does not depend on this
+> blocker.
 
 ### HV-19 — Two peers both call `createGroup` → GO/GO conflict; there is no election
 

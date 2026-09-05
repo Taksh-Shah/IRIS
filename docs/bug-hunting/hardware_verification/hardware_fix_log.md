@@ -3871,7 +3871,41 @@ removes the worst behaviour on its own. Verified by clean rebuild + install
 on both phones; not independently hardware-tested (no BUSY condition
 reproducible on this bench).
 
-**Landed:** commit `<pending>`. Continuing per the operator's "do not stop"
-instruction; next candidate is HV-24 (GO port collision) or HV-21's own fix
-(carry beacon identity over BLE instead of P2P DNS-SD TXT) if time and scope
-permit before the session window closes.
+**Landed:** commit `82ebd79`.
+
+### Critical finding: the discovery blocker is platform-level, not IRIS's
+
+Before committing to HV-21's BLE-carries-identity rewrite (a real
+architecture change), isolated whether the zero-peer symptom is IRIS's
+DNS-SD code or the platform itself: opened Android's own stock Wi-Fi Direct
+settings screen (`com.android.settings/.Settings$WifiP2pSettingsActivity`,
+found via `dumpsys package com.android.settings | grep -i p2p`) on both
+phones via `adb shell am start -n` (needed the `$` escaped for the *remote*
+shell too — `'com.android.settings/.Settings\$WifiP2pSettingsActivity'` —
+first attempt truncated to `.Settings` because `adb shell` re-interprets the
+command through the device's own shell). This exercises the plain AOSP
+`discoverPeers()`/`PeerListListener` path with **zero IRIS code involved**.
+
+Result: `dumpsys wifip2p` showed `mDiscoveryStarted: true` and
+`numTotalPeerScans` incremented on both phones (a real scan ran), but after
+35+ seconds **no `mPeers` device-list section ever appeared** on either
+phone. The stock Android P2P UI finds zero peers between these two phones —
+the exact same symptom as IRIS. This means HV-21 (DNS-SD/TXT fragility) is
+**not** the root cause of the current blocker — it's a real, separately
+tracked finding, but even fixing it cannot conjure a peer the radio never
+sees at the `discoverPeers()` level. The blocker is environmental/hardware:
+an OEM (vivo OriginOS) P2P restriction, an RF/channel incompatibility
+between these two specific phones, a regulatory-domain issue, or a firmware
+bug — none fixable by editing IRIS's Kotlin/Rust.
+
+**Recommended next steps for the operator** (human-required, not
+adb-automatable): check for a pending OS update on either phone; try the
+phones at <0.3 m with no obstruction; if available, test one of these two
+phones' Wi-Fi Direct against a third, different-OEM phone to isolate
+phone-specific vs. pairwise incompatibility.
+
+**Tier 2 hardware verification stays 🔒 blocked** pending one of the above.
+Per §2's explicit allowance ("Tier 8 ... can be done in parallel by a second
+person — it barely touches the transport code"), continuing autonomously
+into Tier 8 (Shell UX, HV-54..64) next since it does not depend on this
+blocker, per the operator's "do not stop" instruction.
