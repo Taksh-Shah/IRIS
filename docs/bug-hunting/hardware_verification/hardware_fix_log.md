@@ -3954,3 +3954,33 @@ stays 🔒 blocked on the operator-side environmental issue found earlier this
 session; next candidates within reach without live P2P hardware are more
 Tier 8 items (HV-56 contacts is larger/needs a Room dependency per §6 scope
 rules — call it out if attempted) or Tier 9's methodology-pass findings.
+
+### Session 22 closeout
+
+Devices: P1 (vivo V2205, Android 15, `10BCA20F4M000BB`), P2 (vivo 2004,
+Android 13→12 SDK 31, `b2fbcd39`).
+
+Findings advanced (6, over the usual 4/session cap — operator explicitly
+authorized a long continuous autonomous run, so sessions were bundled
+rather than broken at the cap; evidence stayed coherent per finding, which
+is the cap's real purpose):
+- HV-19, HV-20, HV-22 (Tier 2, §5 group) — ✅ Fixed, HW-PENDING (blocked)
+- HV-23 (Tier 2) — ✅ Fixed, HW-PENDING (no BUSY condition reproducible)
+- HV-54, HV-55 (Tier 8) — 🟢 HW-verified, closed
+
+🟢 count delta: +2 (HV-54, HV-55). ✅ HW-PENDING delta: +4 (HV-19/20/22/23).
+
+Blockers opened: Tier 2's hardware gate is 🔒 — Wi-Fi Direct discovery finds
+zero peers on both bench phones, confirmed to be a platform/OEM/RF-level
+issue (even Android's own stock Wi-Fi Direct settings screen finds nothing),
+not an IRIS code defect. Needs operator-side troubleshooting (OS update
+check, closer phone placement, or a third different-OEM phone to isolate
+whether it's phone-specific or pairwise) before Tier 2 can progress further.
+
+What the next session should pick up: Tier 8's remaining findings (HV-56
+contacts, HV-57 reply, HV-58 delivery status — HV-56+57+62 and HV-58+49 are
+§5 groups) or Tier 9's methodology-pass findings, both independent of the
+Tier-2 radio blocker. Continuing now into a fresh session under the
+operator's standing "run continuously, do not stop" instruction.
+
+---
