@@ -67,11 +67,20 @@ that remain are understood and logged.*
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
-| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 0 | 0 | 0 | 0 | 11 |
+| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 0 | 0 | 0 | 9 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 0 | 0 | 0 | 17 |
-| **Total** | | **109** | **29** | **21** | **1** | **2** | **56** |
+| **Total** | | **109** | **31** | **21** | **1** | **2** | **54** |
 
-**Last updated:** 2026-09-05 (Session 22 — **Tier 2 started, gate BLOCKED
+**Last updated:** 2026-09-05 (Session 22, continued — **Tier 8: HV-54 + HV-55
+closed, 🟢 HW-verified.** Both are UI-only fixes, independent of the Tier-2
+radio blocker, worked in parallel per §2's explicit allowance. HV-54: the
+floating composer/palette column now measures its own height and feeds it
+into the transcript's bottom padding, so a growing multi-line composer never
+covers unread messages. HV-55: an explicit send button next to the text
+field, wired to the same `onSubmit` as the IME Send key, for keyboards/
+input methods/accessibility tools where the IME action doesn't fire. Both
+verified via `adb shell input` + screenshots on P1.)
+· Previously: 2026-09-05 (Session 22 — **Tier 2 started, gate BLOCKED
 (not closed).** HV-19 (deterministic GO/GC election via PeerId comparison),
 HV-20 (persistent-mode credentials on the band-constrained path), and HV-22
 (lost-group detection + re-formation via a `poll_health` tick) all
@@ -2864,7 +2873,19 @@ already — needs verification on hardware).
 
 ### HV-54 — The composer covers the newest messages; multi-line input makes it worse
 
-- **Fix status:** ⬜
+- **Fix status:** 🟢 HW-verified · commit `<pending>` · 2026-09-05 · Session 22 ·
+  P1 (vivo V2205, Android 15). `ConsoleScreen`'s floating composer/palette
+  column now measures its own height via `onGloballyPositioned` and feeds it
+  (+ a small gap) into the transcript `LazyColumn`'s bottom `contentPadding`,
+  replacing the old static `IrisSizing.InputHeight + IrisSpacing.XXL`; a
+  `LaunchedEffect(floatingHeight)` re-scrolls to the tail whenever the
+  composer's measured height changes (not just when a new entry arrives), so
+  the last message can't slide back under a growing composer. HW-verified:
+  installed on P1, typed a 1→3→4-line message via `adb shell input text` +
+  `KEYCODE_ENTER` and screenshotted at each stage — the composer visibly
+  grows from 1 to 4 lines and the reserved transcript padding grows with it
+  (screenshots show no content clipped behind the composer at any stage).
+- **Area:** `ConsoleScreen.kt` — `LazyColumn` `contentPadding` bottom is the
 - **Area:** `ConsoleScreen.kt` — `LazyColumn` `contentPadding` bottom is the
   **static** `IrisSizing.InputHeight + IrisSpacing.XXL`; the input `Column` floats
   over it and grows upward to `maxLines = 5`
@@ -2889,7 +2910,19 @@ the composer grows, the list scrolls to keep the tail visible. Cap the composer 
 
 ### HV-55 — There is no send button
 
-- **Fix status:** ⬜
+- **Fix status:** 🟢 HW-verified · commit `<pending>` · 2026-09-05 · Session 22 ·
+  P1 (vivo V2205, Android 15). Added an explicit `Icons.AutoMirrored.Filled.Send`
+  `IconButton` in `IrisConsoleInput`'s `Row`, right of the text field, enabled
+  only when `value.isNotBlank()` and tinted `AccentPrimary`/`TextQuaternary`
+  to make the enabled state visible; calls the same `onSubmit` the IME action
+  calls, with a `contentDescription = "Send"` semantics node for TalkBack.
+  IME `ImeAction.Send` stays as a shortcut, unchanged. HW-verified: tapped
+  the button on P1 with an empty recipient set — it fired the same
+  `onSubmit` path as the keyboard's Send key (surfaced the expected "No
+  recipient" system error, proving it's wired through, not a no-op); tapped
+  it again after typing a message and setting a recipient — the input
+  cleared and the composer collapsed back to placeholder height, matching
+  the keyboard-Send behavior exactly.
 - **Area:** `IrisConsoleInput.kt` (relies solely on `ImeAction.Send` /
   `KeyboardActions(onSend)`)
 - **Severity:** High (operator's explicit complaint) · **HW gate:** any phone

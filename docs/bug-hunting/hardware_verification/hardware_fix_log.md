@@ -3909,3 +3909,48 @@ Per §2's explicit allowance ("Tier 8 ... can be done in parallel by a second
 person — it barely touches the transport code"), continuing autonomously
 into Tier 8 (Shell UX, HV-54..64) next since it does not depend on this
 blocker, per the operator's "do not stop" instruction.
+
+### 🟢 HV-54 + HV-55 — composer covers the transcript; no send button
+
+Both are pure Compose UI, independent of any radio, so both hardware-tested
+and closed this session despite the Tier-2 blocker.
+
+**HV-54:** `ConsoleScreen`'s floating input/palette `Column` now carries an
+`onGloballyPositioned` that measures its real height (`density.run { ...
+toDp() }`) into a `floatingHeight` state; the transcript `LazyColumn`'s
+`contentPadding` bottom uses `floatingHeight + IrisSpacing.SM` instead of the
+old static `IrisSizing.InputHeight + IrisSpacing.XXL`. A second
+`LaunchedEffect(floatingHeight)` re-runs `animateScrollToItem` whenever the
+composer's height changes, not just when a new entry arrives — otherwise the
+last message could still slide back under a *growing* composer without the
+list re-scrolling to compensate.
+
+**HV-55:** `IrisConsoleInput` gained an `IconButton` (`Icons.AutoMirrored
+.Filled.Send`) in its `Row`, enabled only when `value.isNotBlank()`, calling
+the same `onSubmit` lambda the IME `Send` action calls — so it's a true
+alternate path, not a separate code path that could drift. Tinted
+`AccentPrimary` when enabled / `TextQuaternary` when not, with a `Send`
+content-description for TalkBack.
+
+**Hardware verification (P1, vivo V2205, Android 15):**
+1. Installed the build, launched, screenshotted the empty composer — send
+   button visible, dimmed (disabled), no keyboard covering anything.
+2. Typed a 2-line message via `adb shell input text` + `KEYCODE_ENTER` for
+   the newline — composer visibly grew to 4 lines, send button now bright
+   (enabled). Screenshot confirms no content clipped.
+3. Tapped the send button at its measured screen coordinates (had to correct
+   for the screenshot-preview-vs-actual-pixel scale factor once) with no
+   recipient set — got the expected `ERROR: No recipient — set one with /to
+   <peer-id> or @<peer-id>` system event in the transcript, proving the
+   button fired the real `onSubmit` path (a no-op button couldn't produce
+   this).
+4. Set a recipient, typed a 3-line message, tapped send again — input
+   cleared and the composer collapsed back to single-line placeholder
+   height, exactly matching keyboard-Send behavior.
+
+**Landed:** commit `<pending>`. Tier 8 progress: HV-54 + HV-55 close (fixed
++ HW-verified, both 🟢). Continuing autonomously — Tier 2 (Wi-Fi Direct)
+stays 🔒 blocked on the operator-side environmental issue found earlier this
+session; next candidates within reach without live P2P hardware are more
+Tier 8 items (HV-56 contacts is larger/needs a Room dependency per §6 scope
+rules — call it out if attempted) or Tier 9's methodology-pass findings.

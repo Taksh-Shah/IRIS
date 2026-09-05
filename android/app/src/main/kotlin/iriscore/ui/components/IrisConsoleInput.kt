@@ -6,14 +6,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import iriscore.command.InputMode
 import iriscore.designsystem.IrisColors
@@ -91,6 +98,28 @@ fun IrisConsoleInput(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { onSubmit() }),
                     modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            // HV-55: the IME "Send" action key is the only way to send, but
+            // many keyboards (Gboard in some languages, third-party
+            // keyboards, hardware keyboards, some RTL layouts) render that
+            // key as a newline/"done" instead and onSend never fires, with
+            // no visible affordance to send and no accessible route for
+            // TalkBack / motor-impaired users. An explicit button is the
+            // fallback that always works; the IME action stays as a shortcut.
+            Spacer(Modifier.width(IrisSpacing.SM))
+            IconButton(
+                onClick = onSubmit,
+                enabled = value.isNotBlank(),
+                modifier = Modifier
+                    .size(IrisSizing.InputHeight)
+                    .semantics { contentDescription = "Send" },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = null,
+                    tint = if (value.isNotBlank()) IrisColors.AccentPrimary else IrisColors.TextQuaternary,
                 )
             }
         }

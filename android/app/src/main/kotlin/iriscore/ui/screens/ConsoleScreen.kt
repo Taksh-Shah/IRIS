@@ -34,7 +34,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -123,6 +125,23 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         if (entries.isNotEmpty()) listState.animateScrollToItem(entries.lastIndex)
     }
 
+    // HV-54: the composer floats over the transcript and grows upward as the
+    // user types a multi-line message (up to 5 lines), but the list used to
+    // reserve a fixed bottom padding sized for a one-line composer — so a
+    // longer message covered the newest 1-3 messages with no way to scroll
+    // them into view (the list believed it was already at the end). Measure
+    // the actual floating column's height and feed it into the list's
+    // bottom padding so the reserved space always matches what's really
+    // floating above it.
+    val density = LocalDensity.current
+    var floatingHeight by remember { mutableStateOf(IrisSizing.InputHeight + IrisSpacing.XXL) }
+    // Re-follow the tail as the composer grows/shrinks too, not just when a
+    // new entry arrives — otherwise the last message can still slide back
+    // under the composer as it expands without the list re-scrolling.
+    LaunchedEffect(floatingHeight) {
+        if (entries.isNotEmpty()) listState.animateScrollToItem(entries.lastIndex)
+    }
+
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -181,7 +200,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 contentPadding = PaddingValues(
                     start = gutter,
                     end = gutter,
-                    bottom = IrisSizing.InputHeight + IrisSpacing.XXL,
+                    bottom = floatingHeight + IrisSpacing.SM,
                 ),
             ) {
                 items(count = entries.size, key = { entries[it].uid }) { index ->
@@ -200,7 +219,11 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 // composer ride too high above the keyboard. `union` takes the
                 // larger of the two, which is what "clear both" actually means.
                 .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
-                .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD),
+                .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD)
+                .onGloballyPositioned { coords ->
+                    val measured = with(density) { coords.size.height.toDp() }
+                    if (measured.value > 0f) floatingHeight = measured
+                },
         ) {
             IrisCommandPalette(
                 visible = paletteVisible,
