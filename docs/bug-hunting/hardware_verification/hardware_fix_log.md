@@ -4599,7 +4599,31 @@ the correct primitive for that case — not yet wired, left as a follow-up
 finding, not silently done wrong.
 
 `cargo test -p iris-core --lib`: 802/802 (unaffected). Rebuilt and
-reinstalled on both phones; re-running the 4-minute patience test to
-confirm the fix.
+reinstalled on both phones; re-ran the 4-minute patience test.
 
-**Landed:** commit `<pending>`.
+**Confirmed fixed**: `grep -oE "transport failed to start; trying the
+others transport=[a-z0-9_-]*"` (scoped correctly this time — an earlier,
+looser grep against the whole multi-KB JSON snapshot line falsely
+"found" `wifi-direct-0`/`ble-android` failures that were actually
+unrelated `transport=` substrings from OTHER events logged on the same
+line) shows **only `wifi-aware-0`** ever failed to start (6×, expected —
+this hardware has no Wi-Fi Aware/NAN support, a pre-existing, unrelated,
+already-documented limitation). `wifi-direct-0` stayed `Available` for
+the entire 4-minute run on both phones this time — the fatal-DNS-SD bug
+is genuinely fixed.
+
+**Still open**: `wifi-direct-0` ran 29 peer scans over 4 minutes on P1
+with **zero peers found** on either phone (`onPeersChanged`/"stranger"
+never logged once). With the transport confirmed healthy and running the
+whole time, this now isolates to a genuine platform-level Wi-Fi Direct
+peer-discovery problem specifically between these two phones — consistent
+with, and now further confirming, this session's earlier finding
+(Session 22/23) that discovery between this exact P1/P2 pair is unreliable
+at the OS level, independent of anything in IRIS's code. Not something
+further app-level debugging is likely to resolve without either a longer
+observation window still (hours, not minutes — unconfirmed whether that
+would ever succeed), an OS update on one/both phones, or testing against
+a third, different-OEM phone to isolate whether it's phone-specific or
+pairwise, per the standing recommendation already on file.
+
+**Landed:** commit `4ecc60c`.
