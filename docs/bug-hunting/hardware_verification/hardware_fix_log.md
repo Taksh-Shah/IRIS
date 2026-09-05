@@ -4156,3 +4156,34 @@ HV-71, plus the HV-21 scoping note — at 3 of the ~4/session guideline.
 Continuing per the operator's "do not stop" instruction; next candidate is
 either implementing HV-21's confirmed fix (large, multi-file) or another
 small Tier 9 verification item if time is short.
+
+### Session 23 closeout
+
+Devices: P1 (vivo V2205, Android 15, `10BCA20F4M000BB`), P2 (vivo 2004,
+Android 12/SDK 31, `b2fbcd39`).
+
+Findings advanced (3, at the loop's ~4/session guideline):
+- HV-57 (Tier 8) — ✅ Fixed, HW-adjacent
+- HV-74 part 1 (Tier 9) — ✅ Fixed, HW-pending
+- HV-71 (Tier 9) — ✅ Verified, no fix needed (BLE half); partially closed
+
+Plus a doc-only critical upgrade: HV-21's root cause conclusively confirmed
+as an IRIS defect (DNS-SD never resolves; plain `discoverPeers()` does
+work), with the fix scoped in detail (Phase R) but not implemented — that's
+the next session's priority.
+
+🟢 count delta: 0 this sub-session (HV-71/57/74 are HW-pending/adjacent/
+partial, not full hardware-verified closes). Blockers: Tier 2 remains 🔒,
+now with a confirmed fix direction instead of an open question.
+
+What the next session should pick up, in priority order: (1) implement
+HV-21's confirmed fix — extend the BLE beacon with the sender's Wi-Fi P2P
+MAC, switch Wi-Fi Direct to `discoverPeers()`/`requestPeers()` filtered
+against BLE-known peer MACs, drop the DNS-SD path entirely. This is the
+highest-value remaining work — it unblocks the entire Tier-2 gate
+(HV-19/20/22/23 are all implemented and only waiting on this). (2) If Tier
+2 closes, proceed to Tier 6 per the tier order. (3) Otherwise, more Tier
+8/9 items independent of the radio (HV-56 contacts — needs a Room
+dependency, call it out per §6; HV-58 delivery status — needs FFI/ack.rs
+plumbing, sized as substantial in this session's research, do carefully;
+HV-73 clock skew; HV-78 dumpsys capture).
