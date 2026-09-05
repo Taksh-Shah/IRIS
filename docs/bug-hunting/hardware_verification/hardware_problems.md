@@ -2048,11 +2048,28 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
   after installing the build with the characteristic live; zero
   `errorCode=1`/`GattFailure` across the full session — the new GATT
   service addition does not destabilize the existing write-characteristic/
-  accept-poller path it shares a service with. **Still open**: the Wi-Fi
-  Direct Kotlin side itself — replacing `discoverServices`/DNS-SD with
-  `discoverPeers()`/`requestPeers()`, filtering results against the MACs
-  now available via BLE, and connecting only to a match. That is the last
-  piece before the Tier-2 hardware gate can be attempted again.
+  accept-poller path it shares a service with.
+  **Design pivot, same session**: the operator identified that BLE's
+  shorter range vs. Wi-Fi Direct's means a stranger reachable only over
+  Wi-Fi Direct would never be found by the BLE-MAC-filter design above —
+  see the Tier-2 header's pivot note. Implemented "connect first, verify
+  after" instead: `discoverServices`/DNS-SD replaced with plain
+  `discoverPeers()`/`requestPeers()`; a new `onPeersChanged()` autonomously
+  `connect()`s to every newly-seen device (no MAC filter, no GO-intent
+  override — plain fresh-negotiation, matching the proven-working native
+  behavior); the post-connect handshake now carries each side's full IRIS
+  beacon (not just a MAC), bidirectionally, and reports a verified peer to
+  Rust's *existing, unchanged* `discover_peers()` via the same queue a
+  DNS-SD match used to populate — no Rust/core changes needed at all.
+  `iris-core --lib` 802/802 (unaffected). **HW-tested, inconclusive**:
+  `test_pingpong_300char_10x` unaffected (BLE still 10/10); the Wi-Fi
+  Direct cold-start test still showed `peers_seen=0` and delivered over
+  BLE, not Wi-Fi Direct, in an 80-second run — consistent with (not
+  contradicted by) this session's earlier finding that native discovery on
+  this hardware took *minutes*, not seconds. Not yet confirmed working
+  end-to-end; a longer-duration test is the immediate next step before
+  concluding whether this works or needs further iteration. That is the
+  last piece before the Tier-2 hardware gate can be attempted again.
 - **Area:** `AndroidWifiDirectTransportAdapter` — `dnsSdServiceListener`,
   `dnsSdTxtRecordListener`, `serviceRequest`, `startDnsSd` (HW-13/14/15/16),
   `pendingServiceOnly` / `pendingTxtBeacons`

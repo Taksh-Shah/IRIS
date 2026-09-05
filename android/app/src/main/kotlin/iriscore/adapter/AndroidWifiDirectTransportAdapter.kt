@@ -117,6 +117,14 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
 
         /** MAC address strings are ~17 bytes; generous ceiling against a hostile length prefix. */
         private const val MAX_HANDSHAKE_BYTES = 64
+
+        /**
+         * HV-21: the IRIS beacon frame appended to the handshake. The v2
+         * (MAC-carrying) form is 28 bytes; a generous ceiling well above
+         * that against a hostile/malformed length prefix, same spirit as
+         * [MAX_HANDSHAKE_BYTES].
+         */
+        private const val MAX_HANDSHAKE_BEACON_BYTES = 512
     }
 
     private val appContext: Context = context.applicationContext
@@ -214,6 +222,15 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val nextPeerHandle = AtomicLong(1L)
     private val deviceHandles = ConcurrentHashMap<String, Long>()
     private val peerDevices = ConcurrentHashMap<Long, String>() // handle -> P2P device address
+
+    /**
+     * HV-21: device addresses this session has already tried (or is
+     * already linked to) via [onPeersChanged]'s autonomous `connect()` —
+     * a `ConcurrentHashMap.newKeySet()`-backed set so `.add()` is the
+     * atomic "was this new" check (avoids a spurious second `connect()` for
+     * a device still mid-negotiation from the previous scan pass).
+     */
+    private val attemptedAddresses: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val discoveredMatches = ConcurrentLinkedQueue<FfiDirectPeerDiscovery>()
     private val pendingTxtBeacons = ConcurrentHashMap<String, ByteArray>()
     // HW-14: `DnsSdServiceResponseListener`/`DnsSdTxtRecordListener` firing
@@ -284,6 +301,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                         iriscore.util.LocalWifiDirectAddress.address = it
                         iriscore.util.LocalWifiDirectAddress.onChanged?.invoke(it)
                     }
+                }
+                WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {
+                    callbackScope.launch { onPeersChanged() }
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     val group = intent.getParcelableExtra<WifiP2pGroup>(WifiP2pManager.EXTRA_WIFI_P2P_GROUP)
@@ -396,13 +416,23 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun startDiscovery() {
+        // HV-21 (Session 24, stranger-discovery pivot): DNS-SD service
+        // discovery (`discoverServices`/`addServiceRequest`/the TXT-record
+        // listeners below) was confirmed on real hardware to NEVER resolve
+        // — zero PTR/TXT listener callbacks fired across an extended bench
+        // session, on two same-vendor phones, regardless of radio state.
+        // Plain `discoverPeers()` + `requestPeers()` (below, `onPeersChanged`)
+        // finds nearby devices reliably (proven live against these same
+        // phones via Android's own Wi-Fi Direct settings screen). This is
+        // also what lets Wi-Fi Direct find a TOTAL STRANGER — one never seen
+        // over BLE — since it no longer depends on a TXT record (or a BLE
+        // beacon) to know a peer exists at all; identity is instead
+        // confirmed AFTER connecting, via the handshake extended below
+        // (readHandshakeFrame/writeHandshakeFrame now carry the full IRIS
+        // beacon, not just a MAC) — "connect first, verify after".
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
-            // FFI-15: registers the one retained service request at most
-            // once per discovery session instead of accumulating a new one
-            // on every call.
-            serviceRequestGate.ensureStarted()
-            awaitAction { p2pManagerOrThrow().discoverServices(channel, it) }
+            awaitAction { p2pManagerOrThrow().discoverPeers(channel, it) }
         }
     }
 
@@ -410,15 +440,46 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
             awaitAction { p2pManagerOrThrow().stopPeerDiscovery(channel, it) }
-            // FFI-15: undo the addServiceRequest from startDiscovery so the
-            // next startDiscovery's serviceRequestGate.ensureStarted() call
-            // re-adds cleanly rather than silently no-oping on a request the
-            // platform no longer has registered.
-            if (serviceRequestGate.isStarted()) {
-                runCatching {
-                    awaitAction { p2pManagerOrThrow().removeServiceRequest(channel, serviceRequest, it) }
-                }
-                serviceRequestGate.reset()
+        }
+    }
+
+    /**
+     * HV-21: a fresh `WIFI_P2P_PEERS_CHANGED_ACTION` — request the current
+     * peer list and, for every device not already attempted this session,
+     * autonomously initiate a plain `connect()` (no explicit GO-intent
+     * override — the platform's own WPS/GO-negotiation decides the role
+     * for two devices that have never grouped before; this is exactly the
+     * fresh-negotiation path proven live to form a real group with no
+     * "Invitation to connect" dialog — that dialog is specifically the
+     * spec's Invitation Procedure for a REMEMBERED group, which a genuine
+     * stranger can never be on). Bounded by [MAX_CONCURRENT_LINKS] via the
+     * existing group-client cap; a device already linked or mid-connect is
+     * skipped via [attemptedAddresses].
+     */
+    private suspend fun onPeersChanged() {
+        val channel = startGate.ensureStarted() ?: return
+        p2pManagerOrThrow().requestPeers(channel) { peers ->
+            for (device in peers.deviceList) {
+                val address = device.deviceAddress ?: continue
+                if (!attemptedAddresses.add(address)) continue
+                iriscore.util.IrisLog.d(
+                    "wd.stranger",
+                    "onPeersChanged: new device $address (${device.deviceName}) — attempting connect",
+                )
+                val config = WifiP2pConfig().apply { deviceAddress = address }
+                p2pManagerOrThrow().connect(
+                    channel,
+                    config,
+                    object : WifiP2pManager.ActionListener {
+                        override fun onSuccess() {}
+                        override fun onFailure(reason: Int) {
+                            // Free the slot so a later scan pass can retry —
+                            // BUSY/transient failures must not permanently
+                            // blacklist a real nearby device.
+                            attemptedAddresses.remove(address)
+                        }
+                    },
+                )
             }
         }
     }
@@ -505,6 +566,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             closeDataPath()
             groupState.clear()
             cachedGoAddr = null
+            // HV-21: a torn-down group frees every device this session had
+            // attempted — otherwise a stranger whose handshake failed (or
+            // who simply lost the group) could never be retried.
+            attemptedAddresses.clear()
         }
     }
 
@@ -691,6 +756,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
             // FFI-3: source of myDeviceAddress for the client-side handshake.
             addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
+            // HV-21 (Session 24, stranger-discovery pivot): the plain
+            // discoverPeers()/requestPeers() replacement for the DNS-SD path
+            // that never resolves on this hardware — see startDiscovery.
+            addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
         }
         // API 34+ REQUIRES an export flag; without it registerReceiver throws
         // SecurityException, which runCatching swallowed. The adapter then never
@@ -958,38 +1027,74 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             return
         }
         groupServer = FramedSocketServer(server, callbackScope) { socket ->
-            // Bounded blocking read for the handshake frame — a slow or
+            // Bounded blocking read/write for the handshake — a slow or
             // malicious client must not be able to stall the accept loop
             // (which this callback runs on) indefinitely. A timeout or
             // malformed handshake throws, which FramedSocketServer's own
             // try/catch around this callback already handles (releases the
-            // concurrent-link slot, closes the socket).
+            // concurrent-link slot, closes the socket) — so a peer that
+            // never completes the handshake is simply dropped, no link
+            // ever attached, nothing surfaced to the user.
             socket.soTimeout = HANDSHAKE_TIMEOUT_MS
-            val clientMac = readHandshakeFrame(socket)
+            val (clientMac, clientBeacon) = readHandshakeFrame(socket)
+            // Non-suspend context (this callback runs synchronously on the
+            // accept loop) — `myDeviceAddress` is a plain field, already
+            // populated by `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` well before
+            // any group forms; unlike the client side there is no need to
+            // poll for it here.
+            writeHandshakeFrame(socket, myDeviceAddress ?: "", pendingOwnBeacon)
             socket.soTimeout = 0
+            // HV-21 (stranger discovery): report this handle to Rust's
+            // discover_peers() exactly like a DNS-SD match used to —
+            // `publishDiscoveredMatch` already mints/caches the handle and
+            // remembers the candidate identity (AND-RT-108); just sourced
+            // from a verified POST-connect handshake instead of a
+            // pre-connect TXT record. `WifiDirectTxtRecord::parse` (Rust) is
+            // what actually validates `clientBeacon` — a peer that sent
+            // garbage here simply never yields a `PeerInfo`; the link stays
+            // open but inert (harmless: nothing ever addresses messages to
+            // an unresolved handle).
+            publishDiscoveredMatch(clientMac, clientBeacon)
             val handle = peerHandleFor(clientMac)
             callbackScope.launch { attachLink(handle, socket) }
         }
     }
 
-    /** Client side: dial the group owner, retrying is left to the next group event. */
+    /**
+     * Client side: dial the group owner, retrying is left to the next group
+     * event. HV-21: the handshake is now bidirectional and carries each
+     * side's full IRIS beacon (not just a MAC) — "connect first, verify
+     * after" for a peer discovered via plain `discoverPeers()` with no
+     * prior identity at all.
+     */
     private suspend fun connectToGroupOwner(address: InetAddress, handle: Long) {
         if (links.get(handle) != null) return
         // FFI-3: the GO cannot identify an accepted socket's peer by MAC on
         // its own — tell it who we are as the first thing on the wire, in
         // the same MAC-string form discovery already keys peerHandleFor by.
         val myMac = awaitMyDeviceAddress() ?: return
-        val socket = withContext(Dispatchers.IO) {
+        val goBeacon = withContext(Dispatchers.IO) {
             runCatching {
-                Socket().apply {
+                val socket = Socket().apply {
                     connect(
                         InetSocketAddress(address, FramedSocketServer.WIFI_DIRECT_GO_PORT),
                         SOCKET_CONNECT_TIMEOUT_MS,
                     )
-                    writeHandshakeFrame(this, myMac)
+                    soTimeout = HANDSHAKE_TIMEOUT_MS
+                    writeHandshakeFrame(this, myMac, pendingOwnBeacon)
                 }
+                val (_, beacon) = readHandshakeFrame(socket)
+                socket.soTimeout = 0
+                socket to beacon
             }.getOrNull()
         } ?: return
+        val (socket, beacon) = goBeacon
+        // HV-21: the GO's own address, not this node's — peerHandleFor(myMac)
+        // would mint/resolve the WRONG handle (ours, not theirs). `handle`
+        // (the param) is already the GO's discovery handle; publish under
+        // its address so publishDiscoveredMatch's own peerHandleFor lookup
+        // resolves back to the SAME handle rather than minting a new one.
+        peerDevices[handle]?.let { goAddress -> publishDiscoveredMatch(goAddress, beacon) }
         attachLink(handle, socket)
     }
 
@@ -1009,33 +1114,50 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     /**
-     * FFI-3 handshake wire format: a length-prefixed ASCII MAC address
-     * string, using the SAME 4-byte-big-endian-length framing as
-     * [FrameCodec] but written/read directly on the socket's raw streams
-     * (never `.buffered()`) — a buffered wrapper here would read ahead past
-     * the handshake bytes into the first real frame, which
-     * [FramedSocketLink]'s own separate buffered reader (built afterward)
-     * would then never see. Reading/writing exactly the handshake's bytes
-     * on the unbuffered stream leaves the stream positioned precisely at
-     * the start of normal framed traffic.
+     * FFI-3 handshake wire format, extended for HV-21 (stranger discovery):
+     * TWO length-prefixed frames back to back — the MAC address string
+     * (ASCII, as before) followed by the sender's IRIS beacon
+     * (`pendingOwnBeacon`, the same bytes DNS-SD used to carry as a TXT
+     * record — reused verbatim, no new encoding). Same 4-byte
+     * big-endian-length framing as [FrameCodec], written/read directly on
+     * the socket's raw streams (never `.buffered()`) — a buffered wrapper
+     * here would read ahead past the handshake bytes into the first real
+     * frame, which [FramedSocketLink]'s own separate buffered reader (built
+     * afterward) would then never see. This is now bidirectional: both
+     * sides write, then both sides read, before either builds the framed
+     * link — "connect first, verify after" needs each side to actually
+     * learn the other's identity, not just the GO learning the client's MAC.
+     * A peer whose beacon frame is missing/malformed never yields a valid
+     * `WifiDirectTxtRecord::parse` on the Rust side (that's where real
+     * validation happens, not here) — the link is simply never resolved to
+     * a `PeerId` and nothing is ever addressed to it.
      */
-    private fun writeHandshakeFrame(socket: Socket, mac: String) {
-        val bytes = mac.toByteArray(Charsets.US_ASCII)
+    private fun writeHandshakeFrame(socket: Socket, mac: String, beacon: ByteArray) {
         val out = java.io.DataOutputStream(socket.getOutputStream())
-        out.writeInt(bytes.size)
-        out.write(bytes)
+        val macBytes = mac.toByteArray(Charsets.US_ASCII)
+        out.writeInt(macBytes.size)
+        out.write(macBytes)
+        out.writeInt(beacon.size)
+        out.write(beacon)
         out.flush()
     }
 
-    private fun readHandshakeFrame(socket: Socket): String {
+    /** @return (peerMac, peerBeacon). */
+    private fun readHandshakeFrame(socket: Socket): Pair<String, ByteArray> {
         val input = java.io.DataInputStream(socket.getInputStream())
-        val length = input.readInt()
-        if (length <= 0 || length > MAX_HANDSHAKE_BYTES) {
-            throw java.io.IOException("handshake length $length out of range")
+        val macLen = input.readInt()
+        if (macLen <= 0 || macLen > MAX_HANDSHAKE_BYTES) {
+            throw java.io.IOException("handshake mac length $macLen out of range")
         }
-        val bytes = ByteArray(length)
-        input.readFully(bytes)
-        return String(bytes, Charsets.US_ASCII)
+        val macBytes = ByteArray(macLen)
+        input.readFully(macBytes)
+        val beaconLen = input.readInt()
+        if (beaconLen < 0 || beaconLen > MAX_HANDSHAKE_BEACON_BYTES) {
+            throw java.io.IOException("handshake beacon length $beaconLen out of range")
+        }
+        val beaconBytes = ByteArray(beaconLen)
+        input.readFully(beaconBytes)
+        return String(macBytes, Charsets.US_ASCII) to beaconBytes
     }
 
     /**

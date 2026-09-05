@@ -4465,3 +4465,85 @@ BLE's `transport_addresses`, and connecting only to a match (keeping
 `connect()` on the fresh-negotiation path per the Invitation Procedure
 research above). That is the last piece before Tier 2's hardware gate can
 even be attempted again.
+
+---
+
+## Session 24 (continued) — HV-21 stranger-discovery pivot, implemented, HW-tested (inconclusive on timing)
+
+### Design pivot (operator-driven)
+
+Operator identified a real gap in the BLE-MAC-carry design: BLE's range is
+much shorter than Wi-Fi Direct's, so a stranger reachable only over Wi-Fi
+Direct (outside BLE range) would never be found. Asked for Wi-Fi Direct to
+discover and identify total strangers independently of BLE — "connect
+first, verify after" instead of "identify first (over BLE), then connect."
+Documented as a design pivot (commit `49470d7`) before implementation.
+
+### ✅ Implemented
+
+`AndroidWifiDirectTransportAdapter.kt`:
+- `startDiscovery()`: replaced `discoverServices()` (DNS-SD, confirmed
+  broken on this hardware) with plain `discoverPeers()`.
+- New `onPeersChanged()` (wired to a new `WIFI_P2P_PEERS_CHANGED_ACTION`
+  intent-filter action): on every peers-changed broadcast, `requestPeers()`
+  and autonomously `connect()` to every device not already attempted this
+  session (`attemptedAddresses`, a `ConcurrentHashMap.newKeySet()`, cleared
+  on `removeGroup()` so a failed/lost peer can be retried later). No
+  explicit GO-intent override — the platform's own WPS/GO-negotiation
+  decides the role for two devices that have never grouped before, which
+  is the fresh-negotiation path (never the Invitation Procedure's dialog,
+  per this session's earlier research — a genuine stranger has no
+  persisted group with us).
+- Handshake (`writeHandshakeFrame`/`readHandshakeFrame`,
+  `connectToGroupOwner`/`ensureGroupServer`'s accept callback): now
+  bidirectional and carries each side's full IRIS beacon (`pendingOwnBeacon`
+  — the same bytes DNS-SD used to carry as a TXT record, reused verbatim)
+  alongside the existing MAC frame, not just the MAC. Both sides write,
+  then both read, before either attaches the link. A verified peer is
+  reported to Rust's `discover_peers()` via the existing
+  `publishDiscoveredMatch`/`discoveredMatches` queue — same
+  `FfiDirectPeerDiscovery` shape a DNS-SD match used to populate, just
+  sourced from a verified POST-connect handshake. **No Rust/core changes
+  were needed at all** for this — `WifiDirectTxtRecord::parse` in
+  `wifi_direct.rs`'s `discover_peers()` already does the real validation
+  (freshness check, candidate `PeerId` derivation, dedup); a peer that
+  sends a malformed/garbage beacon frame simply never yields a `PeerInfo`
+  from that existing code, unchanged.
+
+Build: `cargo test -p iris-core --lib` 802/802 (unaffected, Kotlin-only
+change); `./gradlew :app:assembleDebug :app:assembleDebugAndroidTest` clean.
+
+### Hardware verification — inconclusive (not a regression)
+
+`test_pingpong_300char_10x` (BLE regression check): unaffected, PASS as
+before. `test_wifi_direct_cold_start_election` (2 cycles, 45s budget each):
+**test PASSED**, but re-checking the delivery path via logcat showed both
+cycles' messages actually delivered over **BLE** (`links:
+["ble-android:Good"]`), not Wi-Fi Direct — `wifi-direct-0 peers_seen=0`
+for the entire ~80 s run on both phones, `onPeersChanged`/`"stranger"` log
+lines never appeared at all (grepped both phones' full session logcat).
+
+This is **consistent with, not contradicted by,** this session's earlier
+finding (Session 22/23): the native Android Wi-Fi Direct settings screen
+took **minutes**, not seconds, to actually populate a peer list on this
+exact hardware/environment, even though the platform's `discoverPeers()`
+mechanism is proven to work eventually. An 80-second bench run (2 cycles ×
+45 s budget) is very likely simply too short a window for this specific
+hardware's native discovery latency, not evidence the new code is broken.
+`dumpsys wifip2p`'s `mDiscoveryStarted: false` was checked only after
+`teardown_test`'s `stopMesh()`→`stopDiscovery()` had already run, so it
+does not prove discovery was inactive DURING the test either — that check
+was inconclusive by construction, not indicative of a mid-test failure.
+
+**Not yet confirmed working end-to-end on hardware.** Next session should
+extend `test_tier2_wifidirect.py`'s per-cycle budget substantially (minutes,
+not 45 s — matching the native-app timing already observed) before
+concluding whether the stranger-discovery mechanism itself works or needs
+further iteration. If a longer window still shows zero `onPeersChanged`
+activity, that would be new, real evidence pointing at something in the
+implementation (vs. this session's evidence, which only shows the timing
+window was too short to tell).
+
+**Landed:** commit `<pending>`. Not marked `✅` or `🟢` — genuinely
+untested end-to-end pending a longer-duration hardware run. Documenting
+transparently per the loop's own rule against overclaiming.
