@@ -68,8 +68,8 @@ that remain are understood and logged.*
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 1 | 0 | 0 | 8 |
-| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 1 | 0 | 0 | 16 |
-| **Total** | | **109** | **31** | **23** | **1** | **2** | **52** |
+| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 2 | 0 | 0 | 15 |
+| **Total** | | **109** | **31** | **24** | **1** | **2** | **51** |
 
 **Last updated:** 2026-09-05 (Session 22, continued — **Tier 8: HV-54 + HV-55
 closed, 🟢 HW-verified.** Both are UI-only fixes, independent of the Tier-2
@@ -2021,7 +2021,6 @@ already exists) rather than failing them.
   on this (vivo) bench; a correctness fix verified by code inspection and a
   clean rebuild, not by a hardware BUSY-condition test.
 - **Area:** `AndroidWifiDirectTransportAdapter.awaitAction` / `actionMutex` /
-- **Area:** `AndroidWifiDirectTransportAdapter.awaitAction` / `actionMutex` /
   BUSY retry (HW-11), `FfiCallTimeout`
 - **Severity:** Medium · **HW gate:** Samsung-class device (HW-11 cites S24 Ultra)
 
@@ -2936,7 +2935,6 @@ already — needs verification on hardware).
   grows from 1 to 4 lines and the reserved transcript padding grows with it
   (screenshots show no content clipped behind the composer at any stage).
 - **Area:** `ConsoleScreen.kt` — `LazyColumn` `contentPadding` bottom is the
-- **Area:** `ConsoleScreen.kt` — `LazyColumn` `contentPadding` bottom is the
   **static** `IrisSizing.InputHeight + IrisSpacing.XXL`; the input `Column` floats
   over it and grows upward to `maxLines = 5`
 - **Severity:** High (operator's explicit complaint) · **HW gate:** any phone
@@ -3359,7 +3357,25 @@ cold-from-background path on an Android 15 device.
 
 ### HV-71 — Verify discovery works with device Location **off** (the manifest claims `neverForLocation`)
 
-- **Fix status:** ⬜ · **Home tier:** 1
+- **Fix status:** ✅ Verified, no fix needed (BLE) · 🔓 partially closed ·
+  2026-09-05 · Session 23 · P1 (vivo V2205, Android 15) + P2 (vivo 2004,
+  Android 12/SDK 31). Turned Location Services fully off on both phones
+  (`cmd location is-location-enabled` confirmed `false` on both, not just
+  the legacy `settings put secure location_mode 0` shim), cleared logcat,
+  relaunched IRIS on both, ran `test_pingpong_300char_10x` (BLE). Result:
+  **fwd=10/10, rev=9/10** — one dropped round out of 20 total sends, which
+  is within this transport's already-documented ordinary flakiness band
+  (see Tier 1/3 entries), not a Location-off-specific regression. BLE
+  discovery, connection, and bidirectional delivery all worked essentially
+  normally with Location off on both API levels tested — `neverForLocation`
+  is doing its job here, this bench does not exhibit the OEM
+  gate-scan-results-on-Location-Services behaviour the finding worried
+  about. Restored Location Services to `HIGH_ACCURACY` on both phones after.
+  **Not verified**: Wi-Fi Direct discovery with Location off (moot right
+  now — Wi-Fi Direct discovery is already broken with Location *on*, per
+  HV-21; re-test once HV-21's fix lands). Leaving `🔓` rather than `🟢`
+  since the Wi-Fi Direct half of this finding's own `**HW gate**` is
+  untested, not because the BLE half needs more work.
 - **Area:** manifest (`BLUETOOTH_SCAN … neverForLocation`, but also
   `ACCESS_FINE_LOCATION` is declared), `AndroidBleTransportAdapter`,
   `MeshPermissions`

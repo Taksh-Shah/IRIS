@@ -4128,3 +4128,31 @@ Session 23 findings so far: HV-57 (Tier 8, ✅/HW-adjacent), HV-74 part 1
 (Tier 9, ✅/HW-pending), plus the HV-21 root-cause upgrade (doc-only). At 2
 of the loop's ~4-per-session guideline; continuing per the operator's
 standing "do not stop" instruction.
+
+### ✅ HV-71 — verified: BLE discovery works fine with Location off
+
+Turned Location Services fully off on both bench phones
+(`cmd location is-location-enabled` confirmed `false`, not just the legacy
+`secure location_mode` shim — that setting is a no-op passthrough on modern
+Android and isn't sufficient evidence on its own), cleared logcat, ran
+`test_pingpong_300char_10x` (BLE). Result: fwd=10/10, rev=9/10 — one dropped
+round in 20 sends, consistent with this transport's already-documented
+ordinary flakiness, not a Location-off regression. `neverForLocation` is
+working as intended on this hardware; the OEM gate-scan-results-on-Location
+behaviour the finding worried about does not reproduce here. Restored
+Location Services (`HIGH_ACCURACY`) afterward. Left the finding at `🔓`
+(partially closed) rather than `🟢` — only BLE was tested; Wi-Fi Direct's
+half is moot until HV-21's fix lands (Direct discovery is already broken
+with Location on).
+
+**Housekeeping**: while writing this up, found three pre-existing duplicated
+bullet lines in `hardware_problems.md` (HV-23's and HV-54's `**Area:**`
+lines, each doubled by an earlier edit in this session that matched trailing
+context sloppily) — fixed all three; verified via a full-file scan that no
+others remain.
+
+**Landed:** commit `<pending>`. Session 23 findings: HV-57, HV-74 (part 1),
+HV-71, plus the HV-21 scoping note — at 3 of the ~4/session guideline.
+Continuing per the operator's "do not stop" instruction; next candidate is
+either implementing HV-21's confirmed fix (large, multi-file) or another
+small Tier 9 verification item if time is short.
