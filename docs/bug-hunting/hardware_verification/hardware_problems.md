@@ -1707,6 +1707,30 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 
 ## Tier 2 — Wi-Fi Direct reliability & group-owner conflict
 
+> **Hard requirement (operator, 2026-09-05, Session 24): no OS-level "Invitation
+> to connect" prompt may ever reach the user.** While diagnosing the discovery
+> blocker, a native Android Wi-Fi Direct connection was observed forming
+> between the two bench phones with a system "Invitation" UI visible on
+> screen. The operator has stated this must never be user-facing in the real
+> app — the connection has to be negotiated and accepted entirely by IRIS's
+> own code, silently, the same way the BLE control-plane link already is. Any
+> implementation of HV-19/21/22's `connect()` path that would surface a stock
+> "Invitation to connect" / "Invitation received" system dialog is a bug to
+> eliminate, not a UX gap to accept. Concretely: IRIS already calls
+> `WifiP2pManager.connect()` programmatically (never the OS's own peer-picker
+> UI), and a plain `WifiP2pConfig` (no `wpsInfo.setup` override) uses the
+> **push-button** WPS path by default, which on stock AOSP does **not**
+> require a manual per-connection tap — the system dialog seen during
+> diagnosis came from *Android's own Wi-Fi Direct Settings screen*, a
+> different, user-driven code path this app never uses. This must be
+> explicitly verified once HV-21's fix lands: drive a cold-start connection
+> through IRIS's own `connect()`/`createGroup()` calls only (app fully
+> backgrounded from the user's perspective, no Settings screen involved) and
+> confirm via screenshot/logcat that no system invitation dialog appears at
+> any point. If one does appear, that is a new, blocking finding — treat
+> "user must tap nothing to connect" as a pass/fail criterion of the Tier-2
+> hardware gate from this session forward, not a nice-to-have.
+
 > **Tier-2 gate status (Session 22, 2026-09-05): 🔒 BLOCKED, not closed.**
 > Loop §2 gate: "cold-start both phones 10× (alternating power-on order) →
 > exactly one group forms → messages flow both ways every time." HV-19's
