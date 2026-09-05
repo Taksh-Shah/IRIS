@@ -1,5 +1,6 @@
 package iriscore.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import iriscore.designsystem.IrisColors
 import iriscore.designsystem.IrisSpacing
@@ -37,11 +42,30 @@ fun IrisMessage(
      */
     grouped: Boolean,
     modifier: Modifier = Modifier,
+    /**
+     * HV-57: tapping a received message sets it as the reply recipient — the
+     * same effect as `/to <peerId>` by hand. Null keeps the row inert (e.g.
+     * an outgoing echo of your own sent message, if this composable is ever
+     * reused for that).
+     */
+    onReply: ((senderId: String) -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = if (grouped) IrisSpacing.XS else IrisSpacing.LG),
+            .padding(top = if (grouped) IrisSpacing.XS else IrisSpacing.LG)
+            .then(
+                if (onReply != null) {
+                    Modifier
+                        .clickable(onClickLabel = "Reply") { onReply(message.senderId) }
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = "Reply to ${message.senderId.take(12)}"
+                        }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         if (!grouped) {
             Row(verticalAlignment = Alignment.CenterVertically) {

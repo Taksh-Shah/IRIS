@@ -204,7 +204,11 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 ),
             ) {
                 items(count = entries.size, key = { entries[it].uid }) { index ->
-                    ConsoleRow(entries = entries, index = index)
+                    ConsoleRow(
+                        entries = entries,
+                        index = index,
+                        onReply = { senderId -> viewModel.replyTo(senderId) },
+                    )
                 }
             }
         }
@@ -270,13 +274,13 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
  * is passed rather than a single item.
  */
 @Composable
-private fun ConsoleRow(entries: List<ConsoleEntry>, index: Int) {
+private fun ConsoleRow(entries: List<ConsoleEntry>, index: Int, onReply: (String) -> Unit) {
     when (val entry = entries[index]) {
         is ConsoleEntry.Message -> {
             val previous = entries.getOrNull(index - 1)
             val grouped = previous is ConsoleEntry.Message &&
                 previous.message.senderId == entry.message.senderId
-            IrisMessage(message = entry.message, grouped = grouped)
+            IrisMessage(message = entry.message, grouped = grouped, onReply = onReply)
         }
 
         is ConsoleEntry.System -> IrisSystemEvent(

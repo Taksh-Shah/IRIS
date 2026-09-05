@@ -142,6 +142,24 @@ class MeshViewModel @Inject constructor(
     }
 
     /**
+     * HV-57: set the recipient from a tapped received message, the same
+     * effect as running `/to <peerIdHex>` by hand. Before this, replying
+     * required copying the sender's full PeerId (not even fully shown) and
+     * typing `/to` yourself — in practice conversation was one-directional
+     * unless both sides pre-exchanged hex ids.
+     */
+    fun replyTo(peerIdHex: String) {
+        _recipient.value = peerIdHex
+        appendEvent(
+            ConsoleEntry.system(
+                title = "RECIPIENT",
+                lines = listOf("peer" to peerIdHex.take(16) + "…"),
+                status = "REPLYING",
+            ),
+        )
+    }
+
+    /**
      * Runs one console line — a message, a `/command`, or an `@reference`.
      *
      * Parsing and dispatch live in [CommandExecutor] so the behaviour of any

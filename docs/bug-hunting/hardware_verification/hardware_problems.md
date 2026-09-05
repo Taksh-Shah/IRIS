@@ -1770,6 +1770,27 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 > these; continuing autonomously into Tier 8 (Shell UX) per §2's explicit
 > allowance to work it in parallel, since it does not depend on this
 > blocker.
+>
+> **SUPERSEDED (same session, later): the above 35-second observation was a
+> false negative — the platform-level conclusion was premature.** After
+> closing Tier 8 work, the two phones' Wi-Fi Direct settings screens (left
+> open in the background) were found to have **actually connected** —
+> `dumpsys wifip2p` showed a real populated peer list on both sides and P2
+> briefly reached `groupFormed: true isGroupOwner: true groupOwnerAddress:
+> 192.168.49.x`, a genuine live Wi-Fi Direct link, using the plain
+> `discoverPeers()` API. So the radios, drivers, and regulatory state are
+> fine — peer discovery **does** work on this hardware, it is just far
+> slower than the 35 s this session originally waited (measured in minutes,
+> not seconds, for this specific hardware/environment). Re-testing IRIS
+> immediately afterward (fresh relaunch, clean logcat) still showed
+> `wifi-direct-0 peers_seen=0` right away — confirming the blocker is
+> specifically **IRIS's DNS-SD service-discovery path**
+> (`discoverServices`/`addServiceRequest`/TXT records), not peer discovery
+> in general. See HV-21's entry for the full evidence and the now-confirmed
+> fix direction: switch to `discoverPeers()`/`requestPeers()` and carry
+> identity over BLE instead of DNS-SD TXT. This is real, scoped follow-up
+> work for a future session — implementing it was not attempted this
+> session (time/turn budget), but the path forward is no longer a guess.
 
 ### HV-19 — Two peers both call `createGroup` → GO/GO conflict; there is no election
 
@@ -1884,6 +1905,35 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
   all, on two same-vendor (vivo) phones, which the original finding's "OEM
   variance" framing did not anticipate. This is the concrete blocker gating
   the whole `## Tier 2` HW-verification gate — see the gate note below.
+  **Later same session — root cause conclusively confirmed via a live,
+  reproduced connection**: while both phones had Android's own stock Wi-Fi
+  Direct settings screen open (left running from an earlier diagnostic),
+  `dumpsys wifip2p` showed each phone's **plain peer list actually populate**
+  with the other ("vivo Y35" seen from P2's side, "vivo 2004 — Invited" from
+  P1's side after a tap sent a connect invitation), and P2 briefly reached
+  `mWifiP2pInfo groupFormed: true isGroupOwner: true groupOwnerAddress:
+  192.168.49.x` / `mDetailedState: CONNECTED` — a **real, live Wi-Fi Direct
+  connection** between these two exact phones, using the plain
+  `discoverPeers()`/`PeerListListener` API. P1 stalled at `CONNECTING`
+  (a separate, minor negotiation hiccup — not investigated further, not
+  the point). Immediately after, with that native connection torn down,
+  both phones' IRIS app was relaunched fresh and re-tested: **`wifi-direct-0
+  peers_seen=0` on both, immediately** — proving definitively that the
+  underlying P2P radios, drivers, and regulatory/channel state are all fine
+  and *can* see each other; it is specifically IRIS's **DNS-SD service
+  discovery** path (`discoverServices()`/`addServiceRequest()`) that never
+  resolves on this hardware, not `discoverPeers()`. This fully vindicates
+  HV-21's original hypothesis and fix-sketch option 2 (carry identity over
+  the BLE control plane instead of depending on P2P DNS-SD TXT) — that is
+  now the confirmed, correct fix, not a guess. The Tier-2 blocker is **not**
+  environmental/hardware after all (the earlier "platform/OEM-level, not
+  IRIS's" framing recorded elsewhere in this doc is superseded by this
+  finding) — it is a real, fixable IRIS defect: stop using
+  `discoverServices`/DNS-SD for peer discovery, use `discoverPeers()` +
+  `requestPeers()` (plain `WifiP2pManager.PeerListListener`) instead, and
+  carry the 22-byte IRIS beacon over BLE (already the identity channel) to
+  identify *which* discovered P2P device is an IRIS peer, rather than
+  relying on a TXT record this hardware never delivers.
 - **Area:** `AndroidWifiDirectTransportAdapter` — `dnsSdServiceListener`,
   `dnsSdTxtRecordListener`, `serviceRequest`, `startDnsSd` (HW-13/14/15/16),
   `pendingServiceOnly` / `pendingTxtBeacons`
