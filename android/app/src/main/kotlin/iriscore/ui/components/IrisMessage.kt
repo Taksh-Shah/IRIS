@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import iriscore.designsystem.IrisColors
 import iriscore.designsystem.IrisSpacing
 import iriscore.designsystem.IrisType
+import iriscore.ui.state.DeliveryStatus
 import iriscore.ui.state.InboxUiMessage
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -42,6 +43,8 @@ fun IrisMessage(
      */
     grouped: Boolean,
     modifier: Modifier = Modifier,
+    /** HV-56: resolved contact name for the sender; null shows the raw hex prefix. */
+    contactName: String? = null,
     /**
      * HV-57: tapping a received message sets it as the reply recipient — the
      * same effect as `/to <peerId>` by hand. Null keeps the row inert (e.g.
@@ -70,7 +73,7 @@ fun IrisMessage(
         if (!grouped) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = message.senderId.take(12),
+                    text = contactName ?: message.senderId.take(12),
                     style = IrisType.Sender,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -80,9 +83,17 @@ fun IrisMessage(
                     Spacer(Modifier.width(IrisSpacing.SM))
                     IrisStatusChip(label = "P0", tone = StatusTone.Critical)
                 }
-                if (message.pending) {
-                    Spacer(Modifier.width(IrisSpacing.SM))
-                    IrisStatusChip(label = "QUEUED", tone = StatusTone.Warning)
+                // HV-58: delivery status chip for outbound messages.
+                when (message.deliveryStatus) {
+                    DeliveryStatus.QUEUED -> {
+                        Spacer(Modifier.width(IrisSpacing.SM))
+                        IrisStatusChip(label = "QUEUED", tone = StatusTone.Warning)
+                    }
+                    DeliveryStatus.FAILED -> {
+                        Spacer(Modifier.width(IrisSpacing.SM))
+                        IrisStatusChip(label = "FAILED", tone = StatusTone.Critical)
+                    }
+                    else -> Unit
                 }
             }
             Spacer(Modifier.height(IrisSpacing.XS))

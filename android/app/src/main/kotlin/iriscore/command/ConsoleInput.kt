@@ -93,6 +93,12 @@ sealed interface CommandResult {
     /** Report a problem to the user. */
     data class Error(val message: String) : CommandResult
 
+    /** HV-56: save or update a contact name for a peer. */
+    data class SaveContact(val peerIdHex: String, val name: String) : CommandResult
+
+    /** HV-56: list all saved contacts. */
+    data object ListContacts : CommandResult
+
     /** Recognised, but nothing to do (e.g. an empty line). */
     data object None : CommandResult
 }

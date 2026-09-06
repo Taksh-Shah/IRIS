@@ -7,6 +7,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import iriscore.command.CommandExecutor
 import iriscore.command.CommandResult
+import iriscore.data.AppPreferences
+import iriscore.data.ContactStore
 import iriscore.data.MeshRepository
 import iriscore.service.IrisBleService
 import iriscore.ui.state.ConsoleEntry
@@ -46,6 +48,8 @@ import javax.inject.Inject
 class MeshViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val repository: MeshRepository,
+    private val contactStore: ContactStore,
+    private val appPreferences: AppPreferences,
 ) : ViewModel() {
 
     val uiState: StateFlow<MeshUiState> = repository.uiState
@@ -60,6 +64,22 @@ class MeshViewModel @Inject constructor(
      */
     private val _transportStates = MutableStateFlow<List<TransportStatus>>(emptyList())
     val transportStates: StateFlow<List<TransportStatus>> = _transportStates.asStateFlow()
+
+    /**
+     * HV-56: contact book — peerIdHex → user-assigned name. Loaded from
+     * [ContactStore] on init and updated on every `/name` write so the UI
+     * reflects the new name without a restart.
+     */
+    private val _contacts = MutableStateFlow<Map<String, String>>(emptyMap())
+    val contacts: StateFlow<Map<String, String>> = _contacts.asStateFlow()
+
+    /**
+     * HV-60: tracks how many reconnect attempts have been made since the mesh
+     * last came up. Resets to 0 when the engine returns to RUNNING so normal
+     * operation clears the escalated help text in RetryNotice.
+     */
+    private val _reconnectAttempts = MutableStateFlow(0)
+    val reconnectAttempts: StateFlow<Int> = _reconnectAttempts.asStateFlow()
 
     /** Active `/search` filter; null when unfiltered. */
     private val _searchQuery = MutableStateFlow<String?>(null)
@@ -113,6 +133,12 @@ class MeshViewModel @Inject constructor(
     private val started = AtomicBoolean(false)
 
     init {
+        _contacts.value = contactStore.all()
+        // HV-60: reset the retry counter whenever the engine comes back up so
+        // the escalated "restart the app" guidance clears on a successful reconnect.
+        viewModelScope.launch {
+            uiState.collect { s -> if (s.status == MeshStatus.RUNNING) _reconnectAttempts.value = 0 }
+        }
         // Bring the mesh up immediately only when the runtime grants are already
         // in place (returning user). Otherwise the shell requests them first and
         // calls [ensureStarted]; starting the radios without BLUETOOTH_SCAN /
@@ -135,6 +161,24 @@ class MeshViewModel @Inject constructor(
                 meshMutex.withLock {
                     repository.startMesh()
                     repository.subscribeInbox()
+                }
+                // HV-62: emit the WELCOME block once per install so the user
+                // sees their node id and tips without having to type /node.
+                if (!appPreferences.welcomeShown) {
+                    appPreferences.welcomeShown = true
+                    val nodeId = uiState.value.nodeIdHex
+                    appendEvent(
+                        ConsoleEntry.system(
+                            title = "WELCOME",
+                            lines = listOf(
+                                "node" to nodeId,
+                                "tip" to "share your id with peers so they can /to you",
+                                "tip" to "/help  lists all commands",
+                                "tip" to "/name <peer-id> <name>  saves a contact",
+                            ),
+                            status = "FIRST RUN",
+                        ),
+                    )
                 }
             }
             startTransportPoll()
@@ -209,7 +253,11 @@ class MeshViewModel @Inject constructor(
             appendEvent(ConsoleEntry.echo(line))
         }
 
-        when (val result = CommandExecutor.execute(line, hasRecipient = _recipient.value != null)) {
+        // HV-56: provide a contact resolver so /to and @ accept saved names.
+        val contactResolver: (String) -> String? = { name ->
+            _contacts.value.entries.firstOrNull { it.value.lowercase() == name.lowercase() }?.key
+        }
+        when (val result = CommandExecutor.execute(line, hasRecipient = _recipient.value != null, contactResolver = contactResolver)) {
             is CommandResult.Send -> send(_recipient.value.orEmpty(), result.text, result.priority)
 
             is CommandResult.SetRecipient -> {
@@ -281,6 +329,34 @@ class MeshViewModel @Inject constructor(
                 } else {
                     appendEvent(resolveSystem(result))
                 }
+
+            is CommandResult.SaveContact -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    contactStore.save(result.peerIdHex, result.name)
+                    _contacts.value = contactStore.all()
+                    appendEvent(
+                        ConsoleEntry.system(
+                            title = "CONTACT",
+                            lines = listOf(
+                                "peer" to result.peerIdHex.take(16) + "…",
+                                "name" to result.name,
+                            ),
+                            status = "SAVED",
+                        ),
+                    )
+                }
+            }
+
+            CommandResult.ListContacts -> {
+                val all = _contacts.value
+                val lines = if (all.isEmpty()) {
+                    listOf("(none)" to "use /name <peer-id> <name> to add one")
+                } else {
+                    all.entries.sortedBy { it.value.lowercase() }
+                        .map { it.value to it.key.take(16) + "…" }
+                }
+                appendEvent(ConsoleEntry.system(title = "CONTACTS", lines = lines))
+            }
 
             is CommandResult.Error -> appendEvent(
                 ConsoleEntry.system(title = "ERROR", lines = listOf("detail" to result.message)),
@@ -454,6 +530,7 @@ class MeshViewModel @Inject constructor(
      * through [meshMutex] so teardown completes before the restart acquires the lock.
      */
     fun reconnectMesh() {
+        _reconnectAttempts.value++
         stopMesh()
         ensureStarted()
     }

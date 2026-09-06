@@ -128,6 +128,19 @@ object CommandRegistry {
             group = CommandGroup.SYSTEM,
             aliases = listOf("?"),
         ),
+        IrisCommand(
+            name = "name",
+            description = "Save a contact name for a peer-id",
+            group = CommandGroup.MESSAGE,
+            aliases = listOf("contact", "alias"),
+            argumentHint = "<peer-id> <name>",
+        ),
+        IrisCommand(
+            name = "contacts",
+            description = "List saved contacts",
+            group = CommandGroup.MESSAGE,
+            aliases = listOf("addressbook", "book"),
+        ),
     )
 
     private val byName: Map<String, IrisCommand> = buildMap {

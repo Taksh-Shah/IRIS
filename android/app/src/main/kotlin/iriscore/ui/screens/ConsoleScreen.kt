@@ -88,6 +88,10 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     val recipient by viewModel.recipient.collectAsStateWithLifecycle()
     // HV-59: per-transport chip data from the 5-s ViewModel poll.
     val transportStates by viewModel.transportStates.collectAsStateWithLifecycle()
+    // HV-56: contact book for name resolution throughout the screen.
+    val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    // HV-60: retry counter drives escalated help text in RetryNotice.
+    val reconnectAttempts by viewModel.reconnectAttempts.collectAsStateWithLifecycle()
 
     var input by rememberSaveable { mutableStateOf("") }
     var selectedCommand by remember { mutableStateOf(0) }
@@ -227,6 +231,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
             StatusLine(
                 state = state,
                 recipient = recipient,
+                contacts = contacts,
                 permissionsGranted = permissionsGranted,
                 transportStates = transportStates,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
@@ -255,8 +260,14 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                     },
                 )
             }
-            if (state.status == MeshStatus.UNAVAILABLE) {
-                RetryNotice(onRetry = { viewModel.reconnectMesh() })
+            if (state.status == MeshStatus.UNAVAILABLE ||
+                (state.status == MeshStatus.STARTING && reconnectAttempts > 0)
+            ) {
+                RetryNotice(
+                    isRetrying = state.status == MeshStatus.STARTING,
+                    reconnectAttempts = reconnectAttempts,
+                    onRetry = { viewModel.reconnectMesh() },
+                )
             }
 
             LazyColumn(
@@ -280,6 +291,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                     ConsoleRow(
                         entries = entries,
                         index = index,
+                        contacts = contacts,
                         onReply = { senderId -> viewModel.replyTo(senderId) },
                     )
                 }
@@ -374,13 +386,23 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
  * is passed rather than a single item.
  */
 @Composable
-private fun ConsoleRow(entries: List<ConsoleEntry>, index: Int, onReply: (String) -> Unit) {
+private fun ConsoleRow(
+    entries: List<ConsoleEntry>,
+    index: Int,
+    contacts: Map<String, String>,
+    onReply: (String) -> Unit,
+) {
     when (val entry = entries[index]) {
         is ConsoleEntry.Message -> {
             val previous = entries.getOrNull(index - 1)
             val grouped = previous is ConsoleEntry.Message &&
                 previous.message.senderId == entry.message.senderId
-            IrisMessage(message = entry.message, grouped = grouped, onReply = onReply)
+            IrisMessage(
+                message = entry.message,
+                grouped = grouped,
+                onReply = onReply,
+                contactName = contacts[entry.message.senderId],
+            )
         }
 
         is ConsoleEntry.System -> IrisSystemEvent(
@@ -407,6 +429,7 @@ private fun ConsoleRow(entries: List<ConsoleEntry>, index: Int, onReply: (String
 private fun StatusLine(
     state: MeshUiState,
     recipient: String?,
+    contacts: Map<String, String>,
     permissionsGranted: Boolean,
     transportStates: List<TransportStatus>,
     modifier: Modifier = Modifier,
@@ -425,7 +448,7 @@ private fun StatusLine(
 
         if (recipient != null) {
             Text(
-                text = "→ ${recipient.take(8)}…",
+                text = "→ ${contacts[recipient] ?: (recipient.take(8) + "…")}",
                 style = IrisType.Meta,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -503,28 +526,36 @@ private fun PermissionNotice(permanentlyDenied: Boolean, onGrant: () -> Unit) {
 }
 
 @Composable
-private fun RetryNotice(onRetry: () -> Unit) {
+private fun RetryNotice(isRetrying: Boolean, reconnectAttempts: Int, onRetry: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = IrisSpacing.Gutter, vertical = IrisSpacing.SM)
             .background(IrisColors.SurfacePrimary, iriscore.designsystem.IrisRadius.MD)
-            .clickable(onClick = onRetry)
+            .clickable(enabled = !isRetrying, onClick = onRetry)
             .padding(IrisSpacing.MD),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                text = "RADIO UNAVAILABLE",
-                style = IrisType.Label.copy(color = IrisColors.AccentCritical),
+                text = if (isRetrying) "RECONNECTING…" else "RADIO UNAVAILABLE",
+                style = IrisType.Label.copy(
+                    color = if (isRetrying) IrisColors.AccentWarning else IrisColors.AccentCritical,
+                ),
             )
             Spacer(Modifier.height(IrisSpacing.XXS))
             Text(
-                text = "Tap to retry mesh connection.",
+                text = when {
+                    isRetrying -> "Connecting to mesh — this may take a moment."
+                    reconnectAttempts >= 2 -> "Still failing. Try toggling Bluetooth/Wi-Fi or restarting the app."
+                    else -> "Tap to retry mesh connection."
+                },
                 style = IrisType.Secondary,
             )
         }
-        Spacer(Modifier.width(IrisSpacing.MD))
-        Text(text = "RETRY", style = IrisType.Label.copy(color = IrisColors.AccentPrimary))
+        if (!isRetrying) {
+            Spacer(Modifier.width(IrisSpacing.MD))
+            Text(text = "RETRY", style = IrisType.Label.copy(color = IrisColors.AccentPrimary))
+        }
     }
 }

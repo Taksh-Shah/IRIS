@@ -6,6 +6,13 @@ import java.util.concurrent.atomic.AtomicLong
 enum class MeshStatus { IDLE, STARTING, RUNNING, UNAVAILABLE }
 
 /**
+ * HV-58: three-state outbound delivery model shown in the message row.
+ * RECEIVED is the inbound case; SENDING/QUEUED/FAILED are the outbound states.
+ * DELIVERED is reserved for when the FFI ACK drain is wired (HV-49 follow-up).
+ */
+enum class DeliveryStatus { RECEIVED, SENDING, QUEUED, FAILED }
+
+/**
  * HV-59: per-transport presence in the status line.
  * Derived from [FfiTransportDiag.state] in the engine snapshot; refreshed by the
  * ViewModel every 5 s while the mesh is RUNNING.
@@ -33,7 +40,8 @@ data class InboxUiMessage(
     val payloadUtf8: String,
     val priority: UByte,
     val receivedAtMs: Long,
-    val pending: Boolean = false,
+    /** HV-58: delivery state for outbound messages; RECEIVED for inbound. */
+    val deliveryStatus: DeliveryStatus = DeliveryStatus.RECEIVED,
 ) {
     companion object {
         private val uids = AtomicLong(1L)
@@ -58,10 +66,10 @@ data class InboxUiMessage(
             InboxUiMessage(
                 uid = nextUid(),
                 senderId = recipientHex,
-                payloadUtf8 = "[queued] $payload",
+                payloadUtf8 = payload,
                 priority = priority,
                 receivedAtMs = System.currentTimeMillis(),
-                pending = true,
+                deliveryStatus = DeliveryStatus.QUEUED,
             )
 
         /**
@@ -79,6 +87,7 @@ data class InboxUiMessage(
                 payloadUtf8 = payload,
                 priority = priority,
                 receivedAtMs = System.currentTimeMillis(),
+                deliveryStatus = DeliveryStatus.SENDING,
             )
     }
 }
