@@ -76,11 +76,16 @@ that remain are understood and logged.*
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
-| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 8 | 0 | 0 | 1 |
-| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 2 | 0 | 0 | 15 |
-| **Total** | | **109** | **31** | **31** | **1** | **2** | **44** |
+| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 8 | 0 | 1 | 0 |
+| 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 7 | 0 | 0 | 10 |
+| **Total** | | **109** | **31** | **36** | **1** | **3** | **38** |
 
-**Last updated:** 2026-09-06 (Session 28 — **Tier 8: HV-56 + HV-58 + HV-60 +
+**Last updated:** 2026-09-06 (Session 29 — **Tier 9: HV-66 + HV-68 + HV-76 +
+HV-77 + HV-80 closed, ✅ HW PENDING.** HV-64 blocked (🔒 future prospects).
+MTU negotiated in connect flow (HV-66); refreshDeviceCache on stale miss (HV-68);
+REASSEMBLY_TTL 30s→120s + eviction log (HV-76); dup/OOO fragment unit tests (HV-77);
+TX power MEDIUM→HIGH (HV-80).)
+· Previously: 2026-09-06 (Session 28 — **Tier 8: HV-56 + HV-58 + HV-60 +
 HV-62 closed, ✅ HW PENDING.** ContactStore + `/name` + `/contacts` (HV-56);
 DeliveryStatus enum replacing `pending: Boolean` with QUEUED/FAILED chips
 (HV-58); RetryNotice shows RECONNECTING state and escalated guidance after 2+
@@ -3383,7 +3388,8 @@ into HV-56.
 
 ### HV-64 — SOS / P0 has no distinct entry path or confirmation on Android
 
-- **Fix status:** ⬜
+- **Fix status:** 🔒 Future Prospects — blocked on HV-41 (broadcast primitive,
+  needs 3rd phone) · deferred 2026-09-06
 - **Area:** `CommandExecutor` (`/sos <text>` → `PRIORITY_SOS`, still requires a
   recipient), `build_text_envelope` (P0 → `ContentType::Sos`)
 - **Severity:** Medium (safety-adjacent) · **HW gate:** 2 phones
@@ -3397,6 +3403,11 @@ you haven't done `/to` first it just errors.
 **Fix sketch:** SOS should be a broadcast (needs HV-41), reachable without a
 recipient, with a deliberate confirm (hold-to-send), and should attach location if
 granted. Coordinate with `docs/emergency/SOS.md` and the deferred PRY-11.
+
+**Why blocked:** the broadcast primitive (HV-41) requires engine-level flood
+support that itself needs 3 physical phones to verify. Until HV-41 ships,
+wiring a "broadcast SOS" would silently unicast to the first discovered peer
+or drop. Revisit after HV-41 + HV-75 routing integration land.
 
 ---
 
@@ -3446,7 +3457,7 @@ Measure throughput both ways on the bench.
 
 ### HV-66 — No large MTU is requested on connect; `setMtu` is fire-and-forget; the first message goes out at 23 bytes
 
-- **Fix status:** ⬜ · **Home tier:** 1 · groups with HV-7 / HV-8
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-29> · 2026-09-06 · **Home tier:** 1 · groups with HV-7 / HV-8
 - **Area:** `AndroidBleTransportAdapter.setMtu` (calls `gatt.requestMtu(mtu)` then
   returns `negotiatedMtu[gatt] ?: mtu` **without waiting** for `onMtuChanged`),
   `connectGatt` / `connectionReady` (resolves on service discovery, not on MTU),
@@ -3506,7 +3517,7 @@ library / RxAndroidBle all do. Replace the ad-hoc `writeCompletion` /
 
 ### HV-68 — Stale GATT service cache after a peer re-advertises / restarts — no `refreshDeviceCache`
 
-- **Fix status:** ⬜ · **Home tier:** 1
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-29> · 2026-09-06 · **Home tier:** 1
 - **Area:** `AndroidBleTransportAdapter` `gattCallback.onServicesDiscovered`
 - **Severity:** Medium · **HW gate:** 2 phones, restart the peer app mid-session
 
@@ -3766,7 +3777,7 @@ This is a substantial routing-integration effort and likely its own project node
 
 ### HV-76 — Reassembly TTL vs real fragmented-message wall-time — a slow multi-fragment message is silently dropped
 
-- **Fix status:** ⬜ · **Home tier:** 1 · groups with HV-7
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-29> · 2026-09-06 · **Home tier:** 1 · groups with HV-7
 - **Area:** `ble.rs` `spawn_inbound_poller` (`recon.evict_stale(REASSEMBLY_TTL)`),
   `ble_att.rs` (`REASSEMBLY_TTL`, `Reassembler`)
 - **Severity:** Medium · **HW gate:** 2 phones at range (high retransmit)
@@ -3788,7 +3799,7 @@ and emit a diagnostic when a partial is evicted.
 
 ### HV-77 — Duplicate / out-of-order fragment tolerance on real radios is unverified
 
-- **Fix status:** ⬜ · **Home tier:** 1
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-29> · 2026-09-06 · **Home tier:** 1
 - **Area:** `ble_att.rs` `Reassembler::push`, `AttSegmenter`
 - **Severity:** Medium · **HW gate:** 2 phones + `btsnoop` (to confirm dup/reorder)
 
@@ -3855,7 +3866,7 @@ as an L4 manual procedure.
 
 ### HV-80 — Advertising interval / tx power / scan mode are all fixed at the lowest setting — discovery is slow and short-range by construction
 
-- **Fix status:** ⬜ · **Home tier:** 1
+- **Fix status:** ✅ Fixed (partial — TX power HIGH; adaptive power profile deferred) · HW PENDING · commit <session-29> · 2026-09-06 · **Home tier:** 1
 - **Area:** `AndroidBleTransportAdapter.startAdvertising`
   (`ADVERTISE_MODE_LOW_POWER`, `ADVERTISE_TX_POWER_MEDIUM`), `scanSettings`
   (`SCAN_MODE_LOW_POWER`)

@@ -5515,6 +5515,151 @@ Suggested verification:
 
 ---
 
+## Session 29 (autonomous) — 2026-09-06 — Tier 9: HV-66, HV-68, HV-76, HV-77, HV-80
+
+**Devices:** none available this session  
+**Build under test:** `baeb9b4` (Session 28 docs commit, head before this session)  
+**Baseline:** `cargo test -p iris-core --lib transport::ble_att` PASS (GNU toolchain);
+Kotlin verified by code review (no JDK on shell PATH)  
+**Session goal:** Tier 9 software fixes — MTU connect flow, GATT cache flush,
+reassembly TTL, dup/OOO unit tests, TX power; Phase R + D only. HV-64 marked 🔒.
+
+---
+
+### HV-66 — MTU not awaited in connect flow; first message goes at 23 bytes
+
+**Phase R**
+
+- `setMtu` (line ~1118) called `gatt.requestMtu()` then immediately returned
+  `negotiatedMtu[gatt] ?: mtu`. `onMtuChanged` is async — `negotiatedMtu[gatt]`
+  is null at that point; the function returned the *requested* value, not the
+  *negotiated* one. The first message always fragmented at MTU 23.
+- Fix: in `onServicesDiscovered` (after finding the IRIS characteristic), fire
+  `requestMtu(517)` and defer `connectionReady.complete(Unit)` to `onMtuChanged`.
+  A 1-s daemon-thread fallback handles firmware that silently ignores the request.
+
+**Phase D**
+
+- `AndroidBleTransportAdapter.kt`: added `MAX_MTU_REQUESTED = 517` and
+  `MTU_NEGOTIATE_TIMEOUT_MS = 1_000L` constants.
+- `onServicesDiscovered` success path: replaced direct `connectionReady.complete`
+  with `gatt.requestMtu(MAX_MTU_REQUESTED)` + fallback timer thread; `return`
+  to defer completion to `onMtuChanged`.
+- `onMtuChanged`: added `connectionReady.remove(gatt)?.complete(Unit)` — this is
+  now the primary path that unblocks `connectGatt`.
+
+**Phase C**
+
+- Commit: `<session-29>`.
+- Tracker: HV-66 → ✅ HW PENDING.
+
+---
+
+### HV-68 — Stale GATT service cache after peer restart
+
+**Phase R**
+
+- `onServicesDiscovered` returned `GATT_SUCCESS` but `getService(IRIS_SERVICE_UUID)`
+  was null — Android cached the old (pre-restart) GATT database. The code already
+  retried `discoverServices()` (HV-92), but a stale cache returns the same empty
+  result every time. The private `BluetoothGatt.refresh()` (reflection) flushes it.
+- Fix: on the first retry (`tries == 1`), call `refresh()` via reflection before
+  the next `discoverServices()`. Bound to one attempt to avoid latency accumulation.
+
+**Phase D**
+
+- `onServicesDiscovered` retry path: added `gatt.javaClass.getMethod("refresh").invoke(gatt)`
+  guarded by `try/catch Exception` when `tries == 1`.
+
+**Phase C**
+
+- Commit: `<session-29>`.
+- Tracker: HV-68 → ✅ HW PENDING.
+
+---
+
+### HV-76 — Reassembly TTL 30s too short for real BLE with retransmits
+
+**Phase R**
+
+- `REASSEMBLY_TTL = 30s` was tuned for the simulator (zero-latency delivery).
+  `evict_stale` uses idle-time (time since last fragment), so steadily arriving
+  messages are safe — the risk is a long gap between fragments due to BLE
+  retransmits, congestion, or interference. 30s could be hit under sustained
+  interference at range. No eviction diagnostic existed.
+- Fix: raise to 120s (generous for real radios); add `tracing::warn!` on eviction.
+
+**Phase D**
+
+- `ble_att.rs`: `REASSEMBLY_TTL` 30s → 120s with doc comment explaining the idle
+  semantics; `evict_stale` body rewritten to `retain` with a `tracing::warn!` for
+  each dropped partial (msg_id, received/total chunks).
+
+**Phase C**
+
+- Commit: `<session-29>`.
+- Tracker: HV-76 → ✅ HW PENDING.
+
+---
+
+### HV-77 — Dup/OOO fragment handling unverified
+
+**Phase R**
+
+- `Reassembler::push` already handled duplicates (`if partial.chunks[idx].is_none()`)
+  and OOO (Vec indexed by chunk idx). No unit tests existed for either case.
+  Simulator delivers in-order, exactly-once — these paths were untested.
+
+**Phase D**
+
+- `ble_att.rs` tests: added `reassembler_handles_duplicate_fragment` (push frame 0
+  twice, verify idempotent, then push remaining and assert correct payload) and
+  `reassembler_handles_out_of_order_fragments` (deliver all frames in reverse order,
+  assert correct payload). Both tests pass on the GNU toolchain.
+
+**Phase C**
+
+- Commit: `<session-29>`.
+- Tracker: HV-77 → ✅ HW PENDING.
+
+---
+
+### HV-80 — TX power MEDIUM → HIGH
+
+**Phase R**
+
+- `startAdvertising` used `ADVERTISE_TX_POWER_MEDIUM`. Advertising mode was already
+  BALANCED (fixed in HV-91). For a foreground mesh radio whose sole purpose is
+  peer discovery, MEDIUM artificially constrains range. HIGH is the standard choice
+  in similar DTN/mesh apps and is appropriate while the FGS is foregrounded.
+- Fix: one-line change to `ADVERTISE_TX_POWER_HIGH`. Adaptive power profile
+  (screen-off → LOW) deferred.
+
+**Phase D**
+
+- `AndroidBleTransportAdapter.kt`: `ADVERTISE_TX_POWER_MEDIUM` → `ADVERTISE_TX_POWER_HIGH`.
+
+**Phase C**
+
+- Commit: `<session-29>`.
+- Tracker: HV-80 → ✅ Fixed (partial) HW PENDING.
+
+---
+
+### Session 29 closeout
+
+- Devices used: none (code-only session, Phase R + D)
+- Findings advanced: HV-66 ✅, HV-68 ✅, HV-76 ✅, HV-77 ✅, HV-80 ✅ (all HW PENDING)
+- HV-64 marked 🔒 Future Prospects (blocked on HV-41 broadcast + 3rd phone)
+- 🟢 count: 31 → 31 (no hardware)
+- ✅ HW PENDING count: 31 → 36
+- Tier 8: complete except HV-64 (🔒)
+- Tier 9 remaining ⬜: HV-65, HV-67, HV-69, HV-70, HV-72, HV-73, HV-75, HV-78, HV-79
+- Next session candidates: HV-65 (write-without-response), HV-67 (GATT op queue),
+  HV-69 (scan cadence), HV-73 (clock skew) — all software-only Phase R+D.
+
+---
+
 ## Documentation reconciliation — 2026-09-06
 
 This pass refreshed the stale loop projections against repository head
