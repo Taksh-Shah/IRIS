@@ -218,6 +218,12 @@ class MeshViewModel @Inject constructor(
         viewModelScope.launch { withContext(Dispatchers.IO) { repository.send(recipientHex, text, priority) } }
     }
 
+    /** HV-41: send to every peer in range — see [CommandResult.Broadcast]. */
+    fun broadcast(text: String, priority: UByte) {
+        if (text.isBlank()) return
+        viewModelScope.launch { withContext(Dispatchers.IO) { repository.broadcast(text, priority) } }
+    }
+
     /**
      * HV-57: set the recipient from a tapped received message, the same
      * effect as running `/to <peerIdHex>` by hand. Before this, replying
@@ -259,6 +265,8 @@ class MeshViewModel @Inject constructor(
         }
         when (val result = CommandExecutor.execute(line, hasRecipient = _recipient.value != null, contactResolver = contactResolver)) {
             is CommandResult.Send -> send(_recipient.value.orEmpty(), result.text, result.priority)
+
+            is CommandResult.Broadcast -> broadcast(result.text, result.priority)
 
             is CommandResult.SetRecipient -> {
                 _recipient.value = result.peerIdHex
@@ -314,13 +322,14 @@ class MeshViewModel @Inject constructor(
             }
 
             is CommandResult.System ->
-                if (result.title == "DIAG" || result.title == "STATS" || result.title == "X25519") {
+                if (result.title == "DIAG" || result.title == "STATS" || result.title == "X25519" || result.title == "LINKS") {
                     // These read the engine over a blocking FFI call — off-main.
                     viewModelScope.launch {
                         val entry = withContext(Dispatchers.IO) {
                             when (result.title) {
                                 "STATS" -> resolveStats()
                                 "X25519" -> resolveX25519()
+                                "LINKS" -> resolveLinks()
                                 else -> resolveDiag()
                             }
                         }
@@ -385,19 +394,62 @@ class MeshViewModel @Inject constructor(
                 status = state.status.name,
             )
 
-            "LINKS" -> ConsoleEntry.system(
-                title = "LINKS",
-                lines = listOf(
-                    "transport" to state.status.name,
-                    "relay" to state.relayQueued.toString(),
-                    "messages" to state.messages.size.toString(),
-                ),
-                status = if (state.status == MeshStatus.RUNNING) "UP" else "DOWN",
-            )
-
             else -> ConsoleEntry.system(result.title, result.lines)
         }
     }
+
+    /**
+     * HV-40: renders `/peers` — the mesh topology `/diag` already computed but
+     * `/peers` never showed. Before this, `/peers` returned only a status-name
+     * echo and message/relay counts — none of it the neighbour graph a user
+     * actually needs to debug "the mesh never widens past one peer." The
+     * `NeighborTable` data (`snap.neighbors`) already existed in
+     * `FfiMeshSnapshot` and was already rendered by `/diag`
+     * ([resolveDiag]) — this reuses the same field, just as its own
+     * focused, undiluted view instead of one line buried in the full
+     * diagnostic dump.
+     *
+     * Does not yet show peers that were discovered but never linked:
+     * `NeighborTable`'s `NeighborState` has only `LinkedUp`/`LinkedDown` — a
+     * scan result that never became a connection isn't tracked anywhere
+     * accessible today. Left as a follow-up (would need new engine-level
+     * state, not just a UI change) rather than folded into this fix.
+     */
+    private fun resolveLinks(): ConsoleEntry {
+        val snap = try {
+            repository.snapshot()
+        } catch (e: RuntimeException) {
+            return ConsoleEntry.system("LINKS", listOf("error" to (e.message ?: e.javaClass.simpleName)))
+        }
+        val lines = buildList {
+            if (snap.neighbors.isEmpty()) {
+                add("neighbors" to "none")
+            } else {
+                snap.neighbors.forEach { n ->
+                    add(
+                        (contactNameFor(n.peerIdHex) ?: "peer ${n.peerIdHex.take(16)}…") to
+                            "${n.state}  links=[${n.links.joinToString(", ")}]",
+                    )
+                }
+            }
+            // HV-38: `relayQueued` (the "Q3" status chip) is this node's own
+            // unsent-message backlog (`RelayOutbox`/`WorkManager`), not the
+            // core's real mesh-relay activity (forwarding *other* peers'
+            // messages, `enqueue_relay`/`metrics.relayed`) — the two were easy
+            // to conflate since both are named "relay". Show them side by
+            // side, distinctly labeled, rather than only the local one.
+            add("pending sends (local)" to uiState.value.relayQueued.toString())
+            add("relayed (mesh, lifetime)" to snap.messages.relayed.toString())
+        }
+        return ConsoleEntry.system(
+            title = "LINKS",
+            lines = lines,
+            status = if (uiState.value.status == MeshStatus.RUNNING) "UP" else "DOWN",
+        )
+    }
+
+    /** HV-40/HV-56: resolve a peer to its saved contact name, if any. */
+    private fun contactNameFor(peerIdHex: String): String? = _contacts.value[peerIdHex]
 
     /**
      * HV-3: renders `/diag` from the engine's live [MeshRepository.snapshot].

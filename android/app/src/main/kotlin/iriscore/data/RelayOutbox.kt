@@ -14,6 +14,20 @@ import kotlinx.coroutines.sync.withLock
  *
  * Bounded — drops the oldest entry past the cap so a stale destination can't
  * grow the queue unboundedly (mirrors NEW-WA-RT-112 ring-buffer policy).
+ *
+ * **HV-38 naming note — this is NOT the mesh's relay queue.** This class holds
+ * only messages *this node originated* that the FFI `sendText` call itself
+ * rejected; it is a local retry spool for send failures, not the core relay
+ * path. The core's actual mesh relay — forwarding *other peers'* messages
+ * toward their destination (`message_engine::enqueue_relay`, counted in
+ * `metrics.relayed`) — is a completely separate mechanism with no Kotlin
+ * involvement at all; it never touches this class. `MeshUiState.relayQueued`
+ * (driven by [size]) reflects only this local spool, which is why `/peers`
+ * shows it labeled "pending sends (local)" next to the real, distinctly
+ * labeled mesh-relay counter, not as one ambiguous "relay" number. A more
+ * thorough fix renames this class to `PendingSendQueue` — not done here to
+ * keep this change's diff reviewable (a rename touches DI wiring and every
+ * call site); left as a documented follow-up.
  */
 class RelayOutbox(
     private val capacity: Int = DEFAULT_CAPACITY,
