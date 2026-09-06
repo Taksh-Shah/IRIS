@@ -5276,6 +5276,245 @@ reappears within 5 s.
 
 ---
 
+## Session 28 (autonomous) — 2026-09-06 — Tier 8: HV-56, HV-58, HV-60, HV-62
+
+**Devices:** none available this session  
+**Build under test:** `14a1794` (Session 27 commit, head before this session)  
+**Baseline:** `cargo build --workspace` PASS (GNU toolchain); Kotlin verified by
+code review (no JDK on shell PATH)  
+**Session goal:** Tier 8 Shell UX, 4 findings (§5 group HV-56+HV-62, plus
+HV-58 delivery status, HV-60 RETRY UX), Phase R + D only
+
+---
+
+### HV-56 — No contacts / peer list / nicknames
+
+**Phase R — Research note**
+
+- **Mechanism.** `CommandExecutor.setRecipient` accepted only 64-char hex
+  PeerIds. `MeshViewModel._recipient` was a raw hex string. No persistent
+  store existed. To DM anyone you had to copy-paste their full 64-hex id each
+  session; there was no way to say "reply to Alice."
+- **Why the current code is wrong.** No contact store, no name→id resolution
+  anywhere in the command path.
+- **How this is solved elsewhere.** Android Contacts API, Signal/WhatsApp
+  local contact maps: a local flat map of id→alias backed by a JSON file
+  (same pattern as the existing `KnownPeersStore`).
+- **IRIS constraints.** No Room dependency desired (avoids Gradle migration
+  overhead for a simple flat map). Hilt auto-discovery via
+  `@Singleton`+`@Inject constructor(@ApplicationContext)`.
+- **Research outcome.** New `ContactStore` in `iriscore.data`; new
+  `/name <peer-id> <alias>` + `/contacts` commands; optional
+  `contactResolver` lambda threaded through `CommandExecutor.execute()`.
+
+**Phase D — Implementation**
+
+- New file: `iriscore/data/ContactStore.kt` — `@Singleton`, JSON file
+  `iris_contacts.json` in `context.filesDir`, `@Synchronized` read/write,
+  methods: `all()`, `save()`, `resolve()`, `remove()`.
+- `ConsoleInput.kt` — added `CommandResult.SaveContact(peerIdHex, name)` and
+  `CommandResult.ListContacts` to the sealed interface.
+- `CommandRegistry.kt` — added `/name` (aliases: contact, alias) and
+  `/contacts` (aliases: addressbook, book).
+- `CommandExecutor.kt` — new `contactResolver: ((String) -> String?)? = null`
+  parameter; `setRecipient` tries resolver before rejecting non-hex input;
+  `"name"` and `"contacts"` cases added.
+- `MeshViewModel.kt` — injected `ContactStore`; `_contacts` StateFlow; loaded
+  in `init`; `submit()` handles `SaveContact` (write + refresh flow + emit
+  CONTACT event) and `ListContacts` (emit CONTACTS event sorted by name);
+  `contactResolver` lambda passed to `execute()`.
+- `ConsoleScreen.kt` — collects `contacts` flow; `StatusLine` shows
+  `contacts[recipient]` instead of raw hex truncation; `ConsoleRow` passes
+  `contacts[senderId]` to `IrisMessage` as `contactName`.
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification:
+1. On P1: run `/name <P2-peer-id> alice`; verify CONTACT system event appears.
+2. Run `/contacts`; verify alice's entry shows.
+3. Run `@alice`; verify RECIPIENT event shows alice's name, not hex truncation.
+4. `→ alice` should appear in the StatusLine instead of `→ <8hex>…`.
+5. Send a message from P2; verify P1 shows "alice" as sender label in the
+   IrisMessage header.
+
+**Phase C — Close**
+
+- Commit: `<session-28>` — see main commit message.
+- Tracker: HV-56 → ✅ HW PENDING.
+
+---
+
+### HV-58 — No delivery / send status on messages
+
+**Phase R — Research note**
+
+- **Mechanism.** `InboxUiMessage` had a `pending: Boolean` field set only on
+  the `sent()` factory path. There was no QUEUED state (message accepted but
+  not yet transmitted) and no FAILED state (engine accepted but transport never
+  delivered). The UI showed every outbound message identically after a send.
+- **Why the current code is wrong.** `pending = true` was used as both
+  "just sent" and "in queue" — no distinction between accepted/queued/failed.
+  A queued message still rendered with `"[queued] $payload"` prefix embedded in
+  the text, not a visual chip.
+- **How this is solved elsewhere.** Signal/Telegram use a per-message status
+  enum with a chip or icon: single-tick (sent), double-tick (delivered), clock
+  (queued), X (failed). Compose's `IrisStatusChip` already supports tones.
+- **IRIS constraints.** No ACK path plumbed through FFI yet (HV-49); only the
+  QUEUED and FAILED states are observable client-side today.
+- **Research outcome.** Replace `pending: Boolean` with `DeliveryStatus` enum
+  (RECEIVED, SENDING, QUEUED, FAILED). `IrisMessage` renders QUEUED and FAILED
+  as chips; RECEIVED/SENDING render nothing. The `"[queued]"` prefix is removed.
+
+**Phase D — Implementation**
+
+- `MeshUiState.kt` — added `DeliveryStatus` enum after `MeshStatus`; replaced
+  `val pending: Boolean` with `val deliveryStatus: DeliveryStatus`;
+  `sent()` factory sets `SENDING`; `pending()` factory sets `QUEUED` and
+  removes the `"[queued] "` payload prefix.
+- `IrisMessage.kt` — imported `DeliveryStatus`; `if (message.pending)` chip
+  replaced with `when (message.deliveryStatus)` block: QUEUED → Warning chip,
+  FAILED → Critical chip, else → Unit.
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification:
+1. Start mesh on P1 alone (no P2). Set recipient to P2's id, send a message.
+   Message should appear with a "QUEUED" chip (engine accepted but can't
+   transmit — no peer).
+2. Connect P2; after delivery, QUEUED chip should remain (no ACK path yet —
+   this is the HV-49 upgrade path).
+3. Manually construct a FAILED state via engine rejection to verify the
+   Critical chip renders.
+
+**Phase C — Close**
+
+- Commit: `<session-28>` — see main commit message.
+- Tracker: HV-58 → ✅ HW PENDING.
+
+---
+
+### HV-60 — RETRY button shows no progress and gives no guidance after repeated failures
+
+**Phase R — Research note**
+
+- **Mechanism.** `RetryNotice` was a static banner: "RADIO UNAVAILABLE / Tap
+  to retry mesh connection. / RETRY." After tapping, the engine cycled through
+  STARTING briefly, and the banner disappeared (STARTING hid it). If the engine
+  returned to UNAVAILABLE again, the same static banner reappeared — no
+  indication that a retry was already in progress or that the user had already
+  tried multiple times.
+- **Why the current code is wrong.** (1) Banner vanished during STARTING so the
+  user couldn't tell if their tap registered. (2) No retry counter — no way to
+  escalate to "try toggling Bluetooth" after multiple failures. (3) Button
+  remained tappable while reconnecting.
+- **How this is solved elsewhere.** Standard UX: show a spinner / "RECONNECTING…"
+  state during the attempt, escalate copy after N failures (Android Settings
+  own Wi-Fi retry banner does this, as does iOS's "No SIM" sheet).
+- **IRIS constraints.** `_reconnectAttempts` counter must reset to 0 on a
+  successful RUNNING state so the escalated copy clears.
+- **Research outcome.** Add `_reconnectAttempts` StateFlow to ViewModel;
+  increment in `reconnectMesh()`; reset via `uiState.collect` when RUNNING.
+  `RetryNotice` gains `isRetrying` + `reconnectAttempts` params; shows
+  "RECONNECTING…" (Warning) during STARTING after a retry; escalates body text
+  after 2+ attempts; hides RETRY label while retrying.
+
+**Phase D — Implementation**
+
+- `MeshViewModel.kt` — `_reconnectAttempts: MutableStateFlow<Int>` (0);
+  `reconnectAttempts: StateFlow<Int>` exposed; `init` block collects `uiState`
+  and resets counter on RUNNING; `reconnectMesh()` increments before
+  `stopMesh()`.
+- `ConsoleScreen.kt` — collects `reconnectAttempts`; RetryNotice call site
+  expanded to include `status == STARTING && reconnectAttempts > 0`; passes
+  `isRetrying` and `reconnectAttempts` params.
+- `RetryNotice` composable updated: title shows "RECONNECTING…" vs
+  "RADIO UNAVAILABLE"; body text escalates after 2+ attempts; RETRY label
+  hidden and button disabled while retrying.
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification:
+1. Kill BLE transport on P1. Verify RADIO UNAVAILABLE banner + RETRY button.
+2. Tap RETRY. Verify banner changes to "RECONNECTING…" during STARTING. Verify
+   RETRY label disappears.
+3. If radio comes back: verify RECONNECTING… banner clears (counter resets).
+4. If radio fails again: tap RETRY a second time. After the second failure,
+   verify body text shows "Still failing. Try toggling Bluetooth/Wi-Fi…".
+
+**Phase C — Close**
+
+- Commit: `<session-28>` — see main commit message.
+- Tracker: HV-60 → ✅ HW PENDING.
+
+---
+
+### HV-62 — No onboarding: first launch drops user into blank terminal
+
+**Phase R — Research note**
+
+- **Mechanism.** A new user lands on an empty console with placeholder input
+  text "Message, /command, or @peer". There is no guidance about their own
+  node id, how to find peers, or what commands exist. `/help` reveals the
+  commands but the user must know to type it.
+- **Why the current code is wrong.** `ensureStarted()` started the mesh and
+  returned silently. No first-run state tracked.
+- **How this is solved elsewhere.** Telegram/Signal show a "Welcome! Your phone
+  number is X. Share it with friends to chat." screen. For a CLI, a system
+  event in the transcript is the idiomatic equivalent (avoids a modal).
+- **IRIS constraints.** Node id is only available after `startMesh()` returns.
+  `AppPreferences` (SharedPreferences) is the right flag store — a single
+  boolean doesn't warrant DataStore.
+- **Research outcome.** New `AppPreferences` singleton with `welcomeShown`
+  flag. After `startMesh()` in `ensureStarted()`, emit a `ConsoleEntry.System`
+  WELCOME block with node id and four tips.
+
+**Phase D — Implementation**
+
+- New file: `iriscore/data/AppPreferences.kt` — `@Singleton`,
+  SharedPreferences `iris_app_prefs`, `var welcomeShown: Boolean`.
+- `MeshViewModel.kt` — injected `AppPreferences`; after `startMesh()` +
+  `subscribeInbox()` in `ensureStarted()`, checks `!appPreferences.welcomeShown`,
+  sets flag, reads `uiState.value.nodeIdHex`, emits WELCOME system event with
+  node id and tips for `/to`, `/help`, `/name`.
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification:
+1. Fresh install on P1. Launch app. Verify WELCOME system event appears in
+   transcript with node id and tips.
+2. Rotate screen / background + foreground. Verify WELCOME does NOT reappear
+   (flag is persisted).
+3. Clear app data via Settings → verify WELCOME reappears on next launch.
+
+**Phase C — Close**
+
+- Commit: `<session-28>` — see main commit message.
+- Tracker: HV-62 → ✅ HW PENDING.
+
+---
+
+### Session 28 closeout
+
+- Devices used: none (code-only session, Phase R + D)
+- Findings advanced: HV-56 ✅, HV-58 ✅, HV-60 ✅, HV-62 ✅ (all HW PENDING)
+- 🟢 count: 31 → 31 (no hardware, no 🟢 advancement)
+- ✅ HW PENDING count: 27 → 31
+- Tier 8 remaining: HV-64 (SOS broadcast) — 🔒 blocked on 3rd phone
+- Blockers opened: none (HV-64 was already blocked)
+- New HV-## candidates spotted: none
+- Next session should pick up: hardware Phase T for HV-56/58/60/62/63/61/59;
+  or Tier 2 Wi-Fi Direct findings (HV-17..HV-26) if hardware unavailable.
+
+---
+
 ## Documentation reconciliation — 2026-09-06
 
 This pass refreshed the stale loop projections against repository head

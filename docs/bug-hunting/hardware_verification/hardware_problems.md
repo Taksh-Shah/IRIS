@@ -76,11 +76,17 @@ that remain are understood and logged.*
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
-| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 4 | 0 | 0 | 5 |
+| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 8 | 0 | 0 | 1 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 2 | 0 | 0 | 15 |
-| **Total** | | **109** | **31** | **27** | **1** | **2** | **48** |
+| **Total** | | **109** | **31** | **31** | **1** | **2** | **44** |
 
-**Last updated:** 2026-09-06 (Session 27 — **Tier 8: HV-63 + HV-61 + HV-59
+**Last updated:** 2026-09-06 (Session 28 — **Tier 8: HV-56 + HV-58 + HV-60 +
+HV-62 closed, ✅ HW PENDING.** ContactStore + `/name` + `/contacts` (HV-56);
+DeliveryStatus enum replacing `pending: Boolean` with QUEUED/FAILED chips
+(HV-58); RetryNotice shows RECONNECTING state and escalated guidance after 2+
+attempts (HV-60); WELCOME system event on first launch with node id and tips
+(HV-62). Tier 8 only HV-64 remains, blocked on 3rd phone for broadcast test.)
+· Previously: 2026-09-06 (Session 27 — **Tier 8: HV-63 + HV-61 + HV-59
 closed, ✅ HW PENDING.** Auto-scroll now respects user scroll position (HV-63,
 "N new ↓" pill); StatusLine shows "PERM" chip and PermissionNotice opens
 Settings on permanent denial (HV-61); per-transport "BLE ● / WD ○" chips
@@ -3215,7 +3221,7 @@ affordance.
 
 ### HV-56 — No contacts / peer list / nicknames — every message requires pasting a 64-hex PeerId
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-28> · 2026-09-06
 - **Area:** `CommandExecutor.setRecipient` (requires exactly 64 hex),
   `MeshViewModel._recipient` (a raw hex string), no contact store anywhere,
   `MeshUiState` (no peer list)
@@ -3269,7 +3275,7 @@ composer; long-press for a context menu (reply, copy id, save contact, priority)
 
 ### HV-58 — No delivery / send status on messages — a failed send looks identical to a delivered one
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-28> · 2026-09-06
 - **Area:** `MeshRepository.send` (HW-2 adds the message to the list on FFI
   acceptance, not on delivery), `InboxUiMessage.sent` / `.pending`, no ACK surface
 - **Severity:** High · **HW gate:** 2 phones
@@ -3311,7 +3317,7 @@ peer right now.
 
 ### HV-60 — `reconnectMesh` / RETRY is the user's main recovery tool and it may not work (see HV-29)
 
-- **Fix status:** ⬜ · duplicate-of-concern with HV-29 but tracked in the UX tier
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-28> · 2026-09-06 · duplicate-of-concern with HV-29 but tracked in the UX tier
   because the *button* is the issue
 - **Area:** `ConsoleScreen.RetryNotice`, `MeshViewModel.reconnectMesh`
 - **Severity:** Medium · **HW gate:** 2 phones
@@ -3347,7 +3353,7 @@ app settings.
 
 ### HV-62 — No onboarding: first launch drops the user into a terminal with no peer and no guidance
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit <session-28> · 2026-09-06
 - **Area:** `ConsoleScreen`, first-run state
 - **Severity:** Medium (adoption) · **HW gate:** fresh install
 
