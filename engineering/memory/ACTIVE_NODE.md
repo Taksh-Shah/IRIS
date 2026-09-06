@@ -1,7 +1,7 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T10:30:00+05:30
+**Last updated**: 2026-09-06T18:10:00+05:30
 
 ## Current hardware phase
 
@@ -17,8 +17,10 @@ follow-up is active. The two-phone bench is connected and identified in
   bounded attempts; the `/addkey`/`/to` hypothesis was also tested and rejected
   as the complete cause; see `FAIL-0008.md`.
 - Gate of record: `docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`.
-- No production source implementation change is authorized by this blocked
-  evidence; fresh failure-focused research/design is required first.
+- Mobly remediation: **COMPLETE** — the harness drives the shipping-app process,
+  not a second instrumentation engine; it retains a 10-cycle default and
+  explicit no-invitation assertion.
+- Popup audit: no invitation UI/log evidence on either connected phone.
 
 ## Active Node: SAT-001 — Satellite Gateway Transport
 

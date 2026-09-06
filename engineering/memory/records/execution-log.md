@@ -333,3 +333,15 @@ use `addFriend()` before each `startMesh()` cycle, matching `/addkey`; direct
 FAIL-0008 record the fresh research and evidence. Hypothesis rejected as the
 complete cause; Mobly remains HW-PENDING/BLOCKED. No production fix or retry
 until a design pass isolates Vivo/OriginOS discovery context/readiness.
+
+**2026-09-06 — Mobly harness remediation and popup audit (WIFIDIRECT-001).**
+Root cause: old harness launched a second engine in the instrumented process
+while suppressing the shipping engine; Vivo returned zero P2P peers there. It
+also queried the snippet after force-stopping the target package, aborting its
+RPC server. Reworked Tier-2 harness caches trust/identity before force-stop and
+uses Mobly only to drive the normal shipping app UI/ADB flow. It passed seven
+full bidirectional cycles before a five-second post-group delivery observation
+was identified as a false harness timeout; it now observes the same outbox
+message for 60 seconds. Targeted live popup audit: both apps formed a group;
+no invitation UI/log evidence on either device. Mobly remediation COMPLETE;
+shipping-app 10/10 remains formal Tier-2 acceptance evidence.

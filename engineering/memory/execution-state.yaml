@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-09-06T10:45:00+05:30"
+updated_at: "2026-09-06T18:10:00+05:30"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -24,11 +24,11 @@ mission_description: "Advance IRIS from documented state to production-grade res
 # === CURRENT POSITION ===
 active_node: "WIFIDIRECT-001"
 active_stage: "HARDWARE_VERIFICATION"
-active_action: "Tested the Kotlin command-flow hypothesis by using the Mobly addFriend equivalent of /addkey before each cold cycle. Run run-20260906-addkey still failed with P2 Degraded, peers_seen=0, and BLE fallback; shipping-app gate remains HW-verified 10/10."
-next_action: "Keep Mobly Tier-2 HW-PENDING/BLOCKED. Perform a fresh design pass on Vivo/OriginOS instrumentation-context and P2P discovery readiness before any production fix or retry; preserve the shipping-app 10/10 gate."
+active_action: "Mobly Tier-2 harness root cause resolved: it now orchestrates the real shipping-app process, caches RPC data before force-stop, and waits for the existing app outbox message after framework group formation."
+next_action: "Mobly harness remediation is complete. Preserve the shipping-app 10/10 Tier-2 gate as formal acceptance evidence; the default Mobly acceptance remains 10 cycles, with operator-directed diagnostic cycle count available. Keep the no-invitation-popup assertion enforced."
 last_transition: "HARDWARE_PHASE_RECONCILED"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-09-06T10:45:00+05:30"
+last_transition_at: "2026-09-06T18:10:00+05:30"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 

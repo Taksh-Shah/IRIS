@@ -1,0 +1,58 @@
+--------- beginning of main
+09-06 17:46:48.816 W/JavaBinder(16209): BinderProxy is being destroyed but the application did not call unlinkToDeath to unlink all of its death recipients beforehand.  Releasing leaked death recipient: X.00Zz
+09-06 17:46:48.839 W/System  (16209): A resource failed to call ZipFile.close. 
+09-06 17:46:48.841 W/System  (16209): A resource failed to call close. 
+09-06 17:46:48.952 D/iriscore(15854): iris.wd.data link closed handle=1
+09-06 17:46:49.030 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 1
+09-06 17:46:49.030 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 17:46:49.030 D/ProcessState(16689): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 17:46:49.031 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 17:46:49.043 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 17:46:49.053 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 1
+09-06 17:46:49.053 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 17:46:49.055 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 17:46:49.058 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 1
+09-06 17:46:49.058 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 17:46:49.058 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E3A0
+09-06 17:46:49.058 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 17:46:49.060 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 1
+09-06 17:46:49.060 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 17:46:49.060 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 17:46:49.060 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 17:46:49.062 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 1
+09-06 17:46:49.062 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 17:46:49.062 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 17:46:49.112 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 0
+09-06 17:46:49.112 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 17:46:49.112 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 17:46:49.113 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 1
+09-06 17:46:49.113 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 17:46:49.113 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:bta_gatts_main.cc(47)] bta_gatts_hdl_event: event = 8196
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:bta_gatts_utils.cc(108)] bta_gatts_find_srvc_cb_by_srvc_id: service_id=40
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:bta_gatts_utils.cc(111)] bta_gatts_find_srvc_cb_by_srvc_id: found service cb index=0
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_api.cc(342)] GATTS_DeleteService
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_main.cc(1754)] gatt_proc_srv_chg
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_utils.cc(163)] gatt_set_srv_chg
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_utils.cc(293)] gatt_find_the_connected_bda start_idx=0
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_utils.cc(305)]  found=0 found_idx=10
+09-06 17:46:49.117 E/bt_stack(13802): [ERROR:gatt_api.cc(319)] Active Service Found: 01000000-0000-0000-0000-000000000000
+09-06 17:46:49.117 I/bt_stack(13802): [INFO:gatt_api.cc(386)] GATTS_StopService: 0x0028
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_api.cc(363)] released handles s_hdl=0x0028, e_hdl=0x002c
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:bta_gatts_main.cc(47)] bta_gatts_hdl_event: event = 8194
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:gatt_api.cc(1270)] GATT_Deregister gatt_if=32
+09-06 17:46:49.117 V/bt_stack(13802): [VERBOSE1:connection_manager.cc(161)] on_app_deregistered : app_id 0x20
+09-06 17:46:49.131 I/celi    (16376): (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+09-06 17:46:49.133 I/celi    (16376): (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+09-06 17:46:49.147 I/cesb    (16376): onStart
+09-06 17:46:49.148 I/cejn    (16376): onStart
+09-06 17:46:49.151 I/cchd    (16376): (REDACTED) [%s] onStart()
+09-06 17:46:49.152 E/NetworkErrorMessage(16376): (REDACTED) Invalid connectivity state: %s
+09-06 17:46:49.152 I/cesb    (16376): onResume
+09-06 17:46:49.152 W/dwmg    (16376): missing event name
+09-06 17:46:49.152 I/cejn    (16376): onResume
+09-06 17:46:49.197 I/GoogleInputMethodService( 8374): GoogleInputMethodService.onFinishInput():2361 
+09-06 17:46:49.198 I/GoogleInputMethodService( 8374): GoogleInputMethodService.onStartInput():1532 onStartInput(EditorInfo{EditorInfo{packageName=com.bbk.launcher2, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+09-06 17:46:49.198 I/Module  ( 8374): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-06 17:46:49.198 W/LatinIMEBase( 8374): LatinIMEBase.updateInputViewCoverNavigation():321 Null input view, cannot update padding!
+09-06 17:46:49.200 I/Module  ( 8374): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 1, locked = false

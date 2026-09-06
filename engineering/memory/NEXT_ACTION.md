@@ -1,7 +1,7 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T10:30:00+05:30
+**Last updated**: 2026-09-06T18:10:00+05:30
 
 ## Current action: hardware-verification continuation
 
@@ -24,13 +24,14 @@ the obsolete August setup instructions.
    `docs/bug-hunting/hardware_verification/hardware_problems_loop.md`,
    `hardware_problems.md`, and `hardware_fix_log.md`.
 2. Treat `tier2_wifidirect_cold_cycle.sh` as the current Tier-2 gate of record.
-3. Keep `iris_bench/test_tier2_wifidirect.py` marked HW-PENDING/BLOCKED after
-   three bounded attempts; Connected/live-socket evidence is not delivery
-   evidence.
+3. Use `iris_bench/test_tier2_wifidirect.py` as the real-app Mobly harness.
+   Its default remains the 10-cycle acceptance gate; do not replace the
+   shipping-app gate evidence with a shorter diagnostic run.
 4. Select the next finding only from an explicit hardware procedure and preserve
    the loop order: Research → Design/implementation → Hardware test → Iterate →
    Close.
-5. Record every hardware attempt with device models, conditions, logcat, dumpsys,
+5. Keep the UI-tree and logcat no-invitation assertion active. Record every
+   hardware attempt with device models, conditions, logcat, dumpsys,
    mesh snapshot, result, and commit/documentation status.
 
 ### Constraints

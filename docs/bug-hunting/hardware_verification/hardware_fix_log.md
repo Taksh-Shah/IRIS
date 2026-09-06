@@ -5088,6 +5088,34 @@ cause. Mobly remains **HW-PENDING/BLOCKED**. No production transport change or
 additional retry is authorized until a fresh design pass isolates the
 Vivo/OriginOS instrumentation discovery/context failure.
 
+### Session 26 continued — Mobly harness root cause and popup audit — 2026-09-06
+
+**Mobly root cause resolved.** The old test suppressed the shipping app's mesh
+startup, then created a second engine inside the `am instrument` process. Vivo
+did not expose P2P peers reliably to that process. It also called snippet RPCs
+after `am force-stop org.iris.mesh`, which correctly kills everything associated
+with the target package and aborted the RPC channel. The harness now caches
+identity/trust before the cold start and uses Mobly only to orchestrate the
+normal shipping app via ADB/UI: real app launch, persistent `/addkey` state,
+real `/to` plus message entry, P2P group check, bounded outbox-delivery wait,
+and logcat/accessibility-tree assertions.
+
+The app-driven harness passed seven consecutive bidirectional cold cycles
+before its original five-second delivery observation window produced a false
+failure: `groupFormed` existed but the asynchronous IRIS socket was still
+attaching. The harness now observes the same original outbox message for up to
+60 seconds, without creating retry traffic. Default acceptance remains 10
+cycles; `IRIS_TIER2_CYCLES` allows an explicitly operator-directed shorter
+diagnostic run without weakening that default.
+
+**Invitation-popup audit:** a targeted real-app cold launch formed a group on
+both connected phones. Both UI accessibility trees and logcat contained no
+`Invitation to connect`, `Invitation received`, or
+`UserAuthorizingInvite` evidence. IRIS's own fresh programmatic connection
+path is silent on this bench. A normal third-party app cannot safely
+auto-accept Android's separate Invitation Procedure; IRIS must keep avoiding
+that OS path, and any future popup is a hard Tier-2 failure.
+
 ## Session 27 (autonomous) — 2026-09-06 — Tier 8: HV-63, HV-61, HV-59
 
 **Devices:** none available this session  

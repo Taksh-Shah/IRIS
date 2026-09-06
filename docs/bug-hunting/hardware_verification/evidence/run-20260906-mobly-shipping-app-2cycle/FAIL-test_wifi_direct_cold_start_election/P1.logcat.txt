@@ -1,0 +1,7 @@
+--------- beginning of main
+09-06 18:07:55.041 W/logcat  (20133): type=1400 audit(0.0:405735): avc:  denied  { ioctl } for  path="socket:[81090740]" dev="sockfs" ino=81090740 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:55.045 W/logcat  (20133): type=1400 audit(0.0:405736): avc:  denied  { ioctl } for  path="socket:[81090740]" dev="sockfs" ino=81090740 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:55.045 W/logcat  (20133): type=1400 audit(0.0:405737): avc:  denied  { ioctl } for  path="socket:[81090740]" dev="sockfs" ino=81090740 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:55.049 W/logcat  (20133): type=1400 audit(0.0:405738): avc:  denied  { ioctl } for  path="socket:[81090740]" dev="sockfs" ino=81090740 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:55.238 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb,raw:am force-stop org.iris.mesh'
+09-06 18:07:55.612 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''

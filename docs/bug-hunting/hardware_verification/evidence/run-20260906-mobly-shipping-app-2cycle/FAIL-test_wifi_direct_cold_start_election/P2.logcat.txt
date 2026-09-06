@@ -1,0 +1,4 @@
+--------- beginning of main
+09-06 18:07:55.513 D/ProcessState(14418): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:55.548 D/hw-ProcessState(14278): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:55.548 D/AndroidRuntime(14278): Shutting down VM

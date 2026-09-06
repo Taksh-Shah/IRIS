@@ -1,0 +1,26 @@
+--------- beginning of main
+09-06 17:46:48.755 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb,raw:am force-stop org.iris.mesh'
+09-06 17:46:48.942 I/adbd    (16247): Remote process closed the socket (on MSG_PEEK)
+09-06 17:46:48.943 I/SubtypeOperator( 9894): SubtypeOperator$1.onUnbindInput():43 
+09-06 17:46:48.952 W/libc    (13513): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+09-06 17:46:48.954 E/OpenGLRenderer(13513): Unable to match the desired swap behavior.
+09-06 17:46:48.949 W/chbox:googleapp(13513): type=1400 audit(0.0:404730): avc:  denied  { read } for  name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=2374 scontext=u:r:priv_app:s0:c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.google.android.googlequicksearchbox
+09-06 17:46:48.966 E/wpa_supplicant(17247): eap_proxy: eap_proxy_notify_config
+09-06 17:46:48.966 E/wpa_supplicant(17247): eap_proxy: eap_proxy_notify_config
+09-06 17:46:48.966 E/wpa_supplicant(17247): eap_proxy: eap_proxy_notify_config
+09-06 17:46:48.999 I/cgno    (13513): onStart
+09-06 17:46:49.000 I/cgfa    (13513): onStart
+09-06 17:46:49.002 I/ceco    (13513): (REDACTED) [%s] onStart()
+09-06 17:46:49.002 I/cefc    (13513): Reloading theme data
+09-06 17:46:49.012 E/NetworkErrorMessage(13513): (REDACTED) Invalid connectivity state: %s
+09-06 17:46:49.013 I/cgno    (13513): onResume
+09-06 17:46:49.014 W/dytk    (13513): missing event name
+09-06 17:46:49.014 I/cgfa    (13513): onResume
+09-06 17:46:49.063 D/BoundBrokerSvc( 9951): onRebind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action:/... cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-06 17:46:49.102 I/SubtypeOperator( 9894): SubtypeOperator$1.onBindInput():33 
+09-06 17:46:49.103 I/GoogleInputMethodService( 9894): GoogleInputMethodService.onFinishInput():2361 
+09-06 17:46:49.104 I/GoogleInputMethodService( 9894): GoogleInputMethodService.onStartInput():1532 onStartInput(EditorInfo{EditorInfo{packageName=com.android.launcher3, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+09-06 17:46:49.104 W/LatinIMEBase( 9894): LatinIMEBase.updateInputViewCoverNavigation():321 Null input view, cannot update padding!
+09-06 17:46:49.107 I/Module  ( 9894): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-06 17:46:49.108 I/Module  ( 9894): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 1, locked = false
+09-06 17:46:49.131 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''

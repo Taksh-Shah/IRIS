@@ -1,0 +1,696 @@
+--------- beginning of main
+09-06 18:04:12.677 W/logcat  (12859): type=1400 audit(0.0:405507): avc:  denied  { ioctl } for  path="socket:[81033413]" dev="sockfs" ino=81033413 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:12.685 W/logcat  (12859): type=1400 audit(0.0:405508): avc:  denied  { ioctl } for  path="socket:[81033413]" dev="sockfs" ino=81033413 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:12.689 W/logcat  (12859): type=1400 audit(0.0:405509): avc:  denied  { ioctl } for  path="socket:[81033413]" dev="sockfs" ino=81033413 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:12.689 W/logcat  (12859): type=1400 audit(0.0:405510): avc:  denied  { ioctl } for  path="socket:[81033413]" dev="sockfs" ino=81033413 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:13.065 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:13.066 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:13.601 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:13.618 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:13.619 D/BluetoothGattServer(29122): registerCallback() - UUID=2d742822-f29e-4a36-8f17-72d94f33caf1
+09-06 18:04:13.625 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:13.626 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:13.780 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:13.781 D/BluetoothGattServer(29122): registerCallback() - UUID=7945b84a-532f-4a1d-80cf-07b3247a891b
+09-06 18:04:13.788 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:13.789 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:13.942 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:13.943 D/BluetoothGattServer(29122): registerCallback() - UUID=3fb16c66-039b-4cf6-ab69-92c3e3913625
+09-06 18:04:13.954 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:13.955 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:14.107 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:14.116 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:14.139 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:14.143 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:14.143 D/BluetoothGattServer(29122): registerCallback() - UUID=c312b0f0-1809-42bf-a4be-35c51aa576c5
+09-06 18:04:14.150 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:14.151 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:14.305 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:14.305 D/BluetoothGattServer(29122): registerCallback() - UUID=704c3728-ebc6-4d6a-b016-358b0f7ee7bb
+09-06 18:04:14.312 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:14.313 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:14.465 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:14.466 D/BluetoothGattServer(29122): registerCallback() - UUID=f42ab63f-fb46-4599-9392-3e284b04ba0a
+09-06 18:04:14.472 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:14.475 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:14.626 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:14.629 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:14.629 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:14.644 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:14.667 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:15.165 W/getenforce(12890): type=1400 audit(0.0:405511): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:15.169 W/Thread-21880(14045): type=1400 audit(0.0:405512): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:16.068 E/wpa_supplicant(17247): No VendorP2pIfaceCallback is register
+09-06 18:04:16.088 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:16.088 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:16.127 W/libc    (12956): Access denied finding property "persist.adb.tls_server.enable"
+09-06 18:04:16.121 W/getprop (12956): type=1400 audit(0.0:405513): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:17.674 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:17.687 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:17.687 D/BluetoothGattServer(29122): registerCallback() - UUID=8872462f-ac76-4f62-b37f-1a798e826b30
+09-06 18:04:17.693 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:17.694 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:17.846 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:17.846 D/BluetoothGattServer(29122): registerCallback() - UUID=44203b28-6d19-499f-afde-0f8ac268ae0a
+09-06 18:04:17.850 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:17.851 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:18.003 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:18.003 D/BluetoothGattServer(29122): registerCallback() - UUID=7fa665d6-f252-4af2-a56a-a302aeda582a
+09-06 18:04:18.008 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:18.009 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:18.160 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:18.166 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:18.192 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:18.196 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:18.196 D/BluetoothGattServer(29122): registerCallback() - UUID=e7629558-6e92-4e85-b631-3efdd10713e0
+09-06 18:04:18.200 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:18.200 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:18.353 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:18.354 D/BluetoothGattServer(29122): registerCallback() - UUID=8f3cca70-3828-4420-8575-9bef38e1b37a
+09-06 18:04:18.359 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:18.359 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:18.511 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:18.511 D/BluetoothGattServer(29122): registerCallback() - UUID=76e046f6-57a1-44c0-9a99-2d92087cec0f
+09-06 18:04:18.517 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:18.518 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:18.669 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:18.673 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:18.673 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:18.684 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:18.696 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:19.097 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:19.097 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:21.710 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:21.727 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:21.728 D/BluetoothGattServer(29122): registerCallback() - UUID=da18f253-53f8-4562-aac3-84e2b96ffc29
+09-06 18:04:21.735 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:21.737 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:21.890 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:21.890 D/BluetoothGattServer(29122): registerCallback() - UUID=0841b2f0-a4d7-4ba8-ad00-b6bad3260ac9
+09-06 18:04:21.899 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:21.899 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:22.053 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:22.054 D/BluetoothGattServer(29122): registerCallback() - UUID=f79e99a1-2362-4d4d-8394-592ffd2f9df2
+09-06 18:04:22.063 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:22.065 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:22.123 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:22.123 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:22.216 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:22.223 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:22.258 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:22.268 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:22.269 D/BluetoothGattServer(29122): registerCallback() - UUID=3e3270ff-338c-4ca4-be0b-601508d8e941
+09-06 18:04:22.273 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:22.273 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:22.426 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:22.427 D/BluetoothGattServer(29122): registerCallback() - UUID=36137bf3-9ac5-4106-aae3-0fea63a34b10
+09-06 18:04:22.435 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:22.437 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:22.589 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:22.589 D/BluetoothGattServer(29122): registerCallback() - UUID=d3b8f28d-17b0-4256-aebc-5e8cc9897e21
+09-06 18:04:22.594 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:22.595 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:22.746 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:22.755 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:22.755 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:22.779 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:22.786 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:25.128 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:25.128 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:25.157 W/getenforce(13145): type=1400 audit(0.0:405514): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:25.161 W/Thread-21881(14045): type=1400 audit(0.0:405515): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:25.794 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:25.805 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:25.805 D/BluetoothGattServer(29122): registerCallback() - UUID=841bc15b-0ab9-4fe7-b9bc-c4dec855b37b
+09-06 18:04:25.812 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:25.814 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:25.966 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:25.966 D/BluetoothGattServer(29122): registerCallback() - UUID=d7c191e4-814b-4bdd-8341-3ba1743edac8
+09-06 18:04:25.971 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:25.971 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:26.123 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:26.123 D/BluetoothGattServer(29122): registerCallback() - UUID=f47dc9ea-8b20-45de-a111-1f54dcf22d7b
+09-06 18:04:26.126 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:26.127 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:26.277 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:26.280 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:26.299 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:26.305 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:26.305 D/BluetoothGattServer(29122): registerCallback() - UUID=875022e7-62f2-46fa-a83b-e176fe64c095
+09-06 18:04:26.309 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:26.311 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:26.462 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:26.463 D/BluetoothGattServer(29122): registerCallback() - UUID=60ae2970-30fe-4d1c-91fb-2bc19974690d
+09-06 18:04:26.469 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:26.469 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:26.621 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:26.621 D/BluetoothGattServer(29122): registerCallback() - UUID=bacaffc2-5fba-4119-8443-11337b11ef17
+09-06 18:04:26.627 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:26.628 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:26.779 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:26.783 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:26.797 D/BluetoothLeScanner(29122): onScannerRegistered() - status=133 scannerId=0 mScannerId=0
+09-06 18:04:26.799 W/iriscore(29122): iris.ble.scan startScan failed errorCode=2
+09-06 18:04:26.803 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:26.808 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:26.812 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:28.143 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:28.143 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:29.823 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:29.841 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:29.841 D/BluetoothGattServer(29122): registerCallback() - UUID=cd3ead23-a1a2-428c-82cc-82c3da12dab9
+09-06 18:04:29.853 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:29.853 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:30.006 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:30.006 D/BluetoothGattServer(29122): registerCallback() - UUID=b577197c-dc7c-4d8a-919f-ab22a44d0fac
+09-06 18:04:30.015 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:30.016 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:30.169 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:30.170 D/BluetoothGattServer(29122): registerCallback() - UUID=297fb6a8-ce20-46f8-a92d-9af69787d15d
+09-06 18:04:30.179 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:30.179 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:30.331 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:30.341 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:30.362 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m platform onScanFailed — forcing a scan re-arm [3mevent[0m[2m=[0m"ble.scan_refused" [3mcode[0m[2m=[0m2
+09-06 18:04:30.364 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:30.369 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:30.369 D/BluetoothGattServer(29122): registerCallback() - UUID=b9ea5aa2-03ac-4da3-b88a-8f8c8771056a
+09-06 18:04:30.375 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:30.375 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:30.527 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:30.528 D/BluetoothGattServer(29122): registerCallback() - UUID=02acfdd0-e58c-43fe-b4f3-a8f43134091e
+09-06 18:04:30.533 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:30.535 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:30.687 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:30.687 D/BluetoothGattServer(29122): registerCallback() - UUID=e9cf08d9-4ecd-4b30-8385-584f611ea49e
+09-06 18:04:30.695 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:30.696 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:30.847 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:30.853 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:30.881 D/BluetoothLeScanner(29122): onScannerRegistered() - status=133 scannerId=0 mScannerId=0
+09-06 18:04:30.883 W/iriscore(29122): iris.ble.scan startScan failed errorCode=2
+09-06 18:04:30.887 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:30.893 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:30.897 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:31.176 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:31.176 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:33.909 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:33.928 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:33.928 D/BluetoothGattServer(29122): registerCallback() - UUID=a17dc7a6-e267-4b8a-b401-fd6266daaa5e
+09-06 18:04:33.935 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:33.936 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:34.089 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:34.089 D/BluetoothGattServer(29122): registerCallback() - UUID=9fa067a0-2146-4d9a-a7ed-df901840b01f
+09-06 18:04:34.096 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:34.097 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:34.249 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:34.249 D/BluetoothGattServer(29122): registerCallback() - UUID=f787e1de-0556-40e9-9466-9533a41719cb
+09-06 18:04:34.255 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:34.256 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:34.407 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:34.413 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:34.419 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:34.419 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:34.432 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m platform onScanFailed — forcing a scan re-arm [3mevent[0m[2m=[0m"ble.scan_refused" [3mcode[0m[2m=[0m2
+09-06 18:04:34.435 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:34.439 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:34.439 D/BluetoothGattServer(29122): registerCallback() - UUID=40042ead-7200-45fd-9ed0-9e06af0fd98b
+09-06 18:04:34.445 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:34.446 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:34.600 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:34.600 D/BluetoothGattServer(29122): registerCallback() - UUID=455073b5-d40b-474e-993d-3ed76baf9a90
+09-06 18:04:34.614 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:34.615 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:34.768 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:34.768 D/BluetoothGattServer(29122): registerCallback() - UUID=b89829d6-ffe5-46a5-abc4-c4a82d9ee153
+09-06 18:04:34.773 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:34.774 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:34.925 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:34.930 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:34.942 D/BluetoothLeScanner(29122): onScannerRegistered() - status=133 scannerId=0 mScannerId=0
+09-06 18:04:34.947 W/iriscore(29122): iris.ble.scan startScan failed errorCode=2
+09-06 18:04:34.952 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:34.958 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:34.961 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:35.197 W/getenforce(13422): type=1400 audit(0.0:405516): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:35.201 W/Thread-21883(14045): type=1400 audit(0.0:405517): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:37.429 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:37.429 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:37.969 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:37.981 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:37.982 D/BluetoothGattServer(29122): registerCallback() - UUID=f8e1587c-599a-4d84-ac46-adccd7bef7c1
+09-06 18:04:37.987 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:37.988 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:38.141 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:38.141 D/BluetoothGattServer(29122): registerCallback() - UUID=0dad7f30-3aed-43e7-b435-925ba6c63418
+09-06 18:04:38.148 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:38.149 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:38.301 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:38.302 D/BluetoothGattServer(29122): registerCallback() - UUID=fecb2eb4-dcec-4cd1-8009-2ba937964fdd
+09-06 18:04:38.308 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:38.309 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:38.461 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:38.463 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:38.473 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m platform onScanFailed — forcing a scan re-arm [3mevent[0m[2m=[0m"ble.scan_refused" [3mcode[0m[2m=[0m2
+09-06 18:04:38.475 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:38.479 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:38.479 D/BluetoothGattServer(29122): registerCallback() - UUID=ba5d8a31-5a8b-49c5-9b7c-fb364db2febe
+09-06 18:04:38.487 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:38.487 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:38.639 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:38.639 D/BluetoothGattServer(29122): registerCallback() - UUID=ee5498dd-4dc2-41a7-967a-a7b6dffaadf9
+09-06 18:04:38.644 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:38.644 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:38.796 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:38.797 D/BluetoothGattServer(29122): registerCallback() - UUID=355676c6-97be-4795-8403-c8510bfc4129
+09-06 18:04:38.801 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:38.802 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:38.953 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:38.957 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:38.967 D/BluetoothLeScanner(29122): onScannerRegistered() - status=133 scannerId=0 mScannerId=0
+09-06 18:04:38.969 W/iriscore(29122): iris.ble.scan startScan failed errorCode=2
+09-06 18:04:38.976 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:38.983 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:38.988 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:40.481 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:40.481 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+--------- beginning of system
+09-06 18:04:40.560 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-06 18:04:41.382 W/libc    (13693): Access denied finding property "persist.adb.tls_server.enable"
+09-06 18:04:41.377 W/getprop (13693): type=1400 audit(0.0:405518): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:41.998 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:42.015 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:42.015 D/BluetoothGattServer(29122): registerCallback() - UUID=79c32b1c-262e-4bbd-8355-b2a3f5ddc223
+09-06 18:04:42.021 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:42.022 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:42.174 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:42.175 D/BluetoothGattServer(29122): registerCallback() - UUID=c29a7c5d-8b63-4b24-b743-80d79bd05810
+09-06 18:04:42.179 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:42.181 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:42.332 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:42.333 D/BluetoothGattServer(29122): registerCallback() - UUID=8982e5b5-6ebb-420e-afe8-19685bc6a45e
+09-06 18:04:42.341 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:42.342 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:42.493 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:42.498 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:42.520 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m platform onScanFailed — forcing a scan re-arm [3mevent[0m[2m=[0m"ble.scan_refused" [3mcode[0m[2m=[0m2
+09-06 18:04:42.526 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:42.537 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:42.537 D/BluetoothGattServer(29122): registerCallback() - UUID=e4358b07-01ed-458b-9799-76fde32abab1
+09-06 18:04:42.541 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:42.541 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:42.695 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:42.696 D/BluetoothGattServer(29122): registerCallback() - UUID=2a99c32a-d53a-41f1-ac7a-a4c07277e87c
+09-06 18:04:42.704 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:42.705 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:42.859 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:42.860 D/BluetoothGattServer(29122): registerCallback() - UUID=c44d942e-7659-4236-844d-8cdfabc9eb80
+09-06 18:04:42.869 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:42.870 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:43.021 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:43.028 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:43.045 D/BluetoothLeScanner(29122): onScannerRegistered() - status=133 scannerId=0 mScannerId=0
+09-06 18:04:43.046 W/iriscore(29122): iris.ble.scan startScan failed errorCode=2
+09-06 18:04:43.050 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mble-android [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:43.056 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:43.058 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:43.485 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:43.486 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:45.245 W/getenforce(13715): type=1400 audit(0.0:405519): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:45.245 W/Thread-21884(14045): type=1400 audit(0.0:405520): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:46.064 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:46.072 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:46.072 D/BluetoothGattServer(29122): registerCallback() - UUID=7038c71d-0992-4724-8d15-980684f0619e
+09-06 18:04:46.077 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:46.078 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:46.229 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:46.230 D/BluetoothGattServer(29122): registerCallback() - UUID=f29a2b8b-846a-4da2-920a-b419078460f9
+09-06 18:04:46.234 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:46.235 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:46.386 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:46.387 D/BluetoothGattServer(29122): registerCallback() - UUID=090f12cc-9cdb-4f58-9d38-576f889fc6ab
+09-06 18:04:46.392 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:46.393 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:46.544 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:46.551 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:46.555 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:46.555 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:46.573 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m platform onScanFailed — forcing a scan re-arm [3mevent[0m[2m=[0m"ble.scan_refused" [3mcode[0m[2m=[0m2
+09-06 18:04:46.575 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:46.580 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:46.580 D/BluetoothGattServer(29122): registerCallback() - UUID=0947b1c2-6670-4265-986a-07f0f9dea734
+09-06 18:04:46.585 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:46.585 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:46.738 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:46.738 D/BluetoothGattServer(29122): registerCallback() - UUID=bf26b86a-2e52-4ae8-8bfb-f2087a6b3904
+09-06 18:04:46.744 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:46.746 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:46.898 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:46.898 D/BluetoothGattServer(29122): registerCallback() - UUID=62b5f1c0-375b-4c80-ad9f-d0a656efb73e
+09-06 18:04:46.903 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:46.903 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:47.054 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:47.059 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:47.059 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:47.072 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:47.093 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:48.480 E/wpa_supplicant(17247): No VendorP2pIfaceCallback is register
+09-06 18:04:49.594 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:49.594 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:50.104 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:50.123 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:50.123 D/BluetoothGattServer(29122): registerCallback() - UUID=15a64e2c-8565-4477-9219-ea7cc1ad8b8f
+09-06 18:04:50.130 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:50.131 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:50.285 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:50.286 D/BluetoothGattServer(29122): registerCallback() - UUID=f7d8f0db-5ba6-49c0-8b0c-a1d285b3f47e
+09-06 18:04:50.294 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:50.295 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:50.448 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:50.448 D/BluetoothGattServer(29122): registerCallback() - UUID=2519560b-73dc-4bef-a50a-3542999e3a4b
+09-06 18:04:50.454 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:50.455 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:50.605 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:50.609 W/BatteryStatsService( 1680): Unknown sensor handle 0 received in noteWakeupSensorEvent
+09-06 18:04:50.612 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:50.634 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:50.638 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:50.638 D/BluetoothGattServer(29122): registerCallback() - UUID=20ae2bfe-305d-45cb-9c6e-96ef91d736ad
+09-06 18:04:50.641 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:50.641 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:50.795 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:50.795 D/BluetoothGattServer(29122): registerCallback() - UUID=a96aebd5-ebae-4ae5-a421-5365e318c875
+09-06 18:04:50.805 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:50.807 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:50.960 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:50.961 D/BluetoothGattServer(29122): registerCallback() - UUID=8862420b-d6bd-497b-a9bb-21a3105c8e8f
+09-06 18:04:50.967 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:50.968 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:51.119 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:51.127 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:51.127 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:51.143 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:51.150 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:52.645 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:52.645 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:54.163 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:54.176 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:54.177 D/BluetoothGattServer(29122): registerCallback() - UUID=4be59381-0648-4f5f-814e-ea7bb640c2ee
+09-06 18:04:54.181 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:54.181 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:54.334 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:54.335 D/BluetoothGattServer(29122): registerCallback() - UUID=8c43ba79-94bb-4b5b-b835-062429d4ca07
+09-06 18:04:54.341 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:54.342 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:54.494 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:54.494 D/BluetoothGattServer(29122): registerCallback() - UUID=6edb9c18-0a06-485e-885f-91d7330b9709
+09-06 18:04:54.499 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:54.500 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:54.651 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:54.655 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:54.675 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:54.686 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:54.686 D/BluetoothGattServer(29122): registerCallback() - UUID=8ff3fcd5-7333-4154-8add-73384d9d9c9a
+09-06 18:04:54.694 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:54.695 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:54.846 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:54.847 D/BluetoothGattServer(29122): registerCallback() - UUID=a4d6bacc-e840-4968-9ba1-97b73301c779
+09-06 18:04:54.853 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:54.854 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:55.006 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:55.006 D/BluetoothGattServer(29122): registerCallback() - UUID=69e16c3a-183b-42e9-be23-757f31fb41eb
+09-06 18:04:55.013 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:55.014 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:55.164 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:55.168 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:55.168 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:55.178 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:55.188 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:04:55.281 W/Thread-21885(14045): type=1400 audit(0.0:405522): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:04:55.654 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:55.655 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:56.419 W/Auth    ( 9951): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:04:56.419 W/Auth    ( 9951): dedt: Failed to process request
+09-06 18:04:56.419 W/Auth    ( 9951): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-06 18:04:56.419 W/Auth    ( 9951): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-06 18:04:56.419 W/Auth    ( 9951): Caused by: degw: Connectivity error
+09-06 18:04:56.419 W/Auth    ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-06 18:04:56.419 W/Auth    ( 9951): 	... 20 more
+09-06 18:04:56.419 W/Auth    ( 9951): Caused by: java.io.IOException
+09-06 18:04:56.419 W/Auth    ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-06 18:04:56.419 W/Auth    ( 9951): 	... 20 more
+09-06 18:04:56.422 E/AuthPII ( 9951): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:https://www.googleapis.com/auth/googleplay
+09-06 18:04:56.422 E/AuthPII ( 9951): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-06 18:04:56.422 E/AuthPII ( 9951): Caused by: bksu: Error requesting token.
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	... 12 more
+09-06 18:04:56.422 E/AuthPII ( 9951): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	... 13 more
+09-06 18:04:56.422 E/AuthPII ( 9951): Caused by: dedt: Failed to process request
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	... 13 more
+09-06 18:04:56.422 E/AuthPII ( 9951): Caused by: degw: Connectivity error
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	... 20 more
+09-06 18:04:56.422 E/AuthPII ( 9951): Caused by: java.io.IOException
+09-06 18:04:56.422 E/AuthPII ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-06 18:04:56.422 E/AuthPII ( 9951): 	... 20 more
+09-06 18:04:56.423 E/AuthPII ( 9951): Message is Error when calling server using GmsNetworkStack.
+09-06 18:04:56.423 E/AuthPII ( 9951): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-06 18:04:56.423 E/AuthPII ( 9951): Caused by: bksu: Error requesting token.
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	... 12 more
+09-06 18:04:56.423 E/AuthPII ( 9951): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	... 13 more
+09-06 18:04:56.423 E/AuthPII ( 9951): Caused by: dedt: Failed to process request
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):82)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at lsc.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):19)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at deha.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at cflb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at ahla.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):13)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at ahla.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):125)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at apvk.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):172)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	... 13 more
+09-06 18:04:56.423 E/AuthPII ( 9951): Caused by: degw: Connectivity error
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):76)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	... 20 more
+09-06 18:04:56.423 E/AuthPII ( 9951): Caused by: java.io.IOException
+09-06 18:04:56.423 E/AuthPII ( 9951): 	at degt.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):73)
+09-06 18:04:56.423 E/AuthPII ( 9951): 	... 20 more
+09-06 18:04:56.423 I/Auth    ( 9951): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 18:04:56.423 W/Auth    ( 9951): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gms, scope=oauth2:https://www.googleapis.com/auth/googleplay [CONTEXT service_id=153 ]
+09-06 18:04:56.423 W/Auth    ( 9951): aiic: GetToken failed with status code: NetworkError
+09-06 18:04:56.423 W/Auth    ( 9951): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:254)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:253)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at android.os.Binder.transact(Binder.java:1249)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at android.os.Binder.execTransactInternal(Binder.java:1410)
+09-06 18:04:56.423 W/Auth    ( 9951): 	at android.os.Binder.execTransact(Binder.java:1341)
+09-06 18:04:56.424 W/Auth    ( 9951): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError [CONTEXT service_id=343 ]
+09-06 18:04:58.197 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:58.208 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:58.209 D/BluetoothGattServer(29122): registerCallback() - UUID=5c20f306-68d1-4cf4-9f56-96ebf80bc05d
+09-06 18:04:58.214 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:58.215 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:58.367 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:58.367 D/BluetoothGattServer(29122): registerCallback() - UUID=b3474fec-aa5b-4ddc-a01c-321e3f9cb6a6
+09-06 18:04:58.373 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:58.373 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:58.525 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:58.525 D/BluetoothGattServer(29122): registerCallback() - UUID=e1e4e50a-dda6-40c7-8c3e-00c1aeb1f321
+09-06 18:04:58.533 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:58.534 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:58.685 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:58.689 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:58.692 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:04:58.692 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:04:58.708 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:04:58.712 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:58.713 D/BluetoothGattServer(29122): registerCallback() - UUID=3ccb2667-778e-4a28-8377-c74ccddbe3e3
+09-06 18:04:58.717 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:58.718 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:04:58.869 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:58.870 D/BluetoothGattServer(29122): registerCallback() - UUID=de4f23cb-124e-4e87-8575-68d5a911ccfd
+09-06 18:04:58.874 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:58.875 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:04:59.027 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:04:59.029 D/BluetoothGattServer(29122): registerCallback() - UUID=a27dfffe-178f-4c00-8516-5b1adc88febd
+09-06 18:04:59.038 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:04:59.039 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:04:59.190 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:04:59.195 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:04:59.195 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:04:59.207 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:04:59.215 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:05:01.695 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:05:01.695 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:05:02.228 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:05:02.244 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:02.244 D/BluetoothGattServer(29122): registerCallback() - UUID=e5b6842e-c427-4017-bf89-2827420fc265
+09-06 18:05:02.251 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:02.252 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:05:02.404 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:02.405 D/BluetoothGattServer(29122): registerCallback() - UUID=172f155b-0f26-4043-b4d8-db520accd239
+09-06 18:05:02.410 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:02.411 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:05:02.563 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:02.563 D/BluetoothGattServer(29122): registerCallback() - UUID=cb8af8a4-9dac-421e-8f41-00ff525796ab
+09-06 18:05:02.570 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:02.570 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:05:02.722 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:05:02.728 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:05:02.747 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:05:02.752 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:02.752 D/BluetoothGattServer(29122): registerCallback() - UUID=45ac56ef-65f6-475b-8178-ea4ec79a3c91
+09-06 18:05:02.757 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:02.757 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:05:02.911 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:02.912 D/BluetoothGattServer(29122): registerCallback() - UUID=4a27b025-c24b-46e9-941d-2d0ac50473b8
+09-06 18:05:02.921 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:02.922 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:05:03.075 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:03.076 D/BluetoothGattServer(29122): registerCallback() - UUID=e46b1659-cd2a-411b-abfe-a4c7d7675b84
+09-06 18:05:03.084 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:03.085 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:05:03.237 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: no server after 3 attempts — stack may be wedged
+09-06 18:05:03.245 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m could not re-advertise after adapter event [3mevent[0m[2m=[0m"ble.readvertise_failed" [3merror[0m[2m=[0mtransport protocol error: transport error: BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth
+09-06 18:05:03.245 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: busy
+09-06 18:05:03.260 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discover_peers() failed for this pass; skipping this transport this round [3mevent[0m[2m=[0m"discovery.discover_peers_failed" [3mtransport[0m[2m=[0mwifi-aware-0 [3merror[0m[2m=[0mtransport io error: wifiaware.start: not supported on this device (Other)
+09-06 18:05:03.282 D/iriscore(29122): [2miris_core::discovery[0m[2m:[0m discovery pass complete for this transport [3mevent[0m[2m=[0m"discovery.scan_pass_complete" [3mtransport[0m[2m=[0mwifi-direct-0 [3mpeers_seen[0m[2m=[0m0
+09-06 18:05:04.713 D/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m transport.send() failed for this fragment [3mevent[0m[2m=[0m"msg.transport_send_failed" [3mtransport[0m[2m=[0mble-android [3merror[0m[2m=[0mtransport: not connected to peer
+09-06 18:05:04.713 W/iriscore(29122): [2miris_core::message_engine[0m[2m:[0m every ranked transport rejected the send — requeuing [3mevent[0m[2m=[0m"msg.all_sends_failed" [3mmessage_id[0m[2m=[0m01a076b630b07c30 [3mpriority[0m[2m=[0m4 [3mattempt[0m[2m=[0m0 [3mranked_transports[0m[2m=[0m1 [3mlast_error[0m[2m=[0m"ble-android: transport: not connected to peer"
+09-06 18:05:05.301 W/getenforce(14226): type=1400 audit(0.0:405523): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:05:05.301 W/Thread-21887(14045): type=1400 audit(0.0:405524): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:05:06.289 W/iriscore(29122): [2miris_core::transport::ble[0m[2m:[0m advertising was expected but no handle is live — re-driving [3mevent[0m[2m=[0m"ble.advertise_watchdog"
+09-06 18:05:06.298 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:06.298 D/BluetoothGattServer(29122): registerCallback() - UUID=aee1ab37-086a-4eb9-ab6c-5bce9a53ec11
+09-06 18:05:06.302 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:06.303 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 1/3)
+09-06 18:05:06.455 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:06.455 D/BluetoothGattServer(29122): registerCallback() - UUID=512607c7-2c10-4843-a67d-94c0e6fef21e
+09-06 18:05:06.460 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:06.461 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 2/3)
+09-06 18:05:06.537 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS=''; exec logcat '-d''
+09-06 18:05:06.613 D/BluetoothGattServer(29122): registerCallback()
+09-06 18:05:06.613 D/BluetoothGattServer(29122): registerCallback() - UUID=71bc704c-8a02-45e2-a1c3-93083c292bf7
+09-06 18:05:06.620 D/BluetoothGattServer(29122): onServerRegistered() - status=128 serverIf=0
+09-06 18:05:06.621 W/iriscore(29122): iris.ble.gatt ensureSharedGattServer: openGattServer null (attempt 3/3)
+09-06 18:05:06.626 W/libc    (14296): Access denied finding property "persist.adb.tls_server.enable"
+09-06 18:05:06.621 W/getprop (14296): type=1400 audit(0.0:405525): avc:  denied  { read } for  name="u:object_r:system_adbd_prop:s0" dev="tmpfs" ino=2300 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:system_adbd_prop:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:05:06.632 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb,raw:am force-stop org.iris.mesh'
+09-06 18:05:06.803 D/BoundBrokerSvc(10041): onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+09-06 18:05:06.811 I/adbd    (16247): Remote process closed the socket (on MSG_PEEK)
+09-06 18:05:06.809 W/chbox:googleapp(13513): type=1400 audit(0.0:405526): avc:  denied  { read } for  name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=2374 scontext=u:r:priv_app:s0:c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.google.android.googlequicksearchbox
+09-06 18:05:06.812 W/libc    (13513): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+09-06 18:05:06.814 I/GoogleInputMethodService( 9894): GoogleInputMethodService.onFinishInputView():1757 onFinishInputView(false)
+09-06 18:05:06.816 I/EmojiAndGlobeKeyExtension( 9894): EmojiAndGlobeKeyExtension.onDeactivate():153 
+09-06 18:05:06.817 W/TooltipLifecycleManager( 9894): TooltipLifecycleManager.dismissTooltips():152 Tooltip with id spell_check_add_to_dictionary not found in tooltipManager.
+09-06 18:05:06.817 I/VoiceInputManagerWrapper( 9894): VoiceInputManagerWrapper.shutdown():136 shutdown() : SHUTDOWN_UNIVERSAL_EXTENSION_ON_DEACTIVATE [RD]
+09-06 18:05:06.817 I/VoiceInputManagerWrapper( 9894): VoiceInputManagerWrapper.cancelShutdown():110 cancelShutdown() [RD]
+09-06 18:05:06.817 I/UniversalDictationUiProvider( 9894): UniversalDictationUiProvider.onDeactivate():69 onDeactivate() [UD]
+09-06 18:05:06.817 W/RemoteInputConnection( 9894): requestCursorUpdates() was failed with an exception=android.os.DeadObjectException
+09-06 18:05:06.817 I/InputBundle( 9894): InputBundle.consumeEvent():1062 Skip consuming an event as keyboard status is INACTIVE
+09-06 18:05:06.818 I/AbstractIme( 9894): AbstractIme.onDeactivate():229 LatinIme.onDeactivate()
+09-06 18:05:06.818 E/OpenGLRenderer(13513): Unable to match the desired swap behavior.
+09-06 18:05:06.818 I/NebulaeTrainingCacheMetricsProcessor( 9894): NebulaeTrainingCacheMetricsProcessor.processEndSession():653 End training cache session: /
+09-06 18:05:06.818 I/NebulaeTrainingCacheMetricsProcessor( 9894): NebulaeTrainingCacheMetricsProcessor.checkInputActions():1073 checkInputActions: no text change
+09-06 18:05:06.818 W/NebulaeTrainingCacheMetricsProcessor( 9894): NebulaeTrainingCacheMetricsProcessor.logInputActionCollection():843 checkInputActions failed
+09-06 18:05:06.818 I/NebulaeTrainingCacheMetricsProcessor( 9894): NebulaeTrainingCacheMetricsProcessor.processEndSession():693 No input action collection / expression events / mozc commands in this session, skip logging.
+09-06 18:05:06.818 I/PrimesLoggerHolder( 9894): FrameMetricServiceImpl.stopAsFuture():213 Measurement not found: OnConfigurationChanged
+09-06 18:05:06.819 W/TooltipLifecycleManager( 9894): TooltipLifecycleManager.dismissTooltips():152 Tooltip with id undo_access_point_promotion_banner not found in tooltipManager.
+09-06 18:05:06.819 I/GoogleInputMethodService( 9894): GoogleInputMethodService.onWindowHidden():2495 
+09-06 18:05:06.829 I/SubtypeOperator( 9894): SubtypeOperator$1.onUnbindInput():43 
+09-06 18:05:06.834 I/KeyboardModeUtils( 9894): KeyboardModeUtils.getKeyboardBottomOffset():435 inch: 0.000000 ydpi: 402.389008 adjustKeyboardBottomByDisplaySize: false currentDensityDpi: 484 defaultDensityDpi: 484 keyboardBottomToScreenPx: 0 keyboardBottomToNavBarPx: -127 navBarHeight: 127
+09-06 18:05:06.834 I/BaseKeyboardSizeHelper( 9894): BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():79 leave 293 height for app when ime window height:2184, header height:133 and isFullscreenMode:false, so the max keyboard body height is:1758
+09-06 18:05:06.835 I/BaseKeyboardSizeHelper( 9894): BaseKeyboardSizeHelper.calculateMaxKeyboardBodyHeight():79 leave 293 height for app when ime window height:2184, header height:133 and isFullscreenMode:false, so the max keyboard body height is:1758
+09-06 18:05:06.835 I/KeyboardViewManager( 9894): KeyboardViewManager.updateKeyboardBottomFrame():518 Set bottomFrameHeight = 6 while holderPaddingBottom = 6; navigationHeight = 127
+09-06 18:05:06.851 I/cgno    (13513): onStart
+09-06 18:05:06.854 I/cgfa    (13513): onStart
+09-06 18:05:06.855 E/wpa_supplicant(17247): eap_proxy: eap_proxy_notify_config
+09-06 18:05:06.855 E/wpa_supplicant(17247): eap_proxy: eap_proxy_notify_config
+09-06 18:05:06.855 I/ceco    (13513): (REDACTED) [%s] onStart()
+09-06 18:05:06.855 E/wpa_supplicant(17247): eap_proxy: eap_proxy_notify_config
+09-06 18:05:06.856 I/cefc    (13513): Reloading theme data
+09-06 18:05:06.863 E/NetworkErrorMessage(13513): (REDACTED) Invalid connectivity state: %s
+09-06 18:05:06.864 I/cgno    (13513): onResume
+09-06 18:05:06.866 W/dytk    (13513): missing event name
+09-06 18:05:06.866 I/cgfa    (13513): onResume
+09-06 18:05:07.032 I/SubtypeOperator( 9894): SubtypeOperator$1.onBindInput():33 
+09-06 18:05:07.032 I/GoogleInputMethodService( 9894): GoogleInputMethodService.onFinishInput():2361 
+09-06 18:05:07.033 I/GoogleInputMethodService( 9894): GoogleInputMethodService.onStartInput():1532 onStartInput(EditorInfo{EditorInfo{packageName=com.android.launcher3, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+09-06 18:05:07.033 I/LatinIMEBase( 9894): LatinIMEBase.updateInputViewCoverNavigation():316 Update input view padding, isNavbarOverInputWindow=false, bottom inset=127
+09-06 18:05:07.033 I/Module  ( 9894): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-06 18:05:07.036 I/Module  ( 9894): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 1, locked = false
+09-06 18:05:07.097 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''

@@ -1,0 +1,15 @@
+--------- beginning of main
+09-06 18:07:47.045 W/logcat  (19854): type=1400 audit(0.0:405724): avc:  denied  { ioctl } for  path="socket:[81084227]" dev="sockfs" ino=81084227 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:47.053 W/logcat  (19854): type=1400 audit(0.0:405725): avc:  denied  { ioctl } for  path="socket:[81084227]" dev="sockfs" ino=81084227 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:47.061 W/logcat  (19854): type=1400 audit(0.0:405726): avc:  denied  { ioctl } for  path="socket:[81084227]" dev="sockfs" ino=81084227 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:47.065 W/logcat  (19854): type=1400 audit(0.0:405727): avc:  denied  { ioctl } for  path="socket:[81084227]" dev="sockfs" ino=81084227 ioctlcmd=0xa001 scontext=u:r:shell:s0 tcontext=u:r:adbd:s0 tclass=unix_stream_socket permissive=0
+09-06 18:07:47.185 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb,raw:uiautomator dump /sdcard/iris-window.xml'
+09-06 18:07:47.640 I/SafetyCenterAccessibilityListener( 3387): accessibility event occurred, safety center feature not enabled.
+09-06 18:07:48.581 W/getenforce(19889): type=1400 audit(0.0:405731): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:07:48.585 W/Thread-21911(14045): type=1400 audit(0.0:405732): avc:  denied  { read } for  name="enforce" dev="selinuxfs" ino=4 scontext=u:r:untrusted_app:s0:c101,c256,c512,c768 tcontext=u:object_r:selinuxfs:s0 tclass=file permissive=0 app=com.google.android.apps.nbu.paisa.user
+09-06 18:07:49.675 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb,raw:cat /sdcard/iris-window.xml'
+09-06 18:07:49.801 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb,raw:am force-stop org.iris.mesh'
+09-06 18:07:49.905 I/app_process(19321): System.exit called, status: 0
+09-06 18:07:49.905 I/AndroidRuntime(19321): VM exiting with result code 0.
+09-06 18:07:49.956 I/adbd    (16247): Remote process closed the socket (on MSG_PEEK)
+09-06 18:07:50.111 I/adbd    (16247): adbd service requested 'shell,v2,TERM=dumb:export ANDROID_LOG_TAGS=''; exec logcat '-d' '-v' 'time''

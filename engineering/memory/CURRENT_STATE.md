@@ -1,7 +1,7 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T10:30:00+05:30
+**Last updated**: 2026-09-06T18:10:00+05:30
 
 > **Current reconciliation (2026-09-06):** The software graph is complete/deferred,
 > but the physical-device phase is active. P1 is `10BCA20F4M000BB` (vivo V2205,
@@ -14,6 +14,10 @@
 > delivery. The `/addkey`/`/to` command-flow hypothesis was tested and rejected
 > as the complete cause. The historical narrative below is retained as an execution record, not as the
 > current next action.
+> **Mobly remediation (2026-09-06):** the harness now drives the normal shipping
+> app rather than a second instrumented engine, caches data before force-stop,
+> and waits for asynchronous app-link delivery. The live popup audit found no
+> invitation UI/log evidence on either phone.
 
 ---
 

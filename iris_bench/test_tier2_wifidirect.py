@@ -31,63 +31,131 @@ finding is blocked pending a fresh production data-path investigation.
 Run:  python -m iris_bench --test_module tier2 --tests <method>
 """
 
-import json
+import os
 import re
 import time
+import xml.etree.ElementTree as ET
 
 from mobly import asserts
 from mobly import test_runner
 
 from iris_bench.base import IrisBenchBase
 
-_CYCLES = 10
-_BUDGET_S = 60
+# The acceptance gate defaults to 10. A short, operator-directed diagnostic
+# pass may set IRIS_TIER2_CYCLES without weakening the default requirement.
+_CYCLES = max(1, int(os.environ.get("IRIS_TIER2_CYCLES", "10")))
+_GROUP_BUDGET_S = 120
+_DELIVERY_BUDGET_S = 60
+_APP_PKG = "org.iris.mesh"
 
 
 class Tier2WifiDirect(IrisBenchBase):
 
-    def _foreground(self, ad):
-        """HV-21: vivo/OEM Android gates discoverPeers() behind 'the calling
-        app has a foreground Activity'. The instrumented test process has
-        none, so every Wi-Fi Direct test failed discovery until this. The
-        bench Activity does nothing but exist."""
-        try:
-            ad.iris.foregroundForWifiDirect()
-        except Exception:
-            pass
+    def _launch_shipping_app(self, ad):
+        """Launch the real app process that owns the production P2P engine."""
+        ad.adb.shell(["am", "force-stop", _APP_PKG])
+        ad.adb.shell([
+            "monkey", "-p", _APP_PKG, "-c",
+            "android.intent.category.LAUNCHER", "1",
+        ])
+
+    def _ui_nodes(self, ad):
+        """Return the current shipping-app accessibility tree."""
+        ad.adb.shell(["uiautomator", "dump", "/sdcard/iris-window.xml"])
+        raw = ad.adb.shell(["cat", "/sdcard/iris-window.xml"])
+        return ET.fromstring(raw.decode("utf-8", "replace"))
+
+    @staticmethod
+    def _bounds(node):
+        nums = [int(v) for v in re.findall(r"\d+", node.attrib["bounds"])]
+        return nums[0], nums[1], nums[2], nums[3]
+
+    def _console_send(self, ad, text):
+        """Enter and submit a line through the shipping app's console UI."""
+        root = self._ui_nodes(ad)
+        field = next(
+            (n for n in root.iter("node")
+             if n.attrib.get("class") == "android.widget.EditText"),
+            None,
+        )
+        asserts.assert_true(field is not None, "shipping-app console input not visible")
+        x1, y1, x2, y2 = self._bounds(field)
+        ad.adb.shell(["input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2)])
+        ad.adb.shell(["input", "keyevent", "KEYCODE_MOVE_END"])
+        for _ in range(96):
+            ad.adb.shell(["input", "keyevent", "67"])
+        # Android's input utility encodes a literal space as %s.
+        ad.adb.shell(["input", "text", text.replace(" ", "%s")])
+
+        root = self._ui_nodes(ad)
+        send = next(
+            (n for n in root.iter("node") if n.attrib.get("content-desc") == "Send"),
+            None,
+        )
+        asserts.assert_true(send is not None, "shipping-app Send control not visible")
+        sx1, sy1, sx2, sy2 = self._bounds(send)
+        ad.adb.shell(["input", "tap", str((sx1 + sx2) // 2), str((sy1 + sy2) // 2)])
+        time.sleep(0.8)
+
+    def _wait_for_group(self):
+        """Wait for both production engines to form their one P2P group."""
+        deadline = time.monotonic() + _GROUP_BUDGET_S
+        while time.monotonic() < deadline:
+            states = [
+                ad.adb.shell(["dumpsys", "wifip2p"]).decode("utf-8", "replace")
+                for ad in self.ads
+            ]
+            if all("groupFormed: true" in state for state in states):
+                return states
+            time.sleep(5)
+        return states
+
+    def _assert_no_invitation(self, ad):
+        log = ad.adb.logcat(["-d"]).decode("utf-8", "replace").lower()
+        ui = ET.tostring(self._ui_nodes(ad), encoding="unicode").lower()
+        forbidden = ("invitation to connect", "invitation received")
+        asserts.assert_false(
+            any(marker in log or marker in ui for marker in forbidden),
+            f"OS Wi-Fi Direct invitation surfaced on {ad.serial}",
+        )
+
+    def _await_delivery(self, receiver):
+        """Wait for the existing app outbox message after group formation.
+
+        `groupFormed` is Android framework state, not a promise that IRIS has
+        completed its asynchronous peer discovery, socket handshake, and link
+        attach. The app retries the one queued message itself; this helper only
+        observes that original message's delivery window and creates no traffic.
+        """
+        deadline = time.monotonic() + _DELIVERY_BUDGET_S
+        while time.monotonic() < deadline:
+            log = receiver.adb.logcat(["-d"]).decode("utf-8", "replace")
+            if "msg.delivered" in log:
+                return True
+            time.sleep(2)
+        return False
 
     def setup_test(self):
-        for ad in self.ads:
-            self._foreground(ad)
-        # Mirror the shipping app's `/addkey` path: persist the peer trust
-        # before starting the engine so cold cycles reload the same known-peer
-        # state. `sendText(peer_id, ...)` below is the RPC equivalent of
-        # `/to <peer_id>` followed by `/send`.
-        self.p1.iris.addFriend(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
-        self.p2.iris.addFriend(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
-        self.p1.iris.startMesh()
-        self.p2.iris.startMesh()
+        # Persist the same trust material used by the shipping app's `/addkey`
+        # command. The test then launches the SHIPPING app normally; it does
+        # not create a second engine in the instrumentation process.
+        # `am force-stop org.iris.mesh` stops everything associated with the
+        # target package, including the instrumentation-hosted snippet server.
+        # Read every RPC value required by the cycle before the first cold
+        # start; the rest of this test deliberately uses only adb/UI control.
+        self.p1_node_id = self.p1.iris.nodeId()
+        self.p2_node_id = self.p2.iris.nodeId()
+        self.p1_x25519 = self.p1.iris.staticX25519()
+        self.p2_x25519 = self.p2.iris.staticX25519()
+        self.p1.iris.addFriend(self.p2_node_id, self.p2_x25519)
+        self.p2.iris.addFriend(self.p1_node_id, self.p1_x25519)
 
     def teardown_test(self):
         for ad in self.ads:
             try:
-                ad.iris.stopMesh()
+                ad.adb.shell(["am", "force-stop", _APP_PKG])
             except Exception:
                 pass
-            try:
-                ad.iris.background()
-            except Exception:
-                pass
-
-    def _wifi_direct_state(self, ad):
-        try:
-            snap = json.loads(ad.iris.meshSnapshot())
-        except Exception:
-            return "unknown"
-        for t in snap.get("transports", []):
-            if str(t.get("id", "")).lower().startswith("wifi-direct"):
-                return str(t.get("state", "unknown"))
-        return "absent"
 
     def _go_conflict_count(self):
         """Best-effort GO-owner count across both phones from `dumpsys
@@ -118,64 +186,53 @@ class Tier2WifiDirect(IrisBenchBase):
         HV-22: any group lost between cycles must re-form on the next
         `connect()` — this test's own stopMesh+startMesh IS that scenario on
         every iteration.
-        Pass: 10/10 — wifi-direct-0 reaches Connected on both phones, no
-        GO/GO conflict, messages flow both ways."""
+        Pass: 10/10 — the shipping app forms exactly one group, messages flow
+        both ways, and no OS invitation reaches the user. This intentionally
+        drives the production process: the prior snippet-owned engine was a
+        different UID/process and Vivo refused to expose P2P peers to it."""
         recoveries = []
         for i in range(_CYCLES):
             for ad in self.ads:
                 ad.adb.logcat(["-c"])
-            self.p1.iris.stopMesh()
-            self.p2.iris.stopMesh()
-            time.sleep(1)
-            # Alternate who cold-starts first — HV-19's own note that
-            # symmetry bugs only show when the roles swap.
             first, second = (
                 (self.p1, self.p2) if i % 2 == 0 else (self.p2, self.p1)
             )
-            for ad in self.ads:
-                self._foreground(ad)
-            # Re-apply the real `/addkey` persistence path on every cold
-            # cycle; startMesh() must consume the persisted trust directory.
-            self.p1.iris.addFriend(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
-            self.p2.iris.addFriend(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
-            first.iris.startMesh()
-            second.iris.startMesh()
-
             t0 = time.monotonic()
-            fwd = rev = None
-            fwd_id = self.send_once(self.p1, self.p2, f"wd-fwd-{i}")
-            rev_id = self.send_once(self.p2, self.p1, f"wd-rev-{i}")
-            wd_p1 = wd_p2 = "unknown"
-            while time.monotonic() - t0 < _BUDGET_S:
-                remaining_ms = max(
-                    250,
-                    min(2000, int((_BUDGET_S - (time.monotonic() - t0)) * 1000)),
-                )
-                if not (fwd and fwd.get("delivered")):
-                    fwd = self.await_message(self.p2, fwd_id, remaining_ms)
-                if not (rev and rev.get("delivered")):
-                    rev = self.await_message(self.p1, rev_id, remaining_ms)
-                wd_p1 = self._wifi_direct_state(self.p1)
-                wd_p2 = self._wifi_direct_state(self.p2)
-                if fwd.get("delivered") and rev.get("delivered"):
-                    break
-                time.sleep(2)
+            self._launch_shipping_app(first)
+            time.sleep(1)
+            self._launch_shipping_app(second)
+            group_states = self._wait_for_group()
+            group_formed = all("groupFormed: true" in state for state in group_states)
+            asserts.assert_true(group_formed, f"cycle {i}: P2P group did not form")
+            time.sleep(3)
+
+            for ad in self.ads:
+                ad.adb.logcat(["-c"])
+            self._console_send(self.p1, f"/to {self.p2_node_id}")
+            self._console_send(self.p1, f"mobly-cold-{i}-fwd")
+            fwd_delivered = self._await_delivery(self.p2)
+
+            for ad in self.ads:
+                ad.adb.logcat(["-c"])
+            self._console_send(self.p2, f"/to {self.p1_node_id}")
+            self._console_send(self.p2, f"mobly-cold-{i}-rev")
+            rev_delivered = self._await_delivery(self.p1)
+
             dt = round(time.monotonic() - t0, 1)
             recoveries.append(dt)
             first_label = "P1" if first is self.p1 else "P2"
             self.p1.log.info(
-                "cold-start %d/%d (%s first): recovered=%s in %ss wd_p1=%s wd_p2=%s",
+                "cold-start %d/%d (%s first): group=%s fwd=%s rev=%s in %ss",
                 i + 1, _CYCLES, first_label,
-                bool(fwd and fwd.get("delivered") and rev and rev.get("delivered")),
-                dt, wd_p1, wd_p2,
+                group_formed, fwd_delivered, rev_delivered, dt,
             )
             asserts.assert_true(
-                fwd and fwd.get("delivered"),
-                f"cycle {i} ({first_label} first): P1->P2 must deliver after cold start; {fwd}",
+                fwd_delivered,
+                f"cycle {i} ({first_label} first): P1->P2 must deliver after cold start",
             )
             asserts.assert_true(
-                rev and rev.get("delivered"),
-                f"cycle {i}: P2->P1 must deliver after cold start; {rev}",
+                rev_delivered,
+                f"cycle {i}: P2->P1 must deliver after cold start",
             )
 
             go_count = self._go_conflict_count()
@@ -184,20 +241,8 @@ class Tier2WifiDirect(IrisBenchBase):
                 f"cycle {i}: {go_count} devices claim Group Owner simultaneously (GO/GO conflict)",
             )
 
-            # Operator hard requirement (Session 24): no OS "Invitation to
-            # connect" dialog may ever reach the user. IRIS drives connect()
-            # programmatically with plain WPS PBC, which must not prompt.
             for ad in self.ads:
-                try:
-                    lg = ad.adb.logcat(["-d"]).decode("utf-8", "replace")
-                except Exception:
-                    continue
-                asserts.assert_false(
-                    "invitation to connect" in lg.lower()
-                    or "invitation received" in lg.lower(),
-                    f"cycle {i}: an OS Wi-Fi Direct invitation dialog appeared "
-                    f"on {ad.serial} — must be silent",
-                )
+                self._assert_no_invitation(ad)
 
         self.p1.log.info("WIFI-DIRECT COLD START: recoveries=%s", recoveries)
         self.capture_evidence("tier2_cold_start_election")

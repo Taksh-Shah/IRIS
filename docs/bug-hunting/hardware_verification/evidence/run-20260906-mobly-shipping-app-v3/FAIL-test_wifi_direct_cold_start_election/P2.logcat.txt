@@ -1,0 +1,792 @@
+--------- beginning of main
+09-06 18:07:47.131 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:47.131 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:47.131 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.131 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.131 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.131 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:47.131 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:47.131 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:47.131 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:47.131 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:47.131 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:47.131 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:47.131 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:47.131 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:47.131 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:47.131 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:47.133 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.google.android.gms, Service: oauth2:********************************************** **************************************************** *****************************************************
+09-06 18:07:47.133 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):59)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.h(:com.google.android.gms@263234029@26.32.34 (190400-968093310):95)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):654)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 18:07:47.133 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):453)
+09-06 18:07:47.133 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:47.133 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.133 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:47.133 E/AuthPII (26923): 	... 15 more
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:47.133 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:47.133 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:47.133 E/AuthPII (26923): 	... 16 more
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:47.133 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.133 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.133 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.133 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:47.133 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:47.133 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:47.133 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:47.133 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:47.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:47.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:47.133 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:47.133 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:47.133 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:47.133 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:47.133 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):59)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.h(:com.google.android.gms@263234029@26.32.34 (190400-968093310):95)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):654)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ahra.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 18:07:47.133 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):453)
+09-06 18:07:47.133 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:47.133 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.133 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.133 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:47.133 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:47.133 E/AuthPII (26923): 	... 15 more
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:47.133 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:47.133 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:47.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:47.133 E/AuthPII (26923): 	... 16 more
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:47.133 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.133 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.133 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.133 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:47.133 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:47.133 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:47.133 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:47.133 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:47.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:47.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:47.133 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:47.133 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:47.133 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:47.133 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:47.135 W/Auth    (26923): [AccountStateDownloader] Unable to look up account state from server: couldn't fetch accessToken [CONTEXT service_id=343 ]
+09-06 18:07:47.135 W/Auth    (26923): [GaiaIdSync] Empty email. Not updating db. [CONTEXT service_id=153 ]
+09-06 18:07:47.173 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:47.173 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:47.173 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.173 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.173 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.173 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:47.173 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:47.173 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:47.173 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:47.173 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:47.173 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:47.173 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:47.173 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:47.173 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:47.173 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:47.173 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:47.175 I/PermissionControllerServiceImpl(12375): Updating user sensitive for uid 10363
+09-06 18:07:47.178 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.chrome, Service: oauth2:******************************************
+09-06 18:07:47.178 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:07:47.178 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:07:47.178 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:47.178 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.178 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.178 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:47.178 E/AuthPII (26923): 	... 12 more
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:47.178 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:47.178 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:47.178 E/AuthPII (26923): 	... 13 more
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:47.178 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.178 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.178 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.178 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:47.178 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:47.178 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:47.178 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:47.178 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:47.178 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:47.178 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:47.178 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:47.178 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:47.178 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:47.178 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:47.178 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:07:47.178 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:07:47.178 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:47.178 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.178 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.178 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:47.178 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:47.178 E/AuthPII (26923): 	... 12 more
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:47.178 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:47.178 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:47.178 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:47.178 E/AuthPII (26923): 	... 13 more
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:47.178 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.178 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.178 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:47.178 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:47.178 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:47.178 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:47.178 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:47.178 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:47.178 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:47.178 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:47.178 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:47.178 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:47.178 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:47.178 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:47.178 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 18:07:47.179 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.android.chrome, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 18:07:47.179 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 18:07:47.179 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 18:07:47.179 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:07:47.179 W/Auth    (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:47.179 W/Auth    (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:47.179 W/Auth    (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:47.179 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.179 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:47.179 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:47.179 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:47.179 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:47.179 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:47.179 W/Auth    ( 4355): [GoogleAuthUtil] [GoogleAuthUtil] error status:NETWORK_ERROR with method:getTokenWithDetails
+09-06 18:07:47.180 W/cr_AuthTaskRetry( 4355): Failed to perform auth task: org.chromium.components.signin.AuthException: Error while getting token for scope 'oauth2:*******************************************
+09-06 18:07:47.180 W/cr_AuthTaskRetry( 4355): Caused by: java.io.IOException: NetworkError
+09-06 18:07:47.331 I/entsScanServic(14034): Using CollectorTypeCC GC.
+09-06 18:07:47.341 E/entsScanServic(14034): Not starting debugger since process cannot load the jdwp agent.
+09-06 18:07:47.347 D/ProcessState(14034): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:47.367 D/CompatibilityChangeReporter(14034): Compat change id reported: 171979766; UID 99349; state: ENABLED
+09-06 18:07:47.385 W/entsScanService(14034): type=1400 audit(0.0:125330): avc: denied { search } for name="bbkcore" dev="sda20" ino=11157 scontext=u:r:isolated_app:s0:c512,c768 tcontext=u:object_r:vivo_data_file:s0 tclass=dir permissive=0
+--------- beginning of system
+09-06 18:07:47.391 D/VgcUtil (14034): getFile name :theme_dir_path not exit in vgc_path_config.xml
+09-06 18:07:47.385 W/entsScanService(14034): type=1400 audit(0.0:125331): avc: denied { search } for name="bbkcore" dev="sda20" ino=11157 scontext=u:r:isolated_app:s0:c512,c768 tcontext=u:object_r:vivo_data_file:s0 tclass=dir permissive=0
+09-06 18:07:47.393 D/VgcUtil (14034): getFile name :theme_dir_path not exit in vgc_path_config.xml
+09-06 18:07:47.404 D/nativeloader(14034): Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/lib/arm64:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/base.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_phonesky_data_loader.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_phonesky_data_loader.config.arm64_v8a.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.android.vending
+09-06 18:07:47.404 D/nativeloader(14034): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-06 18:07:47.421 D/nativeloader(14034): Configuring clns-5 for other apk /apex/com.android.extservices/javalib/android.ext.adservices.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/lib/arm64:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/base.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_phonesky_data_loader.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_phonesky_data_loader.config.arm64_v8a.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.android.vending
+09-06 18:07:47.421 D/nativeloader(14034): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-06 18:07:47.424 D/nativeloader(14034): InitApexLibraries:
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_appsearch: libicing.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_art: libartservice.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_conscrypt: libjavacrypto.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_extservices: libtflite_support_classifiers_native.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_mediaprovider: libpdfclient.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_os_statsd: libstats_jni.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_tethering: libandroid_net_connectivity_com_android_net_module_util_jni.so:libframework-connectivity-jni.so:libframework-connectivity-tiramisu-jni.so:libmainlinecronet.138.0.7156.0.so:libservice-connectivity.so:libservice-thread-jni.so:stable_cronet_libcrypto.so:stable_cronet_libssl.so
+09-06 18:07:47.424 D/nativeloader(14034):   com_android_wifi: libvivowifi-service.so
+09-06 18:07:48.092 W/entsScanServic(14034): Failed to find entry 'classes.dex': Entry not found
+09-06 18:07:48.094 W/entsScanServic(14034): Failed to find entry 'classes.dex': Entry not found
+09-06 18:07:48.095 W/entsScanServic(14034): Failed to find entry 'classes.dex': Entry not found
+09-06 18:07:48.095 W/entsScanServic(14034): Failed to find entry 'classes.dex': Entry not found
+09-06 18:07:48.097 D/nativeloader(14034): Configuring clns-6 for other apk /data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/base.apk:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.arm64_v8a.apk:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.en.apk:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_phonesky_data_loader.apk:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_phonesky_data_loader.config.arm64_v8a.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/lib/arm64:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/base.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67saj
+09-06 18:07:48.109 D/VgcUtil (14034): getFile name :theme_dir_path not exit in vgc_path_config.xml
+09-06 18:07:48.105 W/entsScanService(14034): type=1400 audit(0.0:125332): avc: denied { search } for name="bbkcore" dev="sda20" ino=11157 scontext=u:r:isolated_app:s0:c512,c768 tcontext=u:object_r:vivo_data_file:s0 tclass=dir permissive=0
+09-06 18:07:48.117 D/NetworkSecurityConfig(14034): No Network Security Config specified, using platform default
+09-06 18:07:48.118 D/NetworkSecurityConfig(14034): No Network Security Config specified, using platform default
+09-06 18:07:48.374 D/nativeloader(14034): Load /data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/split_config.arm64_v8a.apk!/lib/arm64-v8a/libapkanalysis.so using class loader ns clns-6 (caller=/data/app/~~bV3_-LLz-T9DKklI2w3pVQ==/com.android.vending-nEce6cY67sajePbWXgfRZg==/base.apk!classes5.dex): ok
+09-06 18:07:48.402 I/native  (14034): I0000 00:00:1788698268.402250   14070 zip_archive.cpp:490] +++ Found EOCD at buf+65535
+09-06 18:07:48.402 I/native  (14034): I0000 00:00:1788698268.402641   14070 zip_archive.cpp:534] +++ num_entries=9dir_size=558 dir_offset=388360
+09-06 18:07:48.402 I/native  (14034): I0000 00:00:1788698268.402747   14070 file_map.cpp:112] MAP: base 0x7285de6000/3894 data 0x7285de6d08/558
+09-06 18:07:48.402 I/native  (14034): I0000 00:00:1788698268.402823   14070 zip_archive.cpp:695] +++ zip good scan 9 entries
+09-06 18:07:48.463 I/native  (14034): I0000 00:00:1788698268.463401   14070 zip_archive.cpp:783] Closing archive 0xb400007020224bd0
+09-06 18:07:48.770 W/MediaProvider( 4512): WorkProfileOwnerApps cache miss for package org.iris.mesh.test
+09-06 18:07:48.770 D/PickerSyncLockManager( 4512): Trying to acquire lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@5e1746f[Unlocked]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+09-06 18:07:48.770 D/CloseableReentrantLock( 4512): Successfully acquired lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@5e1746f[Locked by thread main]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+09-06 18:07:48.770 D/CloseableReentrantLock( 4512): Successfully released lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@5e1746f[Unlocked]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+09-06 18:07:48.815 D/ProcessState(14092): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:48.862 I/ebro    (23391): (REDACTED) maybeUpdateCacheDataForAddedPackage %s
+09-06 18:07:48.906 I/ebro    (23391): (REDACTED) Package %s is not launchable
+09-06 18:07:48.939 D/ProcessState(14103): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.027 D/ProcessState(14122): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.063 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:49.063 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:49.063 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.063 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.063 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.063 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.063 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.063 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.063 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.063 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.063 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.063 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.063 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.063 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.063 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.063 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.066 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.google.android.gms, Service: oauth2:***************************************
+09-06 18:07:49.066 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.066 E/AuthPII (26923): 	at ahqo.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):78)
+09-06 18:07:49.066 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):318)
+09-06 18:07:49.066 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.066 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.066 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.066 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.066 E/AuthPII (26923): 	... 12 more
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.066 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.066 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.066 E/AuthPII (26923): 	... 13 more
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.066 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.066 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.066 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.066 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.066 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.066 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.066 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.066 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.066 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.066 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.066 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.066 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.066 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.066 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:49.066 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.066 E/AuthPII (26923): 	at ahqo.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):78)
+09-06 18:07:49.066 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):318)
+09-06 18:07:49.066 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.066 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.066 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.066 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.066 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.066 E/AuthPII (26923): 	... 12 more
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.066 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.066 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.066 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.066 E/AuthPII (26923): 	... 13 more
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.066 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.066 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.066 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.066 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.066 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.066 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.066 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.066 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.066 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.066 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.066 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.066 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.066 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.066 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.066 I/Auth    (26923): (REDACTED) [AccountIdManager] Token response failed with status=%s
+09-06 18:07:49.094 I/Fitness (26923): (REDACTED) FitCleanupIntentOperation received Intent %s
+09-06 18:07:49.107 I/RoleControllerServiceImpl(12375): Package is already a role holder, package: com.android.dialer, role: android.app.role.DIALER
+09-06 18:07:49.123 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:49.123 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:49.123 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.123 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.123 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.123 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.123 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.123 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.123 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.123 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.123 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.123 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.123 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.123 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.123 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.123 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.133 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.google.android.gms, Service: oauth2:********************************************** **************************************************** *****************************************************
+09-06 18:07:49.133 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):59)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.h(:com.google.android.gms@263234029@26.32.34 (190400-968093310):95)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):654)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 18:07:49.133 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):453)
+09-06 18:07:49.133 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.133 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.133 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.133 E/AuthPII (26923): 	... 15 more
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.133 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.133 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.133 E/AuthPII (26923): 	... 16 more
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.133 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.133 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.133 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.133 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.133 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.133 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.133 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.133 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.133 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.133 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.133 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.133 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:49.133 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):59)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.h(:com.google.android.gms@263234029@26.32.34 (190400-968093310):95)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):654)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ahra.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 18:07:49.133 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):453)
+09-06 18:07:49.133 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.133 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.133 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.133 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.133 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.133 E/AuthPII (26923): 	... 15 more
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.133 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.133 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.133 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.133 E/AuthPII (26923): 	... 16 more
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.133 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.133 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.133 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.133 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.133 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.133 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.133 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.133 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.133 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.133 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.133 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.133 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.133 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.134 W/Auth    (26923): [AccountStateDownloader] Unable to look up account state from server: couldn't fetch accessToken [CONTEXT service_id=343 ]
+09-06 18:07:49.134 W/Auth    (26923): [GaiaIdSync] Empty email. Not updating db. [CONTEXT service_id=153 ]
+09-06 18:07:49.148 D/ProcessState(14211): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.211 I/PermissionControllerServiceImpl(12375): Updating user sensitive for uid 10167
+09-06 18:07:49.221 D/ProcessState(14226): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.236 W/.android.chrom( 4355): Reducing the number of considered missed Gc histogram windows from 194 to 100
+09-06 18:07:49.243 I/.gms.persisten(26923): Background young concurrent copying GC freed 17MB AllocSpace bytes, 3(108KB) LOS objects, 35% free, 23MB/36MB, paused 5.793ms,1.251ms total 169.438ms
+09-06 18:07:49.299 D/ProcessState(14231): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.309 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:49.309 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:49.309 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.309 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.309 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.309 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.309 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.309 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.309 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.309 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.309 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.309 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.309 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.309 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.309 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.309 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.318 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.google.android.gms, Service: oauth2:***************************************
+09-06 18:07:49.318 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.318 E/AuthPII (26923): 	at ahqo.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):78)
+09-06 18:07:49.318 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):318)
+09-06 18:07:49.318 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.318 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.318 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.318 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.318 E/AuthPII (26923): 	... 12 more
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.318 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.318 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.318 E/AuthPII (26923): 	... 13 more
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.318 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.318 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.318 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.318 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.318 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.318 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.318 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.318 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.318 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.318 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.318 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.318 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.318 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.318 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:49.318 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.318 E/AuthPII (26923): 	at ahqo.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):78)
+09-06 18:07:49.318 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):318)
+09-06 18:07:49.318 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.318 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.318 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.318 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.318 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.318 E/AuthPII (26923): 	... 12 more
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.318 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.318 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.318 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.318 E/AuthPII (26923): 	... 13 more
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.318 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.318 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.318 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.318 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.318 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.318 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.318 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.318 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.318 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.318 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.318 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.318 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.318 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.318 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.318 I/Auth    (26923): (REDACTED) [AccountIdManager] Token response failed with status=%s
+09-06 18:07:49.370 D/ProcessState(14236): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.469 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:49.469 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:49.469 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.469 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.469 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.469 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.469 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.469 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.469 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.469 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.469 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.469 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.469 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.469 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.469 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.469 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.470 I/RoleControllerServiceImpl(12375): Package is already a role holder, package: com.android.dialer, role: android.app.role.DIALER
+09-06 18:07:49.478 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.google.android.gms, Service: oauth2:********************************************** **************************************************** *****************************************************
+09-06 18:07:49.478 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):59)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.h(:com.google.android.gms@263234029@26.32.34 (190400-968093310):95)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):654)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 18:07:49.478 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):453)
+09-06 18:07:49.478 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.478 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.478 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.478 E/AuthPII (26923): 	... 15 more
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.478 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.478 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.478 E/AuthPII (26923): 	... 16 more
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.478 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.478 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.478 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.478 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.478 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.478 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.478 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.478 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.478 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.478 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.478 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.478 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.478 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.478 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:49.478 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):59)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.h(:com.google.android.gms@263234029@26.32.34 (190400-968093310):95)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):654)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ahra.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 18:07:49.478 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):453)
+09-06 18:07:49.478 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.478 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.478 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.478 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.478 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.478 E/AuthPII (26923): 	... 15 more
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.478 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.478 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.478 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.478 E/AuthPII (26923): 	... 16 more
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.478 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.478 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.478 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.478 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.478 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.478 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.478 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.478 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.478 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.478 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.478 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.478 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.478 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.478 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.480 W/Auth    (26923): [AccountStateDownloader] Unable to look up account state from server: couldn't fetch accessToken [CONTEXT service_id=343 ]
+09-06 18:07:49.480 W/Auth    (26923): [GaiaIdSync] Empty email. Not updating db. [CONTEXT service_id=153 ]
+09-06 18:07:49.521 D/ProcessState(14245): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.530 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 18:07:49.530 W/Auth    (26923): dedt: Failed to process request
+09-06 18:07:49.530 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.530 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.530 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.530 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.530 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.530 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.530 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.530 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.530 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.530 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.530 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.530 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.530 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.530 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.532 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.chrome, Service: oauth2:******************************************
+09-06 18:07:49.532 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.532 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.532 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.532 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:07:49.532 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:07:49.532 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.532 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.532 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.532 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.532 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.532 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.532 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.532 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.532 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.532 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.532 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.532 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.532 E/AuthPII (26923): 	... 12 more
+09-06 18:07:49.532 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.532 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.532 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.532 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.532 E/AuthPII (26923): 	... 13 more
+09-06 18:07:49.532 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.532 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.532 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.532 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.532 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.532 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.532 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.532 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.532 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.532 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.532 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.532 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.532 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.532 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.532 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.533 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 18:07:49.533 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 18:07:49.533 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 18:07:49.533 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 18:07:49.533 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 18:07:49.533 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:07:49.533 E/AuthPII (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.533 E/AuthPII (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.533 E/AuthPII (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.533 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.533 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.533 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.533 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.533 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.533 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.533 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 18:07:49.533 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 18:07:49.533 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 18:07:49.533 E/AuthPII (26923): 	... 12 more
+09-06 18:07:49.533 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 18:07:49.533 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 18:07:49.533 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 18:07:49.533 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 18:07:49.533 E/AuthPII (26923): 	... 13 more
+09-06 18:07:49.533 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 18:07:49.533 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.533 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.533 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 18:07:49.533 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 18:07:49.533 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 18:07:49.533 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 18:07:49.533 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 18:07:49.533 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 18:07:49.533 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 18:07:49.533 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 18:07:49.533 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 18:07:49.533 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 18:07:49.533 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 18:07:49.533 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 18:07:49.534 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 18:07:49.534 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.android.chrome, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 18:07:49.534 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 18:07:49.534 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 18:07:49.534 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 18:07:49.534 W/Auth    (26923): 	at abrh.dispatchTransaction(:com.google.android.gms@263234029@26.32.34 (190400-968093310):153)
+09-06 18:07:49.534 W/Auth    (26923): 	at cfoi.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):64)
+09-06 18:07:49.534 W/Auth    (26923): 	at aamp.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 18:07:49.534 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.534 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 18:07:49.534 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 18:07:49.534 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 18:07:49.534 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1179)
+09-06 18:07:49.534 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 18:07:49.535 W/Auth    ( 4355): [GoogleAuthUtil] [GoogleAuthUtil] error status:NETWORK_ERROR with method:getTokenWithDetails
+09-06 18:07:49.535 W/cr_AuthTaskRetry( 4355): Failed to perform auth task: org.chromium.components.signin.AuthException: Error while getting token for scope 'oauth2:*******************************************
+09-06 18:07:49.535 W/cr_AuthTaskRetry( 4355): Caused by: java.io.IOException: NetworkError
+09-06 18:07:49.542 I/.gms.persisten(26923): Background concurrent copying GC freed 25MB AllocSpace bytes, 3(108KB) LOS objects, 49% free, 22MB/45MB, paused 6.910ms,224us total 117.677ms
+09-06 18:07:49.610 D/ProcessState(14253): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.715 D/ProcessState(14260): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:49.819 D/ProcessState(14265): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:50.034 D/ProcessState(14270): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 18:07:50.065 W/which   (14272): type=1400 audit(0.0:125336): avc: denied { getattr } for path="/vendor/bin/toybox_vendor" dev="dm-5" ino=418 scontext=u:r:shell:s0 tcontext=u:object_r:vendor_toolbox_exec:s0 tclass=file permissive=0
+09-06 18:07:50.329 D/AndroidRuntime(14278): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+09-06 18:07:50.334 I/AndroidRuntime(14278): Using default boot image
+09-06 18:07:50.335 I/AndroidRuntime(14278): Leaving lock profiling enabled
+09-06 18:07:50.335 W/libc    (14278): Access denied finding property "odsign.verification.success"
+09-06 18:07:50.329 W/app_process(14278): type=1400 audit(0.0:125337): avc: denied { read } for name="u:object_r:odsign_prop:s0" dev="tmpfs" ino=10099 scontext=u:r:shell:s0 tcontext=u:object_r:odsign_prop:s0 tclass=file permissive=0
+09-06 18:07:50.339 W/app_process(14278): ART APEX data files are untrusted.
+09-06 18:07:50.339 I/app_process(14278): Using CollectorTypeCC GC.
+09-06 18:07:50.339 E/app_process(14278): Error reading named image component header for /system/framework/boot.art, error: Unable to open file "/system/framework/arm64/boot.art" for reading image header
+09-06 18:07:50.339 E/app_process(14278): Could not create image space with image file '/system/framework/boot.art!/apex/com.android.art/etc/boot-image.prof:/system/framework/boot-framework.art!/system/etc/boot-image.prof'. Attempting to fall back to imageless running. Error was: Unable to open file "/system/framework/arm64/boot.art" for reading image header
