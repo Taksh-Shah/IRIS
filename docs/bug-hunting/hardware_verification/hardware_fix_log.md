@@ -4977,4 +4977,34 @@ recommends, happening naturally.
 App JVM unit tests (`:app:testDebugUnitTest`) green. iris-core / iris-android
 Rust tests unchanged (Kotlin-only session).
 
-**Landed:** commit `<pending>` (fixes 7–8 + 10/10 gate).
+**Landed:** commit `b4f791f` (fixes 7–8 + 10/10 gate).
+
+### Session 26 continued — sustained load, big messages, asymmetric restart
+
+Extra hardening after the gate, all on the two-phone bench with Bluetooth
+disabled:
+
+- **Sustained bidirectional session:** 12 messages each way, alternating,
+  one group, no restart → **12/12 both directions, 0 `delivery_failed`,
+  0 `expired`.**
+- **300-char message:** delivered `hops=0`, renders in the peer's console
+  (Wi-Fi Direct's ~63 Mbps makes fragmentation a non-issue — contrast
+  BLE's MTU-23 fragmentation storm, HV-7/8).
+- **9. Client dead-socket recovery (HV-22 gap).** Restarting *only* the GO
+  (P2) while the client (P1) keeps running: the OS group persists as an
+  autonomous GO so P1 stays `groupFormed: true` and — depending on timing
+  — may get no `CONNECTION_CHANGED` to re-trigger `onGroupFormed`, leaving
+  it on a dead socket. First test: P1 sat retrying `ble-android`
+  (`ranked_transports=1`, `not connected to peer`) forever, wifi-direct
+  not even ranked. Fix: `AndroidWifiDirectTransportAdapter` remembers the
+  client's last GO dial (`clientGoDial`), and `FramedSocketLink.onClosed`
+  (already fired by `SO_KEEPALIVE` / a failed write) schedules
+  `redialGroupOwner` — a bounded 2 s-cadence / 40 s-window re-dial of the
+  same GO while we still believe we're a client in a group. Retest:
+  - GO (P2) restart only → P1 re-attaches, both directions deliver.
+  - Client (P1) restart only → rejoins in 10 s, both directions deliver.
+  - Both restart (the gate) → 10/10 as before.
+
+`:app:testDebugUnitTest` green.
+
+**Landed:** commit `<pending>` (fix 9 + asymmetric-restart evidence).

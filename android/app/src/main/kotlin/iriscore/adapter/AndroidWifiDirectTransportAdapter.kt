@@ -157,6 +157,10 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
          * PBC, no dialog) rather than starting a second, colliding one.
          */
         private const val COLLISION_FOLLOWER_DELAY_MS = 3_500L
+
+        /** HV-22: client dead-socket re-dial — retry cadence and total window. */
+        private const val REDIAL_RETRY_MS = 2_000L
+        private const val REDIAL_WINDOW_MS = 40_000L
     }
 
     private val appContext: Context = context.applicationContext
@@ -747,6 +751,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * strand accept/read coroutines on a dead radio.
      */
     private fun closeDataPath() {
+        clientGoDial = null
         groupServer?.close()
         groupServer = null
         links.close()
@@ -1284,8 +1289,19 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * after" for a peer discovered via plain `discoverPeers()` with no
      * prior identity at all.
      */
+    /**
+     * HV-22: the last GO the client dialed, so [attachLink]'s `onClosed` can
+     * re-dial when the socket drops but the OS group is still up (e.g. the GO's
+     * app restarted — the group persists as an autonomous GO, the client stays
+     * `groupFormed: true`, so no `CONNECTION_CHANGED` fires to re-trigger
+     * `onGroupFormed`, and without this the client would sit on a dead socket
+     * until a send failed and never recover). Cleared on group teardown.
+     */
+    @Volatile private var clientGoDial: Triple<InetAddress, String?, Long>? = null
+
     private suspend fun connectToGroupOwner(address: InetAddress, goMac: String?, handle: Long) {
         if (links.get(handle) != null) return
+        clientGoDial = Triple(address, goMac, handle)
         // FFI-3: the GO cannot identify an accepted socket's peer by MAC on
         // its own — tell it who we are as the first thing on the wire, in
         // the same MAC-string form discovery already keys peerHandleFor by.
@@ -1326,6 +1342,28 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         }
         attachLink(handle, socket)
         iriscore.util.IrisLog.d("wd.data", "connectToGroupOwner: link attached handle=$handle")
+    }
+
+    /**
+     * HV-22: re-dial the GO after a client socket drop while the OS group is
+     * still up (the GO's app restarted, say). Bounded retry — the GO's
+     * `ServerSocket` may take a few seconds to re-bind after its process comes
+     * back. Stops as soon as a link attaches, the dial record is cleared
+     * (deliberate teardown), or the group actually goes away.
+     */
+    private suspend fun redialGroupOwner(address: InetAddress, goMac: String?, handle: Long) {
+        val deadline = SystemClock.elapsedRealtime() + REDIAL_WINDOW_MS
+        while (SystemClock.elapsedRealtime() < deadline) {
+            if (links.get(handle) != null) return
+            if (clientGoDial?.third != handle) return
+            val group = groupState.snapshot()
+            if (group != null && group.isGroupOwner) return
+            iriscore.util.IrisLog.d("wd.data", "redialGroupOwner: retrying dial to GO $address")
+            connectToGroupOwner(address, goMac, handle)
+            if (links.get(handle) != null) return
+            delay(REDIAL_RETRY_MS)
+        }
+        iriscore.util.IrisLog.w("wd.data", "redialGroupOwner: gave up after ${REDIAL_WINDOW_MS}ms")
     }
 
     /**
@@ -1402,6 +1440,12 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             onClosed = {
                 links.remove(handle)
                 groupServer?.releaseSlot()
+                iriscore.util.IrisLog.d("wd.data", "link closed handle=$handle")
+                // HV-22: client-side dead-socket recovery — see clientGoDial.
+                val dial = clientGoDial
+                if (dial != null && dial.third == handle) {
+                    callbackScope.launch { redialGroupOwner(dial.first, dial.second, dial.third) }
+                }
             },
         )
         links.put(handle, link)
