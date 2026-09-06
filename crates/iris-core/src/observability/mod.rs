@@ -85,7 +85,8 @@ impl From<&crate::message::PeerId> for ShortId {
 /// Event names — the taxonomy (OBS_DESIGN.md). Centralized so the allow-list
 /// of attributes per event lives in one place (privacy P3).
 pub mod event {
-    // MSG-001 message_engine — 9 events
+    // MSG-001 message_engine — 11 events (was already 10 before HV-35 prep
+    // added MSG_RELAYED; the pre-existing "9 events" comment undercounted)
     pub const MSG_CREATED: &str = "msg.created";
     pub const MSG_QUEUED: &str = "msg.queued";
     pub const MSG_SENT: &str = "msg.sent";
@@ -96,6 +97,17 @@ pub mod event {
     pub const MSG_DROPPED_DUPLICATE: &str = "msg.dropped_duplicate";
     pub const MSG_FRAGMENTS_REASSEMBLED: &str = "msg.fragments_reassembled";
     pub const MSG_SENT_UNENCRYPTED: &str = "msg.sent_unencrypted";
+    /// HV-35 prep: a distinct event for "this node relayed someone else's
+    /// message onward" (`enqueue_relay`), separate from `MSG_QUEUED` (which
+    /// also fires for the same call and is ambiguous with a local send being
+    /// queued). Carries `hop_count` explicitly so a 3-phone A->B->C bench
+    /// session can `grep msg.relayed` on B's logcat and see, per message,
+    /// whether the hop count it forwarded is what the sender's path expects —
+    /// this was previously invisible: the pre-existing `MSG_QUEUED` log at
+    /// this exact call site logged message_id/priority/queue_depth but not
+    /// hop_count, so a relay's own log line couldn't confirm the increment
+    /// actually happened without cross-referencing the envelope by hand.
+    pub const MSG_RELAYED: &str = "msg.relayed";
 
     // EMERG-001 — 4 events
     pub const MSG_EMERGENCY_AUTH_DROPPED: &str = "emergency.auth_dropped";

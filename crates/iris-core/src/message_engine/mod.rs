@@ -1091,6 +1091,9 @@ impl MessageEngine {
 
         let mut e = envelope.clone();
         e.hop_count = e.hop_count.saturating_add(1);
+        // Captured before `e` moves into QueuedMessage::new(e) below — the
+        // HV-35 relay log (after item moves into the queue) needs this value.
+        let relayed_hop_count = e.hop_count;
         let mut q = self.queue.lock().await;
         if q.len() >= self.config.max_queue_depth
             || q.queued_bytes() + e.payload.len() > self.config.max_queue_bytes
@@ -1105,12 +1108,18 @@ impl MessageEngine {
         self.outbound_notify.notify_one();
         self.metrics.relayed.fetch_add(1, Ordering::Relaxed);
         self.telemetry.increment(metric::MESSAGES_RELAYED_TOTAL);
+        // HV-35 prep: distinct from MSG_QUEUED (ambiguous with a local send
+        // being queued) and carries hop_count explicitly — a 3-phone bench
+        // session can `grep msg.relayed` on the middle node's logcat and
+        // confirm, per message, that the increment this function just did
+        // actually happened, without cross-referencing the raw envelope.
         tracing::debug!(
-            event = event::MSG_QUEUED,
+            event = event::MSG_RELAYED,
             message_id = %envelope.message_id.short(),
             priority = envelope.priority.as_u8(),
+            hop_count = relayed_hop_count,
             queue_depth = depth,
-            "message queued for relay"
+            "message relayed toward its destination"
         );
         Ok(InboundOutcome::Relayed)
     }
