@@ -141,6 +141,22 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
          */
         private const val CONNECT_READY_TIMEOUT_MS = 12_000L
 
+        /**
+         * HV-66: maximum ATT MTU we ask the central stack to negotiate on every
+         * new connection, before reporting the link usable to the Rust core.
+         * Android 14+ grants 517 on the first request per ACL (RES-0019 R1).
+         * Choosing 517 = 512 data + 5 ATT-header overhead.
+         */
+        private const val MAX_MTU_REQUESTED = 517
+
+        /**
+         * HV-66: how long we wait for `onMtuChanged` after firing `requestMtu`
+         * inside `onServicesDiscovered`. If the peer doesn't respond within this
+         * window (e.g., buggy firmware), we complete `connectionReady` with the
+         * default MTU and let the first send fragment at 23 bytes as before.
+         */
+        private const val MTU_NEGOTIATE_TIMEOUT_MS = 1_000L
+
         // HW-7: how long gattWrite() blocks waiting for the async
         // onCharacteristicWrite completion callback before giving up.
         // Generous relative to normal BLE write latency (single-digit to
@@ -580,7 +596,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             // AND-RT-111: track the negotiated MTU (setMtu returns it).
-            if (status == BluetoothGatt.GATT_SUCCESS) negotiatedMtu[gatt] = mtu
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                negotiatedMtu[gatt] = mtu
+            } else {
+                iriscore.util.IrisLog.w("ble.gatt", "onMtuChanged: status=$status, first message will use default MTU")
+            }
+            // HV-66: the connect flow requests MTU in onServicesDiscovered before
+            // completing connectionReady. Complete it now that MTU is settled
+            // (success or failure — the fallback timer also calls this but the
+            // future is single-completion so only the first call wins).
+            connectionReady.remove(gatt)?.complete(Unit)
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
@@ -602,9 +627,25 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             if (characteristic != null) {
                 serviceCharacteristics[gatt] = characteristic
                 serviceDiscoveryRetries.remove(gatt)
-                // Connection is genuinely usable now: STATE_CONNECTED happened
-                // AND the characteristic gattWrite needs is resolvable. This is
-                // what connectGatt() has been blocking on.
+                // HV-66: request a large ATT MTU before reporting the link usable.
+                // The first message must not fragment at the 23-byte BLE default.
+                // We defer completing connectionReady to onMtuChanged, with a 1-s
+                // daemon-thread fallback for firmware that ignores the request.
+                try {
+                    if (gatt.requestMtu(MAX_MTU_REQUESTED)) {
+                        Thread({
+                            try { Thread.sleep(MTU_NEGOTIATE_TIMEOUT_MS) } catch (_: InterruptedException) {}
+                            if (connectionReady.remove(gatt)?.complete(Unit) == true) {
+                                iriscore.util.IrisLog.w(
+                                    "ble.gatt",
+                                    "HV-66 MTU fallback: onMtuChanged did not fire within ${MTU_NEGOTIATE_TIMEOUT_MS}ms",
+                                )
+                            }
+                        }, "iris-ble-mtu-timeout").apply { isDaemon = true }.start()
+                        return
+                    }
+                } catch (_: SecurityException) { }
+                // requestMtu returned false or threw — complete immediately.
                 connectionReady.remove(gatt)?.complete(Unit)
                 return
             }
@@ -615,6 +656,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // message is dropped. Re-run discovery a bounded number of times.
             val tries = (serviceDiscoveryRetries[gatt] ?: 0) + 1
             serviceDiscoveryRetries[gatt] = tries
+            // HV-68: on the first cache miss, flush Android's stale GATT service
+            // cache (reflection — the private `BluetoothGatt.refresh()` is the
+            // documented workaround shipped in Nordic/RxAndroidBle/blessed-android).
+            // After the flush, the next discoverServices() gets fresh data.
+            if (tries == 1) {
+                try {
+                    val refreshed = gatt.javaClass.getMethod("refresh").invoke(gatt) as? Boolean ?: false
+                    iriscore.util.IrisLog.d("ble.gatt", "HV-68: refreshDeviceCache returned $refreshed (attempt $tries)")
+                } catch (_: Exception) { /* reflection not available on this firmware */ }
+            }
             if (tries <= SERVICE_DISCOVERY_RETRY_ATTEMPTS) {
                 iriscore.util.IrisLog.w(
                     "ble.gatt",
@@ -799,9 +850,15 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 // peer can take many seconds to catch the first IRIS beacon.
                 // BALANCED (~250 ms) roughly quarters that with a modest power
                 // cost — the app only advertises while its foreground mesh
-                // service is up. HV-80 will make this adaptive.
+                // service is up.
                 .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
-                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
+                // HV-80: HIGH vs MEDIUM — for a mesh radio whose whole purpose
+                // is peer discovery, the extra power is appropriate; the app only
+                // advertises while its foreground mesh service is up. A future
+                // adaptive profile (screen-off → LOW, active forming → HIGH) can
+                // tune this further, but a flat HIGH already extends discovery
+                // range and is the standard choice in similar DTN mesh apps.
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
                 .setConnectable(!data.nonConnectable)
                 .build()
             // Manufacturer Specific Data (2-byte company id), not Service Data

@@ -47,8 +47,16 @@ pub const MAX_CHUNKS: usize = 255;
 /// filter and fragmenter never assume more than BLE can deliver at the worst-case MTU.
 /// Computed as: MAX_CHUNKS × (MTU_DEFAULT − 5 ATT-header − FRAME_HEADER) = 255 × 12.
 pub const BLE_MAX_MESSAGE_CONSERVATIVE: usize = MAX_CHUNKS * ((MTU_DEFAULT as usize) - 5 - FRAME_HEADER);
-/// Stale partial-message TTL before eviction.
-pub const REASSEMBLY_TTL: Duration = Duration::from_secs(30);
+/// HV-76: idle TTL for partial-message eviction.
+///
+/// Eviction is *idle*-based (time since the last fragment arrived), not
+/// absolute, so a slow but steadily arriving multi-fragment message is never
+/// dropped mid-flight. 30 s was sized for the simulator's zero-latency world;
+/// on real BLE with retransmits and interference, a large message at MTU 23
+/// over a congested link can see multi-second gaps between successive fragments,
+/// so 120 s gives ample room while still preventing unbounded memory growth
+/// from genuinely abandoned transfers.
+pub const REASSEMBLY_TTL: Duration = Duration::from_secs(120);
 /// Cap on concurrently tracked partial messages (anti-DoS, mirrors SEC-001
 /// quota discipline).
 pub const MAX_PARTIALS: usize = 64;
@@ -303,9 +311,24 @@ impl Reassembler {
     }
 
     /// Drop stale partials (call on the poll loop at a coarse cadence).
+    ///
+    /// HV-76: logs a warning for each eviction so a diagnostic run can surface
+    /// lost messages without requiring a `btsnoop` capture.
     pub fn evict_stale(&mut self, ttl: Duration, now: Instant) {
-        self.partials
-            .retain(|_, p| now.duration_since(p.last_seen) < ttl);
+        self.partials.retain(|id, p| {
+            let keep = now.duration_since(p.last_seen) < ttl;
+            if !keep {
+                tracing::warn!(
+                    msg_id = id,
+                    received = p.received,
+                    total_chunks = p.count,
+                    "ble_att: evicting stale partial — {}/{} chunks received before idle timeout",
+                    p.received,
+                    p.count,
+                );
+            }
+            keep
+        });
     }
 
     /// Push one frame. Returns the complete message once all chunks arrived.
@@ -583,6 +606,49 @@ mod tests {
             r.push(&frame, Instant::now()).unwrap_err(),
             FrameError::BadChunkIndex
         );
+    }
+
+    // HV-77: BLE link-layer retransmits and app-level resends can deliver the
+    // same fragment twice; multipath P0 can interleave fragments. Verify the
+    // reassembler handles both without corruption or panic.
+
+    #[test]
+    fn reassembler_handles_duplicate_fragment() {
+        let s = AttSegmenter::new();
+        s.on_mtu_changed(MTU_NEGOTIATED);
+        let payload: Vec<u8> = (0..600).map(|i| (i % 251) as u8).collect();
+        let (_id, frames) = s.segment(&payload).unwrap();
+        assert!(frames.len() >= 2, "test requires a multi-chunk message");
+        let mut r = Reassembler::new();
+        let t = Instant::now();
+        // Push frame 0 twice — the second push must be idempotent.
+        assert_eq!(r.push(&frames[0], t).unwrap(), None);
+        assert_eq!(r.push(&frames[0], t).unwrap(), None, "duplicate frame 0 must be ignored");
+        // Push remaining frames; message must still reassemble correctly.
+        let mut result = None;
+        for f in &frames[1..] {
+            result = r.push(f, t).unwrap();
+        }
+        assert_eq!(result.as_deref(), Some(payload.as_slice()), "payload corrupted after duplicate push");
+    }
+
+    #[test]
+    fn reassembler_handles_out_of_order_fragments() {
+        let s = AttSegmenter::new();
+        s.on_mtu_changed(MTU_NEGOTIATED);
+        // At MTU 517 each chunk carries 505 data bytes; use 1600 bytes so we get
+        // ≥3 chunks (ceiling(1600/505) = 4) for a non-trivial reversal test.
+        let payload: Vec<u8> = (0..1600).map(|i| (i % 199) as u8).collect();
+        let (_id, frames) = s.segment(&payload).unwrap();
+        assert!(frames.len() >= 3, "test requires at least 3 chunks for a non-trivial reorder");
+        let mut r = Reassembler::new();
+        let t = Instant::now();
+        // Deliver in reverse order: last→…→first.
+        let mut result = None;
+        for f in frames.iter().rev() {
+            result = r.push(f, t).unwrap();
+        }
+        assert_eq!(result.as_deref(), Some(payload.as_slice()), "payload corrupted after out-of-order delivery");
     }
 
     #[test]
