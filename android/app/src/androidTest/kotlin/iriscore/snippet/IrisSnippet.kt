@@ -1,5 +1,6 @@
 package iriscore.snippet
 
+import android.content.Intent
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.android.mobly.snippet.Snippet
 import com.google.android.mobly.snippet.rpc.Rpc
@@ -119,6 +120,29 @@ class IrisSnippet : Snippet {
         e.startAll()
         engine = e
         return snapshotJson()
+    }
+
+    @Rpc(description = "HV-21: launch org.iris.mesh's MainActivity foreground (with the no-auto-start-mesh extra, so the snippet keeps owning the engine) — vivo/OEM Android gates WifiP2pManager.discoverPeers() behind 'the calling app has a foreground Activity' and the Mobly instrumented process has none. Call before startMesh for Tier-2 Wi-Fi Direct tests.")
+    fun foregroundForWifiDirect() {
+        // MUST be org.iris.mesh (the discoverPeers() caller's UID), not the
+        // test package — a foreground Activity in a different UID does not
+        // satisfy the gate.
+        context.startActivity(
+            Intent()
+                .setClassName("org.iris.mesh", "iriscore.ui.MainActivity")
+                .putExtra("iris.bench.noAutoStartMesh", true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        )
+        Thread.sleep(1500)
+    }
+
+    @Rpc(description = "HV-21: send org.iris.mesh's MainActivity to the background (pair with foregroundForWifiDirect).")
+    fun background() {
+        context.startActivity(
+            Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_HOME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
 
     @Rpc(description = "HV-97: drop every live link (advertising/scanning stay up) so discovery re-forms them — the deterministic reconnect trigger for HV-14/HV-15.")

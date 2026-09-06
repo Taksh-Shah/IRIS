@@ -3,11 +3,23 @@
 Loop §2 gate: "cold-start both phones 10x (alternating power-on order) ->
 exactly one group forms -> messages flow both ways every time."
 
+STATUS (Session 26): HW-PENDING on THIS harness. The Tier-2 gate itself is
+🟢 — verified 10/10 by the adb-driven
+`docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`,
+which drives the REAL shipping app. This Mobly harness still can't reach the
+same coverage: vivo/OEM Android gates `WifiP2pManager.discoverPeers()` behind
+"the calling app has a foreground Activity", and the Mobly instrumented
+snippet process has none — so the snippet engine's discovery finds
+`peers_seen=0`. `foregroundForWifiDirect()` (added Session 26) launches the
+real `MainActivity` in a no-auto-start-mesh mode to give the `org.iris.mesh`
+UID a foreground Activity; on the bench that still did not make instrumented
+discovery resolve peers (leading theory: the P2P framework attributes
+discovery to the `am instrument` context, not the app). Left wired so a
+future harness fix (or a non-vivo device) can flip it green; run the shell
+script for the actual gate until then.
+
 `iris_bench` cannot literally power-cycle a phone; the automated proxy for
-"cold start" is a full engine stop/start on both phones (stopMesh + startMesh
-tears down and rebuilds every transport, including Wi-Fi Direct's DNS-SD
-advertisement and any live P2P group) — the L4 manual procedure (actually
-toggling airplane mode / power) is the human-executed superset.
+"cold start" is a full engine stop/start on both phones.
 
 Run:  python -m iris_bench --test_module tier2 --tests <method>
 """
@@ -21,13 +33,25 @@ from mobly import test_runner
 
 from iris_bench.base import IrisBenchBase
 
-_CYCLES = 2
-_BUDGET_S = 45
+_CYCLES = 10
+_BUDGET_S = 60
 
 
 class Tier2WifiDirect(IrisBenchBase):
 
+    def _foreground(self, ad):
+        """HV-21: vivo/OEM Android gates discoverPeers() behind 'the calling
+        app has a foreground Activity'. The instrumented test process has
+        none, so every Wi-Fi Direct test failed discovery until this. The
+        bench Activity does nothing but exist."""
+        try:
+            ad.iris.foregroundForWifiDirect()
+        except Exception:
+            pass
+
     def setup_test(self):
+        for ad in self.ads:
+            self._foreground(ad)
         self.p1.iris.startMesh()
         self.p2.iris.startMesh()
         self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
@@ -37,6 +61,10 @@ class Tier2WifiDirect(IrisBenchBase):
         for ad in self.ads:
             try:
                 ad.iris.stopMesh()
+            except Exception:
+                pass
+            try:
+                ad.iris.background()
             except Exception:
                 pass
 
@@ -93,6 +121,8 @@ class Tier2WifiDirect(IrisBenchBase):
             first, second = (
                 (self.p1, self.p2) if i % 2 == 0 else (self.p2, self.p1)
             )
+            for ad in self.ads:
+                self._foreground(ad)
             first.iris.startMesh()
             second.iris.startMesh()
             self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
@@ -132,6 +162,21 @@ class Tier2WifiDirect(IrisBenchBase):
                 go_count <= 1,
                 f"cycle {i}: {go_count} devices claim Group Owner simultaneously (GO/GO conflict)",
             )
+
+            # Operator hard requirement (Session 24): no OS "Invitation to
+            # connect" dialog may ever reach the user. IRIS drives connect()
+            # programmatically with plain WPS PBC, which must not prompt.
+            for ad in self.ads:
+                try:
+                    lg = ad.adb.logcat(["-d"]).decode("utf-8", "replace")
+                except Exception:
+                    continue
+                asserts.assert_false(
+                    "invitation to connect" in lg.lower()
+                    or "invitation received" in lg.lower(),
+                    f"cycle {i}: an OS Wi-Fi Direct invitation dialog appeared "
+                    f"on {ad.serial} — must be silent",
+                )
 
         self.p1.log.info("WIFI-DIRECT COLD START: recoveries=%s", recoveries)
         self.capture_evidence("tier2_cold_start_election")

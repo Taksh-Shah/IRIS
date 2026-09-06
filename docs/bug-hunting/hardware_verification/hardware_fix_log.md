@@ -5007,4 +5007,27 @@ disabled:
 
 `:app:testDebugUnitTest` green.
 
-**Landed:** commit `<pending>` (fix 9 + asymmetric-restart evidence).
+**Landed:** commit `28b2976` (fix 9 + asymmetric-restart evidence).
+
+### Session 26 continued — the gate as a repeatable script; harness still blocked
+
+- **`docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`**
+  — the 10/10 gate above, committed as a repeatable adb-driven procedure
+  (drives the real shipping app; `P1=… P2=… P1N=… P2N=… bash …`). This is
+  the Tier-2 HW gate of record.
+- **`iris_bench` Wi-Fi Direct coverage — still HW-PENDING.** Tried to make
+  the Mobly harness reach the same coverage: added
+  `IrisSnippet.foregroundForWifiDirect()` (launches the real `MainActivity`
+  with a new `EXTRA_NO_AUTOSTART_MESH` extra so the app foregrounds without
+  its Hilt engine fighting the snippet's), bumped `test_tier2_wifidirect`
+  to 10 cycles + a no-dialog assertion. On the bench the real MainActivity
+  **does** come foreground in the `org.iris.mesh` UID, but the snippet
+  engine's `discoverPeers()` still returns `peers_seen=0` — the P2P
+  framework appears to attribute instrumented discovery to the
+  `am instrument` context, not the app. Left wired (harmless; the extra is
+  never set on a normal launch) for a future harness fix or a non-vivo
+  device. `test_tier2_wifidirect.py`'s docstring records the status.
+
+`:app:testDebugUnitTest` + `:app:assembleDebugAndroidTest` green.
+
+**Landed:** commit `<pending>` (gate script + harness scaffolding).

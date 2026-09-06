@@ -110,8 +110,12 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     }
 
     LaunchedEffect(permissionsGranted) {
-        if (permissionsGranted) {
+        if (permissionsGranted && !iriscore.ui.MainActivity.suppressAutoStartMesh) {
             viewModel.ensureStarted()
+        } else if (permissionsGranted) {
+            // HV-21 bench: the Activity is up only to satisfy the OEM
+            // "app has a foreground Activity" gate for WifiP2pManager
+            // .discoverPeers(); the test's own engine owns the mesh.
         } else {
             MeshPermissions.missing(context)
                 .takeIf { it.isNotEmpty() }

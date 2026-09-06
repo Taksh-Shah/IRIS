@@ -18,6 +18,14 @@ import iriscore.ui.screens.ConsoleScreen
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // HV-21 bench hook: `iris_bench` launches this Activity only to give
+        // WifiP2pManager.discoverPeers() a foreground Activity in the calling
+        // (org.iris.mesh) UID — the Mobly instrumented process has none. In
+        // that mode the test's snippet owns the engine, so the app must NOT
+        // also auto-start its Hilt @Singleton engine (two engines fight over
+        // the P2P channel + GATT server). Harmless in production: a normal
+        // launch never carries this extra.
+        suppressAutoStartMesh = intent?.getBooleanExtra(EXTRA_NO_AUTOSTART_MESH, false) == true
         // Edge-to-edge with transparent bars: the console paints true black to
         // the physical edges, and the screen applies its own inset padding.
         // Both styles are pinned dark because IRIS has no light theme — the
@@ -36,5 +44,15 @@ class MainActivity : ComponentActivity() {
                 ConsoleScreen()
             }
         }
+    }
+
+    companion object {
+        /** Intent extra: launch foreground but let the caller's engine own the mesh. */
+        const val EXTRA_NO_AUTOSTART_MESH = "iris.bench.noAutoStartMesh"
+
+        /** Set from [EXTRA_NO_AUTOSTART_MESH] in [onCreate]; read by ConsoleScreen. */
+        @Volatile
+        @JvmStatic
+        var suppressAutoStartMesh: Boolean = false
     }
 }
