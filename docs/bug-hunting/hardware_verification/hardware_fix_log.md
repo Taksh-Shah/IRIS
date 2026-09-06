@@ -6214,3 +6214,31 @@ hardware acceptance remains pending. Separately, the Android JVM suite has one
 unrelated but real desktop command-surface parity failure (Android now has
 `/all`, `/name`, `/contacts`; the desktop mirror lacks them); it is recorded for
 a separate cross-platform repair rather than weakening the parity test here.
+
+---
+
+## Session 32 — 2026-09-06 — Wi-Fi Direct system-dialog containment
+
+P3 Samsung S24 Ultra initiated `WifiP2pManager.connect()` from IRIS's automatic
+peer-list loop; P2 vivo 2004 (already a GO) displayed Android `Invitation to
+connect`. P3 also retained Samsung's system-owned `Turn off Sharing?` request
+from that pre-fix association. Android documents that `connect()` sends an
+invitation when a P2P group already exists. Its external-approver API is not a
+solution here: it requires signature-level `MANAGE_WIFI_NETWORK_SELECTION` and
+is unavailable on Android 12.
+
+`AndroidWifiDirectTransportAdapter.onPeersChanged()` now only caches nearby
+addresses and logs `iris.wd.passive`; it never initiates unsolicited P2P
+association. Follow-up live evidence showed Samsung also prompts on DNS-SD
+registration / `discoverPeers()` itself, so Session 32 additionally disables
+all automatic Wi-Fi Direct advertising and discovery—not merely association—on
+this build. `:app:assembleDebug` and focused `AdapterLifecycleTest` passed;
+the full JVM suite was 83/84 with the pre-existing desktop command-parity
+failure only. The patched APK was installed on P1/P2/P3. After cancelling (not
+accepting) the stale Samsung transaction, a clean P3 relaunch showed no target
+dialog and no new IRIS `CONNECT` request; P2 also showed no invitation and
+logged passive peer caching. This validates dialog containment, not Wi-Fi
+Direct data delivery. The historical Vivo-only 10/10 result is retained but
+not a cross-OEM acceptance claim. The final S24 build ran past the former
+discovery cadence with `wifi_direct.find: not supported` in IRIS logs and no
+new P2P activation call from its process.

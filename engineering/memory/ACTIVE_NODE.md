@@ -1,7 +1,7 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T18:10:00+05:30
+**Last updated**: 2026-09-06T18:55:00+05:30
 
 ## Current hardware phase
 
@@ -9,7 +9,8 @@ The graph node `WIFIDIRECT-001` is software-complete; its physical verification
 follow-up is active. The two-phone bench is connected and identified in
 `docs/bug-hunting/hardware_verification/hardware_fix_log.md`.
 
-- Shipping-app Tier-2 cold-cycle gate: **HW-verified 10/10**.
+- Shipping-app Tier-2 cold-cycle gate: **10/10 on the original Vivo-only
+  bench; cross-OEM scope is pending**.
 - Conditions: Bluetooth disabled; exactly one Wi-Fi Direct group; bidirectional
   delivery; persistent keys; no OS invitation dialog.
 - Mobly Tier-2 test: **HW-PENDING** on this Vivo/OriginOS pair because
@@ -20,7 +21,10 @@ follow-up is active. The two-phone bench is connected and identified in
 - Mobly remediation: **COMPLETE** — the harness drives the shipping-app process,
   not a second instrumentation engine; it retains a 10-cycle default and
   explicit no-invitation assertion.
-- Popup audit: no invitation UI/log evidence on either connected phone.
+- Popup audit: S24 automatic `connect()` produced P2's invitation and retained
+  Samsung Sharing dialog. Session 32 removed the automatic peer-list
+  association loop; clean patched S24 relaunch had neither dialog nor a new
+  IRIS `CONNECT` request.
 
 ## Active Node: SAT-001 — Satellite Gateway Transport
 

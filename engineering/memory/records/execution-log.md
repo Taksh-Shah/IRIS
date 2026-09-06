@@ -345,3 +345,18 @@ was identified as a false harness timeout; it now observes the same outbox
 message for 60 seconds. Targeted live popup audit: both apps formed a group;
 no invitation UI/log evidence on either device. Mobly remediation COMPLETE;
 shipping-app 10/10 remains formal Tier-2 acceptance evidence.
+
+**2026-09-06 — Wi-Fi Direct system-dialog containment (WIFIDIRECT-001).**
+P3 Samsung S24 Ultra initiated `WifiP2pManager.connect()` from IRIS's automatic
+`onPeersChanged` loop; P2 vivo 2004, already a GO, displayed Android
+`Invitation to connect`. P3 retained Samsung's `Turn off Sharing?` request
+from that pre-fix transaction. Fresh Android API research confirmed that
+`connect()` becomes an invitation for an existing P2P group, while the external
+approver route requires signature `MANAGE_WIFI_NETWORK_SELECTION` and cannot
+solve this Android-12 bench. Replaced unsolicited association with passive peer
+caching. Build and focused adapter suite passed; full JVM suite 83/84 with the
+pre-existing desktop command-parity failure only. Installed P1/P2/P3; after
+cancelling—not accepting—the stale S24 dialog, a clean patched relaunch showed
+no target dialog, no new IRIS CONNECT call, and passive discovery on P2.
+Historical Vivo-only 10/10 evidence is retained but explicitly scoped; cross-OEM
+Wi-Fi Direct delivery requires a new explicit design and hardware revalidation.

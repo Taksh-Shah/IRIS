@@ -1,7 +1,7 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T18:10:00+05:30
+**Last updated**: 2026-09-06T18:55:00+05:30
 
 > **Current reconciliation (2026-09-06):** The software graph is complete/deferred,
 > but the physical-device phase is active. P1 is `10BCA20F4M000BB` (vivo V2205,
@@ -13,7 +13,10 @@
 > harness reaches Connected/live-socket states but still lacks reliable peer
 > delivery. The `/addkey`/`/to` command-flow hypothesis was tested and rejected
 > as the complete cause. The historical narrative below is retained as an execution record, not as the
-> current next action.
+> current next action. **Session 32 correction:** the 10/10 result is
+> Vivo-to-Vivo evidence only. Samsung prompts also occur on DNS-SD/discovery,
+> so all automatic Wi-Fi Direct activation is now disabled pending an explicit
+> cross-OEM association design and revalidation.
 > **Mobly remediation (2026-09-06):** the harness now drives the normal shipping
 > app rather than a second instrumented engine, caches data before force-stop,
 > and waits for asynchronous app-link delivery. The live popup audit found no

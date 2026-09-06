@@ -1748,6 +1748,19 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 
 ## Tier 2 — Wi-Fi Direct reliability & group-owner conflict
 
+> **Current scope correction (Session 32, 2026-09-06):** the historical 10/10
+> Vivo-to-Vivo result remains evidence for that exact bench, not a cross-OEM
+> no-prompt guarantee. On a Samsung S24 Ultra, IRIS's unsolicited
+> `WIFI_P2P_PEERS_CHANGED_ACTION -> WifiP2pManager.connect()` call caused a
+> vivo peer already acting as GO to show Android's **"Invitation to connect"**
+> UI. It also left Samsung's **"Turn off Sharing?"** transaction pending.
+> Android documents that `connect()` sends an invitation when an endpoint is
+> already in a P2P group, and a normal app cannot accept the system dialog.
+> IRIS now discovers and caches peers passively without automatic association.
+> The clean post-fix S24 relaunch showed neither dialog and no new IRIS
+> `WifiP2pManager.CONNECT` service call. Automatic Wi-Fi Direct delivery must
+> be explicitly redesigned and revalidated across OEMs before any wider claim.
+
 > **Design pivot (operator, 2026-09-05, Session 24 continued): Wi-Fi Direct
 > must identify total strangers on its own, not only peers already known via
 > BLE.** The MAC-carry-over-BLE design (this session's earlier work,

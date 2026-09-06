@@ -126,38 +126,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
          */
         private const val MAX_HANDSHAKE_BEACON_BYTES = 512
 
-        /**
-         * HV-21 collision resolution: upper bound on the random delay
-         * before an autonomous `connect()` from [onPeersChanged]. Two
-         * symmetric IRIS nodes each pick a uniform random delay in
-         * `[0, this)` — wide enough that they reliably desync within a
-         * round or two so exactly one `connect()` lands first.
-         */
-        private const val CONNECT_BACKOFF_MAX_MS = 6_000L
-
-        /**
-         * HV-21: a device whose last `connect()` attempt neither failed
-         * (`onFailure`) nor formed a group is re-attempted only after this
-         * long — long enough for a genuine GO negotiation + WPS exchange to
-         * complete (seconds), short enough that a stalled attempt is
-         * retried promptly.
-         */
-        private const val CONNECT_RETRY_AFTER_MS = 20_000L
-
-        /**
-         * HV-21: when `deviceName` gives a stable ordering, the lower-named
-         * node dials almost immediately (drives GO negotiation)...
-         */
-        private const val COLLISION_INITIATOR_DELAY_MS = 400L
-
-        /**
-         * ...and the higher-named node waits out the window it takes GO
-         * negotiation to actually start on the initiator before dialing
-         * itself, so its `connect()` joins the in-progress negotiation (WPS
-         * PBC, no dialog) rather than starting a second, colliding one.
-         */
-        private const val COLLISION_FOLLOWER_DELAY_MS = 3_500L
-
         /** HV-22: client dead-socket re-dial — retry cadence and total window. */
         private const val REDIAL_RETRY_MS = 2_000L
         private const val REDIAL_WINDOW_MS = 40_000L
@@ -259,14 +227,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val deviceHandles = ConcurrentHashMap<String, Long>()
     private val peerDevices = ConcurrentHashMap<Long, String>() // handle -> P2P device address
 
-    /**
-     * HV-21: P2P device address -> `SystemClock.elapsedRealtime()` of the
-     * last autonomous `connect()` attempt from [onPeersChanged]. A device
-     * is re-attempted only after [CONNECT_RETRY_AFTER_MS] with no group
-     * formed (or immediately if `connect()`'s `onFailure` fired) — the
-     * random-backoff collision-resolution loop.
-     */
-    private val connectAttempts = ConcurrentHashMap<String, Long>()
     private val discoveredMatches = ConcurrentLinkedQueue<FfiDirectPeerDiscovery>()
     private val pendingTxtBeacons = ConcurrentHashMap<String, ByteArray>()
     // HW-14: `DnsSdServiceResponseListener`/`DnsSdTxtRecordListener` firing
@@ -408,6 +368,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun startDnsSd(txtRecord: ByteArray) {
+        rejectAutomaticP2pActivation()
         // HW-13: `ensure_started()` (Rust) calls this with an EMPTY
         // placeholder just to bring the DNS-SD subsystem/response listeners
         // up before any real identity is known (needed for scan-only
@@ -479,6 +440,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun startDiscovery() {
+        rejectAutomaticP2pActivation()
         // HV-21 (Session 24, stranger-discovery pivot): DNS-SD service
         // discovery (`discoverServices`/`addServiceRequest`/the TXT-record
         // listeners below) was confirmed on real hardware to NEVER resolve
@@ -542,116 +504,27 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     /**
-     * HV-21: a fresh `WIFI_P2P_PEERS_CHANGED_ACTION` — request the current
-     * peer list and, for every device not already attempted this session,
-     * autonomously initiate a plain `connect()` (no explicit GO-intent
-     * override — the platform's own WPS/GO-negotiation decides the role
-     * for two devices that have never grouped before; this is exactly the
-     * fresh-negotiation path proven live to form a real group with no
-     * "Invitation to connect" dialog — that dialog is specifically the
-     * spec's Invitation Procedure for a REMEMBERED group, which a genuine
-     * stranger can never be on). Bounded by [MAX_CONCURRENT_LINKS] via the
-     * existing group-client cap; a device already linked or mid-connect is
-     * skipped via [connectAttempts]'s time-gate.
+     * Records the platform addresses of nearby P2P devices without initiating
+     * association. `WifiP2pManager.connect()` is deliberately not called from
+     * this unsolicited peer-list event: Android turns the same API call into
+     * an invitation whenever either side has a P2P group, and OEMs may show a
+     * Wi-Fi/Direct coexistence dialog while the STA interface is in use.
+     *
+     * A normal app cannot accept either system-owned decision on the user's
+     * behalf. Keep discovery passive here so background IRIS operation never
+     * surfaces an OS prompt; a future explicitly authorized association flow
+     * must carry its own user-visible product decision and platform gate.
      */
     private suspend fun onPeersChanged() {
-        // HV-21 correction: Wi-Fi Direct is a strict star topology — one
-        // Group Owner, N clients, GC-to-GC has no direct link (research:
-        // "GO can connect with multiple devices at the same time but GCs
-        // can only connect to GO"). Once this node is already in a group
-        // (either role), a plain `connect()` to a THIRD device is not the
-        // right primitive to add them — as a GC we cannot also independently
-        // group with someone else without first leaving; as the GO, adding a
-        // peer to the EXISTING group is `add_client`'s job (GO-side invite),
-        // not a fresh `connect()` call, which would instead attempt to
-        // negotiate a completely separate second group. Skip autonomous
-        // connects entirely while grouped; a future finding can wire GO-side
-        // invite-into-existing-group for additional strangers.
-        if (groupState.snapshot() != null) return
         val channel = startGate.ensureStarted() ?: return
-        if (myDeviceName.isNullOrBlank()) seedDeviceInfo(channel)
         p2pManagerOrThrow().requestPeers(channel) { peers ->
-            val now = SystemClock.elapsedRealtime()
             for (device in peers.deviceList) {
                 val address = device.deviceAddress ?: continue
-                // HV-21 collision resolution (research-driven): when BOTH
-                // phones discover each other and BOTH call `connect()`
-                // within the same second — which is exactly what two
-                // symmetric IRIS nodes do — the GO negotiation collides
-                // and NEITHER group forms (each side holds a pending
-                // outgoing GO Negotiation Request and rejects the incoming
-                // one). HV-19's fix for the identified-peer path was a
-                // deterministic PeerId tie-break; a MAC-based equivalent is
-                // impossible here because **a normal app cannot read its
-                // own Wi-Fi P2P MAC on Android 6+** (privacy: local API
-                // returns `02:00:00:00:00:00` without the signature-only
-                // `LOCAL_MAC_ADDRESS` permission — confirmed live, both
-                // `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` and
-                // `requestDeviceInfo` returned null/anonymized on this
-                // bench). The standard collision-resolution answer with no
-                // shared coordinate is **random backoff**: wait a random
-                // interval, and only `connect()` if no group has formed in
-                // the meantime; on failure or a stalled negotiation, retry
-                // after another random interval. Statistically the two
-                // sides desync within 2–3 rounds and one wins cleanly.
-                val last = connectAttempts[address]
-                if (last != null && now - last < CONNECT_RETRY_AFTER_MS) continue
-                connectAttempts[address] = now
-                // HV-21 collision resolution (research-driven): a purely random
-                // backoff still collides too often — two symmetric nodes pick
-                // nearby values and BOTH connect() calls enter GO negotiation
-                // within the ~2 s window it takes negotiation to actually
-                // start, deadlocking (each holds a pending outgoing request,
-                // rejects the incoming one; confirmed live — group never
-                // forms). The no-OS-dialog requirement means BOTH sides must
-                // ultimately call connect() (WPS PBC on both ends = auto-accept,
-                // no "Invitation to connect" dialog), so the fix is to *order*
-                // the two calls, not suppress one. `deviceName` is the only
-                // coordinate both sides share and can read for themselves
-                // (deviceAddress is anonymized to a normal app — HV-19). Lower
-                // name dials first and drives negotiation; higher name waits
-                // out the negotiation-start window then dials too, joining the
-                // in-progress negotiation instead of racing a fresh one.
-                // Identical or unknown names fall back to random backoff.
-                val mine = myDeviceName
-                val theirs = device.deviceName
-                val backoffMs = when {
-                    mine.isNullOrBlank() || theirs.isNullOrBlank() || mine == theirs ->
-                        (Math.random() * CONNECT_BACKOFF_MAX_MS).toLong()
-                    mine < theirs -> COLLISION_INITIATOR_DELAY_MS
-                    else -> COLLISION_FOLLOWER_DELAY_MS
-                }
+                peerHandleFor(address)
                 iriscore.util.IrisLog.d(
-                    "wd.stranger",
-                    "onPeersChanged: device $address ($theirs) mine=$mine — scheduling connect in ${backoffMs}ms",
+                    "wd.passive",
+                    "onPeersChanged: cached nearby device $address (${device.deviceName}); automatic P2P association disabled",
                 )
-                callbackScope.launch {
-                    delay(backoffMs)
-                    // Re-check under the post-backoff state: the other side
-                    // may have already won the race and formed the group.
-                    if (groupState.snapshot() != null) {
-                        iriscore.util.IrisLog.d("wd.stranger", "connect to $address skipped — a group formed during backoff")
-                        return@launch
-                    }
-                    val ch = startGate.ensureStarted() ?: return@launch
-                    val config = WifiP2pConfig().apply { deviceAddress = address }
-                    iriscore.util.IrisLog.d("wd.stranger", "connect to $address — initiating now")
-                    p2pManagerOrThrow().connect(
-                        ch,
-                        config,
-                        object : WifiP2pManager.ActionListener {
-                            override fun onSuccess() {}
-                            override fun onFailure(reason: Int) {
-                                // Clear immediately so the next
-                                // `onPeersChanged` retries (with a fresh
-                                // random backoff) rather than waiting out
-                                // CONNECT_RETRY_AFTER_MS.
-                                connectAttempts.remove(address)
-                                iriscore.util.IrisLog.w("wd.stranger", "connect to $address failed reason=$reason — will retry")
-                            }
-                        },
-                    )
-                }
             }
         }
     }
@@ -665,6 +538,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun createGroup(config: FfiGroupConfig): FfiGroupInfo {
+        rejectAutomaticAssociation()
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
                 ?: throw Transport("Wi-Fi Direct not initialized")
@@ -696,6 +570,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun joinGroup(go: ULong, config: FfiGroupConfig): FfiGroupInfo {
+        rejectAutomaticAssociation()
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
                 ?: throw Transport("Wi-Fi Direct not initialized")
@@ -717,6 +592,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun addClient(client: ULong) {
+        rejectAutomaticAssociation()
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
             // FFI-14: this used to `return@suspendCall` for an unknown peer —
@@ -738,10 +614,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             closeDataPath()
             groupState.clear()
             cachedGoAddr = null
-            // HV-21: a torn-down group frees every device this session had
-            // attempted — otherwise a stranger whose handshake failed (or
-            // who simply lost the group) could never be retried.
-            connectAttempts.clear()
         }
     }
 
@@ -1490,6 +1362,22 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         peerDevices[handle] = deviceAddress
         return handle
     }
+
+    /**
+     * A normal Android app cannot silently resolve a system-owned P2P
+     * invitation or Samsung's Wi-Fi/Direct coexistence decision. Keep every
+     * adapter-owned association route disabled until IRIS has an explicit,
+     * researched and OEM-validated authorization design.
+     */
+    private fun rejectAutomaticAssociation(): Nothing = throw NotSupported()
+
+    /**
+     * Samsung's Sharing mode can present a system dialog for DNS-SD service
+     * registration or peer discovery alone, even when no association is
+     * attempted. Disable every background P2P activation route until IRIS has
+     * a platform-safe, explicitly authorized Wi-Fi Direct design.
+     */
+    private fun rejectAutomaticP2pActivation(): Nothing = throw NotSupported()
 
     /**
      * Await a WifiP2pManager async action; the per-call timeout is applied
