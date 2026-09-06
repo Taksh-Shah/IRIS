@@ -1029,6 +1029,8 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_iriscode_checksum_method_ffiinboxlistener_on_message(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_broadcast_text(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_drop_all_links(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_node_id(
@@ -1187,6 +1189,8 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: 
 ): Long
 external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,`x25519Provider`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+external fun uniffi_iriscode_fn_method_irisengine_broadcast_text(`ptr`: Long,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus,
+): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_drop_all_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1436,7 +1440,7 @@ external fun ffi_iriscode_rust_future_free_void(`handle`: Long,
 external fun ffi_iriscode_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 
-    
+
 }
 
 private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
@@ -1451,6 +1455,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffiinboxlistener_on_message() != 54918) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_broadcast_text() != 28560) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_drop_all_links() != 16155) {
@@ -2316,9 +2323,9 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
  * `AndroidBleTransportAdapter` (Kotlin); simulated in Rust unit tests.
  */
 public interface FfiBleAdapter {
-    
+
     fun `startScan`(`filter`: FfiScanFilter): kotlin.ULong
-    
+
     fun `stopScan`(`handle`: kotlin.ULong)
     
     fun `startAdvertising`(`data`: FfiAdvertisementData): kotlin.ULong
@@ -6381,6 +6388,16 @@ public object FfiConverterTypeFfiX25519KeyProvider: FfiConverter<FfiX25519KeyPro
 public interface IrisEngineInterface {
     
     /**
+     * HV-41: send to every peer in range rather than one addressed recipient.
+     * The core (`deliver_or_relay`/`is_broadcast`) already treats an
+     * empty `recipient_id` as "deliver locally AND relay to everyone" — this
+     * was simply never reachable from the Android shell, which always built
+     * an envelope with a concrete 32-byte recipient. Returns the 16-byte wire
+     * message id on acceptance, exactly like `send_text`.
+     */
+    fun `broadcastText`(`text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray
+
+    /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
      * down — advertising/scanning stay up, so the discovery loop re-forms the
      * links. A test hook for the `iris_bench` harness to deterministically
@@ -6573,6 +6590,28 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     }
 
     
+    /**
+     * HV-41: send to every peer in range rather than one addressed recipient.
+     * The core (`deliver_or_relay`/`is_broadcast`) already treats an
+     * empty `recipient_id` as "deliver locally AND relay to everyone" — this
+     * was simply never reachable from the Android shell, which always built
+     * an envelope with a concrete 32-byte recipient. Returns the 16-byte wire
+     * message id on acceptance, exactly like `send_text`.
+     */
+    @Throws(IrisFfiException::class)override fun `broadcastText`(`text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_broadcast_text(
+        it,
+        FfiConverterString.lower(`text`),FfiConverterUByte.lower(`priority`),_status)
+}
+    }
+    )
+    }
+
+
+
     /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
      * down — advertising/scanning stay up, so the discovery loop re-forms the
@@ -8658,8 +8697,6 @@ public object FfiConverterSequenceTypeFfiTransportDiag: FfiConverterRustBuffer<L
         }
     }
 }
-
-
 
 
 

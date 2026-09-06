@@ -6171,3 +6171,46 @@ else in Tier 4 could move without hardware)
 - Commit: `b647e3a` — `feat(hw/routing): HV-35 — MSG_RELAYED event with
   explicit hop_count for bench-session instrumentation`
 - No hardware this session (unchanged from the main Session 30 entry above).
+
+---
+
+## Session 31 (autonomous) — 2026-09-06 — Tier-4 bench deployment / HV-41 FFI repair
+
+**Scope:** prepare the three-phone Tier-4 bench with an APK built from the
+current repository head before attempting any multi-device procedure.
+
+**Failure evidence and diagnosis.** The initial `:app:testDebugUnitTest` build
+failed at `MeshRepository.kt:169`: Kotlin referenced `IrisEngine.broadcastText`,
+but the committed UniFFI Kotlin binding exposed no such method. Rust already
+exported `IrisEngine::broadcast_text` (`crates/iris-android/src/engine.rs`), so
+this was generated-binding/native-library drift, not a broadcast design defect.
+This repeats the failure family recorded in HV-84 and HV-88. The local pinned
+`uniffi-bindgen 0.31.2` procedure was verified against the UniFFI project
+documentation, then applied without hand-editing generated output:
+
+1. `cargo build -p iris-android` created fresh metadata library
+   `target/debug/iriscode.dll`.
+2. `uniffi-bindgen generate --library target/debug/iriscode.dll --language
+   kotlin --out-dir kotlin/src/main/kotlin/iriscore` regenerated the committed
+   `iriscode.kt`; the generated surface now contains `broadcastText`.
+3. `cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o
+   android/app/src/main/jniLibs build --release -p iris-android` rebuilt all
+   matching Android native libraries.
+
+**Build/deployment evidence.** `:app:assembleDebug :app:assembleDebugAndroidTest`
+succeeded after synchronization and produced `app-debug.apk` (46,553,925 bytes,
+2026-09-06T13:06:07Z). It was installed with runtime grants on P1 vivo V2205
+(`10BCA20F4M000BB`, Android 14), P2 vivo 2004 (`b2fbcd39`, Android 12), and P3
+Samsung S24 Ultra (`RZCX81QF2WY`, Android 16). Every device launches
+`org.iris.mesh` 0.1.0; no `UnsatisfiedLinkError` or process crash was observed.
+
+**Bench state, not an acceptance claim.** P1's BLE GATT server still reports
+`openGattServer null` after Bluetooth was enabled, while P1 otherwise starts
+Wi-Fi Direct. The S24's initial all-transport failure was traced to a Bluetooth
+state transition plus Wi-Fi Direct being off; after radios settled, its BLE
+transport registered. This is device/radio-state evidence to carry into the
+next controlled attempt, not a successful relay or broadcast result. Tier-4
+hardware acceptance remains pending. Separately, the Android JVM suite has one
+unrelated but real desktop command-surface parity failure (Android now has
+`/all`, `/name`, `/contacts`; the desktop mirror lacks them); it is recorded for
+a separate cross-platform repair rather than weakening the parity test here.
