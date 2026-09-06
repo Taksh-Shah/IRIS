@@ -76,11 +76,17 @@ that remain are understood and logged.*
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
-| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 1 | 0 | 0 | 8 |
+| 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 4 | 0 | 0 | 5 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 2 | 0 | 0 | 15 |
-| **Total** | | **109** | **31** | **24** | **1** | **2** | **51** |
+| **Total** | | **109** | **31** | **27** | **1** | **2** | **48** |
 
-**Last updated:** 2026-09-06 (Session 26 continued — **Tier 2 shipping-app
+**Last updated:** 2026-09-06 (Session 27 — **Tier 8: HV-63 + HV-61 + HV-59
+closed, ✅ HW PENDING.** Auto-scroll now respects user scroll position (HV-63,
+"N new ↓" pill); StatusLine shows "PERM" chip and PermissionNotice opens
+Settings on permanent denial (HV-61); per-transport "BLE ● / WD ○" chips
+driven by a 5-s ViewModel poll of snapshot() (HV-59). commit `14a1794`. No
+hardware available this session — Phase T remains for operator.)
+· Previously: 2026-09-06 (Session 26 continued — **Tier 2 shipping-app
 cold-cycle gate 10/10; Mobly harness remains HW-pending.**)
 
 Previously: 2026-09-05 (Session 22, continued — **Tier 8: HV-54 + HV-55
@@ -3285,7 +3291,7 @@ variants — extend and drive them from real events.
 
 ### HV-59 — `MeshStatus` LINK/INIT/IDLE/DOWN is a single global state — it hides per-transport reality
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit `14a1794` · 2026-09-06
 - **Area:** `MeshUiState.status`, `MeshRepository.startMesh` (sets RUNNING on
   `startAll` returning, which now succeeds if *any* transport started),
   `ConsoleScreen.StatusLine`
@@ -3322,7 +3328,7 @@ Worse UX than no button.
 
 ### HV-61 — Permission UX: the app can sit in a "RUNNING but carries no traffic" state
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit `14a1794` · 2026-09-06
 - **Area:** `MeshViewModel.init` / `ensureStarted`, `ConsoleScreen`
   PermissionNotice, `MeshPermissions`
 - **Severity:** Medium · **HW gate:** fresh install on 2 phones
@@ -3358,7 +3364,7 @@ into HV-56.
 
 ### HV-63 — The transcript auto-scrolls on every entry, fighting a user who scrolled up to read history
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit `14a1794` · 2026-09-06
 - **Area:** `ConsoleScreen` `LaunchedEffect(entries.size) { listState.animateScrollToItem(lastIndex) }`
 - **Severity:** Low–Medium · **HW gate:** any phone
 - **What:** every new message or system event force-scrolls to the bottom, even if

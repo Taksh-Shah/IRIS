@@ -5088,6 +5088,194 @@ cause. Mobly remains **HW-PENDING/BLOCKED**. No production transport change or
 additional retry is authorized until a fresh design pass isolates the
 Vivo/OriginOS instrumentation discovery/context failure.
 
+## Session 27 (autonomous) — 2026-09-06 — Tier 8: HV-63, HV-61, HV-59
+
+**Devices:** none available this session  
+**Build under test:** `b7a876c` (head before this session)  
+**Baseline:** `cargo build -p iris-core` PASS (GNU toolchain); `./gradlew
+:app:assembleDebug` not run (JDK not on shell PATH — verified by code review)  
+**Session goal:** Tier 8 Shell UX, 3 findings, Phase R + D only
+
+---
+
+### HV-63 — Transcript auto-scrolls on every entry
+
+**Phase R — Research note**
+
+- **Mechanism.** Compose `LazyListState.animateScrollToItem` at
+  `ConsoleScreen.kt:129` was called from `LaunchedEffect(entries.size)` with no
+  guard — every append triggered a scroll to the tail regardless of the user's
+  scroll position. During an active mesh session with discovery/system chatter
+  (one event per few seconds) this made reading history impossible.
+- **Why the current code is wrong.** No `atBottom` check existed. The only
+  entry point was entries-count change and composer-height change, both
+  unconditional.
+- **How this is solved elsewhere.** Standard Compose pattern: wrap the
+  last-visible-index check in `derivedStateOf` so it's read-tracked by the
+  snapshot system; gate scroll in `LaunchedEffect` on that derived value. The
+  "unread badge" is the same pattern used by Slack, WhatsApp, and Telegram
+  Android. Reference: developer.android.com/jetpack/compose/lists#reactions.
+- **IRIS constraints.** Must not fight the composer-height scroll (HV-54) —
+  that `LaunchedEffect(floatingHeight)` scroll was also made conditional on
+  `atBottom` so it still follows the tail when composing.
+- **Research outcome.** `derivedStateOf { lastVisible >= totalItems - 3 }` +
+  badge count cleared on `LaunchedEffect(atBottom)` + pill tap scroll. No
+  alternative considered (the pattern is unambiguous).
+
+**Phase D — Implementation**
+
+- Files: `ConsoleScreen.kt`
+- Added `derivedStateOf` `atBottom`, `mutableIntStateOf` `unseenCount`,
+  `rememberCoroutineScope` for the pill's click.
+- `LaunchedEffect(entries.size)`: scrolls when `atBottom`; increments
+  `unseenCount` otherwise.
+- `LaunchedEffect(atBottom)`: resets badge when user scrolls back down.
+- `LaunchedEffect(floatingHeight)`: now gated on `atBottom`.
+- Pill: tappable `Row` above palette with `"$unseenCount new ↓"` text;
+  scrolls to tail and resets badge on click.
+- No sim test added (pure UI, not a logic regression guard).
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification: install on P1, send 20+ messages in quick succession
+while P1 is scrolled up — pill should count up; tap it → scrolls to bottom,
+badge clears. Auto-send from adb: `adb shell am start -n <pkg>/.ui.MainActivity`
+then `adb shell input text "hello"` × N.
+
+**Phase C — Close**
+
+- Commit: `14a1794` — see main commit message.
+- Tracker: HV-63 → ✅ HW PENDING.
+
+---
+
+### HV-61 — Permission UX: silent "RUNNING but no traffic" state
+
+**Phase R — Research note**
+
+- **Mechanism.** `permissionsGranted` was tracked locally in the composable,
+  but `StatusLine` only read `state.status` — so the LINK/INIT/IDLE chip
+  never reflected missing permissions. `PermissionNotice` showed "GRANT" even
+  after the user selected "Don't ask again", causing the permission launcher to
+  fire and silently no-op (the system dialog does not appear for permanently
+  denied permissions on API 23+).
+- **Why the current code is wrong.** `StatusLine` ignored `permissionsGranted`.
+  `PermissionNotice.onGrant` always launched the permission request regardless
+  of denial state.
+- **Permanent-denial detection.** `shouldShowRequestPermissionRationale` returns
+  `false` both before any ask AND after "Don't ask again" — you must track
+  whether you've asked at least once. Standard Android pattern:
+  `hasAskedOnce && !shouldShowRationale && permission still missing`.
+  Source: developer.android.com/training/permissions/requesting#explain.
+- **How solved elsewhere.** Jetpack's `accompanist-permissions` library
+  (`PermissionStatus.Denied.shouldShowRationale`) implements exactly this
+  pattern. We replicate it in pure Compose without the library dep.
+- **IRIS constraints.** The status chip must remain informative on the radio
+  side (LINK/DOWN) once permissions are granted; PERM only overrides while
+  missing. Settings deep-link uses `ACTION_APPLICATION_DETAILS_SETTINGS` + the
+  package URI (standard Android pattern, API 9+).
+- **Research outcome.** Show "PERM" Critical chip; track `hasRequestedPermissions`
+  in `rememberSaveable`; compute `permanentlyDenied` from
+  `hasRequestedPermissions && !permissionsGranted && none{shouldShowRationale}`;
+  show "SETTINGS" action and launch `ACTION_APPLICATION_DETAILS_SETTINGS` when
+  permanently denied.
+
+**Phase D — Implementation**
+
+- Files: `ConsoleScreen.kt`, `MeshPermissions.kt` (read-only reference, no change)
+- Added `hasRequestedPermissions: Boolean` (rememberSaveable) to track first ask.
+- `permanentlyDenied` derived from `shouldShowRequestPermissionRationale`.
+- `StatusLine`: new `permissionsGranted` + `transportStates` params; shows
+  "PERM" Critical chip when `!permissionsGranted`.
+- `PermissionNotice`: new `permanentlyDenied` param; changes text + action label;
+  `onGrant` launches Settings intent when permanently denied.
+- No sim test added (pure UI state).
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification on P1: fresh install → grant all → verify no PERM chip.
+Revoke BLUETOOTH_SCAN from Settings → reopen → verify PERM chip and GRANT
+notice. Tap GRANT → grant → PERM disappears. Repeat: deny twice ("Don't ask
+again") → PERM chip + "SETTINGS" notice → tap → Settings app opens.
+
+**Phase C — Close**
+
+- Commit: `14a1794` — see main commit message.
+- Tracker: HV-61 → ✅ HW PENDING.
+
+---
+
+### HV-59 — Global MeshStatus hides per-transport reality
+
+**Phase R — Research note**
+
+- **Mechanism.** `MeshUiState.status` is one of {IDLE, STARTING, RUNNING,
+  UNAVAILABLE}. `engine.startAll()` returns Ok when *any* transport starts, so
+  RUNNING can mean "BLE only" or "all three radios, all connected" — the user
+  has no idea. `FfiTransportDiag.state` in the FFI snapshot already carries
+  per-transport state (`"Connected" | "Available" | "Degraded" | "Unavailable"`)
+  but nothing surfaced it to the status line.
+- **Why the current code is wrong.** `StatusLine` only reads `state.status`.
+  `snapshot()` is only called on `/diag` — no background poll existed.
+- **How solved elsewhere.** Android Wi-Fi settings shows per-radio state (Wi-Fi
+  ● / BT ○). Nearby Connections SDK exposes per-strategy state. The pattern is
+  universally "one chip per active transport."
+- **IRIS constraints.** `snapshot()` is a blocking FFI call — must run on IO
+  dispatcher. Poll interval should be long enough not to tax the battery (5 s
+  is the same as the beacon cadence). Transport labels must be stable across
+  the id prefix variants the engine uses.
+- **Research outcome.** New `TransportStatus(label, connected)` data class in
+  `MeshUiState.kt`; `MeshRepository.transportStatuses()` maps `snapshot()`
+  output to labels; `MeshViewModel` polls via `viewModelScope.launch(IO)` with
+  5 s delay, only when RUNNING; `ConsoleScreen` collects and passes to
+  `StatusLine`, which renders `"BLE ●"` / `"WD ○"` chips when available.
+
+**Phase D — Implementation**
+
+- Files: `MeshUiState.kt` (new `TransportStatus` data class),
+  `MeshRepository.kt` (new `transportStatuses()`), `MeshViewModel.kt` (new
+  `_transportStates: StateFlow`, `startTransportPoll()`), `ConsoleScreen.kt`
+  (collect + `StatusLine` renders per-transport chips).
+- Poll starts from `ensureStarted()`, clears to `emptyList()` when not RUNNING.
+- Label detection: `ble*` → "BLE", `wifi-direct*` / `wd*` → "WD",
+  `internet*` / `net*` / `tcp*` → "NET", `wifi-aware*` / `nan*` → "NAN",
+  else first 3 chars uppercased.
+- No sim test added; the poll is a pure UI concern.
+
+**Phase T — Hardware test**
+
+Hardware not available this session. ✅ HW PENDING.
+
+Suggested verification: start mesh on P1 while P2 is not present; verify
+status shows "BLE ○" (BLE up but not connected) and "WD ○" within 5-10 s.
+With P2 connected via BLE: verify "BLE ●". Kill BLE transport: verify "BLE ○"
+reappears within 5 s.
+
+**Phase C — Close**
+
+- Commit: `14a1794` — see main commit message.
+- Tracker: HV-59 → ✅ HW PENDING.
+
+---
+
+### Session 27 closeout
+
+- Devices used: none (code-only session, Phase R + D)
+- Findings advanced: HV-63 ✅, HV-61 ✅, HV-59 ✅ (all HW PENDING)
+- 🟢 count: 31 → 31 (no hardware, no 🟢 advancement)
+- ✅ HW PENDING count: 24 → 27
+- Blockers opened: none
+- New HV-## candidates spotted: none
+- Next session should pick up: HV-58 (delivery status — three states + ACK
+  wiring through FFI), HV-62 (onboarding + first-run message, §5 group with
+  HV-56), and hardware Phase T for HV-63/61/59.
+
+---
+
 ## Documentation reconciliation — 2026-09-06
 
 This pass refreshed the stale loop projections against repository head
