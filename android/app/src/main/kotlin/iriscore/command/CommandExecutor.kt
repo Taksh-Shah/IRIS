@@ -70,6 +70,14 @@ object CommandExecutor {
                 setRecipient(peer, contactResolver)
             }
 
+            // HV-41: unlike "send"/"sos", broadcast never needs hasRecipient —
+            // it is addressed to everyone in range, not the currently-set peer.
+            "all" -> {
+                val text = mode.argument
+                    ?: return CommandResult.Error("/all needs a message")
+                CommandResult.Broadcast(text, PRIORITY_NORMAL)
+            }
+
             "x25519" -> CommandResult.System(title = "X25519", lines = emptyList())
 
             "addkey" -> {

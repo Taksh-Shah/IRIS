@@ -72,6 +72,9 @@ sealed interface CommandResult {
     /** Send [text] at [priority]. */
     data class Send(val text: String, val priority: UByte) : CommandResult
 
+    /** HV-41: send [text] at [priority] to every peer in range, not one recipient. */
+    data class Broadcast(val text: String, val priority: UByte) : CommandResult
+
     /** Set the active recipient. */
     data class SetRecipient(val peerIdHex: String) : CommandResult
 

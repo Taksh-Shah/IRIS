@@ -68,6 +68,13 @@ object CommandRegistry {
             argumentHint = "<peer-id>",
         ),
         IrisCommand(
+            name = "all",
+            description = "Send to every peer in range — no recipient needed",
+            group = CommandGroup.MESSAGE,
+            aliases = listOf("broadcast", "everyone"),
+            argumentHint = "<message>",
+        ),
+        IrisCommand(
             name = "x25519",
             description = "Show this node's X25519 key (hand to a peer for /addkey)",
             group = CommandGroup.SYSTEM,

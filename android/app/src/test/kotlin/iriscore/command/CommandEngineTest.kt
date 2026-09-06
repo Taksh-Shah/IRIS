@@ -124,6 +124,34 @@ class CommandEngineTest {
     }
 
     @Test
+    fun `HV-41 broadcast needs no recipient`() {
+        // Regression: /all must not go through sendOrReject's hasRecipient
+        // gate — a broadcast is addressed to everyone in range, not the
+        // currently-set peer, so it must succeed even with none set.
+        val result = CommandExecutor.execute("/all supplies at the north gate", hasRecipient = false)
+        assertEquals(
+            CommandResult.Broadcast("supplies at the north gate", CommandExecutor.PRIORITY_NORMAL),
+            result,
+        )
+    }
+
+    @Test
+    fun `HV-41 broadcast without a message is rejected rather than sending an empty broadcast`() {
+        val result = CommandExecutor.execute("/all", hasRecipient = false)
+        assertTrue(result is CommandResult.Error)
+    }
+
+    @Test
+    fun `HV-41 broadcast alias resolves`() {
+        assertTrue(
+            CommandExecutor.execute("/broadcast hi", hasRecipient = false) is CommandResult.Broadcast,
+        )
+        assertTrue(
+            CommandExecutor.execute("/everyone hi", hasRecipient = false) is CommandResult.Broadcast,
+        )
+    }
+
+    @Test
     fun `recipient must be 64 hex`() {
         assertTrue(CommandExecutor.execute("/to abc", hasRecipient = false) is CommandResult.Error)
         assertTrue(CommandExecutor.execute("@zz", hasRecipient = false) is CommandResult.Error)

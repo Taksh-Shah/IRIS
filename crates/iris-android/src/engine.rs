@@ -613,7 +613,26 @@ impl IrisEngine {
         let priority = MessagePriority::from_u8(priority).ok_or_else(|| {
             IrisFfiError::InvalidArgument(format!("priority must be 0-7, got {priority}"))
         })?;
-        let envelope = build_text_envelope(self.node_id, recipient, text, priority)?;
+        let envelope = build_text_envelope(self.node_id, Some(recipient), text, priority)?;
+        let message_id = envelope.message_id;
+        let engine = self.engine.clone();
+        self.handle
+            .block_on(async move { engine.send_message(envelope).await })
+            .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
+        Ok(message_id.to_bytes().to_vec())
+    }
+
+    /// HV-41: send to every peer in range rather than one addressed recipient.
+    /// The core (`deliver_or_relay`/`is_broadcast`) already treats an
+    /// empty `recipient_id` as "deliver locally AND relay to everyone" — this
+    /// was simply never reachable from the Android shell, which always built
+    /// an envelope with a concrete 32-byte recipient. Returns the 16-byte wire
+    /// message id on acceptance, exactly like `send_text`.
+    pub fn broadcast_text(&self, text: &str, priority: u8) -> Result<Vec<u8>, IrisFfiError> {
+        let priority = MessagePriority::from_u8(priority).ok_or_else(|| {
+            IrisFfiError::InvalidArgument(format!("priority must be 0-7, got {priority}"))
+        })?;
+        let envelope = build_text_envelope(self.node_id, None, text, priority)?;
         let message_id = envelope.message_id;
         let engine = self.engine.clone();
         self.handle
@@ -796,9 +815,14 @@ fn parse_peer_id_hex(hex: &str) -> Result<PeerId, IrisFfiError> {
 }
 
 /// Build a `Text` envelope from shell input (mirrors DesktopEngine).
+/// `recipient = None` builds a broadcast envelope (empty `recipient_id`) —
+/// the core's `is_broadcast`/`recipient_matches`/`recipient_peer` all treat an
+/// empty `recipient_id` as "everyone" (message_engine/mod.rs), so this is the
+/// only change needed here; encryption skip and local-delivery-plus-relay are
+/// already handled inside `MessageEngine::send_message`.
 fn build_text_envelope(
     node_id: [u8; 32],
-    recipient: PeerId,
+    recipient: Option<PeerId>,
     text: &str,
     priority: MessagePriority,
 ) -> Result<Envelope, IrisFfiError> {
@@ -811,7 +835,7 @@ fn build_text_envelope(
         version: PROTOCOL_VERSION,
         message_id: MessageId::new_v7(),
         sender_id: node_id.to_vec(),
-        recipient_id: recipient.as_bytes().to_vec(),
+        recipient_id: recipient.map(|p| p.as_bytes().to_vec()).unwrap_or_default(),
         priority,
         ttl_seconds: 3600,
         timestamp: unix_now(),

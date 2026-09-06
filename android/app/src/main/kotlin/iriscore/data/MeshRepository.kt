@@ -154,6 +154,30 @@ class MeshRepository @Inject constructor(
     }
 
     /**
+     * HV-41: send to every peer in range. Unlike [send], there is no
+     * recipient to validate — the core (`is_broadcast`/`deliver_or_relay`)
+     * treats an empty `recipient_id` as "deliver locally and relay to
+     * everyone." No relay-outbox spooling on failure: a broadcast that the
+     * transport layer cannot send right now has no single peer to retry
+     * against later, unlike an addressed message.
+     *
+     * @return `true` if accepted by the engine.
+     */
+    fun broadcast(text: String, priority: UByte): Boolean {
+        _uiState.update { it.copy(lastError = null) }
+        return try {
+            engine.get().broadcastText(text, priority)
+            _uiState.update {
+                it.copy(messages = (it.messages + InboxUiMessage.sent(BROADCAST_LABEL, text, priority)).takeLast(MAX_UI_MESSAGES))
+            }
+            true
+        } catch (e: IrisFfiException) {
+            _uiState.update { it.copy(lastError = "Broadcast failed: ${e.message}") }
+            false
+        }
+    }
+
+    /**
      * HV-3: point-in-time mesh diagnostic (`/diag`). Blocking FFI call — the
      * caller must be off the main thread. Also emits an `iris.diag` line to
      * logcat.
@@ -216,6 +240,9 @@ class MeshRepository @Inject constructor(
 
         /** A PeerId is a 32-byte key rendered as hex (PeerIdCodec.toHex). */
         const val RECIPIENT_HEX_LENGTH = 64
+
+        /** HV-41: display label for a sent broadcast — not a real PeerId. */
+        const val BROADCAST_LABEL = "BROADCAST"
 
         /** Ceiling on retained UI messages; the engine holds the durable copy. */
         const val MAX_UI_MESSAGES = 500
