@@ -55,6 +55,29 @@ Works when cellular/internet/power fail. Built for India, designed for the world
 5. **Research produces evidence** — claims need sources, maturity levels matter
 6. **Failed approaches are recorded** — prevent repeating mistakes
 7. **The loop is state-driven** — never rely on conversation for loop position
+8. **Research before implementation is mandatory** — before fixing, changing, or
+   implementing anything, perform in-depth internet research using authoritative
+   primary sources first and strong secondary sources where useful. Research the
+   problem, platform/API behavior, current best practices, comparable
+   implementations, security implications, and relevant version differences.
+   Record the evidence, maturity, alternatives, and the implementation decision
+   before touching code.
+9. **Re-research every failure** — if a test, build, hardware run, review, or
+   verification attempt fails, stop treating the original research as sufficient.
+   Capture the failure evidence, research the failure mode again in depth, and
+   update the diagnosis and next approach before retrying. Do this as quickly as
+   practical, but never guess or repeatedly retry an unexplained failure.
+10. **Research at decision points** — research may and should be repeated during
+    implementation whenever new evidence, an unfamiliar behavior, a platform
+    constraint, or a design fork appears. Use the newest evidence to keep the
+    implementation direction correct; do not continue down a stale path merely
+    because work has already started.
+11. **Commit completed work and leave the tree clean** — when a requested task or
+    coherent work unit is complete, validate it, update all required durable
+    records, stage every intended file, and commit with a clear, scoped message.
+    Verify the commit, confirm the repository is clean, and report any unrelated
+    pre-existing changes separately. Never claim completion while intended work
+    remains uncommitted or the tree is unexpectedly dirty.
 
 ## COMMANDS AVAILABLE
 
@@ -128,6 +151,9 @@ single-agent execution, or stale-doc drift.
 4. **BEST-IN-CLASS RESEARCH.** For each node, research the newest standards and
    protocols (RFCs, IEEE, IETF drafts, academic state-of-the-art). Record maturity
    (RES-XXXX) with sources. Do not implement from memory alone.
+   This research gate applies before every fix or implementation, not only at
+   graph-node research stages. If execution produces a failure, perform a fresh
+   failure-focused research pass before changing the approach or retrying.
 5. **VERIFY TO COMPLETE.** A node is COMPLETE only when `verifier` evidence exists
    and all acceptance criteria from `ACCEPTANCE_POLICY.yaml` are met or explicitly
    gated in `known_limitations`/blockers. Never fake completeness.
@@ -153,6 +179,12 @@ single-agent execution, or stale-doc drift.
     must re-read the docs it implements from and the state it advances, and write
     its pass into `records/execution-log.md` with files touched. Doc/state/graph/
     context freshness is not an afterthought — it is the loop's heartbeat.
+11. **COMMIT-EVERY-COMPLETED-TASK.** After validation and durable-state updates,
+    commit the completed task with a proper message and verify `git status` is
+    clean. Documentation-only work, configuration work, fixes, and
+    implementation work all follow this rule. If the tree contains unrelated
+    changes, isolate them safely and disclose them rather than silently mixing or
+    discarding them.
 
 ### Loop Mechanics (per iteration)
 

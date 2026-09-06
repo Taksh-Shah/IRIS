@@ -3,6 +3,14 @@
 Host-driven Mobly suite. Runs on the laptop, drives both bench phones at once
 through the `IrisSnippet` RPC surface (the `androidTest` APK).
 
+**Current status (2026-09-06):** the shipping-app Wi-Fi Direct Tier-2 cold-cycle
+gate is verified 10/10 by
+`docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`. The
+Mobly Tier-2 test remains HW-PENDING on the current Vivo/OriginOS pair because
+`discoverPeers()` is attributed to the instrumentation context even when the
+shipping activity is foregrounded. Do not treat a green shipping-app gate as a
+green Mobly-harness gate.
+
 ## Build the APKs (once per code change)
 
 ```

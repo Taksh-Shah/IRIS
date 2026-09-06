@@ -5031,3 +5031,18 @@ disabled:
 `:app:testDebugUnitTest` + `:app:assembleDebugAndroidTest` green.
 
 **Landed:** commit `<pending>` (gate script + harness scaffolding).
+
+## Documentation reconciliation — 2026-09-06
+
+This pass refreshed the stale loop projections against repository head
+`b7a876c` and the connected bench. No implementation, APK, or device state was
+changed.
+
+- P1: vivo V2205, Android 14/API 34, serial `10BCA20F4M000BB`.
+- P2: vivo 2004, Android 12/API 31, serial `b2fbcd39`.
+- Toolchain observed: JDK 21, Python 3.10, Mobly 1.12.2, ADB 37.0.1.
+- Shipping-app Tier-2 Wi-Fi Direct cold-cycle gate remains **🟢 10/10**.
+- `iris_bench/test_tier2_wifidirect.py` remains **HW-PENDING**: on this
+  Vivo/OriginOS pair, instrumented `discoverPeers()` returns no peers even when
+  the shipping activity is foregrounded. The shell gate remains the evidence of
+  record until the harness execution context is resolved or another OEM is used.

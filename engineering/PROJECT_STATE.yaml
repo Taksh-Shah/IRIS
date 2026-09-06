@@ -3,7 +3,7 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-08-22 (SAT-001 ACCEPTED iter ~175 - 31 COMPLETE nodes; graph exhausted of autonomous-eligible nodes — Rust core AC-1..13 delivered, 27 tests, 686/0/1 clippy 0 fmt clean; NEXT: LORA-001 TEST iter ~164, then SECURITY_REVIEW -> VERIFY -> ACCEPT -> SAT-001)
+# Last updated: 2026-09-06 (software graph snapshot retained; physical hardware phase reconciled separately — WIFIDIRECT-001 shipping-app Tier-2 gate 10/10, Mobly Tier-2 harness HW-PENDING on Vivo/OriginOS)
 
 # Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,

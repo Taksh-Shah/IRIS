@@ -4,9 +4,9 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-08-22T12:30:00Z"
+updated_at: "2026-09-06T09:30:00+05:30"
 # === EXECUTION CONTROL ===
-execution_status: "IDLE"
+execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
 
 autonomy_mode: "AUTONOMOUS"
@@ -22,12 +22,13 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "NONE"
-active_stage: "NONE"
-active_action: "SYSVAL-001 COMPLETE (iter ~178, evidence: SYSVAL_001_TEST.md): whole-system soundness validation executed — Tracks A-F green (cross-transport relay, DTN multi-hop, crypto paths, security-engine flood, emergency priority, failure injection) + Phase 2 gates (workspace 727/0/1, clippy 0, fmt clean, audit exit 0). LEGAL-001 DEFERRED_TO_FUTURE per operator ruling (carried obligations register at docs/legal/CARRIED_OBLIGATIONS_REGISTER.md). 32/33 nodes COMPLETE; LEGAL-001 is the sole non-COMPLETE node and it is operator-deferred. MISSION GRAPH COMPLETE."
-next_action: "PHYSICAL-PHONE PHASE: awaiting operator-provided Android hardware. Device-tier GATED rows unlock on arrival: ANDROID-001 real-device acceptance, BLE physical tests, LORA/SAT modem benchmarks, EXP-003 battery. Until then supervisor remains IDLE. Re-invoke /resume when hardware is available."last_transition: "MISSION_GRAPH_COMPLETE"
+active_node: "WIFIDIRECT-001"
+active_stage: "HARDWARE_VERIFICATION"
+active_action: "Read-only state reconciliation: Tier-2 Wi-Fi Direct cold-cycle gate is hardware-verified 10/10 on the shipping app using P1 vivo V2205 Android 14/API 34 and P2 vivo 2004 Android 12/API 31. The Mobly Tier-2 harness remains HW-PENDING because Vivo/OriginOS attributes discoverPeers() to the instrumentation context. No implementation action is authorized by this context."
+next_action: "Continue hardware verification from docs/bug-hunting/hardware_verification: preserve the 10/10 shipping-app gate, then select the next explicit hardware procedure. Do not claim Mobly Tier-2 completion until the harness produces device evidence."
+last_transition: "HARDWARE_PHASE_RECONCILED"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-08-22T09:30:00Z"
+last_transition_at: "2026-09-06T09:30:00+05:30"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
@@ -38,7 +39,7 @@ last_checkpoint_at: "2026-08-13T18:30:00Z"
 iterations_without_progress: 0
 max_iterations_without_progress: 3
 last_progress_event: "MISSION GRAPH COMPLETE (iter ~178): SYSVAL-001 whole-system validation green (Tracks A-F + Phase 2 gates, workspace 727/0/1); LEGAL-001 deferred to future w/ carried-obligations register; 32/33 nodes COMPLETE (LEGAL-001 operator-deferred). Supervisor IDLE pending physical-phone phase."
-last_progress_at: "2026-08-22T10:40:00Z"
+last_progress_at: "2026-09-06T09:30:00+05:30"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
@@ -2306,4 +2307,3 @@ recent_log:
 # This file is authoritative for execution control decisions.
 # CURRENT_STATE.md is a human-readable projection for operators.
 # If they conflict, this file wins for execution purposes.
-

@@ -1,7 +1,21 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-22T09:30:00Z
+**Last updated**: 2026-09-06T09:30:00+05:30
+
+## Current hardware phase
+
+The graph node `WIFIDIRECT-001` is software-complete; its physical verification
+follow-up is active. The two-phone bench is connected and identified in
+`docs/bug-hunting/hardware_verification/hardware_fix_log.md`.
+
+- Shipping-app Tier-2 cold-cycle gate: **HW-verified 10/10**.
+- Conditions: Bluetooth disabled; exactly one Wi-Fi Direct group; bidirectional
+  delivery; persistent keys; no OS invitation dialog.
+- Mobly Tier-2 test: **HW-PENDING** on this Vivo/OriginOS pair because
+  `discoverPeers()` returns no peers from the instrumentation context.
+- Gate of record: `docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`.
+- No source implementation change is implied by this state reconciliation.
 
 ## Active Node: SAT-001 — Satellite Gateway Transport
 

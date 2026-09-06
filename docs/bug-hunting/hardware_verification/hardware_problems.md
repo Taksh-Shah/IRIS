@@ -19,6 +19,15 @@ required for multi-hop and is called out where it blocks a finding. All prior
 a single session and are **not** treated as durable here — every finding is
 re-verified from scratch on the current build.
 
+> **Current status — 2026-09-06:** P1 is vivo V2205 (Android 14/API 34) and P2
+> is vivo 2004 (Android 12/API 31). The shipping-app Wi-Fi Direct Tier-2
+> cold-cycle gate is **🟢 10/10**: exactly one group forms, messages flow both
+> ways, persisted keys survive restarts, and no OS invitation dialog appears.
+> The equivalent Mobly test remains **HW-PENDING** because this Vivo/OriginOS
+> pair attributes `discoverPeers()` to the instrumentation context; use the
+> repeatable shell gate until the harness path is independently evidenced. The
+> current code/documentation head is `b7a876c`.
+
 ---
 
 ## Why this tracker exists (read this first)
@@ -71,7 +80,10 @@ that remain are understood and logged.*
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 2 | 0 | 0 | 15 |
 | **Total** | | **109** | **31** | **24** | **1** | **2** | **51** |
 
-**Last updated:** 2026-09-05 (Session 22, continued — **Tier 8: HV-54 + HV-55
+**Last updated:** 2026-09-06 (Session 26 continued — **Tier 2 shipping-app
+cold-cycle gate 10/10; Mobly harness remains HW-pending.**)
+
+Previously: 2026-09-05 (Session 22, continued — **Tier 8: HV-54 + HV-55
 closed, 🟢 HW-verified.** Both are UI-only fixes, independent of the Tier-2
 radio blocker, worked in parallel per §2's explicit allowance. HV-54: the
 floating composer/palette column now measures its own height and feeds it

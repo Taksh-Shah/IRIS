@@ -1,7 +1,16 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-08-22T09:30:00Z
+**Last updated**: 2026-09-06T09:30:00+05:30
+
+> **Current reconciliation (2026-09-06):** The software graph is complete/deferred,
+> but the physical-device phase is active. P1 is `10BCA20F4M000BB` (vivo V2205,
+> Android 14/API 34) and P2 is `b2fbcd39` (vivo 2004, Android 12/API 31).
+> Current repository head is `b7a876c`. The shipping-app Tier-2 Wi-Fi Direct
+> cold-cycle gate is green 10/10; the Mobly Tier-2 harness remains hardware-pending
+> because discovery is attributed to the instrumentation context on this pair.
+> The historical narrative below is retained as an execution record, not as the
+> current next action.
 
 ---
 

@@ -1,9 +1,22 @@
 # CHECKPOINT.md — Latest Durable Checkpoint
 
 **Schema version**: 1.0
-**Checkpoint ID**: CHK-0001
-**Timestamp**: 2026-08-11T19:30:00Z
-**Agent**: Principal Architect Agent
+**Checkpoint ID**: CHK-0007
+**Timestamp**: 2026-09-06T09:30:00+05:30
+**Agent**: Codex — documentation/state reconciliation
+
+> **Current checkpoint:** The August control-plane checkpoint below is retained
+> as historical bootstrap evidence. The active state is the physical-device
+> phase: two phones are connected, the shipping-app Tier-2 Wi-Fi Direct gate is
+> 10/10, and the Mobly Tier-2 harness remains HW-PENDING on Vivo/OriginOS.
+
+## Current reconciliation
+
+- Repository head: `b7a876c`; worktree clean before this documentation pass.
+- P1: vivo V2205, Android 14/API 34; P2: vivo 2004, Android 12/API 31.
+- Host tools: JDK 21, Python 3.10, Mobly 1.12.2, ADB 37.0.1.
+- Documentation/state projections refreshed without changing implementation,
+  APKs, or device state.
 
 ---
 
