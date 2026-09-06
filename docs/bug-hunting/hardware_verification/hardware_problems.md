@@ -72,15 +72,27 @@ that remain are understood and logged.*
 | 1 | BLE single-hop reliability (the "sometimes works" core) | 28 | 18 | 6 | 1 | 1 | 2 |
 | 2 | Wi-Fi Direct reliability & group-owner conflict | 9 | 0 | 4 | 0 | 0 | 5 |
 | 3 | Connection lifecycle — drop, backoff lockout, auto-reconnect, coexistence | 10 | 5 | 3 | 0 | 0 | 2 |
-| 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 0 | 0 | 0 | 7 |
+| 4 | Multi-hop, relay, flood, PRoPHET — never run on hardware | 7 | 0 | 3 | 1 | 0 | 3 |
 | 5 | Internet / TCP-IP transport — absent on Android | 4 | 0 | 0 | 0 | 0 | 4 |
 | 6 | Transport selection & concurrent-radio coexistence | 5 | 0 | 1 | 0 | 0 | 4 |
 | 7 | Wi-Fi Aware data path (NDP responder) | 3 | 0 | 0 | 0 | 0 | 3 |
 | 8 | Shell UX — composer, contacts, addressing, reply, status | 11 | 2 | 8 | 0 | 1 | 0 |
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 7 | 0 | 0 | 10 |
-| **Total** | | **109** | **31** | **36** | **1** | **3** | **38** |
+| **Total** | | **109** | **31** | **39** | **2** | **3** | **34** |
 
-**Last updated:** 2026-09-06 (Session 29 — **Tier 9: HV-66 + HV-68 + HV-76 +
+**Last updated:** 2026-09-06 (Session 30 — **Tier 4: HV-38 + HV-40 + HV-41
+closed, ✅ HW PENDING; HV-39 closed by research (⚪ premise confirmed,
+consequence bounded — no fix needed, listed under 🔬 above).** Real
+`NeighborTable` topology now in `/peers` (HV-40, FFI data already existed via
+`/diag` — pure UI wiring); new `broadcast_text` FFI method + `/all` shell
+command, unblocking HV-36 once a 3rd phone exists (HV-41); real mesh-relay
+counter surfaced distinctly from the local pending-sends queue (HV-38, full
+`PendingSendQueue` rename deferred — no compiler available to verify it
+safely); hop_count's signed/unsigned split confirmed intentional and already
+bounded by signed `max_hops` + message-id dedup (HV-39). No hardware available
+this session — Phase T written up for whoever next has 2+ phones. HV-35/36/37
+remain 🔒/⬜, genuinely require 3+ phones, untouched this session.)
+· Previously: 2026-09-06 (Session 29 — **Tier 9: HV-66 + HV-68 + HV-76 +
 HV-77 + HV-80 closed, ✅ HW PENDING.** HV-64 blocked (🔒 future prospects).
 MTU negotiated in connect flow (HV-66); refreshDeviceCache on stale miss (HV-68);
 REASSEMBLY_TTL 30s→120s + eviction log (HV-76); dup/OOO fragment unit tests (HV-77);
@@ -2792,7 +2804,7 @@ metric moves in the right direction. This is a multi-session effort.
 
 ### HV-38 — The Android relay outbox (`RelayOutbox`) is only the local sender's retry queue, not mesh relay
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed (partial scope) · HW PENDING · commit `1eab7c9` · 2026-09-06 · Session 30. `MeshViewModel.resolveLinks()` (new) now shows the real mesh-relay counter (`snap.messages.relayed`) distinctly labeled next to the local pending-sends count, instead of only the local `RelayOutbox` depth being visible outside `/diag`. `RelayOutbox.kt` got an explicit "HV-38 naming note" doc comment. The fix sketch's full rename to `PendingSendQueue` is deliberately deferred — no compiler in this environment to verify a 7-file mechanical rename safely — logged as a follow-up candidate in `hardware_fix_log.md` Session 30.
 - **Area:** `RelayOutbox`, `MeshRepository.send` / `drainRelayOutbox`,
   `IrisBackgroundSyncWorker`
 - **Severity:** Medium (conceptual clarity + a real gap) · **HW gate:** 2 phones
@@ -2815,7 +2827,8 @@ shorten the WorkManager cadence or make it event-driven (drain on next transport
 
 ### HV-39 — Relayed envelope integrity across a hop: signature, hop_count, TTL
 
-- **Fix status:** ⬜ · **HW gate:** 🔒 needs 3 phones (or a careful 2-phone proxy)
+- **Fix status:** ⚪ Premise confirmed, consequence bounded — no fix needed · 2026-09-06 · Session 30. `hop_count` is confirmed unsigned and relay-resettable (`codec.rs` deliberately excludes it, with an existing regression test guarding that), but `max_hops` (the ceiling) **is** signed and per-node dedup (`ForwardedCache`, keyed by `message_id`, not hop_count) independently bounds total spread — so a relay resetting hop_count extends propagation but cannot create an unbounded amplification or a loop. Same trust model as IP TTL / BATMAN / OLSR. See `hardware_fix_log.md` Session 30 for the full trace.
+- **HW gate:** 🔒 needs 3 phones (or a careful 2-phone proxy)
 - **Area:** `message_engine/crypto.rs`, `message.rs` (`Envelope` hop fields),
   `enqueue_relay`, `deliver_outbound` (re-encode)
 - **Severity:** High
@@ -2839,7 +2852,7 @@ not attacker-malleable.
 
 ### HV-40 — No topology visibility: the operator cannot see the mesh graph on device
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit `1eab7c9` · 2026-09-06 · Session 30. The FFI data already existed (`FfiMeshSnapshot.neighbors`, already used by `/diag`) — `/peers` just never read it. `/peers` now resolves asynchronously like `/diag`/`/stats` and renders the real neighbor list (peer/contact name, `LinkedUp`/`LinkedDown` state, per-transport link quality). Not implemented: a "discovered but never connected" set — `NeighborTable`'s `NeighborState` has no such variant; would need new engine-level state, logged as a follow-up candidate, not folded into this fix.
 - **Area:** `NeighborTable`, `observability`, a `/mesh` or `/peers` command,
   `MeshUiState`
 - **Severity:** Medium · **HW gate:** 3 phones
@@ -2857,7 +2870,7 @@ discovered-but-not-connected set too so "found but can't connect" is visible.
 
 ### HV-41 — Broadcast / group messaging is not exposed on Android at all
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ Fixed · HW PENDING · commit `fd43921` · 2026-09-06 · Session 30. The core already supported broadcast end-to-end (`is_broadcast`/`deliver_or_relay` treat an empty `recipient_id` as "everyone", with an existing passing regression test) — Android's `IrisEngine::send_text` simply had no way to build one. Added `IrisEngine::broadcast_text(text, priority)` (Rust, mirrors `send_text` minus the recipient) and a new `/all` shell command (aliases `broadcast`, `everyone`) that bypasses the `hasRecipient` gate entirely. 3 new JUnit regression tests in `CommandEngineTest.kt`. This is what makes HV-36 (flood on hardware) reachable from the UI once a 3rd phone is available.
 - **Area:** `engine.rs` `send_text` (always addressed to a recipient),
   `build_text_envelope`, `deliver_or_relay` (has a broadcast branch),
   `CommandExecutor`

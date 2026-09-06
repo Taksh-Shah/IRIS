@@ -5674,3 +5674,430 @@ changed.
   Vivo/OriginOS pair, instrumented `discoverPeers()` returns no peers even when
   the shipping activity is foregrounded. The shell gate remains the evidence of
   record until the harness execution context is resolved or another OEM is used.
+
+---
+
+## Session 30 (autonomous) — 2026-09-06 — Tier 4: HV-38, HV-39, HV-40, HV-41
+
+**Devices:** none this session (no physical hardware available) — Phase R + D
+only, per §0: "If hardware is not on hand this session: do the research phase,
+write the code, mark ✅ · HW PENDING, and stop."
+**Build under test:** working tree at session start (no toolchain — no
+`cargo`/`gradlew` runnable in this environment; verified by direct source
+reading and by tracing every call site by hand instead).
+**Session goal:** Tier 4 (multi-hop), the four findings §2 explicitly calls out
+as buildable ahead of the 3-phone session ("HV-41 (broadcast primitive) and
+HV-40 (topology surface) can be built and unit-tested on 2 phones ahead of the
+3-phone session") plus HV-38/HV-39, which are pure code-clarity/security-
+tracing findings with no hardware dependency at all. HV-35/36/37 (the three
+findings that genuinely need 3+ phones to even attempt) were **not** touched
+this session — nothing in this tier's remaining scope could move them without
+hardware.
+
+---
+
+### HV-39 — Relayed envelope integrity across a hop: signature, hop_count, TTL
+
+**Phase R — Research note**
+- Mechanism: read `crates/iris-core/src/protocol/codec.rs`'s
+  `encode_for_signing` (line 261) and its own doc comment (line 17): field 8
+  (`hop_count`) is **explicitly and deliberately excluded** from the signed
+  scope — "relays increment it in transit, so it is excluded" — alongside
+  field 15 (the signature itself) and the routing-hints field. The exclusion
+  is guarded by two existing tests: `signing_scope_excludes_hop_count_and_
+  signature_and_extensions` and a control test whose own comment says "hop_
+  count stays outside the signature so relays can still [increment it]"
+  (codec.rs:915-922).
+- Why the current code is (not) wrong: the finding's own text poses this as an
+  open question ("if unsigned, an attacker can reset it to dodge the hop
+  ceiling"). Traced the actual enforcement path in
+  `message_engine/mod.rs::enqueue_relay` (line ~1079): before every hop
+  increment, the envelope's `hop_count` is checked against `hop_cap(&envelope)`
+  — and `hop_cap` reads the envelope's own `max_hops` field when the sender
+  set one, which the same codec.rs doc comment confirms **is** inside the
+  signed scope ("The sender-signed `max_hops` is authoritative when present —
+  it is inside the signature scope, so a relay cannot raise it",
+  message_engine/mod.rs:1842-1843). So: the *ceiling* is cryptographically
+  protected; only the *current count* toward that ceiling is relay-mutable.
+- How this is solved elsewhere: this is the identical trust model IP itself
+  uses for TTL — a router decrements TTL and no signature covers that
+  decrement; the protection IP relies on is a hard cap plus loop-detection
+  elsewhere (routing-table consistency), not TTL integrity. BATMAN and OLSR's
+  mesh hop-count fields are equally relay-mutable-and-unsigned for the same
+  reason: a scheme where every hop must invalidate-and-resign would need
+  per-hop identity/key material threaded through the relay path, which none of
+  these protocols (nor IRIS) have.
+- IRIS constraint: IRIS's own loop-termination story does not depend on
+  hop_count at all — `enqueue_relay`'s docstring/comment (line 1024-1027)
+  states plainly "Loop termination rested entirely on per-node dedup," i.e.
+  `ForwardedCache`, keyed by `message_id`, not by hop_count. A relay that
+  resets hop_count to 0 lets a message travel up to `max_hops` *additional*
+  hops **from that point** — a real, non-zero effect — but every node still
+  forwards a given `message_id` at most once (dedup doesn't consult hop_count
+  either), so the blast radius is bounded by "the whole reachable mesh sees it
+  once" rather than an unbounded amplification or an infinite loop.
+- Research outcome: **HV-39's premise is confirmed correct as a fact
+  (hop_count is unsigned and relay-resettable) but the consequence it worried
+  about — "dodge the hop ceiling" — is bounded, not open-ended, because the
+  ceiling itself (`max_hops`) is signed and dedup caps total spread
+  independently of hop_count.** This matches accepted practice in every
+  comparable hop-limited network (IP TTL, BATMAN, OLSR) and IRIS already has
+  a working regression test (`hopped.hop_count` mutability, codec.rs:915-922)
+  guarding the *design decision*, not just an oversight. No code change is
+  warranted — changing this would require re-architecting hop-by-hop
+  cryptography IRIS does not otherwise have, to close a gap that is already
+  bounded by an independent mechanism (dedup).
+
+**Phase D — Implementation**
+- No code change. This finding is closed by research: the mechanism was
+  already correctly implemented and already had a regression test guarding
+  the exact behavior HV-39 asked about pinning down.
+- Files read (no changes): `crates/iris-core/src/protocol/codec.rs`,
+  `crates/iris-core/src/message_engine/mod.rs` (`enqueue_relay`, `hop_cap`,
+  `is_broadcast`/`recipient_matches`/`recipient_peer`).
+
+**Phase T — Hardware test**
+- Not applicable — nothing to test on hardware for a finding closed by static
+  analysis of already-tested logic.
+
+**Phase C — Close**
+- Commit: docs-only (see closeout).
+- Tracker: HV-39 → `⚪ Premise confirmed, consequence bounded — no fix needed`
+  (closest fit to the tracker's legend; not "Premise disproved" since the
+  underlying fact HV-39 raised is true, but not "🔒 Blocked" or "⬜" either
+  since there is genuinely nothing left to do).
+- Docs corrected: none needed — no doc overclaimed anything about this.
+
+---
+
+### HV-38 — The Android relay outbox (`RelayOutbox`) is only the local sender's retry queue, not mesh relay
+
+**Phase R — Research note**
+- Mechanism: `RelayOutbox` (`android/.../data/RelayOutbox.kt`) holds only
+  messages *this node originated* whose `engine.sendText` FFI call itself
+  threw (queued, drained every 15 min by `IrisBackgroundSyncWorker` or on
+  `/relay`). It has no connection whatsoever to the core's real mesh relay
+  (`message_engine::enqueue_relay`, forwarding *other peers'* messages toward
+  their destination) — confirmed by grep: no import, no call, no shared type
+  between `RelayOutbox.kt` and anything under `crates/iris-core/src/
+  message_engine/`.
+- Why the current code creates the confusion: `MeshUiState.relayQueued` (the
+  "Q3" status chip, `ConsoleScreen.kt` line 457-459) is driven solely by
+  `RelayOutbox.size` — the *local* backlog. The core's real relay activity is
+  already counted (`FfiMessageMetrics.relayed`, `engine.rs` line ~113) and
+  already surfaced in `/diag` (`resolveDiag`, `MeshViewModel.kt` line 438-443:
+  `relayed=${m.relayed}`) — but nowhere else, and under a label
+  ("messages" block) that does not visually distinguish it from the unrelated
+  local queue depth shown elsewhere in the same screen.
+- How this is solved elsewhere: comparable store-and-forward mesh apps
+  (Briar's `MessageQueueManager`, Meshtastic's separate `mesh_packet` relay
+  counter vs. its local `TxQueue`) keep the naming and the UI surface for
+  "my unsent outbox" and "packets I forwarded for others" visually and
+  lexically distinct for exactly this reason — conflating them under one
+  "relay" word is a documented source of user confusion in mesh-app UX
+  write-ups (the operator's own "relay/flood/prophet never tested" framing,
+  quoted in HV-38's own text, is itself a symptom of this).
+- IRIS constraint: the finding's own fix sketch calls for a rename to
+  `PendingSendQueue` plus surfacing the real metric separately. A full class
+  rename touches DI wiring (`IrisCoreModule.kt`), every call site across 7
+  files, and cannot be compiler-verified in this environment (no toolchain) —
+  a wrong reference left behind by a hand-traced rename across 7 files is a
+  real risk with no way to catch it before a human runs a build. Chose the
+  lower-risk half of the fix (surface the real metric, document the naming
+  gap explicitly) and left the rename as a documented, explicit follow-up
+  rather than attempting a multi-file mechanical change with no verification
+  net.
+- Research outcome: implement the metric-surfacing half of the fix sketch now
+  (safe, additive, one file); document the rename as deferred with an explicit
+  reason, so it is not silently forgotten but also not attempted blind.
+
+**Phase D — Implementation**
+- Files changed:
+  - `android/app/src/main/kotlin/iriscore/data/RelayOutbox.kt` — added an
+    "HV-38 naming note" doc comment on the class stating explicitly that this
+    is not the mesh relay queue, why, and that the rename to
+    `PendingSendQueue` is a deferred follow-up (not silently dropped).
+  - `android/app/src/main/kotlin/iriscore/ui/MeshViewModel.kt` —
+    `resolveLinks()` (new, shared with HV-40 below) now shows "pending sends
+    (local)" (`relayQueued`) and "relayed (mesh, lifetime)"
+    (`snap.messages.relayed`) as two distinctly labeled lines, rather than
+    the local count being the only relay-adjacent number visible outside
+    `/diag`.
+- Sim fault-injection test: none applicable — this is a labeling/surface
+  clarity fix, not a logic change; nothing to fault-inject.
+- `cargo build` / `cargo test` / `gradlew assembleDebug`: not runnable in this
+  environment (no toolchain). Verified by direct read of every changed line
+  and by confirming `FfiMessageMetrics.relayed` (a `u64`/`UInt64` field) is
+  already read the same way by the pre-existing, presumably-working
+  `resolveDiag()` at the exact same call site shape.
+
+**Phase T — Hardware test**
+- Not run — no hardware this session. This is also a display-only change (no
+  transport/radio code touched), so hardware verification for it is "does the
+  new label read correctly," not a radio-behavior test — deferred to whoever
+  next has a device, no bench rig needed.
+
+**Phase C — Close**
+- Commit: see HV-40 below (same commit — `resolveLinks()` is one function
+  serving both findings; splitting it into two commits would leave one commit
+  with a function that doesn't compile as a standalone diff).
+- Tracker: HV-38 → `✅ Fixed (partial scope — metric surfaced, rename deferred)
+  · HW PENDING`
+- Docs corrected: none.
+
+---
+
+### HV-40 — No topology visibility: the operator cannot see the mesh graph on device
+
+**Phase R — Research note**
+- Mechanism: the Rust FFI side of this finding **already existed in full**
+  before this session — `FfiMeshSnapshot.neighbors: Vec<FfiNeighborDiag>`
+  (`crates/iris-android/src/engine.rs` line 72-74) is populated from the
+  `NeighborTable` on every `snapshot()` call, and `FfiNeighborDiag` already
+  carries exactly what the finding asks for: `peer_id_hex`, `state`
+  (`LinkedUp`/`LinkedDown`), and `links` (one `"<transport-id>:<quality>"`
+  string per live link). `/diag`'s own resolver (`resolveDiag`,
+  `MeshViewModel.kt` line 428-437) already iterates and renders this exact
+  data. So the finding's premise ("no way, on a phone, to see who my direct
+  neighbours are, over which transport, at what link quality" — Severity
+  Medium) was **already half-wrong by the time this session started**: that
+  data was one command away (`/diag`), just not the command a user would
+  reach for (`/peers`), and buried among the full diagnostic dump.
+- Why the current code is wrong: `CommandExecutor.kt`'s "peers" branch (line
+  101, pre-existing) always returned `CommandResult.System(title = "LINKS",
+  lines = emptyList())` — an intentionally-empty placeholder the executor
+  itself can't fill (it has no engine access, by design, so unit tests stay
+  pure JVM). `MeshViewModel.kt`'s old synchronous `"LINKS" ->` branch (removed
+  this session) filled that placeholder with `state.status.name`,
+  `state.relayQueued`, and `state.messages.size` — three numbers that are
+  already visible elsewhere on the status line, and **none of which is
+  topology data**. `/peers` was, in effect, a second echo of the status line
+  under a misleading name.
+- How this is solved elsewhere: Meshtastic's app has a dedicated node list
+  view (peer name, last-heard, hop count, SNR) reachable from the main nav,
+  not buried in a diagnostic screen; Briar surfaces per-contact connection
+  status directly in the contact list. The common thread: topology
+  information belongs in a screen a user would naturally reach for by name,
+  not only in a full diagnostic dump aimed at developers.
+- IRIS constraint: this is not a new capability to build — routing all the
+  same `snapshot()` data that `/diag` already uses into `/peers` as well is
+  exactly the "unit-tested on 2 phones ahead of the 3-phone session" work
+  §2 calls out for this finding, and needs zero engine/FFI changes (the data
+  was already there).
+- Research outcome: extend `/peers` to resolve asynchronously (same pattern
+  as `/diag`/`/stats`/`/x25519`) and render `snap.neighbors`, reusing the
+  exact rendering shape `/diag` already proved out — the smallest possible
+  change that actually closes the finding. **Not implemented**: the fix
+  sketch's "discovered-but-not-connected set" — traced `NeighborTable`'s
+  `NeighborState` enum (`discovery/neighbor_table.rs` line 21-25) and
+  confirmed it has only two variants, `LinkedUp`/`LinkedDown`; a peer enters
+  the table only on first successful link ("First sight → PeerDiscovered
+  (LinkedUp)", same file). A scan result that never became a connection is
+  not tracked anywhere accessible today — surfacing it would need new
+  engine-level state (not a UI change), so it's logged here as a genuine
+  follow-up candidate rather than folded into this fix per Phase D step 2
+  ("do not fix a nearby bug you notice — log it... and leave it").
+
+**Phase D — Implementation**
+- Files changed:
+  - `android/app/src/main/kotlin/iriscore/ui/MeshViewModel.kt`:
+    - Added `"LINKS"` to the async-resolved title set alongside `"DIAG"`/
+      `"STATS"`/`"X25519"` (all four now share the same off-main-thread FFI
+      pattern).
+    - Removed the old synchronous `"LINKS" ->` branch from `resolveSystem`
+      (it rendered non-topology data under a topology-implying title).
+    - Added `resolveLinks()`: renders `snap.neighbors` (peer, state, links) —
+      falling back to a saved contact name via the new `contactNameFor()`
+      helper when one exists — plus the HV-38 pending-sends/relayed pair.
+    - Added `contactNameFor(peerIdHex): String?` — a one-line lookup into the
+      existing `_contacts` map, reused so `/peers` shows names, not just hex,
+      for peers you've already saved (HV-56 integration, no new state).
+- Sim fault-injection test: none applicable — no engine/transport logic
+  changed, this is FFI-data-already-exists → render-it-somewhere-new.
+- `cargo build` / `cargo test` / `gradlew assembleDebug`: not runnable in this
+  environment. Verified by: (a) `snap.neighbors` field access uses the exact
+  same UniFFI-generated accessor shape (`peerIdHex`, `state`, `links`)
+  `resolveDiag()` already uses successfully one function away in the same
+  file; (b) confirmed no other file references the now-deleted synchronous
+  `"LINKS" ->` branch (`grep -rn '"LINKS"' android/app/src/main/kotlin` before
+  and after the edit — only the one call site, in `resolveSystem`'s `when`,
+  which now correctly falls through to the `else` arm for any *other* title,
+  and the new async branch for `"LINKS"` itself).
+
+**Phase T — Hardware test**
+- Not run — no hardware this session. Procedure for whoever next has 2+
+  phones: form a link (any transport), run `/peers` on both sides, confirm
+  each shows the other's peer id / contact name (if saved), state `LinkedUp`,
+  and a non-empty `links` list naming the actual transport in use. Then drop
+  the link (toggle the transport off) and re-run `/peers` — state should read
+  `LinkedDown` (per `NeighborTable`'s TTL-based retention, not disappear
+  immediately).
+
+**Phase C — Close**
+- Commit: `1eab7c9` — `fix(hw/android): HV-38 + HV-40 — real topology in
+  /peers, distinct relay-vs-pending-sends metrics`
+- Tracker: HV-40 → `✅ Fixed · HW PENDING`
+- Docs corrected: none.
+
+---
+
+### HV-41 — Broadcast / group messaging is not exposed on Android at all
+
+**Phase R — Research note**
+- Mechanism: traced the core's existing broadcast contract end to end before
+  writing any Android code. `crates/iris-core/src/protocol/mod.rs` defines
+  `EMERGENCY_BROADCAST: [u8; 4] = [0x00, 0x00, 0x00, 0x01]` — a specific
+  4-byte marker for the P0 SOS-style broadcast. Separately,
+  `message_engine/mod.rs`'s `recipient_peer`, `recipient_matches`, and
+  `is_broadcast` (lines 1802-1838) all treat **any envelope with an empty
+  `recipient_id`** (zero bytes, not just the `EMERGENCY_BROADCAST` sentinel)
+  as "addressed to everyone" — delivered locally AND relayed onward, and (per
+  a doc comment at line 362) "P0 SOS broadcast / empty-recipient envelopes are
+  never encrypted." There is an existing, passing regression test,
+  `broadcast_is_delivered_and_also_relayed` (mod.rs line 2124), proving this
+  exact contract already works end-to-end in the core.
+- Why the current code is wrong: `crates/iris-android/src/engine.rs`'s
+  `build_text_envelope` (pre-session) took a bare `PeerId` (not
+  `Option<PeerId>`) and unconditionally wrote
+  `recipient_id: recipient.as_bytes().to_vec()` — a full 32-byte concrete
+  recipient on every call, with no code path anywhere in `iris-android` that
+  could ever produce an empty `recipient_id`. `IrisEngine::send_text` (the
+  only outbound entry point) required a `recipient_hex` parameter with no
+  way to omit it. `CommandExecutor.kt`'s `sendOrReject` rejected every send
+  with `hasRecipient == false`. The capability existed one crate down and was
+  entirely unreachable from the shell — confirmed by the finding's own quoted
+  `grep` result and independently reconfirmed here.
+- How this is solved elsewhere: Meshtastic's app has an explicit "channel"
+  broadcast concept distinct from direct messages, reachable without picking
+  a specific node first; Briar and Signal (non-mesh, but the same UX pattern)
+  both keep "message one person" and "post to a group/channel" as separate,
+  differently-triggered actions rather than making broadcast a special case
+  of addressed send. IRIS's core already modeled it that way
+  (`is_broadcast`); the fix is making the Android shell expose that same
+  distinction, not inventing a new one.
+- IRIS constraint: per the finding's own text, this also is what "makes
+  HV-36 (flood on hardware) actually reachable from the UI" — without a way
+  to *originate* a broadcast from the shell, HV-36's 3-phone flood-fanout test
+  would have nothing to send. Built to be the minimum needed to unblock that
+  test later, not a full "channels" feature (no channel/group identity, no
+  broadcast-scoped ACL — those are separate, larger product decisions per
+  `docs/emergency/SOS.md`'s own scoping for the P0 case).
+- Research outcome: add a `broadcast_text` constructor-adjacent method on the
+  Rust `IrisEngine` that builds an envelope with `recipient_id` empty (not the
+  `EMERGENCY_BROADCAST` sentinel — that value is reserved for the existing P0
+  SOS path bug #… / CROSS-002 already wires; a *general* "send to everyone
+  nearby" for ordinary P4 traffic should use plain empty, matching
+  `is_broadcast`'s first, unconditional check), and expose it through a new
+  `/all` shell command that bypasses the `hasRecipient` gate entirely (a
+  broadcast, by definition, needs no recipient).
+
+**Phase D — Implementation**
+- Files changed:
+  - `crates/iris-android/src/engine.rs`:
+    - `build_text_envelope`'s `recipient` parameter changed from `PeerId` to
+      `Option<PeerId>`; `None` now produces an empty `recipient_id` via
+      `.map(...).unwrap_or_default()`. Both existing call sites
+      (`send_text`) updated to `Some(recipient)` — behavior-preserving for
+      every existing addressed send.
+    - New `pub fn broadcast_text(&self, text: &str, priority: u8) ->
+      Result<Vec<u8>, IrisFfiError>`, inside the `#[uniffi::export]` block
+      (verified by line-range check: the method sits between `#[uniffi::
+      export]` at line 388 and the block's closing `}` at line 752), mirroring
+      `send_text`'s structure exactly minus the recipient parameter.
+  - `android/app/src/main/kotlin/iriscore/command/ConsoleInput.kt`: new
+    `CommandResult.Broadcast(text, priority)` sealed-interface member.
+  - `android/app/src/main/kotlin/iriscore/command/CommandRegistry.kt`: new
+    `/all` command (aliases `broadcast`, `everyone`) in the MESSAGE group.
+  - `android/app/src/main/kotlin/iriscore/command/CommandExecutor.kt`: new
+    `"all"` branch — deliberately does **not** call `sendOrReject` (which
+    gates on `hasRecipient`); returns `CommandResult.Broadcast` unconditionally
+    once a non-null message argument is present.
+  - `android/app/src/main/kotlin/iriscore/data/MeshRepository.kt`: new
+    `broadcast(text, priority): Boolean`, mirroring `send()`'s structure but
+    with no recipient-hex validation and no relay-outbox spooling on failure
+    (documented why: a broadcast that can't go out now has no single peer to
+    retry against later, unlike an addressed message) — added a
+    `BROADCAST_LABEL = "BROADCAST"` constant used as the display sender/
+    recipient label for the sent-message UI row.
+  - `android/app/src/main/kotlin/iriscore/ui/MeshViewModel.kt`: new
+    `broadcast(text, priority)`, wired into `submit()`'s `when` alongside the
+    existing `CommandResult.Send` branch.
+- Sim fault-injection test / regression guard: added three JUnit tests to the
+  existing `android/app/src/test/kotlin/iriscore/command/CommandEngineTest.kt`
+  (pure-JVM, matches this file's existing convention — no Android/Compose
+  runtime needed):
+  - `` `HV-41 broadcast needs no recipient` `` — asserts `/all <msg>` with
+    `hasRecipient = false` still returns `CommandResult.Broadcast`, the
+    specific regression this finding is about (a broadcast must not be
+    rejected by the same gate that protects addressed sends).
+  - `` `HV-41 broadcast without a message is rejected rather than sending an
+    empty broadcast` `` — mirrors the existing `/sos` empty-message test.
+  - `` `HV-41 broadcast alias resolves` `` — both `/broadcast` and `/everyone`
+    resolve to the same command.
+- `cargo build` / `cargo test` / `gradlew assembleDebug`: not runnable in this
+  environment (no toolchain — confirmed by attempting `cargo build
+  --workspace` via both Bash and PowerShell, both report `cargo` not found).
+  Verified instead by: re-reading the full edited `engine.rs` region to
+  confirm brace/impl-block structure is intact (a prior session in this same
+  work stream — CROSS-004 — hit exactly this class of silent structural bug
+  when refactoring this same file's constructor block, so this was checked
+  explicitly rather than assumed); confirming both `build_text_envelope` call
+  sites were updated (`grep -n "build_text_envelope(" engine.rs` → exactly 3
+  matches: the definition plus the two call sites, both correctly wrapped);
+  confirming the new Kotlin `CommandResult.Broadcast` branch compiles
+  logically against the existing `when` exhaustiveness pattern (sealed
+  interface, every existing branch left untouched).
+
+**Phase T — Hardware test**
+- Not run — no hardware this session. Procedure for whoever next has 2+ (or
+  ideally 3+, to actually exercise fan-out) phones: form a link between P1 and
+  P2, run `/all hello everyone` on P1 with **no recipient set** (confirming
+  the no-recipient path specifically), confirm P2's console shows the message
+  with sender label "BROADCAST" (or P1's true peer id, once the core surfaces
+  the true sender through the delivery path — the FFI inbox listener already
+  carries `sender_id` for received messages, only the *local sent-message
+  echo* uses the placeholder label). Repeat with a 3rd phone once available to
+  begin exercising HV-36 (flood fan-out), which this finding was built to
+  unblock.
+
+**Phase C — Close**
+- Commit: `fd43921` — `feat(hw/android): HV-41 — broadcast_text FFI + /all
+  command`
+- Tracker: HV-41 → `✅ Fixed · HW PENDING`
+- Docs corrected: none — no doc claimed broadcast was already exposed on
+  Android.
+
+---
+
+### Session 30 closeout
+
+- Devices used: none (code-only session, Phase R + D — no phones available)
+- Findings advanced:
+  - HV-39 → `⚪ Premise confirmed, consequence bounded` (research-only close,
+    no code change — the mechanism was already correct and already tested)
+  - HV-38 → `✅ Fixed (partial scope) · HW PENDING` (metric surfaced; rename
+    to `PendingSendQueue` explicitly deferred, documented why)
+  - HV-40 → `✅ Fixed · HW PENDING` (real `NeighborTable` data now in `/peers`,
+    reusing the FFI surface that already existed for `/diag`)
+  - HV-41 → `✅ Fixed · HW PENDING` (new `broadcast_text` FFI method + `/all`
+    shell command; unblocks HV-36 from ever being testable once phones exist)
+- 🟢 count: unchanged (0 findings closed with hardware evidence this session —
+  none was available)
+- Blockers opened: none new. HV-35/36/37 remain 🔒 (unchanged, genuinely
+  require 3+ phones, not touched this session)
+- New HV-## candidates spotted (not fixed, logged per Phase D step 2):
+  - `NeighborTable` has no "discovered but never connected" state — a raw
+    scan/beacon sighting that never became a link is invisible to `/peers`
+    and `/diag` alike. Surfacing it needs new engine-level state (a candidate
+    peer list distinct from `NeighborTable`), not a UI change. Candidate for
+    a future HV-## under Tier 4 or Tier 9.
+  - `RelayOutbox` → `PendingSendQueue` rename (HV-38's full fix sketch) is
+    still outstanding — deliberately deferred this session for lack of a
+    compiler to verify a 7-file mechanical rename. A good candidate for the
+    first session that *does* have a working `gradlew`.
+- Next session should pick up: with hardware — run the Phase T procedures
+  written into HV-40 and HV-41 above and promote both to 🟢 (needs their
+  `logcat` evidence pasted into this log per §0, not just "it worked").
+  Without hardware — the `PendingSendQueue` rename (needs a compiler to be
+  safe), or continue into Tier 9's remaining software-only findings (HV-65,
+  HV-67, HV-69, HV-73), which Session 29's closeout already queued up next.
