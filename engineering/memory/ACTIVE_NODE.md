@@ -14,7 +14,8 @@ follow-up is active. The two-phone bench is connected and identified in
   delivery; persistent keys; no OS invitation dialog.
 - Mobly Tier-2 test: **HW-PENDING** on this Vivo/OriginOS pair because
   the corrected same-ID harness still fails reliable peer delivery after three
-  bounded attempts; see `FAIL-0007.md`.
+  bounded attempts; the `/addkey`/`/to` hypothesis was also tested and rejected
+  as the complete cause; see `FAIL-0008.md`.
 - Gate of record: `docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`.
 - No production source implementation change is authorized by this blocked
   evidence; fresh failure-focused research/design is required first.

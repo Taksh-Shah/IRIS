@@ -324,3 +324,12 @@ P1 but still produced no matching P2 delivery. FAIL-0007 records the evidence
 and disposition. Shipping-app Tier-2 remains HW-verified 10/10; Mobly remains
 HW-PENDING/BLOCKED. No production source change was made. NEXT: fresh
 failure-focused research/design before another retry or production fix.
+
+**2026-09-06 — Mobly command-flow hypothesis tested.** Harness changed to
+use `addFriend()` before each `startMesh()` cycle, matching `/addkey`; direct
+`sendText(peerId, ...)` matches `/to` plus `/send`. Run
+`run-20260906-addkey` failed cycle 1/10 with P1 Connected, P2 Degraded,
+`peers_seen=0`, and BLE fallback `not connected to peer`. RES-0030 and
+FAIL-0008 record the fresh research and evidence. Hypothesis rejected as the
+complete cause; Mobly remains HW-PENDING/BLOCKED. No production fix or retry
+until a design pass isolates Vivo/OriginOS discovery context/readiness.

@@ -9,9 +9,10 @@
 > Current repository head is `b7a876c`. The shipping-app Tier-2 Wi-Fi Direct
 > cold-cycle gate is green 10/10; the Mobly Tier-2 harness remains hardware-pending
 > because discovery is attributed to the instrumentation context on this pair.
-> Mobly remains HW-PENDING/BLOCKED after three bounded attempts; the corrected
+> Mobly remains HW-PENDING/BLOCKED after the bounded attempts; the corrected
 > harness reaches Connected/live-socket states but still lacks reliable peer
-> delivery. The historical narrative below is retained as an execution record, not as the
+> delivery. The `/addkey`/`/to` command-flow hypothesis was tested and rejected
+> as the complete cause. The historical narrative below is retained as an execution record, not as the
 > current next action.
 
 ---

@@ -5071,6 +5071,23 @@ peer delivery and defines the next controlled experiment.
 **Records:** `engineering/memory/records/research/RES-0029.md`,
 `FAIL-0006.md`, and `FAIL-0007.md`.
 
+### Session 26 continued — command-flow hypothesis tested — 2026-09-06
+
+The Mobly harness was changed to use `addFriend()` before every `startMesh()`
+cold cycle, which is the RPC equivalent of the Kotlin app's persistent
+`/addkey` path. Direct `sendText(peerId, ...)` already supplies the recipient
+selected by `/to <peerId>` before `/send`.
+
+Run `run-20260906-addkey` still failed cycle 1/10: P1 Wi-Fi Direct was
+`Connected`, P2 was `Degraded`, both reported `peers_seen=0`, and P1 fell back
+to BLE with `not connected to peer`. Evidence is in
+`evidence/run-20260906-addkey/`; records are RES-0030 and FAIL-0008.
+
+**Disposition:** the `/addkey`/`/to` hypothesis is rejected as the complete
+cause. Mobly remains **HW-PENDING/BLOCKED**. No production transport change or
+additional retry is authorized until a fresh design pass isolates the
+Vivo/OriginOS instrumentation discovery/context failure.
+
 ## Documentation reconciliation — 2026-09-06
 
 This pass refreshed the stale loop projections against repository head

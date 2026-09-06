@@ -59,10 +59,14 @@ class Tier2WifiDirect(IrisBenchBase):
     def setup_test(self):
         for ad in self.ads:
             self._foreground(ad)
+        # Mirror the shipping app's `/addkey` path: persist the peer trust
+        # before starting the engine so cold cycles reload the same known-peer
+        # state. `sendText(peer_id, ...)` below is the RPC equivalent of
+        # `/to <peer_id>` followed by `/send`.
+        self.p1.iris.addFriend(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
+        self.p2.iris.addFriend(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
         self.p1.iris.startMesh()
         self.p2.iris.startMesh()
-        self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
-        self.p2.iris.registerPeerKey(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
 
     def teardown_test(self):
         for ad in self.ads:
@@ -130,10 +134,12 @@ class Tier2WifiDirect(IrisBenchBase):
             )
             for ad in self.ads:
                 self._foreground(ad)
+            # Re-apply the real `/addkey` persistence path on every cold
+            # cycle; startMesh() must consume the persisted trust directory.
+            self.p1.iris.addFriend(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
+            self.p2.iris.addFriend(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
             first.iris.startMesh()
             second.iris.startMesh()
-            self.p1.iris.registerPeerKey(self.p2.iris.nodeId(), self.p2.iris.staticX25519())
-            self.p2.iris.registerPeerKey(self.p1.iris.nodeId(), self.p1.iris.staticX25519())
 
             t0 = time.monotonic()
             fwd = rev = None

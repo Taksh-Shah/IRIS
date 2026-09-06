@@ -1,0 +1,1291 @@
+--------- beginning of main
+09-06 10:20:32.790 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:32.790 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e22b6eb8-dc66-c99f-7352-021da7921bb8
+09-06 10:20:32.790 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:32.790 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:32.790 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e22b6eb8-dc66-c99f-7352-021da7921bb8
+09-06 10:20:32.790 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:32.790 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:32.790 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e22b6eb8-dc66-c99f-7352-021da7921bb8
+09-06 10:20:32.790 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:32.790 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:33.576 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:33.576 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 69e8e0e6-9eec-f22b-7380-074ffcbc9ed8
+09-06 10:20:33.576 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:33.576 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:33.576 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 69e8e0e6-9eec-f22b-7380-074ffcbc9ed8
+09-06 10:20:33.576 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:33.576 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:33.576 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 69e8e0e6-9eec-f22b-7380-074ffcbc9ed8
+09-06 10:20:33.576 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:33.576 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:33.927 W/Settings(26923): Setting airplane_mode_on has moved from android.provider.Settings.System to android.provider.Settings.Global, returning read-only value.
+09-06 10:20:33.929 W/SystemServiceRegistry(26923): No service published for: wifirtt
+09-06 10:20:34.168 D/BoundBrokerSvc(26923): onUnbind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-06 10:20:34.301 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 2
+09-06 10:20:34.301 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:34.301 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:20:34.316 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:20:34.317 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 2
+09-06 10:20:34.317 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:20:34.318 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:20:34.319 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:34.319 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:20:34.319 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E2
+09-06 10:20:34.319 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:20:34.320 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:34.320 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:20:34.320 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:20:34.320 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:20:34.321 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 2
+09-06 10:20:34.322 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:20:34.322 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:34.325 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 2
+09-06 10:20:34.325 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:34.325 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:20:34.337 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:20:34.340 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 2
+09-06 10:20:34.340 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:20:34.341 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:20:34.342 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:34.342 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:20:34.342 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E2
+09-06 10:20:34.343 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:20:34.344 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:34.344 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:20:34.344 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:20:34.344 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:20:34.345 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 2
+09-06 10:20:34.345 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:20:34.345 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:35.106 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 2
+09-06 10:20:35.106 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:35.106 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:20:35.124 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:20:35.126 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 2
+09-06 10:20:35.126 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:20:35.128 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:20:35.129 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:35.129 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:20:35.129 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E2
+09-06 10:20:35.129 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:20:35.131 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:35.131 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:20:35.131 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:20:35.131 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:20:35.132 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 2
+09-06 10:20:35.132 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:20:35.132 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:35.133 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:20:35.134 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 2
+09-06 10:20:35.134 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:35.134 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:20:35.134 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 3
+09-06 10:20:35.134 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:20:35.138 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:20:35.139 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 3
+09-06 10:20:35.139 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:20:35.139 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E2
+09-06 10:20:35.139 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:20:35.140 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 3
+09-06 10:20:35.140 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:20:35.140 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:20:35.140 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:20:35.141 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 3
+09-06 10:20:35.141 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:20:35.141 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:35.805 I/FrewleTileCacheManagerV(26923): (REDACTED) Fetched %d AP models from cache
+09-06 10:20:35.806 I/FrewleTileCacheManagerV(26923): (REDACTED) Fetched %d AP models from cache
+09-06 10:20:35.807 I/FrewleTileCacheManagerV(26923): (REDACTED) Fetched %d AP models from cache
+09-06 10:20:35.808 I/FrewleTileCacheManagerV(26923): (REDACTED) Fetched %d AP models from cache
+09-06 10:20:35.808 I/FrewleTileCacheManagerV(26923): (REDACTED) Fetched %d AP models from cache
+09-06 10:20:35.844 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:35.844 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register dd43dd2e-2f6f-e6f6-dbec-519e1ab13054
+09-06 10:20:35.844 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:35.844 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:35.844 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register dd43dd2e-2f6f-e6f6-dbec-519e1ab13054
+09-06 10:20:35.844 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:35.844 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:35.844 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register dd43dd2e-2f6f-e6f6-dbec-519e1ab13054
+09-06 10:20:35.844 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:35.844 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:36.444 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:36.618 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:36.618 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register c723512a-9314-b014-63a1-4e2fd06f8e12
+09-06 10:20:36.618 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:36.618 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:36.618 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register c723512a-9314-b014-63a1-4e2fd06f8e12
+09-06 10:20:36.618 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:36.618 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:36.618 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register c723512a-9314-b014-63a1-4e2fd06f8e12
+09-06 10:20:36.618 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:36.618 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:38.895 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:38.895 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 80e76ee9-f055-9d97-dfac-eceed98564e5
+09-06 10:20:38.895 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:38.895 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:38.895 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 80e76ee9-f055-9d97-dfac-eceed98564e5
+09-06 10:20:38.895 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:38.895 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:38.895 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 80e76ee9-f055-9d97-dfac-eceed98564e5
+09-06 10:20:38.895 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:38.895 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:39.783 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:40.226 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:40.226 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register d5320245-2af0-27bf-76d1-a7755ec5ef21
+09-06 10:20:40.226 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:40.227 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:40.227 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register d5320245-2af0-27bf-76d1-a7755ec5ef21
+09-06 10:20:40.227 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:40.227 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:40.227 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register d5320245-2af0-27bf-76d1-a7755ec5ef21
+09-06 10:20:40.227 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:40.227 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:41.540 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:20:41.548 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:20:41.553 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:41.553 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 0eb7a011-4c2c-094f-fe70-4333578b7028
+09-06 10:20:41.553 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:41.553 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:41.553 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 0eb7a011-4c2c-094f-fe70-4333578b7028
+09-06 10:20:41.553 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:41.553 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:41.553 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 0eb7a011-4c2c-094f-fe70-4333578b7028
+09-06 10:20:41.553 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:41.553 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:41.555 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 2
+09-06 10:20:41.555 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:20:41.556 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 4
+09-06 10:20:41.556 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:20:41.558 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:20:41.561 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:20:41.563 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:41.563 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:20:41.563 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E2
+09-06 10:20:41.564 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:20:41.565 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:20:41.565 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:20:41.565 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E2
+09-06 10:20:41.565 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:20:41.566 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 2
+09-06 10:20:41.567 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:20:41.567 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:20:41.567 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:20:41.568 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:20:41.568 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:20:41.568 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:20:41.568 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:20:41.572 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 2
+09-06 10:20:41.572 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:20:41.572 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:41.574 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 4
+09-06 10:20:41.574 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:20:41.574 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:20:41.599 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:41.599 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 2391d78c-ed63-477b-a04a-1f24c319c19f
+09-06 10:20:41.599 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:41.599 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:41.599 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 2391d78c-ed63-477b-a04a-1f24c319c19f
+09-06 10:20:41.599 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:41.599 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:41.599 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 2391d78c-ed63-477b-a04a-1f24c319c19f
+09-06 10:20:41.599 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:41.599 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:44.101 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:44.660 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:44.660 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register b16f0474-5ea6-0d8d-c1f0-7e7a68ab4c15
+09-06 10:20:44.660 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:44.660 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:44.660 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register b16f0474-5ea6-0d8d-c1f0-7e7a68ab4c15
+09-06 10:20:44.660 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:44.660 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:44.660 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register b16f0474-5ea6-0d8d-c1f0-7e7a68ab4c15
+09-06 10:20:44.660 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:44.660 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:45.509 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 10:20:45.509 W/Auth    (26923): dedt: Failed to process request
+09-06 10:20:45.509 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:20:45.509 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:20:45.509 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:20:45.509 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:20:45.509 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:20:45.509 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:20:45.509 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:20:45.509 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:20:45.509 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:20:45.509 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:20:45.509 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:20:45.509 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:20:45.509 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:20:45.509 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:20:45.516 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-06 10:20:45.516 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:20:45.516 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:20:45.516 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:20:45.516 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:20:45.516 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:20:45.516 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:20:45.516 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:20:45.516 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:20:45.516 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:20:45.516 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:20:45.516 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:20:45.516 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:20:45.516 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:20:45.516 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:20:45.516 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:20:45.516 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:20:45.516 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:20:45.516 E/AuthPII (26923): 	... 12 more
+09-06 10:20:45.516 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:20:45.516 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:20:45.516 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:20:45.516 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:20:45.516 E/AuthPII (26923): 	... 13 more
+09-06 10:20:45.516 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:20:45.516 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:20:45.516 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:20:45.516 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:20:45.516 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:20:45.516 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:20:45.516 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:20:45.516 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:20:45.516 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:20:45.516 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:20:45.516 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:20:45.516 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:20:45.516 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:20:45.516 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:20:45.516 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:20:45.517 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 10:20:45.517 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:20:45.517 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:20:45.517 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:20:45.517 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:20:45.517 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:20:45.517 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:20:45.517 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:20:45.517 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:20:45.517 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:20:45.517 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:20:45.517 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:20:45.517 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:20:45.517 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:20:45.517 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:20:45.517 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:20:45.517 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:20:45.517 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:20:45.517 E/AuthPII (26923): 	... 12 more
+09-06 10:20:45.517 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:20:45.517 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:20:45.517 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:20:45.517 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:20:45.517 E/AuthPII (26923): 	... 13 more
+09-06 10:20:45.517 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:20:45.517 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:20:45.517 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:20:45.517 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:20:45.517 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:20:45.517 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:20:45.517 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:20:45.517 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:20:45.517 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:20:45.517 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:20:45.517 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:20:45.517 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:20:45.517 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:20:45.517 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:20:45.517 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:20:45.518 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 10:20:45.519 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 10:20:45.519 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 10:20:45.519 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 10:20:45.519 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:20:45.519 W/Auth    (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:20:45.519 W/Auth    (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:20:45.519 W/Auth    (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:20:45.519 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:20:45.519 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:20:45.519 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:20:45.519 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:20:45.519 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:20:45.519 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:20:45.520 W/GLSActivity(26923): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-06 10:20:47.731 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:47.731 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 53441f02-f451-a23c-b1f6-148703afa577
+09-06 10:20:47.731 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:47.732 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:47.732 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 53441f02-f451-a23c-b1f6-148703afa577
+09-06 10:20:47.732 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:47.732 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:47.732 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 53441f02-f451-a23c-b1f6-148703afa577
+09-06 10:20:47.732 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:47.732 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:49.107 I/DGW     ( 9603): I[sendRequest:86] StreamGroupConnectivityAwareNetworkLayer[notifgateway] buffering request with connection state: 2
+09-06 10:20:49.595 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:50.753 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:50.801 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:20:50.801 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e9a233ce-810e-60d9-eb0d-3306bbaf77a0
+09-06 10:20:50.801 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:50.801 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:50.801 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e9a233ce-810e-60d9-eb0d-3306bbaf77a0
+09-06 10:20:50.801 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:50.801 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:50.801 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e9a233ce-810e-60d9-eb0d-3306bbaf77a0
+09-06 10:20:50.801 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:20:50.801 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:20:52.258 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-06 10:20:54.068 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:55.075 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:56.221 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:20:58.380 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:01.680 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:01.681 I/NearbyDiscovery(26923): (REDACTED) loadFastPairModule: checkFeaturesAreAvailable:%d
+09-06 10:21:01.681 I/NearbyDiscovery(26923): loadFastPairModule: FastPair module is downloaded. [CONTEXT service_id=265 ]
+09-06 10:21:02.664 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 4
+09-06 10:21:02.664 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:02.664 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:21:02.672 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:21:02.677 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 4
+09-06 10:21:02.677 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:21:02.678 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:21:02.679 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:02.679 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:21:02.680 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E3
+09-06 10:21:02.680 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:21:02.681 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:02.681 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:21:02.681 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:21:02.681 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:21:02.682 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 4
+09-06 10:21:02.683 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:21:02.683 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:02.684 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 4
+09-06 10:21:02.684 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:02.684 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:21:02.688 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:21:02.696 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 4
+09-06 10:21:02.696 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:21:02.697 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:21:02.697 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:02.697 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:21:02.697 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E3
+09-06 10:21:02.698 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:21:02.698 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:02.699 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:21:02.699 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:21:02.699 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:21:02.700 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 4
+09-06 10:21:02.700 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:21:02.700 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:03.425 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:03.426 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register d98414cf-29d0-2834-1721-c745cc121418
+09-06 10:21:03.426 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:03.426 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:03.426 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register d98414cf-29d0-2834-1721-c745cc121418
+09-06 10:21:03.426 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:03.426 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:03.426 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register d98414cf-29d0-2834-1721-c745cc121418
+09-06 10:21:03.426 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:03.426 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:04.040 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:04.586 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:04.586 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 4eafa0e6-5eac-f608-7ff1-956a2e08c881
+09-06 10:21:04.586 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:04.586 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:04.586 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 4eafa0e6-5eac-f608-7ff1-956a2e08c881
+09-06 10:21:04.586 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:04.586 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:04.586 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 4eafa0e6-5eac-f608-7ff1-956a2e08c881
+09-06 10:21:04.586 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:04.586 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:05.066 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:06.064 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:06.512 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:06.512 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 97e00c71-6446-cfbc-5dcb-d37b86cdff1a
+09-06 10:21:06.513 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:06.513 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:06.513 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 97e00c71-6446-cfbc-5dcb-d37b86cdff1a
+09-06 10:21:06.513 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:06.513 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:06.513 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 97e00c71-6446-cfbc-5dcb-d37b86cdff1a
+09-06 10:21:06.513 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:06.513 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:07.212 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:07.653 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:07.653 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 51e147e1-5aaa-5d92-076d-2032cfd6f30c
+09-06 10:21:07.653 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:07.653 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:07.653 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 51e147e1-5aaa-5d92-076d-2032cfd6f30c
+09-06 10:21:07.653 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:07.653 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:07.653 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 51e147e1-5aaa-5d92-076d-2032cfd6f30c
+09-06 10:21:07.653 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:07.653 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:08.380 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:09.607 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:09.607 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register c6c9c922-370d-c7ba-59e4-7558cea866de
+09-06 10:21:09.607 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:09.607 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:09.608 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register c6c9c922-370d-c7ba-59e4-7558cea866de
+09-06 10:21:09.608 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:09.608 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:09.608 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register c6c9c922-370d-c7ba-59e4-7558cea866de
+09-06 10:21:09.608 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:09.608 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:12.677 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:12.677 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 65f8d51c-80d0-8c68-2df5-e43f8d0c1c6f
+09-06 10:21:12.677 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:12.677 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:12.677 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 65f8d51c-80d0-8c68-2df5-e43f8d0c1c6f
+09-06 10:21:12.677 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:12.677 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:12.677 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 65f8d51c-80d0-8c68-2df5-e43f8d0c1c6f
+09-06 10:21:12.677 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:12.677 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:14.969 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:15.143 W/chromium( 4355): [WARNING:components/gcm_driver/instance_id/instance_id_android.cc:98] Non-zero TTL requested for InstanceID token, while TTLs are not supported by Android Firebase IID API.
+09-06 10:21:15.266 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:15.266 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 54a71f4c-c294-36c8-52ac-2c41a027d55c
+09-06 10:21:15.266 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:15.266 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:15.266 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 54a71f4c-c294-36c8-52ac-2c41a027d55c
+09-06 10:21:15.266 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:15.266 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:15.267 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 54a71f4c-c294-36c8-52ac-2c41a027d55c
+09-06 10:21:15.267 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:15.267 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:15.734 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:15.734 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 8b99e17f-17b1-35db-7813-f75e5fb0ab04
+09-06 10:21:15.734 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:15.734 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:15.734 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 8b99e17f-17b1-35db-7813-f75e5fb0ab04
+09-06 10:21:15.734 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:15.734 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:15.734 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 8b99e17f-17b1-35db-7813-f75e5fb0ab04
+09-06 10:21:15.734 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:15.734 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:16.162 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:18.159 W/chromium( 4355): [WARNING:components/gcm_driver/instance_id/instance_id_android.cc:98] Non-zero TTL requested for InstanceID token, while TTLs are not supported by Android Firebase IID API.
+09-06 10:21:18.166 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:18.346 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:18.346 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 2e182339-6caa-a84d-f496-b1669039e30d
+09-06 10:21:18.347 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:18.347 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:18.347 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 2e182339-6caa-a84d-f496-b1669039e30d
+09-06 10:21:18.347 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:18.347 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:18.347 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 2e182339-6caa-a84d-f496-b1669039e30d
+09-06 10:21:18.347 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:18.347 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:18.833 W/CCTFlatFileLogStore(26923): Excessive logging: 16 events, 113578 bytes from log source STREAMZ_ANDROID_GSA last 21748s
+09-06 10:21:19.306 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:20.458 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:21.400 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:21.400 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register f92804f6-67ee-33db-6820-24c611410f51
+09-06 10:21:21.400 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:21.401 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:21.401 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register f92804f6-67ee-33db-6820-24c611410f51
+09-06 10:21:21.401 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:21.401 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:21.401 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register f92804f6-67ee-33db-6820-24c611410f51
+09-06 10:21:21.401 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:21.401 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:22.272 W/DGW     ( 9603): W[onPingFailure:593] ConnectivityManager ping failure TransientError domain: MNSDNSResolver code: 0 detail: getaddrinfo(): No address associated with hostname
+09-06 10:21:24.450 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:24.450 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register a596a06b-5dcd-bc9e-d841-a5690d63d934
+09-06 10:21:24.450 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:24.450 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:24.450 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register a596a06b-5dcd-bc9e-d841-a5690d63d934
+09-06 10:21:24.450 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:24.450 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:24.450 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register a596a06b-5dcd-bc9e-d841-a5690d63d934
+09-06 10:21:24.450 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:24.450 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:27.086 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:27.522 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:27.522 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 8c50478a-df1f-8b1d-4821-173991bae880
+09-06 10:21:27.522 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:27.523 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:27.523 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 8c50478a-df1f-8b1d-4821-173991bae880
+09-06 10:21:27.523 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:27.523 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:27.523 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 8c50478a-df1f-8b1d-4821-173991bae880
+09-06 10:21:27.523 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:27.523 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:30.213 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:30.802 D/CompatibilityChangeReporter( 5766): Compat change id reported: 171979766; UID 10181; state: ENABLED
+09-06 10:21:30.823 D/nativeloader( 5766): Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/lib/arm64:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!/lib/arm64-v8a:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_config.xxhdpi.apk!/lib/arm64-v8a:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_lens_ondevice_engine_feature_module.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.googlequicksearchbox
+09-06 10:21:30.823 D/nativeloader( 5766): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-06 10:21:30.834 D/nativeloader( 5766): Configuring clns-5 for other apk /apex/com.android.extservices/javalib/android.ext.adservices.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/lib/arm64:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!/lib/arm64-v8a:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_config.xxhdpi.apk!/lib/arm64-v8a:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_lens_ondevice_engine_feature_module.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.googlequicksearchbox
+09-06 10:21:30.834 D/nativeloader( 5766): Extending system_exposed_libraries: libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:liblistenjni.qti.so
+09-06 10:21:30.838 D/nativeloader( 5766): InitApexLibraries:
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_appsearch: libicing.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_art: libartservice.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_conscrypt: libjavacrypto.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_extservices: libtflite_support_classifiers_native.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_mediaprovider: libpdfclient.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_os_statsd: libstats_jni.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_tethering: libandroid_net_connectivity_com_android_net_module_util_jni.so:libframework-connectivity-jni.so:libframework-connectivity-tiramisu-jni.so:libmainlinecronet.138.0.7156.0.so:libservice-connectivity.so:libservice-thread-jni.so:stable_cronet_libcrypto.so:stable_cronet_libssl.so
+09-06 10:21:30.838 D/nativeloader( 5766):   com_android_wifi: libvivowifi-service.so
+09-06 10:21:31.017 W/earchbox:searc( 5766): Failed to find entry 'classes.dex': Entry not found
+09-06 10:21:31.019 W/earchbox:searc( 5766): Failed to find entry 'classes.dex': Entry not found
+09-06 10:21:31.021 D/nativeloader( 5766): Configuring clns-6 for other apk /data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_config.xxhdpi.apk:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_lens_ondevice_engine_feature_module.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/lib/arm64:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!/lib/arm64-v8a:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_config.xxhdpi.apk!/lib/arm64-v8a:/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/split_lens_ondevice_engine_feature_module.apk!/lib/arm64-v8a, permitte
+09-06 10:21:31.055 V/GraphicsEnvironment( 5766): ANGLE Developer option for 'com.google.android.googlequicksearchbox' set to: 'default'
+09-06 10:21:31.056 D/NetworkSecurityConfig( 5766): Using Network Security Config from resource network_security_config debugBuild: false
+09-06 10:21:31.058 D/NetworkSecurityConfig( 5766): Using Network Security Config from resource network_security_config debugBuild: false
+09-06 10:21:31.069 D/ProcessLifecycleG3( 5766): androidx.startup is not available, initializing using ProcessLifecycleOwnerInitializer instead.
+09-06 10:21:31.096 I/eetk    ( 5766): Scheduling one-off OpaEnabledBroadcastWorker in 30 seconds
+09-06 10:21:31.107 I/eyom    ( 5766): SslGuard completed installation.
+09-06 10:21:31.134 I/dipu    ( 5766): Initializing GMS Compliance Client Library...
+09-06 10:21:31.134 I/dipu    ( 5766): Checking for device compliance...
+09-06 10:21:31.134 I/dipu    ( 5766): Completed library init.
+09-06 10:21:31.136 D/hw-ProcessState( 5766): Binder ioctl to enable oneway spam detection failed: Invalid argument
+09-06 10:21:31.155 D/nativeloader( 5766): Load /data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!/lib/arm64-v8a/libnative_crash_handler_jni.so using class loader ns clns-6 (caller=/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!classes2.dex): ok
+09-06 10:21:31.162 I/fjhs    ( 5766): Validating WorkManager process
+09-06 10:21:31.163 I/fjhs    ( 5766): (REDACTED) Processes: %s, %s, %s, %s
+09-06 10:21:31.165 D/WM-PackageManagerHelper( 5766): Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+09-06 10:21:31.166 D/WM-Schedulers( 5766): Created SystemJobScheduler and enabled SystemJobService
+09-06 10:21:31.166 D/WM-ForceStopRunnable( 5766): Is default app process = true
+09-06 10:21:31.167 D/WM-ForceStopRunnable( 5766): Performing cleanup operations.
+09-06 10:21:31.171 D/WM-SystemJobService( 5766): onStartJob for WorkGenerationalId(workSpecId=b2481a84-fba7-4440-9818-5f9c046634ba, generation=101)
+09-06 10:21:31.175 D/nativeloader( 5766): Load /data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!/lib/arm64-v8a/libdatastore_shared_counter.so using class loader ns clns-6 (caller=/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk): ok
+09-06 10:21:31.179 I/dyxd    ( 5766): (REDACTED) Gemini app was installed: %s
+09-06 10:21:31.179 D/WM-SystemJobScheduler( 5766): Reconciling jobs
+09-06 10:21:31.187 D/CompatibilityChangeReporter( 5766): Compat change id reported: 160794467; UID 10181; state: ENABLED
+09-06 10:21:31.190 D/WM-ForceStopRunnable( 5766): Found unfinished work, scheduling it.
+09-06 10:21:31.192 W/VerdictProvider(26923): Failure reason expiration timestamp invalid [CONTEXT service_id=257 ]
+09-06 10:21:31.209 D/WM-SystemJobScheduler( 5766): Scheduling work ID 49ad047b-0664-40c2-a78a-cb99fe261a3d (androidx.glance.appwidget.AsyncRequestWorker), Job ID 85291
+09-06 10:21:31.213 D/WM-SystemJobScheduler( 5766): Scheduling work ID 545352c9-13d2-47c2-944a-5cf3a34d1e1d (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 83177
+09-06 10:21:31.216 D/WM-SystemJobScheduler( 5766): Scheduling work ID 05fbdab2-3dcf-4671-9a72-27d70cddad2e (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 85830
+09-06 10:21:31.220 D/WM-SystemJobScheduler( 5766): Scheduling work ID 9f94382a-733a-4f0e-bce0-718c70067aa9 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 85832
+09-06 10:21:31.223 D/WM-SystemJobScheduler( 5766): Scheduling work ID 7e228d6d-cee4-4822-8ed5-0a53a91f3fc2 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86044
+09-06 10:21:31.227 D/WM-SystemJobScheduler( 5766): Scheduling work ID 285f9fdb-c8a2-4596-9f50-d712ed8222c3 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 85547
+09-06 10:21:31.230 D/WM-SystemJobScheduler( 5766): Scheduling work ID d3ed1f2e-6802-485c-a618-b8366610edfa (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86711
+09-06 10:21:31.234 D/WM-SystemJobScheduler( 5766): Scheduling work ID f0c0f496-6818-4f39-babf-00ec39743e5b (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86716
+09-06 10:21:31.237 D/WM-SystemJobScheduler( 5766): Scheduling work ID e5deb735-f743-4c48-a481-f1a560681504 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86027
+09-06 10:21:31.241 D/WM-SystemJobScheduler( 5766): Scheduling work ID da84f3a5-6cb1-45bd-9d79-786a776a7d71 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86715
+09-06 10:21:31.244 D/WM-SystemJobScheduler( 5766): Scheduling work ID 0e3acfbf-e099-4e1d-bc2c-39e9182c19cb (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86060
+09-06 10:21:31.248 D/WM-SystemJobScheduler( 5766): Scheduling work ID 6eb52706-71f8-4858-bf46-a2b4c1c6359e (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 85733
+09-06 10:21:31.251 D/WM-SystemJobScheduler( 5766): Scheduling work ID ea0b0760-d17d-4d98-860f-642844a5218c (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86710
+09-06 10:21:31.254 D/WM-SystemJobScheduler( 5766): Scheduling work ID cbfe9f50-6dc2-48cc-a6c0-08957b9c40d1 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86073
+09-06 10:21:31.258 D/WM-SystemJobScheduler( 5766): Scheduling work ID 6cee6857-e14f-4210-ac21-ca20e4e859e0 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 85743
+09-06 10:21:31.261 D/WM-SystemJobScheduler( 5766): Scheduling work ID 9609314b-6f53-4b74-8539-518933aa41ef (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86714
+09-06 10:21:31.265 D/WM-SystemJobScheduler( 5766): Scheduling work ID 50c76b92-089c-406e-ad88-3b114bc30161 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86717
+09-06 10:21:31.269 D/WM-SystemJobScheduler( 5766): Scheduling work ID 23920c60-6d8a-420c-af55-288b66b65309 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86709
+09-06 10:21:31.272 D/WM-SystemJobScheduler( 5766): Scheduling work ID 69bb2c25-c000-44e3-a84d-d17880452c67 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86213
+09-06 10:21:31.276 D/WM-SystemJobScheduler( 5766): Scheduling work ID b2481a84-fba7-4440-9818-5f9c046634ba (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86718
+09-06 10:21:31.278 D/WM-SystemJobService( 5766): onStopJob for WorkGenerationalId(workSpecId=b2481a84-fba7-4440-9818-5f9c046634ba, generation=101)
+09-06 10:21:31.284 D/WM-SystemJobScheduler( 5766): Scheduling work ID 4e17b9aa-622e-4f40-86a4-0e7ae7d69255 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86309
+09-06 10:21:31.288 D/WM-SystemJobService( 5766): onStartJob for WorkGenerationalId(workSpecId=b2481a84-fba7-4440-9818-5f9c046634ba, generation=101)
+09-06 10:21:31.290 D/WM-SystemJobScheduler( 5766): Scheduling work ID 216215d0-2042-47c7-b0a9-399bad1c2c2f (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86533
+09-06 10:21:31.293 D/WM-SystemJobScheduler( 5766): Scheduling work ID 645286c7-84b9-4434-a457-3e0570243b51 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86713
+09-06 10:21:31.296 D/WM-SystemJobScheduler( 5766): Scheduling work ID 697db57e-285a-4781-8350-e554be079665 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86655
+09-06 10:21:31.299 D/WM-SystemJobScheduler( 5766): Scheduling work ID 7d5b8633-9bf1-43c5-8947-1f8e94407929 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86554
+09-06 10:21:31.303 D/WM-SystemJobScheduler( 5766): Scheduling work ID 825014c5-63f9-4519-b1e5-1b7bf64697ea (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86656
+09-06 10:21:31.306 D/WM-SystemJobScheduler( 5766): Scheduling work ID d9c68592-52cc-4c4c-85b7-1aeef85e946b (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86707
+09-06 10:21:31.310 D/WM-SystemJobScheduler( 5766): Scheduling work ID ba9d161e-03d2-4898-8bdb-fbda95c3f0b9 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86585
+09-06 10:21:31.313 D/WM-SystemJobScheduler( 5766): Scheduling work ID bbe56cdf-e2a0-4f60-bff1-2116f1040d32 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86302
+09-06 10:21:31.316 D/WM-SystemJobScheduler( 5766): Scheduling work ID c75eaf93-17e3-41c9-b353-36bd4b13836d (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86582
+09-06 10:21:31.320 D/WM-SystemJobScheduler( 5766): Scheduling work ID 2fdbac48-76a6-4931-bfcc-fcb88e4e82f6 (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86619
+09-06 10:21:31.323 D/WM-SystemJobScheduler( 5766): Scheduling work ID a46268da-eee6-4116-aace-4bd300ec7640 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86712
+09-06 10:21:31.327 D/WM-SystemJobScheduler( 5766): Scheduling work ID 50244e40-124b-406c-81ab-8813668fd6af (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86642
+09-06 10:21:31.330 D/WM-SystemJobScheduler( 5766): Scheduling work ID c9a2b966-af9c-4695-9889-8c57c2bbc4cf (com.google.apps.tiktok.contrib.work.TikTokListenableWorker), Job ID 86719
+09-06 10:21:31.333 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 545352c9-13d2-47c2-944a-5cf3a34d1e1d}. Requires device idle.
+09-06 10:21:31.333 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 05fbdab2-3dcf-4671-9a72-27d70cddad2e}. Requires device idle.
+09-06 10:21:31.333 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 9f94382a-733a-4f0e-bce0-718c70067aa9}. Requires device idle.
+09-06 10:21:31.334 D/WM-GreedyScheduler( 5766): Starting tracking for 6eb52706-71f8-4858-bf46-a2b4c1c6359e,4e17b9aa-622e-4f40-86a4-0e7ae7d69255,cbfe9f50-6dc2-48cc-a6c0-08957b9c40d1,7e228d6d-cee4-4822-8ed5-0a53a91f3fc2,f0c0f496-6818-4f39-babf-00ec39743e5b,e5deb735-f743-4c48-a481-f1a560681504,69bb2c25-c000-44e3-a84d-d17880452c67,9609314b-6f53-4b74-8539-518933aa41ef,ea0b0760-d17d-4d98-860f-642844a5218c,6cee6857-e14f-4210-ac21-ca20e4e859e0,23920c60-6d8a-420c-af55-288b66b65309,50c76b92-089c-406e-ad88-3b114bc30161,285f9fdb-c8a2-4596-9f50-d712ed8222c3,0e3acfbf-e099-4e1d-bc2c-39e9182c19cb,b2481a84-fba7-4440-9818-5f9c046634ba,da84f3a5-6cb1-45bd-9d79-786a776a7d71,825014c5-63f9-4519-b1e5-1b7bf64697ea
+09-06 10:21:31.338 D/WM-Processor( 5766): qyq: processing WorkGenerationalId(workSpecId=b2481a84-fba7-4440-9818-5f9c046634ba, generation=101)
+09-06 10:21:31.340 D/WM-Processor( 5766): WorkerWrapper interrupted for b2481a84-fba7-4440-9818-5f9c046634ba (androidx.work.multiprocess.RemoteListenableDelegatingWorker), reason: 1
+09-06 10:21:31.340 D/WM-StopWorkRunnable( 5766): StopWorkRunnable for b2481a84-fba7-4440-9818-5f9c046634ba; Processor.stopWork = true, reason: 1
+09-06 10:21:31.341 D/WM-Processor( 5766): qyq: processing WorkGenerationalId(workSpecId=b2481a84-fba7-4440-9818-5f9c046634ba, generation=101)
+09-06 10:21:31.345 D/WM-WorkerWrapper( 5766): Status for b2481a84-fba7-4440-9818-5f9c046634ba is ENQUEUED; not doing any work and rescheduling for later execution
+09-06 10:21:31.347 D/WM-Processor( 5766): qyq b2481a84-fba7-4440-9818-5f9c046634ba executed; reschedule = true
+09-06 10:21:31.347 D/WM-SystemJobService( 5766): b2481a84-fba7-4440-9818-5f9c046634ba executed on JobScheduler
+09-06 10:21:31.347 D/WM-GreedyScheduler( 5766): Stopping tracking for WorkGenerationalId(workSpecId=b2481a84-fba7-4440-9818-5f9c046634ba, generation=101)
+09-06 10:21:31.355 D/WM-WorkerWrapper( 5766): Starting work for androidx.work.multiprocess.RemoteListenableDelegatingWorker
+09-06 10:21:31.355 D/WM-ListenableWorkerImpl( 5766): Binding to com.google.android.googlequicksearchbox, com.google.android.libraries.search.integrations.tiktok.RemoteWorkerService_googleapp
+09-06 10:21:31.363 D/WM-SystemJobScheduler( 5766): Cancelling work ID b2481a84-fba7-4440-9818-5f9c046634ba, Job ID 86718
+09-06 10:21:31.366 D/WM-GreedyScheduler( 5766): Cancelling work ID b2481a84-fba7-4440-9818-5f9c046634ba
+09-06 10:21:31.366 I/WM-RemoteWorkerService(16376): Binding to RemoteWorkerService
+09-06 10:21:31.370 D/WM-ListenableWorkerImpl( 5766): Service connected
+09-06 10:21:31.372 D/WM-ListenableWorkerImpl(16376): Executing work request (b2481a84-fba7-4440-9818-5f9c046634ba, com.google.apps.tiktok.contrib.work.TikTokListenableWorker)
+09-06 10:21:31.373 E/jqrj    (26923): *~*~*~ Previous channel {0} was garbage collected without being shut down! ~*~*~*
+09-06 10:21:31.373 E/jqrj    (26923):     Make sure to call shutdown()/shutdownNow()
+09-06 10:21:31.373 E/jqrj    (26923): java.lang.RuntimeException: ManagedChannel allocation site
+09-06 10:21:31.373 E/jqrj    (26923): 	at jqri.<init>(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:31.373 E/jqrj    (26923): 	at jqrj.<init>(:com.google.android.gms@263234029@26.32.34 (190400-968093310):10)
+09-06 10:21:31.373 E/jqrj    (26923): 	at jqrh.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):300)
+09-06 10:21:31.373 E/jqrj    (26923): 	at jpyy.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 10:21:31.373 E/jqrj    (26923): 	at bltf.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):53)
+09-06 10:21:31.373 E/jqrj    (26923): 	at blsw.t(:com.google.android.gms@263234029@26.32.34 (190400-968093310):51)
+09-06 10:21:31.373 E/jqrj    (26923): 	at blsw.G(:com.google.android.gms@263234029@26.32.34 (190400-968093310):5)
+09-06 10:21:31.373 E/jqrj    (26923): 	at chkx.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):540)
+09-06 10:21:31.373 E/jqrj    (26923): 	at blsd.call(:com.google.android.gms@263234029@26.32.34 (190400-968093310):3)
+09-06 10:21:31.373 E/jqrj    (26923): 	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+09-06 10:21:31.373 E/jqrj    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:31.373 E/jqrj    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-06 10:21:31.373 E/jqrj    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:31.373 E/jqrj    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:31.373 E/jqrj    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:31.373 E/jqrj    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:31.373 E/jqrj    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:31.374 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 545352c9-13d2-47c2-944a-5cf3a34d1e1d}. Requires device idle.
+09-06 10:21:31.374 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 05fbdab2-3dcf-4671-9a72-27d70cddad2e}. Requires device idle.
+09-06 10:21:31.374 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 9f94382a-733a-4f0e-bce0-718c70067aa9}. Requires device idle.
+09-06 10:21:31.375 I/fkra    (16376): #sync(). Running Synclets and scheduling next sync.
+09-06 10:21:31.375 D/WM-GreedyScheduler( 5766): Starting tracking for 6eb52706-71f8-4858-bf46-a2b4c1c6359e,4e17b9aa-622e-4f40-86a4-0e7ae7d69255,cbfe9f50-6dc2-48cc-a6c0-08957b9c40d1,7e228d6d-cee4-4822-8ed5-0a53a91f3fc2,f0c0f496-6818-4f39-babf-00ec39743e5b,e5deb735-f743-4c48-a481-f1a560681504,69bb2c25-c000-44e3-a84d-d17880452c67,9609314b-6f53-4b74-8539-518933aa41ef,ea0b0760-d17d-4d98-860f-642844a5218c,6cee6857-e14f-4210-ac21-ca20e4e859e0,23920c60-6d8a-420c-af55-288b66b65309,50c76b92-089c-406e-ad88-3b114bc30161,285f9fdb-c8a2-4596-9f50-d712ed8222c3,0e3acfbf-e099-4e1d-bc2c-39e9182c19cb,da84f3a5-6cb1-45bd-9d79-786a776a7d71,825014c5-63f9-4519-b1e5-1b7bf64697ea
+09-06 10:21:31.378 D/WM-ConstraintTracker( 5766): rcb: initial state = true
+09-06 10:21:31.379 D/WM-BrdcstRcvrCnstrntTrc( 5766): rcb: registering receiver
+09-06 10:21:31.382 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController register shared callback
+09-06 10:21:31.384 I/fkra    (16376): (REDACTED) Running synclets: %s
+09-06 10:21:31.388 I/fkra    (16376): (REDACTED) Starting synclet: %s
+09-06 10:21:31.389 I/fkra    (16376): (REDACTED) Starting synclet: %s
+09-06 10:21:31.389 I/fkra    (16376): (REDACTED) Starting synclet: %s
+09-06 10:21:31.390 I/fkra    (16376): (REDACTED) Starting synclet: %s
+09-06 10:21:31.392 D/WM-PackageManagerHelper( 5766): Skipping component enablement for androidx.work.impl.background.systemalarm.RescheduleReceiver
+09-06 10:21:31.393 I/cn_CronetUrlRequestContext(26923): destroyNativeStreamLocked org.chromium.net.impl.CronetBidirectionalStream@ee90e65
+09-06 10:21:31.395 W/VerdictProvider(26923): failed to get decision from server [jqdq{code=UNAVAILABLE, description=null, cause=m1.hu: Exception in BidirectionalStream: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at org.chromium.net.impl.CronetBidirectionalStream.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):27)
+09-06 10:21:31.395 W/VerdictProvider(26923): }]
+09-06 10:21:31.395 W/VerdictProvider(26923): [CONTEXT service_id=257 ]
+09-06 10:21:31.395 W/VerdictProvider(26923): jqdr: UNAVAILABLE
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at blsw.r(:com.google.android.gms@263234029@26.32.34 (190400-968093310):37)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at blsw.G(:com.google.android.gms@263234029@26.32.34 (190400-968093310):55)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at chkx.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):540)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at blsd.call(:com.google.android.gms@263234029@26.32.34 (190400-968093310):3)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):28)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:31.395 W/VerdictProvider(26923): Caused by: m1.hu: Exception in BidirectionalStream: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:31.395 W/VerdictProvider(26923): 	at org.chromium.net.impl.CronetBidirectionalStream.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):27)
+09-06 10:21:31.395 W/UdevsVerdict(26923): unable to provide verdict [CONTEXT service_id=257 ]
+09-06 10:21:31.422 D/BoundBrokerSvc(26923): onRebind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-06 10:21:31.456 I/fkra    (16376): Scheduling next wakeup
+09-06 10:21:31.457 I/fksa    (16376): Scheduling next periodic WorkManager workers
+09-06 10:21:31.467 D/WM-SystemJobScheduler(16376): Cancelling work ID 645286c7-84b9-4434-a457-3e0570243b51, Job ID 86713
+09-06 10:21:31.469 I/WM-GreedyScheduler(16376): Ignoring schedule request in non-main process
+09-06 10:21:31.481 D/WM-SystemJobScheduler(16376): Scheduling work ID 645286c7-84b9-4434-a457-3e0570243b51 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86720
+09-06 10:21:31.483 I/WM-GreedyScheduler(16376): Ignoring schedule request in a secondary process
+09-06 10:21:31.484 D/DGInternalHandle( 5766): maybeAddInteractionEvents(): The EventCollector is not initialized. This means that the client hasn't intended to collect any interaction events so far.
+09-06 10:21:31.489 D/WM-SystemJobScheduler(16376): Cancelling work ID 9609314b-6f53-4b74-8539-518933aa41ef, Job ID 86714
+09-06 10:21:31.490 I/WM-GreedyScheduler(16376): Ignoring schedule request in non-main process
+09-06 10:21:31.499 D/WM-SystemJobScheduler(16376): Scheduling work ID 9609314b-6f53-4b74-8539-518933aa41ef (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86721
+09-06 10:21:31.501 I/WM-GreedyScheduler(16376): Ignoring schedule request in a secondary process
+09-06 10:21:31.507 I/WM-GreedyScheduler(16376): Ignoring schedule request in non-main process
+09-06 10:21:31.514 I/WM-GreedyScheduler(16376): Ignoring schedule request in a secondary process
+09-06 10:21:31.520 D/WM-SystemJobScheduler(16376): Cancelling work ID da84f3a5-6cb1-45bd-9d79-786a776a7d71, Job ID 86715
+09-06 10:21:31.522 I/WM-GreedyScheduler(16376): Ignoring schedule request in non-main process
+09-06 10:21:31.545 D/WM-SystemJobScheduler(16376): Scheduling work ID da84f3a5-6cb1-45bd-9d79-786a776a7d71 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86722
+09-06 10:21:31.548 I/WM-GreedyScheduler(16376): Ignoring schedule request in a secondary process
+09-06 10:21:31.553 D/WM-SystemJobScheduler(16376): Cancelling work ID f0c0f496-6818-4f39-babf-00ec39743e5b, Job ID 86716
+09-06 10:21:31.555 I/WM-GreedyScheduler(16376): Ignoring schedule request in non-main process
+09-06 10:21:31.565 D/WM-SystemJobScheduler(16376): Scheduling work ID f0c0f496-6818-4f39-babf-00ec39743e5b (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86723
+09-06 10:21:31.568 I/WM-GreedyScheduler(16376): Ignoring schedule request in a secondary process
+09-06 10:21:31.573 D/WM-SystemJobScheduler(16376): Cancelling work ID 50c76b92-089c-406e-ad88-3b114bc30161, Job ID 86717
+09-06 10:21:31.575 I/WM-GreedyScheduler(16376): Ignoring schedule request in non-main process
+09-06 10:21:31.585 D/WM-SystemJobScheduler(16376): Scheduling work ID 50c76b92-089c-406e-ad88-3b114bc30161 (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86724
+09-06 10:21:31.588 I/WM-GreedyScheduler(16376): Ignoring schedule request in a secondary process
+09-06 10:21:31.593 I/fksa    (16376): Successfully scheduled next periodic workers
+09-06 10:21:31.597 I/fkra    (16376): #sync() complete
+09-06 10:21:31.601 D/RemoteListenableDelegatingWorker( 5766): Cleaning up
+09-06 10:21:31.612 I/WM-WorkerWrapper( 5766): Worker result SUCCESS for Work [ id=b2481a84-fba7-4440-9818-5f9c046634ba, class=androidx.work.multiprocess.RemoteListenableDelegatingWorker, tags={ com.google.apps.tiktok.contrib.work.TikTokListenableWorker,com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker_proc<googleapp>,sync_constraint:charger,TikTokWorker#com.google.apps.tiktok.sync.impl.workmanager.SyncPeriodicWorker } ]
+09-06 10:21:31.617 D/WM-Processor( 5766): qyq b2481a84-fba7-4440-9818-5f9c046634ba executed; reschedule = false
+09-06 10:21:31.622 D/WM-GreedyScheduler( 5766): Cancelling work ID b2481a84-fba7-4440-9818-5f9c046634ba
+09-06 10:21:31.631 D/WM-SystemJobScheduler( 5766): Scheduling work ID b2481a84-fba7-4440-9818-5f9c046634ba (androidx.work.multiprocess.RemoteListenableDelegatingWorker), Job ID 86725
+09-06 10:21:31.633 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 545352c9-13d2-47c2-944a-5cf3a34d1e1d}. Requires device idle.
+09-06 10:21:31.633 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 05fbdab2-3dcf-4671-9a72-27d70cddad2e}. Requires device idle.
+09-06 10:21:31.633 D/WM-GreedyScheduler( 5766): Ignoring {WorkSpec: 9f94382a-733a-4f0e-bce0-718c70067aa9}. Requires device idle.
+09-06 10:21:31.634 D/WM-GreedyScheduler( 5766): Starting tracking for e5deb735-f743-4c48-a481-f1a560681504,69bb2c25-c000-44e3-a84d-d17880452c67,ea0b0760-d17d-4d98-860f-642844a5218c,6cee6857-e14f-4210-ac21-ca20e4e859e0,23920c60-6d8a-420c-af55-288b66b65309,285f9fdb-c8a2-4596-9f50-d712ed8222c3,0e3acfbf-e099-4e1d-bc2c-39e9182c19cb,6eb52706-71f8-4858-bf46-a2b4c1c6359e,4e17b9aa-622e-4f40-86a4-0e7ae7d69255,cbfe9f50-6dc2-48cc-a6c0-08957b9c40d1,825014c5-63f9-4519-b1e5-1b7bf64697ea,7e228d6d-cee4-4822-8ed5-0a53a91f3fc2
+09-06 10:21:31.643 W/gorw    ( 5766): [{0}] Failed to resolve name. status={1}
+09-06 10:21:31.647 W/UdevsVerdict( 5766): server call failed
+09-06 10:21:31.649 I/dipu    ( 5766): (REDACTED) Device Compliance Fetch time taken = %sms
+09-06 10:21:31.649 I/dipu    ( 5766): Device is compliant!
+09-06 10:21:31.650 I/dipu    ( 5766): Invoking "compliant" action...
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.401 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.402 D/WM-WorkConstraintsTrack( 5766): NetworkRequestConstraintController didn't receive neither onCapabilitiesChanged/onLost callback, sending `ConstraintsNotMet` after 1000 ms
+09-06 10:21:32.403 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=9609314b-6f53-4b74-8539-518933aa41ef, generation=175)
+09-06 10:21:32.403 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=f0c0f496-6818-4f39-babf-00ec39743e5b, generation=101)
+09-06 10:21:32.403 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=285f9fdb-c8a2-4596-9f50-d712ed8222c3, generation=0)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=6cee6857-e14f-4210-ac21-ca20e4e859e0, generation=3)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=50c76b92-089c-406e-ad88-3b114bc30161, generation=101)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=23920c60-6d8a-420c-af55-288b66b65309, generation=54)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=0e3acfbf-e099-4e1d-bc2c-39e9182c19cb, generation=1)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=da84f3a5-6cb1-45bd-9d79-786a776a7d71, generation=101)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=cbfe9f50-6dc2-48cc-a6c0-08957b9c40d1, generation=3)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=825014c5-63f9-4519-b1e5-1b7bf64697ea, generation=0)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=6eb52706-71f8-4858-bf46-a2b4c1c6359e, generation=1)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=7e228d6d-cee4-4822-8ed5-0a53a91f3fc2, generation=0)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=69bb2c25-c000-44e3-a84d-d17880452c67, generation=0)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=e5deb735-f743-4c48-a481-f1a560681504, generation=3)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=ea0b0760-d17d-4d98-860f-642844a5218c, generation=104)
+09-06 10:21:32.404 D/WM-GreedyScheduler( 5766): Constraints not met: Cancelling work ID WorkGenerationalId(workSpecId=4e17b9aa-622e-4f40-86a4-0e7ae7d69255, generation=0)
+09-06 10:21:36.445 D/BoundBrokerSvc(26923): onUnbind: Intent { act=com.google.android.gms.common.telemetry.service.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-06 10:21:37.077 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:37.306 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:37.306 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e85c74a7-a5ff-0f4f-4075-5177614259ff
+09-06 10:21:37.306 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:37.306 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:37.306 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e85c74a7-a5ff-0f4f-4075-5177614259ff
+09-06 10:21:37.306 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:37.306 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:37.307 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register e85c74a7-a5ff-0f4f-4075-5177614259ff
+09-06 10:21:37.307 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:37.307 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:37.776 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 10:21:37.776 W/Auth    (26923): dedt: Failed to process request
+09-06 10:21:37.776 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:37.776 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:37.776 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:37.776 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:37.776 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:37.776 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:37.776 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:37.776 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:37.776 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:37.776 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:37.776 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:37.776 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:37.776 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:37.776 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:37.780 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-06 10:21:37.780 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:37.780 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:37.780 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:37.780 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:37.780 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:37.780 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:37.780 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:37.780 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:37.780 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:37.780 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:37.780 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:37.780 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:37.780 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:37.780 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:37.780 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:37.780 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:37.780 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:37.780 E/AuthPII (26923): 	... 12 more
+09-06 10:21:37.780 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:37.780 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:37.780 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:37.780 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:37.780 E/AuthPII (26923): 	... 13 more
+09-06 10:21:37.780 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:37.780 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:37.780 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:37.780 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:37.780 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:37.780 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:37.780 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:37.780 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:37.780 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:37.780 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:37.780 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:37.780 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:37.780 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:37.780 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:37.780 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:37.781 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 10:21:37.781 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:37.781 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:37.781 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:37.781 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:37.781 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:37.781 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:37.781 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:37.781 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:37.781 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:37.781 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:37.781 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:37.781 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:37.781 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:37.781 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:37.781 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:37.781 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:37.781 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:37.781 E/AuthPII (26923): 	... 12 more
+09-06 10:21:37.781 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:37.781 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:37.781 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:37.781 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:37.781 E/AuthPII (26923): 	... 13 more
+09-06 10:21:37.781 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:37.781 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:37.781 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:37.781 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:37.781 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:37.781 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:37.781 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:37.781 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:37.781 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:37.781 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:37.781 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:37.781 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:37.781 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:37.781 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:37.781 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:37.781 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 10:21:37.782 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 10:21:37.782 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 10:21:37.782 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 10:21:37.782 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:37.782 W/Auth    (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:37.782 W/Auth    (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:37.782 W/Auth    (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:37.782 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:37.782 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:37.782 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:37.782 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:37.782 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:37.782 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:37.782 W/GLSActivity(26923): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-06 10:21:38.167 D/nativeloader( 5766): Load /data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!/lib/arm64-v8a/libmappedcountercacheversionjni.so using class loader ns clns-6 (caller=/data/app/~~rra-ojP9fIiIYwEh_O3WUA==/com.google.android.googlequicksearchbox-tru0hMI838jXhRLvkWGmSQ==/base.apk!classes2.dex): ok
+09-06 10:21:38.174 I/dwmg    ( 5766): (REDACTED) Failed to find any valid flight records for process id %d
+09-06 10:21:38.263 V/ClearcutMetricXmitter( 5766): Transmission is done.
+09-06 10:21:38.265 V/ClearcutMetricXmitter( 5766): Transmission is done.
+09-06 10:21:38.704 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 10:21:38.704 W/Auth    (26923): dedt: Failed to process request
+09-06 10:21:38.704 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:38.704 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:38.704 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:38.704 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:38.704 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:38.704 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:38.704 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:38.704 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:38.704 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:38.704 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:38.704 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:38.704 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:38.704 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:38.704 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:38.709 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-06 10:21:38.709 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:38.709 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:38.709 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:38.709 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:38.709 E/AuthPII (26923): 	... 12 more
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:38.709 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:38.709 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:38.709 E/AuthPII (26923): 	... 13 more
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:38.709 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:38.709 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:38.709 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:38.709 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:38.709 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:38.709 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:38.709 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:38.709 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:38.709 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:38.709 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:38.709 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:38.709 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:38.709 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:38.709 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 10:21:38.709 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:38.709 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:38.709 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:38.709 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:38.709 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:38.709 E/AuthPII (26923): 	... 12 more
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:38.709 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:38.709 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:38.709 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:38.709 E/AuthPII (26923): 	... 13 more
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:38.709 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:38.709 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:38.709 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:38.709 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:38.709 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:38.709 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:38.709 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:38.709 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:38.709 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:38.709 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:38.709 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:38.709 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:38.709 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:38.709 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:38.711 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 10:21:38.712 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 10:21:38.712 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 10:21:38.712 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 10:21:38.712 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:38.712 W/Auth    (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:38.712 W/Auth    (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:38.712 W/Auth    (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:38.712 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:38.712 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:38.712 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:38.712 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:38.712 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:38.712 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:38.713 W/GLSActivity(26923): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-06 10:21:39.123 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:40.272 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:40.412 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:40.413 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 87e8ade4-a255-b4a3-6aa2-a2796d5d5faf
+09-06 10:21:40.413 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:40.413 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:40.413 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 87e8ade4-a255-b4a3-6aa2-a2796d5d5faf
+09-06 10:21:40.413 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:40.413 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:40.413 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 87e8ade4-a255-b4a3-6aa2-a2796d5d5faf
+09-06 10:21:40.413 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:40.413 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:41.273 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:42.437 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:42.951 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 4
+09-06 10:21:42.951 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:42.951 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:21:42.966 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:21:42.967 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 4
+09-06 10:21:42.967 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:21:42.970 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:21:42.971 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:42.971 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:21:42.971 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E3
+09-06 10:21:42.971 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:21:42.973 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:42.973 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:21:42.973 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:21:42.973 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:21:42.975 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 4
+09-06 10:21:42.975 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:21:42.975 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:42.979 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(1060)] Unregister inst_id: 4
+09-06 10:21:42.979 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:42.979 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(763)] RemoveAdvertisingSet
+09-06 10:21:42.983 V/bt_stack(13802): [VERBOSE1:btif_ble_advertiser.cc(209)] StartAdvertisingSet
+09-06 10:21:42.985 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(754)] SetParameters inst_id: 4
+09-06 10:21:42.985 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(602)] SetParameters
+09-06 10:21:42.986 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(674)] SetRandomAddress
+09-06 10:21:42.988 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:42.988 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 0
+09-06 10:21:42.988 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 02010219FFFFFF01000700ED6DE2C93918D5E1049EEA7F6FC97DD9E1E3
+09-06 10:21:42.988 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(633)] SetAdvertisingData
+09-06 10:21:42.989 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(810)] SetData inst_id: 4
+09-06 10:21:42.989 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(818)] is_scan_rsp = 1
+09-06 10:21:42.989 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(850)] data is: 
+09-06 10:21:42.989 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(655)] SetScanResponseData
+09-06 10:21:42.990 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(693)] Enable inst_id: 4
+09-06 10:21:42.990 V/bt_stack(13802): [VERBOSE1:btm_ble_multi_adv.cc(700)] Enable enable: 1, duration: 0
+09-06 10:21:42.990 V/bt_stack(13802): [VERBOSE1:ble_advertiser_hci_interface.cc(690)] Enable
+09-06 10:21:43.509 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:43.509 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 76acacf1-fd85-f0b6-ac14-880d04507aff
+09-06 10:21:43.509 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:43.509 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:43.509 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 76acacf1-fd85-f0b6-ac14-880d04507aff
+09-06 10:21:43.509 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:43.509 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:43.509 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 76acacf1-fd85-f0b6-ac14-880d04507aff
+09-06 10:21:43.509 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:43.509 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:45.760 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 10:21:45.760 W/Auth    (26923): dedt: Failed to process request
+09-06 10:21:45.760 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:45.760 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:45.760 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:45.760 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:45.760 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:45.760 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:45.760 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:45.760 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:45.760 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:45.760 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:45.760 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:45.760 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:45.760 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:45.760 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:45.762 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-06 10:21:45.762 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:45.762 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:45.762 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:45.762 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:45.762 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:45.762 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:45.762 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:45.762 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:45.762 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:45.762 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:45.762 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:45.762 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:45.762 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:45.762 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:45.762 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:45.762 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:45.762 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:45.762 E/AuthPII (26923): 	... 12 more
+09-06 10:21:45.762 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:45.762 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:45.762 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:45.762 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:45.762 E/AuthPII (26923): 	... 13 more
+09-06 10:21:45.762 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:45.762 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:45.762 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:45.762 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:45.762 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:45.762 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:45.762 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:45.762 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:45.762 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:45.762 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:45.762 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:45.762 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:45.762 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:45.762 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:45.762 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:45.763 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 10:21:45.763 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:45.763 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:45.763 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:45.763 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:45.763 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:45.763 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:45.763 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:45.763 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:45.763 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:45.763 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:45.763 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:45.763 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:45.763 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:45.763 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:45.763 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:45.763 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:45.763 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:45.763 E/AuthPII (26923): 	... 12 more
+09-06 10:21:45.763 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:45.763 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:45.763 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:45.763 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:45.763 E/AuthPII (26923): 	... 13 more
+09-06 10:21:45.763 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:45.763 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:45.763 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:45.763 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:45.763 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:45.763 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:45.763 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:45.763 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:45.763 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:45.763 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:45.763 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:45.763 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:45.763 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:45.763 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:45.763 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:45.763 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 10:21:45.764 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 10:21:45.764 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 10:21:45.764 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 10:21:45.764 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:45.764 W/Auth    (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:45.764 W/Auth    (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:45.764 W/Auth    (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:45.764 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:45.764 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:45.764 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:45.764 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:45.764 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:45.764 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:45.764 W/GLSActivity(26923): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-06 10:21:46.184 W/Auth    (26923): [TokenResponseCallback] TokenResponse failed with exception [CONTEXT service_id=343 ]
+09-06 10:21:46.184 W/Auth    (26923): dedt: Failed to process request
+09-06 10:21:46.184 W/Auth    (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:46.184 W/Auth    (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:46.184 W/Auth    (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:46.184 W/Auth    (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:46.184 W/Auth    (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:46.184 W/Auth    (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:46.184 W/Auth    (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:46.184 W/Auth    (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:46.184 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:46.184 W/Auth    (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:46.184 W/Auth    (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:46.184 W/Auth    (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:46.184 W/Auth    (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:46.184 W/Auth    (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:46.186 E/AuthPII (26923): [RequestTokenManager] getToken() -> NETWORK_ERROR. App: com.android.vending, Service: oauth2:******************************************
+09-06 10:21:46.186 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:46.186 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:46.186 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:46.186 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:46.186 E/AuthPII (26923): 	... 12 more
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:46.186 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:46.186 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:46.186 E/AuthPII (26923): 	... 13 more
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:46.186 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:46.186 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:46.186 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:46.186 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:46.186 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:46.186 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:46.186 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:46.186 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:46.186 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:46.186 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:46.186 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:46.186 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:46.186 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:46.186 E/AuthPII (26923): Message is Error when calling server using GmsNetworkStack.
+09-06 10:21:46.186 E/AuthPII (26923): bksu: Error when calling server using GmsNetworkStack.
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):1522)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiii.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):626)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):134)
+09-06 10:21:46.186 E/AuthPII (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:46.186 E/AuthPII (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:46.186 E/AuthPII (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:46.186 E/AuthPII (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: bksu: Error requesting token.
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):214)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):47)
+09-06 10:21:46.186 E/AuthPII (26923): 	... 12 more
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: java.util.concurrent.ExecutionException: dedt: Failed to process request
+09-06 10:21:46.186 E/AuthPII (26923): 	at htbr.j(:com.google.android.gms@263234029@26.32.34 (190400-968093310):21)
+09-06 10:21:46.186 E/AuthPII (26923): 	at htca.u(:com.google.android.gms@263234029@26.32.34 (190400-968093310):110)
+09-06 10:21:46.186 E/AuthPII (26923): 	at aiik.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):199)
+09-06 10:21:46.186 E/AuthPII (26923): 	... 13 more
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: dedt: Failed to process request
+09-06 10:21:46.186 E/AuthPII (26923): 	at deeb.a(:com.google.android.gms@263234029@26.32.34 (190400-968093310):23)
+09-06 10:21:46.186 E/AuthPII (26923): 	at dehv.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:46.186 E/AuthPII (26923): 	at deim.onFailed(:com.google.android.gms@263234029@26.32.34 (190400-968093310):15)
+09-06 10:21:46.186 E/AuthPII (26923): 	at m1.lm.onFailed(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):3)
+09-06 10:21:46.186 E/AuthPII (26923): 	at m1.ki.run(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):16)
+09-06 10:21:46.186 E/AuthPII (26923): 	at blzn.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):50)
+09-06 10:21:46.186 E/AuthPII (26923): 	at blzn.c(:com.google.android.gms@263234029@26.32.34 (190400-968093310):6)
+09-06 10:21:46.186 E/AuthPII (26923): 	at blzn.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):33)
+09-06 10:21:46.186 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
+09-06 10:21:46.186 E/AuthPII (26923): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
+09-06 10:21:46.186 E/AuthPII (26923): 	at bmfk.run(:com.google.android.gms@263234029@26.32.34 (190400-968093310):8)
+09-06 10:21:46.186 E/AuthPII (26923): 	at java.lang.Thread.run(Thread.java:1119)
+09-06 10:21:46.186 E/AuthPII (26923): Caused by: m1.kv: Exception in CronetUrlRequest: net::ERR_INTERNET_DISCONNECTED, ErrorCode=2, InternalErrorCode=-106, Retryable=false
+09-06 10:21:46.186 E/AuthPII (26923): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@263234029@26.32.34 (190400-0):74)
+09-06 10:21:46.187 I/Auth    (26923): (REDACTED) [GetToken] GetToken failed for app=%s with non recoverable status code: %s 
+09-06 10:21:46.187 W/Auth    (26923): [ChimeraGetToken] exception while trying to fetch auth tokens for app=com.google.android.gsf, scope=oauth2:****************************************** [CONTEXT service_id=153 ]
+09-06 10:21:46.187 W/Auth    (26923): aiic: GetToken failed with status code: NetworkError
+09-06 10:21:46.187 W/Auth    (26923): 	at aiih.b(:com.google.android.gms@263234029@26.32.34 (190400-968093310):329)
+09-06 10:21:46.187 W/Auth    (26923): 	at abrh.d(:com.google.android.gms@263234029@26.32.34 (190400-968093310):789)
+09-06 10:21:46.187 W/Auth    (26923): 	at aibk.getAuthToken(:com.google.android.gms@263234029@26.32.34 (190400-968093310):357)
+09-06 10:21:46.187 W/Auth    (26923): 	at android.accounts.AbstractAccountAuthenticator$Transport.getAuthToken(AbstractAccountAuthenticator.java:247)
+09-06 10:21:46.187 W/Auth    (26923): 	at android.accounts.IAccountAuthenticator$Stub.onTransact(IAccountAuthenticator.java:284)
+09-06 10:21:46.187 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:46.187 W/Auth    (26923): 	at ctii.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):12)
+09-06 10:21:46.187 W/Auth    (26923): 	at android.os.Binder.transact(Binder.java:1064)
+09-06 10:21:46.187 W/Auth    (26923): 	at cfox.onTransact(:com.google.android.gms@263234029@26.32.34 (190400-968093310):169)
+09-06 10:21:46.187 W/Auth    (26923): 	at android.os.Binder.execTransactInternal(Binder.java:1184)
+09-06 10:21:46.187 W/Auth    (26923): 	at android.os.Binder.execTransact(Binder.java:1143)
+09-06 10:21:46.187 W/GLSActivity(26923): [GmsAccountAuthenticatorImpl] error status while fetching token:NetworkError
+09-06 10:21:46.580 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:46.580 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 6088d768-9d4c-0b89-25a6-9733e3142136
+09-06 10:21:46.580 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:46.580 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:46.580 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 6088d768-9d4c-0b89-25a6-9733e3142136
+09-06 10:21:46.580 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:46.581 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:46.581 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register 6088d768-9d4c-0b89-25a6-9733e3142136
+09-06 10:21:46.581 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:46.581 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:49.107 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
+09-06 10:21:49.383 I/celi    (16376): (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+09-06 10:21:49.385 I/celi    (16376): (REDACTED) onApplyWindowInsets: systemWindowInsets=%s
+09-06 10:21:49.398 I/cesb    (16376): onStart
+09-06 10:21:49.399 I/cejn    (16376): onStart
+09-06 10:21:49.404 I/cchd    (16376): (REDACTED) [%s] onStart()
+09-06 10:21:49.405 E/NetworkErrorMessage(16376): (REDACTED) Invalid connectivity state: %s
+09-06 10:21:49.406 I/cesb    (16376): onResume
+09-06 10:21:49.406 W/dwmg    (16376): missing event name
+09-06 10:21:49.406 I/cejn    (16376): onResume
+09-06 10:21:49.412 I/OpenGLRenderer(16376): Davey! duration=1101258ms; Flags=1, FrameTimelineVsyncId=4406021, IntendedVsync=157577414455032, Vsync=157577414455032, InputEventId=0, HandleInputStart=157577415139054, AnimationStart=157577415141086, PerformTraversalsStart=157577415142179, DrawStart=157577454748846, FrameDeadline=157577462842128, FrameInterval=157577415126658, FrameStartTime=16129032, SyncQueued=157577457137023, SyncStart=157577457304002, IssueDrawCommandsStart=157577457726606, SwapBuffers=**************3, FrameCompleted=158678673459207, DequeueBufferDuration=1312552, QueueBufferDuration=2178594, GpuCompleted=158678673459207, SwapBuffersCompleted=157577463907961, DisplayPresentTime=0, 
+09-06 10:21:49.419 D/BoundBrokerSvc(26923): onRebind: Intent { act=com.google.android.gms.auth.aang.events.services.START dat=chimera-action: cmp=com.google.android.gms/.chimera.PersistentApiService }
+09-06 10:21:49.505 I/GoogleInputMethodService( 8374): GoogleInputMethodService.onFinishInput():2361 
+09-06 10:21:49.506 I/GoogleInputMethodService( 8374): GoogleInputMethodService.onStartInput():1532 onStartInput(EditorInfo{EditorInfo{packageName=com.bbk.launcher2, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=-1, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+09-06 10:21:49.507 W/LatinIMEBase( 8374): LatinIMEBase.updateInputViewCoverNavigation():321 Null input view, cannot update padding!
+09-06 10:21:49.510 I/Module  ( 8374): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 0, locked = false
+09-06 10:21:49.510 I/Module  ( 8374): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatusInternal():119 repeatCheckTimes = 1, locked = false
+09-06 10:21:49.626 V/bt_stack(13802): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+09-06 10:21:49.626 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register afd94ad4-eb0e-2bbd-9ab0-f0dc351b211f
+09-06 10:21:49.626 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:49.626 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:49.626 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register afd94ad4-eb0e-2bbd-9ab0-f0dc351b211f
+09-06 10:21:49.626 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:49.626 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:49.626 I/bt_stack(13802): [INFO:gatt_api.cc(1223)] GATT_Register afd94ad4-eb0e-2bbd-9ab0-f0dc351b211f
+09-06 10:21:49.626 E/bt_stack(13802): [ERROR:gatt_api.cc(1249)] can't Register GATT client, MAX client reached: 32
+09-06 10:21:49.626 E/bt_stack(13802): [ERROR:bta_gattc_act.cc(221)] Register with GATT stack failed.
+09-06 10:21:50.119 I/NearbyDiscovery(26923): (REDACTED) BloomFilterAdvManager: Detected bloom filter but too far away, ignoring. %sm, %s
