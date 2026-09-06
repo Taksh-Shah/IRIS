@@ -24,8 +24,8 @@ mission_description: "Advance IRIS from documented state to production-grade res
 # === CURRENT POSITION ===
 active_node: "WIFIDIRECT-001"
 active_stage: "HARDWARE_VERIFICATION"
-active_action: "Tier-4 BLE baseline is blocked: both Vivos failed BLE scan/GATT-server startup even after a Bluetooth reset and are currently offline from ADB following a reboot."
-next_action: "Operator unlocks/reconnects P1 and P2 to ADB; re-run the clean BLE baseline once, then continue with the A→B→C HV-35 relay procedure only if all BLE links are healthy."
+active_action: "Tier-4 BLE baseline recovered after Vivo reboots: all three phones have linked BLE peers and S24 holds two live GATT links."
+next_action: "Operator places P1 (A) and P2 (C) out of each other's BLE range with S24 (B) in range of both; then run the attributed A→B→C HV-35 relay delivery test."
 last_transition: "HUMAN_GATE"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
 last_transition_at: "2026-09-06T20:15:00+05:30"

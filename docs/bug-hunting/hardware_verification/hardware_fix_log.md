@@ -6293,3 +6293,10 @@ Vivos were rebooted as the distinct service-level recovery. They have not
 returned to ADB in the 55-second window; Tier-4 relay was not attempted. This
 is a physical bench gate, not a relay/flood/PRoPHET failure and no Tier-4 item
 is advanced.
+
+**Post-reboot baseline recovery:** P1/P2 returned to ADB and a clean IRIS
+relaunch recovered the BLE control plane. `/peers` on both Vivos showed two
+`LinkedUp` BLE peers; P3 had two simultaneous `ble-android:Good` links and
+successful GATT readiness. This satisfies the Tier-4 precondition, but is not
+an HV-35 relay result because all phones remain co-located. Next manual gate:
+place A and C outside each other's BLE range with B (S24) in range of both.
