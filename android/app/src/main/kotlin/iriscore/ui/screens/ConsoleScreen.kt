@@ -1,5 +1,9 @@
 package iriscore.ui.screens
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -27,9 +31,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -39,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,7 +70,9 @@ import iriscore.ui.components.Text
 import iriscore.ui.state.ConsoleEntry
 import iriscore.ui.state.MeshStatus
 import iriscore.ui.state.MeshUiState
+import iriscore.ui.state.TransportStatus
 import iriscore.util.MeshPermissions
+import kotlinx.coroutines.launch
 
 /**
  * The IRIS console — the single screen of the mobile shell.
@@ -76,6 +86,8 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val entries by viewModel.console.collectAsStateWithLifecycle()
     val recipient by viewModel.recipient.collectAsStateWithLifecycle()
+    // HV-59: per-transport chip data from the 5-s ViewModel poll.
+    val transportStates by viewModel.transportStates.collectAsStateWithLifecycle()
 
     var input by rememberSaveable { mutableStateOf("") }
     var selectedCommand by remember { mutableStateOf(0) }
@@ -90,6 +102,11 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     LaunchedEffect(matches) { selectedCommand = selectedCommand.coerceIn(0, maxOf(0, matches.size - 1)) }
 
     val context = LocalContext.current
+    val activity = context as? Activity
+    // HV-61: track whether we have ever issued the permission request so we can
+    // distinguish "never asked" (shouldShowRationale == false, first launch) from
+    // "permanently denied" (shouldShowRationale == false AFTER at least one ask).
+    var hasRequestedPermissions by rememberSaveable { mutableStateOf(false) }
     var permissionsGranted by rememberSaveable { mutableStateOf(MeshPermissions.allGranted(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -98,6 +115,15 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         // are absent from the result map.
         permissionsGranted = MeshPermissions.allGranted(context)
     }
+
+    // HV-61: "don't ask again" detection. After one denial, shouldShowRationale
+    // flips to true (can ask again); after the user selects "Don't ask again" it
+    // flips back to false. So permanently-denied = asked at least once AND every
+    // missing permission now returns false from shouldShowRationale.
+    val permanentlyDenied = hasRequestedPermissions && !permissionsGranted &&
+        MeshPermissions.missing(context).none { perm ->
+            activity != null && ActivityCompat.shouldShowRequestPermissionRationale(activity, perm)
+        }
 
     // HV-30: a runtime grant revoked from Settings while the app is backgrounded
     // is otherwise never noticed — the composition's cached `permissionsGranted`
@@ -119,14 +145,41 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         } else {
             MeshPermissions.missing(context)
                 .takeIf { it.isNotEmpty() }
-                ?.let { permissionLauncher.launch(it.toTypedArray()) }
+                ?.let {
+                    hasRequestedPermissions = true
+                    permissionLauncher.launch(it.toTypedArray())
+                }
         }
     }
 
     val listState = rememberLazyListState()
-    // Follow the tail as the transcript grows.
+    val scope = rememberCoroutineScope()
+
+    // HV-63: only auto-scroll when the user is already near the bottom — within
+    // 2 items of the last entry. If they've scrolled up to read history, let them:
+    // new messages are counted and shown in the "N new ↓" pill instead.
+    val atBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf true
+            last >= info.totalItemsCount - 3
+        }
+    }
+    var unseenCount by remember { mutableIntStateOf(0) }
+
+    // Scroll to tail when a new entry arrives — but only if already at the bottom.
     LaunchedEffect(entries.size) {
-        if (entries.isNotEmpty()) listState.animateScrollToItem(entries.lastIndex)
+        if (entries.isNotEmpty()) {
+            if (atBottom) {
+                listState.animateScrollToItem(entries.lastIndex)
+            } else {
+                unseenCount++
+            }
+        }
+    }
+    // Reset the unseen badge whenever the user scrolls back to the bottom.
+    LaunchedEffect(atBottom) {
+        if (atBottom) unseenCount = 0
     }
 
     // HV-54: the composer floats over the transcript and grows upward as the
@@ -143,7 +196,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     // new entry arrives — otherwise the last message can still slide back
     // under the composer as it expands without the list re-scrolling.
     LaunchedEffect(floatingHeight) {
-        if (entries.isNotEmpty()) listState.animateScrollToItem(entries.lastIndex)
+        if (entries.isNotEmpty() && atBottom) listState.animateScrollToItem(entries.lastIndex)
     }
 
     BoxWithConstraints(
@@ -174,15 +227,31 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
             StatusLine(
                 state = state,
                 recipient = recipient,
+                permissionsGranted = permissionsGranted,
+                transportStates = transportStates,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
 
             if (!permissionsGranted) {
                 PermissionNotice(
+                    permanentlyDenied = permanentlyDenied,
                     onGrant = {
-                        MeshPermissions.missing(context)
-                            .takeIf { it.isNotEmpty() }
-                            ?.let { permissionLauncher.launch(it.toTypedArray()) }
+                        if (permanentlyDenied) {
+                            // HV-61: permanently denied — take the user to Settings.
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                },
+                            )
+                        } else {
+                            MeshPermissions.missing(context)
+                                .takeIf { it.isNotEmpty() }
+                                ?.let {
+                                    hasRequestedPermissions = true
+                                    permissionLauncher.launch(it.toTypedArray())
+                                }
+                        }
                     },
                 )
             }
@@ -233,6 +302,33 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                     if (measured.value > 0f) floatingHeight = measured
                 },
         ) {
+            // HV-63: when the user has scrolled up and new messages arrive, show
+            // a pill instead of force-scrolling them back to the bottom.
+            if (unseenCount > 0) {
+                Row(
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .clickable {
+                            scope.launch {
+                                if (entries.isNotEmpty()) {
+                                    listState.animateScrollToItem(entries.lastIndex)
+                                }
+                                unseenCount = 0
+                            }
+                        }
+                        .background(IrisColors.AccentPrimary.copy(alpha = 0.92f), iriscore.designsystem.IrisRadius.Full)
+                        .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.XS),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(IrisSpacing.XS),
+                ) {
+                    Text(
+                        text = "$unseenCount new  ↓",
+                        style = IrisType.Label.copy(color = IrisColors.BackgroundPrimary),
+                    )
+                }
+                Spacer(Modifier.height(IrisSpacing.SM))
+            }
+
             IrisCommandPalette(
                 visible = paletteVisible,
                 commands = matches,
@@ -311,6 +407,8 @@ private fun ConsoleRow(entries: List<ConsoleEntry>, index: Int, onReply: (String
 private fun StatusLine(
     state: MeshUiState,
     recipient: String?,
+    permissionsGranted: Boolean,
+    transportStates: List<TransportStatus>,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -336,25 +434,40 @@ private fun StatusLine(
         if (state.relayQueued > 0) {
             IrisStatusChip(label = "Q${state.relayQueued}", tone = StatusTone.Warning)
         }
+        // HV-59: per-transport chips (BLE ●, WD ○, etc.) when running and the
+        // 5-s poll has populated the list. Chips are compact — just label + dot.
+        if (state.status == MeshStatus.RUNNING && transportStates.isNotEmpty()) {
+            transportStates.forEach { t ->
+                IrisStatusChip(
+                    label = if (t.connected) "${t.label} ●" else "${t.label} ○",
+                    tone = if (t.connected) StatusTone.Active else StatusTone.Warning,
+                )
+            }
+        }
+        // HV-61: override the global status chip with "PERM" when permissions are
+        // missing so the user immediately sees why the mesh is not carrying traffic
+        // instead of a misleading IDLE/RUNNING chip.
         IrisStatusChip(
-            label = when (state.status) {
-                MeshStatus.RUNNING -> "LINK"
-                MeshStatus.STARTING -> "INIT"
-                MeshStatus.IDLE -> "IDLE"
-                MeshStatus.UNAVAILABLE -> "DOWN"
+            label = when {
+                !permissionsGranted -> "PERM"
+                state.status == MeshStatus.RUNNING -> "LINK"
+                state.status == MeshStatus.STARTING -> "INIT"
+                state.status == MeshStatus.IDLE -> "IDLE"
+                else -> "DOWN"
             },
-            tone = when (state.status) {
-                MeshStatus.RUNNING -> StatusTone.Active
-                MeshStatus.STARTING -> StatusTone.Warning
-                MeshStatus.IDLE -> StatusTone.Neutral
-                MeshStatus.UNAVAILABLE -> StatusTone.Critical
+            tone = when {
+                !permissionsGranted -> StatusTone.Critical
+                state.status == MeshStatus.RUNNING -> StatusTone.Active
+                state.status == MeshStatus.STARTING -> StatusTone.Warning
+                state.status == MeshStatus.IDLE -> StatusTone.Neutral
+                else -> StatusTone.Critical
             },
         )
     }
 }
 
 @Composable
-private fun PermissionNotice(onGrant: () -> Unit) {
+private fun PermissionNotice(permanentlyDenied: Boolean, onGrant: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -371,12 +484,21 @@ private fun PermissionNotice(onGrant: () -> Unit) {
             )
             Spacer(Modifier.height(IrisSpacing.XXS))
             Text(
-                text = "Nearby-device access is required; without it the mesh carries no traffic.",
+                // HV-61: when permanently denied, explain that the system dialog
+                // will no longer appear and the user must open Settings manually.
+                text = if (permanentlyDenied) {
+                    "Nearby-device access permanently denied. Open Settings to re-enable."
+                } else {
+                    "Nearby-device access is required; without it the mesh carries no traffic."
+                },
                 style = IrisType.Secondary,
             )
         }
         Spacer(Modifier.width(IrisSpacing.MD))
-        Text(text = "GRANT", style = IrisType.Label.copy(color = IrisColors.AccentPrimary))
+        Text(
+            text = if (permanentlyDenied) "SETTINGS" else "GRANT",
+            style = IrisType.Label.copy(color = IrisColors.AccentPrimary),
+        )
     }
 }
 

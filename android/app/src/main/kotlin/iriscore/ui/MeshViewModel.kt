@@ -19,12 +19,14 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import iriscore.ui.state.TransportStatus
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -50,6 +52,14 @@ class MeshViewModel @Inject constructor(
 
     /** System output and command echoes, newest last. */
     private val _consoleEvents = MutableStateFlow<List<ConsoleEntry>>(emptyList())
+
+    /**
+     * HV-59: per-transport connection state for the status line. Polled every
+     * 5 s from [MeshRepository.transportStatuses] while the mesh is RUNNING.
+     * Empty before first poll and while IDLE/UNAVAILABLE.
+     */
+    private val _transportStates = MutableStateFlow<List<TransportStatus>>(emptyList())
+    val transportStates: StateFlow<List<TransportStatus>> = _transportStates.asStateFlow()
 
     /** Active `/search` filter; null when unfiltered. */
     private val _searchQuery = MutableStateFlow<String?>(null)
@@ -127,11 +137,34 @@ class MeshViewModel @Inject constructor(
                     repository.subscribeInbox()
                 }
             }
+            startTransportPoll()
         } catch (_: RuntimeException) {
             // ForegroundServiceStartNotAllowedException / radio unavailable.
             // Reset so a later attempt (permission granted, radio switched on)
             // can retry instead of latching into a half-started state.
             started.set(false)
+        }
+    }
+
+    /**
+     * HV-59: poll the engine's per-transport state every 5 s while the mesh is
+     * RUNNING. The snapshot call is blocking FFI — kept on IO. On any failure
+     * we clear the display rather than showing stale data.
+     */
+    private fun startTransportPoll() {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                delay(5_000L)
+                if (uiState.value.status == MeshStatus.RUNNING) {
+                    _transportStates.value = try {
+                        repository.transportStatuses()
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                } else {
+                    _transportStates.value = emptyList()
+                }
+            }
         }
     }
 

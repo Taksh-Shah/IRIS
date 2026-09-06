@@ -160,6 +160,25 @@ class MeshRepository @Inject constructor(
      */
     fun snapshot(): iriscode.FfiMeshSnapshot = engine.get().snapshot()
 
+    /**
+     * HV-59: per-transport connection state for the status line. Reuses the
+     * same [snapshot] call so the engine's event ring is also refreshed; the
+     * ViewModel polls this every 5 s while RUNNING.
+     */
+    fun transportStatuses(): List<iriscore.ui.state.TransportStatus> =
+        engine.get().snapshot().transports.map { t ->
+            iriscore.ui.state.TransportStatus(
+                label = when {
+                    t.id.startsWith("ble") -> "BLE"
+                    t.id.startsWith("wifi-direct") || t.id.startsWith("wifidirect") || t.id.startsWith("wd") -> "WD"
+                    t.id.startsWith("internet") || t.id.startsWith("net") || t.id.startsWith("tcp") -> "NET"
+                    t.id.startsWith("wifi-aware") || t.id.startsWith("wifiaware") || t.id.startsWith("nan") -> "NAN"
+                    else -> t.id.take(3).uppercase()
+                },
+                connected = t.state == "Connected",
+            )
+        }
+
     /** HV-89 interim: this node's X25519 static public key, 64-hex. */
     fun staticX25519(): String =
         engine.get().staticX25519Pubkey().joinToString("") { "%02x".format(it) }

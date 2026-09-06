@@ -5,6 +5,19 @@ import java.util.concurrent.atomic.AtomicLong
 
 enum class MeshStatus { IDLE, STARTING, RUNNING, UNAVAILABLE }
 
+/**
+ * HV-59: per-transport presence in the status line.
+ * Derived from [FfiTransportDiag.state] in the engine snapshot; refreshed by the
+ * ViewModel every 5 s while the mesh is RUNNING.
+ */
+@Immutable
+data class TransportStatus(
+    /** Short display label shown in the status chip ("BLE", "WD", "NET"). */
+    val label: String,
+    /** True when the transport's FfiTransportDiag.state == "Connected". */
+    val connected: Boolean,
+)
+
 @Immutable
 data class InboxUiMessage(
     /**
