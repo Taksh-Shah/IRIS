@@ -368,7 +368,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun startDnsSd(txtRecord: ByteArray) {
-        rejectAutomaticP2pActivation()
         // HW-13: `ensure_started()` (Rust) calls this with an EMPTY
         // placeholder just to bring the DNS-SD subsystem/response listeners
         // up before any real identity is known (needed for scan-only
@@ -440,7 +439,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun startDiscovery() {
-        rejectAutomaticP2pActivation()
         // HV-21 (Session 24, stranger-discovery pivot): DNS-SD service
         // discovery (`discoverServices`/`addServiceRequest`/the TXT-record
         // listeners below) was confirmed on real hardware to NEVER resolve
@@ -1359,14 +1357,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         peerDevices[handle] = deviceAddress
         return handle
     }
-
-    /**
-     * Samsung's Sharing mode can present a system dialog for DNS-SD service
-     * registration or peer discovery alone, even when no association is
-     * attempted. Disable every background P2P activation route until IRIS has
-     * a platform-safe, explicitly authorized Wi-Fi Direct design.
-     */
-    private fun rejectAutomaticP2pActivation(): Nothing = throw NotSupported()
 
     /**
      * Await a WifiP2pManager async action; the per-call timeout is applied

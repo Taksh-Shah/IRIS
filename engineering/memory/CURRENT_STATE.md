@@ -15,10 +15,10 @@
 > as the complete cause. The historical narrative below is retained as an execution record, not as the
 > current next action. **Session 32 correction:** the 10/10 result is
 > Vivo-to-Vivo evidence only. Samsung prompts also occur on DNS-SD/discovery,
-> so background Wi-Fi Direct advertising/discovery remains disabled. Explicit
-> association calls are retained so a future controlled P2P run may display
-> Android's invitation UI; Samsung's Sharing prompt remains an accepted
-> current limitation.
+> the next authorized build restores Wi-Fi Direct advertising/discovery and
+> explicit association. Android's invitation UI is expected; Samsung's Sharing
+> prompt remains an accepted current limitation and must be captured during
+> hardware validation.
 > **Mobly remediation (2026-09-06):** the harness now drives the normal shipping
 > app rather than a second instrumented engine, caches data before force-stop,
 > and waits for asynchronous app-link delivery. The live popup audit found no

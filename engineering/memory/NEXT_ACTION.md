@@ -30,11 +30,9 @@ the obsolete August setup instructions.
 3. Use `iris_bench/test_tier2_wifidirect.py` as the real-app Mobly harness.
    Its default remains the 10-cycle acceptance gate; do not replace the
    shipping-app gate evidence with a shorter diagnostic run.
-4. Keep background Wi-Fi Direct activation (advertising/discovery) disabled on
-   the current Samsung-compatible safety policy. Explicit association remains
-   available for a controlled future P2P run; the Android invitation dialog is
-   expected and accepted, while Samsung's Sharing dialog remains a known
-   limitation.
+4. Deploy the authorized build with Wi-Fi Direct advertising, discovery, and
+   explicit association enabled. Treat Android's invitation dialog as expected
+   evidence; capture Samsung's Sharing dialog as a known limitation.
 5. Select the next finding only from an explicit hardware procedure and preserve
    the loop order: Research → Design/implementation → Hardware test → Iterate →
    Close.

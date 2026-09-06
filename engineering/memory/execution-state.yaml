@@ -24,8 +24,8 @@ mission_description: "Advance IRIS from documented state to production-grade res
 # === CURRENT POSITION ===
 active_node: "WIFIDIRECT-001"
 active_stage: "HARDWARE_VERIFICATION"
-active_action: "Wi-Fi Direct popup policy recorded: explicit association remains available for the expected Android invitation UI; background advertising/discovery stays disabled because Samsung Sharing prompts on those operations."
-next_action: "Validate and commit the popup-policy documentation/code change, then stop at the Tier-4 hardware planning boundary."
+active_action: "Wi-Fi Direct activation restored by operator authorization: DNS-SD, peer discovery, and explicit association/group creation are enabled for controlled hardware validation; Samsung Sharing popup remains an accepted observation."
+next_action: "Build, install, and run the controlled BLE-first Wi-Fi Direct validation, then proceed to Tier-4 hardware evidence only after the popup behavior is recorded."
 last_transition: "FAILURE_RECOVERY"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
 last_transition_at: "2026-09-06T18:55:00+05:30"

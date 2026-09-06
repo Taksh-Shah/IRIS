@@ -6263,6 +6263,12 @@ association, capture the expected invitation UI/logcat evidence, and separately
 record whether Samsung Sharing blocks the operation. This policy change does
 not claim Tier-4 completion or Wi-Fi Direct delivery.
 
+**Follow-up operator authorization:** Wi-Fi Direct activation is now restored
+on the next build: DNS-SD registration, peer discovery, and explicit group /
+association operations are enabled. The Samsung **“Turn off Sharing?”** dialog
+is therefore an expected hardware observation for this build and must be
+captured, not hidden or classified as an IRIS test failure by itself.
+
 **References:** Android's public `WifiP2pManager.connect()` contract documents
 that an invitation is sent when the device is already in a P2P group;
 Android's Wi-Fi Direct implementation also depends on OEM framework/HAL and
