@@ -6273,3 +6273,23 @@ captured, not hidden or classified as an IRIS test failure by itself.
 that an invitation is sent when the device is already in a P2P group;
 Android's Wi-Fi Direct implementation also depends on OEM framework/HAL and
 firmware behavior. See the Android API/AOSP sources recorded in RES-0021.
+
+## Session 34 (2026-09-06) — Tier-4 three-phone baseline, blocked before relay
+
+**Build deployed:** `776c3f6` / `app-debug.apk` was installed successfully on
+P1 vivo V2205 (`10BCA20F4M000BB`, Android 14), P2 vivo 2004 (`b2fbcd39`,
+Android 12), and P3 Samsung S24 Ultra (`RZCX81QF2WY`, Android 16).
+
+**Baseline result:** P1 and P2 both started IRIS but immediately failed the
+BLE prerequisite: `startScan failed errorCode=2`, `openGattServer null`, and
+`BLE GATT server unavailable — the Bluetooth stack may be wedged`. Runtime
+permissions and AppOps for `BLUETOOTH_SCAN`, `BLUETOOTH_ADVERTISE`, and
+`BLUETOOTH_CONNECT` were confirmed granted/allowed; Bluetooth was ON. P3
+started Wi-Fi Direct DNS-SD/discovery normally, with no discovered peers yet.
+
+**Recovery attempted:** a bounded Bluetooth off/on reset on P1/P2 did not
+recover either GATT server. After fresh failure-focused Android research, both
+Vivos were rebooted as the distinct service-level recovery. They have not
+returned to ADB in the 55-second window; Tier-4 relay was not attempted. This
+is a physical bench gate, not a relay/flood/PRoPHET failure and no Tier-4 item
+is advanced.

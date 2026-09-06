@@ -21,6 +21,10 @@ the obsolete August setup instructions.
 
 ### Next work boundary
 
+0. **Human gate:** P1 and P2 were rebooted after a BLE GATT/scan service failure
+   and must be unlocked/reconnected to ADB. Re-run the clean BLE baseline once;
+   do not attempt Tier-4 relay while either phone reports `openGattServer null`
+   or scan error code 2.
 1. Commit the Session-32 Wi-Fi Direct dialog-containment repair after verifying
    the durable record and clean worktree.
 2. Read the procedure and status in

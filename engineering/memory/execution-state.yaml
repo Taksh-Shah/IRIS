@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-09-06T18:55:00+05:30"
+updated_at: "2026-09-06T20:15:00+05:30"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -24,11 +24,11 @@ mission_description: "Advance IRIS from documented state to production-grade res
 # === CURRENT POSITION ===
 active_node: "WIFIDIRECT-001"
 active_stage: "HARDWARE_VERIFICATION"
-active_action: "Wi-Fi Direct activation restored by operator authorization: DNS-SD, peer discovery, and explicit association/group creation are enabled for controlled hardware validation; Samsung Sharing popup remains an accepted observation."
-next_action: "Build, install, and run the controlled BLE-first Wi-Fi Direct validation, then proceed to Tier-4 hardware evidence only after the popup behavior is recorded."
-last_transition: "FAILURE_RECOVERY"
+active_action: "Tier-4 BLE baseline is blocked: both Vivos failed BLE scan/GATT-server startup even after a Bluetooth reset and are currently offline from ADB following a reboot."
+next_action: "Operator unlocks/reconnects P1 and P2 to ADB; re-run the clean BLE baseline once, then continue with the A→B→C HV-35 relay procedure only if all BLE links are healthy."
+last_transition: "HUMAN_GATE"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-09-06T18:55:00+05:30"
+last_transition_at: "2026-09-06T20:15:00+05:30"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 
@@ -57,7 +57,7 @@ blockers:
   # BLK-0001 (CRYPTO-001/IDENT-001 human gate) REMOVED — RESOLVED by DEC-0009.
 
 # === HUMAN GATES ===
-human_gate_required: false
+human_gate_required: true
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
