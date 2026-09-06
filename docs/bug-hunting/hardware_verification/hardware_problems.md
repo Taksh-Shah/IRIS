@@ -2738,7 +2738,8 @@ latency bonded/unbonded (folds into HV-34).
 
 ### HV-35 — Multi-hop relay has never been exercised on physical radios
 
-- **Fix status:** ⬜ · **HW gate:** 🔒 **needs a 3rd phone**
+- **Fix status:** 🔬 Prep done (instrumentation added) · HW gate unchanged · 2026-09-06 · Session 30. Added `event::MSG_RELAYED` (`observability/mod.rs`) and wired it into `enqueue_relay`'s existing log line (`message_engine/mod.rs`), which previously logged under the ambiguous generic `MSG_QUEUED` name and did not include `hop_count` at all — so a relay's own log couldn't confirm the increment happened without cross-referencing the raw envelope. A future bench session can now `grep msg.relayed` on the middle node's logcat and see, per message, the actual forwarded hop count. This is exactly the "instrument every hop (`iris.route.relay` log)" prep the fix sketch asked for, done ahead of hardware per §2's own note that Tier 4 prep can happen without a 3rd phone. The actual A→B→C bench test itself (Phase T) is still fully blocked on a 3rd phone — nothing about that changed.
+- **HW gate:** 🔒 **needs a 3rd phone**
 - **Area:** `message_engine/mod.rs` (`deliver_or_relay`, `enqueue_relay`,
   `spawn_delivery_loop`, hop ceiling), `flood.rs`, `engine.rs`
   `spawn_inbox_forwarder`
@@ -2764,7 +2765,7 @@ also deliver the message locally (it's not the recipient).
 
 ### HV-36 — Flood fan-out is meaningless on a 2-node bench and untested on 3+
 
-- **Fix status:** ⬜ · **HW gate:** 🔒 **needs 3+ phones**
+- **Fix status:** ⬜ · **HW gate:** 🔒 **needs 3+ phones** · note (2026-09-06, Session 30): checked whether flood-path logging could be added as hardware-independent prep (same idea as HV-35's `MSG_RELAYED`) — grepped every call site of `recipients_for_flood` and found it is called **only** from `routing/mod.rs` (plus benches/tests), never from the live delivery path in `message_engine/mod.rs`. Flood is simulator-only in production today; this is the same wiring gap tracked as `CROSS-006` in `docs/bug-hunting/integration_problems.md` (`RoutingEngine::decide()`/`ScfEngine` never called from `MessageEngine`), independently rediscovered from the Tier-4 hardware side. Adding logging inside `flood.rs` itself would only ever fire in the simulator, so it would not help a real bench session — no prep work was possible here beyond confirming and cross-referencing this. HV-36 stays fully blocked on both a 3rd phone **and** CROSS-006 landing first.
 - **Area:** `flood.rs` (`recipients_for_flood`, `MAX_FLOOD_FANOUT = 8`,
   `max_hops_for_priority`), `NeighborTable`, `best_transport`
 - **Severity:** High

@@ -6101,3 +6101,45 @@ hardware.
   Without hardware — the `PendingSendQueue` rename (needs a compiler to be
   safe), or continue into Tier 9's remaining software-only findings (HV-65,
   HV-67, HV-69, HV-73), which Session 29's closeout already queued up next.
+
+### Session 30 addendum — HV-35/HV-36 prep check (after the user asked what
+else in Tier 4 could move without hardware)
+
+- **HV-35:** the fix sketch's own first line item — "Instrument every hop
+  (`iris.route.relay` log)" — was genuinely unimplemented and genuinely
+  hardware-independent. Checked `enqueue_relay`'s existing log line
+  (`message_engine/mod.rs`): it fired under the generic `event::MSG_QUEUED`
+  name (shared with an unrelated local-send-queued case) and did not log
+  `hop_count` at all, despite this being the exact function that increments
+  it. Added a distinct `event::MSG_RELAYED` constant
+  (`observability/mod.rs`) and switched this call site to it, adding
+  `hop_count` as an explicit field. **Caught a real bug while writing this**:
+  the first draft read `item.envelope.hop_count` after `item` had already
+  been moved into `q.push(item)` two lines earlier — a use-after-move that a
+  compiler would have caught instantly, but there is none in this
+  environment. Found by re-reading the edited function's ownership flow line
+  by line before considering the change done (not by any tool). Fixed by
+  capturing the incremented value into a local (`relayed_hop_count`) before
+  `e` moves into `QueuedMessage::new(e)`. This is the second time in this
+  work stream a hand-edited Rust/Kotlin file has needed a manual ownership/
+  structure re-check to catch what a compiler normally would (see CROSS-004
+  in `integration_problems_log.md` for the first) — worth remembering as a
+  standing risk of doing Rust work with no `cargo` available, not just a
+  one-off.
+- **HV-36:** checked whether the same trick applies — instrument
+  `flood.rs`'s fan-out path ahead of a bench session. It does not: grepping
+  every call site of `recipients_for_flood` found it is invoked only from
+  `routing/mod.rs` (plus benches and its own unit tests) — **never** from the
+  live delivery path in `message_engine/mod.rs`. Flood/PRoPHET routing is
+  simulator-only in production right now, independently confirming the same
+  gap already tracked as `CROSS-006` in the separate integration-fix work
+  (`docs/bug-hunting/integration_problems.md` — `RoutingEngine::decide()`/
+  `ScfEngine` never called from `MessageEngine`). Logging inside `flood.rs`
+  itself would only ever fire in the simulator, so it would do nothing for a
+  real bench session. No code change made for HV-36 — correctly nothing to
+  do here that isn't either "wait for a 3rd phone" or "wait for CROSS-006."
+  Cross-referenced in both trackers so this isn't independently rediscovered
+  a third time.
+- Commit: `b647e3a` — `feat(hw/routing): HV-35 — MSG_RELAYED event with
+  explicit hop_count for bench-session instrumentation`
+- No hardware this session (unchanged from the main Session 30 entry above).
