@@ -538,7 +538,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun createGroup(config: FfiGroupConfig): FfiGroupInfo {
-        rejectAutomaticAssociation()
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
                 ?: throw Transport("Wi-Fi Direct not initialized")
@@ -570,7 +569,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun joinGroup(go: ULong, config: FfiGroupConfig): FfiGroupInfo {
-        rejectAutomaticAssociation()
         return FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
                 ?: throw Transport("Wi-Fi Direct not initialized")
@@ -592,7 +590,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     override suspend fun addClient(client: ULong) {
-        rejectAutomaticAssociation()
         FfiCallTimeout.suspendCall {
             val channel = startGate.ensureStarted()
             // FFI-14: this used to `return@suspendCall` for an unknown peer —
@@ -1362,14 +1359,6 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         peerDevices[handle] = deviceAddress
         return handle
     }
-
-    /**
-     * A normal Android app cannot silently resolve a system-owned P2P
-     * invitation or Samsung's Wi-Fi/Direct coexistence decision. Keep every
-     * adapter-owned association route disabled until IRIS has an explicit,
-     * researched and OEM-validated authorization design.
-     */
-    private fun rejectAutomaticAssociation(): Nothing = throw NotSupported()
 
     /**
      * Samsung's Sharing mode can present a system dialog for DNS-SD service

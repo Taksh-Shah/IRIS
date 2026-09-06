@@ -360,3 +360,4 @@ cancelling—not accepting—the stale S24 dialog, a clean patched relaunch show
 no target dialog, no new IRIS CONNECT call, and passive discovery on P2.
 Historical Vivo-only 10/10 evidence is retained but explicitly scoped; cross-OEM
 Wi-Fi Direct delivery requires a new explicit design and hardware revalidation.
+**Iteration 179 (2026-09-06)**: Wi-Fi Direct popup policy updated per operator decision. Explicit `createGroup`/`joinGroup`/`addClient` association calls are available again so a future controlled run may display Android's expected `Invitation to connect` UI. Background DNS-SD/discovery activation remains disabled because live Samsung S24 evidence showed those operations alone trigger the system-owned `Turn off Sharing?` prompt. Updated `hardware_fix_log.md`, `CURRENT_STATE.md`, and `NEXT_ACTION.md`; no Tier-4 completion claimed. Validation pending in this pass.

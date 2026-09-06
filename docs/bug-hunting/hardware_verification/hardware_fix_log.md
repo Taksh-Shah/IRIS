@@ -6242,3 +6242,28 @@ Direct data delivery. The historical Vivo-only 10/10 result is retained but
 not a cross-OEM acceptance claim. The final S24 build ran past the former
 discovery cadence with `wifi_direct.find: not supported` in IRIS logs and no
 new P2P activation call from its process.
+
+## Session 33 (2026-09-06) — Wi-Fi Direct invitation policy decision
+
+**Operator decision:** Android's **“Invitation to connect”** dialog is desired
+for the future controlled Wi-Fi Direct path and must not be treated as a defect.
+The association hard-stop was removed from
+`AndroidWifiDirectTransportAdapter`: explicit `createGroup`, `joinGroup`, and
+`addClient` calls are available again. The unsolicited peer-list auto-connect
+loop remains removed.
+
+**Current safety boundary:** background Wi-Fi Direct advertising/discovery
+(`startDnsSd` and `startDiscovery`) remains disabled. Live Samsung S24 evidence
+showed that those operations alone can trigger the system-owned **“Turn off
+Sharing?”** prompt. A normal third-party APK cannot accept or suppress that
+system decision; it is recorded as an accepted current limitation, not fixed.
+
+**Future hardware procedure:** use an explicit operator-controlled P2P
+association, capture the expected invitation UI/logcat evidence, and separately
+record whether Samsung Sharing blocks the operation. This policy change does
+not claim Tier-4 completion or Wi-Fi Direct delivery.
+
+**References:** Android's public `WifiP2pManager.connect()` contract documents
+that an invitation is sent when the device is already in a P2P group;
+Android's Wi-Fi Direct implementation also depends on OEM framework/HAL and
+firmware behavior. See the Android API/AOSP sources recorded in RES-0021.

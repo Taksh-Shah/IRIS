@@ -24,8 +24,8 @@ mission_description: "Advance IRIS from documented state to production-grade res
 # === CURRENT POSITION ===
 active_node: "WIFIDIRECT-001"
 active_stage: "HARDWARE_VERIFICATION"
-active_action: "Wi-Fi Direct system-dialog containment: replaced unsolicited peer-list connect() calls with passive peer caching after live S24-to-vivo invitation and Samsung Sharing-prompt evidence."
-next_action: "Commit the dialog-containment repair and hardware record; do not claim cross-OEM Tier-2 Wi-Fi Direct delivery until an explicit researched association design is hardware-validated."
+active_action: "Wi-Fi Direct popup policy recorded: explicit association remains available for the expected Android invitation UI; background advertising/discovery stays disabled because Samsung Sharing prompts on those operations."
+next_action: "Validate and commit the popup-policy documentation/code change, then stop at the Tier-4 hardware planning boundary."
 last_transition: "FAILURE_RECOVERY"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
 last_transition_at: "2026-09-06T18:55:00+05:30"
