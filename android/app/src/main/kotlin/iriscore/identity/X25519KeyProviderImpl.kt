@@ -2,7 +2,6 @@ package iriscore.identity
 
 import iriscode.FfiX25519KeyProvider
 import iriscore.util.PeerIdCodec
-import java.security.KeyPairGenerator
 import javax.crypto.KeyAgreement
 
 /**
@@ -18,13 +17,14 @@ class X25519KeyProviderImpl(
 ) : FfiX25519KeyProvider {
 
     /**
-     * The stable X25519 keypair derived from the same [X25519StaticAd] instance.
-     * Because [X25519StaticAd.build] also derives from a lazy keypair, both sides
-     * of the ad binding use the same key across calls within one engine lifetime.
+     * The stable X25519 keypair — THE SAME instance [X25519StaticAd] signs into
+     * the static ad, and (HV-21) the one persisted to disk when the ad was
+     * built with a Context. This used to be a fresh `KeyPairGenerator` generate
+     * here that ignored `ad` entirely, so the engine's key rotated every
+     * process start and every peer's `/addkey`/friend entry silently went
+     * stale on the next cold start.
      */
-    private val keyPair by lazy {
-        KeyPairGenerator.getInstance("X25519").generateKeyPair()
-    }
+    private val keyPair get() = ad.keyPair()
 
     /** 32-byte X25519 public key advertised in the static-ad binding. */
     override fun staticPublicKey(): ByteArray =

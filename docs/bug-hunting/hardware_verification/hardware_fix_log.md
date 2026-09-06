@@ -4912,4 +4912,69 @@ iris-android --lib` didn't compile. One-line stub added.
 `cargo test -p iris-core --lib transport::` 234/234, `ble_advert::` 11/11;
 `cargo test -p iris-android --lib` 8/8. `.so` rebuilt for all three ABIs.
 
-**Landed:** commit `<pending>` (fixes 1–6 + logging + test-mock stub).
+**Landed:** commit `81af3d6` (fixes 1–6 + logging + test-mock stub).
+
+### Session 26 — inbound delivered, keys persist, Tier-2 cold-cycle gate
+
+**The "inbound not delivered" open item — FIXED by fix 5.** With `81af3d6`
+deployed and keys registered both ways, a `/to` + message from P1 (BT off,
+Wi-Fi Direct the only transport) produced on P2:
+`wd.data incoming: frame len=300` → `msg.delivered … hops=0` → `msg.created`
+(P2's ACK) → `iriscode::engine: android: inbound delivered`. Both phones'
+consoles showed the sent and the received message. `/diag`: `wifi-direct-0`
+`state: "Connected"`, one reconciled `LinkedUp` neighbour, and with a
+warm link **63 Mbps measured**. Fix 5 (the Kotlin `verifiedCache` 0xFF
+padding) was the missing piece — before it the inbound frame was
+attributed to a PeerId the envelope layer had never seen and silently
+dropped.
+
+**7. X25519 static keypair regenerated every process start.**
+`X25519KeyProviderImpl` had its own `private val keyPair by lazy {
+KeyPairGenerator.getInstance("X25519").generateKeyPair() }` and **ignored
+the `X25519StaticAd` it was constructed with entirely** — so the engine's
+key-agreement key rotated on every cold start, and every peer's
+`/addkey` / persisted-friend entry silently went stale (addressed
+messages stopped decrypting until re-keyed by hand). This is *not*
+Wi-Fi-Direct-specific — it broke every addressed-message path across
+restarts, BLE included. Fix: `X25519StaticAd` now persists its keypair —
+PKCS#8 private key wrapped under an AndroidKeyStore AES-GCM key in
+`iris_x25519_static.bin` under `getNoBackupFilesDir()`, byte-for-byte the
+same scheme `KeystoreEd25519`'s software identity already uses — and
+`X25519KeyProviderImpl` uses `ad.keyPair()` (the persisted one) instead of
+its own generate. Verified: `/x25519` returns the same key across three
+force-stop/relaunch cycles (`iris.x25519 restored persisted keypair`).
+
+**8. The app's `/addkey` didn't persist.** `MeshRepository.addPeerKey`
+only touched the in-memory engine key directory — a fresh engine after a
+cold start had none of it (the persisted `iris_known_peers.json` re-feed
+was `IrisSnippet`-only, HV-34). Added `KnownPeersStore` (same JSON file
+the snippet uses), `addPeerKey` writes through to it, and `startMesh`
+re-feeds every entry via `registerPeerKey` before `startAll()`. Now
+`/addkey` once → trusted forever across restarts, like the bench harness.
+
+**Tier-2 cold-cycle gate (loop §2): the real HW test — 🟢 10/10.** Script
+per cycle: force-stop both apps → relaunch → poll `dumpsys wifip2p` until
+*both* report `groupFormed: true` → send P1→P2, assert P2 `msg.delivered`
+→ send P2→P1, assert P1 `msg.delivered` → grep both logcats for
+"invitation to connect". **No manual keying between cycles** (fixes 7+8
+make the keys survive). Result:
+
+| cycle | group forms | P1→P2 delivered | P2→P1 delivered | OS dialog |
+|-------|-------------|-----------------|-----------------|-----------|
+| 1  | 40 s | ✓ | ✓ | none |
+| 2–9 | 10 s each | ✓ | ✓ | none |
+| 10 | 15 s | ✓ | ✓ | none |
+
+**10/10.** Exactly one group per cycle, messages both ways every time, no
+OS invitation dialog ever (the operator's hard pass/fail criterion).
+Cycle 1 is slower (40 s) because both phones start with no group and run
+the device-name-ordered collision resolution from scratch; cycles 2+ are
+fast because P2 keeps its autonomous GO alive across P1's restart and P1
+just re-joins (`onGroupFormed isGO=false` immediately). This is exactly
+the persistent-autonomous-GO reconnect pattern the Wi-Fi Direct research
+recommends, happening naturally.
+
+App JVM unit tests (`:app:testDebugUnitTest`) green. iris-core / iris-android
+Rust tests unchanged (Kotlin-only session).
+
+**Landed:** commit `<pending>` (fixes 7–8 + 10/10 gate).

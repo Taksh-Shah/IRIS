@@ -35,6 +35,7 @@ class MeshRepository @Inject constructor(
     @NodeId private val nodeId: ByteArray,
     private val outbox: RelayOutbox,
     private val keystore: KeystoreEd25519,
+    private val knownPeers: KnownPeersStore,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -55,6 +56,12 @@ class MeshRepository @Inject constructor(
     /** Bring the three transports up (BLE + Wi-Fi Aware + Wi-Fi Direct). */
     fun startMesh() {
         try {
+            // HV-21: re-feed every persisted trusted key into the fresh engine
+            // key directory BEFORE starting transports, so addressed mail to a
+            // known peer seals on the first send after a cold start.
+            for ((peerHex, x25519Hex) in knownPeers.all()) {
+                runCatching { engine.get().registerPeerKey(peerHex, x25519Hex) }
+            }
             engine.get().startAll()
             _uiState.update { it.copy(status = MeshStatus.RUNNING) }
         } catch (e: Exception) {
@@ -157,9 +164,15 @@ class MeshRepository @Inject constructor(
     fun staticX25519(): String =
         engine.get().staticX25519Pubkey().joinToString("") { "%02x".format(it) }
 
-    /** HV-89 interim: trust a peer's X25519 key so addressed mail to it can be sealed. */
-    fun addPeerKey(peerHex: String, x25519Hex: String) =
+    /**
+     * HV-89 interim: trust a peer's X25519 key so addressed mail to it can be
+     * sealed. HV-21: also persisted so the trust survives an app restart
+     * ([startMesh] re-feeds it).
+     */
+    fun addPeerKey(peerHex: String, x25519Hex: String) {
         engine.get().registerPeerKey(peerHex, x25519Hex)
+        runCatching { knownPeers.put(peerHex, x25519Hex) }
+    }
 
     /** Spill the relay outbox into the engine (WorkManager entrypoint). */
     suspend fun drainRelayOutbox(): Int {

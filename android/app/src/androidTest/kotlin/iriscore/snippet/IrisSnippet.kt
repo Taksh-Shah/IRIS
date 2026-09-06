@@ -34,7 +34,7 @@ class IrisSnippet : Snippet {
         InstrumentationRegistry.getInstrumentation().targetContext
     }
     private val keystore by lazy { KeystoreEd25519(context) }
-    private val x25519Provider by lazy { X25519KeyProviderImpl(X25519StaticAd(keystore)) }
+    private val x25519Provider by lazy { X25519KeyProviderImpl(X25519StaticAd(keystore, context)) }
 
     /**
      * HV-34: persisted "known peers" — nodeIdHex -> x25519PubHex. IRIS does no

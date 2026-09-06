@@ -67,8 +67,11 @@ object IrisCoreModule {
      */
     @Provides
     @Singleton
-    fun provideFfiX25519KeyProvider(keystore: KeystoreEd25519): FfiX25519KeyProvider =
-        X25519KeyProviderImpl(X25519StaticAd(keystore))
+    fun provideFfiX25519KeyProvider(
+        @ApplicationContext context: Context,
+        keystore: KeystoreEd25519,
+    ): FfiX25519KeyProvider =
+        X25519KeyProviderImpl(X25519StaticAd(keystore, context))
 
     @Provides
     @Singleton

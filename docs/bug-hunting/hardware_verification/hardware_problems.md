@@ -1782,14 +1782,29 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 > "user must tap nothing to connect" as a pass/fail criterion of the Tier-2
 > hardware gate from this session forward, not a nice-to-have.
 
-> **Tier-2 gate status (Session 22, 2026-09-05): 🔒 BLOCKED, not closed.**
-> Loop §2 gate: "cold-start both phones 10× (alternating power-on order) →
-> exactly one group forms → messages flow both ways every time." HV-19's
-> election and HV-22's re-formation are implemented and pass all L1 tests
-> (27 `wifi_direct` unit tests, 796/796 `iris-core` total), but **cannot be
-> hardware-verified**: Wi-Fi Direct DNS-SD discovery finds `peers_seen=0` on
-> both bench phones in every attempt, so no group is ever reachable for the
-> election/re-formation logic to act on. Two real hardware attempts were
+> **Tier-2 gate status (Session 26, 2026-09-06): 🟢 PASSED 10/10.**
+> Loop §2 gate: "cold-start both phones 10× → exactly one group forms →
+> messages flow both ways every time" + the no-OS-dialog pass/fail
+> criterion. Ran the real cold-cycle script (force-stop both apps →
+> relaunch → poll `dumpsys wifip2p` until *both* `groupFormed: true` →
+> P1→P2 send asserts P2 `msg.delivered` → P2→P1 asserts P1 `msg.delivered`
+> → grep both logcats for "invitation to connect"), **Bluetooth disabled on
+> both phones so Wi-Fi Direct is the only transport**, and **no manual
+> keying between cycles**. Result: **10/10** — group forms every cycle
+> (40 s cycle 1 from cold, 10–15 s cycles 2+ because P2 keeps its
+> autonomous GO alive across P1's restart), P1→P2 and P2→P1 both
+> `msg.delivered` every cycle, **zero OS invitation dialogs**. The path is
+> now the pivoted design: plain `discoverPeers()`/`requestPeers()` (no
+> DNS-SD), device-name-ordered `connect()` collision resolution, in-band
+> beacon handshake over the GO socket, framed messaging over that socket.
+> The Session-22 blocker (DNS-SD `peers_seen=0`) was fixed by dropping
+> DNS-SD entirely — see the HV-21 entry and `hardware_fix_log.md`
+> Sessions 24–26.
+>
+> _(Session 22, 2026-09-05 — superseded): 🔒 BLOCKED — HV-19's
+> election and HV-22's re-formation passed all L1 tests but could not be
+> hardware-verified because Wi-Fi Direct DNS-SD discovery found
+> `peers_seen=0` on both bench phones in every attempt.)_ Two real hardware attempts were
 > made this session (both failed the same way): a 2-cycle cold-start run
 > after enabling Wi-Fi (was off on both phones — fixed, but did not resolve
 > discovery) and a second 2-cycle run after a full radio power-cycle
@@ -1869,8 +1884,18 @@ Airplane mode is a mechanical superset of the BT toggle. **Proceeding to Tier 2.
 
 ### HV-19 — Two peers both call `createGroup` → GO/GO conflict; there is no election
 
-- **Fix status:** ✅ Fixed · HW-PENDING (blocked, see below) · commit `<pending>`
-  · 2026-09-04 · Session 22 · **deterministic PeerId election.**
+- **Fix status:** 🟢 HW-VERIFIED · commit `<pending>` (superseded impl) ·
+  2026-09-06 · Session 26 · **10/10 cold-start cycles form exactly one group,
+  no OS dialog** — see the `## Tier 2` gate note. The *shipping* election on
+  real hardware is the Kotlin device-name-ordered `connect()` collision
+  resolution in `AndroidWifiDirectTransportAdapter.onPeersChanged` (lower
+  `deviceName` dials first, higher joins the in-progress negotiation), since
+  a normal app cannot read its own P2P MAC for the Rust `should_be_go`
+  PeerId comparison to use a real local id. The Rust `should_be_go`
+  deterministic election still runs and its L1 tests still pass; it is the
+  fallback / already-identified-peer path.
+- **Prior status:** ✅ Fixed · HW-PENDING (blocked) · Session 22 ·
+  **deterministic PeerId election.**
   `WifiDirectTransport` now stashes its own PeerId (`local_peer_id`, from
   `start_advertising`); `connect()`'s new `should_be_go(peer)` compares it
   against the peer's candidate id (both converted to the same `peer_short`
@@ -1964,7 +1989,25 @@ so a restarted GO is the same group; or stop using the named-GO path entirely
 
 ### HV-21 — DNS-SD TXT-record discovery is OEM-fragile; the current code has three stacked workarounds and still races
 
-- **Fix status:** ⬜ · **Session 22 (2026-09-05) fresh evidence — root-cause
+- **Fix status:** 🟢 HW-VERIFIED · commit `<pending>` (+ `81af3d6`,
+  `c7daad2`, `4ecc60c`, `80cb8f5`) · 2026-09-06 · Session 26 · **DNS-SD is
+  gone.** Peer discovery is now plain `discoverPeers()` / `requestPeers()`
+  (`WifiP2pManager.PeerListListener`), and identity is carried in an in-band
+  beacon handshake over the GO TCP socket *after* connecting
+  (`writeHandshakeFrame`/`readHandshakeFrame` extended from a bare MAC
+  string to the full 22-byte IRIS beacon), not a pre-connect DNS-SD TXT
+  record. "Connect first, verify after": dial any discovered
+  Wi-Fi-Direct-capable device, handshake, keep the link only if it answers
+  with a valid IRIS beacon. `start_dns_sd` is kept as a non-fatal
+  vestigial call (its failure no longer takes the transport down).
+  **Verified: `## Tier 2` gate 10/10 cold cycles, `peers_seen` 0→1 both
+  directions every cycle** — the Session-22 `peers_seen=0` blocker is
+  fully resolved. Six supporting fixes (CONNECTION_CHANGED null extras,
+  device-name collision resolution, BLE↔Wi-Fi-Direct candidate-PeerId
+  reconciliation, inbound-frame attribution, the `iriscode=debug` log
+  filter, X25519 key + known-peers persistence) — see `hardware_fix_log.md`
+  Sessions 24–26.
+- **Prior status:** ⬜ · **Session 22 (2026-09-05) fresh evidence — root-cause
   confirmed, not yet fixed:** ran the bench with a clean Wi-Fi radio
   (`svc wifi disable`/`enable` on both phones, ruling out "radio just off" —
   it *was* off going in, which explains earlier sessions' "radio switched
@@ -2122,8 +2165,16 @@ delivery is the single most OEM-variable part of Android Wi-Fi P2P.
 
 ### HV-22 — `WIFI_P2P_CONNECTION_CHANGED` false → immediate teardown, but no re-formation attempt
 
-- **Fix status:** ✅ Fixed · HW-PENDING (blocked, see below) · commit `<pending>`
-  · 2026-09-04 · Session 22. `WifiDirectTransport` gained a `poll_health()`
+- **Fix status:** 🟢 HW-VERIFIED · commit `<pending>` · 2026-09-06 ·
+  Session 26 · re-formation confirmed by the `## Tier 2` gate: every cycle
+  force-stops both apps (dropping the group), and cycles 2–10 re-form and
+  re-deliver messages in 10–15 s with no manual intervention — P1 rejoins
+  P2's surviving autonomous GO, and the `CONNECTION_CHANGED` handler
+  (rewritten in `81af3d6` to use `requestConnectionInfo()`/
+  `requestGroupInfo()` since the intent extras are null on Android 10+) now
+  fires `onGroupFormed` and stands the socket back up.
+- **Prior status:** ✅ Fixed · HW-PENDING (blocked) · Session 22.
+  `WifiDirectTransport` gained a `poll_health()`
   override (generic ~5s health-tick call site already used by BLE's HV-99
   fix, confirmed at `discovery/mod.rs:564`): it fetches the adapter's current
   `group_info()` and tears down any link whose handle is no longer the GO or
