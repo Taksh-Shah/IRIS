@@ -1,7 +1,7 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T09:30:00+05:30
+**Last updated**: 2026-09-06T10:30:00+05:30
 
 ## Current hardware phase
 
@@ -13,9 +13,11 @@ follow-up is active. The two-phone bench is connected and identified in
 - Conditions: Bluetooth disabled; exactly one Wi-Fi Direct group; bidirectional
   delivery; persistent keys; no OS invitation dialog.
 - Mobly Tier-2 test: **HW-PENDING** on this Vivo/OriginOS pair because
-  `discoverPeers()` returns no peers from the instrumentation context.
+  the corrected same-ID harness still fails reliable peer delivery after three
+  bounded attempts; see `FAIL-0007.md`.
 - Gate of record: `docs/bug-hunting/hardware_verification/tier2_wifidirect_cold_cycle.sh`.
-- No source implementation change is implied by this state reconciliation.
+- No production source implementation change is authorized by this blocked
+  evidence; fresh failure-focused research/design is required first.
 
 ## Active Node: SAT-001 — Satellite Gateway Transport
 

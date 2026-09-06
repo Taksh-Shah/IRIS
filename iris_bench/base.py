@@ -131,6 +131,20 @@ class IrisBenchBase(base_test.BaseTestClass):
         src.log.info("sent id=%s -> %s : %s", msg_id, dst.label, result)
         return result
 
+    def send_once(self, src, dst, text, priority=4):
+        """Create exactly one message and return its ID for later polling."""
+        msg_id = src.iris.sendText(dst.iris.nodeId(), text, priority)
+        src.log.info("queued id=%s -> %s", msg_id, dst.label)
+        return msg_id
+
+    def await_message(self, dst, msg_id, timeout_ms=2000):
+        """Poll delivery for an existing message ID without creating traffic."""
+        import json
+
+        result = json.loads(dst.iris.awaitDelivered(msg_id, timeout_ms))
+        result["messageId"] = msg_id
+        return result
+
     def capture_evidence(self, tag):
         evidence.capture(self.ads, self.session_dir, tag)
 

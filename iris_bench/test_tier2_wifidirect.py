@@ -18,6 +18,13 @@ discovery to the `am instrument` context, not the app). Left wired so a
 future harness fix (or a non-vivo device) can flip it green; run the shell
 script for the actual gate until then.
 
+The harness now allocates one message ID per direction and polls those same
+IDs for the complete bounded cycle; this avoids turning a transport delay into
+new-message/replay noise. The correction is still not a green result: the
+2026-09-06 Vivo bench runs reached Connected/live-socket states but did not
+produce reliable peer delivery, so the harness remains HW-PENDING and the
+finding is blocked pending a fresh production data-path investigation.
+
 `iris_bench` cannot literally power-cycle a phone; the automated proxy for
 "cold start" is a full engine stop/start on both phones.
 
@@ -130,10 +137,18 @@ class Tier2WifiDirect(IrisBenchBase):
 
             t0 = time.monotonic()
             fwd = rev = None
+            fwd_id = self.send_once(self.p1, self.p2, f"wd-fwd-{i}")
+            rev_id = self.send_once(self.p2, self.p1, f"wd-rev-{i}")
             wd_p1 = wd_p2 = "unknown"
             while time.monotonic() - t0 < _BUDGET_S:
-                fwd = self.send_and_await(self.p1, self.p2, f"wd-fwd-{i}", timeout_ms=6000)
-                rev = self.send_and_await(self.p2, self.p1, f"wd-rev-{i}", timeout_ms=6000)
+                remaining_ms = max(
+                    250,
+                    min(2000, int((_BUDGET_S - (time.monotonic() - t0)) * 1000)),
+                )
+                if not (fwd and fwd.get("delivered")):
+                    fwd = self.await_message(self.p2, fwd_id, remaining_ms)
+                if not (rev and rev.get("delivered")):
+                    rev = self.await_message(self.p1, rev_id, remaining_ms)
                 wd_p1 = self._wifi_direct_state(self.p1)
                 wd_p2 = self._wifi_direct_state(self.p2)
                 if fwd.get("delivered") and rev.get("delivered"):

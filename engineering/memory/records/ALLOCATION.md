@@ -135,6 +135,9 @@
 - RES-0027: LORA-001 LoRa transport SOTA — allocated iter ~161 (RESEARCH COMPLETE 2026-08-19); websearch + primary-source passes (WPC G.S.R. 853(E) 2021 Table-I 865-868 25 mW e.r.p./1% duty L1-confirmed via thc.nic.in/G25977.pdf; LoRaWAN IN865 30 dBm = network-plan only; AN1200.13 sensitivity; BLE-GATT/USB-SLIP bridge; DutyCycleTracker; Meshtastic override NOT followed); verdict PROCEED; DESIGN inputs D-1..D-7 -> LORA_001_DESIGN.md (iter ~162).
  | Research | RES-0028 | done | SAT-001 satellite gateway transport research (Iridium SBD/AT-modem target, envelope verdict, cost guard, security, India regulatory) | 2026-08-22 |
 
+### Research additions
+- RES-0029: WIFIDIRECT-001 Mobly readiness/observation failure research — allocated 2026-09-06; Android Wi-Fi Direct lifecycle, Mobly asynchronous RPC guidance, and fresh two-phone logcat evidence; verdict ADOPT-WITH-CONDITION; harness must poll one message ID through the cycle budget rather than create new IDs while the application socket is attaching.
+
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)
 - DEC-0002: Ed25519 for Identity (ADR-0002)

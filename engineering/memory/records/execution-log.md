@@ -313,3 +313,14 @@ the distinction that the Mobly Tier-2 harness remains HW-PENDING because
 instrumented `discoverPeers()` is attributed to the Vivo/OriginOS
 instrumentation context. Updated the execution projections, hardware tracker,
 hardware fix log, and harness README. No source, APK, or device state changed.
+
+**2026-09-06 — Mobly Tier-2 bounded hardware pass (WIFIDIRECT-001).** Followed
+the hardware loop and RES-0029 research. Attempt `run-20260906-1001` exposed
+new-message/replay noise; the harness was corrected to allocate one message ID
+per direction and poll the same IDs. Attempt `run-20260906-1010` still failed
+with P2 `Degraded` and `radio is switched off` evidence. After an ordinary
+Wi-Fi radio reset, attempt `run-20260906-1020` reached Connected/live-socket on
+P1 but still produced no matching P2 delivery. FAIL-0007 records the evidence
+and disposition. Shipping-app Tier-2 remains HW-verified 10/10; Mobly remains
+HW-PENDING/BLOCKED. No production source change was made. NEXT: fresh
+failure-focused research/design before another retry or production fix.

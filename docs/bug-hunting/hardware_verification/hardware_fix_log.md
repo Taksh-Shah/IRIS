@@ -5032,6 +5032,45 @@ disabled:
 
 **Landed:** commit `<pending>` (gate script + harness scaffolding).
 
+### Session 26 continued — Mobly Tier-2 bounded attempts — 2026-09-06
+
+Followed `hardware_problems_loop.md` and the research-before-retry rule on the
+connected P1/P2 bench. The shipping-app Tier-2 gate remains the evidence of
+record at **10/10**; these runs are specifically the Mobly harness and do not
+change that gate.
+
+- **Attempt 1 — `run-20260906-1001`: FAIL, cycle 1/10.** The harness created a
+  new message ID on every retry. Both phones eventually reported Connected,
+  but P1 logged `no live socket`/`transport: busy`; P2 later logged replay
+  detection. Evidence: `evidence/run-20260906-1001/` and
+  `evidence/mobly_logs/iris_2phone/09-06-2026_10-01-07-983/`.
+- **Research and correction:** RES-0029 and FAIL-0006 record the Android
+  Wi-Fi P2P asynchronous connection semantics and Mobly event/wait evidence.
+  The harness was corrected to allocate one ID per direction and poll the same
+  IDs for the bounded 60-second cycle; production retry/replay behavior was
+  not changed.
+- **Attempt 2 — `run-20260906-1010`: FAIL, cycle 1/10.** Same-ID polling
+  removed the retry-noise hypothesis, but P2 became `Degraded`; logcat records
+  `connect_failed ... radio is switched off`. Evidence:
+  `evidence/run-20260906-1010/FAIL-test_wifi_direct_cold_start_election/`.
+  Fresh failure research confirmed that ordinary Wi-Fi enabled state and the
+  framework P2P state are distinct. Both radios were reset before the next
+  bounded attempt.
+- **Attempt 3 — `run-20260906-1020`: FAIL, cycle 1/10.** Both phones reached
+  Connected; P1 logged group formation, a live socket, and `connect_ok`, and
+  handed the original message to transport, but P2 produced no matching
+  delivery. Evidence:
+  `evidence/run-20260906-1020/FAIL-test_wifi_direct_cold_start_election/`.
+
+**Disposition:** Mobly Tier-2 remains **HW-PENDING/BLOCKED after three serious
+attempts**. The failure is no longer attributable only to message-ID churn or
+foreground discovery. Do not modify production transport or claim harness
+completion until a fresh data-path research/design pass explains the missing
+peer delivery and defines the next controlled experiment.
+
+**Records:** `engineering/memory/records/research/RES-0029.md`,
+`FAIL-0006.md`, and `FAIL-0007.md`.
+
 ## Documentation reconciliation — 2026-09-06
 
 This pass refreshed the stale loop projections against repository head

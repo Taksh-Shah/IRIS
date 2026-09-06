@@ -1,0 +1,315 @@
+WifiP2pService:
+ total records=300
+ rec[0]: time=09-06 07:46:56.430 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[1]: time=09-06 07:46:56.973 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[2]: time=09-06 07:48:09.544 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[3]: time=09-06 07:48:19.786 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[4]: time=09-06 07:48:20.034 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[5]: time=09-06 07:49:32.208 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[6]: time=09-06 07:49:32.212 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[7]: time=09-06 07:49:42.626 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[8]: time=09-06 07:49:46.234 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[9]: time=09-06 07:59:34.366 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[10]: time=09-06 07:59:34.379 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[11]: time=09-06 07:59:44.364 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[12]: time=09-06 07:59:47.736 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[13]: time=09-06 08:00:02.625 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[14]: time=09-06 08:02:13.794 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[15]: time=09-06 08:02:14.518 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[16]: time=09-06 08:03:31.400 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[17]: time=09-06 08:04:07.212 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[18]: time=09-06 08:04:07.423 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[19]: time=09-06 08:04:51.983 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[20]: time=09-06 08:04:51.994 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[21]: time=09-06 08:05:00.532 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[22]: time=09-06 08:05:01.052 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[23]: time=09-06 08:06:53.726 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[24]: time=09-06 08:07:04.522 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[25]: time=09-06 08:07:04.816 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[26]: time=09-06 08:16:35.111 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[27]: time=09-06 08:21:41.047 processed=P2pEnabledState org=InactiveState dest=P2pDisablingState what=143377(0x23011)
+ rec[28]: time=09-06 08:21:41.047 processed=P2pDisablingState org=P2pDisablingState dest=P2pDisabledState what=147458(0x24002)
+ rec[29]: time=09-06 08:29:15.316 processed=P2pDisabledState org=P2pDisabledState dest=InactiveState what=139292(0x2201c)
+ rec[30]: time=09-06 08:29:20.365 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[31]: time=09-06 08:29:20.998 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[32]: time=09-06 08:29:35.989 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[33]: time=09-06 08:31:29.897 processed=InactiveState org=InactiveState dest=ProvisionDiscoveryState what=139271(0x22007)
+ rec[34]: time=09-06 08:33:29.923 processed=GroupCreatingState org=ProvisionDiscoveryState dest=InactiveState what=143361(0x23001)
+ rec[35]: time=09-06 08:33:40.028 processed=InactiveState org=InactiveState dest=ProvisionDiscoveryState what=139271(0x22007)
+ rec[36]: time=09-06 08:33:40.062 processed=ProvisionDiscoveryState org=ProvisionDiscoveryState dest=GroupNegotiationState what=147490(0x24022)
+ rec[37]: time=09-06 08:33:43.760 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[38]: time=09-06 10:01:27.105 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[39]: time=09-06 10:02:07.429 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139271(0x22007)
+ rec[40]: time=09-06 10:02:08.099 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[41]: time=09-06 10:02:08.225 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[42]: time=09-06 10:02:08.234 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+ rec[43]: time=09-06 10:02:16.435 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=147485(0x2401d)
+ rec[44]: time=09-06 10:02:16.577 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[45]: time=09-06 10:03:23.713 processed=GroupCreatedState org=GroupCreatedState dest=InactiveState what=147486(0x2401e)
+ rec[46]: time=09-06 10:03:24.265 processed=InactiveState org=InactiveState dest=GroupNegotiationState what=139277(0x2200d)
+ rec[47]: time=09-06 10:03:24.485 processed=GroupNegotiationState org=GroupNegotiationState dest=GroupCreatedState what=143395(0x23023)
+ rec[48]: time=09-06 10:03:25.925 processed=GroupCreatedState org=GroupCreatedState dest=OngoingGroupRemovalState what=139280(0x22010)
+ rec[49]: time=09-06 10:03:25.948 processed=GroupCreatedState org=OngoingGroupRemovalState dest=InactiveState what=147486(0x2401e)
+curState=InactiveState
+mWifiP2pInfo groupFormed: false isGroupOwner: false groupOwnerAddress: null
+mGroup null
+mSavedPeerConfig 
+ address: 
+ wps:  setup: 0
+ BSSID: null
+ pin: null
+
+ groupOwnerIntent: -1
+ persist: 17
+ networkName: null
+ passphrase: <empty>
+ groupOwnerBand: 0
+mGroupsnetwork: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 1
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 2
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 3
+ frequency: 0
+network: DIRE*********
+ isGO: false
+ GO: Device: null
+ deviceAddress: 58:**:**:**:80:17
+ primary type: null
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 4
+ wfdInfo: null
+ interface: null
+ networkId: 4
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 5
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 6
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 7
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 8
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 9
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 10
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 11
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 12
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 13
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 14
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 15
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 17
+ frequency: 0
+network: DIRE*********
+ isGO: true
+ GO: Device: vivo*********
+ deviceAddress: 0a:**:**:**:5f:98
+ primary type: 10-0050F204-5
+ secondary type: null
+ wps: 0
+ grpcapab: 0
+ devcapab: 0
+ status: 3
+ wfdInfo: null
+ interface: null
+ networkId: 0
+ frequency: 0
+
+
+mAutonomousGroup true
+mJoinExistingGroup false
+mDiscoveryStarted false
+mDetailedState IDLE
+mTemporarilyDisconnectedWifi false
+mServiceDiscReqId null
+mDeathDataByBinder {android.os.BinderProxy@ea54860=deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda0@39f26d1, messenger=android.os.Messenger@1e236ec, worksource=WorkSource{10363 org.iris.mesh}, android.os.BinderProxy@557d491=deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda0@f3d6536, messenger=android.os.Messenger@1e236ec, worksource=WorkSource{10363 org.iris.mesh}, android.os.Binder@feda6d5=deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda0@957ab5, messenger=android.os.Messenger@1e236ec, worksource=WorkSource{1000 android}, android.os.BinderProxy@460753b=deathRecipient=com.android.server.wifi.p2p.WifiP2pServiceImpl$$ExternalSyntheticLambda0@fbebc37, messenger=android.os.Messenger@1e236ec, worksource=WorkSource{10363 org.iris.mesh}}
+mClientInfoList 4
+
