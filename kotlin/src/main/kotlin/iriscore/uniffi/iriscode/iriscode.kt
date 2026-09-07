@@ -1029,7 +1029,15 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_iriscode_checksum_method_ffiinboxlistener_on_message(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_add_internet_lan_peer(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_adopt_peer_advertisement(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_advertisement_signable_bytes(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_broadcast_text(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_compute_sas(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_drop_all_links(
     ): Int
@@ -1049,11 +1057,17 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_start_all(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_start_internet_lan_listener(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_static_x25519_pubkey(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_stop_all(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_subscribe_inbox(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_trust_level(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_verify_peer(
     ): Int
     external fun uniffi_iriscode_checksum_method_ffibleadapter_start_scan(
     ): Int
@@ -1193,7 +1207,15 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: 
 ): Long
 external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,`x25519Provider`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+external fun uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`address`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_method_irisengine_adopt_peer_advertisement(`ptr`: Long,`advertisement`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_advertisement_signable_bytes(`ptr`: Long,`x25519Pubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_broadcast_text(`ptr`: Long,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_compute_sas(`ptr`: Long,`theirIdentityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_drop_all_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1207,21 +1229,23 @@ external fun uniffi_iriscode_fn_method_irisengine_set_internet_network_available
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_set_internet_relay_endpoints(`ptr`: Long,`endpoints`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr`: Long,`macStr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr`: Long,`macStr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-external fun uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
-): Short
-external fun uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`address`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
-): Unit
-external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_start_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Int
 external fun uniffi_iriscode_fn_method_irisengine_static_x25519_pubkey(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_stop_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_subscribe_inbox(`ptr`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_method_irisengine_trust_level(`ptr`: Long,`identityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_verify_peer(`ptr`: Long,`identityPubkey`: RustBuffer.ByValue,`expectedX25519Pubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_clone_ffibleadapter(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1469,7 +1493,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffiinboxlistener_on_message() != 54918) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_add_internet_lan_peer() != 52453) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_adopt_peer_advertisement() != 7745) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_advertisement_signable_bytes() != 3902) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_iriscode_checksum_method_irisengine_broadcast_text() != 28560) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_compute_sas() != 19209) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_drop_all_links() != 16155) {
@@ -1499,6 +1535,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_irisengine_start_all() != 5995) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_start_internet_lan_listener() != 12790) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_iriscode_checksum_method_irisengine_static_x25519_pubkey() != 16792) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1506,6 +1545,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_subscribe_inbox() != 25795) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_trust_level() != 59948) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_verify_peer() != 27832) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_ffibleadapter_start_scan() != 7550) {
@@ -6406,6 +6451,42 @@ public object FfiConverterTypeFfiX25519KeyProvider: FfiConverter<FfiX25519KeyPro
 public interface IrisEngineInterface {
     
     /**
+     * Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
+     * transport can reach it via plain TCP directly, without routing through
+     * the relay.  `peer_id_hex` is the 64-hex peer identity from the NSD TXT
+     * record; `address` is `"host:port"` (numeric IP, no DNS resolution).
+     */
+    fun `addInternetLanPeer`(`peerIdHex`: kotlin.String, `address`: kotlin.String)
+    
+    /**
+     * Trusted-peers: adopt a peer's signed key advertisement — scanned via
+     * QR or typed in manually — into the shared trust store. Returns the
+     * adoption outcome so the UI can react; in particular
+     * `FfiAdoptionOutcome::KeyChangeWarn` means this identity previously
+     * presented a *different* static key with no valid rotation proof and
+     * must block sending until the operator re-verifies out of band
+     * (`verify_peer`) — see PRY-18 in `TrustStore::adopt_advertisement`.
+     */
+    fun `adoptPeerAdvertisement`(`advertisement`: FfiPeerAdvertisement): FfiAdoptionOutcome
+    
+    /**
+     * Trusted-peers: the canonical bytes this node must sign (with its own
+     * Keystore-backed Ed25519 key, via the existing `FfiCryptoSigner`) to
+     * produce a [`crate::trust::FfiPeerAdvertisement`] a peer can adopt.
+     * `x25519_pubkey` is this node's own static X25519 key
+     * (`static_x25519_pubkey()`). Kotlin signs the returned bytes verbatim —
+     * no CBOR knowledge needed on the Kotlin side, mirroring how
+     * `FfiCryptoSigner` already signs opaque envelope bytes — then builds
+     * `FfiPeerAdvertisement { identity_pubkey: node_id(), x25519_pubkey,
+     * key_gen_counter: 0, valid_until: 0, sig }` locally to show as this
+     * node's pairing code (`/myadvert`). `key_gen_counter`/`valid_until` are
+     * fixed at 0 for a first-pairing advertisement (no rotation support in
+     * this flow yet), so both sides must agree on those two constants —
+     * changing them here would silently break every already-issued code.
+     */
+    fun `advertisementSignableBytes`(`x25519Pubkey`: kotlin.ByteArray): kotlin.ByteArray
+    
+    /**
      * HV-41: send to every peer in range rather than one addressed recipient.
      * The core (`deliver_or_relay`/`is_broadcast`) already treats an
      * empty `recipient_id` as "deliver locally AND relay to everyone" — this
@@ -6414,6 +6495,16 @@ public interface IrisEngineInterface {
      * message id on acceptance, exactly like `send_text`.
      */
     fun `broadcastText`(`text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * Trusted-peers: the 5-character order-independent Short Authentication
+     * String (TRUST_MODEL.md) between this node and
+     * `their_identity_pubkey`. Both phones display the same code; the
+     * operator compares them (visually after a QR scan, or verbally) before
+     * calling `verify_peer` — matching confirms neither key was substituted
+     * in transit.
+     */
+    fun `computeSas`(`theirIdentityPubkey`: kotlin.ByteArray): kotlin.String
     
     /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
@@ -6454,24 +6545,7 @@ public interface IrisEngineInterface {
      * stays in the platform layer so network binding remains Android-aware.
      */
     fun `setInternetRelayEndpoints`(`endpoints`: List<kotlin.String>)
-
-    /**
-     * Tier-5 / HV-43: start the local LAN TCP listener and return its bound
-     * port. Advertise this port via `_iris._tcp` NSD so same-LAN peers can
-     * connect directly (plain-TCP path). Idempotent — repeated calls return
-     * the same port.
-     */
-    fun `startInternetLanListener`(): kotlin.UShort
-
-    /**
-     * Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
-     * transport routes sends to it via plain TCP directly, bypassing the relay.
-     * `peerIdHex` is the 64-hex peer identity from the NSD TXT record;
-     * `address` is `"host:port"` (numeric IP).
-     */
-    @Throws(IrisFfiException::class)
-    fun `addInternetLanPeer`(`peerIdHex`: kotlin.String, `address`: kotlin.String)
-
+    
     /**
      * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
      * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
@@ -6501,6 +6575,14 @@ public interface IrisEngineInterface {
     fun `startAll`()
     
     /**
+     * Tier-5 / HV-43: start the local LAN TCP listener and return its bound
+     * port. The port is advertised via Android NSD (`_iris._tcp`) so that
+     * peers on the same infrastructure Wi-Fi can connect directly (plain-TCP
+     * path, no relay). Idempotent — repeated calls return the same port.
+     */
+    fun `startInternetLanListener`(): kotlin.UShort
+    
+    /**
      * This node's 32-byte X25519 static public key as 64-hex — the value a
      * peer must `register_peer_key` before it can send us addressed mail
      * (HV-89 interim, until the discovery handshake carries it). `/x25519`.
@@ -6518,6 +6600,20 @@ public interface IrisEngineInterface {
      * is invoked from a task on the engine's runtime.
      */
     fun `subscribeInbox`(`listener`: FfiInboxListener)
+    
+    /**
+     * Trusted-peers: current trust level for a peer's 32-byte Ed25519
+     * identity key (`Unknown` if the peer has no advertisement on file).
+     */
+    fun `trustLevel`(`identityPubkey`: kotlin.ByteArray): FfiTrustLevel
+    
+    /**
+     * Trusted-peers: out-of-band (QR/SAS) confirmation, promoting a peer to
+     * `Verified`. `expected_x25519_pubkey` must be the exact key the
+     * operator confirmed — confirming the wrong key fails loudly rather
+     * than silently trusting it (TRUST_MODEL.md RT-010).
+     */
+    fun `verifyPeer`(`identityPubkey`: kotlin.ByteArray, `expectedX25519Pubkey`: kotlin.ByteArray)
     
     companion object
 }
@@ -6639,6 +6735,77 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
     
     /**
+     * Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
+     * transport can reach it via plain TCP directly, without routing through
+     * the relay.  `peer_id_hex` is the 64-hex peer identity from the NSD TXT
+     * record; `address` is `"host:port"` (numeric IP, no DNS resolution).
+     */
+    @Throws(IrisFfiException::class)override fun `addInternetLanPeer`(`peerIdHex`: kotlin.String, `address`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(
+        it,
+        FfiConverterString.lower(`peerIdHex`),FfiConverterString.lower(`address`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Trusted-peers: adopt a peer's signed key advertisement — scanned via
+     * QR or typed in manually — into the shared trust store. Returns the
+     * adoption outcome so the UI can react; in particular
+     * `FfiAdoptionOutcome::KeyChangeWarn` means this identity previously
+     * presented a *different* static key with no valid rotation proof and
+     * must block sending until the operator re-verifies out of band
+     * (`verify_peer`) — see PRY-18 in `TrustStore::adopt_advertisement`.
+     */
+    @Throws(IrisFfiException::class)override fun `adoptPeerAdvertisement`(`advertisement`: FfiPeerAdvertisement): FfiAdoptionOutcome {
+            return FfiConverterTypeFfiAdoptionOutcome.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_adopt_peer_advertisement(
+        it,
+        FfiConverterTypeFfiPeerAdvertisement.lower(`advertisement`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Trusted-peers: the canonical bytes this node must sign (with its own
+     * Keystore-backed Ed25519 key, via the existing `FfiCryptoSigner`) to
+     * produce a [`crate::trust::FfiPeerAdvertisement`] a peer can adopt.
+     * `x25519_pubkey` is this node's own static X25519 key
+     * (`static_x25519_pubkey()`). Kotlin signs the returned bytes verbatim —
+     * no CBOR knowledge needed on the Kotlin side, mirroring how
+     * `FfiCryptoSigner` already signs opaque envelope bytes — then builds
+     * `FfiPeerAdvertisement { identity_pubkey: node_id(), x25519_pubkey,
+     * key_gen_counter: 0, valid_until: 0, sig }` locally to show as this
+     * node's pairing code (`/myadvert`). `key_gen_counter`/`valid_until` are
+     * fixed at 0 for a first-pairing advertisement (no rotation support in
+     * this flow yet), so both sides must agree on those two constants —
+     * changing them here would silently break every already-issued code.
+     */
+    @Throws(IrisFfiException::class)override fun `advertisementSignableBytes`(`x25519Pubkey`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_advertisement_signable_bytes(
+        it,
+        FfiConverterByteArray.lower(`x25519Pubkey`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * HV-41: send to every peer in range rather than one addressed recipient.
      * The core (`deliver_or_relay`/`is_broadcast`) already treats an
      * empty `recipient_id` as "deliver locally AND relay to everyone" — this
@@ -6653,6 +6820,28 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     UniffiLib.uniffi_iriscode_fn_method_irisengine_broadcast_text(
         it,
         FfiConverterString.lower(`text`),FfiConverterUByte.lower(`priority`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Trusted-peers: the 5-character order-independent Short Authentication
+     * String (TRUST_MODEL.md) between this node and
+     * `their_identity_pubkey`. Both phones display the same code; the
+     * operator compares them (visually after a QR scan, or verbally) before
+     * calling `verify_peer` — matching confirms neither key was substituted
+     * in transit.
+     */
+    @Throws(IrisFfiException::class)override fun `computeSas`(`theirIdentityPubkey`: kotlin.ByteArray): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_compute_sas(
+        it,
+        FfiConverterByteArray.lower(`theirIdentityPubkey`),_status)
 }
     }
     )
@@ -6762,37 +6951,10 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
         FfiConverterSequenceString.lower(`endpoints`),_status)
 }
     }
+    
+    
 
-
-
-
-    /**
-     * Tier-5 / HV-43: start the local LAN TCP listener and return its bound
-     * port. Advertise this port via `_iris._tcp` NSD so same-LAN peers can
-     * connect directly (plain-TCP path). Idempotent — repeated calls return
-     * the same port.
-     */
-    @Throws(IrisFfiException::class)override fun `startInternetLanListener`(): kotlin.UShort
-        =
-    callWithHandle {
-    FfiConverterUShort.lift(uniffiRustCallWithError(IrisFfiException) { _status ->
-    UniffiLib.uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(
-        it,_status)
-})
-    }
-
-    @Throws(IrisFfiException::class)override fun `addInternetLanPeer`(`peerIdHex`: kotlin.String,`address`: kotlin.String): Unit =
-    callWithHandle {
-    uniffiRustCallWithError(IrisFfiException) { _status ->
-    UniffiLib.uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(
-        it,FfiConverterString.lower(peerIdHex),FfiConverterString.lower(address),_status)
-    }
-    }
-
-
-
-
-
+    
     /**
      * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
      * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
@@ -6855,6 +7017,26 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
     
     /**
+     * Tier-5 / HV-43: start the local LAN TCP listener and return its bound
+     * port. The port is advertised via Android NSD (`_iris._tcp`) so that
+     * peers on the same infrastructure Wi-Fi can connect directly (plain-TCP
+     * path, no relay). Idempotent — repeated calls return the same port.
+     */
+    @Throws(IrisFfiException::class)override fun `startInternetLanListener`(): kotlin.UShort {
+            return FfiConverterUShort.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * This node's 32-byte X25519 static public key as 64-hex — the value a
      * peer must `register_peer_key` before it can send us addressed mail
      * (HV-89 interim, until the discovery handshake carries it). `/x25519`.
@@ -6901,6 +7083,43 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     UniffiLib.uniffi_iriscode_fn_method_irisengine_subscribe_inbox(
         it,
         FfiConverterTypeFfiInboxListener.lower(`listener`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Trusted-peers: current trust level for a peer's 32-byte Ed25519
+     * identity key (`Unknown` if the peer has no advertisement on file).
+     */
+    @Throws(IrisFfiException::class)override fun `trustLevel`(`identityPubkey`: kotlin.ByteArray): FfiTrustLevel {
+            return FfiConverterTypeFfiTrustLevel.lift(
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_trust_level(
+        it,
+        FfiConverterByteArray.lower(`identityPubkey`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Trusted-peers: out-of-band (QR/SAS) confirmation, promoting a peer to
+     * `Verified`. `expected_x25519_pubkey` must be the exact key the
+     * operator confirmed — confirming the wrong key fails loudly rather
+     * than silently trusting it (TRUST_MODEL.md RT-010).
+     */
+    @Throws(IrisFfiException::class)override fun `verifyPeer`(`identityPubkey`: kotlin.ByteArray, `expectedX25519Pubkey`: kotlin.ByteArray)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_verify_peer(
+        it,
+        FfiConverterByteArray.lower(`identityPubkey`),FfiConverterByteArray.lower(`expectedX25519Pubkey`),_status)
 }
     }
     
@@ -7753,6 +7972,74 @@ public object FfiConverterTypeFfiNeighborDiag: FfiConverterRustBuffer<FfiNeighbo
 
 
 /**
+ * A peer's signed key advertisement, scanned via QR or typed in manually.
+ * `key_gen_counter` / `valid_until` are `0` for a first-pairing
+ * advertisement — a future rotation flow will carry real values.
+ */
+data class FfiPeerAdvertisement (
+    /**
+     * The peer's 32-byte Ed25519 identity public key (their PeerId).
+     */
+    var `identityPubkey`: kotlin.ByteArray
+    , 
+    /**
+     * The peer's 32-byte X25519 static key-agreement public key.
+     */
+    var `x25519Pubkey`: kotlin.ByteArray
+    , 
+    var `keyGenCounter`: kotlin.ULong
+    , 
+    var `validUntil`: kotlin.ULong
+    , 
+    /**
+     * 64-byte `Ed25519(identity_pubkey's private key)` over the binding —
+     * built by the peer's own `X25519StaticAd.build()`.
+     */
+    var `sig`: kotlin.ByteArray
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPeerAdvertisement: FfiConverterRustBuffer<FfiPeerAdvertisement> {
+    override fun read(buf: ByteBuffer): FfiPeerAdvertisement {
+        return FfiPeerAdvertisement(
+            FfiConverterByteArray.read(buf),
+            FfiConverterByteArray.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPeerAdvertisement) = (
+            FfiConverterByteArray.allocationSize(value.`identityPubkey`) +
+            FfiConverterByteArray.allocationSize(value.`x25519Pubkey`) +
+            FfiConverterULong.allocationSize(value.`keyGenCounter`) +
+            FfiConverterULong.allocationSize(value.`validUntil`) +
+            FfiConverterByteArray.allocationSize(value.`sig`)
+    )
+
+    override fun write(value: FfiPeerAdvertisement, buf: ByteBuffer) {
+            FfiConverterByteArray.write(value.`identityPubkey`, buf)
+            FfiConverterByteArray.write(value.`x25519Pubkey`, buf)
+            FfiConverterULong.write(value.`keyGenCounter`, buf)
+            FfiConverterULong.write(value.`validUntil`, buf)
+            FfiConverterByteArray.write(value.`sig`, buf)
+    }
+}
+
+
+
+/**
  * Owned discovery match (`wifiaware::PeerDiscovery`).
  *
  * FFI-17: this record used to also carry an `rssi: i32` field that Kotlin
@@ -8050,6 +8337,56 @@ public object FfiConverterTypeFfiTransportDiag: FfiConverterRustBuffer<FfiTransp
 
 
 /**
+ * Mirrors [`iris_core::identity::AdoptionOutcome`] — what the UI reacts to
+ * after scanning/typing a peer's advertisement. `KeyChangeWarn` in
+ * particular must block sending and prompt re-verification (PRY-18): it
+ * means a previously-seen identity is now presenting a *different* static
+ * key with no valid rotation proof. Deliberately fieldless (unlike the core
+ * `Rejected(AdvertiseError)`): a rejected advertisement collapses to
+ * `Rejected` here, and `adopt_peer_advertisement` separately returns
+ * `Err(IrisFfiError::InvalidArgument)` for a malformed (wrong-length) input,
+ * so the UI never needs to parse a reason string out of this enum.
+ */
+
+enum class FfiAdoptionOutcome {
+    
+    BOUND_UNVERIFIED,
+    DUPLICATE,
+    REFRESHED,
+    ROTATION_ADOPTED,
+    KEY_CHANGE_WARN,
+    REVOKED,
+    REJECTED;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAdoptionOutcome: FfiConverterRustBuffer<FfiAdoptionOutcome> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiAdoptionOutcome.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiAdoptionOutcome) = 4UL
+
+    override fun write(value: FfiAdoptionOutcome, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Operating band hint (`wifi_direct::OperatingBand`).
  */
 
@@ -8080,6 +8417,47 @@ public object FfiConverterTypeFfiOperatingBand: FfiConverterRustBuffer<FfiOperat
     override fun allocationSize(value: FfiOperatingBand) = 4UL
 
     override fun write(value: FfiOperatingBand, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Mirrors [`iris_core::identity::TrustLevel`] across the FFI boundary.
+ */
+
+enum class FfiTrustLevel {
+    
+    UNKNOWN,
+    UNVERIFIED,
+    VERIFIED,
+    AUTHORITY_ROOT,
+    KEY_CHANGED,
+    REVOKED;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTrustLevel: FfiConverterRustBuffer<FfiTrustLevel> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiTrustLevel.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiTrustLevel) = 4UL
+
+    override fun write(value: FfiTrustLevel, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }

@@ -102,7 +102,13 @@ typealias FfiMessageMetrics = uniffi.iriscode.FfiMessageMetrics
 typealias FfiCounter = uniffi.iriscode.FfiCounter
 @Suppress("unused")
 typealias FfiLogEvent = uniffi.iriscode.FfiLogEvent
+@Suppress("unused")
+typealias FfiPeerAdvertisement = uniffi.iriscode.FfiPeerAdvertisement
 
 // --- Enums ---
 @Suppress("unused")
 typealias FfiOperatingBand = uniffi.iriscode.FfiOperatingBand
+@Suppress("unused")
+typealias FfiTrustLevel = uniffi.iriscode.FfiTrustLevel
+@Suppress("unused")
+typealias FfiAdoptionOutcome = uniffi.iriscode.FfiAdoptionOutcome
