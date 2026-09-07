@@ -1,9 +1,13 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T18:55:00+05:30
+**Last updated**: 2026-09-07T12:00:00+05:30
 
-## Current hardware phase
+## Current implementation phase
+
+Tier-5 `INTERNET-001` is active at the implementation boundary. Research and design are recorded in `RES-0031.md` and `docs/implementation/INTERNET_ANDROID_DESIGN.md`.
+
+## Prior hardware phase
 
 The graph node `WIFIDIRECT-001` is software-complete; its physical verification
 follow-up is active. The two-phone bench is connected and identified in

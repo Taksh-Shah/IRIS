@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-09-06T20:15:00+05:30"
+updated_at: "2026-09-07T12:00:00+05:30"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -22,13 +22,13 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "WIFIDIRECT-001"
-active_stage: "HARDWARE_VERIFICATION"
-active_action: "Tier-4 BLE baseline recovered after Vivo reboots: all three phones have linked BLE peers and S24 holds two live GATT links."
-next_action: "Operator places P1 (A) and P2 (C) out of each other's BLE range with S24 (B) in range of both; then run the attributed A→B→C HV-35 relay delivery test."
-last_transition: "HUMAN_GATE"
+active_node: "INTERNET-001"
+active_stage: "DESIGN"
+active_action: "Tier-5 Android LAN and relay design recorded after official Android/IETF research."
+next_action: "Audit Android/core seams, then implement the smallest tested network-state and IP-transport integration supported by the design."
+last_transition: "STAGE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-09-06T20:15:00+05:30"
+last_transition_at: "2026-09-07T12:00:00+05:30"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 

@@ -1,9 +1,11 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-06T18:55:00+05:30
+**Last updated**: 2026-09-07T12:00:00+05:30
 
-## Current action: hardware-verification continuation
+## Current action: Tier-5 Android IP transport build-out
+
+Research `RES-0031.md` and design gate `docs/implementation/INTERNET_ANDROID_DESIGN.md` are complete. Audit the Android/core seams, implement the design-backed integration, run automated checks, then request the two-phone LAN hardware gate.
 
 The repository is no longer awaiting phones. The bench is available and the
 software graph is complete/deferred. Continue from the hardware loop, not from
