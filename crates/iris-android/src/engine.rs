@@ -16,7 +16,6 @@ use std::sync::Arc;
 use futures_util::StreamExt;
 use tokio::runtime::{Handle, Runtime};
 
-use iris_core::crypto::key_directory::KeyDirectory;
 use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
 use iris_core::message_engine::crypto::CryptoProvider;
