@@ -6,6 +6,8 @@ Format: `iteration | timestamp | node | stage | action | result | files_changed 
 
 ---
 
+| 183 | 2026-09-07 15:05 | INTERNET-001 | IMPLEMENT | Fresh RES-0032 research recorded. Added bounded relay outer protocol codec with explicit version/kind/source/target/length validation and opaque payload handling; registered module without changing existing transport semantics. Focused tests: 3/3 pass. Accidental broad formatter changes were reverted; only intended files remain. | IMPLEMENT_SLICE_COMPLETE | crates/iris-core/src/transport/relay_protocol.rs; crates/iris-core/src/transport/mod.rs; engineering/memory/records/research/RES-0032.md; engineering/memory/execution-state.yaml; engineering/memory/ACTIVE_NODE.md; engineering/memory/NEXT_ACTION.md; engineering/memory/CURRENT_STATE.md; engineering/memory/records/execution-log.md | RES-0032.md |
+
 ## Log Entries
 
 | 180 | 2026-09-07 12:00 | INTERNET-001 | DESIGN | Tier-5 Android LAN/Internet research and design gate completed; official Android/IETF sources recorded in RES-0031; NSD/DNS-SD LAN discovery, relay-first cross-network path, network callbacks, TLS requirement, and HV-42..45 hardware gates defined. Core internet tests: 14/14 pass. | DESIGN_COMPLETE | engineering/memory/execution-state.yaml; engineering/memory/NEXT_ACTION.md; engineering/memory/ACTIVE_NODE.md; engineering/memory/records/research/RES-0031.md; docs/implementation/INTERNET_ANDROID_DESIGN.md | RES-0031.md |

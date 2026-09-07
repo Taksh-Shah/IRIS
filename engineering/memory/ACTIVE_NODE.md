@@ -1,7 +1,7 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T14:30:00+05:30
+**Last updated**: 2026-09-07T15:05:00+05:30
 
 ## Current implementation phase
 
@@ -12,7 +12,9 @@ supplies a lifecycle-owned validated-network callback, and clears pooled routes
 on network/configuration loss. Focused Rust suites are green (Internet 16/16;
 Android engine 9/9). It is **not** Tier-5 complete: an authenticated relay
 protocol/server and a local TCP listener are still required before NSD can
-truthfully advertise or discover a usable LAN service.
+truthfully advertise or discover a usable LAN service. The bounded relay
+envelope codec is now implemented in `transport/relay_protocol.rs` from fresh
+research `RES-0032`, with 3 focused adversarial tests passing.
 
 ## Prior hardware phase
 

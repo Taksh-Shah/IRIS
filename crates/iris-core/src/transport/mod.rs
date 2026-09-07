@@ -21,6 +21,7 @@ pub mod ble_att;
 pub mod internet;
 pub mod lora;
 pub mod manager;
+pub mod relay_protocol;
 pub mod satellite;
 pub mod simulated;
 pub mod wifi_direct;
@@ -364,7 +365,9 @@ pub enum TopologyEvent {
 
 /// Hardware sharing groups — only one transport per conflicting group may be
 /// CONNECTED at a time (TRANSPORT_ABSTRACTION.md §Multi-Transport Concurrency).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum RadioConflictGroup {
     Bluetooth24GHz,
     WiFi24GHz,
@@ -405,14 +408,23 @@ pub(crate) fn broadcast_stream<T: Clone + Send + 'static>(
                     if is_state {
                         STATE_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
                     } else {
-                        INBOUND_LAGGED_TOTAL.fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
+                        INBOUND_LAGGED_TOTAL
+                            .fetch_add(skipped, std::sync::atomic::Ordering::Relaxed);
                     }
                     tracing::warn!(
-                        event = if is_state { "transport.state_lagged" } else { "transport.inbound_lagged" },
+                        event = if is_state {
+                            "transport.state_lagged"
+                        } else {
+                            "transport.inbound_lagged"
+                        },
                         transport = label,
                         skipped,
                         "transport buffer overran; {} were dropped",
-                        if is_state { "state transitions" } else { "messages" }
+                        if is_state {
+                            "state transitions"
+                        } else {
+                            "messages"
+                        }
                     );
                     continue;
                 }
