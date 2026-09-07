@@ -24,6 +24,7 @@ pub mod manager;
 pub mod relay_protocol;
 pub mod satellite;
 pub mod simulated;
+pub mod tls;
 pub mod wifi_direct;
 pub mod wifi_direct_serv;
 pub mod wifiaware;

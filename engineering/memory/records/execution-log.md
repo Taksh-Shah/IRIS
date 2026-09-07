@@ -6,6 +6,8 @@ Format: `iteration | timestamp | node | stage | action | result | files_changed 
 
 ---
 
+| 184 | 2026-09-07 15:20 | INTERNET-001 | IMPLEMENT | Added `tokio-rustls` verified client configuration with WebPKI roots, normal hostname/IP-SAN verification, and `iris-relay/1` ALPN. Cargo member-dependency failure was re-researched against official Cargo workspace docs and corrected. Focused tests: TLS 2/2 pass; existing warnings are pre-existing. Live pool conversion remains next; no plaintext path is claimed as TLS-secured. | IMPLEMENT_SLICE_COMPLETE | Cargo.toml; crates/iris-core/Cargo.toml; crates/iris-core/src/transport/tls.rs; crates/iris-core/src/transport/mod.rs; engineering/memory/records/research/RES-0032.md; engineering/memory/execution-state.yaml; engineering/memory/ACTIVE_NODE.md; engineering/memory/NEXT_ACTION.md; engineering/memory/records/execution-log.md | RES-0032.md |
+
 | 183 | 2026-09-07 15:05 | INTERNET-001 | IMPLEMENT | Fresh RES-0032 research recorded. Added bounded relay outer protocol codec with explicit version/kind/source/target/length validation and opaque payload handling; registered module without changing existing transport semantics. Focused tests: 3/3 pass. Accidental broad formatter changes were reverted; only intended files remain. | IMPLEMENT_SLICE_COMPLETE | crates/iris-core/src/transport/relay_protocol.rs; crates/iris-core/src/transport/mod.rs; engineering/memory/records/research/RES-0032.md; engineering/memory/execution-state.yaml; engineering/memory/ACTIVE_NODE.md; engineering/memory/NEXT_ACTION.md; engineering/memory/CURRENT_STATE.md; engineering/memory/records/execution-log.md | RES-0032.md |
 
 ## Log Entries

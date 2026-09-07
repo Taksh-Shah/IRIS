@@ -25,15 +25,18 @@ hex.workspace = true
 hkdf.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
+rustls.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tokio-rustls.workspace = true
 tracing.workspace = true
 # HV-86: the transport-event ring is a `tracing` Layer (see observability::ring).
 tracing-subscriber.workspace = true
 uuid.workspace = true
+webpki-roots.workspace = true
 x25519-dalek = { workspace = true, features = ["static_secrets", "zeroize"] }
 zeroize.workspace = true
 proptest = { version = "1", optional = true }

@@ -1,7 +1,7 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T15:05:00+05:30
+**Last updated**: 2026-09-07T15:20:00+05:30
 
 > **Current reconciliation (2026-09-06):** The software graph is complete/deferred,
 > but the physical-device phase is active. P1 is `10BCA20F4M000BB` (vivo V2205,

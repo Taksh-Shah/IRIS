@@ -1,7 +1,7 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T15:05:00+05:30
+**Last updated**: 2026-09-07T15:20:00+05:30
 
 ## Current implementation phase
 
@@ -15,6 +15,9 @@ protocol/server and a local TCP listener are still required before NSD can
 truthfully advertise or discover a usable LAN service. The bounded relay
 envelope codec is now implemented in `transport/relay_protocol.rs` from fresh
 research `RES-0032`, with 3 focused adversarial tests passing.
+The verified TLS configuration seam now uses normal root-chain and hostname/IP
+SAN verification with IRIS relay ALPN; its 2 focused tests pass. The existing
+pool remains plaintext until the next conversion pass, so Tier-5 remains open.
 
 ## Prior hardware phase
 

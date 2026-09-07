@@ -1,11 +1,11 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T15:05:00+05:30
+**Last updated**: 2026-09-07T15:20:00+05:30
 
 ## Current action: Tier-5 authenticated relay and LAN listener build-out
 
-Research `RES-0031.md` and `RES-0032.md`, plus design gate `docs/implementation/INTERNET_ANDROID_DESIGN.md`, are complete. The bounded relay codec is implemented and focused-tested. Next, implement verified TLS socket configuration and relay server/client integration, then the local TCP listener and Android NSD adapter; only then rebuild native libraries and run automated checks. Do not request the hardware gate before these software prerequisites exist.
+Research `RES-0031.md` and `RES-0032.md`, plus design gate `docs/implementation/INTERNET_ANDROID_DESIGN.md`, are complete. The bounded relay codec and verified TLS configuration seam are implemented and focused-tested. Next, convert the live pool to TLS streams and implement relay server/client integration, then the local TCP listener and Android NSD adapter; only then rebuild native libraries and run automated checks. Do not request the hardware gate before these software prerequisites exist.
 
 The repository is no longer awaiting phones. The bench is available and the
 software graph is complete/deferred. Continue from the hardware loop, not from
