@@ -6300,3 +6300,54 @@ relaunch recovered the BLE control plane. `/peers` on both Vivos showed two
 successful GATT readiness. This satisfies the Tier-4 precondition, but is not
 an HV-35 relay result because all phones remain co-located. Next manual gate:
 place A and C outside each other's BLE range with B (S24) in range of both.
+
+---
+
+## Session 35 (2026-09-07) — Tier-4 recipient-directed live-next-hop repair
+
+**Phase R — observed mechanism.** In the live three-phone attempt, the source
+message stayed queued and the S24 relay logged no `msg.relayed` event even while
+it had two BLE links. Source review identified the causal gap: `MessageEngine`
+selected a transport with `target_peer = final recipient` and called
+`Transport::send(final_recipient, ...)`; BLE correctly returned `NotConnected`
+when that final peer was outside range. The middle device never received a
+frame, so its already-instrumented relay path could not run. This is the exact
+live-path gap documented as CROSS-006/HV-75, not a failure of `/addkey`, the
+outbox, or the physical topology.
+
+**Research and decision.** Android's GATT API reports connection and write
+outcomes asynchronously and a successful choice of a transport is not proof of
+a connection to a particular peer; the forwarding layer must select a live
+neighbor before calling the transport. DTN's store-and-forward model likewise
+requires custody/forwarding decisions to be distinct from a final destination.
+Sources reviewed: Android [BluetoothGatt](https://developer.android.com/reference/android/bluetooth/BluetoothGatt), Android's [BLE GATT server guide](https://developer.android.com/develop/connectivity/bluetooth/ble/connect-gatt-server), and [RFC 4838](https://www.rfc-editor.org/rfc/rfc4838.html). Chosen scope: wire the existing routing engine to the Android discovery table and use its live next-hop result; do not falsely expand this repair into an unimplemented full SCF/PRoPHET contact lifecycle.
+
+**Phase D — implementation.** `crates/iris-android/src/engine.rs` installs a
+shared `RoutingEngine` and `DiscoveryManager::neighbors()` on `MessageEngine`.
+`deliver_outbound` resolves an addressed envelope to the router's concrete
+linked-neighbor target(s), then calls `Transport::send` with that next-hop peer
+rather than the final destination. `RoutingEngine::decide_uncommitted()` and
+`mark_forwarded()` separate route selection from relay dedup commit: a rejected
+GATT write remains retryable; a locally-originated message remains eligible for
+ACK retransmission; a relayed message enters dedup only after at least one
+transport accepts it. Regression coverage proves an unknown final destination
+is handed to the available neighbor and proves an uncommitted decision remains
+retryable until explicitly committed.
+
+**Automated/package evidence.** `cargo test -p iris-core --lib --all-features`
+completed with the new routing regressions and existing relay-path test green;
+`cargo check -p iris-android` passed. Native libraries were rebuilt separately
+for `arm64-v8a`, `armeabi-v7a`, and `x86_64`; `:app:assembleDebug --no-daemon`
+produced `app-debug.apk` (61,742,109 bytes, 2026-09-07 17:13 local). The full
+JVM task remains 83/84 due to the pre-existing unrelated desktop command-surface
+parity mismatch: Android contains `/all`, `/name`, and `/contacts`, while the
+desktop mirror lacks them. That issue was not altered in this routing repair.
+
+**Phase T — pending, not an acceptance claim.** The repaired APK was installed
+and launched on P3 Samsung S24 Ultra (`RZCX81QF2WY`, Android 16); no
+`UnsatisfiedLinkError` or process crash occurred. At this checkpoint P1/P2 are
+not visible to ADB, so no honest three-phone delivery result exists. Reconnect
+and unlock both endpoints, then update all three devices with this same APK and
+run the controlled A→B→C procedure. Required evidence is P1 `msg.sent`, P3
+`msg.relayed` with `hop_count=1`, P2 `msg.delivered`, plus aligned logcat and
+snapshots. HV-35/HV-75 remain hardware-pending until that evidence is captured.

@@ -230,6 +230,76 @@ impl RoutingEngine {
         already_flooded: Vec<PeerId>,
         neighbor_table: &NeighborTable,
     ) -> ForwardingDecision {
+        self.decide_with_commit(
+            message_id,
+            now_unix,
+            timestamp,
+            ttl_seconds,
+            sender,
+            recipient,
+            hop_count,
+            priority,
+            already_flooded,
+            neighbor_table,
+            true,
+        )
+        .await
+    }
+
+    /// Produce a forwarding decision without recording it in the forwarded
+    /// cache. A live delivery path must commit only after a transport accepts
+    /// the frame; otherwise a transient radio failure poisons every retry as a
+    /// duplicate.
+    pub async fn decide_uncommitted(
+        &mut self,
+        message_id: MessageId,
+        now_unix: u64,
+        timestamp: u64,
+        ttl_seconds: u64,
+        sender: PeerId,
+        recipient: PeerId,
+        hop_count: u8,
+        priority: crate::message::MessagePriority,
+        already_flooded: Vec<PeerId>,
+        neighbor_table: &NeighborTable,
+    ) -> ForwardingDecision {
+        self.decide_with_commit(
+            message_id,
+            now_unix,
+            timestamp,
+            ttl_seconds,
+            sender,
+            recipient,
+            hop_count,
+            priority,
+            already_flooded,
+            neighbor_table,
+            false,
+        )
+        .await
+    }
+
+    /// Commit a successfully handed-off message to the per-node forwarding
+    /// cache. Kept separate from [`decide_uncommitted`] for retry safety.
+    pub fn mark_forwarded(&mut self, message_id: MessageId) {
+        self.forward_cache.record(message_id);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn decide_with_commit(
+        &mut self,
+        message_id: MessageId,
+        now_unix: u64,
+        timestamp: u64,
+        ttl_seconds: u64,
+        sender: PeerId,
+        recipient: PeerId,
+        hop_count: u8,
+        priority: crate::message::MessagePriority,
+        already_flooded: Vec<PeerId>,
+        neighbor_table: &NeighborTable,
+        commit: bool,
+    ) -> ForwardingDecision {
         // ROUT-11: opportunistic maintenance — prune routing table and contact
         // log every PRUNE_INTERVAL without requiring a separate background task.
         if self.last_pruned.elapsed() >= PRUNE_INTERVAL {
@@ -248,6 +318,7 @@ impl RoutingEngine {
                 priority,
                 already_flooded,
                 neighbor_table,
+                commit,
             )
             .await;
         let algorithm = decision.algorithm_label();
@@ -269,6 +340,7 @@ impl RoutingEngine {
     }
 
     /// Four-algorithm chain (Algorithm 1 → 2 → 2.5 → 3 → 4).
+    #[allow(clippy::too_many_arguments)]
     async fn decide_inner(
         &mut self,
         message_id: MessageId,
@@ -281,6 +353,7 @@ impl RoutingEngine {
         priority: crate::message::MessagePriority,
         already_flooded: Vec<PeerId>,
         neighbor_table: &NeighborTable,
+        commit: bool,
     ) -> ForwardingDecision {
         // ROUT-6: TTL gate — do not store or forward expired messages.
         if crate::routing::store::ttl_expired(now_unix, timestamp, ttl_seconds) {
@@ -294,7 +367,7 @@ impl RoutingEngine {
         // delivering straight to the final recipient consumes no further hop,
         // so it may legitimately fire even at hop_count == max_hops.
         if let Some(decision) = try_direct(recipient, neighbor_table).await {
-            self.forward_cache.record(message_id);
+            if commit { self.forward_cache.record(message_id); }
             return decision;
         }
         // ROUT-19: hop-budget gate. Every algorithm below this point forwards
@@ -310,7 +383,7 @@ impl RoutingEngine {
         if let Some(decision) =
             try_known_path(recipient, &mut self.routing_table, neighbor_table).await
         {
-            self.forward_cache.record(message_id);
+            if commit { self.forward_cache.record(message_id); }
             return decision;
         }
         // Algorithm 2.5 (ROUTE-002): opportunistic DP forward. Build the
@@ -333,7 +406,7 @@ impl RoutingEngine {
         };
         if let Some(nb) = self.decide_opportunistic(&message_id, recipient, priority, hop_count, &opp_candidates) {
             if let Some(transport) = transport_to(&nb, neighbor_table).await {
-                self.forward_cache.record(message_id);
+                if commit { self.forward_cache.record(message_id); }
                 return ForwardingDecision::Forward {
                     next_hop: nb,
                     transport,
@@ -349,7 +422,7 @@ impl RoutingEngine {
             .await
         {
             if let Some(transport) = transport_to(&nb, neighbor_table).await {
-                self.forward_cache.record(message_id);
+                if commit { self.forward_cache.record(message_id); }
                 return ForwardingDecision::Forward {
                     next_hop: nb,
                     transport,
@@ -369,7 +442,7 @@ impl RoutingEngine {
             )
             .await;
             if !recipients.is_empty() {
-                self.forward_cache.record(message_id);
+                if commit { self.forward_cache.record(message_id); }
                 return ForwardingDecision::Flood { recipients };
             }
         }
@@ -595,6 +668,62 @@ mod tests {
                 algorithm: ForwardingAlgorithm::Direct,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn uncommitted_decision_remains_retryable_until_marked_forwarded() {
+        let mut engine = RoutingEngine::new();
+        let table = NeighborTable::new(Duration::from_secs(60));
+        table
+            .upsert(&peer_info(7), &TransportId::from("sim"), LinkQuality::Good)
+            .await;
+        let id = MessageId::new_v7();
+        let first = engine
+            .decide_uncommitted(
+                id,
+                0,
+                0,
+                u64::MAX,
+                pid(1),
+                pid(7),
+                0,
+                MessagePriority::P4,
+                vec![],
+                &table,
+            )
+            .await;
+        assert!(matches!(first, ForwardingDecision::Forward { .. }));
+        let retry = engine
+            .decide_uncommitted(
+                id,
+                0,
+                0,
+                u64::MAX,
+                pid(1),
+                pid(7),
+                0,
+                MessagePriority::P4,
+                vec![],
+                &table,
+            )
+            .await;
+        assert!(matches!(retry, ForwardingDecision::Forward { .. }));
+        engine.mark_forwarded(id);
+        let after_commit = engine
+            .decide_uncommitted(
+                id,
+                0,
+                0,
+                u64::MAX,
+                pid(1),
+                pid(7),
+                0,
+                MessagePriority::P4,
+                vec![],
+                &table,
+            )
+            .await;
+        assert_eq!(after_commit, ForwardingDecision::Drop);
     }
 
     #[tokio::test]

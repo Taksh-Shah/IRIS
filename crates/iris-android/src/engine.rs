@@ -354,6 +354,15 @@ impl IrisEngine {
             for t in &all {
                 discovery.register_transport(t.clone()).await;
             }
+            // CROSS-006 / Tier-4: the message engine must choose an actual
+            // linked neighbor as its next hop. Without this bridge it passed
+            // the final recipient to BLE directly, so an A→B→C topology kept
+            // A's message queued and B never received a frame to relay.
+            engine.set_routing_context(
+                iris_core::routing::RoutingEngine::new()
+                    .with_telemetry(engine.telemetry().clone()),
+                discovery.neighbors(),
+            );
             discovery.start().await;
 
             // MG-8: subscribe to topology events so the broadcast channel has

@@ -80,7 +80,7 @@ that remain are understood and logged.*
 | 9 | Additional findings from the methodology/internet-research pass | 17 | 0 | 7 | 0 | 0 | 10 |
 | **Total** | | **109** | **31** | **39** | **2** | **3** | **34** |
 
-**Last updated:** 2026-09-06 (Session 30 — **Tier 4: HV-38 + HV-40 + HV-41
+**Last updated:** 2026-09-07 (Session 35 — **Tier 4 live-next-hop bridge implemented; physical relay evidence pending P1/P2 ADB reconnect**; Session 30 — **Tier 4: HV-38 + HV-40 + HV-41
 closed, ✅ HW PENDING; HV-39 closed by research (⚪ premise confirmed,
 consequence bounded — no fix needed, listed under 🔬 above).** Real
 `NeighborTable` topology now in `/peers` (HV-40, FFI data already existed via
@@ -2751,8 +2751,8 @@ latency bonded/unbonded (folds into HV-34).
 
 ### HV-35 — Multi-hop relay has never been exercised on physical radios
 
-- **Fix status:** 🔬 Prep done (instrumentation added) · HW gate unchanged · 2026-09-06 · Session 30. Added `event::MSG_RELAYED` (`observability/mod.rs`) and wired it into `enqueue_relay`'s existing log line (`message_engine/mod.rs`), which previously logged under the ambiguous generic `MSG_QUEUED` name and did not include `hop_count` at all — so a relay's own log couldn't confirm the increment happened without cross-referencing the raw envelope. A future bench session can now `grep msg.relayed` on the middle node's logcat and see, per message, the actual forwarded hop count. This is exactly the "instrument every hop (`iris.route.relay` log)" prep the fix sketch asked for, done ahead of hardware per §2's own note that Tier 4 prep can happen without a 3rd phone. The actual A→B→C bench test itself (Phase T) is still fully blocked on a 3rd phone — nothing about that changed.
-- **HW gate:** 🔒 **needs a 3rd phone**
+- **Fix status:** ✅ Live next-hop bridge implemented · **HW PENDING** · 2026-09-07 · Session 35. The Android engine now gives `MessageEngine` the shared `DiscoveryManager` neighbor table and a `RoutingEngine`; an addressed send to an out-of-range recipient is selected for a linked neighbor rather than being passed directly to BLE under the final recipient id. The relay-only dedup commit occurs only after handoff, while local sends retain ACK retransmission. This removes the source-side queue mechanism observed on the bench; it does not claim a physical A→B→C pass yet.
+- **HW gate:** P1/P2 must reconnect to ADB; then run the controlled three-phone procedure and capture P1 `msg.sent`, P3 `msg.relayed hop_count=1`, and P2 `msg.delivered` evidence.
 - **Area:** `message_engine/mod.rs` (`deliver_or_relay`, `enqueue_relay`,
   `spawn_delivery_loop`, hop ceiling), `flood.rs`, `engine.rs`
   `spawn_inbox_forwarder`
@@ -3758,7 +3758,7 @@ ends expect (missing 2–3 → tear down); a generous but finite post-handshake
 
 ### HV-75 — The core relay path does **not** flood and does **not** consult a routing/neighbour table — multi-hop only works if the relay node already has a direct link to the final recipient
 
-- **Fix status:** ⬜ · **Home tier:** 4 · **elevated — this is why "hopping never works"**
+- **Fix status:** ✅ Recipient-directed live routing bridge implemented · **HW PENDING** · 2026-09-07 · Session 35. `MessageEngine` now resolves addressed envelopes through the shared Android `DiscoveryManager` neighbor table and routes each handoff to the selected live neighbor rather than always to the final recipient. `RoutingEngine` has an uncommitted decision path so a failed radio write does not poison retries; forwarded traffic commits dedup only after transport acceptance. This is intentionally narrower than full store-carry-forward / PRoPHET lifecycle integration, which remains unverified and must not be inferred from the Tier-4 relay result.
 - **Area:** `message_engine/mod.rs` `deliver_or_relay` / `enqueue_relay` /
   `deliver_outbound` (calls `manager.select_transports(target_peer = final
   recipient)` — never `flood::recipients_for_flood`, never `NeighborTable`);

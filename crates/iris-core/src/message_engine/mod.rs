@@ -65,6 +65,22 @@ use crate::security::{NoopSecurityPolicy, SecurityPolicy, SenderShort};
 use crate::transport::manager::TransportSelectionRequest;
 use crate::transport::TransportManager;
 
+/// The live-routing seam. Discovery owns the neighbor table; the message
+/// engine owns delivery/retry. Keeping the router behind this optional context
+/// preserves the existing direct-transport behavior for callers that have not
+/// yet wired discovery and routing together.
+struct RoutingContext {
+    engine: Mutex<crate::routing::RoutingEngine>,
+    neighbors: Arc<crate::discovery::neighbor_table::NeighborTable>,
+}
+
+/// One concrete transport hand-off selected for an outbound envelope.
+#[derive(Clone)]
+struct DeliveryTarget {
+    peer: PeerId,
+    transport_id: crate::TransportId,
+}
+
 /// Padded broadcast pseudo-peer: `[0;28] ++ EMERGENCY_BROADCAST(4)`.
 pub fn broadcast_peer() -> PeerId {
     let mut b = [0u8; 32];
@@ -245,6 +261,9 @@ pub struct MessageEngine {
     emergency: std::sync::RwLock<Arc<dyn crate::emergency::EmergencyProvider>>,
     /// SEC-001 security policy (Noop default = un-armed engine identical to current behavior).
     security: std::sync::RwLock<Arc<dyn SecurityPolicy>>,
+    /// CROSS-006: optional live bridge to discovery + routing. Set by a
+    /// platform engine after it creates the shared DiscoveryManager.
+    routing: std::sync::RwLock<Option<Arc<RoutingContext>>>,
     manager: Arc<TransportManager>,
     delivered_tx: broadcast::Sender<Envelope>,
     metrics: EngineMetrics,
@@ -304,6 +323,7 @@ impl MessageEngine {
                 crate::emergency::NoopEmergencyProvider::new(),
             )),
             security: std::sync::RwLock::new(Arc::new(NoopSecurityPolicy)),
+            routing: std::sync::RwLock::new(None),
             manager,
             delivered_tx,
             metrics: EngineMetrics::default(),
@@ -354,6 +374,19 @@ impl MessageEngine {
     /// and behavior is identical to the un-armed engine.
     pub fn set_security_policy(&self, policy: Arc<dyn SecurityPolicy>) {
         *self.security.write().unwrap() = policy;
+    }
+
+    /// Attach the shared discovery neighbor table to a live routing engine.
+    /// Platforms that do not call this retain the legacy direct-send behavior.
+    pub fn set_routing_context(
+        &self,
+        router: crate::routing::RoutingEngine,
+        neighbors: Arc<crate::discovery::neighbor_table::NeighborTable>,
+    ) {
+        *self.routing.write().unwrap() = Some(Arc::new(RoutingContext {
+            engine: Mutex::new(router),
+            neighbors,
+        }));
     }
 
     /// CRYPTO-001 send-path sealing: encrypt the payload for the recipient
@@ -1332,6 +1365,67 @@ impl MessageEngine {
         Ok(frags)
     }
 
+    /// Resolve an addressed envelope to one or more live next hops. This is
+    /// deliberately separate from transport selection: a transport being
+    /// available does not mean it has a link to the final recipient. Without
+    /// this bridge, a three-phone A→B→C mesh always tried A→C directly and
+    /// held the message in the queue while B never received a frame.
+    async fn routing_targets(
+        &self,
+        envelope: &Envelope,
+    ) -> Option<(Arc<RoutingContext>, Vec<DeliveryTarget>)> {
+        let recipient = recipient_peer(envelope)?;
+        let context = self.routing.read().unwrap().clone()?;
+        let sender = if envelope.sender_id.len() == 32 {
+            let mut id = [0u8; 32];
+            id.copy_from_slice(&envelope.sender_id);
+            PeerId(id)
+        } else {
+            // Only the abbreviated P0 envelope form lacks a full sender id.
+            // It is safe to use the local identity for the routing exclusion;
+            // the signed envelope remains the authority for authentication.
+            PeerId(self.config.node_id)
+        };
+        let decision = context
+            .engine
+            .lock()
+            .await
+            .decide_uncommitted(
+                envelope.message_id,
+                unix_now(),
+                envelope.timestamp,
+                envelope.ttl_seconds,
+                sender,
+                recipient,
+                envelope.hop_count,
+                envelope.priority,
+                Vec::new(),
+                context.neighbors.as_ref(),
+            )
+            .await;
+        let targets = match decision {
+            crate::routing::ForwardingDecision::Forward {
+                next_hop,
+                transport,
+                ..
+            } => vec![DeliveryTarget {
+                peer: next_hop,
+                transport_id: transport,
+            }],
+            crate::routing::ForwardingDecision::Flood { recipients } => recipients
+                .into_iter()
+                .map(|(peer, transport_id)| DeliveryTarget { peer, transport_id })
+                .collect(),
+            // A Store decision is intentionally represented by an empty target
+            // list. The ordinary retry path below persists it as PendingSend;
+            // no message is discarded merely because the current contact graph
+            // has no useful forward.
+            crate::routing::ForwardingDecision::Store
+            | crate::routing::ForwardingDecision::Drop => Vec::new(),
+        };
+        Some((context, targets))
+    }
+
     fn spawn_delivery_loop(self: &Arc<Self>) -> AbortHandle {
         let this = self.clone();
         // PS-1: wake on Notify (pushed by every enqueue site) rather than
@@ -1409,21 +1503,35 @@ impl MessageEngine {
         };
         let dest = recipient_peer(&item.envelope);
 
-        // Pick transports (multipath for P0/P1 emergencies).
-        let req = TransportSelectionRequest {
-            target_peer: dest,
-            message_size: bytes.len(),
-            priority,
-            max_latency_ms: None,
-            prefer_low_cost: false,
-            multipath: priority.is_emergency(),
-            // MSG-001 R8: oversized P4–P7 bulk is split into `max_message_size`
-            // fragments by serialize_for_transport, so size no longer excludes
-            // the transport from selection (fragmentable).
-            fragmentable: is_fragmentable(&item.envelope),
+        // CROSS-006: an available transport is not necessarily connected to
+        // the final recipient. When routing is wired, choose next-hop peers
+        // from the shared neighbor table first; retain the legacy selection
+        // path for broadcasts and platforms that have not installed routing.
+        let routed = self.routing_targets(&item.envelope).await;
+        let routing_context = routed.as_ref().map(|(context, _)| context.clone());
+        let targets = if let Some((_, targets)) = routed {
+            targets
+        } else {
+            let req = TransportSelectionRequest {
+                target_peer: dest,
+                message_size: bytes.len(),
+                priority,
+                max_latency_ms: None,
+                prefer_low_cost: false,
+                multipath: priority.is_emergency(),
+                fragmentable: is_fragmentable(&item.envelope),
+            };
+            self.manager
+                .select_transports(&req)
+                .await
+                .into_iter()
+                .map(|r| DeliveryTarget {
+                    peer: dest.unwrap_or_else(broadcast_peer),
+                    transport_id: r.transport_id,
+                })
+                .collect()
         };
-        let ranked = self.manager.select_transports(&req).await;
-        if ranked.is_empty() {
+        if targets.is_empty() {
             // HW-4: this was completely silent — the single most likely
             // reason a message never leaves this function, and previously
             // indistinguishable (from logcat) from every other requeue
@@ -1436,7 +1544,7 @@ impl MessageEngine {
                 priority = priority.as_u8(),
                 dest = ?dest.map(|p| p.short()),
                 attempt = item.attempts,
-                "select_transports() returned no candidates for this peer — requeuing"
+                "no live next-hop candidate — requeuing"
             );
             self.requeue_or_fail(item, true, true).await;
             return;
@@ -1447,8 +1555,8 @@ impl MessageEngine {
         // over. (Previously initialized to usize::MAX with `.max()` — so
         // serialize_for_transport never fragmented in the real path.)
         let mut max_mtu = usize::MAX;
-        for r in &ranked {
-            if let Some(t) = self.manager.get(&r.transport_id).await {
+        for target in &targets {
+            if let Some(t) = self.manager.get(&target.transport_id).await {
                 max_mtu = max_mtu.min(t.capabilities().max_message_size);
             }
         }
@@ -1461,15 +1569,16 @@ impl MessageEngine {
             }
         };
 
-        // PS-1: fan out to all ranked transports concurrently so multipath
+        // PS-1: fan out to all selected next hops concurrently so multipath
         // P0/P1 latency is max(transports) not sum(transports). Each future
         // returns (sent, saw_failure, any_retryable, last_err). Non-multipath
         // messages have at most one ranked transport so join_all degrades to
         // a single sequential send — no behaviour change for P2–P7.
         let to_send = Arc::new(to_send);
         type SendResult = (bool, bool, bool, Option<(crate::TransportId, crate::TransportError)>);
-        let futs = ranked.iter().map(|r| {
-            let tid = r.transport_id.clone();
+        let futs = targets.iter().map(|target| {
+            let tid = target.transport_id.clone();
+            let peer = target.peer;
             let to_send = Arc::clone(&to_send);
             let manager = self.manager.clone();
             async move {
@@ -1477,7 +1586,7 @@ impl MessageEngine {
                     tracing::debug!(
                         event = "msg.transport_vanished",
                         transport = %tid,
-                        "select_transports() ranked a transport that manager.get() no longer has"
+                        "a selected routing transport vanished before send"
                     );
                     return (false, false, false, None::<(crate::TransportId, crate::TransportError)>);
                 };
@@ -1491,15 +1600,12 @@ impl MessageEngine {
                         Ok(p) => p,
                         Err(_) => continue,
                     };
-                    let Some(target) = dest.or(Some(broadcast_peer())) else {
-                        continue;
-                    };
                     let sm = SerializedMessage {
                         message_id: frag.message_id,
                         priority,
                         payload,
                     };
-                    match t.send(&target, &sm).await {
+                    match t.send(&peer, &sm).await {
                         Ok(_) => t_sent = true,
                         Err(e) => {
                             tracing::debug!(
@@ -1550,6 +1656,16 @@ impl MessageEngine {
         }
 
         if sent_any {
+            // A relay must commit router dedup only after at least one
+            // next-hop transport accepted the frame. A rejected GATT write
+            // must remain eligible for retry. Locally-originated messages do
+            // not enter that relay-only cache: their ACK timer may need to
+            // retransmit the same envelope after a successful first handoff.
+            if !item.local {
+                if let Some(context) = routing_context {
+                    context.engine.lock().await.mark_forwarded(id);
+                }
+            }
             self.storage
                 .update_status(&id, MessageStatus::InTransit)
                 .await
@@ -1586,7 +1702,7 @@ impl MessageEngine {
                 message_id = %id.short(),
                 priority = priority.as_u8(),
                 attempt = item.attempts,
-                ranked_transports = ranked.len(),
+                ranked_transports = targets.len(),
                 last_error = last_error.as_ref().map(|(t, e)| format!("{t}: {e}")),
                 "every ranked transport rejected the send — requeuing"
             );
@@ -1984,6 +2100,7 @@ mod tests {
     use crate::crypto::key_directory::MemoryKeyDirectory;
     use crate::message_engine::crypto::DevCryptoProvider;
     use crate::message_engine::storage::MemoryStorage;
+    use crate::message::{LinkQuality, PeerInfo};
     use crate::transport::simulated::{SimConfig, SimulatedTransport};
     use crate::transport::Transport;
     use futures_util::StreamExt;
@@ -2369,6 +2486,38 @@ mod tests {
 
         // Carol's relay metric counts the hop.
         assert!(carol.metrics().relayed >= 1);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn routing_context_sends_unknown_destination_to_live_neighbor() {
+        // CROSS-006 regression: an addressed message to an out-of-range final
+        // recipient must be handed to a live relay, not passed directly to the
+        // final PeerId where BLE has no GATT link and leaves it queued.
+        let (alice, _transport) = alice_engine().await;
+        let neighbors = Arc::new(crate::discovery::neighbor_table::NeighborTable::new(
+            Duration::from_secs(60),
+        ));
+        neighbors
+            .upsert(
+                &PeerInfo {
+                    peer_id: PeerId(CAROL),
+                    addresses: vec![],
+                    transport_addresses: vec![],
+                    last_seen: None,
+                },
+                &crate::TransportId::from("sim-alice"),
+                LinkQuality::Good,
+            )
+            .await;
+        alice.set_routing_context(crate::routing::RoutingEngine::new(), neighbors);
+
+        let (_, targets) = alice
+            .routing_targets(&envelope_for(BOB, MessagePriority::P4, b"via carol"))
+            .await
+            .expect("routing is installed");
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].peer, PeerId(CAROL));
+        assert_eq!(targets[0].transport_id, crate::TransportId::from("sim-alice"));
     }
 
     #[tokio::test(flavor = "multi_thread")]
