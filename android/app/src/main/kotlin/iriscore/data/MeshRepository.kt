@@ -304,15 +304,37 @@ class MeshRepository @Inject constructor(
             return AddPeerOutcome.InvalidBlob
         }
         val peerIdHex = PeerIdCodec.toHex(ad.identityPubkey)
-        runCatching {
-            trustedPeers.put(
-                peerIdHex = peerIdHex,
-                x25519Hex = PeerIdCodec.toHex(ad.x25519Pubkey),
-                keyGenCounter = ad.keyGenCounter.toLong(),
-                validUntil = ad.validUntil.toLong(),
-                sigHex = PeerIdCodec.toHex(ad.sig),
-                createdAtMs = System.currentTimeMillis(),
-            )
+        // Only persist this advertisement as the peer's canonical key when
+        // the engine actually adopted it as such. On KEY_CHANGE_WARN /
+        // REVOKED / REJECTED the live TrustStore keeps the OLD key on file
+        // (adopt_advertisement's KeyChangeWarn branch never overwrites
+        // static_x25519_pubkey) or refuses the advertisement outright —
+        // persisting the new key here regardless would let `startMesh`'s
+        // cold-start replay re-feed the conflicting/rejected key as if it
+        // were a fresh, legitimate first-time trust, erasing the conflict
+        // instead of preserving it.
+        val adoptedAsCanonical = when (outcome) {
+            iriscode.FfiAdoptionOutcome.BOUND_UNVERIFIED,
+            iriscode.FfiAdoptionOutcome.DUPLICATE,
+            iriscode.FfiAdoptionOutcome.REFRESHED,
+            iriscode.FfiAdoptionOutcome.ROTATION_ADOPTED,
+            -> true
+            iriscode.FfiAdoptionOutcome.KEY_CHANGE_WARN,
+            iriscode.FfiAdoptionOutcome.REVOKED,
+            iriscode.FfiAdoptionOutcome.REJECTED,
+            -> false
+        }
+        if (adoptedAsCanonical) {
+            runCatching {
+                trustedPeers.put(
+                    peerIdHex = peerIdHex,
+                    x25519Hex = PeerIdCodec.toHex(ad.x25519Pubkey),
+                    keyGenCounter = ad.keyGenCounter.toLong(),
+                    validUntil = ad.validUntil.toLong(),
+                    sigHex = PeerIdCodec.toHex(ad.sig),
+                    createdAtMs = System.currentTimeMillis(),
+                )
+            }
         }
         return AddPeerOutcome.Adopted(peerIdHex, outcome)
     }

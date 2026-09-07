@@ -245,7 +245,7 @@ fn corrupted_frame_length_byte_bounded_recovery() {
 /// advertised-packet resync (RES-0019 R5) without trusting any MAC.
 #[test]
 fn beacon_resync_after_corrupted_byte() {
-    let good = DiscoveryBeacon::build(CapabilityBits::from_bits(0b00111), [0x42; 16], 17);
+    let good = DiscoveryBeacon::build(CapabilityBits::from_bits(0b00111), [0x42; 16], 17, None);
     // Buffer: [corrupted][good]. Receiver skips garbage and finds the good
     // beacon (fixed-width 22-byte framing => bounded recovery ≤ few bytes).
     let mut stream = vec![0xffu8; 9];
