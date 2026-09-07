@@ -38,6 +38,24 @@ pub fn relay_server_name(value: &str) -> Result<ServerName<'static>, TransportEr
         .map_err(|_| TransportError::Protocol("invalid relay TLS server name".into()))
 }
 
+/// Build a TLS connector that trusts a single self-signed certificate DER.
+/// Only available in test builds — never ship an unconditionally-trusting
+/// connector in production code.
+#[cfg(test)]
+pub fn test_relay_connector_for_cert(cert_der_bytes: &[u8]) -> TlsConnector {
+    use rustls::pki_types::CertificateDer;
+    use rustls::RootCertStore;
+    let mut roots = RootCertStore::empty();
+    roots
+        .add(CertificateDer::from(cert_der_bytes.to_vec()))
+        .expect("add test root cert");
+    let mut config = ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+    config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
+    TlsConnector::from(Arc::new(config))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

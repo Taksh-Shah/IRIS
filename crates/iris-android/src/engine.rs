@@ -428,6 +428,36 @@ impl IrisEngine {
             .map_err(|e| IrisFfiError::Transport(e.to_string()))
     }
 
+    /// Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
+    /// transport can reach it via plain TCP directly, without routing through
+    /// the relay.  `peer_id_hex` is the 64-hex peer identity from the NSD TXT
+    /// record; `address` is `"host:port"` (numeric IP, no DNS resolution).
+    pub fn add_internet_lan_peer(
+        &self,
+        peer_id_hex: String,
+        address: String,
+    ) -> Result<(), IrisFfiError> {
+        let peer_bytes =
+            hex::decode(&peer_id_hex).map_err(|_| IrisFfiError::InvalidArgument(
+                "peer_id_hex must be 64 hex characters".into(),
+            ))?;
+        if peer_bytes.len() != 32 {
+            return Err(IrisFfiError::InvalidArgument(
+                "peer_id_hex must encode exactly 32 bytes".into(),
+            ));
+        }
+        let mut id = [0u8; 32];
+        id.copy_from_slice(&peer_bytes);
+        let addr = address
+            .parse::<std::net::SocketAddr>()
+            .map_err(|_| IrisFfiError::InvalidArgument(
+                "address must be a numeric IP:port value".into(),
+            ))?;
+        self.internet
+            .register_lan_peer(iris_core::message::PeerId(id), addr);
+        Ok(())
+    }
+
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()

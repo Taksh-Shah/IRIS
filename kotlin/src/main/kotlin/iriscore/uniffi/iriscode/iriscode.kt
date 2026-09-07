@@ -1211,6 +1211,8 @@ external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): Short
+external fun uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`address`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_start_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -6462,6 +6464,15 @@ public interface IrisEngineInterface {
     fun `startInternetLanListener`(): kotlin.UShort
 
     /**
+     * Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
+     * transport routes sends to it via plain TCP directly, bypassing the relay.
+     * `peerIdHex` is the 64-hex peer identity from the NSD TXT record;
+     * `address` is `"host:port"` (numeric IP).
+     */
+    @Throws(IrisFfiException::class)
+    fun `addInternetLanPeer`(`peerIdHex`: kotlin.String, `address`: kotlin.String)
+
+    /**
      * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
      * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
      * has delivered it. Only the BLE transport acts on this (default no-op
@@ -6769,6 +6780,15 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
         it,_status)
 })
     }
+
+    @Throws(IrisFfiException::class)override fun `addInternetLanPeer`(`peerIdHex`: kotlin.String,`address`: kotlin.String): Unit =
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(
+        it,FfiConverterString.lower(peerIdHex),FfiConverterString.lower(address),_status)
+    }
+    }
+
 
 
 

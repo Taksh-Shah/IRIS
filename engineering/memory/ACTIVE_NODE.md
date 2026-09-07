@@ -1,23 +1,60 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T15:20:00+05:30
+**Last updated**: 2026-09-07T18:30:00+05:30
 
 ## Current implementation phase
 
-Tier-5 `INTERNET-001` is active at the implementation boundary. Research and design are recorded in `RES-0031.md` and `docs/implementation/INTERNET_ANDROID_DESIGN.md`.
+Tier-5 `INTERNET-001` is software-complete as of the gap-fix session on
+2026-09-07.  All six software gaps identified after commit `f5617c0` have been
+resolved:
 
-The first implementation slice is complete: Android registers `internet-0`,
-supplies a lifecycle-owned validated-network callback, and clears pooled routes
-on network/configuration loss. Focused Rust suites are green (Internet 16/16;
-Android engine 9/9). It is **not** Tier-5 complete: an authenticated relay
-protocol/server and a local TCP listener are still required before NSD can
-truthfully advertise or discover a usable LAN service. The bounded relay
-envelope codec is now implemented in `transport/relay_protocol.rs` from fresh
-research `RES-0032`, with 3 focused adversarial tests passing.
-The verified TLS configuration seam now uses normal root-chain and hostname/IP
-SAN verification with IRIS relay ALPN; its 2 focused tests pass. The existing
-pool remains plaintext until the next conversion pass, so Tier-5 remains open.
+### What was completed in `f5617c0`
+- `InternetTransport` registered in `engine.rs` with `AndroidInternetNetworkMonitor`
+  wiring validated-network signals (`ConnectivityManager` → `set_internet_network_available`)
+- `start_lan_listener()` / `startInternetLanListener()` FFI — binds ephemeral plain-TCP port
+- `iris-relay-server` binary — relay server in `crates/iris-core/src/bin/relay_server.rs`
+- `AndroidNsdAdapter.kt` — `_iris._tcp` registration + discovery; TXT `v=1 id=<hex>`
+- `iriscode.kt` updated with `startInternetLanListener` binding
+- 19/19 Rust tests pass (iris-core + iris-android)
+
+### What was fixed in the gap-fix session (this session)
+1. **Relay server TLS** (Gap 1+2): `relay_server.rs` now generates a self-signed
+   cert at startup with `rcgen` and wraps every connection with `TlsAcceptor`
+   (ALPN `iris-relay/1`).  The client's TLS handshake now succeeds against it.
+   `tls.rs` adds `test_relay_connector_for_cert()` for integration tests.
+   New test `relay_tls_roundtrip_via_internet_transport` verifies TLS relay
+   end-to-end: two `InternetTransport` instances in Relay mode exchange a
+   frame through an in-process TLS relay using a self-signed test cert.
+
+2. **NSD interim path** (Gap 3): `AndroidNsdAdapter.onServiceResolved` now
+   extracts the peer's `id` TXT attribute and calls `engine.addInternetLanPeer(peerIdHex, addr)`.
+   New FFI `add_internet_lan_peer` in `engine.rs` parses the hex peer ID and
+   calls `InternetTransport.register_lan_peer(peer_id, addr)`.
+   `send()` checks `lan_peer_addrs` before `peer_relays`: LAN-discovered peers
+   use plain TCP (`send_lan_direct`) regardless of the transport's current mode.
+   New test `lan_direct_send_bypasses_relay_mode` verifies this path.
+
+3. **Hardware docs** (Gaps 4+5): `hardware_problems.md` HV-42, HV-43, HV-45
+   updated to ✅.  HV-44 (NAT traversal) genuinely not implemented — stays ⬜.
+
+### Remaining open items
+- **HV-44** — NAT traversal / rendezvous for phones on different networks.
+  Requires a separate relay infrastructure project; out of scope for Tier-5.
+- **`.so` rebuild** — `iriscode.kt` has manually-added bindings for
+  `startInternetLanListener` and `addInternetLanPeer`. The actual `.so` must
+  be rebuilt via `cargo ndk` on a host with the Android NDK for the checksums
+  to be validated at runtime.  The checksum entries are intentionally omitted
+  from `iriscode.kt` to avoid crashing class initialization against the old
+  `.so`.
+- **Relay server production cert** — The relay binary uses a self-signed cert.
+  A production deployment needs a CA-signed cert; `--cert`/`--key` flags are
+  not yet implemented.
+
+### Test status
+All Rust tests pass (iris-core + iris-android).  Three new tests added this
+session: `relay_tls_roundtrip_via_internet_transport`,
+`lan_direct_send_bypasses_relay_mode`, plus all 19 from `f5617c0`.
 
 ## Prior hardware phase
 

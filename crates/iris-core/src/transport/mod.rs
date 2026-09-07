@@ -25,6 +25,8 @@ pub mod relay_protocol;
 pub mod satellite;
 pub mod simulated;
 pub mod tls;
+#[cfg(test)]
+pub(crate) mod test_certs;
 pub mod wifi_direct;
 pub mod wifi_direct_serv;
 pub mod wifiaware;

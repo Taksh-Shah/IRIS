@@ -147,30 +147,36 @@ class AndroidNsdAdapter(
                 val host = info.host?.hostAddress ?: return
                 val port = info.port
                 if (port <= 0) return
-
-                // Skip loopback addresses when real peers are available —
-                // but accept them in test/emulator environments.
                 val addr = "$host:$port"
-                Log.i(TAG, "NSD resolved LAN peer: $addr (${info.serviceName})")
+
+                // Extract peer identity from TXT record.
+                val peerIdHex = info.attributes["id"]?.toString(Charsets.UTF_8)
+                if (peerIdHex == null || peerIdHex.length != 64) {
+                    Log.w(TAG, "NSD resolved peer missing 64-char id TXT: $addr")
+                    return
+                }
+
+                Log.i(TAG, "NSD resolved LAN peer: $addr peer=$peerIdHex")
                 lanPeers.add(addr)
-                pushLanPeers()
+
+                // Register as a plain-TCP LAN peer; the engine routes sends to
+                // this peer directly without going through the relay.
+                runCatching {
+                    engine.addInternetLanPeer(peerIdHex, addr)
+                }.onFailure { e ->
+                    Log.w(TAG, "Failed to register LAN peer with engine: ${e.message}")
+                }
             }
         }
 
     /**
-     * Push the current set of resolved LAN peer endpoints into the engine.
-     * Uses `setInternetRelayEndpoints` as the Tier-5 interim integration;
-     * a future `setInternetLanPeers` FFI will route these via the plain-TCP
-     * path without relay framing.
+     * No-op: LAN peers are now registered directly in [onServiceResolved] via
+     * [engine.addInternetLanPeer].  Kept for [onServiceLost] compatibility.
      */
     private fun pushLanPeers() {
-        val peers = lanPeers.toList()
-        if (peers.isEmpty()) return
-        runCatching {
-            engine.setInternetRelayEndpoints(peers)
-        }.onFailure { e ->
-            Log.w(TAG, "Failed to push LAN peers to engine: ${e.message}")
-        }
+        // Individual peer removal on service loss is not yet implemented;
+        // the engine will fail to send and fall back to the relay on next
+        // connection attempt.
     }
 
     companion object {

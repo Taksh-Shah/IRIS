@@ -2113,6 +2113,7 @@ dependencies = [
  "async-trait",
  "ed25519-dalek",
  "futures-util",
+ "hex",
  "iris-core",
  "paranoid-android",
  "rand 0.8.7",

@@ -2908,7 +2908,7 @@ the UI.
 
 ### HV-42 — There is no internet transport wired into the Android engine
 
-- **Fix status:** ⬜
+- **Fix status:** ✅ — Fixed in commit `f5617c0`. `InternetTransport` registered in `engine.rs`; `AndroidInternetNetworkMonitor` wires `ConnectivityManager` → `set_internet_network_available`; relay endpoints fed via `setInternetRelayEndpoints` FFI.
 - **Area:** `crates/iris-android/src/engine.rs` (registers only `BleTransport`,
   `WifiAwareTransport`, `WifiDirectTransport`), `crates/iris-core/src/transport/internet.rs`
   (exists, not used on Android), `crates/iris-android/src/ffi/` (no internet adapter),
@@ -2955,7 +2955,7 @@ rendezvous is chosen).
 
 ### HV-43 — LAN peer discovery (mDNS / NSD) does not exist
 
-- **Fix status:** ⬜ · depends on HV-42
+- **Fix status:** ✅ — Fixed in commit `f5617c0` + gap-fix session (2026-09-07). `AndroidNsdAdapter` implements `_iris._tcp` registration and discovery; TXT record carries `v=1` and `id=<nodeIdHex>`; `startInternetLanListener()` + `addInternetLanPeer()` FFI wires discovered peers into the plain-TCP path of `InternetTransport`.
 - **Area:** new — Android `NsdManager` or Rust mDNS, `DiscoveryManager`
 - **Severity:** High (makes HV-42 usable) · **HW gate:** 2 phones on one LAN
 
@@ -2990,7 +2990,7 @@ node; scope it, don't rush it.
 
 ### HV-45 — `ConnectivityManager` signal is not consumed — the app doesn't know it's online
 
-- **Fix status:** ⬜ · depends on HV-42
+- **Fix status:** ✅ — Fixed in commit `f5617c0`. `AndroidInternetNetworkMonitor` registers a `NetworkCallback` on `TRANSPORT_WIFI | TRANSPORT_CELLULAR`; validated network events call `engine.setInternetNetworkAvailable(true/false)` which gates `InternetTransport` availability.
 - **Area:** new FFI callback for network state, `engine.rs`, `IrisApplication`
 - **Severity:** Medium
 

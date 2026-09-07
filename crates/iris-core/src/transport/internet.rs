@@ -314,6 +314,15 @@ pub struct InternetTransport {
     lan_listener_port: AtomicU16,
     /// Abort handle for the LAN accept loop (shutdown() tears it down).
     lan_listener_abort: StdMutex<Option<tokio::task::AbortHandle>>,
+    /// NSD-discovered LAN peers: PeerId → direct plain-TCP address.
+    /// Sends to these peers bypass the relay pool and always use plain TCP,
+    /// regardless of the current ConnectionMode.
+    lan_peer_addrs: StdMutex<HashMap<PeerId, SocketAddr>>,
+    /// Test-only: a custom TlsConnector that trusts a self-signed test cert,
+    /// injected so integration tests can exercise the TLS relay path without
+    /// a WebPKI-signed certificate.
+    #[cfg(test)]
+    tls_connector_override: StdMutex<Option<tokio_rustls::TlsConnector>>,
 }
 
 impl InternetTransport {
@@ -357,6 +366,9 @@ impl InternetTransport {
             mode: StdMutex::new(ConnectionMode::Plain),
             lan_listener_port: AtomicU16::new(0),
             lan_listener_abort: StdMutex::new(None),
+            lan_peer_addrs: StdMutex::new(HashMap::new()),
+            #[cfg(test)]
+            tls_connector_override: StdMutex::new(None),
         }
     }
 
@@ -447,6 +459,25 @@ impl InternetTransport {
     /// The LAN listener's bound port, or 0 if not started.
     pub fn lan_listener_port(&self) -> u16 {
         self.lan_listener_port.load(Ordering::Acquire)
+    }
+
+    /// Register a NSD-discovered LAN peer so `send()` can reach it via plain
+    /// TCP directly, without going through the relay.  Idempotent — repeated
+    /// calls for the same peer update the address.
+    pub fn register_lan_peer(&self, peer_id: PeerId, addr: SocketAddr) {
+        if let Ok(mut map) = self.lan_peer_addrs.lock() {
+            map.insert(peer_id, addr);
+        }
+    }
+
+    /// Override the TLS connector used for relay connections.  Only available
+    /// in test builds so integration tests can inject a connector that trusts
+    /// a self-signed test certificate without shipping an insecure verifier.
+    #[cfg(test)]
+    pub fn set_test_tls_connector(&self, c: tokio_rustls::TlsConnector) {
+        if let Ok(mut guard) = self.tls_connector_override.lock() {
+            *guard = Some(c);
+        }
     }
 
     /// Read loop for a plain TCP connection (LAN mode). Reads
@@ -704,7 +735,15 @@ impl InternetTransport {
                 own_peer_id,
             } => {
                 let sn = parse_relay_server_name(server_name)?;
+                #[cfg(not(test))]
                 let connector = verified_relay_connector();
+                #[cfg(test)]
+                let connector = self
+                    .tls_connector_override
+                    .lock()
+                    .ok()
+                    .and_then(|g| g.clone())
+                    .unwrap_or_else(verified_relay_connector);
                 let tls_stream = match tokio::time::timeout(
                     Duration::from_secs(5),
                     connector.connect(sn, tcp),
@@ -782,6 +821,48 @@ impl InternetTransport {
             guards.push(abort.clone());
         }
         abort
+    }
+
+    /// Send directly to a NSD-discovered LAN peer over plain TCP, bypassing the
+    /// relay path even when the transport is in Relay mode.
+    async fn send_lan_direct(
+        &self,
+        peer: PeerId,
+        addr: SocketAddr,
+        message: &SerializedMessage,
+    ) -> Result<SendReceipt, TransportError> {
+        let frame = encode_frame(message)?;
+        let now = Instant::now();
+        let existing = {
+            let mut pool = self.pool.lock().await;
+            pool.acquire(now, addr)
+        };
+        let (mut write, abort) = if let Some(pair) = existing {
+            pair
+        } else {
+            let tcp = tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr))
+                .await
+                .map_err(|_| TransportError::ConnectionFailed)?
+                .map_err(TransportError::from)?;
+            tcp.set_nodelay(true).ok();
+            let (r, w) = tcp.into_split();
+            let abort = self.spawn_reader(peer, Box::new(r), false);
+            (Box::new(w) as BoxWriter, abort)
+        };
+        let write_res: Result<(), std::io::Error> = async {
+            write.write_all(&frame).await?;
+            write.flush().await?;
+            Ok(())
+        }
+        .await;
+        if let Err(e) = write_res {
+            abort.abort();
+            return Err(e.into());
+        }
+        let now = Instant::now();
+        self.ewma.record_send(frame.len());
+        self.pool.lock().await.release(write, abort, addr, now);
+        Ok(SendReceipt { peer_id: peer, bytes_sent: frame.len(), sent_at: now })
     }
 }
 
@@ -864,6 +945,17 @@ impl Transport for InternetTransport {
         peer: &PeerId,
         message: &SerializedMessage,
     ) -> Result<SendReceipt, TransportError> {
+        // LAN-direct: NSD-discovered peers bypass the relay pool and always use
+        // plain TCP, regardless of whether the transport is in Relay mode.
+        let lan_addr = self
+            .lan_peer_addrs
+            .lock()
+            .ok()
+            .and_then(|g| g.get(peer).copied());
+        if let Some(addr) = lan_addr {
+            return self.send_lan_direct(*peer, addr, message).await;
+        }
+
         // RF-36: require an explicit per-peer binding — no fallback to relay_addr
         // or relay_candidates so a send for peer B can never use peer A's relay.
         let bound_addr = self
@@ -1448,5 +1540,183 @@ mod tests {
         full[..RELAY_HEADER_LEN].copy_from_slice(&hdr);
         if plen > 0 { s.read_exact(&mut full[RELAY_HEADER_LEN..]).await.ok()?; }
         relay_protocol::decode(&full).ok()
+    }
+
+    // ---- Gap 1+2: TLS relay end-to-end test ----
+
+    #[tokio::test]
+    async fn relay_tls_roundtrip_via_internet_transport() {
+        use futures_util::StreamExt;
+        use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
+        use rustls::ServerConfig;
+        use tokio_rustls::TlsAcceptor;
+        use crate::transport::tls::{test_relay_connector_for_cert, RELAY_ALPN};
+        use crate::transport::test_certs::{TEST_RELAY_CERT_DER, TEST_RELAY_KEY_DER};
+        use std::collections::HashMap as HMap;
+        use tokio::sync::Mutex as TokMutex;
+
+        // 1. Build TLS server config from hardcoded test cert.
+        let cert_der = CertificateDer::from(TEST_RELAY_CERT_DER.to_vec());
+        let key_der = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(TEST_RELAY_KEY_DER.to_vec()));
+        let mut server_config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(vec![cert_der], key_der)
+            .unwrap();
+        server_config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
+        let acceptor = TlsAcceptor::from(Arc::new(server_config));
+
+        // 2. Start in-process TLS relay server.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let relay_addr = listener.local_addr().unwrap();
+
+        type TlsRouter = Arc<TokMutex<HMap<[u8; 32], BoxWriter>>>;
+        let router: TlsRouter = Arc::new(TokMutex::new(HMap::new()));
+        let router_srv = router.clone();
+
+        tokio::spawn(async move {
+            while let Ok((tcp, _)) = listener.accept().await {
+                tcp.set_nodelay(true).ok();
+                let acc = acceptor.clone();
+                let rmap = router_srv.clone();
+                tokio::spawn(async move {
+                    let tls = acc.accept(tcp).await.unwrap();
+                    let (mut r, w) = tokio::io::split(tls);
+                    // Use read_relay_frame_dyn for TLS split halves (not OwnedReadHalf).
+                    let frame = read_relay_frame_dyn(&mut r).await.unwrap();
+                    let RelayFrame::Register { peer_id } = frame else { return };
+                    rmap.lock().await.insert(peer_id.0, Box::new(w));
+                    loop {
+                        let Some(f) = read_relay_frame_dyn(&mut r).await else { break };
+                        if let RelayFrame::Route { source, target, payload } = f {
+                            let out = relay_protocol::encode(&RelayFrame::Route {
+                                source, target, payload,
+                            }).unwrap();
+                            let mut map = rmap.lock().await;
+                            if let Some(w) = map.get_mut(&target.0) {
+                                w.write_all(&out).await.ok();
+                                w.flush().await.ok();
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        let id_a = PeerId([0xAA; 32]);
+        let id_b = PeerId([0xBB; 32]);
+
+        // Custom connector that trusts the embedded test cert.
+        let test_conn = test_relay_connector_for_cert(TEST_RELAY_CERT_DER);
+
+        // Two transports in Relay mode.
+        let ta = Arc::new(InternetTransport::new(&[], InternetCostParams::default()));
+        ta.set_network_available(true).await;
+        ta.set_relay_endpoints(vec![relay_addr]).await;
+        ta.set_relay_mode("localhost".into(), id_a.0);
+        ta.set_test_tls_connector(test_conn.clone());
+
+        let tb = Arc::new(InternetTransport::new(&[], InternetCostParams::default()));
+        tb.set_network_available(true).await;
+        tb.set_relay_endpoints(vec![relay_addr]).await;
+        tb.set_relay_mode("localhost".into(), id_b.0);
+        tb.set_test_tls_connector(test_conn.clone());
+
+        let peer_b = PeerInfo {
+            peer_id: id_b,
+            addresses: vec![relay_addr],
+            transport_addresses: Vec::new(),
+            last_seen: None,
+        };
+        let peer_a = PeerInfo {
+            peer_id: id_a,
+            addresses: vec![relay_addr],
+            transport_addresses: Vec::new(),
+            last_seen: None,
+        };
+
+        // Both transports connect (register) to the relay.
+        ta.connect(&peer_b).await.expect("ta connect");
+        tb.connect(&peer_a).await.expect("tb connect");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Subscribe to tb's inbox before sending.
+        let mut b_inbox = tb.incoming_messages();
+
+        // ta sends to id_b through the relay.
+        let msg = sample_message(b"tls relay delivery", MessagePriority::P2);
+        ta.send(&id_b, &msg).await.expect("ta send");
+
+        let received = tokio::time::timeout(Duration::from_secs(3), async {
+            b_inbox.next().await
+        })
+        .await
+        .expect("message must arrive within 3s")
+        .expect("stream must yield a message");
+
+        assert_eq!(received.payload, b"tls relay delivery");
+        ta.shutdown().await.unwrap();
+        tb.shutdown().await.unwrap();
+    }
+
+    // Generic relay-frame reader for BoxReader (used in TLS relay test).
+    async fn read_relay_frame_dyn<R: tokio::io::AsyncRead + Unpin>(
+        read: &mut R,
+    ) -> Option<relay_protocol::RelayFrame> {
+        use crate::transport::relay_protocol::{RELAY_HEADER_LEN, MAX_RELAY_PAYLOAD};
+        let mut hdr = [0u8; RELAY_HEADER_LEN];
+        read.read_exact(&mut hdr).await.ok()?;
+        let mut lb = [0u8; 4];
+        lb.copy_from_slice(&hdr[66..70]);
+        let plen = u32::from_le_bytes(lb) as usize;
+        if plen > MAX_RELAY_PAYLOAD {
+            return None;
+        }
+        let mut full = vec![0u8; RELAY_HEADER_LEN + plen];
+        full[..RELAY_HEADER_LEN].copy_from_slice(&hdr);
+        if plen > 0 {
+            read.read_exact(&mut full[RELAY_HEADER_LEN..]).await.ok()?;
+        }
+        relay_protocol::decode(&full).ok()
+    }
+
+    // ---- Gap 3: LAN-direct send bypasses relay pool ----
+
+    #[tokio::test]
+    async fn lan_direct_send_bypasses_relay_mode() {
+        use futures_util::StreamExt;
+
+        // Start a plain-TCP echo server representing a LAN peer.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let lan_addr = listener.local_addr().unwrap();
+
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            stream.set_nodelay(true).ok();
+            let (mut r, _w) = stream.into_split();
+            let mut hdr = [0u8; FRAME_HEADER_LEN];
+            r.read_exact(&mut hdr).await.ok()?;
+            let len = frame_payload_len(&hdr)? as usize;
+            let mut payload = vec![0u8; len];
+            r.read_exact(&mut payload).await.ok()?;
+            Some(payload)
+        });
+
+        let lan_peer_id = PeerId([0xCC; 32]);
+        let own_id = [0xDD; 32];
+
+        // Transport is in Relay mode but the peer is registered as a LAN peer.
+        let transport = Arc::new(InternetTransport::new(&[], InternetCostParams::default()));
+        transport.set_network_available(true).await;
+        transport.set_relay_endpoints(vec!["127.0.0.1:1".parse().unwrap()]).await;
+        transport.set_relay_mode("unreachable-relay.invalid".into(), own_id);
+        transport.register_lan_peer(lan_peer_id, lan_addr);
+
+        let msg = sample_message(b"lan direct", MessagePriority::P1);
+        // send() should succeed even though the relay is unreachable.
+        transport.send(&lan_peer_id, &msg).await.expect("LAN direct send");
+
+        let received = server.await.unwrap().expect("server read payload");
+        assert_eq!(received, b"lan direct");
+        transport.shutdown().await.unwrap();
     }
 }
