@@ -14,6 +14,7 @@ import iriscode.FfiX25519KeyProvider
 import iriscode.IrisEngine
 import iriscore.BuildConfig
 import iriscore.adapter.AndroidInternetNetworkMonitor
+import iriscore.adapter.AndroidNsdAdapter
 import iriscore.data.RelayOutbox
 import iriscore.identity.KeystoreEd25519
 import iriscore.identity.X25519KeyProviderImpl
@@ -111,4 +112,12 @@ object IrisCoreModule {
         AndroidInternetNetworkMonitor(context, engine, BuildConfig.IRIS_RELAY_ENDPOINTS).also {
             it.start()
         }
+
+    @Provides
+    @Singleton
+    fun provideNsdAdapter(
+        @ApplicationContext context: Context,
+        engine: IrisEngine,
+    ): AndroidNsdAdapter =
+        AndroidNsdAdapter(context, engine)
 }

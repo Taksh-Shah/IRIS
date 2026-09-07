@@ -13,6 +13,10 @@ proptest = ["dep:proptest"]
 # across crate boundaries. Never enable in a production binary (SYS-6).
 test-support = []
 
+[[bin]]
+name = "iris-relay-server"
+path = "src/bin/relay_server.rs"
+
 [dependencies]
 async-trait.workspace = true
 blake3.workspace = true
@@ -21,7 +25,7 @@ ciborium.workspace = true
 curve25519-dalek.workspace = true
 ed25519-dalek = { workspace = true, features = ["rand_core", "zeroize"] }
 futures-util.workspace = true
-hex.workspace = true
+hex = { workspace = true, features = ["std"] }
 hkdf.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true

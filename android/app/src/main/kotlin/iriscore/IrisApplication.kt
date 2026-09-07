@@ -5,6 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import iriscore.adapter.AndroidInternetNetworkMonitor
+import iriscore.adapter.AndroidNsdAdapter
 import javax.inject.Inject
 
 /**
@@ -21,12 +22,17 @@ class IrisApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var internetNetworkMonitor: AndroidInternetNetworkMonitor
 
+    /** Process-lifetime owner for `_iris._tcp` NSD advertising + discovery. */
+    @Inject
+    lateinit var nsdAdapter: AndroidNsdAdapter
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
 
     override fun onTerminate() {
+        nsdAdapter.stop()
         internetNetworkMonitor.stop()
         super.onTerminate()
     }

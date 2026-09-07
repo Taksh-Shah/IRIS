@@ -418,6 +418,16 @@ impl IrisEngine {
             .block_on(self.internet.set_network_available(available));
     }
 
+    /// Tier-5 / HV-43: start the local LAN TCP listener and return its bound
+    /// port. The port is advertised via Android NSD (`_iris._tcp`) so that
+    /// peers on the same infrastructure Wi-Fi can connect directly (plain-TCP
+    /// path, no relay). Idempotent — repeated calls return the same port.
+    pub fn start_internet_lan_listener(&self) -> Result<u16, IrisFfiError> {
+        self.handle
+            .block_on(self.internet.start_lan_listener())
+            .map_err(|e| IrisFfiError::Transport(e.to_string()))
+    }
+
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()

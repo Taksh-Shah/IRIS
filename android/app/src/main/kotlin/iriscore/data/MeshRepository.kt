@@ -6,6 +6,7 @@ import iriscode.FfiInboxListener
 import iriscode.FfiIncomingMessage
 import iriscode.IrisEngine
 import iriscode.IrisFfiException
+import iriscore.adapter.AndroidNsdAdapter
 import iriscore.di.DefaultDispatcher
 import iriscore.di.NodeId
 import iriscore.identity.KeystoreEd25519
@@ -36,6 +37,7 @@ class MeshRepository @Inject constructor(
     private val outbox: RelayOutbox,
     private val keystore: KeystoreEd25519,
     private val knownPeers: KnownPeersStore,
+    private val nsdAdapter: AndroidNsdAdapter,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -63,6 +65,7 @@ class MeshRepository @Inject constructor(
                 runCatching { engine.get().registerPeerKey(peerHex, x25519Hex) }
             }
             engine.get().startAll()
+            nsdAdapter.start()
             _uiState.update { it.copy(status = MeshStatus.RUNNING) }
         } catch (e: Exception) {
             // AN-9: broadened from IrisFfiException — any unexpected exception
@@ -74,6 +77,7 @@ class MeshRepository @Inject constructor(
     }
 
     fun stopMesh() {
+        nsdAdapter.stop()
         try {
             engine.get().stopAll()
         } catch (_: IrisFfiException) {

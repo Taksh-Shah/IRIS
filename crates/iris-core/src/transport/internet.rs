@@ -1,16 +1,20 @@
 //! INTERNET-001 — Internet Gateway Transport.
 //!
 //! Implements the transport abstraction's TCP-framing path
-//! (`docs/transports/INTERNET.md` §TCP framing). QUIC (quinn), WebSocket
-//! fallback, and TLS are future work; the framing + connection-pool + backoff
-//! machinery is transport-agnostic and shared.
+//! (`docs/transports/INTERNET.md` §TCP framing). QUIC (quinn) and WebSocket
+//! fallback remain future work; TLS is wired for the relay path.
 //!
-//! **Known gap (RF-35):** connections are plaintext TCP. `INTERNET.md` §TCP+TLS
-//! specifies `tokio-rustls` with relay SPKI pinning; that layer has not been
-//! added yet. Payload confidentiality is preserved by the IRIS envelope
-//! (CRYPTO-001), but frame metadata is exposed and injection is unauthenticated
-//! at the transport layer. Tracked in
-//! `docs/implementation/INTERNET_TRANSPORT_VERIFICATION.md` §Known Limitations.
+//! Two operating modes, selected at runtime via [`InternetTransport::set_relay_mode`]
+//! or [`InternetTransport::set_plain_mode`]:
+//!
+//! - **Plain (LAN)**: plaintext TCP, simple `[version][len][payload]` frames,
+//!   direct peer-to-peer.  NSD-discovered local endpoints use this path.
+//!   A local [`TcpListener`](tokio::net::TcpListener) bound via
+//!   [`InternetTransport::start_lan_listener`] accepts inbound LAN peers.
+//! - **Relay (WAN)**: TLS (tokio-rustls/WebPKI), `RelayFrame` envelope
+//!   (relay_protocol module), sessions registered with the relay on connect.
+//!   Payload confidentiality is the IRIS envelope (CRYPTO-001); the relay only
+//!   sees source/target PeerIds in the outer relay header.
 //!
 //! Design notes applied from `INTERNET.md`:
 //! - Length-prefixed frames on a TCP stream (one connection per relay).
@@ -22,16 +26,36 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU16, AtomicU32, AtomicU8, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
 use futures_util::stream::Stream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, Mutex, RwLock};
+
+use crate::transport::relay_protocol::{self, RelayFrame, RELAY_HEADER_LEN};
+use crate::transport::tls::{relay_server_name as parse_relay_server_name, verified_relay_connector};
+
+/// Owned, heap-allocated asynchronous write half — used for both plain TCP
+/// (`OwnedWriteHalf`) and TLS (`WriteHalf<TlsStream<TcpStream>>`).
+type BoxWriter = Box<dyn tokio::io::AsyncWrite + Send + Unpin>;
+/// Owned, heap-allocated asynchronous read half.
+type BoxReader = Box<dyn tokio::io::AsyncRead + Send + Unpin>;
+
+/// Selects the wire framing and security layer for an [`InternetTransport`] instance.
+#[derive(Debug, Clone)]
+enum ConnectionMode {
+    /// Direct LAN connection — plain TCP, simple `[version][len][payload]` frames.
+    Plain,
+    /// Relay connection — TLS, `RelayFrame` envelope, peer registration on connect.
+    Relay {
+        server_name: String,
+        own_peer_id: [u8; 32],
+    },
+}
 
 use crate::message::{
     DiscoveryConfig, IncomingMessage, MessagePriority, NodeAdvertisement, PeerId, PeerInfo,
@@ -100,11 +124,12 @@ impl Default for InternetCostParams {
     }
 }
 
-/// A pooled TCP connection to a relay. Keyed by relay address so a message
-/// destined for peer A can never be written to peer B's relay (RED-0001-01).
+/// A pooled TCP connection to a relay or LAN peer. Keyed by address so a
+/// message destined for peer A can never be written to peer B's relay
+/// (RED-0001-01).
 struct PooledConnection {
     addr: SocketAddr,
-    write: Option<OwnedWriteHalf>,
+    write: Option<BoxWriter>,
     /// Abort handle for the paired reader task. Taken out on acquire (so the
     /// reader keeps running while the write half is in use); aborted on Drop
     /// so over-cap and expired evictions kill the orphaned reader task.
@@ -149,7 +174,7 @@ impl ConnectionPool {
         &mut self,
         now: Instant,
         addr: SocketAddr,
-    ) -> Option<(OwnedWriteHalf, tokio::task::AbortHandle)> {
+    ) -> Option<(BoxWriter, tokio::task::AbortHandle)> {
         self.connections.retain(|c| !c.is_expired(now));
         let idx = self.connections.iter().position(|c| c.addr == addr);
         idx.map(|i| {
@@ -165,7 +190,7 @@ impl ConnectionPool {
 
     fn release(
         &mut self,
-        write: OwnedWriteHalf,
+        write: BoxWriter,
         reader_abort: tokio::task::AbortHandle,
         addr: SocketAddr,
         now: Instant,
@@ -283,10 +308,19 @@ pub struct InternetTransport {
     /// cost_snapshot() returns a live bandwidth estimate rather than the
     /// compile-time constant that was there before.
     ewma: EwmaGoodput,
+    /// Connection mode: Plain (LAN, plain TCP) or Relay (WAN, TLS + RelayFrame).
+    mode: StdMutex<ConnectionMode>,
+    /// Bound LAN listener port (0 = not started). Set once by start_lan_listener().
+    lan_listener_port: AtomicU16,
+    /// Abort handle for the LAN accept loop (shutdown() tears it down).
+    lan_listener_abort: StdMutex<Option<tokio::task::AbortHandle>>,
 }
 
 impl InternetTransport {
     /// Create an internet transport for the given relay endpoints.
+    ///
+    /// Default mode is `Plain` (LAN, plain TCP). Call [`set_relay_mode`] to
+    /// switch to TLS relay mode after construction.
     pub fn new(relay_endpoints: &[SocketAddr], cost_params: InternetCostParams) -> Self {
         let (state_tx, _) = broadcast::channel(64);
         let (incoming_tx, _) = broadcast::channel(1024);
@@ -320,6 +354,222 @@ impl InternetTransport {
                 .unwrap_or_default()
                 .subsec_nanos() as u64,
             ewma: EwmaGoodput::new(),
+            mode: StdMutex::new(ConnectionMode::Plain),
+            lan_listener_port: AtomicU16::new(0),
+            lan_listener_abort: StdMutex::new(None),
+        }
+    }
+
+    /// Switch to relay mode: TLS-encrypted connections to a relay server, using
+    /// `RelayFrame` framing. `server_name` is the expected TLS SNI/SAN of the
+    /// relay (DNS name or IP literal). `own_peer_id` is this node's identity,
+    /// sent in the `Register` frame on every new relay connection.
+    pub fn set_relay_mode(&self, server_name: String, own_peer_id: [u8; 32]) {
+        if let Ok(mut guard) = self.mode.lock() {
+            *guard = ConnectionMode::Relay {
+                server_name,
+                own_peer_id,
+            };
+        }
+    }
+
+    /// Switch back to plain TCP mode (LAN direct).
+    pub fn set_plain_mode(&self) {
+        if let Ok(mut guard) = self.mode.lock() {
+            *guard = ConnectionMode::Plain;
+        }
+    }
+
+    /// Read the current connection mode.
+    fn current_mode(&self) -> ConnectionMode {
+        self.mode
+            .lock()
+            .map(|g| g.clone())
+            .unwrap_or(ConnectionMode::Plain)
+    }
+
+    /// Start a plain TCP listener on an OS-assigned port for inbound LAN
+    /// connections. Returns the bound port. Idempotent — a second call returns
+    /// the already-bound port without starting a second listener.
+    pub async fn start_lan_listener(&self) -> Result<u16, TransportError> {
+        let existing = self.lan_listener_port.load(Ordering::Acquire);
+        if existing != 0 {
+            return Ok(existing);
+        }
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:0")
+            .await
+            .map_err(|e| TransportError::Io { kind: e.kind(), msg: e.to_string() })?;
+        let port = listener
+            .local_addr()
+            .map_err(|e| TransportError::Io { kind: e.kind(), msg: e.to_string() })?
+            .port();
+        self.lan_listener_port.store(port, Ordering::Release);
+
+        let incoming_tx = self.incoming_tx.clone();
+        let transport_id = self.id.clone();
+        let state = self.state.clone();
+        let state_tx = self.state_tx.clone();
+        let accept_loop = tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((stream, _peer_addr)) => {
+                        stream.set_nodelay(true).ok();
+                        let (read, _write) = stream.into_split();
+                        let incoming = incoming_tx.clone();
+                        let tid = transport_id.clone();
+                        tokio::spawn(Self::plain_reader_task(
+                            PeerId([0u8; 32]), // identity derived from envelope
+                            Box::new(read),
+                            incoming,
+                            tid,
+                        ));
+                    }
+                    Err(_) => break,
+                }
+            }
+            // Listener closed; transition to Available if not already shut down.
+            if state.load() != TransportState::Unavailable {
+                state.store(TransportState::Available);
+                state_tx
+                    .send(TransportStateEvent {
+                        transport_id,
+                        new_state: TransportState::Available,
+                    })
+                    .ok();
+            }
+        });
+        if let Ok(mut guard) = self.lan_listener_abort.lock() {
+            *guard = Some(accept_loop.abort_handle());
+        }
+        Ok(port)
+    }
+
+    /// The LAN listener's bound port, or 0 if not started.
+    pub fn lan_listener_port(&self) -> u16 {
+        self.lan_listener_port.load(Ordering::Acquire)
+    }
+
+    /// Read loop for a plain TCP connection (LAN mode). Reads
+    /// `[version][len32][payload]` frames until the peer closes.
+    async fn plain_reader_task(
+        peer_id: PeerId,
+        mut read: BoxReader,
+        incoming: broadcast::Sender<IncomingMessage>,
+        transport_id: TransportId,
+    ) {
+        let mut header = [0u8; FRAME_HEADER_LEN];
+        loop {
+            let header_res =
+                tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut header)).await;
+            match header_res {
+                Ok(Ok(_)) => {}
+                Err(_) => {
+                    tracing::warn!(peer = ?peer_id, "plain reader: header timeout");
+                    break;
+                }
+                Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    tracing::debug!(peer = ?peer_id, "plain reader: EOF");
+                    break;
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!(peer = ?peer_id, err = %e, "plain reader: TCP error");
+                    break;
+                }
+            }
+            let Some(len) = frame_payload_len(&header) else {
+                break;
+            };
+            let mut payload = vec![0u8; len];
+            if !matches!(
+                tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut payload)).await,
+                Ok(Ok(_))
+            ) {
+                break;
+            }
+            incoming
+                .send(IncomingMessage {
+                    peer_id,
+                    transport_id: transport_id.0.clone(),
+                    payload,
+                    received_at: Instant::now(),
+                })
+                .ok();
+        }
+    }
+
+    /// Read loop for a relay TLS connection. Reads `RelayFrame` envelopes;
+    /// emits `Route` payloads as `IncomingMessage`, silently swallows `Heartbeat`.
+    async fn relay_reader_task(
+        peer_id: PeerId,
+        mut read: BoxReader,
+        incoming: broadcast::Sender<IncomingMessage>,
+        transport_id: TransportId,
+    ) {
+        let mut header = [0u8; RELAY_HEADER_LEN];
+        loop {
+            let header_res =
+                tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut header)).await;
+            match header_res {
+                Ok(Ok(_)) => {}
+                Err(_) => {
+                    tracing::warn!(peer = ?peer_id, "relay reader: header timeout");
+                    break;
+                }
+                Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    tracing::debug!(peer = ?peer_id, "relay reader: EOF");
+                    break;
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!(peer = ?peer_id, err = %e, "relay reader: TCP error");
+                    break;
+                }
+            }
+            // Extract payload length from header bytes 66..70.
+            let mut len_bytes = [0u8; 4];
+            len_bytes.copy_from_slice(&header[66..70]);
+            let payload_len = u32::from_le_bytes(len_bytes) as usize;
+            if payload_len > relay_protocol::MAX_RELAY_PAYLOAD {
+                tracing::warn!("relay reader: oversized payload {payload_len}");
+                break;
+            }
+            let mut full = vec![0u8; RELAY_HEADER_LEN + payload_len];
+            full[..RELAY_HEADER_LEN].copy_from_slice(&header);
+            if payload_len > 0 {
+                if !matches!(
+                    tokio::time::timeout(
+                        Duration::from_secs(10),
+                        read.read_exact(&mut full[RELAY_HEADER_LEN..])
+                    )
+                    .await,
+                    Ok(Ok(_))
+                ) {
+                    break;
+                }
+            }
+            match relay_protocol::decode(&full) {
+                Ok(RelayFrame::Route {
+                    source,
+                    target: _,
+                    payload,
+                }) => {
+                    incoming
+                        .send(IncomingMessage {
+                            peer_id: source,
+                            transport_id: transport_id.0.clone(),
+                            payload,
+                            received_at: Instant::now(),
+                        })
+                        .ok();
+                }
+                Ok(RelayFrame::Heartbeat) => {} // liveness ping, no action
+                Ok(RelayFrame::Register { .. }) => {
+                    tracing::warn!("relay reader: unexpected Register from relay");
+                }
+                Err(e) => {
+                    tracing::warn!("relay reader: decode error: {e:?}");
+                    break;
+                }
+            }
         }
     }
 
@@ -390,13 +640,13 @@ impl InternetTransport {
             .or(candidate)
     }
 
-    /// Open a pooled connection to a peer's relay.
-    /// Returns `(write_half, abort_handle, relay_addr)` so the caller has the
-    /// relay address before writing — avoids resolve-after-write for RF-40.
+    /// Open a pooled connection to a peer's relay or LAN address.
+    /// Returns `(write_half, abort_handle, addr)` so the caller has the
+    /// address before writing — avoids resolve-after-write for RF-40.
     async fn get_connection(
         &self,
         peer: &PeerInfo,
-    ) -> Result<(OwnedWriteHalf, tokio::task::AbortHandle, SocketAddr), TransportError> {
+    ) -> Result<(BoxWriter, tokio::task::AbortHandle, SocketAddr), TransportError> {
         let addr = self
             .resolve_relay(peer)
             .await
@@ -422,96 +672,101 @@ impl InternetTransport {
         }
         drop(pool);
 
-        // Open new connection (timeout 3s per INTERNET.md negotiation budget).
-        let stream =
-            match tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr)).await {
-                Ok(Ok(s)) => s,
-                Ok(Err(e)) => {
-                    self.reconnect_attempts.fetch_add(1, Ordering::Relaxed);
-                    if let Ok(mut guard) = self.last_attempt.lock() {
-                        *guard = Some(Instant::now());
-                    }
-                    return Err(e.into());
-                }
-                Err(_) => {
-                    self.reconnect_attempts.fetch_add(1, Ordering::Relaxed);
-                    if let Ok(mut guard) = self.last_attempt.lock() {
-                        *guard = Some(Instant::now());
-                    }
-                    return Err(TransportError::ConnectionFailed);
-                }
-            };
-        // Successful connect — reset the backoff counter.
+        let mode = self.current_mode();
+
+        // Open new TCP connection (timeout 3s per INTERNET.md negotiation budget).
+        let tcp = match tokio::time::timeout(Duration::from_secs(3), TcpStream::connect(addr)).await
+        {
+            Ok(Ok(s)) => s,
+            Ok(Err(e)) => {
+                self.record_failed_attempt();
+                return Err(e.into());
+            }
+            Err(_) => {
+                self.record_failed_attempt();
+                return Err(TransportError::ConnectionFailed);
+            }
+        };
         self.reconnect_attempts.store(0, Ordering::Relaxed);
         if let Ok(mut guard) = self.last_attempt.lock() {
             *guard = None;
         }
-        stream.set_nodelay(true).ok();
-        let (read, write) = stream.into_split();
-        // Reader task pushes frames to incoming broadcast; on link loss it
-        // downgrades state so selection stops choosing a blackholed transport.
-        let abort = self.spawn_reader(peer.peer_id, read);
-        Ok((write, abort, addr))
+        tcp.set_nodelay(true).ok();
+
+        match mode {
+            ConnectionMode::Plain => {
+                let (r, w) = tcp.into_split();
+                let abort = self.spawn_reader(peer.peer_id, Box::new(r), false);
+                Ok((Box::new(w), abort, addr))
+            }
+            ConnectionMode::Relay {
+                ref server_name,
+                own_peer_id,
+            } => {
+                let sn = parse_relay_server_name(server_name)?;
+                let connector = verified_relay_connector();
+                let tls_stream = match tokio::time::timeout(
+                    Duration::from_secs(5),
+                    connector.connect(sn, tcp),
+                )
+                .await
+                {
+                    Ok(Ok(s)) => s,
+                    Ok(Err(e)) => {
+                        self.record_failed_attempt();
+                        return Err(TransportError::Io {
+                            kind: e.kind(),
+                            msg: e.to_string(),
+                        });
+                    }
+                    Err(_) => {
+                        self.record_failed_attempt();
+                        return Err(TransportError::ConnectionFailed);
+                    }
+                };
+                let (r, w) = tokio::io::split(tls_stream);
+                let abort = self.spawn_reader(peer.peer_id, Box::new(r), true);
+                // Send Register frame immediately so the relay can route to us.
+                let reg = relay_protocol::encode(&RelayFrame::Register {
+                    peer_id: PeerId(own_peer_id),
+                })
+                .map_err(|e| TransportError::Protocol(e.to_string()))?;
+                let mut boxed_w: BoxWriter = Box::new(w);
+                boxed_w.write_all(&reg).await?;
+                boxed_w.flush().await?;
+                Ok((boxed_w, abort, addr))
+            }
+        }
     }
 
-    /// Spawn a reader task for the given half and return its abort handle.
+    fn record_failed_attempt(&self) {
+        self.reconnect_attempts.fetch_add(1, Ordering::Relaxed);
+        if let Ok(mut guard) = self.last_attempt.lock() {
+            *guard = Some(Instant::now());
+        }
+    }
+
+    /// Spawn a reader task for a new connection and return its abort handle.
+    /// `is_relay` selects relay-frame vs plain-frame decoding.
     /// A clone is stored in `self.readers` for shutdown (RF-37); the returned
     /// handle is given to the pool so over-cap eviction kills the task.
-    fn spawn_reader(&self, peer_id: PeerId, mut read: OwnedReadHalf) -> tokio::task::AbortHandle {
+    fn spawn_reader(
+        &self,
+        peer_id: PeerId,
+        read: BoxReader,
+        is_relay: bool,
+    ) -> tokio::task::AbortHandle {
         let incoming = self.incoming_tx.clone();
         let transport_id = self.id.clone();
         let state = self.state.clone();
         let state_tx = self.state_tx.clone();
         let handle = tokio::spawn(async move {
-            let mut header = [0u8; FRAME_HEADER_LEN];
-            loop {
-                // Per-read timeout: a malicious/stalled relay must not pin a
-                // 1 MiB allocation + task forever (RED-0001-02 slowloris).
-                let header_res =
-                    tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut header))
-                        .await;
-                // RF-41: log each disconnect cause so slowloris attacks and
-                // clean peer closes are distinguishable in telemetry.
-                match header_res {
-                    Ok(Ok(_)) => {}
-                    Err(_elapsed) => {
-                        tracing::warn!(peer = ?peer_id, transport = %transport_id, "reader: header read timeout (slowloris?)");
-                        break;
-                    }
-                    Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                        tracing::debug!(peer = ?peer_id, transport = %transport_id, "reader: peer closed connection (EOF)");
-                        break;
-                    }
-                    Ok(Err(e)) => {
-                        tracing::warn!(peer = ?peer_id, transport = %transport_id, err = %e, "reader: TCP error");
-                        break;
-                    }
-                }
-                let Some(len) = frame_payload_len(&header) else {
-                    break;
-                };
-                let mut payload = vec![0u8; len];
-                let body_res =
-                    tokio::time::timeout(Duration::from_secs(10), read.read_exact(&mut payload))
-                        .await;
-                if !matches!(body_res, Ok(Ok(_))) {
-                    break;
-                }
-                incoming
-                    .send(IncomingMessage {
-                        // Attributed to the peer this connection was opened for.
-                        // The protocol layer MUST re-derive the sender from the
-                        // envelope (WP-A codec) — relay metadata is not trust.
-                        peer_id,
-                        transport_id: transport_id.0.clone(),
-                        payload,
-                        received_at: Instant::now(),
-                    })
-                    .ok();
+            if is_relay {
+                Self::relay_reader_task(peer_id, read, incoming, transport_id.clone()).await;
+            } else {
+                Self::plain_reader_task(peer_id, read, incoming, transport_id.clone()).await;
             }
-            // RF-37: only transition to Available on link-loss if the transport
-            // has not already been shut down. An Unavailable state means shutdown()
-            // ran first — writing Available here would resurrect it.
+            // RF-37: only transition to Available on link-loss if not shut down.
             if state.load() != TransportState::Unavailable {
                 state.store(TransportState::Available);
                 state_tx
@@ -523,7 +778,6 @@ impl InternetTransport {
             }
         });
         let abort = handle.abort_handle();
-        // Store in self.readers so shutdown() can stop all readers (RF-37).
         if let Ok(mut guards) = self.readers.lock() {
             guards.push(abort.clone());
         }
@@ -625,11 +879,23 @@ impl Transport for InternetTransport {
             transport_addresses: Vec::new(),
             last_seen: Some(Instant::now()),
         };
-        // get_connection returns the relay addr it resolved, so we know it before
+        // get_connection returns the addr it resolved, so we know it before
         // writing — a post-write resolution miss returning PeerNotFound on bytes
         // already on the wire (RF-40) is now impossible.
         let (mut write, reader_abort, addr) = self.get_connection(&peer_info).await?;
-        let frame = encode_frame(message)?;
+        // In relay mode, wrap the IRIS envelope in a RelayFrame::Route.
+        // In plain mode, use the simple [version][len][payload] wire format.
+        let frame = match self.current_mode() {
+            ConnectionMode::Relay { own_peer_id, .. } => relay_protocol::encode(
+                &RelayFrame::Route {
+                    source: PeerId(own_peer_id),
+                    target: *peer,
+                    payload: message.payload.clone(),
+                },
+            )
+            .map_err(|e| TransportError::Protocol(e.to_string()))?,
+            ConnectionMode::Plain => encode_frame(message)?,
+        };
         let write_res: Result<(), std::io::Error> = async {
             write.write_all(&frame).await?;
             write.flush().await?;
@@ -688,6 +954,12 @@ impl Transport for InternetTransport {
                 h.abort();
             }
         }
+        // Stop LAN listener accept loop.
+        if let Ok(mut guard) = self.lan_listener_abort.lock() {
+            if let Some(h) = guard.take() {
+                h.abort();
+            }
+        }
         self.pool.lock().await.connections.clear();
         self.peer_relays.lock().await.clear();
         *self.relay_addr.lock().await = None;
@@ -702,6 +974,7 @@ impl Transport for InternetTransport {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     fn sample_message(payload: &[u8], priority: MessagePriority) -> SerializedMessage {
         SerializedMessage {
@@ -1010,5 +1283,170 @@ mod tests {
                 "seed {seed}: capped {capped} out of jitter band"
             );
         }
+    }
+
+    // ---- Tier-5 integration tests ----
+
+    #[tokio::test]
+    async fn lan_listener_accepts_inbound_plain_tcp_frame() {
+        use futures_util::StreamExt;
+
+        let transport = Arc::new(InternetTransport::new(&[], InternetCostParams::default()));
+        // Trigger manual availability: supply a dummy relay addr + network signal.
+        transport.set_network_available(true).await;
+        transport
+            .set_relay_endpoints(vec!["127.0.0.1:1".parse().unwrap()])
+            .await;
+
+        let port = transport.start_lan_listener().await.unwrap();
+        assert!(port > 0, "listener must bind a non-zero port");
+
+        // A raw LAN client sends one plain frame to the listener.
+        let addr: std::net::SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
+        tokio::spawn(async move {
+            let mut s = TcpStream::connect(addr).await.unwrap();
+            let msg = sample_message(b"hello from lan", MessagePriority::P3);
+            let frame = encode_frame(&msg).unwrap();
+            s.write_all(&frame).await.unwrap();
+            s.flush().await.unwrap();
+        });
+
+        let mut inbox = transport.incoming_messages();
+        let arrived = tokio::time::timeout(Duration::from_secs(2), async {
+            inbox.next().await
+        })
+        .await
+        .expect("message must arrive within 2s")
+        .expect("stream must yield a message");
+
+        assert_eq!(arrived.payload, b"hello from lan");
+        transport.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn lan_listener_is_idempotent() {
+        let transport = InternetTransport::new(&[], InternetCostParams::default());
+        let p1 = transport.start_lan_listener().await.unwrap();
+        let p2 = transport.start_lan_listener().await.unwrap();
+        assert_eq!(p1, p2, "second call must return same port");
+        transport.shutdown().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn relay_server_routes_frame_between_two_plain_clients() {
+        use std::collections::HashMap as HMap;
+        use tokio::sync::Mutex as TokMutex;
+        use crate::transport::relay_protocol::RelayFrame;
+
+        // Minimal in-process relay (plain TCP, same wire protocol as relay_server.rs).
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let relay_addr = listener.local_addr().unwrap();
+        let router: Arc<TokMutex<HMap<[u8; 32], tokio::net::tcp::OwnedWriteHalf>>> =
+            Arc::new(TokMutex::new(HMap::new()));
+
+        let router_srv = router.clone();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                stream.set_nodelay(true).ok();
+                let (mut r, w) = stream.into_split();
+                let rmap = router_srv.clone();
+                tokio::spawn(async move {
+                    let frame = read_relay_frame(&mut r).await.unwrap();
+                    let RelayFrame::Register { peer_id } = frame else { return };
+                    rmap.lock().await.insert(peer_id.0, w);
+                    loop {
+                        let Some(frame) = read_relay_frame(&mut r).await else { break };
+                        if let RelayFrame::Route { source, target, payload } = frame {
+                            let out = relay_protocol::encode(&RelayFrame::Route {
+                                source, target, payload,
+                            }).unwrap();
+                            let mut map = rmap.lock().await;
+                            if let Some(w) = map.get_mut(&target.0) {
+                                w.write_all(&out).await.ok();
+                                w.flush().await.ok();
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        let id_a = [0xAA_u8; 32];
+        let id_b = [0xBB_u8; 32];
+
+        // Register A.
+        let mut stream_a = TcpStream::connect(relay_addr).await.unwrap();
+        stream_a.write_all(
+            &relay_protocol::encode(&RelayFrame::Register { peer_id: PeerId(id_a) }).unwrap(),
+        ).await.unwrap();
+        stream_a.flush().await.unwrap();
+
+        // Register B.
+        let mut stream_b = TcpStream::connect(relay_addr).await.unwrap();
+        stream_b.write_all(
+            &relay_protocol::encode(&RelayFrame::Register { peer_id: PeerId(id_b) }).unwrap(),
+        ).await.unwrap();
+        stream_b.flush().await.unwrap();
+
+        // Let relay register both.
+        tokio::time::sleep(Duration::from_millis(20)).await;
+
+        // A → B.
+        stream_a.write_all(
+            &relay_protocol::encode(&RelayFrame::Route {
+                source: PeerId(id_a),
+                target: PeerId(id_b),
+                payload: b"cross-relay delivery".to_vec(),
+            }).unwrap(),
+        ).await.unwrap();
+        stream_a.flush().await.unwrap();
+
+        // B reads the forwarded frame.
+        let frame = tokio::time::timeout(
+            Duration::from_secs(2),
+            read_relay_frame_from_stream(&mut stream_b),
+        )
+        .await
+        .expect("must arrive within 2s")
+        .expect("relay must forward frame");
+
+        assert_eq!(
+            frame,
+            RelayFrame::Route {
+                source: PeerId(id_a),
+                target: PeerId(id_b),
+                payload: b"cross-relay delivery".to_vec(),
+            }
+        );
+    }
+
+    async fn read_relay_frame(
+        r: &mut tokio::net::tcp::OwnedReadHalf,
+    ) -> Option<relay_protocol::RelayFrame> {
+        use crate::transport::relay_protocol::{RELAY_HEADER_LEN, MAX_RELAY_PAYLOAD};
+        let mut hdr = [0u8; RELAY_HEADER_LEN];
+        r.read_exact(&mut hdr).await.ok()?;
+        let mut lb = [0u8; 4];
+        lb.copy_from_slice(&hdr[66..70]);
+        let plen = u32::from_le_bytes(lb) as usize;
+        if plen > MAX_RELAY_PAYLOAD { return None; }
+        let mut full = vec![0u8; RELAY_HEADER_LEN + plen];
+        full[..RELAY_HEADER_LEN].copy_from_slice(&hdr);
+        if plen > 0 { r.read_exact(&mut full[RELAY_HEADER_LEN..]).await.ok()?; }
+        relay_protocol::decode(&full).ok()
+    }
+
+    async fn read_relay_frame_from_stream(s: &mut TcpStream) -> Option<relay_protocol::RelayFrame> {
+        use crate::transport::relay_protocol::{RELAY_HEADER_LEN, MAX_RELAY_PAYLOAD};
+        let mut hdr = [0u8; RELAY_HEADER_LEN];
+        s.read_exact(&mut hdr).await.ok()?;
+        let mut lb = [0u8; 4];
+        lb.copy_from_slice(&hdr[66..70]);
+        let plen = u32::from_le_bytes(lb) as usize;
+        if plen > MAX_RELAY_PAYLOAD { return None; }
+        let mut full = vec![0u8; RELAY_HEADER_LEN + plen];
+        full[..RELAY_HEADER_LEN].copy_from_slice(&hdr);
+        if plen > 0 { s.read_exact(&mut full[RELAY_HEADER_LEN..]).await.ok()?; }
+        relay_protocol::decode(&full).ok()
     }
 }

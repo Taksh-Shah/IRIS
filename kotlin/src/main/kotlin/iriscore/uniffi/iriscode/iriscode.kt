@@ -1207,9 +1207,11 @@ external fun uniffi_iriscode_fn_method_irisengine_set_internet_network_available
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_set_internet_relay_endpoints(`ptr`: Long,`endpoints`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr`: Long,`macStr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr`: Long,`macStr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
-external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
+): Short
+external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus,
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_start_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -6450,7 +6452,15 @@ public interface IrisEngineInterface {
      * stays in the platform layer so network binding remains Android-aware.
      */
     fun `setInternetRelayEndpoints`(`endpoints`: List<kotlin.String>)
-    
+
+    /**
+     * Tier-5 / HV-43: start the local LAN TCP listener and return its bound
+     * port. Advertise this port via `_iris._tcp` NSD so same-LAN peers can
+     * connect directly (plain-TCP path). Idempotent — repeated calls return
+     * the same port.
+     */
+    fun `startInternetLanListener`(): kotlin.UShort
+
     /**
      * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
      * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
@@ -6741,10 +6751,28 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
         FfiConverterSequenceString.lower(`endpoints`),_status)
 }
     }
-    
-    
 
-    
+
+
+
+    /**
+     * Tier-5 / HV-43: start the local LAN TCP listener and return its bound
+     * port. Advertise this port via `_iris._tcp` NSD so same-LAN peers can
+     * connect directly (plain-TCP path). Idempotent — repeated calls return
+     * the same port.
+     */
+    @Throws(IrisFfiException::class)override fun `startInternetLanListener`(): kotlin.UShort
+        =
+    callWithHandle {
+    FfiConverterUShort.lift(uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(
+        it,_status)
+})
+    }
+
+
+
+
     /**
      * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
      * once the platform's `WIFI_P2P_THIS_DEVICE_CHANGED_ACTION` broadcast
