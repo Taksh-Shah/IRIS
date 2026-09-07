@@ -14,6 +14,7 @@ pub mod bridge;
 pub mod engine;
 pub mod ffi;
 pub mod logging;
+pub mod trust;
 
 pub use engine::{FfiInboxListener, FfiIncomingMessage, IrisEngine};
 pub use ffi::ble_adapter::{
@@ -28,3 +29,4 @@ pub use ffi::wifi_direct_adapter::{
     FfiDirectPeerDiscovery, FfiGroupConfig, FfiGroupInfo, FfiIncomingWifiDirectData,
     FfiOperatingBand, FfiWifiDirectAdapter,
 };
+pub use trust::{FfiAdoptionOutcome, FfiPeerAdvertisement, FfiTrustLevel};

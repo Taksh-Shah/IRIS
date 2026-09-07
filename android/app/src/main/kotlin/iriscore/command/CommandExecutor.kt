@@ -81,18 +81,38 @@ object CommandExecutor {
             "x25519" -> CommandResult.System(title = "X25519", lines = emptyList())
 
             "addkey" -> {
+                val blob = mode.argument?.trim()
+                if (blob.isNullOrEmpty()) {
+                    return CommandResult.Error("/addkey <pairing-code>  (paste a peer's /myadvert output)")
+                }
+                // The byte layout only exists on the Android/FFI side (this
+                // object stays free of those types, per its class doc) — the
+                // repository decodes and validates the blob itself.
+                CommandResult.AddKey(blob)
+            }
+
+            "myadvert" -> CommandResult.MyAdvertisement
+
+            "fingerprint" -> {
                 val parts = mode.argument?.trim()?.split(Regex("\\s+")) ?: emptyList()
-                if (parts.size != 2) {
-                    return CommandResult.Error("/addkey <peer-id> <x25519>  (both 64 hex)")
+                val target = parts.getOrNull(0)
+                if (target.isNullOrBlank()) {
+                    return CommandResult.Error("/fingerprint <peer-id-or-name> [confirm]")
                 }
-                val peer = parts[0].lowercase()
-                val key = parts[1].lowercase()
-                if (!PeerIdCodec.isHex(peer) || peer.length != PEER_ID_HEX_LENGTH ||
-                    !PeerIdCodec.isHex(key) || key.length != PEER_ID_HEX_LENGTH
-                ) {
-                    return CommandResult.Error("/addkey: both values must be $PEER_ID_HEX_LENGTH hex chars")
+                val resolved = resolveTarget(target, contactResolver)
+                    ?: return CommandResult.Error("/fingerprint: unknown peer or contact name '$target'")
+                val confirm = parts.getOrNull(1)?.equals("confirm", ignoreCase = true) == true
+                CommandResult.Fingerprint(resolved, confirm)
+            }
+
+            "forget" -> {
+                val target = mode.argument?.trim()
+                if (target.isNullOrEmpty()) {
+                    return CommandResult.Error("/forget <peer-id-or-name>")
                 }
-                CommandResult.AddKey(peer, key)
+                val resolved = resolveTarget(target, contactResolver)
+                    ?: return CommandResult.Error("/forget: unknown peer or contact name '$target'")
+                CommandResult.Forget(resolved)
             }
 
             "search" -> CommandResult.Search(mode.argument)
@@ -151,5 +171,25 @@ object CommandExecutor {
         } else {
             CommandResult.SetRecipient(normalized)
         }
+    }
+
+    /**
+     * Resolve `raw` — a 64-hex PeerId or a saved contact alias — to a
+     * normalized lowercase hex PeerId, or `null` if it is neither (mirrors
+     * [setRecipient]'s resolution order without wrapping the result in a
+     * [CommandResult], since `/fingerprint` and `/forget` need their own
+     * error messages on failure).
+     */
+    private fun resolveTarget(raw: String, contactResolver: ((String) -> String?)? = null): String? {
+        val trimmed = raw.trim()
+        val resolved = if (contactResolver != null &&
+            (!PeerIdCodec.isHex(trimmed) || trimmed.length != PEER_ID_HEX_LENGTH)
+        ) {
+            contactResolver(trimmed) ?: trimmed
+        } else {
+            trimmed
+        }
+        val normalized = resolved.lowercase()
+        return normalized.takeIf { PeerIdCodec.isHex(it) && it.length == PEER_ID_HEX_LENGTH }
     }
 }

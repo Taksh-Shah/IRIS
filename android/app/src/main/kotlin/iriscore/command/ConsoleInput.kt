@@ -78,8 +78,25 @@ sealed interface CommandResult {
     /** Set the active recipient. */
     data class SetRecipient(val peerIdHex: String) : CommandResult
 
-    /** HV-89 interim: register a peer's X25519 static key so we can seal mail to it. */
-    data class AddKey(val peerIdHex: String, val x25519Hex: String) : CommandResult
+    /**
+     * Adopt a peer's signed pairing blob (their `/myadvert` output — scanned
+     * via QR or pasted) into the trust store. Replaces the old bare
+     * `<peer-id> <x25519>` shape: a signature is required so the store can
+     * detect a later key change (PRY-18) instead of blindly overwriting it.
+     */
+    data class AddKey(val blob: String) : CommandResult
+
+    /** Show this node's own signed pairing blob, to share for `/addkey`. */
+    data object MyAdvertisement : CommandResult
+
+    /**
+     * Show (or, with [confirm], out-of-band confirm) the Short Authentication
+     * String for [target] (an alias or 64-hex peer id).
+     */
+    data class Fingerprint(val target: String, val confirm: Boolean) : CommandResult
+
+    /** Remove a saved contact's alias and trusted-peer record. */
+    data class Forget(val target: String) : CommandResult
 
     /** Filter the console view; null clears the filter. */
     data class Search(val query: String?) : CommandResult

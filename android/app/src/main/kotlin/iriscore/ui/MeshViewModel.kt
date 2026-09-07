@@ -281,15 +281,94 @@ class MeshViewModel @Inject constructor(
 
             is CommandResult.AddKey -> {
                 viewModelScope.launch {
-                    val line = withContext(Dispatchers.IO) {
-                        try {
-                            repository.addPeerKey(result.peerIdHex, result.x25519Hex)
-                            "peer ${result.peerIdHex.take(16)}…" to "key trusted"
-                        } catch (e: RuntimeException) {
-                            "error" to (e.message ?: e.javaClass.simpleName)
+                    val outcome = withContext(Dispatchers.IO) { repository.addTrustedPeer(result.blob) }
+                    when (outcome) {
+                        is MeshRepository.AddPeerOutcome.InvalidBlob -> appendEvent(
+                            ConsoleEntry.system(
+                                title = "ADDKEY",
+                                lines = listOf(
+                                    "error" to "not a valid pairing code — paste the peer's full /myadvert output",
+                                ),
+                                status = "REJECTED",
+                            ),
+                        )
+                        is MeshRepository.AddPeerOutcome.Adopted -> {
+                            val peerShort = outcome.peerIdHex.take(16) + "…"
+                            val (status, note) = describeAdoptionOutcome(outcome.outcome, outcome.peerIdHex)
+                            appendEvent(
+                                ConsoleEntry.system(
+                                    title = "ADDKEY",
+                                    lines = listOf("peer" to peerShort, "note" to note),
+                                    status = status,
+                                ),
+                            )
                         }
                     }
-                    appendEvent(ConsoleEntry.system(title = "ADDKEY", lines = listOf(line)))
+                }
+            }
+
+            CommandResult.MyAdvertisement -> {
+                viewModelScope.launch {
+                    val blob = withContext(Dispatchers.IO) { runCatching { repository.myAdvertisement() }.getOrNull() }
+                    if (blob == null) {
+                        appendEvent(ConsoleEntry.system(title = "MYADVERT", lines = listOf("error" to "could not build a pairing code")))
+                    } else {
+                        appendEvent(
+                            ConsoleEntry.system(
+                                title = "MYADVERT",
+                                lines = listOf("share this with a peer for their /addkey" to blob),
+                                status = "READY",
+                            ),
+                        )
+                    }
+                }
+            }
+
+            is CommandResult.Fingerprint -> {
+                viewModelScope.launch {
+                    if (result.confirm) {
+                        val confirmed = withContext(Dispatchers.IO) { repository.confirmPeer(result.target) }
+                        appendEvent(
+                            ConsoleEntry.system(
+                                title = "FINGERPRINT",
+                                lines = listOf(
+                                    "peer" to result.target.take(16) + "…",
+                                    "result" to if (confirmed) "verified" else "no matching pending key — run /fingerprint without 'confirm' first",
+                                ),
+                                status = if (confirmed) "VERIFIED" else "FAILED",
+                            ),
+                        )
+                    } else {
+                        val sas = withContext(Dispatchers.IO) { repository.fingerprintFor(result.target) }
+                        val level = withContext(Dispatchers.IO) { repository.trustLevelFor(result.target) }
+                        appendEvent(
+                            ConsoleEntry.system(
+                                title = "FINGERPRINT",
+                                lines = listOf(
+                                    "peer" to result.target.take(16) + "…",
+                                    "code" to (sas ?: "(unavailable)"),
+                                    "trust" to describeTrustLevel(level),
+                                    "next" to "if both phones show the same code, run /fingerprint ${result.target} confirm",
+                                ),
+                            ),
+                        )
+                    }
+                }
+            }
+
+            is CommandResult.Forget -> {
+                viewModelScope.launch(Dispatchers.IO) {
+                    val alias = contactStore.resolve(result.target)
+                    contactStore.remove(result.target)
+                    repository.forgetTrustedPeer(result.target)
+                    _contacts.value = contactStore.all()
+                    appendEvent(
+                        ConsoleEntry.system(
+                            title = "FORGET",
+                            lines = listOf("peer" to result.target.take(16) + "…", "name" to (alias ?: "(none)")),
+                            status = "REMOVED",
+                        ),
+                    )
                 }
             }
 
@@ -341,7 +420,20 @@ class MeshViewModel @Inject constructor(
 
             is CommandResult.SaveContact -> {
                 viewModelScope.launch(Dispatchers.IO) {
-                    contactStore.save(result.peerIdHex, result.name)
+                    val saved = contactStore.save(result.peerIdHex, result.name)
+                    if (!saved) {
+                        appendEvent(
+                            ConsoleEntry.system(
+                                title = "CONTACT",
+                                lines = listOf(
+                                    "name" to result.name,
+                                    "reason" to "already used by a different peer — pick another alias",
+                                ),
+                                status = "REJECTED",
+                            ),
+                        )
+                        return@launch
+                    }
                     _contacts.value = contactStore.all()
                     appendEvent(
                         ConsoleEntry.system(
@@ -374,6 +466,44 @@ class MeshViewModel @Inject constructor(
             CommandResult.None -> Unit
         }
     }
+
+    /**
+     * `(status, note)` for an ADDKEY console block from the engine's
+     * [iriscode.FfiAdoptionOutcome]. Matched via [normalizedEnumName] rather
+     * than the literal generated constant, since the exact
+     * PascalCase-vs-SCREAMING_SNAKE_CASE spelling UniFFI's Kotlin codegen
+     * emits for a multi-word variant is not pinned down by any existing enum
+     * in this codebase (the one precedent, `FfiOperatingBand`, has no
+     * multi-word variant to check against) — this matches regardless of
+     * which convention it turns out to be.
+     */
+    private fun describeAdoptionOutcome(
+        outcome: iriscode.FfiAdoptionOutcome,
+        peerIdHex: String,
+    ): Pair<String, String> = when (outcome.name.normalizedEnumName()) {
+        "BOUNDUNVERIFIED" -> "UNVERIFIED" to "run /fingerprint $peerIdHex to verify"
+        "DUPLICATE", "REFRESHED" -> "OK" to "already trusted, no change"
+        "ROTATIONADOPTED" -> "OK" to "key rotated — re-run /fingerprint $peerIdHex to re-verify"
+        "KEYCHANGEWARN" ->
+            "⚠ WARNING" to "this peer's key changed and no longer matches what was previously " +
+                "trusted — do NOT send until you re-verify with /fingerprint $peerIdHex"
+        "REVOKED" -> "BLOCKED" to "this identity was revoked"
+        "REJECTED" -> "REJECTED" to "the pairing code failed verification — ask them to re-share it"
+        else -> "UNKNOWN" to "unrecognised outcome ${outcome.name}"
+    }
+
+    /** Display label for [iriscode.FfiTrustLevel]; see [describeAdoptionOutcome] on the name-matching approach. */
+    private fun describeTrustLevel(level: iriscode.FfiTrustLevel?): String =
+        when (level?.name?.normalizedEnumName()) {
+            null -> "(unavailable)"
+            "UNKNOWN" -> "unknown"
+            "UNVERIFIED" -> "unverified"
+            "VERIFIED" -> "verified"
+            "AUTHORITYROOT" -> "authority root"
+            "KEYCHANGED" -> "⚠ key changed — re-verify"
+            "REVOKED" -> "revoked"
+            else -> level.name
+        }
 
     /**
      * Fills in the system blocks that need live state. The executor names what
@@ -587,3 +717,10 @@ class MeshViewModel @Inject constructor(
         ensureStarted()
     }
 }
+
+/**
+ * `"KEY_CHANGE_WARN"` / `"KeyChangeWarn"` / any other separator convention a
+ * generated enum constant name might use, collapsed to one comparable form —
+ * see [MeshViewModel.describeAdoptionOutcome].
+ */
+private fun String.normalizedEnumName(): String = replace("_", "").uppercase()

@@ -33,13 +33,30 @@ class ContactStore @Inject constructor(
         return buildMap { o.keys().forEach { put(it, o.getString(it)) } }
     }
 
+    /**
+     * @return `true` if saved; `false` if `name` is already bound to a
+     * *different* peer (case-insensitive) — a duplicate alias is refused
+     * rather than silently accepted, because contact resolution
+     * (`MeshViewModel`'s `/to <name>` lookup) picks whichever entry it finds
+     * first: a second peer quietly claiming an existing alias would make
+     * `/to <name>` non-deterministically address the wrong peer. Renaming
+     * the *same* peer under a new name, or re-saving its own existing name,
+     * is always allowed.
+     */
     @Synchronized
-    fun save(peerIdHex: String, name: String) {
+    fun save(peerIdHex: String, name: String): Boolean {
+        val id = peerIdHex.lowercase()
+        val trimmed = name.trim()
         val o = if (file.exists()) {
             runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
         } else JSONObject()
-        o.put(peerIdHex.lowercase(), name.trim())
+        val collision = o.keys().asSequence().any { existingId ->
+            existingId != id && o.getString(existingId).equals(trimmed, ignoreCase = true)
+        }
+        if (collision) return false
+        o.put(id, trimmed)
         file.writeText(o.toString())
+        return true
     }
 
     @Synchronized

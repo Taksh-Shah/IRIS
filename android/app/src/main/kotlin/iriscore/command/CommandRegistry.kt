@@ -81,11 +81,31 @@ object CommandRegistry {
             aliases = listOf("mykey", "key"),
         ),
         IrisCommand(
+            name = "myadvert",
+            description = "Show your signed pairing code — share it for a peer's /addkey",
+            group = CommandGroup.SYSTEM,
+            aliases = listOf("pair", "advert"),
+        ),
+        IrisCommand(
             name = "addkey",
-            description = "Trust a peer's X25519 key so you can send to it",
+            description = "Trust a peer from their /myadvert pairing code",
             group = CommandGroup.MESSAGE,
             aliases = listOf("trust"),
-            argumentHint = "<peer-id> <x25519>",
+            argumentHint = "<pairing-code>",
+        ),
+        IrisCommand(
+            name = "fingerprint",
+            description = "Show a peer's verification code; add 'confirm' once both sides match",
+            group = CommandGroup.MESSAGE,
+            aliases = listOf("sas", "verify"),
+            argumentHint = "<peer-id-or-name> [confirm]",
+        ),
+        IrisCommand(
+            name = "forget",
+            description = "Remove a saved contact's alias and trusted key",
+            group = CommandGroup.MESSAGE,
+            aliases = listOf("unfriend", "untrust"),
+            argumentHint = "<peer-id-or-name>",
         ),
         IrisCommand(
             name = "search",

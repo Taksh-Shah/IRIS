@@ -13,6 +13,7 @@ import iriscore.identity.KeystoreEd25519
 import iriscore.ui.state.InboxUiMessage
 import iriscore.ui.state.MeshStatus
 import iriscore.ui.state.MeshUiState
+import iriscore.util.AdvertisementCodec
 import iriscore.util.PeerIdCodec
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ class MeshRepository @Inject constructor(
     private val outbox: RelayOutbox,
     private val keystore: KeystoreEd25519,
     private val knownPeers: KnownPeersStore,
+    private val trustedPeers: TrustedPeerStore,
     private val nsdAdapter: AndroidNsdAdapter,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
@@ -58,11 +60,40 @@ class MeshRepository @Inject constructor(
     /** Bring the three transports up (BLE + Wi-Fi Aware + Wi-Fi Direct). */
     fun startMesh() {
         try {
-            // HV-21: re-feed every persisted trusted key into the fresh engine
-            // key directory BEFORE starting transports, so addressed mail to a
-            // known peer seals on the first send after a cold start.
+            // HV-21 (legacy path): re-feed the old bare-key store too. Nothing
+            // currently writes to it (see `addPeerKey`'s doc), and it is no
+            // longer the engine's active key directory (see
+            // `IrisEngine::build`'s `set_key_directory`) — kept only so any
+            // pre-existing entries from before this change are not silently
+            // lost. Safe to remove once confirmed no device has old entries.
             for ((peerHex, x25519Hex) in knownPeers.all()) {
                 runCatching { engine.get().registerPeerKey(peerHex, x25519Hex) }
+            }
+            // Trusted-peers: the engine's TrustStore is in-memory only and
+            // rebuilt empty on every process start — re-adopt every persisted
+            // advertisement before starting transports, so a peer trusted
+            // before the restart is still encryptable-to (and still shows its
+            // prior trust level) on the first send after a cold start. This
+            // mirrors the HV-21 pattern above for the new trust-store-backed
+            // path.
+            for ((peerHex, record) in trustedPeers.all()) {
+                val identity = PeerIdCodec.fromHex(peerHex)
+                val x25519 = PeerIdCodec.fromHex(record.x25519Hex)
+                val sig = PeerIdCodec.fromHex(record.sigHex)
+                if (identity == null || x25519 == null || sig == null) continue
+                val ad = iriscode.FfiPeerAdvertisement(
+                    identityPubkey = identity,
+                    x25519Pubkey = x25519,
+                    keyGenCounter = record.keyGenCounter.toULong(),
+                    validUntil = record.validUntil.toULong(),
+                    sig = sig,
+                )
+                runCatching {
+                    engine.get().adoptPeerAdvertisement(ad)
+                    if (record.verified) {
+                        engine.get().verifyPeer(identity, x25519)
+                    }
+                }
             }
             engine.get().startAll()
             nsdAdapter.start()
@@ -215,10 +246,112 @@ class MeshRepository @Inject constructor(
      * HV-89 interim: trust a peer's X25519 key so addressed mail to it can be
      * sealed. HV-21: also persisted so the trust survives an app restart
      * ([startMesh] re-feeds it).
+     *
+     * Superseded by [addTrustedPeer] — `/addkey` no longer calls this, and
+     * nothing else does either (kept only in case a device has old
+     * [KnownPeersStore] entries from before that change; see [startMesh]).
      */
     fun addPeerKey(peerHex: String, x25519Hex: String) {
         engine.get().registerPeerKey(peerHex, x25519Hex)
         runCatching { knownPeers.put(peerHex, x25519Hex) }
+    }
+
+    /**
+     * Trusted-peers: this node's own signed pairing code — share it (paste,
+     * or later a QR code) for a peer to `/addkey`. Signing happens via the
+     * existing Keystore-backed [keystore] (the private key never leaves the
+     * TEE); the bytes it signs are computed on the Rust side so the
+     * signature verifies against exactly what [addTrustedPeer] reconstructs.
+     */
+    fun myAdvertisement(): String {
+        val x25519 = engine.get().staticX25519Pubkey()
+        val signable = engine.get().advertisementSignableBytes(x25519)
+        val sig = keystore.sign(signable)
+        val ad = iriscode.FfiPeerAdvertisement(
+            identityPubkey = nodeId,
+            x25519Pubkey = x25519,
+            keyGenCounter = 0uL,
+            validUntil = 0uL,
+            sig = sig,
+        )
+        return AdvertisementCodec.encode(ad)
+    }
+
+    /** Outcome of [addTrustedPeer]. */
+    sealed interface AddPeerOutcome {
+        data class Adopted(val peerIdHex: String, val outcome: iriscode.FfiAdoptionOutcome) : AddPeerOutcome
+        /** `blob` was not a validly-shaped pairing code (wrong length/not hex). */
+        data object InvalidBlob : AddPeerOutcome
+    }
+
+    /**
+     * Trusted-peers: decode and adopt a peer's `/myadvert` pairing code into
+     * the engine's trust store. Persists the advertisement (unverified)
+     * so [startMesh] can re-feed it after a restart; a `KeyChangeWarn`
+     * outcome means this identity previously presented a different key and
+     * sending stays blocked until `/fingerprint <name> confirm` re-verifies.
+     */
+    fun addTrustedPeer(blob: String): AddPeerOutcome {
+        val ad = AdvertisementCodec.decode(blob) ?: return AddPeerOutcome.InvalidBlob
+        // AdvertisementCodec.decode already guarantees each field's exact
+        // byte length, so adoptPeerAdvertisement should never throw here —
+        // but AN-9 (this file) established that an FFI call left unguarded
+        // in a viewModelScope coroutine crashes the process on the first
+        // unexpected exception, so this stays defensive rather than assume.
+        val outcome = try {
+            engine.get().adoptPeerAdvertisement(ad)
+        } catch (_: IrisFfiException) {
+            return AddPeerOutcome.InvalidBlob
+        }
+        val peerIdHex = PeerIdCodec.toHex(ad.identityPubkey)
+        runCatching {
+            trustedPeers.put(
+                peerIdHex = peerIdHex,
+                x25519Hex = PeerIdCodec.toHex(ad.x25519Pubkey),
+                keyGenCounter = ad.keyGenCounter.toLong(),
+                validUntil = ad.validUntil.toLong(),
+                sigHex = PeerIdCodec.toHex(ad.sig),
+                createdAtMs = System.currentTimeMillis(),
+            )
+        }
+        return AddPeerOutcome.Adopted(peerIdHex, outcome)
+    }
+
+    /** Trusted-peers: the Short Authentication String between this node and `peerIdHex`. */
+    fun fingerprintFor(peerIdHex: String): String? {
+        val identity = PeerIdCodec.fromHex(peerIdHex) ?: return null
+        return runCatching { engine.get().computeSas(identity) }.getOrNull()
+    }
+
+    /**
+     * Trusted-peers: out-of-band confirmation — promotes `peerIdHex` to
+     * `Verified` using the X25519 key from its last-adopted advertisement.
+     * @return `false` if there is no record for this peer, or the engine
+     * rejected the confirmation (RT-010: the key on file no longer matches
+     * what was most recently adopted — re-run `/addkey` with a fresh code).
+     */
+    fun confirmPeer(peerIdHex: String): Boolean {
+        val record = trustedPeers.get(peerIdHex) ?: return false
+        val identity = PeerIdCodec.fromHex(peerIdHex) ?: return false
+        val x25519 = PeerIdCodec.fromHex(record.x25519Hex) ?: return false
+        return try {
+            engine.get().verifyPeer(identity, x25519)
+            trustedPeers.markVerified(peerIdHex)
+            true
+        } catch (_: IrisFfiException) {
+            false
+        }
+    }
+
+    /** Trusted-peers: current trust level, or `null` if this peer id is malformed. */
+    fun trustLevelFor(peerIdHex: String): iriscode.FfiTrustLevel? {
+        val identity = PeerIdCodec.fromHex(peerIdHex) ?: return null
+        return runCatching { engine.get().trustLevel(identity) }.getOrNull()
+    }
+
+    /** Trusted-peers: drop a peer's persisted trusted-key record. */
+    fun forgetTrustedPeer(peerIdHex: String) {
+        trustedPeers.remove(peerIdHex)
     }
 
     /** Spill the relay outbox into the engine (WorkManager entrypoint). */

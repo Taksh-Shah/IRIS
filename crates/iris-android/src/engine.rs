@@ -16,6 +16,7 @@ use std::sync::Arc;
 use futures_util::StreamExt;
 use tokio::runtime::{Handle, Runtime};
 
+use iris_core::crypto::key_directory::KeyDirectory;
 use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
 use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
 use iris_core::message_engine::crypto::CryptoProvider;
@@ -165,6 +166,26 @@ impl iris_core::crypto::key_directory::KeyDirectory for BenchKeyDirectory {
     }
 }
 
+/// Trusted-peers: tries the trust store first (the `/addkey` pairing-code
+/// flow — `adopt_peer_advertisement`), then falls back to the older unsigned
+/// [`BenchKeyDirectory`] (`register_peer_key`/`addFriend`, the RPCs
+/// `iris_bench`'s Mobly hardware harness — `base.py`, `test_tier1_ble.py`,
+/// `test_tier2_wifidirect.py` — calls directly). Layers the new flow on top
+/// of the existing one rather than replacing it, so the bench harness keeps
+/// working unchanged.
+struct CompositeKeyDirectory {
+    trust: iris_core::identity::TrustKeyDirectory,
+    bench: Arc<BenchKeyDirectory>,
+}
+
+impl iris_core::crypto::key_directory::KeyDirectory for CompositeKeyDirectory {
+    fn x25519_pubkey(&self, node_id: &[u8; 32]) -> Option<[u8; 32]> {
+        self.trust
+            .x25519_pubkey(node_id)
+            .or_else(|| self.bench.x25519_pubkey(node_id))
+    }
+}
+
 /// The Android app's engine host. Owns the three injected platform adapters,
 /// the transport manager, and the message engine — all driven by a tokio
 /// runtime whose handle is threaded through every poll path.
@@ -179,6 +200,12 @@ pub struct IrisEngine {
     node_id: [u8; 32],
     /// HV-89 interim: the hand-fed X25519 key directory (see [`BenchKeyDirectory`]).
     keydir: Arc<BenchKeyDirectory>,
+    /// Trusted-peers feature: the TOFU + verified-tier trust store, shared
+    /// with `FullSecurityPolicy`'s emergency-ACL gate — a peer adopted here
+    /// (QR scan / manual entry, `adopt_peer_advertisement`) is the same
+    /// identity the engine's security policy evaluates, not a second,
+    /// disconnected copy.
+    trust_store: Arc<iris_core::identity::TrustStore>,
     /// AN-6: the Kotlin X25519 provider, kept so the shell can print this
     /// node's static public key (`/x25519`) for a peer to `/addkey`.
     x25519_provider: Option<Arc<dyn FfiX25519KeyProvider>>,
@@ -270,10 +297,14 @@ impl IrisEngine {
     ) -> Result<Arc<Self>, IrisFfiError> {
         let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
         let handle = runtime.handle().clone();
+        // Still the fallback half of `CompositeKeyDirectory` below — the
+        // `iris_bench` hardware harness calls `register_peer_key`/`addFriend`
+        // directly and must keep working unchanged.
         let keydir = Arc::new(BenchKeyDirectory(std::sync::Mutex::new(
             std::collections::HashMap::new(),
         )));
-        let keydir_for_engine = keydir.clone();
+        let trust_store = Arc::new(iris_core::identity::TrustStore::new());
+        let trust_store_for_policy = trust_store.clone();
 
         // The engine's background tasks and the transport registrations all
         // need a live tokio context — build them inside `block_on` on the
@@ -325,17 +356,37 @@ impl IrisEngine {
                 MetricsRegistry::new(),
             );
 
-            // HV-89 interim: give the engine a key directory so `seal_outbound`
-            // has somewhere to look (still fails closed until a key is fed).
-            engine.set_key_directory(keydir_for_engine);
+            // Trusted-peers: key resolution for `seal_outbound` now checks
+            // the same `trust_store` the new `adopt_peer_advertisement`/
+            // `verify_peer`/`trust_level` FFI methods populate FIRST — a peer
+            // trusted via `/addkey`'s pairing-code flow is immediately
+            // encryptable to, not just "trusted" in a second directory
+            // nothing else consults. `TrustStore::resolve_x25519` already
+            // refuses `Revoked`/`KeyChanged`/small-order entries at the read
+            // boundary (RED-0011), so a KeyChangeWarn'd peer fails closed
+            // here too until the operator re-verifies. Falls back to the
+            // older `BenchKeyDirectory` (`register_peer_key`) so the
+            // `iris_bench` hardware harness keeps working unchanged — see
+            // `CompositeKeyDirectory`'s doc.
+            engine.set_key_directory(Arc::new(CompositeKeyDirectory {
+                trust: iris_core::identity::TrustKeyDirectory::new((*trust_store).clone()),
+                bench: keydir.clone(),
+            }));
 
             // CROSS-003: the engine defaults to NoopSecurityPolicy (all checks
             // permissive) until a real policy is installed. No platform ever
             // called set_security_policy(), so rate limiting, replay
             // protection, quota, and the emergency ACL were silently disabled
             // in production on every platform. Arm it here.
+            //
+            // The trust store fed in here is the SAME instance
+            // `adopt_peer_advertisement`/`verify_peer` write to (see the
+            // `trust` module) — previously this constructed its own
+            // throwaway `TrustStore::new()` that nothing ever populated, so
+            // `FullSecurityPolicy`'s emergency-ACL trust gate (SEC-RT-08)
+            // stayed permanently in its empty/Noop-permissive state.
             engine.set_security_policy(std::sync::Arc::new(iris_core::FullSecurityPolicy::new(
-                std::sync::Arc::new(iris_core::TrustStore::new()),
+                trust_store_for_policy,
             )));
 
             let all: [Arc<dyn Transport>; 4] = [ble_t, aware_t, direct_t, internet_t.clone()];
@@ -396,6 +447,7 @@ impl IrisEngine {
             internet,
             node_id,
             keydir,
+            trust_store,
             x25519_provider,
             discovery,
         }))
@@ -503,6 +555,90 @@ impl IrisEngine {
             .map_err(|_| IrisFfiError::IoError("keydir poisoned".into()))?
             .insert(peer, key);
         Ok(())
+    }
+
+    /// Trusted-peers: the canonical bytes this node must sign (with its own
+    /// Keystore-backed Ed25519 key, via the existing `FfiCryptoSigner`) to
+    /// produce a [`crate::trust::FfiPeerAdvertisement`] a peer can adopt.
+    /// `x25519_pubkey` is this node's own static X25519 key
+    /// (`static_x25519_pubkey()`). Kotlin signs the returned bytes verbatim —
+    /// no CBOR knowledge needed on the Kotlin side, mirroring how
+    /// `FfiCryptoSigner` already signs opaque envelope bytes — then builds
+    /// `FfiPeerAdvertisement { identity_pubkey: node_id(), x25519_pubkey,
+    /// key_gen_counter: 0, valid_until: 0, sig }` locally to show as this
+    /// node's pairing code (`/myadvert`). `key_gen_counter`/`valid_until` are
+    /// fixed at 0 for a first-pairing advertisement (no rotation support in
+    /// this flow yet), so both sides must agree on those two constants —
+    /// changing them here would silently break every already-issued code.
+    pub fn advertisement_signable_bytes(
+        &self,
+        x25519_pubkey: Vec<u8>,
+    ) -> Result<Vec<u8>, IrisFfiError> {
+        let x = crate::trust::to_arr32(&x25519_pubkey, "x25519_pubkey")?;
+        let unsigned = iris_core::identity::KeyAdvertisementV1 {
+            format_version: iris_core::identity::advertise::ADVERTISE_FORMAT_VERSION,
+            identity_pubkey: self.node_id,
+            static_x25519_pubkey: x,
+            key_gen_counter: 0,
+            valid_until: 0,
+            sig: [0u8; 64].into(),
+        };
+        unsigned
+            .signable_bytes()
+            .map_err(IrisFfiError::IoError)
+    }
+
+    /// Trusted-peers: adopt a peer's signed key advertisement — scanned via
+    /// QR or typed in manually — into the shared trust store. Returns the
+    /// adoption outcome so the UI can react; in particular
+    /// `FfiAdoptionOutcome::KeyChangeWarn` means this identity previously
+    /// presented a *different* static key with no valid rotation proof and
+    /// must block sending until the operator re-verifies out of band
+    /// (`verify_peer`) — see PRY-18 in `TrustStore::adopt_advertisement`.
+    pub fn adopt_peer_advertisement(
+        &self,
+        advertisement: crate::trust::FfiPeerAdvertisement,
+    ) -> Result<crate::trust::FfiAdoptionOutcome, IrisFfiError> {
+        let ad = crate::trust::to_key_advertisement(advertisement)?;
+        let outcome = self.trust_store.adopt_advertisement(&ad, unix_now());
+        Ok(outcome.into())
+    }
+
+    /// Trusted-peers: current trust level for a peer's 32-byte Ed25519
+    /// identity key (`Unknown` if the peer has no advertisement on file).
+    pub fn trust_level(
+        &self,
+        identity_pubkey: Vec<u8>,
+    ) -> Result<crate::trust::FfiTrustLevel, IrisFfiError> {
+        let id = crate::trust::to_arr32(&identity_pubkey, "identity_pubkey")?;
+        Ok(self.trust_store.level(&id).into())
+    }
+
+    /// Trusted-peers: out-of-band (QR/SAS) confirmation, promoting a peer to
+    /// `Verified`. `expected_x25519_pubkey` must be the exact key the
+    /// operator confirmed — confirming the wrong key fails loudly rather
+    /// than silently trusting it (TRUST_MODEL.md RT-010).
+    pub fn verify_peer(
+        &self,
+        identity_pubkey: Vec<u8>,
+        expected_x25519_pubkey: Vec<u8>,
+    ) -> Result<(), IrisFfiError> {
+        let id = crate::trust::to_arr32(&identity_pubkey, "identity_pubkey")?;
+        let key = crate::trust::to_arr32(&expected_x25519_pubkey, "x25519_pubkey")?;
+        self.trust_store
+            .verify_peer(&id, &key)
+            .map_err(|e| IrisFfiError::InvalidArgument(e.to_string()))
+    }
+
+    /// Trusted-peers: the 5-character order-independent Short Authentication
+    /// String (TRUST_MODEL.md) between this node and
+    /// `their_identity_pubkey`. Both phones display the same code; the
+    /// operator compares them (visually after a QR scan, or verbally) before
+    /// calling `verify_peer` — matching confirms neither key was substituted
+    /// in transit.
+    pub fn compute_sas(&self, their_identity_pubkey: Vec<u8>) -> Result<String, IrisFfiError> {
+        let theirs = crate::trust::to_arr32(&their_identity_pubkey, "identity_pubkey")?;
+        Ok(iris_core::identity::compute_sas(&self.node_id, &theirs))
     }
 
     /// HV-3: point-in-time diagnostic of the mesh — registered transports and

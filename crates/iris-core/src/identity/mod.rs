@@ -20,6 +20,7 @@ pub mod chain;
 pub mod peer_id;
 pub mod provision;
 pub mod rotate;
+pub mod sas;
 pub mod small_order;
 pub mod store;
 pub mod trust_store;
@@ -32,6 +33,9 @@ pub use rotate::{
     apply as apply_rotation, RotationEventV1, RotationOutcome, KIND_REVOCATION, KIND_ROTATION,
     ROTATION_FORMAT_VERSION,
 };
+pub use sas::compute_sas;
 pub use small_order::{is_small_order, SMALL_ORDER_U};
 pub use store::{FileKeyStore, KeyStore, KeyStoreError};
-pub use trust_store::{AdoptionOutcome, TrustEntry, TrustKeyDirectory, TrustLevel, TrustStore};
+pub use trust_store::{
+    AdoptionOutcome, TrustEntry, TrustKeyDirectory, TrustLevel, TrustStore, VerifyError,
+};
