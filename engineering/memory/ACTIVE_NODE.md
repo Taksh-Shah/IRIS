@@ -19,13 +19,16 @@ resolved:
 - 19/19 Rust tests pass (iris-core + iris-android)
 
 ### What was fixed in the gap-fix session (this session)
-1. **Relay server TLS** (Gap 1+2): `relay_server.rs` now generates a self-signed
-   cert at startup with `rcgen` and wraps every connection with `TlsAcceptor`
-   (ALPN `iris-relay/1`).  The client's TLS handshake now succeeds against it.
-   `tls.rs` adds `test_relay_connector_for_cert()` for integration tests.
-   New test `relay_tls_roundtrip_via_internet_transport` verifies TLS relay
-   end-to-end: two `InternetTransport` instances in Relay mode exchange a
-   frame through an in-process TLS relay using a self-signed test cert.
+1. **Relay server TLS** (Gap 1+2): `relay_server.rs` now uses a hardcoded
+   OpenSSL-generated RSA-2048 self-signed cert (DNS SAN=localhost, 10yr) and
+   wraps every connection with `TlsAcceptor` (ALPN `iris-relay/1`).  No
+   runtime cert generation (`rcgen` removed — was not in Cargo.lock, blocked
+   offline builds).  `transport/test_certs.rs` holds the same cert bytes as
+   `#[cfg(test)]` constants.  `tls.rs` adds `test_relay_connector_for_cert()`
+   for integration tests.  New test `relay_tls_roundtrip_via_internet_transport`
+   verifies TLS relay end-to-end: two `InternetTransport` instances in Relay
+   mode exchange a frame through an in-process TLS relay using the embedded
+   test cert.  Fixed `read_relay_frame` type mismatch in TLS server task.
 
 2. **NSD interim path** (Gap 3): `AndroidNsdAdapter.onServiceResolved` now
    extracts the peer's `id` TXT attribute and calls `engine.addInternetLanPeer(peerIdHex, addr)`.
@@ -52,9 +55,9 @@ resolved:
   not yet implemented.
 
 ### Test status
-All Rust tests pass (iris-core + iris-android).  Three new tests added this
-session: `relay_tls_roundtrip_via_internet_transport`,
-`lan_direct_send_bypasses_relay_mode`, plus all 19 from `f5617c0`.
+All Rust tests pass (iris-core + iris-android).  Three new tests added:
+`relay_tls_roundtrip_via_internet_transport`, `lan_direct_send_bypasses_relay_mode`,
+plus all 19 from `f5617c0`.  Total: 816 iris-core / 9 iris-android (commit `ab57667`).
 
 ## Prior hardware phase
 
