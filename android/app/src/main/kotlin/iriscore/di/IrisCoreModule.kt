@@ -12,6 +12,8 @@ import iriscode.FfiWifiAwareAdapter
 import iriscode.FfiWifiDirectAdapter
 import iriscode.FfiX25519KeyProvider
 import iriscode.IrisEngine
+import iriscore.BuildConfig
+import iriscore.adapter.AndroidInternetNetworkMonitor
 import iriscore.data.RelayOutbox
 import iriscore.identity.KeystoreEd25519
 import iriscore.identity.X25519KeyProviderImpl
@@ -76,6 +78,7 @@ object IrisCoreModule {
     @Provides
     @Singleton
     fun provideIrisEngine(
+        @ApplicationContext context: Context,
         ble: FfiBleAdapter,
         aware: FfiWifiAwareAdapter,
         direct: FfiWifiDirectAdapter,
@@ -98,4 +101,14 @@ object IrisCoreModule {
         }
         return engine
     }
+
+    @Provides
+    @Singleton
+    fun provideInternetNetworkMonitor(
+        @ApplicationContext context: Context,
+        engine: IrisEngine,
+    ): AndroidInternetNetworkMonitor =
+        AndroidInternetNetworkMonitor(context, engine, BuildConfig.IRIS_RELAY_ENDPOINTS).also {
+            it.start()
+        }
 }

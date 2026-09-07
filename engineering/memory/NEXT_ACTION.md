@@ -1,11 +1,11 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T12:00:00+05:30
+**Last updated**: 2026-09-07T14:30:00+05:30
 
-## Current action: Tier-5 Android IP transport build-out
+## Current action: Tier-5 authenticated relay and LAN listener build-out
 
-Research `RES-0031.md` and design gate `docs/implementation/INTERNET_ANDROID_DESIGN.md` are complete. Audit the Android/core seams, implement the design-backed integration, run automated checks, then request the two-phone LAN hardware gate.
+Research `RES-0031.md` and design gate `docs/implementation/INTERNET_ANDROID_DESIGN.md` are complete. The Android/core registration and validated-network lifecycle slice is implemented and focused-tested. Next, implement the authenticated relay wire protocol/server and local TCP listener; only then add Android NSD advertisement/discovery, rebuild native libraries, and run automated checks. Do not request the hardware gate before these software prerequisites exist.
 
 The repository is no longer awaiting phones. The bench is available and the
 software graph is complete/deferred. Continue from the hardware loop, not from

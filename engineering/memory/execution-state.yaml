@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-09-07T12:00:00+05:30"
+updated_at: "2026-09-07T14:30:00+05:30"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -23,12 +23,12 @@ mission_description: "Advance IRIS from documented state to production-grade res
 
 # === CURRENT POSITION ===
 active_node: "INTERNET-001"
-active_stage: "DESIGN"
-active_action: "Tier-5 Android LAN and relay design recorded after official Android/IETF research."
-next_action: "Audit Android/core seams, then implement the smallest tested network-state and IP-transport integration supported by the design."
+active_stage: "IMPLEMENT"
+active_action: "Tier-5 Android/core IP transport registration and validated-network lifecycle seam implemented and focused-tested; authenticated relay and LAN listener remain design-backed implementation work."
+next_action: "Implement the authenticated relay wire protocol/server and LAN listener before adding NSD advertisement/discovery; then build native Android libraries and run the full software validation suite."
 last_transition: "STAGE_TRANSITION"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-09-07T12:00:00+05:30"
+last_transition_at: "2026-09-07T14:30:00+05:30"
 last_checkpoint: "CHK-0006"
 last_checkpoint_at: "2026-08-13T18:30:00Z"
 

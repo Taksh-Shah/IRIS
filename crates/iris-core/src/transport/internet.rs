@@ -31,7 +31,7 @@ use futures_util::stream::Stream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{broadcast, Mutex, RwLock};
 
 use crate::message::{
     DiscoveryConfig, IncomingMessage, MessagePriority, NodeAdvertisement, PeerId, PeerInfo,
@@ -75,7 +75,9 @@ pub fn internet_capabilities() -> TransportCapabilities {
         supports_background_android: true,
         supports_background_ios: true,
         requires_special_hardware: false,
-        cost_class: TransportCostClass::Metered { cost_per_kb_inr: 0.0 },
+        cost_class: TransportCostClass::Metered {
+            cost_per_kb_inr: 0.0,
+        },
         regulatory_band: None,
         conflict_group: crate::transport::RadioConflictGroup::None,
     }
@@ -143,18 +145,31 @@ impl ConnectionPool {
 
     /// Acquire a live connection bound to exactly `addr` (never any other relay).
     /// Reaps expired entries first — their Drop aborts orphaned reader tasks.
-    fn acquire(&mut self, now: Instant, addr: SocketAddr) -> Option<(OwnedWriteHalf, tokio::task::AbortHandle)> {
+    fn acquire(
+        &mut self,
+        now: Instant,
+        addr: SocketAddr,
+    ) -> Option<(OwnedWriteHalf, tokio::task::AbortHandle)> {
         self.connections.retain(|c| !c.is_expired(now));
         let idx = self.connections.iter().position(|c| c.addr == addr);
         idx.map(|i| {
             let mut conn = self.connections.remove(i);
             let write = conn.write.take().expect("write always present in pool");
-            let abort = conn.reader_abort.take().expect("abort always present in pool");
+            let abort = conn
+                .reader_abort
+                .take()
+                .expect("abort always present in pool");
             (write, abort)
         })
     }
 
-    fn release(&mut self, write: OwnedWriteHalf, reader_abort: tokio::task::AbortHandle, addr: SocketAddr, now: Instant) {
+    fn release(
+        &mut self,
+        write: OwnedWriteHalf,
+        reader_abort: tokio::task::AbortHandle,
+        addr: SocketAddr,
+        now: Instant,
+    ) {
         self.connections.retain(|c| !c.is_expired(now));
         let per_addr = self.connections.iter().filter(|c| c.addr == addr).count();
         let conn = PooledConnection {
@@ -243,8 +258,13 @@ pub struct InternetTransport {
     /// Address of the relay established at connect(); used to reconnect if the
     /// pooled connection idles out before the next send.
     relay_addr: Mutex<Option<SocketAddr>>,
-    /// Candidate relay endpoints provided at construction (INTERNET.md relay discovery).
-    relay_candidates: Vec<SocketAddr>,
+    /// Candidate relay endpoints supplied by configuration or platform discovery.
+    /// This is mutable because Android NSD may resolve a relay after engine start.
+    relay_candidates: RwLock<Vec<SocketAddr>>,
+    /// Connectivity is platform-owned. A configured relay alone must not make
+    /// this transport selectable while Android reports no validated network.
+    network_available: std::sync::atomic::AtomicBool,
+    has_relay_endpoint: std::sync::atomic::AtomicBool,
     /// Per-peer relay binding so send() never falls back to another peer's
     /// relay (RED-0001-01). Populated on connect().
     peer_relays: Mutex<HashMap<PeerId, SocketAddr>>,
@@ -284,7 +304,13 @@ impl InternetTransport {
             cost_params,
             priority_hint: AtomicU8::new(MessagePriority::P5.as_u8()),
             relay_addr: Mutex::new(None),
-            relay_candidates: relay_endpoints.to_vec(),
+            relay_candidates: RwLock::new(relay_endpoints.to_vec()),
+            // Non-Android callers historically construct this transport with a
+            // concrete endpoint and no platform callback. Preserve that usable
+            // core default; Android constructs it empty and explicitly supplies
+            // its validated-network signal before configuration.
+            network_available: std::sync::atomic::AtomicBool::new(!relay_endpoints.is_empty()),
+            has_relay_endpoint: std::sync::atomic::AtomicBool::new(!relay_endpoints.is_empty()),
             peer_relays: Mutex::new(HashMap::new()),
             readers: StdMutex::new(Vec::new()),
             reconnect_attempts: AtomicU32::new(0),
@@ -294,6 +320,51 @@ impl InternetTransport {
                 .unwrap_or_default()
                 .subsec_nanos() as u64,
             ewma: EwmaGoodput::new(),
+        }
+    }
+
+    /// Replace relay candidates from a trusted configuration or platform
+    /// discovery result. Empty input intentionally leaves the transport
+    /// unavailable: there is no safe implicit public relay.
+    pub async fn set_relay_endpoints(&self, endpoints: Vec<SocketAddr>) {
+        self.has_relay_endpoint
+            .store(!endpoints.is_empty(), Ordering::Release);
+        *self.relay_candidates.write().await = endpoints;
+        self.refresh_availability().await;
+    }
+
+    /// Report whether the platform currently has a validated usable network.
+    /// This is an availability hint, not a peer-reachability assertion.
+    pub async fn set_network_available(&self, available: bool) {
+        self.network_available.store(available, Ordering::Release);
+        self.refresh_availability().await;
+    }
+
+    /// Reconcile externally-owned connectivity/configuration with live sockets.
+    /// A stale TCP connection is not usable after Android withdraws its validated
+    /// default network (nor after its relay configuration is removed). Drop both
+    /// the pool and the per-peer bindings before publishing `Unavailable`, so a
+    /// later recovery must establish a fresh, explicitly configured link.
+    async fn refresh_availability(&self) {
+        if !self.network_available.load(Ordering::Acquire)
+            || !self.has_relay_endpoint.load(Ordering::Acquire)
+        {
+            self.pool.lock().await.connections.clear();
+            self.peer_relays.lock().await.clear();
+            *self.relay_addr.lock().await = None;
+            if let Ok(mut readers) = self.readers.lock() {
+                for reader in readers.drain(..) {
+                    reader.abort();
+                }
+            }
+            self.set_state(TransportState::Unavailable);
+            return;
+        }
+        // A blocking read is deliberately avoided here; an empty/unknown
+        // endpoint list is represented by the existing Unavailable state and
+        // `connect()` remains the final authority.
+        if self.state.load() == TransportState::Unavailable {
+            self.set_state(TransportState::Available);
         }
     }
 
@@ -310,18 +381,22 @@ impl InternetTransport {
     async fn resolve_relay(&self, peer: &PeerInfo) -> Option<SocketAddr> {
         let known = *self.relay_addr.lock().await;
         let binding = self.peer_relays.lock().await.get(&peer.peer_id).copied();
+        let candidate = self.relay_candidates.read().await.first().copied();
         peer.addresses
             .first()
             .copied()
             .or(binding)
             .or(known)
-            .or_else(|| self.relay_candidates.first().copied())
+            .or(candidate)
     }
 
     /// Open a pooled connection to a peer's relay.
     /// Returns `(write_half, abort_handle, relay_addr)` so the caller has the
     /// relay address before writing — avoids resolve-after-write for RF-40.
-    async fn get_connection(&self, peer: &PeerInfo) -> Result<(OwnedWriteHalf, tokio::task::AbortHandle, SocketAddr), TransportError> {
+    async fn get_connection(
+        &self,
+        peer: &PeerInfo,
+    ) -> Result<(OwnedWriteHalf, tokio::task::AbortHandle, SocketAddr), TransportError> {
         let addr = self
             .resolve_relay(peer)
             .await
@@ -332,8 +407,7 @@ impl InternetTransport {
         if attempts > 0 {
             if let Ok(guard) = self.last_attempt.lock() {
                 if let Some(t) = *guard {
-                    let delay =
-                        Duration::from_millis(backoff_ms(attempts, self.jitter_seed));
+                    let delay = Duration::from_millis(backoff_ms(attempts, self.jitter_seed));
                     if t.elapsed() < delay {
                         return Err(TransportError::Busy);
                     }
@@ -423,25 +497,29 @@ impl InternetTransport {
                 if !matches!(body_res, Ok(Ok(_))) {
                     break;
                 }
-                incoming.send(IncomingMessage {
-                    // Attributed to the peer this connection was opened for.
-                    // The protocol layer MUST re-derive the sender from the
-                    // envelope (WP-A codec) — relay metadata is not trust.
-                    peer_id,
-                    transport_id: transport_id.0.clone(),
-                    payload,
-                    received_at: Instant::now(),
-                }).ok();
+                incoming
+                    .send(IncomingMessage {
+                        // Attributed to the peer this connection was opened for.
+                        // The protocol layer MUST re-derive the sender from the
+                        // envelope (WP-A codec) — relay metadata is not trust.
+                        peer_id,
+                        transport_id: transport_id.0.clone(),
+                        payload,
+                        received_at: Instant::now(),
+                    })
+                    .ok();
             }
             // RF-37: only transition to Available on link-loss if the transport
             // has not already been shut down. An Unavailable state means shutdown()
             // ran first — writing Available here would resurrect it.
             if state.load() != TransportState::Unavailable {
                 state.store(TransportState::Available);
-                state_tx.send(TransportStateEvent {
-                    transport_id,
-                    new_state: TransportState::Available,
-                }).ok();
+                state_tx
+                    .send(TransportStateEvent {
+                        transport_id,
+                        new_state: TransportState::Available,
+                    })
+                    .ok();
             }
         });
         let abort = handle.abort_handle();
@@ -515,7 +593,10 @@ impl Transport for InternetTransport {
             }
         };
         // Park the connection in the pool (keyed by relay) for send() reuse.
-        self.pool.lock().await.release(conn, abort, conn_addr, Instant::now());
+        self.pool
+            .lock()
+            .await
+            .release(conn, abort, conn_addr, Instant::now());
         self.set_state(TransportState::Connected);
         Ok(TransportLink {
             peer_id: peer.peer_id,
@@ -729,6 +810,51 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn network_and_relay_configuration_gate_availability() {
+        let transport = InternetTransport::new(&[], InternetCostParams::default());
+        transport.set_network_available(true).await;
+        assert_eq!(transport.state(), TransportState::Unavailable);
+        transport
+            .set_relay_endpoints(vec!["127.0.0.1:9000".parse().unwrap()])
+            .await;
+        assert_eq!(transport.state(), TransportState::Available);
+        transport.set_network_available(false).await;
+        assert_eq!(transport.state(), TransportState::Unavailable);
+    }
+
+    #[tokio::test]
+    async fn network_loss_drops_peer_bindings_before_recovery() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let relay_addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let (_socket, _) = listener.accept().await.unwrap();
+        });
+        let transport = InternetTransport::new(&[relay_addr], InternetCostParams::default());
+        let peer = PeerId([0x42; 32]);
+        let peer_info = PeerInfo {
+            peer_id: peer,
+            addresses: vec![relay_addr],
+            transport_addresses: Vec::new(),
+            last_seen: None,
+        };
+        transport.connect(&peer_info).await.unwrap();
+        assert_eq!(transport.state(), TransportState::Connected);
+
+        transport.set_network_available(false).await;
+        assert_eq!(transport.state(), TransportState::Unavailable);
+        assert!(
+            matches!(
+                transport
+                    .send(&peer, &sample_message(b"stale", MessagePriority::P2))
+                    .await,
+                Err(TransportError::NotConnected)
+            ),
+            "a network-loss transition must not leave a stale peer route usable"
+        );
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
     async fn cost_snapshot_reflects_connection() {
         let transport = InternetTransport::new(
             &[],
@@ -747,7 +873,10 @@ mod tests {
         let caps = internet_capabilities();
         assert!(caps.requires_infrastructure);
         assert!(!caps.requires_special_hardware);
-        assert!(matches!(caps.cost_class, TransportCostClass::Metered { .. }));
+        assert!(matches!(
+            caps.cost_class,
+            TransportCostClass::Metered { .. }
+        ));
         assert!(caps.supports_background_android && caps.supports_background_ios);
         assert!(caps.max_message_size >= 1_000_000);
     }

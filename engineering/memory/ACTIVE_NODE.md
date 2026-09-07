@@ -1,11 +1,18 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T12:00:00+05:30
+**Last updated**: 2026-09-07T14:30:00+05:30
 
 ## Current implementation phase
 
 Tier-5 `INTERNET-001` is active at the implementation boundary. Research and design are recorded in `RES-0031.md` and `docs/implementation/INTERNET_ANDROID_DESIGN.md`.
+
+The first implementation slice is complete: Android registers `internet-0`,
+supplies a lifecycle-owned validated-network callback, and clears pooled routes
+on network/configuration loss. Focused Rust suites are green (Internet 16/16;
+Android engine 9/9). It is **not** Tier-5 complete: an authenticated relay
+protocol/server and a local TCP listener are still required before NSD can
+truthfully advertise or discover a usable LAN service.
 
 ## Prior hardware phase
 

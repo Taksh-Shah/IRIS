@@ -26,6 +26,7 @@ use iris_core::message_engine::{
 use iris_core::observability::MetricsRegistry;
 use iris_core::protocol::{ContentType, Envelope, MessageId, PROTOCOL_VERSION};
 use iris_core::transport::ble::BleTransport;
+use iris_core::transport::internet::{InternetCostParams, InternetTransport};
 use iris_core::transport::wifi_direct::WifiDirectTransport;
 use iris_core::transport::wifiaware::WifiAwareTransport;
 use iris_core::transport::{Transport, TransportId, TransportManager};
@@ -174,6 +175,7 @@ pub struct IrisEngine {
     manager: Arc<TransportManager>,
     engine: Arc<MessageEngine>,
     transports: Vec<TransportId>,
+    internet: Arc<InternetTransport>,
     node_id: [u8; 32],
     /// HV-89 interim: the hand-fed X25519 key directory (see [`BenchKeyDirectory`]).
     keydir: Arc<BenchKeyDirectory>,
@@ -276,7 +278,7 @@ impl IrisEngine {
         // The engine's background tasks and the transport registrations all
         // need a live tokio context — build them inside `block_on` on the
         // engine's own runtime (the explicit-handle pattern, issue #2576).
-        let (manager, engine, transports, discovery) = runtime.block_on(async {
+        let (manager, engine, transports, discovery, internet) = runtime.block_on(async {
             let manager = Arc::new(TransportManager::new());
 
             let ble_t = Arc::new(BleTransport::new(Some(Arc::new(BleBridge::new(ble)))));
@@ -286,6 +288,7 @@ impl IrisEngine {
             let direct_t = Arc::new(WifiDirectTransport::new(Some(Arc::new(
                 WifiDirectBridge::new(direct),
             ))));
+            let internet_t = Arc::new(InternetTransport::new(&[], InternetCostParams::default()));
 
             manager
                 .register(ble_t.clone())
@@ -299,11 +302,16 @@ impl IrisEngine {
                 .register(direct_t.clone())
                 .await
                 .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
+            manager
+                .register(internet_t.clone())
+                .await
+                .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
 
             let transports = vec![
                 ble_t.transport_id().clone(),
                 aware_t.transport_id().clone(),
                 direct_t.transport_id().clone(),
+                internet_t.transport_id().clone(),
             ];
 
             let engine = MessageEngine::new_with_telemetry(
@@ -326,11 +334,11 @@ impl IrisEngine {
             // called set_security_policy(), so rate limiting, replay
             // protection, quota, and the emergency ACL were silently disabled
             // in production on every platform. Arm it here.
-            engine.set_security_policy(std::sync::Arc::new(
-                iris_core::FullSecurityPolicy::new(std::sync::Arc::new(iris_core::TrustStore::new())),
-            ));
+            engine.set_security_policy(std::sync::Arc::new(iris_core::FullSecurityPolicy::new(
+                std::sync::Arc::new(iris_core::TrustStore::new()),
+            )));
 
-            let all: [Arc<dyn Transport>; 3] = [ble_t, aware_t, direct_t];
+            let all: [Arc<dyn Transport>; 4] = [ble_t, aware_t, direct_t, internet_t.clone()];
             for t in &all {
                 Self::spawn_inbox_forwarder(engine.clone(), t.clone());
             }
@@ -367,7 +375,7 @@ impl IrisEngine {
                 }
             });
 
-            Ok::<_, IrisFfiError>((manager, engine, transports, discovery))
+            Ok::<_, IrisFfiError>((manager, engine, transports, discovery, internet_t))
         })?;
 
         Ok(Arc::new(Self {
@@ -376,17 +384,40 @@ impl IrisEngine {
             manager,
             engine,
             transports,
+            internet,
             node_id,
             keydir,
             x25519_provider,
             discovery,
         }))
     }
-
 }
 
 #[uniffi::export]
 impl IrisEngine {
+    /// Tier-5: install trusted relay endpoints supplied by Android settings or
+    /// NSD resolution. Values must be numeric socket addresses; DNS resolution
+    /// stays in the platform layer so network binding remains Android-aware.
+    pub fn set_internet_relay_endpoints(&self, endpoints: Vec<String>) -> Result<(), IrisFfiError> {
+        let parsed: Result<Vec<std::net::SocketAddr>, _> = endpoints
+            .iter()
+            .map(|value| value.parse::<std::net::SocketAddr>())
+            .collect();
+        let parsed = parsed.map_err(|_| {
+            IrisFfiError::InvalidArgument("internet relay endpoints must be IP:port values".into())
+        })?;
+        self.handle
+            .block_on(self.internet.set_relay_endpoints(parsed));
+        Ok(())
+    }
+
+    /// Tier-5: apply Android's validated-network signal. `true` means an
+    /// active validated network; it never implies a peer or relay is reachable.
+    pub fn set_internet_network_available(&self, available: bool) {
+        self.handle
+            .block_on(self.internet.set_network_available(available));
+    }
+
     /// The node's 32-byte PeerId for outbound messages.
     pub fn node_id(&self) -> Vec<u8> {
         self.node_id.to_vec()
@@ -414,8 +445,9 @@ impl IrisEngine {
     ) -> Result<(), IrisFfiError> {
         let peer = decode_hex32(peer_id_hex)
             .ok_or_else(|| IrisFfiError::InvalidArgument("peer id must be 64 hex chars".into()))?;
-        let key: [u8; 32] = decode_hex32(x25519_pub_hex)
-            .ok_or_else(|| IrisFfiError::InvalidArgument("x25519 key must be 64 hex chars".into()))?;
+        let key: [u8; 32] = decode_hex32(x25519_pub_hex).ok_or_else(|| {
+            IrisFfiError::InvalidArgument("x25519 key must be 64 hex chars".into())
+        })?;
         self.keydir
             .0
             .lock()
@@ -551,10 +583,9 @@ impl IrisEngine {
             let mut started = Vec::new();
             for id in ["ble-android", "wifi-aware-0", "wifi-direct-0"] {
                 let result = async {
-                    let t = manager
-                        .get(&TransportId::from(id))
-                        .await
-                        .ok_or_else(|| IrisFfiError::Transport(format!("transport {id} missing")))?;
+                    let t = manager.get(&TransportId::from(id)).await.ok_or_else(|| {
+                        IrisFfiError::Transport(format!("transport {id} missing"))
+                    })?;
                     t.start_advertising(NodeAdvertisement {
                         peer_id: PeerId::from_bytes(node_id),
                         public_ip_addr: None,
@@ -735,8 +766,9 @@ impl IrisEngine {
     /// resolves (DEC-BLE-0008). `mac_str` accepts the platform's own
     /// colon-separated form ("aa:bb:cc:dd:ee:ff") or bare 12-hex.
     pub fn set_local_wifi_direct_mac(&self, mac_str: &str) -> Result<(), IrisFfiError> {
-        let mac = decode_mac_hex(mac_str)
-            .ok_or_else(|| IrisFfiError::InvalidArgument("mac must be 6 bytes, hex or colon-separated".into()))?;
+        let mac = decode_mac_hex(mac_str).ok_or_else(|| {
+            IrisFfiError::InvalidArgument("mac must be 6 bytes, hex or colon-separated".into())
+        })?;
         let handle = self.handle.clone();
         let manager = self.manager.clone();
         let ids = self.transports.clone();
@@ -1031,10 +1063,10 @@ mod tests {
         }
     }
 
-    /// AC-4: the engine wires the TransportManager over the FFI bridges and
-    /// registers all three mesh transports before it returns.
+    /// Tier-5: the engine wires the three radio transports plus the initially
+    /// unavailable IP transport before it returns.
     #[test]
-    fn engine_registers_three_transports_over_bridges() {
+    fn engine_registers_radio_and_internet_transports() {
         let engine = IrisEngine::new_for_test(
             Arc::new(SimBle),
             Arc::new(SimAware::default()),
@@ -1050,6 +1082,27 @@ mod tests {
         assert!(ids.contains(&"ble-android".to_string()));
         assert!(ids.contains(&"wifi-aware-0".to_string()));
         assert!(ids.contains(&"wifi-direct-0".to_string()));
+        assert!(ids.contains(&"internet-0".to_string()));
+    }
+
+    #[test]
+    fn internet_transport_requires_valid_endpoint_and_network_signal() {
+        let engine = IrisEngine::new_for_test(
+            Arc::new(SimBle),
+            Arc::new(SimAware::default()),
+            Arc::new(SimDirect),
+            vec![9u8; 32],
+        )
+        .expect("engine builds");
+        engine.set_internet_network_available(true);
+        assert_eq!(engine.internet.state(), TransportState::Unavailable);
+        engine
+            .set_internet_relay_endpoints(vec!["127.0.0.1:9000".into()])
+            .expect("endpoint accepted");
+        assert_eq!(engine.internet.state(), TransportState::Available);
+        assert!(engine
+            .set_internet_relay_endpoints(vec!["not-an-endpoint".into()])
+            .is_err());
     }
 
     /// AC-4: `start_all` drives the transports through the bridges; the

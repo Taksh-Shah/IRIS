@@ -1039,6 +1039,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_send_text(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_set_internet_network_available(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_set_internet_relay_endpoints(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_set_local_wifi_direct_mac(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_snapshot(
@@ -1189,7 +1193,7 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: 
 ): Long
 external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,`x25519Provider`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
-external fun uniffi_iriscode_fn_method_irisengine_broadcast_text(`ptr`: Long,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus,
+external fun uniffi_iriscode_fn_method_irisengine_broadcast_text(`ptr`: Long,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_drop_all_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1199,6 +1203,10 @@ external fun uniffi_iriscode_fn_method_irisengine_register_peer_key(`ptr`: Long,
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_send_text(`ptr`: Long,`recipientHex`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_set_internet_network_available(`ptr`: Long,`available`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_method_irisengine_set_internet_relay_endpoints(`ptr`: Long,`endpoints`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_set_local_wifi_direct_mac(`ptr`: Long,`macStr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_snapshot(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1440,7 +1448,7 @@ external fun ffi_iriscode_rust_future_free_void(`handle`: Long,
 external fun ffi_iriscode_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 
-
+    
 }
 
 private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
@@ -1470,6 +1478,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_send_text() != 50109) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_set_internet_network_available() != 59071) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_set_internet_relay_endpoints() != 14971) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_set_local_wifi_direct_mac() != 16563) {
@@ -2323,9 +2337,9 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
  * `AndroidBleTransportAdapter` (Kotlin); simulated in Rust unit tests.
  */
 public interface FfiBleAdapter {
-
+    
     fun `startScan`(`filter`: FfiScanFilter): kotlin.ULong
-
+    
     fun `stopScan`(`handle`: kotlin.ULong)
     
     fun `startAdvertising`(`data`: FfiAdvertisementData): kotlin.ULong
@@ -6396,7 +6410,7 @@ public interface IrisEngineInterface {
      * message id on acceptance, exactly like `send_text`.
      */
     fun `broadcastText`(`text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray
-
+    
     /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
      * down — advertising/scanning stay up, so the discovery loop re-forms the
@@ -6423,6 +6437,19 @@ public interface IrisEngineInterface {
      * 16-byte wire message id on acceptance.
      */
     fun `sendText`(`recipientHex`: kotlin.String, `text`: kotlin.String, `priority`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * Tier-5: apply Android's validated-network signal. `true` means an
+     * active validated network; it never implies a peer or relay is reachable.
+     */
+    fun `setInternetNetworkAvailable`(`available`: kotlin.Boolean)
+    
+    /**
+     * Tier-5: install trusted relay endpoints supplied by Android settings or
+     * NSD resolution. Values must be numeric socket addresses; DNS resolution
+     * stays in the platform layer so network binding remains Android-aware.
+     */
+    fun `setInternetRelayEndpoints`(`endpoints`: List<kotlin.String>)
     
     /**
      * HV-21: tell every transport this device's own Wi-Fi Direct (P2P) MAC,
@@ -6609,9 +6636,9 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     }
     )
     }
+    
 
-
-
+    
     /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
      * down — advertising/scanning stay up, so the discovery loop re-forms the
@@ -6681,6 +6708,40 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     }
     )
     }
+    
+
+    
+    /**
+     * Tier-5: apply Android's validated-network signal. `true` means an
+     * active validated network; it never implies a peer or relay is reachable.
+     */override fun `setInternetNetworkAvailable`(`available`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_set_internet_network_available(
+        it,
+        FfiConverterBoolean.lower(`available`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Tier-5: install trusted relay endpoints supplied by Android settings or
+     * NSD resolution. Values must be numeric socket addresses; DNS resolution
+     * stays in the platform layer so network binding remains Android-aware.
+     */
+    @Throws(IrisFfiException::class)override fun `setInternetRelayEndpoints`(`endpoints`: List<kotlin.String>)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_set_internet_relay_endpoints(
+        it,
+        FfiConverterSequenceString.lower(`endpoints`),_status)
+}
+    }
+    
     
 
     
@@ -8697,6 +8758,8 @@ public object FfiConverterSequenceTypeFfiTransportDiag: FfiConverterRustBuffer<L
         }
     }
 }
+
+
 
 
 

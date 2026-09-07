@@ -17,6 +17,12 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
+        // Tier-5 relay endpoints, supplied at build time only for controlled
+        // lab/deployment variants. Empty is safe: the IP transport stays
+        // unavailable until a trusted endpoint is configured.
+        val relayEndpoints = (project.findProperty("IRIS_RELAY_ENDPOINTS") as String?) ?: ""
+        buildConfigField("String", "IRIS_RELAY_ENDPOINTS", "\"${relayEndpoints.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+
         // libiriscode.so ABIs (D-5). armeabi-v7a = size/tradeoff recorded G-AND-6.
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
