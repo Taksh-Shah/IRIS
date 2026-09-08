@@ -11,23 +11,50 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import dagger.hilt.android.AndroidEntryPoint
 import iriscore.R
+import iriscore.data.MeshRepository
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * AC-7 — `connectedDevice` foreground service (API 34+).
  *
  * Raises the app to a "currently using a connected device" foreground type so
  * the BLE control-plane trigger + Wi-Fi Direct re-arm window + Wi-Fi Aware
- * production discovery can run while the app is backgrounded. Started per
- * transport need from the shell; stopped via [ACTION_STOP].
+ * production discovery can run while the app is backgrounded.
  *
- * The `startForeground(..., FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)` overload
- * is API 34+; on < 34 the plain 2-arg form is used (type folds into the legacy
- * foreground contract).
+ * WP3: the mesh engine lifecycle is owned here, not by the ViewModel. This
+ * means the engine keeps running through screen rotations, configuration
+ * changes, and any number of ViewModel recreations. [MeshRepository.startMesh]
+ * is called in [onStartCommand]; [MeshRepository.stopMesh] is called when the
+ * operator explicitly stops the service via [ACTION_STOP] (user-initiated) or
+ * when Android kills and does not restart the service. START_STICKY ensures the
+ * service — and the engine — restart automatically after an OS kill.
  */
+@AndroidEntryPoint
 class IrisBleService : Service() {
 
+    @Inject
+    lateinit var repository: MeshRepository
+
     private var scanSession: BleScanSession? = null
+
+    /**
+     * Fire-and-forget coroutine scope for the blocking FFI calls
+     * ([MeshRepository.startMesh], [MeshRepository.stopMesh]). Not cancelled in
+     * [onDestroy] so that a teardown dispatched on the last line of [onDestroy]
+     * can complete even after the Android runtime considers the service dead.
+     */
+    private val serviceScope = CoroutineScope(
+        SupervisorJob() +
+            Dispatchers.Default +
+            CoroutineExceptionHandler { _, _ -> /* mesh errors are logged inside the repository */ },
+    )
 
     override fun onCreate() {
         super.onCreate()
@@ -38,6 +65,7 @@ class IrisBleService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 isRunning = false
+                serviceScope.launch { repository.stopMesh() }
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -49,6 +77,14 @@ class IrisBleService : Service() {
                 it.start()
                 scanSession = it
             }
+        }
+        // WP3: bring the Rust engine up here so it outlives any single ViewModel
+        // instance. subscribeInbox is idempotent (AtomicBoolean guard inside the
+        // repository) so repeated onStartCommand calls from START_STICKY restarts
+        // or quick stop+start cycles (reconnect) are safe.
+        serviceScope.launch {
+            repository.startMesh()
+            repository.subscribeInbox()
         }
         return START_STICKY
     }

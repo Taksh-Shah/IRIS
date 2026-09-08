@@ -32,8 +32,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import iriscore.ui.state.TransportStatus
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -122,15 +120,10 @@ class MeshViewModel @Inject constructor(
             (messages + system).sortedBy { it.atMs }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // AND-RT-101: engine bring-up/teardown are blocking FFI calls — never on
-    // the main thread. Serialized so start/stop cannot interleave.
-    private val meshMutex = Mutex()
-
-    // viewModelScope is cancelled before onCleared() runs, so teardown uses a
-    // scope that survives until the engine actually stops.
-    // A SupervisorJob isolates siblings but does NOT handle exceptions; without
-    // a handler an escaping throw reaches the default handler and terminates
-    // the process during teardown.
+    // WP3: engine lifecycle is owned by IrisBleService, not this ViewModel.
+    // Teardown is still initiated here (user presses stop / reconnect) but the
+    // stop call must survive ViewModel.onCleared(), which cancels viewModelScope
+    // before the FFI call returns. A detached teardown scope is the right tool.
     private val teardownScope = CoroutineScope(
         SupervisorJob() +
             Dispatchers.Default +
@@ -245,6 +238,11 @@ class MeshViewModel @Inject constructor(
     /**
      * Idempotent transport bring-up. Safe to call from a composable effect on
      * every recomposition and after a permission result.
+     *
+     * WP3: engine start/stop now live in [IrisBleService], which survives screen
+     * rotations and ViewModel recreations. This method only starts the service
+     * (and the WorkManager relay cadence) — the service calls
+     * [MeshRepository.startMesh] and [MeshRepository.subscribeInbox] internally.
      */
     fun ensureStarted() {
         if (!started.compareAndSet(false, true)) return
@@ -252,21 +250,18 @@ class MeshViewModel @Inject constructor(
         try {
             IrisBleService.start(appContext)
             WorkScheduler.schedule(appContext)
-            viewModelScope.launch(Dispatchers.Default) {
-                meshMutex.withLock {
-                    repository.startMesh()
-                    repository.subscribeInbox()
-                }
-                // HV-62: emit the WELCOME block once per install so the user
-                // sees their node id and tips without having to type /node.
-                if (!appPreferences.welcomeShown) {
-                    appPreferences.welcomeShown = true
-                    val nodeId = uiState.value.nodeIdHex
+            // HV-62: emit the WELCOME block once per install so the user
+            // sees their node id and tips without having to type /node.
+            // nodeIdHex is derived from the static identity key and is
+            // available immediately — no need to wait for the engine to start.
+            if (!appPreferences.welcomeShown) {
+                appPreferences.welcomeShown = true
+                viewModelScope.launch {
                     appendEvent(
                         ConsoleEntry.system(
                             title = "WELCOME",
                             lines = listOf(
-                                "node" to nodeId,
+                                "node" to uiState.value.nodeIdHex,
                                 "tip" to "share your id with peers so they can /to you",
                                 "tip" to "/help  lists all commands",
                                 "tip" to "/name <peer-id> <name>  saves a contact",
@@ -820,9 +815,18 @@ class MeshViewModel @Inject constructor(
         super.onCleared()
     }
 
-    /** Explicit user-initiated teardown: stop the transports and the service. */
+    /**
+     * Explicit user-initiated teardown: stop the transports and the service.
+     *
+     * WP3: [IrisBleService.onStartCommand] also calls [MeshRepository.stopMesh]
+     * when it receives [IrisBleService.ACTION_STOP]. The two calls serialize via
+     * [MeshRepository]'s internal lifecycleLock; the second one is a no-op (the
+     * engine is already stopped and the caught [iriscode.IrisFfiException] is
+     * swallowed). teardownScope is not cancelled so the FFI call can outlive this
+     * ViewModel instance.
+     */
     fun stopMesh() {
-        teardownScope.launch { meshMutex.withLock { repository.stopMesh() } }
+        teardownScope.launch { repository.stopMesh() }
         IrisBleService.stop(appContext)
         started.set(false)
     }

@@ -23,10 +23,10 @@ import iriscore.service.IrisBleService
  * (and thus the real engine + radios) is not alive. In a bare background process
  * that would build a SECOND `@Singleton IrisEngine` — new tokio runtime,
  * registered transports it cannot bring up without an FGS — and it would sit
- * there failing. The relay outbox is durable; it drains when the FGS next comes
- * up (`MeshViewModel.ensureStarted` / the RETRY path already call
- * `drainRelayOutbox`). Starting the FGS from the worker (Android-12+ expedited
- * job) is a possible follow-up, gated on a bench test.
+ * there failing. The relay outbox is durable (Room-backed since WP2); it drains
+ * when the FGS next comes up (`IrisBleService.onStartCommand` calls
+ * `MeshRepository.startMesh`). Starting the FGS from the worker
+ * (Android-12+ expedited job) is a possible follow-up, gated on a bench test.
  */
 @HiltWorker
 class IrisBackgroundSyncWorker @AssistedInject constructor(
