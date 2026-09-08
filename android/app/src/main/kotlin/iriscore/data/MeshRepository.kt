@@ -71,6 +71,13 @@ class MeshRepository @Inject constructor(
     private val activationMutex = Mutex()
     private val lifecycleLock = Any()
 
+    /**
+     * Maps `rustMsgIdHex → uid` for in-flight sent messages awaiting a
+     * delivery ACK from the engine. Populated by [send] and [broadcast];
+     * consumed by [onDeliveryAck] when the Rust side fires the callback.
+     */
+    private val pendingAcks = ConcurrentHashMap<String, Long>()
+
     private val nodeIdHex = PeerIdCodec.toHex(nodeId)
 
     // WP2: uiState is now derived from Room Flows so the message list and
@@ -230,6 +237,9 @@ class MeshRepository @Inject constructor(
      *
      * WP2: received messages are written to Room so they survive process death.
      */
+    // TODO(WP4): when Rust adds FfiDeliveryListener, subscribe here and call
+    // onDeliveryAck(rustMsgIdHex) for each fired ACK so the Room row transitions
+    // from DELIVERED (best-effort) to a confirmed state.
     fun subscribeInbox() {
         if (!inboxSubscribed.compareAndSet(false, true)) return
         engine.get().subscribeInbox(object : FfiInboxListener {
@@ -242,6 +252,19 @@ class MeshRepository @Inject constructor(
         })
     }
 
+    /**
+     * Called when the Rust engine fires a delivery acknowledgment for a message
+     * this node sent. Upgrades the Room row from the optimistic DELIVERED status
+     * written at send time to a confirmed state once real ACKs land.
+     *
+     * Wire this up to `FfiDeliveryListener.onDelivery` once that callback is
+     * added to the FFI — see TODO(WP4) in [subscribeInbox].
+     */
+    private fun onDeliveryAck(rustMsgIdHex: String) {
+        val uid = pendingAcks.remove(rustMsgIdHex) ?: return
+        scope.launch { messageDao.updateStatus(uid, DeliveryStatus.DELIVERED.name) }
+    }
+
     fun send(recipientHex: String, text: String, priority: UByte): Boolean {
         val normalized = recipientHex.trim().lowercase()
         if (!PeerIdCodec.isHex(normalized) || normalized.length != RECIPIENT_HEX_LENGTH) {
@@ -250,8 +273,9 @@ class MeshRepository @Inject constructor(
         }
         _lastError.value = null
         return try {
-            engine.get().sendText(normalized, text, priority)
+            val rustMsgId = engine.get().sendText(normalized, text, priority)
             val sent = InboxUiMessage.sent(normalized, text, priority)
+            pendingAcks[rustMsgId.joinToString("") { "%02x".format(it) }] = sent.uid
             scope.launch { messageDao.insert(MessageEntity.fromUiMessage(sent)) }
             true
         } catch (_: IrisFfiException) {
@@ -267,8 +291,9 @@ class MeshRepository @Inject constructor(
     fun broadcast(text: String, priority: UByte): Boolean {
         _lastError.value = null
         return try {
-            engine.get().broadcastText(text, priority)
+            val rustMsgId = engine.get().broadcastText(text, priority)
             val sent = InboxUiMessage.sent(BROADCAST_LABEL, text, priority)
+            pendingAcks[rustMsgId.joinToString("") { "%02x".format(it) }] = sent.uid
             scope.launch { messageDao.insert(MessageEntity.fromUiMessage(sent)) }
             true
         } catch (e: IrisFfiException) {
