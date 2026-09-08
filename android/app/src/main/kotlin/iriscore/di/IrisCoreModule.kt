@@ -1,6 +1,7 @@
 package iriscore.di
 
 import android.content.Context
+import androidx.room.Room
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,6 +17,9 @@ import iriscore.BuildConfig
 import iriscore.adapter.AndroidInternetNetworkMonitor
 import iriscore.adapter.AndroidNsdAdapter
 import iriscore.data.RelayOutbox
+import iriscore.data.db.IrisDatabase
+import iriscore.data.db.MessageDao
+import iriscore.data.db.PendingMessageDao
 import iriscore.identity.KeystoreEd25519
 import iriscore.identity.X25519KeyProviderImpl
 import iriscore.identity.X25519StaticAd
@@ -54,14 +58,32 @@ object IrisCoreModule {
             override fun sign(data: ByteArray): ByteArray = keystore.sign(data)
         }
 
+    // --- Room database (WP2) ---------------------------------------------
+
+    @Provides
+    @Singleton
+    fun provideIrisDatabase(@ApplicationContext context: Context): IrisDatabase =
+        Room.databaseBuilder(context, IrisDatabase::class.java, "iris-messages.db")
+            .fallbackToDestructiveMigration() // schema is v1 — no production data yet
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideMessageDao(db: IrisDatabase): MessageDao = db.messageDao()
+
+    @Provides
+    @Singleton
+    fun providePendingMessageDao(db: IrisDatabase): PendingMessageDao = db.pendingMessageDao()
+
     /**
-     * Shared relay spool. The UI send path and the WorkManager drain cadence
-     * must observe the same queue, so this is a singleton — a per-injection
-     * instance would silently strand queued messages in a dead copy.
+     * Shared relay spool backed by [PendingMessageDao] so queued sends survive
+     * process death and reboots. The UI send path and the WorkManager drain
+     * cadence must observe the same queue, so this is a singleton.
      */
     @Provides
     @Singleton
-    fun provideRelayOutbox(): RelayOutbox = RelayOutbox()
+    fun provideRelayOutbox(pendingMessageDao: PendingMessageDao): RelayOutbox =
+        RelayOutbox(pendingMessageDao)
 
     /**
      * AN-6: bridges [X25519StaticAd] into the Rust engine. DH is computed

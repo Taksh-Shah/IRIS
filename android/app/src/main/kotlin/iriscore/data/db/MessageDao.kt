@@ -1,0 +1,27 @@
+package iriscore.data.db
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface MessageDao {
+
+    /** Insert a message; silently ignore duplicate uids (idempotent on replay). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(message: MessageEntity)
+
+    /**
+     * Most-recent [limit] rows ordered oldest-first for display.
+     * Emits a new list on every change — the repository maps this to
+     * [iriscore.ui.state.MeshUiState.messages].
+     */
+    @Query("SELECT * FROM messages ORDER BY timestampMs ASC LIMIT :limit")
+    fun observeRecent(limit: Int = 500): Flow<List<MessageEntity>>
+
+    /** Update a message's delivery status after an ACK or failure. */
+    @Query("UPDATE messages SET deliveryStatus = :status WHERE uid = :uid")
+    suspend fun updateStatus(uid: Long, status: String)
+}
