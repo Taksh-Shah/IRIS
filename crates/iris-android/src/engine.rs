@@ -17,7 +17,7 @@ use futures_util::StreamExt;
 use tokio::runtime::{Handle, Runtime};
 
 use iris_core::discovery::{DiscoveryConfig, DiscoveryManager};
-use iris_core::message::{MessagePriority, NodeAdvertisement, PeerId};
+use iris_core::message::{LinkQuality, MessagePriority, NodeAdvertisement, PeerId, PeerInfo};
 use iris_core::message_engine::crypto::CryptoProvider;
 use iris_core::message_engine::storage::MemoryStorage;
 use iris_core::message_engine::{
@@ -26,7 +26,7 @@ use iris_core::message_engine::{
 use iris_core::observability::MetricsRegistry;
 use iris_core::protocol::{ContentType, Envelope, MessageId, PROTOCOL_VERSION};
 use iris_core::transport::ble::BleTransport;
-use iris_core::transport::internet::{InternetCostParams, InternetTransport};
+use iris_core::transport::internet::{InternetCostParams, InternetTransport, RelaySigner};
 use iris_core::transport::wifi_direct::WifiDirectTransport;
 use iris_core::transport::wifiaware::WifiAwareTransport;
 use iris_core::transport::{Transport, TransportId, TransportManager};
@@ -79,6 +79,19 @@ pub struct FfiMeshSnapshot {
     pub counters: Vec<FfiCounter>,
     /// HV-86: the transport-event ring, oldest first (last ~128 events).
     pub recent_events: Vec<FfiLogEvent>,
+    /// Internet-specific readiness, useful when generic state is Unavailable.
+    pub internet: FfiInternetDiag,
+}
+
+/// Detailed Internet transport readiness and the last actionable failure.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct FfiInternetDiag {
+    pub validated_wan: bool,
+    pub local_network: bool,
+    pub relay_configured: bool,
+    pub relay_mode: bool,
+    pub lan_listener_port: u16,
+    pub last_failure: Option<String>,
 }
 
 /// Per-transport slice of [`FfiMeshSnapshot`].
@@ -177,6 +190,20 @@ struct CompositeKeyDirectory {
     bench: Arc<BenchKeyDirectory>,
 }
 
+struct AndroidRelaySigner(Arc<dyn FfiCryptoSigner>);
+
+impl RelaySigner for AndroidRelaySigner {
+    fn sign(&self, message: &[u8]) -> Result<[u8; 64], iris_core::TransportError> {
+        let signature = self
+            .0
+            .sign(message.to_vec())
+            .map_err(|e| iris_core::TransportError::Protocol(e.to_string()))?;
+        signature.try_into().map_err(|_| {
+            iris_core::TransportError::Protocol("relay signer returned != 64 bytes".into())
+        })
+    }
+}
+
 impl iris_core::crypto::key_directory::KeyDirectory for CompositeKeyDirectory {
     fn x25519_pubkey(&self, node_id: &[u8; 32]) -> Option<[u8; 32]> {
         match self.trust.level(node_id) {
@@ -222,6 +249,38 @@ pub struct IrisEngine {
 
 #[uniffi::export]
 impl IrisEngine {
+    /// Configure the production relay atomically. A non-empty endpoint list
+    /// requires a valid TLS reference identity and switches the transport to
+    /// authenticated relay mode; empty configuration safely disables WAN relay.
+    pub fn configure_internet_relay(
+        &self,
+        endpoints: Vec<String>,
+        server_name: String,
+    ) -> Result<(), IrisFfiError> {
+        let parsed: Result<Vec<std::net::SocketAddr>, _> = endpoints
+            .iter()
+            .map(|value| value.parse::<std::net::SocketAddr>())
+            .collect();
+        let parsed = parsed.map_err(|_| {
+            IrisFfiError::InvalidArgument(
+                "internet relay endpoints must be numeric IP:port values".into(),
+            )
+        })?;
+        if parsed.is_empty() {
+            self.handle
+                .block_on(self.internet.configure_relay(parsed, None, self.node_id));
+            return Ok(());
+        }
+        iris_core::transport::tls::relay_server_name(&server_name)
+            .map_err(|e| IrisFfiError::InvalidArgument(e.to_string()))?;
+        self.handle.block_on(self.internet.configure_relay(
+            parsed,
+            Some(server_name),
+            self.node_id,
+        ));
+        Ok(())
+    }
+
     /// Build the engine host with the injected Kotlin adapters (D-2: the tokio
     /// runtime is constructed here and its handle drives every poller). The
     /// three transports are registered over FFI bridges; the MessageEngine and
@@ -242,12 +301,14 @@ impl IrisEngine {
         let node_id: [u8; 32] = node_id
             .try_into()
             .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
+        let relay_signer: Arc<dyn RelaySigner> = Arc::new(AndroidRelaySigner(signer.clone()));
         Self::build(
             ble,
             aware,
             direct,
             node_id,
             Arc::new(AndroidCryptoProvider::new(signer)),
+            Some(relay_signer),
             None,
         )
     }
@@ -269,6 +330,7 @@ impl IrisEngine {
         let node_id: [u8; 32] = node_id
             .try_into()
             .map_err(|_| IrisFfiError::InvalidArgument("node_id must be 32 bytes".into()))?;
+        let relay_signer: Arc<dyn RelaySigner> = Arc::new(AndroidRelaySigner(signer.clone()));
         Self::build(
             ble,
             aware,
@@ -278,6 +340,7 @@ impl IrisEngine {
                 signer,
                 x25519_provider.clone(),
             )),
+            Some(relay_signer),
             Some(x25519_provider),
         )
     }
@@ -296,6 +359,7 @@ impl IrisEngine {
         direct: Arc<dyn FfiWifiDirectAdapter>,
         node_id: [u8; 32],
         crypto: Arc<dyn CryptoProvider>,
+        relay_signer: Option<Arc<dyn RelaySigner>>,
         x25519_provider: Option<Arc<dyn FfiX25519KeyProvider>>,
     ) -> Result<Arc<Self>, IrisFfiError> {
         let runtime = Runtime::new().map_err(|e| IrisFfiError::IoError(e.to_string()))?;
@@ -323,6 +387,10 @@ impl IrisEngine {
                 WifiDirectBridge::new(direct),
             ))));
             let internet_t = Arc::new(InternetTransport::new(&[], InternetCostParams::default()));
+            if let Some(signer) = relay_signer {
+                internet_t.set_local_identity(PeerId(node_id), signer.clone());
+                internet_t.set_relay_signer(signer);
+            }
 
             manager
                 .register(ble_t.clone())
@@ -413,8 +481,7 @@ impl IrisEngine {
             // the final recipient to BLE directly, so an A→B→C topology kept
             // A's message queued and B never received a frame to relay.
             engine.set_routing_context(
-                iris_core::routing::RoutingEngine::new()
-                    .with_telemetry(engine.telemetry().clone()),
+                iris_core::routing::RoutingEngine::new().with_telemetry(engine.telemetry().clone()),
                 discovery.neighbors(),
             );
             discovery.start().await;
@@ -482,6 +549,16 @@ impl IrisEngine {
             .block_on(self.internet.set_network_available(available));
     }
 
+    /// Apply Android's separate public-WAN and local-LAN signals.
+    pub fn set_internet_network_state(&self, validated_wan: bool, local_network: bool) {
+        self.handle.block_on(async {
+            self.internet.set_network_available(validated_wan).await;
+            self.internet
+                .set_local_network_available(local_network)
+                .await;
+        });
+    }
+
     /// Tier-5 / HV-43: start the local LAN TCP listener and return its bound
     /// port. The port is advertised via Android NSD (`_iris._tcp`) so that
     /// peers on the same infrastructure Wi-Fi can connect directly (plain-TCP
@@ -490,6 +567,10 @@ impl IrisEngine {
         self.handle
             .block_on(self.internet.start_lan_listener())
             .map_err(|e| IrisFfiError::Transport(e.to_string()))
+    }
+
+    pub fn stop_internet_lan_listener(&self) {
+        self.handle.block_on(self.internet.stop_lan_listener());
     }
 
     /// Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
@@ -501,10 +582,9 @@ impl IrisEngine {
         peer_id_hex: String,
         address: String,
     ) -> Result<(), IrisFfiError> {
-        let peer_bytes =
-            hex::decode(&peer_id_hex).map_err(|_| IrisFfiError::InvalidArgument(
-                "peer_id_hex must be 64 hex characters".into(),
-            ))?;
+        let peer_bytes = hex::decode(&peer_id_hex).map_err(|_| {
+            IrisFfiError::InvalidArgument("peer_id_hex must be 64 hex characters".into())
+        })?;
         if peer_bytes.len() != 32 {
             return Err(IrisFfiError::InvalidArgument(
                 "peer_id_hex must encode exactly 32 bytes".into(),
@@ -512,13 +592,79 @@ impl IrisEngine {
         }
         let mut id = [0u8; 32];
         id.copy_from_slice(&peer_bytes);
-        let addr = address
-            .parse::<std::net::SocketAddr>()
-            .map_err(|_| IrisFfiError::InvalidArgument(
-                "address must be a numeric IP:port value".into(),
-            ))?;
+        let addr = address.parse::<std::net::SocketAddr>().map_err(|_| {
+            IrisFfiError::InvalidArgument("address must be a numeric IP:port value".into())
+        })?;
+        let trusted = matches!(
+            self.trust_store.level(&id),
+            iris_core::identity::TrustLevel::Verified
+                | iris_core::identity::TrustLevel::AuthorityRoot
+        );
+        if !trusted {
+            return Err(IrisFfiError::InvalidArgument(
+                "LAN peer is not an explicitly trusted identity".into(),
+            ));
+        }
         self.internet
             .register_lan_peer(iris_core::message::PeerId(id), addr);
+        self.handle.block_on(self.discovery.report_peer(
+            &PeerInfo {
+                peer_id: PeerId(id),
+                addresses: vec![addr],
+                transport_addresses: Vec::new(),
+                last_seen: Some(std::time::Instant::now()),
+            },
+            self.internet.transport_id(),
+            LinkQuality::Good,
+        ));
+        Ok(())
+    }
+
+    /// Withdraw an exact NSD service mapping and its routing-visible link.
+    pub fn remove_internet_lan_peer(&self, peer_id_hex: String) -> Result<(), IrisFfiError> {
+        let id = decode_hex32(&peer_id_hex).ok_or_else(|| {
+            IrisFfiError::InvalidArgument("peer_id_hex must encode exactly 32 bytes".into())
+        })?;
+        let peer = PeerId(id);
+        self.handle.block_on(async {
+            self.internet.remove_lan_peer(&peer).await;
+            self.discovery
+                .withdraw_peer(&peer, self.internet.transport_id())
+                .await;
+        });
+        Ok(())
+    }
+
+    /// Establish a relay link for an already trusted contact and publish it to
+    /// routing. This never creates trust from network discovery.
+    pub fn activate_internet_peer(&self, peer_id_hex: String) -> Result<(), IrisFfiError> {
+        let id = decode_hex32(&peer_id_hex).ok_or_else(|| {
+            IrisFfiError::InvalidArgument("peer_id_hex must encode exactly 32 bytes".into())
+        })?;
+        let trusted = matches!(
+            self.trust_store.level(&id),
+            iris_core::identity::TrustLevel::Verified
+                | iris_core::identity::TrustLevel::AuthorityRoot
+        );
+        if !trusted {
+            return Err(IrisFfiError::InvalidArgument(
+                "internet peer is not an explicitly trusted identity".into(),
+            ));
+        }
+        let peer = PeerId(id);
+        self.handle
+            .block_on(self.internet.connect_relay_peer(peer))
+            .map_err(|e| IrisFfiError::Transport(e.to_string()))?;
+        self.handle.block_on(self.discovery.report_peer(
+            &PeerInfo {
+                peer_id: peer,
+                addresses: Vec::new(),
+                transport_addresses: Vec::new(),
+                last_seen: Some(std::time::Instant::now()),
+            },
+            self.internet.transport_id(),
+            LinkQuality::Good,
+        ));
         Ok(())
     }
 
@@ -586,9 +732,7 @@ impl IrisEngine {
             valid_until: 0,
             sig: [0u8; 64].into(),
         };
-        unsigned
-            .signable_bytes()
-            .map_err(IrisFfiError::IoError)
+        unsigned.signable_bytes().map_err(IrisFfiError::IoError)
     }
 
     /// Trusted-peers: adopt a peer's signed key advertisement — scanned via
@@ -719,6 +863,7 @@ impl IrisEngine {
                 detail: e.detail,
             })
             .collect();
+        let internet = self.internet.availability();
         let snapshot = FfiMeshSnapshot {
             node_id_hex: PeerId::from_bytes(self.node_id).to_string(),
             transports,
@@ -733,6 +878,14 @@ impl IrisEngine {
             },
             counters,
             recent_events,
+            internet: FfiInternetDiag {
+                validated_wan: internet.validated_wan,
+                local_network: internet.local_network,
+                relay_configured: internet.relay_configured,
+                relay_mode: internet.relay_mode,
+                lan_listener_port: internet.lan_listener_port,
+                last_failure: internet.last_failure,
+            },
         };
         tracing::info!(
             event = "iris.diag",
@@ -740,6 +893,7 @@ impl IrisEngine {
             transports = ?snapshot.transports,
             neighbors = ?snapshot.neighbors,
             messages = ?snapshot.messages,
+            internet = ?snapshot.internet,
             "mesh snapshot",
         );
         // HV-6: a second, KPI-shaped line — just the non-zero counters, one
@@ -754,7 +908,7 @@ impl IrisEngine {
         snapshot
     }
 
-    /// Bring the three mesh transports up: each `start_advertising` triggers
+    /// Bring the mesh transports up: each radio `start_advertising` triggers
     /// its adapter bring-up (BLE scan+advertise, Wi-Fi Aware attach+subscribe+
     /// publish, Wi-Fi Direct attach+DNS-SD) and spawns the inbound poller.
     pub fn start_all(&self) -> Result<(), IrisFfiError> {
@@ -808,6 +962,16 @@ impl IrisEngine {
                         );
                         failures.push(format!("{id}: {e}"));
                     }
+                }
+            }
+            // Internet/LAN lifecycle is platform-callback + NSD driven, not a
+            // radio start_advertising operation. Count it as a viable mesh path
+            // whenever its independently-reconciled state says so.
+            if let Some(internet) = manager.get(&TransportId::from("internet-0")).await {
+                if internet.state() != iris_core::transport::TransportState::Unavailable {
+                    started.push("internet-0");
+                } else {
+                    failures.push("internet-0: no local LAN or configured validated relay".into());
                 }
             }
             if started.is_empty() {
@@ -1116,6 +1280,7 @@ impl IrisEngine {
             node_id,
             Arc::new(iris_core::message_engine::crypto::DevCryptoProvider::new()),
             None,
+            None,
         )
     }
 
@@ -1141,7 +1306,7 @@ mod tests {
     use iris_core::crypto::keygen::{IdentityKeypair, X25519Keypair};
     use iris_core::identity::KeyAdvertisementV1;
 
-    use iris_core::message::{DiscoveryConfig, PeerInfo};
+    use iris_core::message::{DiscoveryConfig, LinkQuality, PeerInfo};
     use iris_core::transport::wifiaware::{
         NdpHandle, PeerHandle, PublishConfig, SimMeshCoordinator, SimulatedWifiAwareAdapter,
         WifiAwareAdapter,
@@ -1336,11 +1501,11 @@ mod tests {
         engine.set_internet_network_available(true);
         assert_eq!(engine.internet.state(), TransportState::Unavailable);
         engine
-            .set_internet_relay_endpoints(vec!["127.0.0.1:9000".into()])
+            .configure_internet_relay(vec!["127.0.0.1:9000".into()], "relay.example".into())
             .expect("endpoint accepted");
         assert_eq!(engine.internet.state(), TransportState::Available);
         assert!(engine
-            .set_internet_relay_endpoints(vec!["not-an-endpoint".into()])
+            .configure_internet_relay(vec!["not-an-endpoint".into()], "relay.example".into())
             .is_err());
     }
 
@@ -1454,6 +1619,18 @@ mod tests {
                 last_seen: None,
             };
             a_wa.connect(&target).await.expect("A connects to B");
+            // This test drives the transport directly instead of waiting for
+            // DiscoveryManager's independently scheduled scan loop. Publish
+            // the same routing-visible observation that scan_once() would so
+            // dispatch never depends on scheduler timing.
+            a_engine
+                .discovery
+                .report_peer(
+                    &target,
+                    &TransportId::from("wifi-aware-0"),
+                    LinkQuality::Excellent,
+                )
+                .await;
         });
 
         // HV-1 / PRY-33: A must know B's recipient key to seal the message.

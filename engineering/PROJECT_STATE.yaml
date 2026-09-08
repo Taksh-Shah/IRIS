@@ -3,7 +3,7 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-09-08 (ANDROID-PAIR-001 accepted after original-peer QR validation)
+# Last updated: 2026-09-08 (INTERNET-ANDROID-001 software verified; physical gates open)
 
 # Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
@@ -14,19 +14,19 @@
 # RESEARCH_COMPLETE: LEGAL-001 (1)
 # DESIGNING: (0)
 # IMPLEMENTING: (0)  [ANDROID-PAIR-001 ACCEPTED 2026-09-08]
-# VERIFYING: (0)
+# VERIFYING: INTERNET-ANDROID-001 (1)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
-# DISCOVERED: (0)  [graph exhausted; mission milestones outside graph]
+# DISCOVERED: (0)
 # DEFERRED_TO_FUTURE: LEGAL-001 (1) [operator ruling iter ~178; carried obligations in docs/legal/CARRIED_OBLIGATIONS_REGISTER.md]
 
 summary:
-  total_nodes: 34
+  total_nodes: 35
   completed: 33              # + ANDROID-PAIR-001 (2026-09-08, original-peer QR validation)
   researching: 0
   research_complete: 1       # LEGAL-001
-  designing: 0               # LORA-001 advanced to IMPLEMENTING iter ~163
+  designing: 0
   implementing: 0
-  verifying: 0
+  verifying: 1               # INTERNET-ANDROID-001 software pass; AC-12/AC-13 hardware/deployment gated
   discovered: 0
   blocked: 0                 # All gates + human gates unblocked DEC-0009
   failed: 0
@@ -35,13 +35,13 @@ summary:
 health:
   architecture_health: PROVISIONAL    # Architecture documents exist, need validation
   security_health: IMPLEMENTED       # CRYPTO-001 + IDENT-001 + EMERG-001 + SEC-001 COMPLETE (SEC-001 ACCEPTED iter 82: AC-1..16 PASS, verifier APPROVE_WITH_NOTES reconciled; 532 green, clippy 0)
-  testing_health: GOOD               # iter ~165 (LORA-001 SECURITY_REVIEW COMPLETE, RT-101 CRITICAL billing fix + RT-200 flake fix landed): workspace 695 passed / 0 failed / 1 ignored LIVE (--all-features full sweep), clippy -D warnings = 0, fmt clean; transport::lora 31/31 (+4 RT regressions); rate_limiter 12/12 hermetic (frozen-clock proptests). NEXT: LORA-001 VERIFY (iter ~166)
+  testing_health: GOOD               # INTERNET-ANDROID-001: iris-core 865/865, iris-android 10/10, Internet 24/24, relay codec 8/8, relay server 6/6, Android focused JVM + 3-ABI APK packaging pass
   performance_health: NOT_STARTED    # No benchmarks run yet
   documentation_health: GOOD          # Documentation system created
   dependency_health: GOOD             # No circular dependencies
   technical_debt: LOW                 # WP-2..WP-3 limitations recorded (DEC-0002, DISCO known_limitations)
   research_completeness: PARTIAL      # Research docs exist but experiments not run
-  platform_completeness: NOT_STARTED  # Platform code not written
+  platform_completeness: PARTIAL      # Android exists; Internet recovery active
   legal_compliance_risk: MEDIUM       # Initial research done, open questions remain
 
 high_risk_nodes:
@@ -112,6 +112,10 @@ critical_path:
   estimated_nodes_on_path: 13
 
 next_recommended_nodes:
+  - id: "INTERNET-ANDROID-001"
+    reason: "User-priority P0 recovery after FAIL-0009; RES-0034 complete, DESIGN active."
+    priority: P0
+    note: "Must not complete until software/security verification and the explicitly gated two-phone LAN/WAN evidence are satisfied."
   - id: "PILOT-001"
     reason: "Field Pilot Deployment (P2 OPERATIONS) — **COMPLETE** (ACCEPTED iter ~159, AC-1..AC-18 PASS/GATED; first OPERATIONS node). Full pipeline DISCOVER (iter ~152) -> RESEARCH (iter ~153, RES-0026 PROCEED) -> DESIGN (iter ~154, PILOT_001_DESIGN.md v1.0, C2 gap RESOLVED, DEC-PILOT-0001..0009) -> IMPLEMENT (iter ~155, ops docs AC-1..AC-16) -> TEST (iter ~156, SIM-001 sim pre-validation B-1..B-4) -> SECURITY_REVIEW (iter ~157, AC-18, 2 FIXED + 12 RECORDED + 3 INFO, no CRITICAL/HIGH) -> VERIFY (iter ~158, AC-1..AC-18 evidence table complete, independent verifier APPROVE, no findings) -> ACCEPT (iter ~159). AC-17 live: 664/0/1, clippy 0, fmt clean. AC-14 PASS, physical-physical-device legs GATED/BLK-0005 recorded (folded into pilot per D-3/AC-10). First real-world deployment: NGO + campus pilot, 100+ devices; NDRF 50-device MoU + B2B POC tier. NODE_TRANSITION -> LORA-001."
     priority: P2

@@ -299,15 +299,16 @@ impl FragmentAssembler {
         // oldest (nearest-deadline) set first rather than the global victim —
         // a sender that floods only hurts themselves, not other senders.
         if is_new_set {
-            let sender_count =
-                self.per_sender.get(&fragment.sender_id).copied().unwrap_or(0);
+            let sender_count = self
+                .per_sender
+                .get(&fragment.sender_id)
+                .copied()
+                .unwrap_or(0);
             if sender_count >= MAX_SETS_PER_SENDER {
                 if let Some(victim) = self
                     .active
                     .iter()
-                    .filter(|(_, s)| {
-                        s.sender.as_deref() == Some(fragment.sender_id.as_slice())
-                    })
+                    .filter(|(_, s)| s.sender.as_deref() == Some(fragment.sender_id.as_slice()))
                     .min_by_key(|(_, s)| s.deadline)
                     .map(|(id, _)| *id)
                 {
@@ -365,7 +366,10 @@ impl FragmentAssembler {
         // A fresh set always binds (sender was None), so is_new_set → increment
         // is always reached when is_new_set = true.
         if is_new_set {
-            *self.per_sender.entry(fragment.sender_id.clone()).or_insert(0) += 1;
+            *self
+                .per_sender
+                .entry(fragment.sender_id.clone())
+                .or_insert(0) += 1;
         }
 
         let mut payload = complete_payload?; // None → FragmentBuffered (per_sender updated)
@@ -576,12 +580,18 @@ mod tests {
         for n in 0..MAX_SETS_PER_SENDER as u8 {
             assert!(a.feed(mk(0xAA, n, 0)).is_none());
         }
-        assert_eq!(a.per_sender.get(&vec![0xAA]).copied().unwrap_or(0), MAX_SETS_PER_SENDER);
+        assert_eq!(
+            a.per_sender.get(&vec![0xAA]).copied().unwrap_or(0),
+            MAX_SETS_PER_SENDER
+        );
 
         // Opening one more set from sender A evicts A's oldest (not any other sender's)
         assert!(a.feed(mk(0xAA, 0xFF, 0)).is_none());
         // Sender A still at cap (evicted one, added one)
-        assert_eq!(a.per_sender.get(&vec![0xAA]).copied().unwrap_or(0), MAX_SETS_PER_SENDER);
+        assert_eq!(
+            a.per_sender.get(&vec![0xAA]).copied().unwrap_or(0),
+            MAX_SETS_PER_SENDER
+        );
 
         // Sender B is unaffected — can still open sets
         assert!(a.feed(mk(0xBB, 0x10, 0)).is_none());

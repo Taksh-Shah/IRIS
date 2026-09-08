@@ -492,8 +492,16 @@ private fun StatusLine(
         if (state.status == MeshStatus.RUNNING && transportStates.isNotEmpty()) {
             transportStates.forEach { t ->
                 IrisStatusChip(
-                    label = if (t.connected) "${t.label} ●" else "${t.label} ○",
-                    tone = if (t.connected) StatusTone.Active else StatusTone.Warning,
+                    label = when (t.state) {
+                        "Connected" -> "${t.label} ●"
+                        "Available" -> "${t.label} ◐"
+                        "Degraded" -> "${t.label} △"
+                        else -> "${t.label} ○"
+                    },
+                    tone = when (t.state) {
+                        "Connected", "Available" -> StatusTone.Active
+                        else -> StatusTone.Warning
+                    },
                 )
             }
         }
@@ -568,7 +576,7 @@ private fun RetryNotice(isRetrying: Boolean, reconnectAttempts: Int, onRetry: ()
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                text = if (isRetrying) "RECONNECTING…" else "RADIO UNAVAILABLE",
+                text = if (isRetrying) "RECONNECTING…" else "MESH UNAVAILABLE",
                 style = IrisType.Label.copy(
                     color = if (isRetrying) IrisColors.AccentWarning else IrisColors.AccentCritical,
                 ),

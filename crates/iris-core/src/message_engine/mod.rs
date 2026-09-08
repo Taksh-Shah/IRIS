@@ -438,7 +438,11 @@ impl MessageEngine {
             envelope.payload = ciphertext;
             envelope.encryption_hdr = Some(hdr);
             envelope.payload_hash = Envelope::compute_payload_hash(&envelope.payload);
-            return self.crypto.sign(envelope).await.map_err(MsgEngineError::Crypto);
+            return self
+                .crypto
+                .sign(envelope)
+                .await
+                .map_err(MsgEngineError::Crypto);
         } else {
             // PRY-33 / RED-0002: addressed unicast with no recipient X25519 key
             // in the directory MUST fail closed — sending plaintext breaks
@@ -795,7 +799,8 @@ impl MessageEngine {
                     .await,
                 crate::security::RateLimitDecision::SilentDrop
             ) {
-                self.telemetry.increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
+                self.telemetry
+                    .increment(metric::MESSAGES_RATE_LIMITED_TOTAL);
                 tracing::debug!(
                     event = event::MSG_RATE_LIMITED,
                     message_id = %envelope.message_id.short(),
@@ -847,6 +852,23 @@ impl MessageEngine {
         envelope: Envelope,
         _via: PeerId,
     ) -> Result<InboundOutcome, MsgEngineError> {
+        // Production unicast is always E2EE. A valid Ed25519 signature proves
+        // only who authored a frame; without EncryptionHdr any self-created
+        // Internet identity could inject readable addressed text into the UI.
+        // Broadcasts retain their documented plaintext-capable emergency path.
+        if self.crypto.authenticates()
+            && !is_broadcast(&envelope)
+            && envelope.encryption_hdr.is_none()
+        {
+            tracing::warn!(
+                event = "msg.unencrypted_unicast_dropped",
+                message_id = %envelope.message_id.short(),
+                "authenticated but unencrypted unicast dropped"
+            );
+            return Err(MsgEngineError::BadEnvelope(
+                "addressed production message must be encrypted",
+            ));
+        }
         // PM-1: node-local scheduling priority, separate from the wire priority.
         // Defaults to the wire value; the emergency gate may set it to P3 for a
         // downgraded SOS without touching the signed envelope field.
@@ -1095,7 +1117,9 @@ impl MessageEngine {
         // peer could flood this node's queue and airtime at zero quota cost (PRY-34).
         let relay_size = envelope.payload.len() as u64;
         if matches!(
-            policy.add_message(relay_sender, relay_size, sched_priority).await,
+            policy
+                .add_message(relay_sender, relay_size, sched_priority)
+                .await,
             crate::security::QuotaDecision::Rejected
         ) {
             self.telemetry
@@ -1441,7 +1465,8 @@ impl MessageEngine {
                 // we keep in-flight concurrency bounded even under burst load.
                 let available = this.outbound_semaphore.available_permits();
                 for _ in 0..available.max(1) {
-                    let Some(item) = this.queue.lock().await.dequeue(std::time::Instant::now()) else {
+                    let Some(item) = this.queue.lock().await.dequeue(std::time::Instant::now())
+                    else {
                         break;
                     };
                     // Acquire a permit before spawning so the semaphore is
@@ -1575,7 +1600,12 @@ impl MessageEngine {
         // messages have at most one ranked transport so join_all degrades to
         // a single sequential send — no behaviour change for P2–P7.
         let to_send = Arc::new(to_send);
-        type SendResult = (bool, bool, bool, Option<(crate::TransportId, crate::TransportError)>);
+        type SendResult = (
+            bool,
+            bool,
+            bool,
+            Option<(crate::TransportId, crate::TransportError)>,
+        );
         let futs = targets.iter().map(|target| {
             let tid = target.transport_id.clone();
             let peer = target.peer;
@@ -1588,7 +1618,12 @@ impl MessageEngine {
                         transport = %tid,
                         "a selected routing transport vanished before send"
                     );
-                    return (false, false, false, None::<(crate::TransportId, crate::TransportError)>);
+                    return (
+                        false,
+                        false,
+                        false,
+                        None::<(crate::TransportId, crate::TransportError)>,
+                    );
                 };
                 t.set_send_priority_hint(priority);
                 let mut t_sent = false;
@@ -1639,10 +1674,14 @@ impl MessageEngine {
         // A transient-only round should not consume a delivery attempt.
         let mut saw_non_transient_failure = false;
         for (t_sent, t_saw_failure, t_retryable, t_last_err) in results {
-            if t_sent { sent_any = true; }
+            if t_sent {
+                sent_any = true;
+            }
             if t_saw_failure {
                 saw_failure = true;
-                if t_retryable { any_retryable_failure = true; }
+                if t_retryable {
+                    any_retryable_failure = true;
+                }
             }
             if let Some((tid, e)) = t_last_err {
                 if !matches!(
@@ -1670,16 +1709,13 @@ impl MessageEngine {
                 .update_status(&id, MessageStatus::InTransit)
                 .await
                 .ok();
-            self.acks
-                .lock()
-                .await
-                .register_sent(
-                    id,
-                    priority,
-                    std::time::Instant::now(),
-                    item.envelope.timestamp,
-                    item.envelope.ttl_seconds,
-                );
+            self.acks.lock().await.register_sent(
+                id,
+                priority,
+                std::time::Instant::now(),
+                item.envelope.timestamp,
+                item.envelope.ttl_seconds,
+            );
             self.metrics.sent.fetch_add(1, Ordering::Relaxed);
             self.telemetry.increment(metric::MESSAGES_SENT_TOTAL);
             tracing::info!(
@@ -1792,9 +1828,10 @@ impl MessageEngine {
                 // so new arrivals are picked up promptly.
                 let sleep_dur = {
                     let guard = this.acks.lock().await;
-                    guard.next_due().map(|t| {
-                        t.saturating_duration_since(std::time::Instant::now())
-                    }).unwrap_or(Duration::from_secs(1))
+                    guard
+                        .next_due()
+                        .map(|t| t.saturating_duration_since(std::time::Instant::now()))
+                        .unwrap_or(Duration::from_secs(1))
                 };
                 tokio::time::sleep(sleep_dur).await;
                 let due = this
@@ -1837,8 +1874,8 @@ impl MessageEngine {
                         }
                         Err(MsgEngineError::QueueFull) => {
                             // GAP-8: backoff 5 s instead of tight retry storm.
-                            let backoff = std::time::Instant::now()
-                                + std::time::Duration::from_secs(5);
+                            let backoff =
+                                std::time::Instant::now() + std::time::Duration::from_secs(5);
                             this.acks.lock().await.postpone(id, backoff);
                         }
                         Err(_) => {
@@ -2032,8 +2069,7 @@ fn emergency_gate(
                     .and_then(|id| provider.sos_original(id))
             };
             // PM-15: cancel sender short ID for same-signer check (AC-6).
-            let cancel_sender_short =
-                crate::identity::peer_short_from_sender(&envelope.sender_id);
+            let cancel_sender_short = crate::identity::peer_short_from_sender(&envelope.sender_id);
 
             match provider.classify_sos(
                 &envelope.payload,
@@ -2098,12 +2134,13 @@ fn emergency_gate(
 mod tests {
     use super::*;
     use crate::crypto::key_directory::MemoryKeyDirectory;
-    use crate::message_engine::crypto::DevCryptoProvider;
-    use crate::message_engine::storage::MemoryStorage;
     use crate::message::{LinkQuality, PeerInfo};
+    use crate::message_engine::crypto::{DevCryptoProvider, IrisCryptoProvider, NodeIdentity};
+    use crate::message_engine::storage::MemoryStorage;
     use crate::transport::simulated::{SimConfig, SimulatedTransport};
     use crate::transport::Transport;
     use futures_util::StreamExt;
+    use std::time::Instant;
 
     const ALICE: [u8; 32] = [0xAA; 32];
     const BOB: [u8; 32] = [0xBB; 32];
@@ -2129,6 +2166,55 @@ mod tests {
             routing_hints: None,
             auth_cert_chain: None,
         }
+    }
+
+    #[tokio::test]
+    async fn production_ingress_rejects_signed_plaintext_unicast() {
+        let sender_identity = Arc::new(NodeIdentity::generate());
+        let receiver_identity = Arc::new(NodeIdentity::generate());
+        let sender_crypto = IrisCryptoProvider::new(sender_identity.clone());
+        let receiver_id = receiver_identity.identity.verifying_bytes();
+        let manager = Arc::new(TransportManager::new());
+        let receiver = MessageEngine::new(
+            MessageEngineConfig {
+                node_id: receiver_id,
+                ..Default::default()
+            },
+            Arc::new(MemoryStorage::new()),
+            Arc::new(IrisCryptoProvider::new(receiver_identity)),
+            manager,
+        );
+        let mut envelope = Envelope {
+            version: crate::protocol::PROTOCOL_VERSION,
+            message_id: MessageId::new_v7(),
+            sender_id: sender_identity.identity.verifying_bytes().to_vec(),
+            recipient_id: receiver_id.to_vec(),
+            priority: MessagePriority::P3,
+            ttl_seconds: 3600,
+            timestamp: unix_now(),
+            hop_count: 0,
+            max_hops: None,
+            payload_type: ContentType::Text,
+            payload_size: 9,
+            payload_hash: Envelope::compute_payload_hash(b"plaintext"),
+            payload: b"plaintext".to_vec(),
+            payload_ref: None,
+            signature: None,
+            encryption_hdr: None,
+            routing_hints: None,
+            auth_cert_chain: None,
+        };
+        sender_crypto.sign(&mut envelope).await.unwrap();
+        let result = receiver
+            .process_incoming(IncomingMessage {
+                peer_id: PeerId(sender_identity.identity.verifying_bytes()),
+                transport_id: "internet-0".into(),
+                payload: codec::encode(&envelope).unwrap(),
+                received_at: Instant::now(),
+            })
+            .await;
+        assert!(matches!(result, Err(MsgEngineError::BadEnvelope(_))));
+        receiver.shutdown().await;
     }
 
     async fn alice_engine() -> (Arc<MessageEngine>, Arc<SimulatedTransport>) {
@@ -2227,7 +2313,10 @@ mod tests {
 
         // The revived delivery loop still accepts and processes work.
         let out = alice
-            .deliver_or_relay(envelope_for(ALICE, MessagePriority::P3, b"post-restart"), PeerId(BOB))
+            .deliver_or_relay(
+                envelope_for(ALICE, MessagePriority::P3, b"post-restart"),
+                PeerId(BOB),
+            )
             .await
             .expect("engine handles a message after restart");
         assert!(matches!(out, InboundOutcome::Delivered));
@@ -2257,13 +2346,13 @@ mod tests {
         e.recipient_id = EMERGENCY_BROADCAST.to_vec();
         e.hop_count = 0;
 
-        let before = alice.queue.lock().await.len();
+        let before = alice.metrics().relayed;
         let out = alice.deliver_or_relay(e, PeerId(BOB)).await.unwrap();
-        let after = alice.queue.lock().await.len();
+        let after = alice.metrics().relayed;
 
         assert!(matches!(out, InboundOutcome::Delivered));
         assert!(
-            after > before,
+            after == before + 1,
             "a broadcast must be forwarded as well as delivered"
         );
     }
@@ -2278,17 +2367,13 @@ mod tests {
         let original = envelope_for(BOB, MessagePriority::P1, b"payload");
         let id = original.message_id;
         alice.storage.persist(&original).await.unwrap();
-        alice
-            .acks
-            .lock()
-            .await
-            .register_sent(
-                id,
-                MessagePriority::P1,
-                std::time::Instant::now(),
-                original.timestamp,
-                original.ttl_seconds,
-            );
+        alice.acks.lock().await.register_sent(
+            id,
+            MessagePriority::P1,
+            std::time::Instant::now(),
+            original.timestamp,
+            original.ttl_seconds,
+        );
 
         // CAROL is not the recipient — her ACK must be ignored.
         alice.consume_ack(id, CAROL.as_ref()).await;
@@ -2517,7 +2602,10 @@ mod tests {
             .expect("routing is installed");
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].peer, PeerId(CAROL));
-        assert_eq!(targets[0].transport_id, crate::TransportId::from("sim-alice"));
+        assert_eq!(
+            targets[0].transport_id,
+            crate::TransportId::from("sim-alice")
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

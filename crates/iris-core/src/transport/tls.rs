@@ -21,7 +21,7 @@ pub const RELAY_ALPN: &[u8] = b"iris-relay/1";
 /// `connect`; no API exists here to disable certificate verification.
 pub fn verified_relay_connector() -> TlsConnector {
     let roots = RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-    let mut config = ClientConfig::builder()
+    let mut config = ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
         .with_root_certificates(roots)
         .with_no_client_auth();
     config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
@@ -49,7 +49,7 @@ pub fn test_relay_connector_for_cert(cert_der_bytes: &[u8]) -> TlsConnector {
     roots
         .add(CertificateDer::from(cert_der_bytes.to_vec()))
         .expect("add test root cert");
-    let mut config = ClientConfig::builder()
+    let mut config = ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
         .with_root_certificates(roots)
         .with_no_client_auth();
     config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
@@ -64,6 +64,7 @@ mod tests {
     fn connector_advertises_only_iris_relay_alpn() {
         let connector = verified_relay_connector();
         assert_eq!(connector.config().alpn_protocols, vec![RELAY_ALPN.to_vec()]);
+        assert_eq!(connector.config().enable_early_data, false);
     }
 
     #[test]

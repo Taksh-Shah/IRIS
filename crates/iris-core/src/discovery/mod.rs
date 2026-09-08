@@ -207,6 +207,14 @@ impl DiscoveryManager {
         }
     }
 
+    /// Reactive counterpart to [`Self::report_peer`]: withdraw one transport
+    /// link when an event-driven platform discovery source reports service loss.
+    pub async fn withdraw_peer(&self, peer: &crate::message::PeerId, via: &TransportId) {
+        if let Some(event) = self.table.mark_down(peer, via).await {
+            self.events.send(event).ok();
+        }
+    }
+
     /// Ingest an inbound handshake envelope (CAPABILITY bundle or Bloom
     /// exchange). Updates the neighbor table with the peer's capabilities and
     /// records its dedup Bloom filter for the dispatch layer.
@@ -262,8 +270,7 @@ impl DiscoveryManager {
     pub async fn scan_once(&self) {
         let transports = self.transports.read().await.clone();
         let per_transport: Vec<(Vec<PeerId>, Vec<PeerId>)> =
-            futures_util::future::join_all(transports.iter().map(|t| self.scan_transport(t)))
-                .await;
+            futures_util::future::join_all(transports.iter().map(|t| self.scan_transport(t))).await;
         let mut new_peers: Vec<PeerId> = Vec::new();
         let mut seen_peers: Vec<PeerId> = Vec::new();
         for (new, seen) in per_transport {
@@ -365,7 +372,9 @@ impl DiscoveryManager {
             seen_ids.push(peer.peer_id);
             // HV-27: real per-link health where the transport reports it
             // (BLE: from recent successful traffic), else the historical `Good`.
-            let quality = transport.link_quality(&peer.peer_id).unwrap_or(LinkQuality::Good);
+            let quality = transport
+                .link_quality(&peer.peer_id)
+                .unwrap_or(LinkQuality::Good);
             let ev = self
                 .table
                 .upsert(&peer, transport.transport_id(), quality)
@@ -450,12 +459,18 @@ impl DiscoveryManager {
                         .min(CONNECT_BACKOFF_MAX);
                     backoff.insert(
                         backoff_key.clone(),
-                        ConnectBackoff { next_attempt: Instant::now() + delay, failures },
+                        ConnectBackoff {
+                            next_attempt: Instant::now() + delay,
+                            failures,
+                        },
                     );
                 } else {
                     backoff.insert(
                         backoff_key.clone(),
-                        ConnectBackoff { next_attempt: Instant::now(), failures },
+                        ConnectBackoff {
+                            next_attempt: Instant::now(),
+                            failures,
+                        },
                     );
                 }
                 drop(backoff);
@@ -679,7 +694,10 @@ mod tests {
         let sim = crate::transport::simulated::SimulatedTransport::new(
             "sim-hv91",
             "Sim HV-91",
-            SimConfig { connect_failure_rate: 1.0, ..SimConfig::default() },
+            SimConfig {
+                connect_failure_rate: 1.0,
+                ..SimConfig::default()
+            },
         );
         let t = Arc::new(CountingConnectTransport {
             inner: sim,
@@ -814,15 +832,18 @@ mod tests {
         }
         fn state_stream(
             &self,
-        ) -> std::pin::Pin<Box<dyn futures_util::Stream<Item = crate::transport::TransportStateEvent> + Send>>
-        {
+        ) -> std::pin::Pin<
+            Box<dyn futures_util::Stream<Item = crate::transport::TransportStateEvent> + Send>,
+        > {
             self.inner.state_stream()
         }
         async fn discover_peers(
             &self,
             _config: ScanConfig,
-        ) -> Result<std::pin::Pin<Box<dyn futures_util::Stream<Item = PeerInfo> + Send>>, TransportError>
-        {
+        ) -> Result<
+            std::pin::Pin<Box<dyn futures_util::Stream<Item = PeerInfo> + Send>>,
+            TransportError,
+        > {
             let n = self
                 .scan_calls
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -865,8 +886,9 @@ mod tests {
         }
         fn incoming_messages(
             &self,
-        ) -> std::pin::Pin<Box<dyn futures_util::Stream<Item = crate::message::IncomingMessage> + Send>>
-        {
+        ) -> std::pin::Pin<
+            Box<dyn futures_util::Stream<Item = crate::message::IncomingMessage> + Send>,
+        > {
             self.inner.incoming_messages()
         }
         fn cost_snapshot(&self) -> crate::transport::TransportCost {
@@ -908,7 +930,10 @@ mod tests {
 
         m.scan_once().await;
         let after_first = t.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
-        assert_eq!(after_first, 1, "first scan pass must connect the newly discovered peer");
+        assert_eq!(
+            after_first, 1,
+            "first scan pass must connect the newly discovered peer"
+        );
 
         m.scan_once().await;
         let after_second = t.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
@@ -928,7 +953,9 @@ mod tests {
         let m = manager(7);
         let t = Arc::new(CountingConnectTransport {
             inner: crate::transport::simulated::SimulatedTransport::new(
-                "sim-hv15", "Sim HV-15", SimConfig::default(),
+                "sim-hv15",
+                "Sim HV-15",
+                SimConfig::default(),
             ),
             connect_calls: std::sync::atomic::AtomicUsize::new(0),
             scan_calls: std::sync::atomic::AtomicUsize::new(0),

@@ -7,6 +7,7 @@ import iriscode.FfiIncomingMessage
 import iriscode.IrisEngine
 import iriscode.IrisFfiException
 import iriscore.adapter.AndroidNsdAdapter
+import iriscore.adapter.AndroidInternetNetworkMonitor
 import iriscore.di.DefaultDispatcher
 import iriscore.di.NodeId
 import iriscore.identity.KeystoreEd25519
@@ -18,12 +19,19 @@ import iriscore.util.PeerIdCodec
 import iriscore.util.PairingCodeCodec
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,12 +49,17 @@ class MeshRepository @Inject constructor(
     private val knownPeers: KnownPeersStore,
     private val trustedPeers: TrustedPeerStore,
     private val nsdAdapter: AndroidNsdAdapter,
+    private val internetMonitor: AndroidInternetNetworkMonitor,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     /** Guards [subscribeInbox] against duplicate registration. */
-    private val inboxSubscribed = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val inboxSubscribed = AtomicBoolean(false)
+    private val meshRequested = AtomicBoolean(false)
+    private val activationJobs = ConcurrentHashMap<String, Job>()
+    private val activationMutex = Mutex()
+    private val lifecycleLock = Any()
 
     private val nodeIdHex = PeerIdCodec.toHex(nodeId)
 
@@ -58,9 +71,82 @@ class MeshRepository @Inject constructor(
     )
     val uiState: StateFlow<MeshUiState> = _uiState.asStateFlow()
 
-    /** Bring the three transports up (BLE + Wi-Fi Aware + Wi-Fi Direct). */
+    init {
+        internetMonitor.onNetworkStateChanged = { state ->
+            scope.launch {
+                synchronized(lifecycleLock) {
+                    if (!meshRequested.get() || internetMonitor.currentState() != state) {
+                        return@synchronized
+                    }
+                    engine.get().setInternetNetworkState(state.validatedWan, state.localNetwork)
+                    if (state.localNetwork) nsdAdapter.start() else nsdAdapter.stop()
+                    if (state.validatedWan) {
+                        activateVerifiedInternetPeers()
+                    } else {
+                        cancelInternetActivations()
+                    }
+                    reconcileMeshState()
+                }
+            }
+        }
+    }
+
+    private fun activateVerifiedInternetPeers() {
+        trustedPeers.all()
+            .filterValues { it.verified }
+            .keys
+            .forEach(::scheduleInternetActivation)
+    }
+
+    /** Retry trusted relay sessions while validated WAN remains available. */
+    private fun scheduleInternetActivation(peerHex: String) {
+        if (!meshRequested.get() || !internetMonitor.isValidatedWanAvailable()) return
+        synchronized(activationJobs) {
+            if (activationJobs[peerHex]?.isActive == true) return
+            val job = scope.launch {
+                var retryDelayMs = INTERNET_RETRY_INITIAL_MS
+                try {
+                    while (meshRequested.get() && internetMonitor.isValidatedWanAvailable()) {
+                        val activated = activationMutex.withLock {
+                            runCatching {
+                                engine.get().activateInternetPeer(peerHex)
+                            }.onFailure {
+                                Log.i(TAG, "Internet peer $peerHex not active yet: ${it.message}")
+                            }.isSuccess
+                        }
+                        if (activated) return@launch
+                        delay(retryDelayMs)
+                        retryDelayMs = (retryDelayMs * 2).coerceAtMost(INTERNET_RETRY_MAX_MS)
+                    }
+                } finally {
+                    currentCoroutineContext()[Job]?.let { activationJobs.remove(peerHex, it) }
+                }
+            }
+            activationJobs[peerHex] = job
+        }
+    }
+
+    private fun cancelInternetActivations() {
+        activationJobs.values.forEach(Job::cancel)
+        activationJobs.clear()
+    }
+
+    /** Re-evaluate startAll after late Android network callbacks or recovery. */
+    private fun reconcileMeshState() {
+        if (!meshRequested.get()) return
+        runCatching { engine.get().startAll() }
+            .onSuccess { _uiState.update { it.copy(status = MeshStatus.RUNNING) } }
+            .onFailure { error ->
+                Log.i(TAG, "Mesh is waiting for a usable transport: ${error.message}")
+                _uiState.update { it.copy(status = MeshStatus.UNAVAILABLE) }
+            }
+    }
+
+    /** Bring all transports up, including Internet relay and authenticated LAN. */
     fun startMesh() {
-        try {
+        synchronized(lifecycleLock) {
+            meshRequested.set(true)
+            try {
             // HV-21 (legacy path): re-feed the old bare-key store too. Nothing
             // currently writes to it (see `addPeerKey`'s doc), and it is no
             // longer the engine's active key directory (see
@@ -96,29 +182,42 @@ class MeshRepository @Inject constructor(
                     }
                 }
             }
-            engine.get().startAll()
-            nsdAdapter.start()
-            _uiState.update { it.copy(status = MeshStatus.RUNNING) }
-        } catch (e: Exception) {
+            // Connectivity callbacks are asynchronous. Keep the requested
+            // state alive after an initial Unavailable result so a late WAN
+            // validation or LAN appearance can reconcile without another tap.
+            internetMonitor.start()
+            val network = internetMonitor.currentState()
+            engine.get().setInternetNetworkState(network.validatedWan, network.localNetwork)
+            reconcileMeshState()
+            if (network.localNetwork) nsdAdapter.start()
+            activateVerifiedInternetPeers()
+            } catch (e: Exception) {
             // AN-9: broadened from IrisFfiException — any unexpected exception
             // (ClassCastException, NullPointerException, etc.) would otherwise
             // escape into the SupervisorJob coroutine and crash the process.
             Log.w(TAG, "startMesh: engine.startAll() failed", e)
             _uiState.update { it.copy(status = MeshStatus.UNAVAILABLE) }
+            }
         }
     }
 
     fun stopMesh() {
-        nsdAdapter.stop()
-        try {
-            engine.get().stopAll()
-        } catch (_: IrisFfiException) {
+        synchronized(lifecycleLock) {
+            meshRequested.set(false)
+            cancelInternetActivations()
+            internetMonitor.stop()
+            engine.get().setInternetNetworkState(false, false)
+            nsdAdapter.stop()
+            try {
+                engine.get().stopAll()
+            } catch (_: IrisFfiException) {
             // Teardown is best-effort. This used to be try/finally with no
             // catch, so an FFI error propagated into a bare `launch` on a
             // SupervisorJob — which isolates siblings but does NOT handle the
             // exception — and terminated the process during shutdown.
-        } finally {
-            _uiState.update { it.copy(status = MeshStatus.IDLE) }
+            } finally {
+                _uiState.update { it.copy(status = MeshStatus.IDLE) }
+            }
         }
     }
 
@@ -236,6 +335,7 @@ class MeshRepository @Inject constructor(
                     else -> t.id.take(3).uppercase()
                 },
                 connected = t.state == "Connected",
+                state = t.state,
             )
         }
 
@@ -375,7 +475,9 @@ class MeshRepository @Inject constructor(
         val x25519 = PeerIdCodec.fromHex(record.x25519Hex) ?: return false
         return try {
             engine.get().verifyPeer(identity, x25519)
+            nsdAdapter.onPeerTrusted(peerIdHex)
             trustedPeers.markVerified(peerIdHex)
+            scheduleInternetActivation(peerIdHex)
             true
         } catch (_: IrisFfiException) {
             false
@@ -399,6 +501,7 @@ class MeshRepository @Inject constructor(
 
     /** Trusted-peers: drop a peer's persisted trusted-key record. */
     suspend fun forgetTrustedPeer(peerIdHex: String) {
+        activationJobs.remove(peerIdHex)?.cancel()
         val identity = PeerIdCodec.fromHex(peerIdHex)
         if (identity != null) runCatching { engine.get().forgetPeer(identity) }
         trustedPeers.remove(peerIdHex)
@@ -435,6 +538,9 @@ class MeshRepository @Inject constructor(
 
         /** Ceiling on retained UI messages; the engine holds the durable copy. */
         const val MAX_UI_MESSAGES = 500
+
+        private const val INTERNET_RETRY_INITIAL_MS = 1_000L
+        private const val INTERNET_RETRY_MAX_MS = 30_000L
 
         private fun FfiIncomingMessage.toUi(): InboxUiMessage = InboxUiMessage.received(
             senderId = PeerIdCodec.toHex(senderId),

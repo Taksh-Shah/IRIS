@@ -109,9 +109,12 @@ object IrisCoreModule {
         @ApplicationContext context: Context,
         engine: IrisEngine,
     ): AndroidInternetNetworkMonitor =
-        AndroidInternetNetworkMonitor(context, engine, BuildConfig.IRIS_RELAY_ENDPOINTS).also {
-            it.start()
-        }
+        AndroidInternetNetworkMonitor(
+            context,
+            engine,
+            BuildConfig.IRIS_RELAY_ENDPOINTS,
+            BuildConfig.IRIS_RELAY_SERVER_NAME,
+        )
 
     @Provides
     @Singleton

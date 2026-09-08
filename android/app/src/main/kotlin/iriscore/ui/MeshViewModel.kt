@@ -729,6 +729,15 @@ class MeshViewModel @Inject constructor(
                         "dup=${m.droppedDuplicates} expired=${m.expired} failed=${m.deliveryFailed}",
                 )
             }
+            snap.internet.let { internet ->
+                add(
+                    "internet" to
+                        "wan=${internet.validatedWan} lan=${internet.localNetwork} " +
+                        "relay=${internet.relayMode}/${internet.relayConfigured} " +
+                        "listen=${internet.lanListenerPort}",
+                )
+                internet.lastFailure?.let { add("internet failure" to it) }
+            }
             // HV-86: the tail of the transport-event ring — newest last, so the
             // run-up to a failure reads top-to-bottom.
             val events = snap.recentEvents

@@ -1029,6 +1029,8 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_iriscode_checksum_method_ffiinboxlistener_on_message(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_activate_internet_peer(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_add_internet_lan_peer(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_adopt_peer_advertisement(
@@ -1039,6 +1041,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_compute_sas(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_configure_internet_relay(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_drop_all_links(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_forget_peer(
@@ -1047,9 +1051,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_register_peer_key(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_remove_internet_lan_peer(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_send_text(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_set_internet_network_available(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_set_internet_network_state(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_set_internet_relay_endpoints(
     ): Int
@@ -1064,6 +1072,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_iriscode_checksum_method_irisengine_static_x25519_pubkey(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_stop_all(
+    ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_stop_internet_lan_listener(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_subscribe_inbox(
     ): Int
@@ -1209,6 +1219,8 @@ external fun uniffi_iriscode_fn_constructor_irisengine_new(`ble`: Long,`aware`: 
 ): Long
 external fun uniffi_iriscode_fn_constructor_irisengine_new_with_x25519(`ble`: Long,`aware`: Long,`direct`: Long,`nodeId`: RustBuffer.ByValue,`signer`: Long,`x25519Provider`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+external fun uniffi_iriscode_fn_method_irisengine_activate_internet_peer(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`address`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_adopt_peer_advertisement(`ptr`: Long,`advertisement`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1219,17 +1231,23 @@ external fun uniffi_iriscode_fn_method_irisengine_broadcast_text(`ptr`: Long,`te
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_compute_sas(`ptr`: Long,`theirIdentityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_iriscode_fn_method_irisengine_configure_internet_relay(`ptr`: Long,`endpoints`: RustBuffer.ByValue,`serverName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_drop_all_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-external fun uniffi_iriscode_fn_method_irisengine_forget_peer(`ptr`: Long,`identityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
+external fun uniffi_iriscode_fn_method_irisengine_forget_peer(`ptr`: Long,`identityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_register_peer_key(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,`x25519PubHex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_iriscode_fn_method_irisengine_remove_internet_lan_peer(`ptr`: Long,`peerIdHex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_iriscode_fn_method_irisengine_send_text(`ptr`: Long,`recipientHex`: RustBuffer.ByValue,`text`: RustBuffer.ByValue,`priority`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_set_internet_network_available(`ptr`: Long,`available`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_method_irisengine_set_internet_network_state(`ptr`: Long,`validatedWan`: Byte,`localNetwork`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_set_internet_relay_endpoints(`ptr`: Long,`endpoints`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1244,6 +1262,8 @@ external fun uniffi_iriscode_fn_method_irisengine_start_internet_lan_listener(`p
 external fun uniffi_iriscode_fn_method_irisengine_static_x25519_pubkey(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_stop_all(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_method_irisengine_stop_internet_lan_listener(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_subscribe_inbox(`ptr`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1497,6 +1517,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_ffiinboxlistener_on_message() != 54918) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_activate_internet_peer() != 35537) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_iriscode_checksum_method_irisengine_add_internet_lan_peer() != 52453) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1512,6 +1535,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_irisengine_compute_sas() != 19209) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_configure_internet_relay() != 63662) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_iriscode_checksum_method_irisengine_drop_all_links() != 16155) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1524,10 +1550,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_irisengine_register_peer_key() != 24246) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_remove_internet_lan_peer() != 64138) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_iriscode_checksum_method_irisengine_send_text() != 50109) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_set_internet_network_available() != 59071) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_set_internet_network_state() != 2688) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_set_internet_relay_endpoints() != 14971) {
@@ -1539,7 +1571,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_iriscode_checksum_method_irisengine_snapshot() != 60241) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_iriscode_checksum_method_irisengine_start_all() != 5995) {
+    if (lib.uniffi_iriscode_checksum_method_irisengine_start_all() != 4699) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_start_internet_lan_listener() != 12790) {
@@ -1549,6 +1581,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_stop_all() != 56279) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_stop_internet_lan_listener() != 21743) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_subscribe_inbox() != 25795) {
@@ -6458,6 +6493,12 @@ public object FfiConverterTypeFfiX25519KeyProvider: FfiConverter<FfiX25519KeyPro
 public interface IrisEngineInterface {
     
     /**
+     * Establish a relay link for an already trusted contact and publish it to
+     * routing. This never creates trust from network discovery.
+     */
+    fun `activateInternetPeer`(`peerIdHex`: kotlin.String)
+    
+    /**
      * Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
      * transport can reach it via plain TCP directly, without routing through
      * the relay.  `peer_id_hex` is the 64-hex peer identity from the NSD TXT
@@ -6514,6 +6555,13 @@ public interface IrisEngineInterface {
     fun `computeSas`(`theirIdentityPubkey`: kotlin.ByteArray): kotlin.String
     
     /**
+     * Configure the production relay atomically. A non-empty endpoint list
+     * requires a valid TLS reference identity and switches the transport to
+     * authenticated relay mode; empty configuration safely disables WAN relay.
+     */
+    fun `configureInternetRelay`(`endpoints`: List<kotlin.String>, `serverName`: kotlin.String)
+    
+    /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
      * down — advertising/scanning stay up, so the discovery loop re-forms the
      * links. A test hook for the `iris_bench` harness to deterministically
@@ -6526,7 +6574,7 @@ public interface IrisEngineInterface {
      * store and the legacy hardware-bench directory.
      */
     fun `forgetPeer`(`identityPubkey`: kotlin.ByteArray)
-
+    
     /**
      * The node's 32-byte PeerId for outbound messages.
      */
@@ -6541,6 +6589,11 @@ public interface IrisEngineInterface {
     fun `registerPeerKey`(`peerIdHex`: kotlin.String, `x25519PubHex`: kotlin.String)
     
     /**
+     * Withdraw an exact NSD service mapping and its routing-visible link.
+     */
+    fun `removeInternetLanPeer`(`peerIdHex`: kotlin.String)
+    
+    /**
      * Send a text message to `recipient_hex` (64-hex node id). Returns the
      * 16-byte wire message id on acceptance.
      */
@@ -6551,6 +6604,11 @@ public interface IrisEngineInterface {
      * active validated network; it never implies a peer or relay is reachable.
      */
     fun `setInternetNetworkAvailable`(`available`: kotlin.Boolean)
+    
+    /**
+     * Apply Android's separate public-WAN and local-LAN signals.
+     */
+    fun `setInternetNetworkState`(`validatedWan`: kotlin.Boolean, `localNetwork`: kotlin.Boolean)
     
     /**
      * Tier-5: install trusted relay endpoints supplied by Android settings or
@@ -6581,7 +6639,7 @@ public interface IrisEngineInterface {
     fun `snapshot`(): FfiMeshSnapshot
     
     /**
-     * Bring the three mesh transports up: each `start_advertising` triggers
+     * Bring the mesh transports up: each radio `start_advertising` triggers
      * its adapter bring-up (BLE scan+advertise, Wi-Fi Aware attach+subscribe+
      * publish, Wi-Fi Direct attach+DNS-SD) and spawns the inbound poller.
      */
@@ -6607,6 +6665,8 @@ public interface IrisEngineInterface {
      * through the handle).
      */
     fun `stopAll`()
+    
+    fun `stopInternetLanListener`()
     
     /**
      * Stream delivered messages to a Kotlin `FfiInboxListener`. The listener
@@ -6748,13 +6808,30 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
     
     /**
+     * Establish a relay link for an already trusted contact and publish it to
+     * routing. This never creates trust from network discovery.
+     */
+    @Throws(IrisFfiException::class)override fun `activateInternetPeer`(`peerIdHex`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_activate_internet_peer(
+        it,
+        FfiConverterString.lower(`peerIdHex`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * Tier-5 / HV-43: register a NSD-discovered LAN peer so the internet
      * transport can reach it via plain TCP directly, without routing through
      * the relay.  `peer_id_hex` is the 64-hex peer identity from the NSD TXT
      * record; `address` is `"host:port"` (numeric IP, no DNS resolution).
      */
     @Throws(IrisFfiException::class)override fun `addInternetLanPeer`(`peerIdHex`: kotlin.String, `address`: kotlin.String)
-        =
+        = 
     callWithHandle {
     uniffiRustCallWithError(IrisFfiException) { _status ->
     UniffiLib.uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(
@@ -6762,10 +6839,10 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
         FfiConverterString.lower(`peerIdHex`),FfiConverterString.lower(`address`),_status)
 }
     }
+    
+    
 
-
-
-
+    
     /**
      * Trusted-peers: adopt a peer's signed key advertisement — scanned via
      * QR or typed in manually — into the shared trust store. Returns the
@@ -6863,6 +6940,24 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
     
     /**
+     * Configure the production relay atomically. A non-empty endpoint list
+     * requires a valid TLS reference identity and switches the transport to
+     * authenticated relay mode; empty configuration safely disables WAN relay.
+     */
+    @Throws(IrisFfiException::class)override fun `configureInternetRelay`(`endpoints`: List<kotlin.String>, `serverName`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_configure_internet_relay(
+        it,
+        FfiConverterSequenceString.lower(`endpoints`),FfiConverterString.lower(`serverName`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * HV-97: drop every live link on every transport WITHOUT shutting the mesh
      * down — advertising/scanning stay up, so the discovery loop re-forms the
      * links. A test hook for the `iris_bench` harness to deterministically
@@ -6934,6 +7029,22 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
     
     /**
+     * Withdraw an exact NSD service mapping and its routing-visible link.
+     */
+    @Throws(IrisFfiException::class)override fun `removeInternetLanPeer`(`peerIdHex`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_remove_internet_lan_peer(
+        it,
+        FfiConverterString.lower(`peerIdHex`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * Send a text message to `recipient_hex` (64-hex node id). Returns the
      * 16-byte wire message id on acceptance.
      */
@@ -6961,6 +7072,21 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     UniffiLib.uniffi_iriscode_fn_method_irisengine_set_internet_network_available(
         it,
         FfiConverterBoolean.lower(`available`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Apply Android's separate public-WAN and local-LAN signals.
+     */override fun `setInternetNetworkState`(`validatedWan`: kotlin.Boolean, `localNetwork`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_set_internet_network_state(
+        it,
+        FfiConverterBoolean.lower(`validatedWan`),FfiConverterBoolean.lower(`localNetwork`),_status)
 }
     }
     
@@ -7029,7 +7155,7 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
 
     
     /**
-     * Bring the three mesh transports up: each `start_advertising` triggers
+     * Bring the mesh transports up: each radio `start_advertising` triggers
      * its adapter bring-up (BLE scan+advertise, Wi-Fi Aware attach+subscribe+
      * publish, Wi-Fi Direct attach+DNS-SD) and spawns the inbound poller.
      */
@@ -7094,6 +7220,18 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     callWithHandle {
     uniffiRustCallWithError(IrisFfiException) { _status ->
     UniffiLib.uniffi_iriscode_fn_method_irisengine_stop_all(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    override fun `stopInternetLanListener`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_stop_internet_lan_listener(
         it,
         _status)
 }
@@ -7739,6 +7877,67 @@ public object FfiConverterTypeFfiIncomingWifiDirectData: FfiConverterRustBuffer<
 
 
 /**
+ * Detailed Internet transport readiness and the last actionable failure.
+ */
+data class FfiInternetDiag (
+    var `validatedWan`: kotlin.Boolean
+    , 
+    var `localNetwork`: kotlin.Boolean
+    , 
+    var `relayConfigured`: kotlin.Boolean
+    , 
+    var `relayMode`: kotlin.Boolean
+    , 
+    var `lanListenerPort`: kotlin.UShort
+    , 
+    var `lastFailure`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiInternetDiag: FfiConverterRustBuffer<FfiInternetDiag> {
+    override fun read(buf: ByteBuffer): FfiInternetDiag {
+        return FfiInternetDiag(
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiInternetDiag) = (
+            FfiConverterBoolean.allocationSize(value.`validatedWan`) +
+            FfiConverterBoolean.allocationSize(value.`localNetwork`) +
+            FfiConverterBoolean.allocationSize(value.`relayConfigured`) +
+            FfiConverterBoolean.allocationSize(value.`relayMode`) +
+            FfiConverterUShort.allocationSize(value.`lanListenerPort`) +
+            FfiConverterOptionalString.allocationSize(value.`lastFailure`)
+    )
+
+    override fun write(value: FfiInternetDiag, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`validatedWan`, buf)
+            FfiConverterBoolean.write(value.`localNetwork`, buf)
+            FfiConverterBoolean.write(value.`relayConfigured`, buf)
+            FfiConverterBoolean.write(value.`relayMode`, buf)
+            FfiConverterUShort.write(value.`lanListenerPort`, buf)
+            FfiConverterOptionalString.write(value.`lastFailure`, buf)
+    }
+}
+
+
+
+/**
  * HV-86: one entry from the transport-event ring (`observability::ring`).
  * The last ~128 taxonomy events (`discovery.*` / `msg.*` / `engine.*` / …),
  * oldest first — so a `/diag` after a failure shows the run-up to it.
@@ -7841,6 +8040,11 @@ data class FfiMeshSnapshot (
      * HV-86: the transport-event ring, oldest first (last ~128 events).
      */
     var `recentEvents`: List<FfiLogEvent>
+    , 
+    /**
+     * Internet-specific readiness, useful when generic state is Unavailable.
+     */
+    var `internet`: FfiInternetDiag
     
 ){
     
@@ -7863,6 +8067,7 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterTypeFfiMessageMetrics.read(buf),
             FfiConverterSequenceTypeFfiCounter.read(buf),
             FfiConverterSequenceTypeFfiLogEvent.read(buf),
+            FfiConverterTypeFfiInternetDiag.read(buf),
         )
     }
 
@@ -7872,7 +8077,8 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterSequenceTypeFfiNeighborDiag.allocationSize(value.`neighbors`) +
             FfiConverterTypeFfiMessageMetrics.allocationSize(value.`messages`) +
             FfiConverterSequenceTypeFfiCounter.allocationSize(value.`counters`) +
-            FfiConverterSequenceTypeFfiLogEvent.allocationSize(value.`recentEvents`)
+            FfiConverterSequenceTypeFfiLogEvent.allocationSize(value.`recentEvents`) +
+            FfiConverterTypeFfiInternetDiag.allocationSize(value.`internet`)
     )
 
     override fun write(value: FfiMeshSnapshot, buf: ByteBuffer) {
@@ -7882,6 +8088,7 @@ public object FfiConverterTypeFfiMeshSnapshot: FfiConverterRustBuffer<FfiMeshSna
             FfiConverterTypeFfiMessageMetrics.write(value.`messages`, buf)
             FfiConverterSequenceTypeFfiCounter.write(value.`counters`, buf)
             FfiConverterSequenceTypeFfiLogEvent.write(value.`recentEvents`, buf)
+            FfiConverterTypeFfiInternetDiag.write(value.`internet`, buf)
     }
 }
 
@@ -9214,6 +9421,7 @@ public object FfiConverterSequenceTypeFfiTransportDiag: FfiConverterRustBuffer<L
         }
     }
 }
+
 
 
 

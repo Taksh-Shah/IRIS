@@ -307,10 +307,8 @@ impl DedupEngine {
         // call, driving rotation at call-rate rather than unique-id rate.
         if !self.current.contains(digest) {
             if self.current.inserted() >= self.capacity {
-                self.previous = std::mem::replace(
-                    &mut self.current,
-                    BloomFilter::new(self.capacity, self.fpr),
-                );
+                self.previous =
+                    std::mem::replace(&mut self.current, BloomFilter::new(self.capacity, self.fpr));
                 self.rotations += 1;
             }
             self.current.insert(digest);
@@ -527,10 +525,14 @@ mod tests {
         let capacity = 4;
         let mut d = DedupEngine::new(capacity, 0.01, 32);
         assert!(!d.seen(mid(1))); // novel
-        assert!(d.seen(mid(1)));  // duplicate
-        assert!(d.seen(mid(1)));  // duplicate again
-        // Despite 3 calls, only 1 unique id was inserted — no rotation yet.
-        assert_eq!(d.rotations(), 0, "replayed id must not advance the rotation counter");
+        assert!(d.seen(mid(1))); // duplicate
+        assert!(d.seen(mid(1))); // duplicate again
+                                 // Despite 3 calls, only 1 unique id was inserted — no rotation yet.
+        assert_eq!(
+            d.rotations(),
+            0,
+            "replayed id must not advance the rotation counter"
+        );
         // Filling with unique ids does eventually rotate.
         for i in 2..=(capacity as u16 + 1) {
             d.seen(mid(i));

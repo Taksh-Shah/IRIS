@@ -67,7 +67,10 @@ pub struct NeighborSummary {
 /// better, see `routing::known_path::RoutingTable::upsert`'s established
 /// convention), so the best link is the minimum, not the maximum.
 pub fn best_transport(links: &[LinkRecord]) -> Option<TransportId> {
-    links.iter().min_by_key(|l| l.quality).map(|l| l.transport.clone())
+    links
+        .iter()
+        .min_by_key(|l| l.quality)
+        .map(|l| l.transport.clone())
 }
 
 impl Neighbor {
@@ -488,8 +491,12 @@ mod tests {
         }
         assert_eq!(t.len().await, MAX_NEIGHBORS);
         // One more peer triggers eviction of the LRU; table stays at cap.
-        t.upsert(&mk(MAX_NEIGHBORS + 1), &TransportId::from("sim"), LinkQuality::Good)
-            .await;
+        t.upsert(
+            &mk(MAX_NEIGHBORS + 1),
+            &TransportId::from("sim"),
+            LinkQuality::Good,
+        )
+        .await;
         assert_eq!(
             t.len().await,
             MAX_NEIGHBORS,

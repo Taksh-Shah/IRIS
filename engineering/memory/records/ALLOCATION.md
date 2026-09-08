@@ -1,23 +1,30 @@
 # Record ID Allocation
 
-**Last updated**: 2026-08-22T00:10:00Z (SAT-001 RESEARCH COMPLETE iter ~169, RES-0028; DESIGN iter ~170 next)
+**Last updated**: 2026-09-08T15:44:00+05:30 (FAIL-0009 and RES-0034 allocated)
 
 ## Next Available IDs
 
 | Type | Prefix | Next ID | Last Allocated |
 |------|--------|---------|---------------|
 | Decision | DEC- | DEC-0011 | DEC-0010 |
- | Research | RES- | RES-0029 | RES-0028 |
+ | Research | RES- | RES-0037 | RES-0036 |
 | Redteam | RED- | RED-0003 | RED-0002 |
 | Experiment | EXP- | EXP-0001 | — |
-| Failure | FAIL- | FAIL-0006 | FAIL-0005 |
+| Failure | FAIL- | FAIL-0010 | FAIL-0009 |
 | Discovery | DISC- | DISC-0014 | DISC-0013 |
 | Change | CHG- | CHG-0001 | — |
 | Verification | VER- | VER-0001 | — |
-| Checkpoint | CHK- | CHK-0005 | CHK-0004 |
+| Checkpoint | CHK- | CHK-0009 | CHK-0008 |
 | Orchestration | ORCH- | ORCH-0002 | ORCH-0001 |
 
 ## Allocated IDs
+
+### Current recovery allocation
+- FAIL-0009: Android Internet transport reports unavailable and mesh stays down
+- RES-0034: Android Internet/LAN relay recovery research
+- RES-0035: INTERNET-ANDROID-001 first compile failure (Rust ownership/Option conversion)
+- RES-0036: INTERNET-ANDROID-001 jitter assertion failure
+- CHK-0008: INTERNET-ANDROID-001 research recovery checkpoint
 
 ### Redteam
 - RED-0001: Transport Layer Adversarial Review (internet.rs, manager.rs, ble.rs, simulated.rs, mod.rs, message.rs, error.rs)

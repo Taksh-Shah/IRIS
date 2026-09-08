@@ -4,9 +4,9 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-09-08T06:30:00+05:30"
+updated_at: "2026-09-08T19:35:00+05:30"
 # === EXECUTION CONTROL ===
-execution_status: "ACTIVE"
+execution_status: "HUMAN_GATE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
 
 autonomy_mode: "AUTONOMOUS"
@@ -22,15 +22,15 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "ANDROID-PAIR-001"
-active_stage: "ACCEPT"
-active_action: "ANDROID-PAIR-001 accepted after user-confirmed original-peer QR validation, focused tests, APK build/install, and cold-launch sanity."
-next_action: "Commit and push ANDROID-PAIR-001 to origin/main."
-last_transition: "ACCEPT"
+active_node: "INTERNET-ANDROID-001"
+active_stage: "VERIFY"
+active_action: "Internet/LAN/relay audit passed; verifier-found rapid NSD stop/start race fixed with generation lease and acceptance scope corrected."
+next_action: "Obtain the real phone-reachable relay IP:port and CA-certificate reference name, rebuild/install that APK on b2fbcd39, then hand AC-12/AC-13 physical verification to the user."
+last_transition: "HUMAN_GATE"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
-last_transition_at: "2026-09-07T15:20:00+05:30"
-last_checkpoint: "CHK-0006"
-last_checkpoint_at: "2026-08-13T18:30:00Z"
+last_transition_at: "2026-09-08T19:35:00+05:30"
+last_checkpoint: "CHK-0008"
+last_checkpoint_at: "2026-09-08T15:44:00+05:30"
 
 # === CONTINUATION ===
 # Pipeline history: transport nodes BLE-001 -> WIFIAWARE-001 -> WIFIDIRECT-001 -> BLE-002 -> platforms ANDROID-001 -> IOS-001 -> PILOT-001 (ACCEPTED iter ~159, 29 COMPLETE). Next: LORA-001 (P2 TRANSPORT, requires_hardware) IMPLEMENTING (TEST COMPLETE iter ~164, evidence 5) -> SECURITY_REVIEW (~165) -> VERIFY (~166) -> ACCEPT -> then SAT-001 -> mission milestones (MVP/Alpha/Beta/Pilot).
@@ -38,17 +38,22 @@ last_checkpoint_at: "2026-08-13T18:30:00Z"
 # === STALL DETECTION ===
 iterations_without_progress: 0
 max_iterations_without_progress: 3
-last_progress_event: "MISSION GRAPH COMPLETE (iter ~178): SYSVAL-001 whole-system validation green (Tracks A-F + Phase 2 gates, workspace 727/0/1); LEGAL-001 deferred to future w/ carried-obligations register; 32/33 nodes COMPLETE (LEGAL-001 operator-deferred). Supervisor IDLE pending physical-phone phase."
-last_progress_at: "2026-09-06T18:55:00+05:30"
+last_progress_event: "Software verification passed: iris-core 865/865, iris-android 10/10, relay server/codec/Internet focused suites green, Android JVM and three-ABI APK packaging green."
+last_progress_at: "2026-09-08T19:35:00+05:30"
 # === RETRY / ERROR ===
 retry_count: 0
 max_retries_per_action: 3
-last_error: "Resolved cross-OEM Wi-Fi Direct automatic-association dialog failure; full Android JVM suite retains one unrelated desktop command-parity failure."
-error_classification: "RESEARCH_REQUIRED"
+last_error: null
+error_classification: "HUMAN_GATE"
 # TRANSIENT | RETRYABLE | RESEARCH_REQUIRED | DESIGN_ERROR | IMPLEMENTATION_ERROR | ENVIRONMENT_ERROR | DEPENDENCY_ERROR | HUMAN_GATE | FATAL
 
 # === BLOCKERS ===
 blockers:
+  - id: "BLK-INTERNET-RELAY-DEPLOY"
+    node: "INTERNET-ANDROID-001"
+    type: "RESOURCE"
+    severity: "HIGH"
+    description: "No real phone-reachable relay IP:port and CA-valid certificate reference name are configured. Installing an empty/localhost build would truthfully remain unavailable and cannot verify cross-network messaging."
   - id: "BLK-0005"
     node: "BLE-001 (and WiFi/LoRa transports)"
     type: "RESOURCE"
@@ -61,6 +66,39 @@ human_gate_required: true
 
 # === EXECUTION LOG (last 5 entries) ===
 recent_log:
+  - timestamp: "2026-09-08T19:05:00+05:30"
+    iteration: 196
+    node: "INTERNET-ANDROID-001"
+    stage: "VERIFY"
+    action: "Completed protocol/server/Android lifecycle audit and fixes; reproduced 865/865 core, 10/10 iris-android, focused Internet/codec/server/JVM tests, three native ABIs and configured APK packaging. Recorded security/test/verification evidence."
+    result: "SOFTWARE_VERIFIED_HARDWARE_GATED"
+    files_changed:
+      - "crates/iris-core/src/transport/internet.rs"
+      - "crates/iris-core/src/transport/relay_protocol.rs"
+      - "crates/iris-core/src/bin/relay_server.rs"
+      - "crates/iris-android/src/engine.rs"
+      - "android/app/src/main/kotlin/iriscore/adapter/AndroidNsdAdapter.kt"
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/PROJECT_STATE.yaml"
+      - "engineering/memory/execution-state.yaml"
+    records_created:
+      - "engineering/memory/records/INTERNET-ANDROID-001_TEST.md"
+      - "engineering/memory/records/INTERNET-ANDROID-001_SECURITY_REVIEW.md"
+      - "engineering/memory/records/INTERNET-ANDROID-001_VERIFICATION.md"
+  - timestamp: "2026-09-08T15:44:00+05:30"
+    iteration: 186
+    node: "INTERNET-ANDROID-001"
+    stage: "RESEARCH"
+    action: "FAIL-0009 captured from user-observed RADIO UNAVAILABLE/mesh-down run. Repaired PROJECT_GRAPH malformed SAT-001 evidence indentation, added P0 recovery node with 15 acceptance criteria and COMPLETE dependencies, researched current Android connectivity/NSD plus TLS/ALPN/identity, dual-stack, reconnect and BPv7 constraints in RES-0034, and validated the 35-node graph."
+    result: "RESEARCH_COMPLETE"
+    files_changed:
+      - "engineering/PROJECT_GRAPH.yaml"
+      - "engineering/memory/execution-state.yaml"
+      - "engineering/memory/records/FAIL-0009.md"
+      - "engineering/memory/records/research/RES-0034.md"
+    records_created:
+      - "engineering/memory/records/FAIL-0009.md"
+      - "engineering/memory/records/research/RES-0034.md"
   - timestamp: "2026-08-19T20:40:00Z"
     iteration: 165
     node: "LORA-001"

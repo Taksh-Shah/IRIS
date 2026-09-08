@@ -212,9 +212,9 @@ impl PriorityQueue {
             .unwrap_or(false);
         if !top_due {
             let all: Vec<QueuedMessage> = self.heap.drain().collect();
-            let (due, not_due): (Vec<_>, Vec<_>) = all.into_iter().partition(|m| {
-                m.next_retry.map(|d| now >= d).unwrap_or(true)
-            });
+            let (due, not_due): (Vec<_>, Vec<_>) = all
+                .into_iter()
+                .partition(|m| m.next_retry.map(|d| now >= d).unwrap_or(true));
             self.heap.extend(not_due);
             let Some(best) = due.into_iter().max() else {
                 return None;
@@ -363,9 +363,15 @@ mod tests {
         let due_id = due.envelope.message_id;
         q.push(due);
 
-        let got = q.dequeue(now).expect("the due message must be found past the blocked top");
+        let got = q
+            .dequeue(now)
+            .expect("the due message must be found past the blocked top");
         assert_eq!(got.envelope.message_id, due_id);
-        assert_eq!(q.len(), 1, "the blocked message must stay queued, not be dropped or returned");
+        assert_eq!(
+            q.len(),
+            1,
+            "the blocked message must stay queued, not be dropped or returned"
+        );
     }
 
     #[test]
@@ -388,10 +394,15 @@ mod tests {
             q.dequeue(now).is_none(),
             "a message whose backoff hasn't elapsed must not be returned"
         );
-        assert_eq!(q.len(), 1, "the not-yet-due message must stay in the queue, not be dropped");
+        assert_eq!(
+            q.len(),
+            1,
+            "the not-yet-due message must stay in the queue, not be dropped"
+        );
 
         assert!(
-            q.dequeue(now + std::time::Duration::from_secs(31)).is_some(),
+            q.dequeue(now + std::time::Duration::from_secs(31))
+                .is_some(),
             "once the backoff deadline has passed, the message must dequeue normally"
         );
     }
@@ -402,9 +413,18 @@ mod tests {
         q.push(QueuedMessage::new(env(MessagePriority::P4, 1)));
         q.push(QueuedMessage::new(env(MessagePriority::P0, 2)));
         q.push(QueuedMessage::new(env(MessagePriority::P1, 3)));
-        assert_eq!(q.dequeue(Instant::now()).unwrap().envelope.priority, MessagePriority::P0);
-        assert_eq!(q.dequeue(Instant::now()).unwrap().envelope.priority, MessagePriority::P1);
-        assert_eq!(q.dequeue(Instant::now()).unwrap().envelope.priority, MessagePriority::P4);
+        assert_eq!(
+            q.dequeue(Instant::now()).unwrap().envelope.priority,
+            MessagePriority::P0
+        );
+        assert_eq!(
+            q.dequeue(Instant::now()).unwrap().envelope.priority,
+            MessagePriority::P1
+        );
+        assert_eq!(
+            q.dequeue(Instant::now()).unwrap().envelope.priority,
+            MessagePriority::P4
+        );
         assert!(q.dequeue(Instant::now()).is_none());
     }
 

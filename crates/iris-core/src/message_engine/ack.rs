@@ -252,11 +252,17 @@ impl AckTracker {
             }
             self.retry_heap.pop();
             // Skip stale: entry was acked or forgotten after being pushed.
-            let Some(p) = self.pending.get(&id) else { continue };
+            let Some(p) = self.pending.get(&id) else {
+                continue;
+            };
             // Skip if the stored deadline no longer matches (entry was re-pushed).
             let stored = p.next_retry.unwrap_or(deadline);
-            if stored != deadline { continue; }
-            if ack_ttl_expired(p.timestamp, p.ttl_seconds, now_unix) { continue; }
+            if stored != deadline {
+                continue;
+            }
+            if ack_ttl_expired(p.timestamp, p.ttl_seconds, now_unix) {
+                continue;
+            }
             due.push(id);
         }
         due
@@ -298,8 +304,7 @@ impl AckTracker {
     /// No-op if the message is not pending.
     pub fn postpone(&mut self, id: MessageId, new_due: std::time::Instant) {
         if self.pending.contains_key(&id) {
-            self.retry_heap
-                .push(std::cmp::Reverse((new_due, id)));
+            self.retry_heap.push(std::cmp::Reverse((new_due, id)));
         }
     }
 
@@ -438,7 +443,8 @@ mod tests {
             "budget must be reachable across re-sends"
         );
         assert!(
-            t.due_retries(t2 + Duration::from_secs(100_000), 0).is_empty(),
+            t.due_retries(t2 + Duration::from_secs(100_000), 0)
+                .is_empty(),
             "an exhausted message must stop being due"
         );
     }

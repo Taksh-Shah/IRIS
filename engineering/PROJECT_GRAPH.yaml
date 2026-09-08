@@ -6,10 +6,10 @@
 meta:
   version: "0.2.0"
   created: "2025-01-01"
-  last_validated: "2026-08-19"
-  total_nodes: 34
+  last_validated: "2026-09-08"
+  total_nodes: 35
   description: "Directed dependency graph of all IRIS engineering capabilities"
-  validation_status: "31 COMPLETE - GRAPH EXHAUSTED of eligible autonomous nodes (SAT-001 ACCEPTED iter ~175, evidence 8; LEGAL-001 RESEARCH_COMPLETE = human/legal carry per DEC-SAT-0006 context; BLK-0002 anticipates incremental additions) — AC-1..17 table, verifier APPROVE, live 720/0/1 clippy 0 fmt clean — AC-1..15 mapped, live 716/0/1 clippy 0 fmt clean - RQ-1..6 staged for RES-0028) then LEGAL-001 RESEARCH_COMPLETE carry (LORA-001 ACCEPTED iter ~167, evidence 8 — full pipeline DISCOVER~160..ACCEPT~167; AC-1..17 satisfied w/ AC-15 GATED/BLK-0005; verifier APPROVE; live 695/0/1 clippy 0 fmt clean) — AC-1..17 table, verifier APPROVE, live 695/0/1 clippy 0 fmt clean at recorded revision — RT-101 CRITICAL billing fix + RT-102..107/109/200 resolved, live 695/0/1 clippy 0 fmt clean) — AC-1..15 mapped, live 686/0/1 clippy 0 fmt clean, transient lib flake disclosed w/ deflake follow-up) — first OPERATIONS node PILOT-001 ACCEPTED (iter ~159). LORA-001 pipeline DISCOVER ~160 -> RESEARCH ~161 (RES-0027 PROCEED) -> DESIGN ~162 -> IMPLEMENT ~163 -> TEST ~164; SECURITY_REVIEW next (~165); SAT-001 remains DISCOVERED."
+  validation_status: "35 nodes parsed; INTERNET-ANDROID-001 software implementation/security/test verification passed. Dependencies are COMPLETE; AC-12/AC-13 physical LAN/WAN validation and real relay deployment remain gated."
   note: "PROJECT_STATE.yaml must be generated from this graph, not maintained separately"
   known_gaps:
     - "Graph has 32 nodes; 50+ additional nodes needed for full system coverage (see expert review)"
@@ -482,13 +482,14 @@ nodes:
       - "AC-15 (GATED/BLK-0005): physical-terminal rows recorded honestly - real-modem benchmarks + field activation gated on hardware + legal."
       - "AC-16: SECURITY_REVIEW stage - receive-path redteam MANDATORY per RES-0028 G-2; findings dispositioned/fixed/recorded."
       - "AC-17: VERIFY stage - independent verifier evidence table + APPROVE."
+    evidence:
       - "engineering/memory/records/research/RES-0028.md (iter ~169): RESEARCH COMPLETE - verdict PROCEED-WITH-CONDITIONS (11 websearch + 4 primary passes, L1-L5, no AI citations). RQ-1 ADOPT-WITH-CONDITIONS: SBD alive (no EOL); v1 target = AT-command SBD modems 96xx/Iridium 9604 (Jun 2026) behind adapter-injected seam; Iridium GO! local REST endpoints DO NOT EXIST publicly (NDA/cert program, no-open-source policy) -> GO! path = external integration only; IMT/NTN Direct later. RQ-2 ADOPT: carry STANDARD CRYPTO-001 envelopes verbatim (P0 ~237 B fits 340-B MO w/ headroom; 340/270 is 96xx-scoped, handsets 1960/1890); REJECT bespoke SbdIrisMessage truncated-signature struct. RQ-3 ADOPT-WITH-CONDITIONS: SOS-exempt cost-guard pattern (Garmin/Zoleo L1) - P0 never blocked, persisted counters, RX mailbox checks billable. RQ-4 ADOPT-WITH-CONDITIONS: RFC 9171 CLA MUST rate-limit (L1); Expensive/EmergencyOnly classification; asynchronous custody-style ACKs. RQ-5 ADOPT-WITH-CONDITIONS: arXiv:2603.12062 (Mar 2026) proves cloning/spoofable-downlink/no-encryption/1mW-jamming -> envelope RX verification MANDATORY, Ring Alerts hint-only, monotonic-sequence freshness. RQ-6 ADOPT-WITH-CONDITIONS: Starlink LoI May 2025/GMPCS Jun 2025/IN-SPACe Jul 2025->2030 launch pending late 2026; Telecom Act 2023 criminalizes unauthorized satcom TX; Airtel-Iridium claim FAILS verification -> India legal HIGH-RISK gate + authorized-channel LEGAL_REVIEW gap. DESIGN inputs D-1..D-6; external facts FC-1..FC-8 (SATELLITE.md corrections incl. GO! REST fiction removal); gaps G-1..G-7 (HIGH: hardware-target pinning, receive-path redteam before UNIT_VALIDATED, India legal gate)."
-       - "docs/implementation/SAT_001_DESIGN.md (iter ~170): DESIGN COMPLETE (evidence 3) — v1.0, AC-1..17, DEC-SAT-0001..0007 ratified; scope pinned per RES-0028 D-1..D-6 (IridiumSbd AT-modem seam, verbatim envelope carry, SOS-exempt CostGuard + CostLedger, Expensive/EmergencyOnly, hostile-pipe posture, India legal gate, SIMULATION_VALIDATED). Accepted by DESIGN pass (pattern LORA_001)",
-       - "crates/iris-core/src/transport/satellite.rs + transport/mod.rs (iter ~171): IMPLEMENT COMPLETE (evidence 4) — full Rust core per AC-1..13: SatelliteProvider/CostGuardConfig/SOS-exempt SatelliteCostGuard (P0 never blocked, hourly+daily budgets, refund-on-failure RT-104, CostLedger+Fanout double-write seam)/SatelliteLinkAdapter seam + AtSbdModemAdapter BLK-0005 stub + SimulatedSatelliteAdapter deterministic pair/SbdFrame verbatim-carry MO340-MT270 caps/SatelliteTransport Transport impl eligibility-P3+-never + hot-plug RT-103 + confirmation hook + queue-not-drop + async ACK consts + OBS counters. transport::satellite 21/21; workspace 716/0/1; clippy 0; fmt clean.",
-       - "engineering/memory/records/SAT-001_TEST.md (iter ~172): TEST COMPLETE (evidence 5) — AC-1..15 evidence map; AC-1..14 PASS (AC-8/10/11 review assertions), AC-15 GATED/BLK-0005. Live: transport::satellite 21/21, workspace 716/0/1, clippy 0, fmt clean.",
-       - "engineering/memory/records/SAT-001_SECURITY_REVIEW.md (iter ~173): SECURITY_REVIEW COMPLETE (evidence 6) — redteam FAIL -> RESOLVED: SAT-RT-102/103/104/105/106 MEDIUM + RT-108/109 LOW FIXED (monotonic clamp, exact-token refunds, push_deferred over-cap re-insert mirrored into lora, MT-relay caps advertised, hook panic containment, hot-plug TOCTOU, ledger bound); SAT-RT-101 HIGH + RT-107 MEDIUM RECORDED as binding above-transport obligations; SAT-RT-110 INFO positive-controls PASS. 3 new satellite RT regressions + lora deferred test; live workspace 720/0/1 clippy 0 fmt clean.",
-       - "engineering/memory/records/SAT-001_VERIFICATION.md (iter ~174): VERIFY COMPLETE (evidence 7) — AC-1..17 evidence table; independent-verifier-style reproduction at recorded revision: workspace 720/0/1, transport::satellite 24/24, clippy 0, fmt clean; 23/23 AC-cited tests re-grepped w/ file:line; RT dispositions re-located as real code; verifier APPROVE zero findings.",
-       - "ACCEPT (iter ~175): node COMPLETE - 31 COMPLETE nodes; graph status IMPLEMENTING -> COMPLETE (evidence 8); PROJECT_STATE completed 30 -> 31, implementing 1 -> 0; CHANGELOG 0.3.63; GRAPH EXHAUSTED of eligible software nodes (LEGAL-001 RESEARCH_COMPLETE = human/legal carry; BLK-0002 anticipates incremental node additions); NODE_TRANSITION -> mission milestones (MVP/Alpha/Beta/Pilot) pending operator direction.",
+      - "docs/implementation/SAT_001_DESIGN.md (iter ~170): DESIGN COMPLETE (evidence 3) — v1.0, AC-1..17, DEC-SAT-0001..0007 ratified; scope pinned per RES-0028 D-1..D-6 (IridiumSbd AT-modem seam, verbatim envelope carry, SOS-exempt CostGuard + CostLedger, Expensive/EmergencyOnly, hostile-pipe posture, India legal gate, SIMULATION_VALIDATED). Accepted by DESIGN pass (pattern LORA_001)"
+      - "crates/iris-core/src/transport/satellite.rs + transport/mod.rs (iter ~171): IMPLEMENT COMPLETE (evidence 4) — full Rust core per AC-1..13: SatelliteProvider/CostGuardConfig/SOS-exempt SatelliteCostGuard (P0 never blocked, hourly+daily budgets, refund-on-failure RT-104, CostLedger+Fanout double-write seam)/SatelliteLinkAdapter seam + AtSbdModemAdapter BLK-0005 stub + SimulatedSatelliteAdapter deterministic pair/SbdFrame verbatim-carry MO340-MT270 caps/SatelliteTransport Transport impl eligibility-P3+-never + hot-plug RT-103 + confirmation hook + queue-not-drop + async ACK consts + OBS counters. transport::satellite 21/21; workspace 716/0/1; clippy 0; fmt clean."
+      - "engineering/memory/records/SAT-001_TEST.md (iter ~172): TEST COMPLETE (evidence 5) — AC-1..15 evidence map; AC-1..14 PASS (AC-8/10/11 review assertions), AC-15 GATED/BLK-0005. Live: transport::satellite 21/21, workspace 716/0/1, clippy 0, fmt clean."
+      - "engineering/memory/records/SAT-001_SECURITY_REVIEW.md (iter ~173): SECURITY_REVIEW COMPLETE (evidence 6) — redteam FAIL -> RESOLVED: SAT-RT-102/103/104/105/106 MEDIUM + RT-108/109 LOW FIXED (monotonic clamp, exact-token refunds, push_deferred over-cap re-insert mirrored into lora, MT-relay caps advertised, hook panic containment, hot-plug TOCTOU, ledger bound); SAT-RT-101 HIGH + RT-107 MEDIUM RECORDED as binding above-transport obligations; SAT-RT-110 INFO positive-controls PASS. 3 new satellite RT regressions + lora deferred test; live workspace 720/0/1 clippy 0 fmt clean."
+      - "engineering/memory/records/SAT-001_VERIFICATION.md (iter ~174): VERIFY COMPLETE (evidence 7) — AC-1..17 evidence table; independent-verifier-style reproduction at recorded revision: workspace 720/0/1, transport::satellite 24/24, clippy 0, fmt clean; 23/23 AC-cited tests re-grepped w/ file:line; RT dispositions re-located as real code; verifier APPROVE zero findings."
+      - "ACCEPT (iter ~175): node COMPLETE - 31 COMPLETE nodes; graph status IMPLEMENTING -> COMPLETE (evidence 8); PROJECT_STATE completed 30 -> 31, implementing 1 -> 0; CHANGELOG 0.3.63; GRAPH EXHAUSTED of eligible software nodes (LEGAL-001 RESEARCH_COMPLETE = human/legal carry; BLK-0002 anticipates incremental node additions); NODE_TRANSITION -> mission milestones (MVP/Alpha/Beta/Pilot) pending operator direction."
 
   - id: "SYSVAL-001"
     name: "Whole-System Soundness Validation"
@@ -833,6 +834,44 @@ nodes:
     known_limitations:
       - "Physical bidirectional message observation remains a user-run hardware gate after installation"
     stage_note: "ACCEPTED 2026-09-08: implementation, verification, APK deployment, and user-confirmed original-peer QR validation complete"
+
+  - id: "INTERNET-ANDROID-001"
+    name: "Android Internet and LAN Relay Recovery"
+    type: TRANSPORT
+    priority: P0
+    status: VERIFYING
+    description: "Recover the shipping Android Internet path after FAIL-0009: truthful connectivity state, LAN NSD routing, authenticated relay bootstrap, reconnect, security hardening, and physical validation."
+    dependencies: ["INTERNET-001", "ANDROID-001", "IDENT-001", "MSG-001", "ROUTE-001", "TEST-001"]
+    requires_hardware: true
+    requires_human_approval: false
+    stage_note: "SOFTWARE BASELINE VERIFIED (2026-09-08): 865/865 iris-core, 10/10 iris-android, 24 Internet, 8 codec, 6 relay-server, focused Android JVM, three native ABIs and configured APK packaging pass. Independent HIGH NSD restart race fixed with generation lease and regression. VERIFY remains PARTIAL for the remaining AC-10 matrix, configured install/cold-launch diagnostics, AC-12 user-run LAN and AC-13 deployed relay WAN tests."
+    evidence:
+      - "engineering/memory/records/FAIL-0009.md — user-observed RADIO UNAVAILABLE / mesh down plus deterministic repository causes"
+      - "engineering/memory/records/research/RES-0034.md — L1/L4 research and implementation decisions"
+      - "docs/implementation/INTERNET_ANDROID_DESIGN.md v2 — accepted recovery architecture and implementation order"
+      - "engineering/memory/records/INTERNET-ANDROID-001_TEST.md — complete software test matrix and exact results"
+      - "engineering/memory/records/INTERNET-ANDROID-001_SECURITY_REVIEW.md — hardened trust/resource/lifecycle review; no unresolved CRITICAL/HIGH"
+      - "engineering/memory/records/INTERNET-ANDROID-001_VERIFICATION.md — AC-1..AC-15 evidence map; software approved, AC-12/AC-13 gated"
+    known_limitations:
+      - "One vivo 2004 Android 12/API-31 phone is ADB-visible; the original failing run still lacks preserved logs and exact relay configuration."
+      - "No deployed CA-valid relay address and DNS identity are present; WAN hardware acceptance is externally gated."
+      - "Android 17 targetSdk 37 local-network permission behavior is a future compatibility gate; current targetSdk is 34."
+    acceptance_criteria:
+      - "AC-1: Android reports separate reasoned states for local LAN and validated WAN/relay; Internet is counted by engine startup/status and no RADIO-only error is emitted when it is viable."
+      - "AC-2: Relay endpoint configuration includes socket address plus TLS DNS server name and activates Relay mode; empty configuration produces a truthful actionable diagnostic."
+      - "AC-3: Relay TLS is TLS-1.3-only with exact iris-relay/1 ALPN and CA/explicit trust validation; production server certificate/private key are runtime-provided, never embedded."
+      - "AC-4: Trusted peers are bootstrapped into Internet routing; NSD adds validated trusted peers to discovery/routing and service loss removes them without creating trust."
+      - "AC-5: Same-LAN send prefers direct TCP, handles IPv4/IPv6 correctly, falls back to relay after stale-LAN failure, and listener shutdown/restart cannot advertise a dead port."
+      - "AC-6: Cross-network trusted peers register and exchange messages bidirectionally through relay; disconnect/reconnect and network change recover within bounded backoff."
+      - "AC-7: Relay registration proves/binds peer identity, Route.source equals the authenticated session, replacement sessions are generation-safe, target is checked, and resource/time/rate bounds resist denial of service."
+      - "AC-8: Relay delivery semantics are honest: unknown/offline target is not reported delivered; ACK/store-forward contract is explicit and tested with DTN retry above transport."
+      - "AC-9: Android NSD lifecycle is async-safe, serialized, stale-entry-cleaning, multicast-lock aware on affected versions, and local-network permission compatible."
+      - "AC-10: Host test matrix covers codec/parser fuzz/property cases, TLS failures, LAN/relay preference/fallback, reconnect, stale service, duplicate registration, idle liveness, shutdown/restart, and IPv4/IPv6."
+      - "AC-11: Android JVM/API 31 and API 34 tests, native ABI parity, APK build/install, cold launch, and diagnostics pass with no new warnings attributable to this node."
+      - "AC-12: Physical two-phone same-LAN bidirectional message delivery and recovery are HW_VERIFIED with logs and exact conditions."
+      - "AC-13: Physical two-phone different-network bidirectional relay delivery and reconnect are WAN_DEPLOYED/HW_VERIFIED against a CA-valid named relay."
+      - "AC-14: SECURITY_REVIEW findings are fixed or explicitly gated; no unresolved CRITICAL/HIGH finding is accepted."
+      - "AC-15: Independent verifier maps every criterion to reproducible evidence and approves; gated hardware/infrastructure criteria remain non-COMPLETE."
 
   - id: "IOS-001"
     name: "iOS Platform Integration"
@@ -1237,6 +1276,36 @@ edges:
   - from: "IDENT-001"
     to: "ANDROID-PAIR-001"
     relationship: enables
+    strength: strong
+
+  - from: "INTERNET-001"
+    to: "INTERNET-ANDROID-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ANDROID-001"
+    to: "INTERNET-ANDROID-001"
+    relationship: enables
+    strength: strong
+
+  - from: "IDENT-001"
+    to: "INTERNET-ANDROID-001"
+    relationship: enables
+    strength: strong
+
+  - from: "MSG-001"
+    to: "INTERNET-ANDROID-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ROUTE-001"
+    to: "INTERNET-ANDROID-001"
+    relationship: enables
+    strength: strong
+
+  - from: "TEST-001"
+    to: "INTERNET-ANDROID-001"
+    relationship: validates
     strength: strong
 
   - from: "IOS-001"

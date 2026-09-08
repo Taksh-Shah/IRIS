@@ -1,237 +1,724 @@
-//! IRIS relay server — routes [`RelayFrame`] messages between registered clients.
+//! Authenticated, bounded IRIS relay server.
 //!
-//! # Usage
-//!
-//! ```text
-//! relay_server [ADDR:PORT]          (default: 0.0.0.0:7890)
-//! ```
-//!
-//! # Protocol
-//!
-//! Each client connects, TLS is negotiated (ALPN `iris-relay/1`), and the
-//! client immediately sends `RelayFrame::Register { peer_id }`.
-//! The relay then accepts `RelayFrame::Route { source, target, payload }` from
-//! any registered client and forwards the full frame to the target's write half.
-//! Unregistered senders and unknown targets are logged and dropped.
-//!
-//! # TLS
-//!
-//! A self-signed RSA-2048 certificate for `localhost` is embedded at compile
-//! time (see `RELAY_CERT_DER` / `RELAY_KEY_DER` constants below).  This
-//! certificate is suitable for local testing and private deployments where
-//! clients trust it out-of-band.  A production deployment should supply a
-//! CA-signed certificate (e.g. via `--cert` / `--key` flags, not yet
-//! implemented).  The `InternetTransport` client verifies with WebPKI roots
-//! by default; for self-signed testing it must be constructed with a custom
-//! `TlsConnector` that trusts the relay's certificate (see
-//! `tls::test_relay_connector_for_cert` in integration tests).
+//! Usage: `iris-relay-server [ADDR:PORT] CERT_DER KEY_DER`
+//! Environment fallbacks: `IRIS_RELAY_CERT_DER`, `IRIS_RELAY_KEY_DER`.
+//! Production key material is never compiled into this binary.
 
 use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::sync::Arc;
+use std::net::{IpAddr, SocketAddr};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex as StdMutex};
+use std::time::{Duration, Instant};
 
-use rustls::ServerConfig;
+use ed25519_dalek::{Signature, VerifyingKey};
+use rand::rngs::OsRng;
+use rand::RngCore;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use rustls::ServerConfig;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, oneshot, Mutex, OwnedSemaphorePermit, Semaphore};
 use tokio_rustls::TlsAcceptor;
 
-/// Self-signed RSA-2048 certificate for `localhost` (DNS SAN), valid 10 years
-/// from 2026-09-07.  Generated with OpenSSL; embed a CA-signed cert for prod.
-const RELAY_CERT_DER: &[u8] = &[0x30, 0x82, 0x02, 0xed, 0x30, 0x82, 0x01, 0xd5, 0xa0, 0x03, 0x02, 0x01, 0x02, 0x02, 0x14, 0x50, 0x39, 0xd7, 0xf6, 0x01, 0x78, 0x99, 0xde, 0x31, 0x76, 0xbc, 0x0f, 0xb0, 0x5e, 0xa5, 0xf7, 0x92, 0x1f, 0xb2, 0x6b, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b, 0x05, 0x00, 0x30, 0x14, 0x31, 0x12, 0x30, 0x10, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x09, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73, 0x74, 0x30, 0x1e, 0x17, 0x0d, 0x32, 0x36, 0x30, 0x39, 0x30, 0x37, 0x30, 0x39, 0x32, 0x38, 0x35, 0x33, 0x5a, 0x17, 0x0d, 0x33, 0x36, 0x30, 0x39, 0x30, 0x34, 0x30, 0x39, 0x32, 0x38, 0x35, 0x33, 0x5a, 0x30, 0x14, 0x31, 0x12, 0x30, 0x10, 0x06, 0x03, 0x55, 0x04, 0x03, 0x0c, 0x09, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73, 0x74, 0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x0f, 0x00, 0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01, 0x00, 0xc4, 0xb5, 0xe3, 0x52, 0x6a, 0x24, 0x5b, 0x9a, 0x73, 0xea, 0x42, 0x37, 0xbd, 0x61, 0x01, 0x68, 0x42, 0x23, 0x2d, 0x3d, 0x2d, 0x9a, 0xd8, 0x80, 0xde, 0x09, 0xde, 0xf5, 0xf1, 0x6c, 0xe2, 0x28, 0x3f, 0xfb, 0x16, 0x7b, 0xaf, 0xee, 0xab, 0x04, 0x9c, 0x74, 0x78, 0xb0, 0x70, 0x55, 0x0e, 0x48, 0x55, 0x1a, 0xb2, 0xf5, 0xdc, 0x2e, 0x30, 0xed, 0xc4, 0x14, 0xb0, 0xa3, 0xb3, 0x07, 0x84, 0x67, 0xea, 0x3e, 0x13, 0x8b, 0x63, 0x85, 0xcf, 0xad, 0xa0, 0x97, 0xe7, 0x81, 0x96, 0xbe, 0x50, 0xf4, 0xe8, 0x33, 0x6d, 0xd1, 0x8f, 0x10, 0x23, 0x84, 0x9e, 0x9d, 0xe7, 0x99, 0x72, 0x71, 0x85, 0x7a, 0xb6, 0x74, 0x64, 0x97, 0x63, 0x22, 0xc6, 0x6c, 0x5d, 0xe4, 0x2a, 0xd7, 0x15, 0xc5, 0x18, 0x81, 0x00, 0x24, 0xdc, 0x3d, 0x49, 0xae, 0x32, 0x55, 0xfc, 0xd4, 0xb7, 0x25, 0x28, 0x60, 0x78, 0x04, 0x47, 0x25, 0x33, 0x67, 0x57, 0x2d, 0x69, 0xcd, 0x12, 0x59, 0x6f, 0x32, 0x7e, 0x42, 0x96, 0x5f, 0x0c, 0x47, 0x55, 0xae, 0x7f, 0x60, 0xec, 0x98, 0xb4, 0x5c, 0x1f, 0x12, 0xd0, 0xaf, 0x13, 0xff, 0x9b, 0x95, 0x78, 0x77, 0xff, 0x25, 0x87, 0xf9, 0x2d, 0xd5, 0x88, 0xb8, 0x35, 0x2c, 0xde, 0xf5, 0x48, 0x07, 0x5f, 0x5c, 0xee, 0x36, 0xfb, 0x64, 0x5d, 0xde, 0xe4, 0x82, 0x1e, 0x06, 0xeb, 0x2c, 0x23, 0xfd, 0xe0, 0x58, 0xcb, 0x5b, 0x8e, 0x3a, 0xd5, 0x97, 0x6c, 0x8b, 0x92, 0x70, 0xd8, 0x73, 0xfa, 0xc9, 0x9d, 0xf0, 0xcf, 0xb7, 0xc0, 0x69, 0x73, 0xb6, 0x1d, 0xdd, 0x20, 0x73, 0x72, 0x2a, 0x47, 0x6b, 0xed, 0x50, 0x35, 0x72, 0xb8, 0x89, 0x83, 0x55, 0x6d, 0xa9, 0xb0, 0x8d, 0x35, 0x25, 0x01, 0x7a, 0x49, 0xbc, 0x79, 0xef, 0xce, 0x25, 0x96, 0x8b, 0x96, 0xc6, 0x15, 0xff, 0x61, 0x0d, 0x02, 0x03, 0x01, 0x00, 0x01, 0xa3, 0x37, 0x30, 0x35, 0x30, 0x14, 0x06, 0x03, 0x55, 0x1d, 0x11, 0x04, 0x0d, 0x30, 0x0b, 0x82, 0x09, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x68, 0x6f, 0x73, 0x74, 0x30, 0x1d, 0x06, 0x03, 0x55, 0x1d, 0x0e, 0x04, 0x16, 0x04, 0x14, 0xe1, 0x46, 0x1c, 0x46, 0xba, 0x31, 0x1b, 0x3d, 0x12, 0x3c, 0xd8, 0x31, 0x7e, 0xe3, 0xc8, 0x4e, 0x98, 0x34, 0x02, 0xf9, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x0b, 0x05, 0x00, 0x03, 0x82, 0x01, 0x01, 0x00, 0x74, 0x70, 0x85, 0x27, 0xcf, 0x78, 0xe5, 0x24, 0xce, 0xd0, 0x63, 0x71, 0x7c, 0xf8, 0xc6, 0x05, 0x56, 0xae, 0x3b, 0x13, 0xc6, 0xd5, 0x58, 0x7f, 0x48, 0x80, 0x44, 0xfd, 0xf9, 0xcc, 0x80, 0xab, 0xbe, 0xad, 0x76, 0x14, 0x9e, 0x02, 0xff, 0xde, 0xd2, 0x28, 0x89, 0x78, 0x16, 0xf1, 0x7d, 0x35, 0xcd, 0x26, 0x2d, 0x32, 0x7f, 0x62, 0x63, 0x94, 0x1d, 0x8b, 0x3d, 0xb2, 0xc6, 0x8e, 0x6d, 0x2f, 0xa8, 0xa3, 0xc3, 0xe2, 0x89, 0xfa, 0x81, 0x20, 0x19, 0xe1, 0x63, 0x79, 0xd9, 0x9e, 0x56, 0x42, 0x9e, 0x26, 0x82, 0x95, 0xac, 0xc3, 0xea, 0xe9, 0x95, 0xe7, 0xf2, 0x04, 0xe0, 0xe1, 0x50, 0x35, 0x24, 0xda, 0x24, 0xf5, 0x70, 0x52, 0x5e, 0x08, 0x10, 0xb2, 0x54, 0xce, 0x98, 0xd7, 0x96, 0xee, 0x66, 0x07, 0x93, 0x7d, 0xa2, 0x79, 0x52, 0x18, 0x3e, 0x4b, 0x0b, 0x8c, 0x3d, 0x86, 0x2f, 0x9c, 0x0d, 0x88, 0xd8, 0x80, 0xae, 0x2c, 0x11, 0x14, 0x86, 0xa6, 0xe0, 0xea, 0xec, 0xe9, 0x2d, 0x8c, 0x64, 0x56, 0xef, 0xe2, 0x91, 0x6a, 0x62, 0x35, 0xa9, 0xf7, 0x2d, 0xdb, 0xa9, 0x81, 0x87, 0x14, 0xec, 0xcc, 0x18, 0x0e, 0x03, 0xaf, 0x14, 0x7f, 0x29, 0x47, 0xbb, 0xe7, 0x7b, 0xad, 0xe1, 0x26, 0x86, 0xdf, 0x7a, 0xcd, 0x78, 0xbb, 0x9d, 0x78, 0x83, 0x7e, 0x51, 0x23, 0xb8, 0xe3, 0xed, 0x24, 0xf5, 0x6d, 0x0d, 0x06, 0x36, 0x7c, 0xb5, 0x47, 0x05, 0x73, 0x9d, 0x00, 0x83, 0xb2, 0x5a, 0x8d, 0x81, 0xb2, 0xb6, 0x05, 0xaf, 0xa9, 0xe2, 0x5d, 0x9d, 0x5a, 0xba, 0x19, 0xdb, 0x6f, 0x4f, 0xe1, 0x0f, 0x4e, 0x9e, 0x70, 0x85, 0x54, 0x86, 0xbc, 0x04, 0xaf, 0x42, 0xfb, 0xed, 0xbd, 0x50, 0xdb, 0x41, 0x5f, 0x55, 0xfa, 0x4d, 0x6e, 0xde, 0x62, 0xa9, 0x79, 0x11, 0xa8, 0xa2, 0x76, 0x09, 0xa1];
-const RELAY_KEY_DER: &[u8] = &[0x30, 0x82, 0x04, 0xbe, 0x02, 0x01, 0x00, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00, 0x04, 0x82, 0x04, 0xa8, 0x30, 0x82, 0x04, 0xa4, 0x02, 0x01, 0x00, 0x02, 0x82, 0x01, 0x01, 0x00, 0xc4, 0xb5, 0xe3, 0x52, 0x6a, 0x24, 0x5b, 0x9a, 0x73, 0xea, 0x42, 0x37, 0xbd, 0x61, 0x01, 0x68, 0x42, 0x23, 0x2d, 0x3d, 0x2d, 0x9a, 0xd8, 0x80, 0xde, 0x09, 0xde, 0xf5, 0xf1, 0x6c, 0xe2, 0x28, 0x3f, 0xfb, 0x16, 0x7b, 0xaf, 0xee, 0xab, 0x04, 0x9c, 0x74, 0x78, 0xb0, 0x70, 0x55, 0x0e, 0x48, 0x55, 0x1a, 0xb2, 0xf5, 0xdc, 0x2e, 0x30, 0xed, 0xc4, 0x14, 0xb0, 0xa3, 0xb3, 0x07, 0x84, 0x67, 0xea, 0x3e, 0x13, 0x8b, 0x63, 0x85, 0xcf, 0xad, 0xa0, 0x97, 0xe7, 0x81, 0x96, 0xbe, 0x50, 0xf4, 0xe8, 0x33, 0x6d, 0xd1, 0x8f, 0x10, 0x23, 0x84, 0x9e, 0x9d, 0xe7, 0x99, 0x72, 0x71, 0x85, 0x7a, 0xb6, 0x74, 0x64, 0x97, 0x63, 0x22, 0xc6, 0x6c, 0x5d, 0xe4, 0x2a, 0xd7, 0x15, 0xc5, 0x18, 0x81, 0x00, 0x24, 0xdc, 0x3d, 0x49, 0xae, 0x32, 0x55, 0xfc, 0xd4, 0xb7, 0x25, 0x28, 0x60, 0x78, 0x04, 0x47, 0x25, 0x33, 0x67, 0x57, 0x2d, 0x69, 0xcd, 0x12, 0x59, 0x6f, 0x32, 0x7e, 0x42, 0x96, 0x5f, 0x0c, 0x47, 0x55, 0xae, 0x7f, 0x60, 0xec, 0x98, 0xb4, 0x5c, 0x1f, 0x12, 0xd0, 0xaf, 0x13, 0xff, 0x9b, 0x95, 0x78, 0x77, 0xff, 0x25, 0x87, 0xf9, 0x2d, 0xd5, 0x88, 0xb8, 0x35, 0x2c, 0xde, 0xf5, 0x48, 0x07, 0x5f, 0x5c, 0xee, 0x36, 0xfb, 0x64, 0x5d, 0xde, 0xe4, 0x82, 0x1e, 0x06, 0xeb, 0x2c, 0x23, 0xfd, 0xe0, 0x58, 0xcb, 0x5b, 0x8e, 0x3a, 0xd5, 0x97, 0x6c, 0x8b, 0x92, 0x70, 0xd8, 0x73, 0xfa, 0xc9, 0x9d, 0xf0, 0xcf, 0xb7, 0xc0, 0x69, 0x73, 0xb6, 0x1d, 0xdd, 0x20, 0x73, 0x72, 0x2a, 0x47, 0x6b, 0xed, 0x50, 0x35, 0x72, 0xb8, 0x89, 0x83, 0x55, 0x6d, 0xa9, 0xb0, 0x8d, 0x35, 0x25, 0x01, 0x7a, 0x49, 0xbc, 0x79, 0xef, 0xce, 0x25, 0x96, 0x8b, 0x96, 0xc6, 0x15, 0xff, 0x61, 0x0d, 0x02, 0x03, 0x01, 0x00, 0x01, 0x02, 0x82, 0x01, 0x00, 0x01, 0xe0, 0xd1, 0xb7, 0x94, 0xfb, 0x5d, 0x63, 0x8b, 0x65, 0x4a, 0x76, 0x11, 0x49, 0x16, 0x94, 0x1a, 0x03, 0x8f, 0x78, 0x44, 0xd1, 0xf4, 0x6c, 0xc0, 0x91, 0xfc, 0x0e, 0xc1, 0x9c, 0x1e, 0x49, 0xaf, 0x98, 0xb4, 0x65, 0x80, 0x6f, 0xc9, 0x32, 0xbd, 0x52, 0xb0, 0x5f, 0x50, 0xe7, 0x43, 0x00, 0x66, 0x4d, 0x9f, 0xb5, 0x50, 0xc1, 0xa1, 0x26, 0x78, 0x07, 0x91, 0x8b, 0x32, 0x97, 0xa9, 0x08, 0x3b, 0xf8, 0x95, 0x43, 0xb0, 0xb2, 0xd3, 0xa1, 0x8f, 0x05, 0xbc, 0x48, 0x64, 0xb9, 0xd2, 0xf8, 0x8f, 0xaa, 0x04, 0x0b, 0xaa, 0xef, 0xc6, 0xc3, 0x0a, 0xa7, 0xab, 0xd1, 0x2f, 0x82, 0x4d, 0x79, 0xb7, 0x39, 0xc3, 0xc7, 0x1d, 0x43, 0x74, 0xfd, 0x0e, 0x65, 0x72, 0x12, 0x45, 0x2b, 0x31, 0x59, 0x73, 0xf8, 0xa6, 0x20, 0xb0, 0xae, 0x28, 0xdd, 0x60, 0xd1, 0x60, 0x21, 0x4a, 0xf2, 0x26, 0xdb, 0x31, 0x4c, 0x2f, 0xe7, 0x6b, 0x11, 0x7a, 0x22, 0xd1, 0x8e, 0x34, 0xbd, 0x93, 0x42, 0x86, 0xac, 0x2d, 0x2c, 0xe9, 0xab, 0xf6, 0x67, 0xb9, 0x0f, 0xe9, 0x71, 0x62, 0x14, 0xab, 0x15, 0x6b, 0xe7, 0xba, 0x82, 0xb2, 0x6a, 0x02, 0x07, 0x1b, 0x8e, 0xc7, 0x17, 0xaa, 0xbf, 0x7f, 0x70, 0x46, 0xff, 0x24, 0x08, 0x7d, 0x2d, 0x4c, 0x0c, 0x6e, 0xca, 0x8f, 0xa5, 0x36, 0x9d, 0x7b, 0x1a, 0xe0, 0xf7, 0x63, 0xd8, 0x85, 0xb8, 0x30, 0x07, 0xe4, 0x55, 0xae, 0x4d, 0x6b, 0x3a, 0xcc, 0xcc, 0xa6, 0x20, 0xe6, 0xbc, 0xae, 0x15, 0x7d, 0x22, 0x20, 0x68, 0x3f, 0x8f, 0x81, 0xec, 0x67, 0x89, 0x03, 0xb8, 0xe7, 0xa6, 0x4b, 0xea, 0xa0, 0x37, 0xc0, 0xb3, 0x99, 0x4f, 0xd5, 0x84, 0xea, 0x9a, 0x39, 0xbd, 0xc7, 0xe7, 0x0b, 0x1e, 0x00, 0x0f, 0xe4, 0x22, 0x3a, 0x14, 0xbf, 0x06, 0x29, 0xa4, 0xae, 0x19, 0x02, 0x81, 0x81, 0x00, 0xf5, 0x9e, 0x25, 0xf1, 0xc7, 0x49, 0xc4, 0xda, 0x2a, 0x06, 0x6e, 0x55, 0x3c, 0xb3, 0xa3, 0xb8, 0x28, 0x2d, 0xc9, 0x63, 0x4a, 0x8d, 0x7c, 0x5e, 0x07, 0xb4, 0x42, 0xe2, 0x6e, 0x7f, 0x18, 0xa5, 0x98, 0x22, 0x4c, 0xa9, 0x15, 0xfa, 0x03, 0x70, 0x6f, 0x8e, 0x56, 0xdd, 0xd5, 0x6a, 0x76, 0x12, 0x80, 0x57, 0x94, 0x37, 0x1b, 0x7f, 0x4e, 0x1d, 0x61, 0x67, 0x99, 0x9b, 0x47, 0x28, 0x62, 0x5a, 0x5d, 0xd9, 0xc0, 0xe7, 0xe2, 0x45, 0xfc, 0xa2, 0xb0, 0x62, 0x79, 0x3a, 0xd9, 0xb5, 0x8b, 0xba, 0x68, 0x19, 0x32, 0x18, 0x49, 0xb8, 0x91, 0xcc, 0xde, 0x24, 0xa8, 0xb3, 0x9e, 0x04, 0x4c, 0x48, 0xa5, 0x7c, 0xd3, 0xca, 0xe2, 0xc2, 0x12, 0xd9, 0xa9, 0xc9, 0x69, 0xe9, 0x6c, 0xb4, 0xa4, 0x65, 0xe5, 0x64, 0x87, 0x34, 0x24, 0xed, 0xab, 0x0e, 0xc8, 0x46, 0x58, 0x31, 0xe0, 0x87, 0x46, 0xc5, 0x02, 0x81, 0x81, 0x00, 0xcd, 0x06, 0x82, 0x86, 0x0a, 0x41, 0x73, 0x87, 0xbe, 0xaf, 0xf4, 0x5f, 0xa8, 0xd1, 0x26, 0x1d, 0xe6, 0xd3, 0x24, 0x39, 0xfe, 0x08, 0x1f, 0xe2, 0xeb, 0x20, 0xf2, 0x5c, 0xb4, 0x61, 0xb1, 0x72, 0x2f, 0x75, 0xa8, 0x17, 0xf5, 0xe8, 0x49, 0x5c, 0xce, 0x0d, 0x2a, 0xa0, 0x4e, 0x76, 0xda, 0x72, 0x77, 0xa7, 0x1d, 0xc5, 0xe5, 0xa5, 0xa3, 0xaa, 0x6c, 0xf6, 0x02, 0x83, 0x21, 0x96, 0xcf, 0x13, 0x83, 0x49, 0xa1, 0xc2, 0x38, 0x85, 0x69, 0xad, 0x28, 0x8a, 0x8b, 0x1b, 0x86, 0x88, 0xcd, 0xe1, 0x69, 0xf3, 0x13, 0xb7, 0x4b, 0xf5, 0x58, 0xcd, 0x13, 0xac, 0x77, 0x24, 0x35, 0x3f, 0x7b, 0xd3, 0xc6, 0x77, 0x82, 0xb1, 0x8d, 0xdb, 0x20, 0x12, 0x3c, 0x2b, 0x6e, 0x87, 0x3f, 0x2f, 0x76, 0x75, 0x69, 0x46, 0x21, 0x04, 0xd5, 0x1a, 0x9a, 0x80, 0x2a, 0x6e, 0xee, 0x39, 0xee, 0x8d, 0x95, 0xa9, 0x02, 0x81, 0x81, 0x00, 0x94, 0xba, 0xf8, 0x55, 0x29, 0x0d, 0x65, 0x93, 0x8a, 0x21, 0x2c, 0xcc, 0x96, 0x9e, 0x5d, 0x04, 0x55, 0xe8, 0x2b, 0xeb, 0xe1, 0x28, 0x3d, 0xe8, 0x1e, 0x98, 0x2c, 0x6c, 0x3a, 0xe6, 0xe1, 0x80, 0xdc, 0xd7, 0xe0, 0x3d, 0xff, 0x5d, 0xce, 0x99, 0x56, 0x24, 0x06, 0x3b, 0xfc, 0x50, 0xa4, 0x40, 0xdd, 0xd0, 0xaa, 0xa2, 0x98, 0x17, 0x05, 0xb1, 0x4a, 0xdb, 0x56, 0x2b, 0xad, 0xf2, 0x29, 0x64, 0x79, 0x32, 0x33, 0xda, 0xf6, 0xac, 0xd4, 0xa7, 0x9b, 0x51, 0x76, 0x01, 0x89, 0xf5, 0xa2, 0x2f, 0xf5, 0x7b, 0x54, 0x57, 0x5a, 0xc4, 0xd6, 0x1d, 0x0d, 0x63, 0x7b, 0x78, 0x90, 0xb6, 0x1f, 0x8f, 0x5a, 0x0e, 0x75, 0x9d, 0x84, 0xa4, 0x6a, 0x8f, 0xbd, 0x7d, 0x86, 0x91, 0xdf, 0xce, 0x9f, 0x42, 0x48, 0x9f, 0x10, 0x34, 0x26, 0x2c, 0x79, 0x09, 0xd1, 0x82, 0xaf, 0x43, 0x3c, 0xa8, 0x0d, 0xd5, 0x02, 0x81, 0x80, 0x66, 0xb4, 0x82, 0x22, 0x1f, 0x75, 0x16, 0x28, 0xc4, 0x0f, 0x64, 0xbd, 0x9e, 0xd5, 0xd6, 0xe0, 0x57, 0xc7, 0x21, 0x78, 0xa3, 0x96, 0xf2, 0x52, 0x3c, 0x33, 0x2e, 0xf5, 0xdd, 0xae, 0xaa, 0xb3, 0x66, 0xae, 0xeb, 0xdb, 0xc4, 0xe5, 0xee, 0x0a, 0x3d, 0x76, 0x3f, 0x0a, 0x3b, 0x04, 0x32, 0xfd, 0xf0, 0x8e, 0x98, 0xcd, 0x8f, 0xf2, 0xdf, 0xff, 0xf9, 0xc1, 0x6b, 0x14, 0xc1, 0x78, 0xc8, 0x97, 0x1f, 0xc7, 0x7c, 0xee, 0xcc, 0x5d, 0x98, 0xc8, 0x93, 0x6c, 0x83, 0xae, 0xf0, 0x40, 0x0b, 0xd2, 0x85, 0xbe, 0xac, 0xfb, 0xbf, 0x63, 0x52, 0x6e, 0xb9, 0x12, 0x46, 0x44, 0xaf, 0x1f, 0xf4, 0x29, 0xec, 0x5b, 0xe5, 0xee, 0x87, 0xff, 0x63, 0x1b, 0x7f, 0x64, 0xca, 0x63, 0x99, 0xf5, 0x6e, 0xc3, 0xf6, 0x4e, 0x99, 0x2f, 0xd0, 0x89, 0x19, 0x28, 0x67, 0x19, 0x56, 0xe1, 0x52, 0x6d, 0x3e, 0xb1, 0x02, 0x81, 0x81, 0x00, 0xe8, 0xec, 0x16, 0x1f, 0xf7, 0x12, 0x8c, 0x8c, 0x70, 0xc1, 0x94, 0xfb, 0xdc, 0xba, 0xd1, 0x15, 0x3c, 0x4e, 0x23, 0x9c, 0x8d, 0xfb, 0xdf, 0xa9, 0xd3, 0x1a, 0xef, 0xc9, 0x68, 0x8d, 0x20, 0x7b, 0x5b, 0x25, 0x48, 0x55, 0x43, 0x4b, 0xd2, 0x1e, 0x1b, 0xa5, 0x31, 0x82, 0xe4, 0x95, 0xfd, 0x60, 0x58, 0x9d, 0xfa, 0x6c, 0x9f, 0x87, 0x80, 0xbf, 0x31, 0xca, 0x68, 0x98, 0x4d, 0xe0, 0xc5, 0x80, 0xc4, 0xb6, 0x48, 0x44, 0x7f, 0x16, 0x9d, 0x4f, 0xbb, 0x3c, 0xdb, 0xf0, 0xc3, 0x78, 0xea, 0x3e, 0x4d, 0xb4, 0x39, 0x34, 0x30, 0xe0, 0x6e, 0xab, 0x8c, 0x70, 0x46, 0xf0, 0x48, 0xff, 0xd0, 0xe5, 0x80, 0x82, 0xcc, 0x00, 0x76, 0xb5, 0x43, 0x22, 0xd6, 0xa6, 0xac, 0x3d, 0x0c, 0x7f, 0xe2, 0xbb, 0xd3, 0x9b, 0x30, 0x2e, 0xc9, 0xee, 0x73, 0x8f, 0x97, 0x93, 0x13, 0x36, 0xb8, 0x18, 0x24, 0xe9];
-
 use iris_core::transport::relay_protocol::{
-    self, RelayFrame, RELAY_HEADER_LEN, MAX_RELAY_PAYLOAD,
+    self, RelayAckStatus, RelayFrame, MAX_RELAY_PAYLOAD, RELAY_HEADER_LEN,
 };
 use iris_core::transport::tls::RELAY_ALPN;
 
-type BoxWriter = Box<dyn AsyncWrite + Send + Unpin>;
-type BoxReader = Box<dyn AsyncRead + Send + Unpin>;
+#[cfg(test)]
+#[path = "../transport/test_certs.rs"]
+mod test_certs;
 
-/// Shared routing table: PeerId → write half of the registered TLS connection.
-type Router = Arc<Mutex<HashMap<[u8; 32], BoxWriter>>>;
+const MAX_CONNECTIONS: usize = 256;
+const DEFAULT_MAX_CONNECTIONS_PER_IP: usize = MAX_CONNECTIONS;
+const SESSION_QUEUE: usize = 8;
+const CONTROL_QUEUE: usize = 16;
+const GLOBAL_QUEUE_BYTES: usize = 64 * 1024 * 1024;
+const MAX_ROUTE_FRAMES_PER_MINUTE: u32 = 120;
+const MAX_ROUTE_BYTES_PER_MINUTE: usize = 8 * 1024 * 1024;
+const MAX_RATE_IDENTITIES: usize = 4096;
+const TLS_TIMEOUT: Duration = Duration::from_secs(10);
+const REGISTER_TIMEOUT: Duration = Duration::from_secs(10);
+const READ_TIMEOUT: Duration = Duration::from_secs(120);
+const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30);
+
+struct QueuedFrame {
+    bytes: Vec<u8>,
+    _byte_permit: OwnedSemaphorePermit,
+}
+
+#[derive(Clone)]
+struct Session {
+    generation: u64,
+    tx: mpsc::Sender<QueuedFrame>,
+}
+
+type Router = Arc<Mutex<HashMap<[u8; 32], Session>>>;
+type IpCounts = Arc<StdMutex<HashMap<IpAddr, usize>>>;
+type RateLimits = Arc<Mutex<HashMap<[u8; 32], RateWindow>>>;
+
+struct RateWindow {
+    started: Instant,
+    frames: u32,
+    bytes: usize,
+}
+
+struct IpConnectionGuard {
+    ip: IpAddr,
+    counts: IpCounts,
+}
+
+impl IpConnectionGuard {
+    fn try_acquire(ip: IpAddr, counts: IpCounts, limit: usize) -> Option<Self> {
+        let mut guard = counts.lock().ok()?;
+        let count = guard.entry(ip).or_default();
+        if *count >= limit {
+            return None;
+        }
+        *count += 1;
+        drop(guard);
+        Some(Self { ip, counts })
+    }
+}
+
+impl Drop for IpConnectionGuard {
+    fn drop(&mut self) {
+        if let Ok(mut guard) = self.counts.lock() {
+            if let Some(count) = guard.get_mut(&self.ip) {
+                *count = count.saturating_sub(1);
+                if *count == 0 {
+                    guard.remove(&self.ip);
+                }
+            }
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("relay_server=info".parse().unwrap()),
+                .add_directive("relay_server=info".parse().expect("valid directive")),
         )
         .init();
 
-    let addr: SocketAddr = std::env::args()
-        .nth(1)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let addr: SocketAddr = args
+        .first()
+        .cloned()
         .unwrap_or_else(|| "0.0.0.0:7890".into())
         .parse()
-        .expect("ADDR:PORT argument");
+        .unwrap_or_else(|_| usage("ADDR:PORT is invalid"));
+    let cert_paths = required_path(args.get(1), "IRIS_RELAY_CERT_DER", "certificate DER chain");
+    let key_path = required_path(args.get(2), "IRIS_RELAY_KEY_DER", "PKCS#8 private-key DER");
+    let max_connections_per_ip = std::env::var("IRIS_RELAY_MAX_CONNECTIONS_PER_IP")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(DEFAULT_MAX_CONNECTIONS_PER_IP)
+        .min(MAX_CONNECTIONS);
 
-    // Self-signed RSA-2048 cert for `localhost` (DNS SAN), valid 10 years.
-    // Generated offline with OpenSSL; replace with a CA-signed cert for production.
-    let cert_der = CertificateDer::from(RELAY_CERT_DER.to_vec());
-    let key_der = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(RELAY_KEY_DER.to_vec()));
-    let mut server_config = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(vec![cert_der], key_der)
-        .expect("TLS server config");
+    let certs = cert_paths
+        .to_string_lossy()
+        .split(',')
+        .map(|path| {
+            let path = PathBuf::from(path.trim());
+            std::fs::read(&path)
+                .map(CertificateDer::from)
+                .unwrap_or_else(|e| usage(&format!("cannot read {}: {e}", path.display())))
+        })
+        .collect::<Vec<_>>();
+    let key = std::fs::read(&key_path)
+        .unwrap_or_else(|e| usage(&format!("cannot read {}: {e}", key_path.display())));
+
+    let key_der = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(key));
+    let mut server_config =
+        ServerConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
+            .with_no_client_auth()
+            .with_single_cert(certs, key_der)
+            .unwrap_or_else(|e| usage(&format!("invalid certificate/key: {e}")));
     server_config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
-    let acceptor = TlsAcceptor::from(Arc::new(server_config));
 
     let listener = TcpListener::bind(addr).await.expect("bind relay listener");
-    let bound = listener.local_addr().unwrap();
-    tracing::info!("IRIS relay listening on {bound} (TLS, ALPN iris-relay/1)");
+    let bound = listener.local_addr().expect("bound address");
+    tracing::info!(%bound, "IRIS relay listening (TLS 1.3, ALPN iris-relay/1)");
 
+    serve(
+        listener,
+        TlsAcceptor::from(Arc::new(server_config)),
+        max_connections_per_ip,
+    )
+    .await;
+}
+
+fn required_path(arg: Option<&String>, env_name: &str, label: &str) -> PathBuf {
+    arg.cloned()
+        .or_else(|| std::env::var(env_name).ok())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| usage(&format!("missing {label} path")))
+}
+
+fn usage(message: &str) -> ! {
+    eprintln!("error: {message}");
+    eprintln!("usage: iris-relay-server [ADDR:PORT] CERT_DER[,INTERMEDIATE_DER...] KEY_DER");
+    eprintln!("or set IRIS_RELAY_CERT_DER and IRIS_RELAY_KEY_DER");
+    std::process::exit(2)
+}
+
+async fn serve(listener: TcpListener, acceptor: TlsAcceptor, max_connections_per_ip: usize) {
     let router: Router = Arc::new(Mutex::new(HashMap::new()));
+    let permits = Arc::new(Semaphore::new(MAX_CONNECTIONS));
+    let queue_budget = Arc::new(Semaphore::new(GLOBAL_QUEUE_BYTES));
+    let ip_counts: IpCounts = Arc::new(StdMutex::new(HashMap::new()));
+    let generations = Arc::new(AtomicU64::new(1));
+    let rate_limits: RateLimits = Arc::new(Mutex::new(HashMap::new()));
 
     loop {
-        match listener.accept().await {
-            Ok((stream, peer_addr)) => {
-                tracing::info!(peer_addr = %peer_addr, "TCP accepted; starting TLS handshake");
-                stream.set_nodelay(true).ok();
-                let acceptor = acceptor.clone();
-                let r = router.clone();
-                tokio::spawn(async move {
-                    match acceptor.accept(stream).await {
-                        Ok(tls_stream) => {
-                            tracing::info!(peer_addr = %peer_addr, "TLS handshake complete");
-                            let (read, write) = tokio::io::split(tls_stream);
-                            handle_client(Box::new(read), Box::new(write), r).await;
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                peer_addr = %peer_addr,
-                                "TLS handshake failed: {e}"
-                            );
-                        }
-                    }
-                });
-            }
+        let (stream, peer_addr) = match listener.accept().await {
+            Ok(pair) => pair,
             Err(e) => {
-                tracing::error!("accept error: {e}");
-                break;
+                tracing::error!(error = %e, "relay accept failed");
+                continue;
             }
-        }
+        };
+        let Ok(permit) = permits.clone().try_acquire_owned() else {
+            tracing::warn!(%peer_addr, "relay connection limit reached");
+            continue;
+        };
+        let Some(ip_guard) = IpConnectionGuard::try_acquire(
+            peer_addr.ip(),
+            ip_counts.clone(),
+            max_connections_per_ip,
+        ) else {
+            tracing::warn!(%peer_addr, "relay per-IP connection limit reached");
+            continue;
+        };
+        stream.set_nodelay(true).ok();
+        let acceptor = acceptor.clone();
+        let router = router.clone();
+        let generation = generations.fetch_add(1, Ordering::Relaxed);
+        let queue_budget = queue_budget.clone();
+        let rate_limits = rate_limits.clone();
+        tokio::spawn(async move {
+            let _permit = permit;
+            let _ip_guard = ip_guard;
+            let mut tls = match tokio::time::timeout(TLS_TIMEOUT, acceptor.accept(stream)).await {
+                Ok(Ok(tls)) => tls,
+                Ok(Err(e)) => {
+                    tracing::warn!(%peer_addr, error = %e, "TLS handshake failed");
+                    return;
+                }
+                Err(_) => {
+                    tracing::warn!(%peer_addr, "TLS handshake timed out");
+                    return;
+                }
+            };
+            if tls.get_ref().1.alpn_protocol() != Some(RELAY_ALPN) {
+                tracing::warn!(%peer_addr, "required relay ALPN not negotiated");
+                return;
+            }
+
+            let mut challenge = [0u8; 32];
+            OsRng.fill_bytes(&mut challenge);
+            let challenge_frame =
+                relay_protocol::encode(&RelayFrame::Challenge { nonce: challenge })
+                    .expect("challenge frame");
+            if write_bounded(&mut tls, &challenge_frame).await.is_err() {
+                return;
+            }
+
+            let (read, write) = tokio::io::split(tls);
+            let (tx, mut rx) = mpsc::channel::<QueuedFrame>(SESSION_QUEUE);
+            let (control_tx, mut control_rx) = mpsc::channel::<QueuedFrame>(CONTROL_QUEUE);
+            let (writer_failed_tx, writer_failed_rx) = oneshot::channel();
+            let writer = tokio::spawn(async move {
+                let mut write = write;
+                let heartbeat =
+                    relay_protocol::encode(&RelayFrame::Heartbeat).expect("bounded heartbeat");
+                let mut ticker = tokio::time::interval_at(
+                    tokio::time::Instant::now() + HEARTBEAT_INTERVAL,
+                    HEARTBEAT_INTERVAL,
+                );
+                loop {
+                    let bytes = tokio::select! {
+                        biased;
+                        queued = control_rx.recv() => match queued {
+                            Some(frame) => frame.bytes,
+                            None => break,
+                        },
+                        queued = rx.recv() => match queued {
+                            Some(frame) => frame.bytes,
+                            None => break,
+                        },
+                        _ = ticker.tick() => heartbeat.clone(),
+                    };
+                    if write_bounded(&mut write, &bytes).await.is_err() {
+                        break;
+                    }
+                }
+                let _ = writer_failed_tx.send(());
+            });
+            handle_client(
+                read,
+                tx,
+                control_tx,
+                router,
+                queue_budget,
+                rate_limits,
+                challenge,
+                generation,
+                writer_failed_rx,
+            )
+            .await;
+            writer.abort();
+        });
     }
 }
 
-async fn handle_client(mut read: BoxReader, write: BoxWriter, router: Router) {
-    // First frame MUST be Register.
-    let Some(frame) = read_frame(&mut read).await else {
-        tracing::warn!("client disconnected before registering");
-        return;
+async fn handle_client<R: AsyncRead + Unpin>(
+    mut read: R,
+    tx: mpsc::Sender<QueuedFrame>,
+    control_tx: mpsc::Sender<QueuedFrame>,
+    router: Router,
+    queue_budget: Arc<Semaphore>,
+    rate_limits: RateLimits,
+    challenge: [u8; 32],
+    generation: u64,
+    mut writer_failed: oneshot::Receiver<()>,
+) {
+    let frame = match read_frame(&mut read, REGISTER_TIMEOUT).await {
+        Some(frame) => frame,
+        None => return,
     };
-    let registered_id = match frame {
-        RelayFrame::Register { peer_id } => peer_id.0,
+    let (registered_id, signature) = match frame {
+        RelayFrame::Register { peer_id, signature } => (peer_id.0, signature),
         _ => {
-            tracing::warn!("first frame was not Register — dropping");
+            tracing::warn!("first client frame was not authenticated Register");
             return;
         }
     };
-    tracing::info!(peer_id = hex::encode(registered_id), "client registered");
-    {
-        let mut map = router.lock().await;
-        map.insert(registered_id, write);
+    if !verify_registration(&challenge, &registered_id, &signature) {
+        tracing::warn!(peer = %hex::encode(registered_id), "registration signature rejected");
+        return;
     }
 
-    // Route loop.
+    let registered = relay_protocol::encode(&RelayFrame::Heartbeat).expect("registration ack");
+    if queue_frame(&control_tx, &queue_budget, registered).is_err() {
+        return;
+    }
+    // The ACK must be ahead of any routed data. Publishing first allowed a
+    // concurrent sender to enqueue Route before Heartbeat, causing a valid
+    // client to reject its own registration nondeterministically.
+    router.lock().await.insert(
+        registered_id,
+        Session {
+            generation,
+            tx: tx.clone(),
+        },
+    );
+    tracing::info!(peer = %hex::encode(registered_id), generation, "client registered");
+
     loop {
-        let Some(frame) = read_frame(&mut read).await else {
-            break;
+        let frame = tokio::select! {
+            frame = read_frame(&mut read, READ_TIMEOUT) => frame,
+            _ = &mut writer_failed => None,
         };
+        let Some(frame) = frame else { break };
+        if !is_current_generation(&router, &registered_id, generation).await {
+            break;
+        }
         match frame {
             RelayFrame::Route {
+                route_id,
                 source,
                 target,
                 payload,
             } => {
-                let outbound = relay_protocol::encode(&RelayFrame::Route {
-                    source,
-                    target,
-                    payload,
-                });
-                let outbound = match outbound {
-                    Ok(b) => b,
-                    Err(e) => {
-                        tracing::warn!("relay encode error: {e:?}");
-                        continue;
-                    }
-                };
-                let mut map = router.lock().await;
-                if let Some(w) = map.get_mut(&target.0) {
-                    if w.write_all(&outbound).await.is_err() || w.flush().await.is_err() {
-                        tracing::warn!(
-                            target = hex::encode(target.0),
-                            "write to target failed; evicting"
-                        );
-                        map.remove(&target.0);
+                if source.0 != registered_id {
+                    tracing::warn!(peer = %hex::encode(registered_id), "route source spoofing attempt");
+                    break;
+                }
+                if !charge_route(&rate_limits, registered_id, payload.len()).await {
+                    tracing::warn!(peer = %hex::encode(registered_id), "relay route rate limit exceeded");
+                    break;
+                }
+                let target_session = router.lock().await.get(&target.0).cloned();
+                let status = if let Some(session) = target_session {
+                    let outbound = relay_protocol::encode(&RelayFrame::Route {
+                        route_id,
+                        source,
+                        target,
+                        payload,
+                    });
+                    match outbound {
+                        Ok(bytes)
+                            if is_current_generation(&router, &target.0, session.generation)
+                                .await =>
+                        {
+                            match queue_frame(&session.tx, &queue_budget, bytes) {
+                                Ok(()) => RelayAckStatus::ForwardedToLiveSession,
+                                Err(_) => RelayAckStatus::TargetBackpressured,
+                            }
+                        }
+                        Err(_) => RelayAckStatus::TargetBackpressured,
+                        Ok(_) => RelayAckStatus::TargetOffline,
                     }
                 } else {
-                    tracing::warn!(
-                        target = hex::encode(target.0),
-                        "unknown target peer — frame dropped"
-                    );
+                    RelayAckStatus::TargetOffline
+                };
+                let ack = relay_protocol::encode(&RelayFrame::Ack {
+                    route_id,
+                    target,
+                    status,
+                })
+                .expect("bounded ack");
+                if queue_frame(&control_tx, &queue_budget, ack).is_err() {
+                    break;
                 }
             }
             RelayFrame::Heartbeat => {
-                // Echo heartbeat back so the client's idle timer resets.
-                let mut map = router.lock().await;
-                if let Some(w) = map.get_mut(&registered_id) {
-                    let hb = relay_protocol::encode(&RelayFrame::Heartbeat).unwrap_or_default();
-                    w.write_all(&hb).await.ok();
-                    w.flush().await.ok();
-                }
+                // Client response to the server's periodic liveness probe.
             }
-            RelayFrame::Register { .. } => {
-                tracing::warn!("unexpected Register after handshake");
+            RelayFrame::Challenge { .. } | RelayFrame::Register { .. } | RelayFrame::Ack { .. } => {
+                tracing::warn!(peer = %hex::encode(registered_id), "unexpected relay frame");
+                break;
             }
         }
     }
 
-    tracing::info!(
-        peer_id = hex::encode(registered_id),
-        "client disconnected; removing registration"
-    );
-    router.lock().await.remove(&registered_id);
+    remove_if_generation(&router, &registered_id, generation).await;
 }
 
-/// Read one complete RelayFrame from `read`, returning None on EOF or error.
-async fn read_frame<R: AsyncRead + Unpin>(read: &mut R) -> Option<RelayFrame> {
-    let mut header = [0u8; RELAY_HEADER_LEN];
-    match tokio::time::timeout(
-        std::time::Duration::from_secs(60),
-        read.read_exact(&mut header),
-    )
-    .await
-    {
-        Ok(Ok(_)) => {}
-        Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => return None,
-        Ok(Err(e)) => {
-            tracing::warn!("relay read error: {e}");
-            return None;
-        }
-        Err(_) => {
-            tracing::warn!("relay read timeout");
-            return None;
-        }
+/// Charge a route to an identity-scoped window that survives reconnects.
+/// Stale windows are purged before the bounded map admits another identity.
+async fn charge_route(rate_limits: &RateLimits, peer: [u8; 32], bytes: usize) -> bool {
+    let now = Instant::now();
+    let mut limits = rate_limits.lock().await;
+    limits.retain(|_, window| now.duration_since(window.started) < Duration::from_secs(120));
+    if !limits.contains_key(&peer) && limits.len() >= MAX_RATE_IDENTITIES {
+        return false;
     }
+    let window = limits.entry(peer).or_insert(RateWindow {
+        started: now,
+        frames: 0,
+        bytes: 0,
+    });
+    if now.duration_since(window.started) >= Duration::from_secs(60) {
+        *window = RateWindow {
+            started: now,
+            frames: 0,
+            bytes: 0,
+        };
+    }
+    window.frames = window.frames.saturating_add(1);
+    window.bytes = window.bytes.saturating_add(bytes);
+    window.frames <= MAX_ROUTE_FRAMES_PER_MINUTE && window.bytes <= MAX_ROUTE_BYTES_PER_MINUTE
+}
 
+fn queue_frame(
+    tx: &mpsc::Sender<QueuedFrame>,
+    budget: &Arc<Semaphore>,
+    bytes: Vec<u8>,
+) -> Result<(), ()> {
+    let permits = u32::try_from(bytes.len()).map_err(|_| ())?;
+    let byte_permit = budget
+        .clone()
+        .try_acquire_many_owned(permits)
+        .map_err(|_| ())?;
+    tx.try_send(QueuedFrame {
+        bytes,
+        _byte_permit: byte_permit,
+    })
+    .map_err(|_| ())
+}
+
+async fn is_current_generation(router: &Router, peer: &[u8; 32], generation: u64) -> bool {
+    router
+        .lock()
+        .await
+        .get(peer)
+        .is_some_and(|session| session.generation == generation)
+}
+
+async fn remove_if_generation(router: &Router, peer: &[u8; 32], generation: u64) {
+    let mut map = router.lock().await;
+    if map
+        .get(peer)
+        .is_some_and(|session| session.generation == generation)
+    {
+        map.remove(peer);
+    }
+}
+
+fn verify_registration(challenge: &[u8; 32], peer_id: &[u8; 32], signature: &[u8; 64]) -> bool {
+    let Ok(verifying) = VerifyingKey::from_bytes(peer_id) else {
+        return false;
+    };
+    let signable =
+        relay_protocol::registration_signable(challenge, &iris_core::message::PeerId(*peer_id));
+    verifying
+        .verify_strict(&signable, &Signature::from_bytes(signature))
+        .is_ok()
+}
+
+async fn write_bounded<W: tokio::io::AsyncWrite + Unpin>(
+    write: &mut W,
+    frame: &[u8],
+) -> std::io::Result<()> {
+    tokio::time::timeout(WRITE_TIMEOUT, async {
+        write.write_all(frame).await?;
+        write.flush().await
+    })
+    .await
+    .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "relay write timeout"))?
+}
+
+async fn read_frame<R: AsyncRead + Unpin>(read: &mut R, timeout: Duration) -> Option<RelayFrame> {
+    let mut header = [0u8; RELAY_HEADER_LEN];
+    match tokio::time::timeout(timeout, read.read_exact(&mut header)).await {
+        Ok(Ok(_)) => {}
+        _ => return None,
+    }
     let mut len_bytes = [0u8; 4];
     len_bytes.copy_from_slice(&header[66..70]);
     let payload_len = u32::from_le_bytes(len_bytes) as usize;
-    if payload_len > MAX_RELAY_PAYLOAD {
-        tracing::warn!("relay: oversized payload {payload_len}");
+    if payload_len > MAX_RELAY_PAYLOAD + relay_protocol::RELAY_SIGNATURE_LEN {
         return None;
     }
-
     let mut full = vec![0u8; RELAY_HEADER_LEN + payload_len];
     full[..RELAY_HEADER_LEN].copy_from_slice(&header);
-    if payload_len > 0 {
-        if read.read_exact(&mut full[RELAY_HEADER_LEN..]).await.is_err() {
-            return None;
-        }
+    if payload_len > 0
+        && !matches!(
+            tokio::time::timeout(timeout, read.read_exact(&mut full[RELAY_HEADER_LEN..])).await,
+            Ok(Ok(_))
+        )
+    {
+        return None;
+    }
+    relay_protocol::decode(&full).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ed25519_dalek::Signer;
+    use rustls::pki_types::ServerName;
+    use rustls::{ClientConfig, RootCertStore};
+    use tokio::net::TcpStream;
+    use tokio_rustls::client::TlsStream;
+    use tokio_rustls::TlsConnector;
+
+    fn test_server_config() -> ServerConfig {
+        let cert = CertificateDer::from(test_certs::TEST_RELAY_CERT_DER.to_vec());
+        let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(
+            test_certs::TEST_RELAY_KEY_DER.to_vec(),
+        ));
+        let mut config = ServerConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
+            .with_no_client_auth()
+            .with_single_cert(vec![cert], key)
+            .unwrap();
+        config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
+        config
     }
 
-    relay_protocol::decode(&full).ok()
+    fn test_connector() -> TlsConnector {
+        let mut roots = RootCertStore::empty();
+        roots
+            .add(CertificateDer::from(
+                test_certs::TEST_RELAY_CERT_DER.to_vec(),
+            ))
+            .unwrap();
+        let mut config = ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS13])
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+        config.alpn_protocols = vec![RELAY_ALPN.to_vec()];
+        TlsConnector::from(Arc::new(config))
+    }
+
+    async fn register_test_client(
+        addr: SocketAddr,
+        key: &ed25519_dalek::SigningKey,
+    ) -> TlsStream<TcpStream> {
+        let tcp = TcpStream::connect(addr).await.unwrap();
+        let mut tls = test_connector()
+            .connect(ServerName::try_from("localhost").unwrap(), tcp)
+            .await
+            .unwrap();
+        let RelayFrame::Challenge { nonce } = read_frame(&mut tls, Duration::from_secs(2))
+            .await
+            .expect("relay challenge")
+        else {
+            panic!("expected challenge");
+        };
+        let peer = iris_core::message::PeerId(key.verifying_key().to_bytes());
+        let signature = key
+            .sign(&relay_protocol::registration_signable(&nonce, &peer))
+            .to_bytes();
+        let register = relay_protocol::encode(&RelayFrame::Register {
+            peer_id: peer,
+            signature,
+        })
+        .unwrap();
+        write_bounded(&mut tls, &register).await.unwrap();
+        assert!(matches!(
+            read_frame(&mut tls, Duration::from_secs(2)).await,
+            Some(RelayFrame::Heartbeat)
+        ));
+        tls
+    }
+
+    #[tokio::test]
+    async fn actual_tls_server_authenticates_and_routes_bidirectionally() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(serve(
+            listener,
+            TlsAcceptor::from(Arc::new(test_server_config())),
+            MAX_CONNECTIONS,
+        ));
+
+        let key_a = ed25519_dalek::SigningKey::from_bytes(&[0x41; 32]);
+        let key_b = ed25519_dalek::SigningKey::from_bytes(&[0x42; 32]);
+        let peer_a = iris_core::message::PeerId(key_a.verifying_key().to_bytes());
+        let peer_b = iris_core::message::PeerId(key_b.verifying_key().to_bytes());
+        let mut a = register_test_client(addr, &key_a).await;
+        let mut b = register_test_client(addr, &key_b).await;
+
+        let route_id = [0x77; 16];
+        let route = relay_protocol::encode(&RelayFrame::Route {
+            route_id,
+            source: peer_a,
+            target: peer_b,
+            payload: b"real relay e2e".to_vec(),
+        })
+        .unwrap();
+        write_bounded(&mut a, &route).await.unwrap();
+
+        assert_eq!(
+            read_frame(&mut b, Duration::from_secs(2)).await,
+            Some(RelayFrame::Route {
+                route_id,
+                source: peer_a,
+                target: peer_b,
+                payload: b"real relay e2e".to_vec(),
+            })
+        );
+        assert_eq!(
+            read_frame(&mut a, Duration::from_secs(2)).await,
+            Some(RelayFrame::Ack {
+                route_id,
+                target: peer_b,
+                status: RelayAckStatus::ForwardedToLiveSession,
+            })
+        );
+
+        let return_id = [0x78; 16];
+        let response = relay_protocol::encode(&RelayFrame::Route {
+            route_id: return_id,
+            source: peer_b,
+            target: peer_a,
+            payload: b"return path".to_vec(),
+        })
+        .unwrap();
+        write_bounded(&mut b, &response).await.unwrap();
+        assert!(matches!(
+            read_frame(&mut a, Duration::from_secs(2)).await,
+            Some(RelayFrame::Route { route_id, source, target, .. })
+                if route_id == return_id && source == peer_b && target == peer_a
+        ));
+        assert!(matches!(
+            read_frame(&mut b, Duration::from_secs(2)).await,
+            Some(RelayFrame::Ack { route_id, status: RelayAckStatus::ForwardedToLiveSession, .. })
+                if route_id == return_id
+        ));
+        server.abort();
+    }
+
+    #[test]
+    fn registration_proof_is_bound_to_challenge_and_peer() {
+        let key = ed25519_dalek::SigningKey::from_bytes(&[7; 32]);
+        let peer_id = key.verifying_key().to_bytes();
+        let challenge = [9; 32];
+        let signable =
+            relay_protocol::registration_signable(&challenge, &iris_core::message::PeerId(peer_id));
+        let signature = ed25519_dalek::Signer::sign(&key, &signable).to_bytes();
+        assert!(verify_registration(&challenge, &peer_id, &signature));
+        assert!(!verify_registration(&[8; 32], &peer_id, &signature));
+
+        let other = ed25519_dalek::SigningKey::from_bytes(&[6; 32])
+            .verifying_key()
+            .to_bytes();
+        assert!(!verify_registration(&challenge, &other, &signature));
+    }
+
+    #[tokio::test]
+    async fn stale_generation_cannot_remove_replacement_session() {
+        let router: Router = Arc::new(Mutex::new(HashMap::new()));
+        let (old_tx, _old_rx) = mpsc::channel(1);
+        let (new_tx, _new_rx) = mpsc::channel(1);
+        let peer = [3; 32];
+        router.lock().await.insert(
+            peer,
+            Session {
+                generation: 1,
+                tx: old_tx,
+            },
+        );
+        router.lock().await.insert(
+            peer,
+            Session {
+                generation: 2,
+                tx: new_tx,
+            },
+        );
+
+        let mut map = router.lock().await;
+        if map
+            .get(&peer)
+            .is_some_and(|session| session.generation == 1)
+        {
+            map.remove(&peer);
+        }
+        assert_eq!(map.get(&peer).map(|session| session.generation), Some(2));
+    }
+
+    #[test]
+    fn per_ip_admission_is_bounded_and_released() {
+        let counts: IpCounts = Arc::new(StdMutex::new(HashMap::new()));
+        let ip: IpAddr = "192.0.2.1".parse().unwrap();
+        let limit = 8;
+        let guards: Vec<_> = (0..limit)
+            .map(|_| IpConnectionGuard::try_acquire(ip, counts.clone(), limit).unwrap())
+            .collect();
+        assert!(IpConnectionGuard::try_acquire(ip, counts.clone(), limit).is_none());
+        drop(guards);
+        assert!(IpConnectionGuard::try_acquire(ip, counts.clone(), limit).is_some());
+    }
+
+    #[tokio::test]
+    async fn queue_is_bounded_by_slots_and_releases_byte_budget() {
+        let budget = Arc::new(Semaphore::new(128));
+        let (tx, mut rx) = mpsc::channel(1);
+        queue_frame(&tx, &budget, vec![1; 64]).unwrap();
+        assert_eq!(budget.available_permits(), 64);
+        assert!(queue_frame(&tx, &budget, vec![2; 1]).is_err());
+        drop(rx.recv().await.unwrap());
+        assert_eq!(budget.available_permits(), 128);
+    }
+
+    #[tokio::test]
+    async fn identity_rate_limit_survives_reconnect() {
+        let limits: RateLimits = Arc::new(Mutex::new(HashMap::new()));
+        let peer = [9; 32];
+        for _ in 0..MAX_ROUTE_FRAMES_PER_MINUTE {
+            assert!(charge_route(&limits, peer, 1).await);
+        }
+        // A new socket calls the same identity-scoped table; it cannot reset
+        // the budget by reconnecting.
+        assert!(!charge_route(&limits, peer, 1).await);
+        assert!(charge_route(&limits, [8; 32], 1).await);
+    }
 }

@@ -4,6 +4,18 @@ This file records every autonomous execution iteration for observability.
 
 Format: `iteration | timestamp | node | stage | action | result | files_changed | records_created`
 
+| 197 | 2026-09-08 19:35 | INTERNET-ANDROID-001 | VERIFY | Independent verifier found and re-researched a HIGH rapid stop/start stale-listener cleanup race. Added worker-confined generation lease and two JVM regressions; focused Android compile/tests pass. Acceptance record corrected: AC-10/AC-11 are PARTIAL until broader callback/infrastructure and configured install/cold-launch evidence exists. | HIGH_FIXED_SCOPE_CORRECTED | AndroidNsdAdapter.kt; AndroidNsdAddressTest.kt; verification/security/test records; graph | RES-0039; INTERNET-ANDROID-001_VERIFICATION.md |
+
+| 196 | 2026-09-08 19:05 | INTERNET-ANDROID-001 | VERIFY | Completed Internet/LAN/relay audit and hardening. Final fixes close NSD stale-owner withdrawal and deterministic Android routing-fixture races. Reproduced iris-core 865/865, iris-android 10/10, Internet 24/24, codec 8/8, relay server 6/6, Android focused JVM, three release ABIs and configured APK packaging. Security/test/verification records created. Real relay endpoint/certificate name and AC-12/AC-13 physical tests remain external gates; localhost APK not installed. | SOFTWARE_VERIFIED_HARDWARE_GATED | core/Android Internet implementation; graph/state/docs | INTERNET-ANDROID-001_TEST.md; INTERNET-ANDROID-001_SECURITY_REVIEW.md; INTERNET-ANDROID-001_VERIFICATION.md; CHK-0009 |
+
+| 189 | 2026-09-08 16:32 | INTERNET-ANDROID-001 | IMPLEMENT/TEST | Compile retry passed. Relay protocol 5/5, relay server 2/2, Android Internet FFI 2/2 passed; Internet suite was 19/21 because two legacy assertions encoded the former ±12.5% bug. Re-researched bounded jitter in RES-0036 and corrected expectations to true ±25% (22.5–37.5 s at 30 s cap). | FAILURE_RESEARCHED_AND_FIXED | internet.rs; durable state | RES-0036.md |
+
+| 188 | 2026-09-08 16:20 | INTERNET-ANDROID-001 | IMPLEMENT | First focused compile exposed E0507 moving Vec in a match guard and two Option/? mismatches. Stopped, researched Rust Reference/stdlib in RES-0035, moved try_send into the selected arm, converted Option with typed ok_or_else, and staged the same gate for retry. | FAILURE_RESEARCHED_AND_FIXED | relay_server.rs; engine.rs; durable state | RES-0035.md |
+
+| 187 | 2026-09-08 15:55 | INTERNET-ANDROID-001 | DESIGN | Accepted INTERNET_ANDROID_DESIGN.md v2: atomic endpoint/TLS identity config, separate LAN/WAN truth, verified-only NSD/routing, trusted relay bootstrap, challenge-signature registration, relay status ACKs, bounded per-session writers/connections/timeouts, TLS 1.3 exact ALPN, runtime server keys, Android callback/multicast/lifecycle, and explicit hardware/WAN gates. | DESIGN_COMPLETE | design, graph, and durable state projections | - |
+
+| 186 | 2026-09-08 15:44 | INTERNET-ANDROID-001 | RESEARCH | Captured FAIL-0009 from the user-observed RADIO UNAVAILABLE/mesh-down run; reproduced deterministic configuration/control-flow causes by code audit; researched current Android connectivity/NSD and IETF TLS/ALPN/identity/dual-stack/reconnect guidance; repaired malformed SAT-001 graph evidence; added the P0 recovery node with AC-1..AC-15 and validated 35 nodes with COMPLETE dependencies. | RESEARCH_COMPLETE | graph and all durable state projections | FAIL-0009.md; RES-0034.md; CHK-0008 |
+
 | 185 | 2026-09-08 06:40 | ANDROID-PAIR-001 | ACCEPT | Implemented signed offline QR/manual pairing, SAS confirmation, verified-only durable aliases, contact selection, safe forget, and restart-safe trust persistence. Rust regressions 1/1, focused Android pairing tests 8/8, Kotlin compile, all-ABI native rebuild, APK assemble/install on both ADB-visible original phones, and cold launch sanity passed. User then completed in-depth original-peer QR validation successfully. Full JVM suite remains 91/92 because of the unrelated pre-existing desktop command-parity failure. | ACCEPTED | Android pairing sources/tests/native libs; generated UniFFI binding; design/research/verification records; graph/state files | ANDROID-PAIR-001_VERIFY.md |
 
 ---
@@ -380,3 +392,59 @@ Ed25519-signed advertisement. Design AC-1..10 recorded. Graph node added with
 deps ANDROID-001+IDENT-001 COMPLETE; state advanced to IMPLEMENT. Security
 review findings on rotation persistence, stale fallback and live forget are
 implementation prerequisites.
+
+**Iteration 189 (2026-09-08)**: INTERNET-ANDROID-001 focused recovery rerun
+passed after RES-0036 corrected stale backoff-jitter assertions to the accepted
+true +/-25 percent contract. Live evidence: `transport::internet` 21/21 PASS and
+`iris-relay-server` authenticated challenge/session tests 2/2 PASS. Retry state
+was cleared; next action is UniFFI regeneration followed by Android JVM, native,
+and APK validation.
+
+**Iteration 190 (2026-09-08)**: `iris-android` host library compiled and the
+UniFFI Kotlin binding regenerated successfully. Generated `IrisEngine` now
+contains `configureInternetRelay`, `setInternetNetworkState`,
+`removeInternetLanPeer`, and `activateInternetPeer`. The generator's optional
+ktlint auto-format step was unavailable, but generation itself completed and
+the four symbols were verified in the emitted binding.
+
+**Iteration 191 (2026-09-08)**: Android integration compilation and focused JVM
+verification passed. Gradle compiled Kotlin, Java, Hilt, and the generated
+UniFFI call surface, then passed `InternetNetworkPolicyTest` and
+`AndroidNsdAddressTest`. This validates separate validated-WAN/local-network
+state reduction and bracketed IPv6 plus IPv4 NSD socket rendering at the app
+boundary. Only deprecation and pre-existing annotation warnings were emitted.
+
+**Iteration 192 (2026-09-08)**: Rebuilt `libiriscode.so` in release mode for
+arm64-v8a, armeabi-v7a, and x86_64 with cargo-ndk, then assembled the debug APK
+successfully from those libraries and the regenerated UniFFI surface. SHA-256:
+arm64 `585711EA718EF888946A2E8D573B286353EF56FBD0F0A3FE41AF787327959B3D`;
+armeabi-v7a `F52283F3E999E6912603627632641D688BE22135F1D1A140BD01CD3D90F36831`;
+x86_64 `4EC4DB9F363F8FD6491C5F0EF852E86420E30A9B70B689135A9CB0822B4A8FA1`.
+
+**Iteration 193 (2026-09-08)**: Full-suite attempt produced two isolated,
+pre-existing non-Internet failures: the desktop D2 feature test uses nonexistent
+Tokio `AbortHandle::is_aborted`, and Android command parity remains 97/98 because
+the desktop command mirror lacks `/all`, `/name`, and `/contacts`. RES-0037
+records official Tokio/Kotlin evidence. The same research pass incorporated
+red-team relay findings: missing idle heartbeats, excessive count-only queue
+exposure, and leaked ACK waiters/suspect pooled writers. No blind retry; those
+relay defects are the next implementation action.
+
+**Iteration 194 (2026-09-08)**: Implemented the first RES-0037 hardening pass:
+server-sent periodic heartbeats with client liveness responses; 256 global and
+8/IP connection limits; 8-frame per-session queue plus 64 MiB global byte
+budget; 120-frame/8 MiB per-minute identity rate limits; generation-safe route
+and removal handling; CA certificate-chain input; client ACK target binding,
+timeout cleanup and suspect-socket eviction; configuration/WAN invalidation;
+and sequential configured-endpoint fallback. First compile found one branch-
+local receipt timestamp error. RES-0038 researched Rust block scope and the fix
+was staged before retry, together with two attributable warning cleanups.
+
+**Iteration 195 (2026-09-08)**: Added bidirectional Ed25519 challenge-response
+authentication to direct LAN sockets so a trusted mDNS PeerId cannot be claimed
+by an endpoint that does not own its private key. The listener moved to IPv6
+wildcard for dual-stack coverage and gained explicit stop lifecycle/FFI. First
+focused run exposed Windows' default `IPV6_V6ONLY=1`: both IPv4 loopback tests
+fell through to `NotConnected`. RES-0039 records Microsoft/socket2 evidence;
+the retry uses an explicit pre-bind `set_only_v6(false)` socket without
+weakening authentication.

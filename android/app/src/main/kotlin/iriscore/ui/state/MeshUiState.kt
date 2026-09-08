@@ -23,6 +23,8 @@ data class TransportStatus(
     val label: String,
     /** True when the transport's FfiTransportDiag.state == "Connected". */
     val connected: Boolean,
+    /** Full state: Unavailable, Degraded, Available, or Connected. */
+    val state: String,
 )
 
 @Immutable
