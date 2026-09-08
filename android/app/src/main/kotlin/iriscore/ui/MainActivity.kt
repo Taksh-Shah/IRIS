@@ -16,7 +16,8 @@ import androidx.compose.ui.graphics.toArgb
 import dagger.hilt.android.AndroidEntryPoint
 import iriscore.designsystem.IrisColors
 import iriscore.designsystem.IrisTheme
-import iriscore.ui.screens.ConsoleScreen
+import androidx.navigation.compose.rememberNavController
+import iriscore.ui.navigation.IrisNavGraph
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -58,7 +59,7 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(IrisColors.BackgroundPrimary),
                 ) {
-                    ConsoleScreen()
+                    IrisNavGraph(rememberNavController())
                 }
             }
         }

@@ -86,6 +86,26 @@ class IrisBleService : Service() {
             repository.startMesh()
             repository.subscribeInbox()
         }
+        // WP9: ensure the message notification channel exists, then watch the
+        // uiState flow for new inbound messages and post a notification for each.
+        MessageNotificationHelper.createChannel(this)
+        serviceScope.launch {
+            var knownCount = repository.uiState.value.messages.count { !it.isOutbound }
+            repository.uiState.collect { state ->
+                val inboundCount = state.messages.count { !it.isOutbound }
+                if (inboundCount > knownCount) {
+                    val newest = state.messages.lastOrNull { !it.isOutbound }
+                    if (newest != null) {
+                        MessageNotificationHelper.postMessageNotification(
+                            this@IrisBleService,
+                            newest.senderId,
+                            newest.payloadUtf8.take(80),
+                        )
+                    }
+                    knownCount = inboundCount
+                }
+            }
+        }
         return START_STICKY
     }
 

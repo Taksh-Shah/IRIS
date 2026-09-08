@@ -127,6 +127,7 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.57.2")
     ksp("com.google.dagger:hilt-android-compiler:2.57.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.navigation:navigation-compose:2.9.0")
 
     // --- WorkManager (AC-7 cadence) ---
     implementation("androidx.work:work-runtime-ktx:2.9.1")
@@ -182,4 +183,9 @@ dependencies {
     androidTestImplementation("com.google.android.mobly:mobly-snippet-lib:1.4.0")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:core:1.6.1")
+
+    // --- WP13: Compose UI tests (run with AndroidJUnitRunner, not SnippetRunner) ---
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
