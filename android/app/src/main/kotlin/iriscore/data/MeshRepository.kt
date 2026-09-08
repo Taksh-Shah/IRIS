@@ -280,9 +280,13 @@ class MeshRepository @Inject constructor(
             true
         } catch (_: IrisFfiException) {
             scope.launch {
-                outbox.enqueue(RelayOutbox.QueuedMessage(normalized, text, priority))
                 val pending = InboxUiMessage.pending(normalized, text, priority)
                 messageDao.insert(MessageEntity.fromUiMessage(pending))
+                // WP11: the pending-outbox row now carries the same uid as the
+                // message row above, so a later successful drain (or a
+                // permanent give-up) can update THIS row instead of leaving
+                // it stuck at QUEUED forever — see drainRelayOutbox().
+                outbox.enqueue(RelayOutbox.QueuedMessage(pending.uid, normalized, text, priority))
             }
             false
         }
@@ -436,19 +440,66 @@ class MeshRepository @Inject constructor(
         outbox.removeRecipient(peerIdHex)
     }
 
+    /**
+     * WP11: drain the outbox, updating the real message row on every outcome
+     * instead of leaving it stuck at QUEUED forever. A successful send flips
+     * that row to DELIVERED (best-effort local evidence, same convention as
+     * [send]'s own accept path); a row that has exhausted
+     * [RelayOutbox.MAX_DRAIN_ATTEMPTS] flips to FAILED and stops being retried.
+     */
     suspend fun drainRelayOutbox(): Int {
-        val sent = outbox.drain { queued ->
-            try {
-                engine.get().sendText(queued.recipientHex, queued.text, queued.priority)
-                true
-            } catch (_: IrisFfiException) {
-                false
-            }
-        }
+        val sent = outbox.drain(
+            onSend = { queued ->
+                try {
+                    val rustMsgId = engine.get().sendText(queued.recipientHex, queued.text, queued.priority)
+                    pendingAcks[rustMsgId.joinToString("") { "%02x".format(it) }] = queued.messageUid
+                    messageDao.updateStatus(queued.messageUid, DeliveryStatus.DELIVERED.name)
+                    true
+                } catch (_: IrisFfiException) {
+                    false
+                }
+            },
+            onGiveUp = { messageUid ->
+                messageDao.updateStatus(messageUid, DeliveryStatus.FAILED.name)
+            },
+        )
         return sent
     }
 
     val pendingRelayCount: Int get() = outbox.size
+
+    /**
+     * WP12: re-attempt a FAILED outbound message, reusing its existing row
+     * (per the "every transition updates the same persistent message row"
+     * acceptance gate — a retry must never spawn a second row for the same
+     * message). Only meaningful for outbound rows; returns false for an
+     * unknown uid or an inbound row.
+     */
+    suspend fun retry(uid: Long): Boolean {
+        val row = messageDao.getById(uid) ?: return false
+        if (!row.isOutbound) return false
+        return try {
+            val rustMsgId = engine.get().sendText(row.peerIdHex, row.payloadUtf8, row.priority.toUByte())
+            pendingAcks[rustMsgId.joinToString("") { "%02x".format(it) }] = uid
+            messageDao.updateStatus(uid, DeliveryStatus.DELIVERED.name)
+            true
+        } catch (_: IrisFfiException) {
+            outbox.enqueue(RelayOutbox.QueuedMessage(uid, row.peerIdHex, row.payloadUtf8, row.priority.toUByte()))
+            messageDao.updateStatus(uid, DeliveryStatus.QUEUED.name)
+            false
+        }
+    }
+
+    /**
+     * WP12: local-only deletion — never reaches the sender or the mesh.
+     * Also drops any outbox row still queued for this exact message (by uid,
+     * not by recipient — [RelayOutbox.removeRecipient] would wrongly also
+     * drop other pending sends to the same peer).
+     */
+    suspend fun deleteMessage(uid: Long) {
+        messageDao.delete(uid)
+        outbox.removeByMessageUid(uid)
+    }
 
     companion object {
         private const val TAG = "IrisMeshRepository"

@@ -24,4 +24,12 @@ interface MessageDao {
     /** Update a message's delivery status after an ACK or failure. */
     @Query("UPDATE messages SET deliveryStatus = :status WHERE uid = :uid")
     suspend fun updateStatus(uid: Long, status: String)
+
+    /** WP12: look up one message for retry/copy/info actions. */
+    @Query("SELECT * FROM messages WHERE uid = :uid")
+    suspend fun getById(uid: Long): MessageEntity?
+
+    /** WP12: local-only deletion — never touches the sender's own copy. */
+    @Query("DELETE FROM messages WHERE uid = :uid")
+    suspend fun delete(uid: Long)
 }

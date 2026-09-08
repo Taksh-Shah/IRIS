@@ -1,18 +1,56 @@
 package iriscore.ui.state
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.res.stringResource
+import iriscore.R
 import java.util.concurrent.atomic.AtomicLong
 
 enum class MeshStatus { IDLE, STARTING, RUNNING, UNAVAILABLE }
 
 /**
+ * WP11: plain-language mesh status for the fuller status surfaces
+ * (accessibility description on the compact chip, banners, message info).
+ * Not `permissionsGranted`-aware — the caller decides whether to show
+ * [R.string.status_permission_needed] instead, since [MeshStatus] alone
+ * cannot distinguish "denied permission" from "genuinely offline."
+ */
+@Composable
+fun MeshStatus.plainLanguage(): String = stringResource(
+    when (this) {
+        MeshStatus.IDLE -> R.string.status_idle
+        MeshStatus.STARTING -> R.string.status_starting
+        MeshStatus.RUNNING -> R.string.status_running
+        MeshStatus.UNAVAILABLE -> R.string.status_unavailable
+    },
+)
+
+/**
  * Delivery model for message rows.
  * RECEIVED = inbound. DELIVERED = engine accepted the send (best-effort local
- * evidence). QUEUED = spooled in RelayOutbox awaiting a future drain. FAILED =
- * send rejected with no outbox fallback. SENDING is kept for in-flight cases
- * where the engine call is still outstanding (should be very brief).
+ * evidence) or a later ACK/outbox-drain confirmed it. QUEUED = spooled in
+ * RelayOutbox awaiting a future drain. FAILED = the outbox gave up after
+ * repeated drain attempts (see PendingMessageEntity.attempts) or the initial
+ * send was rejected with no outbox fallback. EXPIRED = the message's TTL
+ * elapsed while queued, with no delivery confirmation either way — distinct
+ * from FAILED (a definite rejection) because the mesh genuinely does not know
+ * what happened to it. SENDING is kept for in-flight cases where the engine
+ * call is still outstanding (should be very brief).
  */
-enum class DeliveryStatus { RECEIVED, SENDING, DELIVERED, QUEUED, FAILED }
+enum class DeliveryStatus { RECEIVED, SENDING, DELIVERED, QUEUED, FAILED, EXPIRED }
+
+/** WP11: plain-language delivery status for chip semantics and message info. */
+@Composable
+fun DeliveryStatus.plainLanguage(): String = stringResource(
+    when (this) {
+        DeliveryStatus.RECEIVED -> R.string.delivery_received
+        DeliveryStatus.SENDING -> R.string.delivery_sending
+        DeliveryStatus.QUEUED -> R.string.delivery_queued
+        DeliveryStatus.DELIVERED -> R.string.delivery_delivered
+        DeliveryStatus.FAILED -> R.string.delivery_failed
+        DeliveryStatus.EXPIRED -> R.string.delivery_expired
+    },
+)
 
 /**
  * HV-59: per-transport presence in the status line.

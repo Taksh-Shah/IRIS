@@ -10,7 +10,9 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * Backed by [PendingMessageDao] (Room) so queued sends survive process death
  * and device reboot. Rows are enqueued when the engine rejects a send, and
- * deleted when the next drain attempt succeeds.
+ * deleted when the next drain attempt succeeds — or when a row exceeds
+ * [MAX_DRAIN_ATTEMPTS] and the caller gives up on it (see [drain]'s
+ * `onGiveUp`).
  *
  * The in-memory [count] mirror is updated on every mutation so [size] stays
  * fast without a DB round-trip; it is re-synchronised on first read from
@@ -23,10 +25,20 @@ import java.util.concurrent.atomic.AtomicInteger
 class RelayOutbox(private val dao: PendingMessageDao) {
 
     data class QueuedMessage(
+        val messageUid: Long,
         val recipientHex: String,
         val text: String,
         val priority: UByte,
     )
+
+    /**
+     * WP11: how many failed drain passes a row survives before the caller is
+     * told to give up on it (see [drain]'s `onGiveUp`) rather than retrying
+     * it forever on every 15-minute WorkManager cadence.
+     */
+    companion object {
+        const val MAX_DRAIN_ATTEMPTS = 5
+    }
 
     private val count = AtomicInteger(0)
 
@@ -39,6 +51,7 @@ class RelayOutbox(private val dao: PendingMessageDao) {
     suspend fun enqueue(message: QueuedMessage): Boolean {
         dao.insert(
             PendingMessageEntity(
+                messageUid = message.messageUid,
                 recipientHex = message.recipientHex,
                 text = message.text,
                 priority = message.priority.toInt(),
@@ -60,24 +73,42 @@ class RelayOutbox(private val dao: PendingMessageDao) {
         return removed
     }
 
+    /** WP12: drop the outbox row for one deleted message, without touching
+     * any other pending send to the same recipient. */
+    suspend fun removeByMessageUid(messageUid: Long) {
+        dao.removeByMessageUid(messageUid)
+        count.set(dao.getAll().size)
+    }
+
     /**
-     * Drain all pending messages applying [drain] to each. Items are processed
-     * in FIFO order (earliest-enqueued first). A [drain] that returns false
-     * stops the loop — the remaining items stay in the database for the next
-     * cadence.
+     * Drain all pending messages, applying [onSend] to each in FIFO order
+     * (earliest-enqueued first). A row that fails [onSend] is not deleted:
+     * its attempt count is incremented, and once it exceeds
+     * [MAX_DRAIN_ATTEMPTS], [onGiveUp] is called (typically to mark the
+     * corresponding message row FAILED) and the row is deleted so it stops
+     * being retried. A row that has not yet exceeded the cap stays queued
+     * and the loop moves on to the next row rather than stopping the whole
+     * drain — one bad recipient no longer starves every other queued send.
      *
      * @return number of messages successfully delivered and deleted.
      */
     suspend fun drain(
         maxItems: Int = Int.MAX_VALUE,
-        drain: suspend (QueuedMessage) -> Boolean,
+        onSend: suspend (QueuedMessage) -> Boolean,
+        onGiveUp: suspend (messageUid: Long) -> Unit,
     ): Int {
         val all = dao.getAll().take(maxItems)
         var sent = 0
         for (entity in all) {
-            if (!drain(entity.toQueued())) break
-            dao.delete(entity)
-            sent++
+            if (onSend(entity.toQueued())) {
+                dao.delete(entity)
+                sent++
+            } else if (entity.attempts + 1 >= MAX_DRAIN_ATTEMPTS) {
+                onGiveUp(entity.messageUid)
+                dao.delete(entity)
+            } else {
+                dao.incrementAttempts(entity.id)
+            }
         }
         count.set(dao.getAll().size)
         return sent

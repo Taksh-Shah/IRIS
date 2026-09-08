@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -71,6 +72,7 @@ import iriscore.ui.state.ConsoleEntry
 import iriscore.ui.state.MeshStatus
 import iriscore.ui.state.MeshUiState
 import iriscore.ui.state.TransportStatus
+import iriscore.ui.state.plainLanguage
 import iriscore.util.MeshPermissions
 import kotlinx.coroutines.launch
 
@@ -98,6 +100,61 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     var input by rememberSaveable { mutableStateOf("") }
     var selectedCommand by remember { mutableStateOf(0) }
     var peersOpen by rememberSaveable { mutableStateOf(false) }
+
+    // WP12: which message (if any) has its long-press action sheet or info
+    // panel open. Not rememberSaveable — an InboxUiMessage isn't a stable
+    // saved-state type, and re-showing a dialog across a config change/
+    // process restart for a transient interaction isn't worth carrying.
+    var actionSheetTarget by remember { mutableStateOf<iriscore.ui.state.InboxUiMessage?>(null) }
+    var infoDialogTarget by remember { mutableStateOf<iriscore.ui.state.InboxUiMessage?>(null) }
+    val clipboardContext = LocalContext.current
+
+    actionSheetTarget?.let { target ->
+        iriscore.ui.components.MessageActionSheet(
+            message = target,
+            onDismiss = { actionSheetTarget = null },
+            onReply = if (!target.isOutbound) {
+                { viewModel.replyTo(target.senderId) }
+            } else {
+                null
+            },
+            onRetry = if (target.isOutbound &&
+                (
+                    target.deliveryStatus == iriscore.ui.state.DeliveryStatus.FAILED ||
+                        target.deliveryStatus == iriscore.ui.state.DeliveryStatus.EXPIRED
+                    )
+            ) {
+                { viewModel.retryMessage(target.uid) }
+            } else {
+                null
+            },
+            onCopied = {
+                android.widget.Toast.makeText(
+                    clipboardContext,
+                    clipboardContext.getString(iriscore.R.string.msg_copied),
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            },
+            onShowInfo = { infoDialogTarget = target },
+            onDelete = {
+                viewModel.deleteMessage(target.uid)
+                android.widget.Toast.makeText(
+                    clipboardContext,
+                    clipboardContext.getString(iriscore.R.string.msg_deleted),
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            },
+        )
+    }
+    infoDialogTarget?.let { target ->
+        iriscore.ui.components.MessageInfoDialog(
+            message = target,
+            // senderId holds the peer either way (sender for inbound,
+            // recipient for outbound) — the same contact lookup applies.
+            fromLabel = contacts[target.senderId] ?: target.senderId.take(16),
+            onDismiss = { infoDialogTarget = null },
+        )
+    }
 
     if (peersOpen) {
         TrustedPeersDialog(
@@ -319,6 +376,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                         index = index,
                         contacts = contacts,
                         onReply = { senderId -> viewModel.replyTo(senderId) },
+                        onLongPress = { message -> actionSheetTarget = message },
                     )
                 }
             }
@@ -415,6 +473,7 @@ private fun ConsoleRow(
     index: Int,
     contacts: Map<String, String>,
     onReply: (String) -> Unit,
+    onLongPress: (iriscore.ui.state.InboxUiMessage) -> Unit,
 ) {
     when (val entry = entries[index]) {
         is ConsoleEntry.Message -> {
@@ -430,6 +489,7 @@ private fun ConsoleRow(
                 // Reply is only meaningful for inbound messages.
                 onReply = if (!entry.message.isOutbound) onReply else null,
                 contactName = if (!entry.message.isOutbound) contacts[entry.message.senderId] else null,
+                onLongPress = onLongPress,
             )
         }
 
@@ -490,7 +550,11 @@ private fun StatusLine(
             )
         }
         if (state.relayQueued > 0) {
-            IrisStatusChip(label = "Q${state.relayQueued}", tone = StatusTone.Warning)
+            IrisStatusChip(
+                label = "Q${state.relayQueued}",
+                tone = StatusTone.Warning,
+                semanticDescription = stringResource(iriscore.R.string.status_queued_fmt, state.relayQueued),
+            )
         }
         // HV-59: per-transport chips (BLE ●, WD ○, etc.) when running and the
         // 5-s poll has populated the list. Chips are compact — just label + dot.
@@ -527,6 +591,16 @@ private fun StatusLine(
                 state.status == MeshStatus.STARTING -> StatusTone.Warning
                 state.status == MeshStatus.IDLE -> StatusTone.Neutral
                 else -> StatusTone.Critical
+            },
+            // WP11: TalkBack hears the plain-language meaning, not the raw
+            // "LINK"/"INIT"/"DOWN" abbreviation the compact on-screen chip
+            // needs for width. permissionsGranted is not part of MeshStatus,
+            // so it's handled as its own case here rather than in
+            // MeshStatus.plainLanguage().
+            semanticDescription = if (!permissionsGranted) {
+                stringResource(iriscore.R.string.status_permission_needed)
+            } else {
+                state.status.plainLanguage()
             },
         )
     }

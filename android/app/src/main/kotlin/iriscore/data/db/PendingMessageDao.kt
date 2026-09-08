@@ -17,13 +17,21 @@ interface PendingMessageDao {
     @Query("SELECT * FROM pending_messages ORDER BY enqueuedAtMs ASC")
     suspend fun getAll(): List<PendingMessageEntity>
 
-    /** Remove one successfully-delivered row. */
+    /** Remove one successfully-delivered (or permanently given-up) row. */
     @Delete
     suspend fun delete(message: PendingMessageEntity)
+
+    /** WP11: record one more failed drain attempt for this row. */
+    @Query("UPDATE pending_messages SET attempts = attempts + 1 WHERE id = :id")
+    suspend fun incrementAttempts(id: Long)
 
     /** Drop all pending sends for a peer the operator has forgotten. */
     @Query("DELETE FROM pending_messages WHERE recipientHex = :recipientHex COLLATE NOCASE")
     suspend fun removeRecipient(recipientHex: String)
+
+    /** WP12: drop the outbox row for one specific deleted message, if any. */
+    @Query("DELETE FROM pending_messages WHERE messageUid = :messageUid")
+    suspend fun removeByMessageUid(messageUid: Long)
 
     /** Live count for the relay-queued badge in [iriscore.ui.state.MeshUiState]. */
     @Query("SELECT COUNT(*) FROM pending_messages")

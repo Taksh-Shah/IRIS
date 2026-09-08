@@ -16,7 +16,10 @@ import androidx.room.RoomDatabase
  */
 @Database(
     entities = [MessageEntity::class, PendingMessageEntity::class],
-    version = 1,
+    // WP11: version 2 adds PendingMessageEntity.messageUid + .attempts.
+    // Destructive migration (see IrisCoreModule) — the app has no shipped
+    // users yet, so wiping local dev data on this bump is acceptable.
+    version = 2,
     exportSchema = false,
 )
 abstract class IrisDatabase : RoomDatabase() {

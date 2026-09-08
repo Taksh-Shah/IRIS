@@ -9,4 +9,38 @@
     <string name="msg_channel_description">Notifications for incoming mesh messages</string>
     <string name="msg_notification_title">New message</string>
     <string name="msg_notification_text_template">From %1$s</string>
+
+    <!-- WP11: plain-language mesh status, replacing raw LINK/INIT/IDLE/DOWN
+         chips for screen readers and the fuller status surfaces (banners,
+         message info). The compact status-bar chip keeps its short label —
+         width-constrained — but carries one of these as its accessibility
+         description. -->
+    <string name="status_idle">Mesh offline</string>
+    <string name="status_starting">Starting mesh…</string>
+    <string name="status_running">Mesh active</string>
+    <string name="status_unavailable">No radio available — tap to retry</string>
+    <string name="status_permission_needed">Nearby-device permission needed — mesh cannot start</string>
+    <string name="status_queued_fmt">%1$d message(s) queued for relay</string>
+
+    <!-- WP11: plain-language per-message delivery status. -->
+    <string name="delivery_received">Received</string>
+    <string name="delivery_sending">Sending…</string>
+    <string name="delivery_queued">Queued on this device</string>
+    <string name="delivery_delivered">Delivered to recipient device</string>
+    <string name="delivery_failed">Not delivered — tap to retry</string>
+    <string name="delivery_expired">Expired — not confirmed delivered</string>
+
+    <!-- WP12: message interactions (long-press action sheet). -->
+    <string name="action_copy">Copy</string>
+    <string name="action_reply">Reply</string>
+    <string name="action_retry">Retry send</string>
+    <string name="action_info">Message info</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="msg_info_uid">ID: %1$d</string>
+    <string name="msg_info_from">From: %1$s</string>
+    <string name="msg_info_time">Time: %1$s</string>
+    <string name="msg_info_status">Status: %1$s</string>
+    <string name="msg_copied">Message copied</string>
+    <string name="msg_deleted">Message deleted</string>
 </resources>

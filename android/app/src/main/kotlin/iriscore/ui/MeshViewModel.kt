@@ -314,6 +314,16 @@ class MeshViewModel @Inject constructor(
         viewModelScope.launch { withContext(Dispatchers.IO) { repository.broadcast(text, priority) } }
     }
 
+    /** WP12: re-send a FAILED/EXPIRED outbound message, reusing its row. */
+    fun retryMessage(uid: Long) {
+        viewModelScope.launch(Dispatchers.IO) { repository.retry(uid) }
+    }
+
+    /** WP12: local-only deletion — never reaches the sender or the mesh. */
+    fun deleteMessage(uid: Long) {
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteMessage(uid) }
+    }
+
     /**
      * HV-57: set the recipient from a tapped received message, the same
      * effect as running `/to <peerIdHex>` by hand. Before this, replying

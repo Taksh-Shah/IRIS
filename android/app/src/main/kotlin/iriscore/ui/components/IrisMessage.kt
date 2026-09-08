@@ -1,6 +1,7 @@
 package iriscore.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import iriscore.designsystem.IrisSpacing
 import iriscore.designsystem.IrisType
 import iriscore.ui.state.DeliveryStatus
 import iriscore.ui.state.InboxUiMessage
+import iriscore.ui.state.plainLanguage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,6 +37,7 @@ import java.util.Locale
  *
  * Editorial rather than bubbled — type and spacing carry the distinction, not containers.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun IrisMessage(
     message: InboxUiMessage,
@@ -47,6 +50,12 @@ fun IrisMessage(
     contactName: String? = null,
     /** Tapping a received message sets it as the reply recipient. Null = inert row. */
     onReply: ((senderId: String) -> Unit)? = null,
+    /**
+     * WP12: long-pressing any row (inbound or outbound) opens the message
+     * action sheet (copy / reply / retry / info / delete). Null = inert row
+     * (e.g. previews, tests that don't need the interaction).
+     */
+    onLongPress: ((message: InboxUiMessage) -> Unit)? = null,
 ) {
     val outbound = message.isOutbound
     val horizontalAlignment = if (outbound) Alignment.End else Alignment.Start
@@ -58,12 +67,21 @@ fun IrisMessage(
             .fillMaxWidth()
             .padding(top = if (grouped) IrisSpacing.XS else IrisSpacing.LG)
             .then(
-                if (!outbound && onReply != null) {
+                if (onReply != null || onLongPress != null) {
                     Modifier
-                        .clickable(onClickLabel = "Reply") { onReply(message.senderId) }
+                        .combinedClickable(
+                            onClickLabel = if (!outbound && onReply != null) "Reply" else null,
+                            onClick = { if (!outbound) onReply?.invoke(message.senderId) },
+                            onLongClickLabel = "Message actions",
+                            onLongClick = { onLongPress?.invoke(message) },
+                        )
                         .semantics {
                             role = Role.Button
-                            contentDescription = "Reply to ${message.senderId.take(12)}"
+                            contentDescription = if (!outbound) {
+                                "Reply to ${message.senderId.take(12)}"
+                            } else {
+                                "Message actions"
+                            }
                         }
                 } else {
                     Modifier
@@ -81,17 +99,39 @@ fun IrisMessage(
                 }
                 if (outbound) {
                     // Delivery chip before the "You" label for right-to-left read order.
+                    // WP11: the visible label stays a terse chip; semanticDescription
+                    // carries the plain-language meaning for TalkBack.
                     when (message.deliveryStatus) {
                         DeliveryStatus.QUEUED -> {
-                            IrisStatusChip(label = "QUEUED", tone = StatusTone.Warning)
+                            IrisStatusChip(
+                                label = "QUEUED",
+                                tone = StatusTone.Warning,
+                                semanticDescription = message.deliveryStatus.plainLanguage(),
+                            )
                             Spacer(Modifier.width(IrisSpacing.SM))
                         }
                         DeliveryStatus.FAILED -> {
-                            IrisStatusChip(label = "FAILED", tone = StatusTone.Critical)
+                            IrisStatusChip(
+                                label = "FAILED",
+                                tone = StatusTone.Critical,
+                                semanticDescription = message.deliveryStatus.plainLanguage(),
+                            )
+                            Spacer(Modifier.width(IrisSpacing.SM))
+                        }
+                        DeliveryStatus.EXPIRED -> {
+                            IrisStatusChip(
+                                label = "EXPIRED",
+                                tone = StatusTone.Critical,
+                                semanticDescription = message.deliveryStatus.plainLanguage(),
+                            )
                             Spacer(Modifier.width(IrisSpacing.SM))
                         }
                         DeliveryStatus.DELIVERED -> {
-                            IrisStatusChip(label = "SENT", tone = StatusTone.Active)
+                            IrisStatusChip(
+                                label = "SENT",
+                                tone = StatusTone.Active,
+                                semanticDescription = message.deliveryStatus.plainLanguage(),
+                            )
                             Spacer(Modifier.width(IrisSpacing.SM))
                         }
                         else -> Unit
