@@ -4,6 +4,8 @@ This file records every autonomous execution iteration for observability.
 
 Format: `iteration | timestamp | node | stage | action | result | files_changed | records_created`
 
+| 185 | 2026-09-08 06:40 | ANDROID-PAIR-001 | ACCEPT | Implemented signed offline QR/manual pairing, SAS confirmation, verified-only durable aliases, contact selection, safe forget, and restart-safe trust persistence. Rust regressions 1/1, focused Android pairing tests 8/8, Kotlin compile, all-ABI native rebuild, APK assemble/install on both ADB-visible original phones, and cold launch sanity passed. User then completed in-depth original-peer QR validation successfully. Full JVM suite remains 91/92 because of the unrelated pre-existing desktop command-parity failure. | ACCEPTED | Android pairing sources/tests/native libs; generated UniFFI binding; design/research/verification records; graph/state files | ANDROID-PAIR-001_VERIFY.md |
+
 ---
 
 | 184 | 2026-09-07 15:20 | INTERNET-001 | IMPLEMENT | Added `tokio-rustls` verified client configuration with WebPKI roots, normal hostname/IP-SAN verification, and `iris-relay/1` ALPN. Cargo member-dependency failure was re-researched against official Cargo workspace docs and corrected. Focused tests: TLS 2/2 pass; existing warnings are pre-existing. Live pool conversion remains next; no plaintext path is claimed as TLS-secured. | IMPLEMENT_SLICE_COMPLETE | Cargo.toml; crates/iris-core/Cargo.toml; crates/iris-core/src/transport/tls.rs; crates/iris-core/src/transport/mod.rs; engineering/memory/records/research/RES-0032.md; engineering/memory/execution-state.yaml; engineering/memory/ACTIVE_NODE.md; engineering/memory/NEXT_ACTION.md; engineering/memory/records/execution-log.md | RES-0032.md |
@@ -371,3 +373,10 @@ Wi-Fi Direct delivery requires a new explicit design and hardware revalidation.
 **Iteration 181 (2026-09-06)**: Tier-4 three-phone baseline attempted after installing `776c3f6` on P1/P2/P3. P1/P2 both failed BLE scan error 2 plus `openGattServer null`; grants/AppOps/adapter ON confirmed. One Bluetooth reset failed; a distinct Vivo reboot was issued. Both phones were still offline from ADB after 55 seconds, requiring operator unlock/reconnect. No relay, flood, or mobility claim made; Session 34 hardware log records evidence and the next action is a single post-reboot BLE baseline retry.
 
 **Iteration 182 (2026-09-07)**: Tier-5 `INTERNET-001` implementation slice completed after Android/IETF/Rust-primary-source research. Registered `internet-0` in the Android engine; exposed validated-network and trusted endpoint FFI; made the Android `ConnectivityManager` callback process-lifecycle owned, idempotent, and explicitly unregistered; and made core network/configuration loss abort readers, drop pooled sockets, clear per-peer relay bindings, and publish `Unavailable`. Focused checks: Internet transport 16/16 PASS; Android engine 9/9 PASS; Android assemble/Hilt compilation PASS. Full Android JVM suite remains 83/84 because the pre-existing non-Tier-5 desktop command-surface parity assertion lacks `/all`, `/name`, and `/contacts`; rechecked and isolated without masking it. No Tier-5 hardware claim: an authenticated relay protocol/server and local TCP listener are still absent, so NSD is deliberately not advertised yet. State transitions DESIGN -> IMPLEMENT; next is that protocol/listener implementation.
+**Iteration 183 (2026-09-08)**: Human-priority ANDROID-PAIR-001 opened. RES-0033
+completed from official ML Kit/CameraX/security guidance; bundled offline QR
+scanner selected; bare PeerId+X25519 manual trust rejected in favor of the
+Ed25519-signed advertisement. Design AC-1..10 recorded. Graph node added with
+deps ANDROID-001+IDENT-001 COMPLETE; state advanced to IMPLEMENT. Security
+review findings on rotation persistence, stale fallback and live forget are
+implementation prerequisites.

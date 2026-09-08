@@ -3,7 +3,7 @@
 # ⚠️ CANONICAL SOURCE OF TRUTH IS PROJECT_GRAPH.yaml — this file must be GENERATED from the graph.
 # Do NOT manually maintain this file independently of the graph — state drift is a correctness risk.
 # Version: 0.2.0
-# Last updated: 2026-09-06 (software graph snapshot retained; physical hardware phase reconciled separately — WIFIDIRECT-001 shipping-app Tier-2 gate 10/10, Mobly Tier-2 harness HW-PENDING on Vivo/OriginOS)
+# Last updated: 2026-09-08 (ANDROID-PAIR-001 accepted after original-peer QR validation)
 
 # Actual node states derived from PROJECT_GRAPH.yaml (hand-reconciled 2026-08-18):
 # COMPLETE: VISION-001, REQ-001, ARCH-001, PROTO-001, STORE-001, TRANSPORT-001,
@@ -13,21 +13,21 @@
 #            TEST-001, BLE-002, IOS-001, PILOT-001 (29)
 # RESEARCH_COMPLETE: LEGAL-001 (1)
 # DESIGNING: (0)
-# IMPLEMENTING: (0)  [SAT-001 COMPLETE iter ~175]
+# IMPLEMENTING: (0)  [ANDROID-PAIR-001 ACCEPTED 2026-09-08]
 # VERIFYING: (0)
 # BLOCKED: (0)  [all gates unblocked DEC-0009]
 # DISCOVERED: (0)  [graph exhausted; mission milestones outside graph]
 # DEFERRED_TO_FUTURE: LEGAL-001 (1) [operator ruling iter ~178; carried obligations in docs/legal/CARRIED_OBLIGATIONS_REGISTER.md]
 
 summary:
-  total_nodes: 33
-  completed: 32              # + SAT-001 (2026-08-22, ACCEPT iter ~175, P2 TRANSPORT, AC-1..17 satisfied w/ AC-15 GATED/BLK-0005, verifier APPROVE, live 695/0/1)
+  total_nodes: 34
+  completed: 33              # + ANDROID-PAIR-001 (2026-09-08, original-peer QR validation)
   researching: 0
   research_complete: 1       # LEGAL-001
   designing: 0               # LORA-001 advanced to IMPLEMENTING iter ~163
-  implementing: 0            # LORA-001 COMPLETE (ACCEPT iter ~167); SAT-001 DISCOVERED next
+  implementing: 0
   verifying: 0
-  discovered: 1              # SAT-001 (P2 hardware; after LORA-001)
+  discovered: 0
   blocked: 0                 # All gates + human gates unblocked DEC-0009
   failed: 0
   deprecated: 0

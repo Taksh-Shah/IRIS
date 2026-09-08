@@ -1,9 +1,21 @@
 # ACTIVE NODE
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T18:30:00+05:30
+**Last updated**: 2026-09-08T06:30:00+05:30
+
+## Active Node: ANDROID-PAIR-001 — Trusted-peer pairing UX
+
+Human-priority P0 PLATFORM work. RESEARCH, DESIGN, IMPLEMENT, TEST and VERIFY
+are complete via RES-0033, `docs/implementation/ANDROID_PAIRING_DESIGN.md`,
+and `engineering/memory/records/verification/ANDROID-PAIR-001_VERIFY.md`.
+Scope: repair trust persistence/fallback findings, add offline QR display/scan,
+manual signed-code import, explicit SAS+alias confirmation, contact selection,
+tests, APK build and installation on the two connected phones.
 
 ## Current implementation phase
+
+ACCEPTED after the user's successful original-peer QR validation. The newest
+APK is installed on both ADB-visible phones.
 
 Tier-5 `INTERNET-001` is software-complete as of the gap-fix session on
 2026-09-07.  All six software gaps identified after commit `f5617c0` have been

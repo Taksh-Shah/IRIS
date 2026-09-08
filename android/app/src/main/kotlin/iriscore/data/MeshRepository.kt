@@ -15,6 +15,7 @@ import iriscore.ui.state.MeshStatus
 import iriscore.ui.state.MeshUiState
 import iriscore.util.AdvertisementCodec
 import iriscore.util.PeerIdCodec
+import iriscore.util.PairingCodeCodec
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -282,6 +283,8 @@ class MeshRepository @Inject constructor(
         data class Adopted(val peerIdHex: String, val outcome: iriscode.FfiAdoptionOutcome) : AddPeerOutcome
         /** `blob` was not a validly-shaped pairing code (wrong length/not hex). */
         data object InvalidBlob : AddPeerOutcome
+        data object SelfPairing : AddPeerOutcome
+        data object PersistenceFailed : AddPeerOutcome
     }
 
     /**
@@ -292,7 +295,10 @@ class MeshRepository @Inject constructor(
      * sending stays blocked until `/fingerprint <name> confirm` re-verifies.
      */
     fun addTrustedPeer(blob: String): AddPeerOutcome {
-        val ad = AdvertisementCodec.decode(blob) ?: return AddPeerOutcome.InvalidBlob
+        val canonical = PairingCodeCodec.toAdvertisementHex(blob) ?: return AddPeerOutcome.InvalidBlob
+        val ad = AdvertisementCodec.decode(canonical) ?: return AddPeerOutcome.InvalidBlob
+        if (ad.identityPubkey.contentEquals(nodeId)) return AddPeerOutcome.SelfPairing
+        val existing = trustedPeers.get(PeerIdCodec.toHex(ad.identityPubkey))
         // AdvertisementCodec.decode already guarantees each field's exact
         // byte length, so adoptPeerAdvertisement should never throw here —
         // but AN-9 (this file) established that an FFI call left unguarded
@@ -315,17 +321,22 @@ class MeshRepository @Inject constructor(
         // instead of preserving it.
         val adoptedAsCanonical = when (outcome) {
             iriscode.FfiAdoptionOutcome.BOUND_UNVERIFIED,
-            iriscode.FfiAdoptionOutcome.DUPLICATE,
             iriscode.FfiAdoptionOutcome.REFRESHED,
-            iriscode.FfiAdoptionOutcome.ROTATION_ADOPTED,
-            -> true
+            iriscode.FfiAdoptionOutcome.ROTATION_ADOPTED -> true
+            // Core uses DUPLICATE for both an identical repeat and a stale
+            // lower-counter replay. Never let the submitted tuple overwrite
+            // a different durable winner.
+            iriscode.FfiAdoptionOutcome.DUPLICATE -> existing == null ||
+                (existing.x25519Hex.equals(PeerIdCodec.toHex(ad.x25519Pubkey), true) &&
+                    existing.keyGenCounter == ad.keyGenCounter.toLong() &&
+                    existing.sigHex.equals(PeerIdCodec.toHex(ad.sig), true))
             iriscode.FfiAdoptionOutcome.KEY_CHANGE_WARN,
             iriscode.FfiAdoptionOutcome.REVOKED,
             iriscode.FfiAdoptionOutcome.REJECTED,
             -> false
         }
         if (adoptedAsCanonical) {
-            runCatching {
+            val persisted = runCatching {
                 trustedPeers.put(
                     peerIdHex = peerIdHex,
                     x25519Hex = PeerIdCodec.toHex(ad.x25519Pubkey),
@@ -333,8 +344,14 @@ class MeshRepository @Inject constructor(
                     validUntil = ad.validUntil.toLong(),
                     sigHex = PeerIdCodec.toHex(ad.sig),
                     createdAtMs = System.currentTimeMillis(),
+                    verified = when (outcome) {
+                        iriscode.FfiAdoptionOutcome.REFRESHED,
+                        iriscode.FfiAdoptionOutcome.DUPLICATE -> existing?.verified == true
+                        else -> false
+                    },
                 )
-            }
+            }.isSuccess
+            if (!persisted) return AddPeerOutcome.PersistenceFailed
         }
         return AddPeerOutcome.Adopted(peerIdHex, outcome)
     }
@@ -365,6 +382,15 @@ class MeshRepository @Inject constructor(
         }
     }
 
+    fun myPairingCode(): String? = PairingCodeCodec.forQr(myAdvertisement())
+
+    fun persistedVerifiedPeerIds(): Set<String> = trustedPeers.all()
+        .filterValues { it.verified }
+        .keys
+
+    fun isPersistedVerifiedPeer(peerIdHex: String): Boolean =
+        trustedPeers.get(peerIdHex)?.verified == true
+
     /** Trusted-peers: current trust level, or `null` if this peer id is malformed. */
     fun trustLevelFor(peerIdHex: String): iriscode.FfiTrustLevel? {
         val identity = PeerIdCodec.fromHex(peerIdHex) ?: return null
@@ -372,8 +398,12 @@ class MeshRepository @Inject constructor(
     }
 
     /** Trusted-peers: drop a peer's persisted trusted-key record. */
-    fun forgetTrustedPeer(peerIdHex: String) {
+    suspend fun forgetTrustedPeer(peerIdHex: String) {
+        val identity = PeerIdCodec.fromHex(peerIdHex)
+        if (identity != null) runCatching { engine.get().forgetPeer(identity) }
         trustedPeers.remove(peerIdHex)
+        knownPeers.remove(peerIdHex)
+        outbox.removeRecipient(peerIdHex)
     }
 
     /** Spill the relay outbox into the engine (WorkManager entrypoint). */

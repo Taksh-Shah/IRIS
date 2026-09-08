@@ -1041,6 +1041,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_drop_all_links(
     ): Int
+    external fun uniffi_iriscode_checksum_method_irisengine_forget_peer(
+    ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_node_id(
     ): Int
     external fun uniffi_iriscode_checksum_method_irisengine_register_peer_key(
@@ -1218,6 +1220,8 @@ external fun uniffi_iriscode_fn_method_irisengine_broadcast_text(`ptr`: Long,`te
 external fun uniffi_iriscode_fn_method_irisengine_compute_sas(`ptr`: Long,`theirIdentityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_iriscode_fn_method_irisengine_drop_all_links(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_iriscode_fn_method_irisengine_forget_peer(`ptr`: Long,`identityPubkey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus,
 ): Unit
 external fun uniffi_iriscode_fn_method_irisengine_node_id(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1509,6 +1513,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_drop_all_links() != 16155) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_iriscode_checksum_method_irisengine_forget_peer() != 28277) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_iriscode_checksum_method_irisengine_node_id() != 19294) {
@@ -6515,6 +6522,12 @@ public interface IrisEngineInterface {
     fun `dropAllLinks`()
     
     /**
+     * Forget a local peer binding immediately from both the signed trust
+     * store and the legacy hardware-bench directory.
+     */
+    fun `forgetPeer`(`identityPubkey`: kotlin.ByteArray)
+
+    /**
      * The node's 32-byte PeerId for outbound messages.
      */
     fun `nodeId`(): kotlin.ByteArray
@@ -6741,7 +6754,7 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
      * record; `address` is `"host:port"` (numeric IP, no DNS resolution).
      */
     @Throws(IrisFfiException::class)override fun `addInternetLanPeer`(`peerIdHex`: kotlin.String, `address`: kotlin.String)
-        = 
+        =
     callWithHandle {
     uniffiRustCallWithError(IrisFfiException) { _status ->
     UniffiLib.uniffi_iriscode_fn_method_irisengine_add_internet_lan_peer(
@@ -6749,10 +6762,10 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
         FfiConverterString.lower(`peerIdHex`),FfiConverterString.lower(`address`),_status)
 }
     }
-    
-    
 
-    
+
+
+
     /**
      * Trusted-peers: adopt a peer's signed key advertisement — scanned via
      * QR or typed in manually — into the shared trust store. Returns the
@@ -6862,6 +6875,23 @@ open class IrisEngine: Disposable, AutoCloseable, IrisEngineInterface
     UniffiLib.uniffi_iriscode_fn_method_irisengine_drop_all_links(
         it,
         _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Forget a local peer binding immediately from both the signed trust
+     * store and the legacy hardware-bench directory.
+     */
+    @Throws(IrisFfiException::class)override fun `forgetPeer`(`identityPubkey`: kotlin.ByteArray)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(IrisFfiException) { _status ->
+    UniffiLib.uniffi_iriscode_fn_method_irisengine_forget_peer(
+        it,
+        FfiConverterByteArray.lower(`identityPubkey`),_status)
 }
     }
     
@@ -9184,7 +9214,6 @@ public object FfiConverterSequenceTypeFfiTransportDiag: FfiConverterRustBuffer<L
         }
     }
 }
-
 
 
 

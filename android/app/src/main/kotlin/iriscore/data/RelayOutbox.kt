@@ -61,6 +61,14 @@ class RelayOutbox(
 
     val size: Int get() = count.get()
 
+    /** Drop locally queued sends for a peer the operator has forgotten. */
+    suspend fun removeRecipient(recipientHex: String): Int = mutex.withLock {
+        val before = queue.size
+        queue.removeAll { it.recipientHex.equals(recipientHex, ignoreCase = true) }
+        count.set(queue.size)
+        before - queue.size
+    }
+
     /** Drain up to [maxItems] applying [drain]. Items are consumed in FIFO order. */
     suspend fun drain(
         maxItems: Int = Int.MAX_VALUE,

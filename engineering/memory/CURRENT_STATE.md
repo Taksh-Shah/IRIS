@@ -1,7 +1,13 @@
 # CURRENT_STATE.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T15:20:00+05:30
+**Last updated**: 2026-09-08T06:30:00+05:30
+
+> **Active human-requested work:** ANDROID-PAIR-001 is ACCEPTED after the user's
+> successful original-peer QR validation. RES-0033
+> and ANDROID_PAIRING_DESIGN.md select an APK-bundled offline QR scanner,
+> signed-code paste fallback, explicit SAS confirmation, durable local aliases,
+> and alias/contact recipient selection. Security review findings are included.
 
 > **Current reconciliation (2026-09-06):** The software graph is complete/deferred,
 > but the physical-device phase is active. P1 is `10BCA20F4M000BB` (vivo V2205,

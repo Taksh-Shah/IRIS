@@ -12,6 +12,7 @@ crates/**/target
 
 # Android / Gradle build outputs (keep committed generated UniFFI bindings in kotlin/.../iriscode/)
 android/.gradle/
+android/.kotlin/
 android/**/build/
 kotlin/build/
 **/build/

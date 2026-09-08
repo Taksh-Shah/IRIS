@@ -31,10 +31,10 @@ data class TrustedPeerRecord(
 )
 
 @Singleton
-class TrustedPeerStore @Inject constructor(
-    @ApplicationContext context: Context,
-) {
-    private val file = File(context.noBackupFilesDir, FILE_NAME)
+class TrustedPeerStore internal constructor(private val file: File) {
+    @Inject constructor(
+        @ApplicationContext context: Context,
+    ) : this(File(context.noBackupFilesDir, FILE_NAME))
 
     @Synchronized
     fun all(): Map<String, TrustedPeerRecord> {
@@ -42,18 +42,20 @@ class TrustedPeerStore @Inject constructor(
         val o = runCatching { JSONObject(file.readText()) }.getOrElse { return emptyMap() }
         return buildMap {
             o.keys().forEach { peerHex ->
-                val entry = o.getJSONObject(peerHex)
-                put(
-                    peerHex,
-                    TrustedPeerRecord(
-                        x25519Hex = entry.getString("x25519"),
-                        keyGenCounter = entry.optLong("counter", 0L),
-                        validUntil = entry.optLong("validUntil", 0L),
-                        sigHex = entry.getString("sig"),
-                        verified = entry.optBoolean("verified", false),
-                        createdAtMs = entry.optLong("createdAtMs", 0L),
-                    ),
-                )
+                runCatching {
+                    val entry = o.getJSONObject(peerHex)
+                    put(
+                        peerHex.lowercase(),
+                        TrustedPeerRecord(
+                            x25519Hex = entry.getString("x25519"),
+                            keyGenCounter = entry.optLong("counter", 0L),
+                            validUntil = entry.optLong("validUntil", 0L),
+                            sigHex = entry.getString("sig"),
+                            verified = entry.optBoolean("verified", false),
+                            createdAtMs = entry.optLong("createdAtMs", 0L),
+                        ),
+                    )
+                }
             }
         }
     }
@@ -70,6 +72,7 @@ class TrustedPeerStore @Inject constructor(
         validUntil: Long,
         sigHex: String,
         createdAtMs: Long,
+        verified: Boolean,
     ) {
         val root = readRoot()
         val entry = JSONObject()
@@ -77,10 +80,10 @@ class TrustedPeerStore @Inject constructor(
         entry.put("counter", keyGenCounter)
         entry.put("validUntil", validUntil)
         entry.put("sig", sigHex.lowercase())
-        entry.put("verified", root.optJSONObject(peerIdHex.lowercase())?.optBoolean("verified", false) ?: false)
+        entry.put("verified", verified)
         entry.put("createdAtMs", createdAtMs)
         root.put(peerIdHex.lowercase(), entry)
-        file.writeText(root.toString())
+        AtomicTextFile.write(file, root.toString())
     }
 
     /** Mark a peer `Verified` (out-of-band SAS confirmation succeeded). */
@@ -90,14 +93,14 @@ class TrustedPeerStore @Inject constructor(
         val entry = root.optJSONObject(peerIdHex.lowercase()) ?: return
         entry.put("verified", true)
         root.put(peerIdHex.lowercase(), entry)
-        file.writeText(root.toString())
+        AtomicTextFile.write(file, root.toString())
     }
 
     @Synchronized
     fun remove(peerIdHex: String) {
         val root = readRoot()
         root.remove(peerIdHex.lowercase())
-        file.writeText(root.toString())
+        AtomicTextFile.write(file, root.toString())
     }
 
     private fun readRoot(): JSONObject =

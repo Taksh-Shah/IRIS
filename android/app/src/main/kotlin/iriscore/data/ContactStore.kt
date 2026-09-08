@@ -10,7 +10,8 @@ import javax.inject.Singleton
 /**
  * HV-56: durable contact book — `nodeIdHex -> user-assigned name`.
  *
- * Stored as JSON in `filesDir/iris_contacts.json`, the same pattern as
+ * Stored as JSON in `noBackupFilesDir/iris_contacts.json`, beside the local
+ * trust database so aliases cannot be restored onto a different identity.
  * [KnownPeersStore]. Contacts persist across restarts and are loaded once
  * by the ViewModel at init. Each `/name <peerId> <alias>` write is reflected
  * immediately in the ViewModel's [contactsFlow] so the UI updates without a
@@ -21,16 +22,37 @@ import javax.inject.Singleton
  * an extra Gradle dependency for this use case.
  */
 @Singleton
-class ContactStore @Inject constructor(
-    @ApplicationContext context: Context,
+class ContactStore private constructor(
+    private val file: File,
+    legacy: File?,
 ) {
-    private val file = File(context.filesDir, FILE_NAME)
+    @Inject constructor(
+        @ApplicationContext context: Context,
+    ) : this(File(context.noBackupFilesDir, FILE_NAME), File(context.filesDir, FILE_NAME))
+
+    internal constructor(file: File) : this(file, null)
+
+    init {
+        if (!file.exists() && legacy?.exists() == true) {
+            runCatching {
+                AtomicTextFile.write(file, legacy.readText())
+                legacy.delete()
+            }
+        }
+    }
 
     @Synchronized
     fun all(): Map<String, String> {
         if (!file.exists()) return emptyMap()
         val o = runCatching { JSONObject(file.readText()) }.getOrElse { return emptyMap() }
-        return buildMap { o.keys().forEach { put(it, o.getString(it)) } }
+        return buildMap {
+            o.keys().forEach { id ->
+                runCatching {
+                    val alias = AliasPolicy.normalize(o.getString(id)) ?: return@runCatching
+                    put(id.lowercase(), alias)
+                }
+            }
+        }
     }
 
     /**
@@ -46,17 +68,29 @@ class ContactStore @Inject constructor(
     @Synchronized
     fun save(peerIdHex: String, name: String): Boolean {
         val id = peerIdHex.lowercase()
-        val trimmed = name.trim()
+        val trimmed = AliasPolicy.normalize(name) ?: return false
         val o = if (file.exists()) {
             runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
         } else JSONObject()
         val collision = o.keys().asSequence().any { existingId ->
-            existingId != id && o.getString(existingId).equals(trimmed, ignoreCase = true)
+            existingId != id && runCatching {
+                AliasPolicy.comparisonKey(o.getString(existingId)) == AliasPolicy.comparisonKey(trimmed)
+            }.getOrDefault(false)
         }
         if (collision) return false
         o.put(id, trimmed)
-        file.writeText(o.toString())
+        AtomicTextFile.write(file, o.toString())
         return true
+    }
+
+    @Synchronized
+    fun isAliasAvailable(peerIdHex: String, name: String): Boolean {
+        val normalized = AliasPolicy.normalize(name) ?: return false
+        val id = peerIdHex.lowercase()
+        return all().none { (existingId, existingName) ->
+            existingId != id &&
+                AliasPolicy.comparisonKey(existingName) == AliasPolicy.comparisonKey(normalized)
+        }
     }
 
     @Synchronized
@@ -67,7 +101,7 @@ class ContactStore @Inject constructor(
         if (!file.exists()) return
         val o = runCatching { JSONObject(file.readText()) }.getOrElse { return }
         o.remove(peerIdHex.lowercase())
-        file.writeText(o.toString())
+        AtomicTextFile.write(file, o.toString())
     }
 
     private companion object {

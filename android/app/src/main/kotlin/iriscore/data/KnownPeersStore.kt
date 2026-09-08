@@ -39,7 +39,16 @@ class KnownPeersStore @Inject constructor(
             runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
         } else JSONObject()
         o.put(peerIdHex.lowercase(), x25519PubHex.lowercase())
-        file.writeText(o.toString())
+        AtomicTextFile.write(file, o.toString())
+    }
+
+    /** Remove the legacy unsigned mapping so `/forget` survives a restart. */
+    @Synchronized
+    fun remove(peerIdHex: String) {
+        if (!file.exists()) return
+        val root = runCatching { JSONObject(file.readText()) }.getOrElse { return }
+        root.remove(peerIdHex.lowercase())
+        AtomicTextFile.write(file, root.toString())
     }
 
     private companion object {

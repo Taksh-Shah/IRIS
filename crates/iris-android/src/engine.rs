@@ -173,15 +173,19 @@ impl iris_core::crypto::key_directory::KeyDirectory for BenchKeyDirectory {
 /// of the existing one rather than replacing it, so the bench harness keeps
 /// working unchanged.
 struct CompositeKeyDirectory {
-    trust: iris_core::identity::TrustKeyDirectory,
+    trust: iris_core::identity::TrustStore,
     bench: Arc<BenchKeyDirectory>,
 }
 
 impl iris_core::crypto::key_directory::KeyDirectory for CompositeKeyDirectory {
     fn x25519_pubkey(&self, node_id: &[u8; 32]) -> Option<[u8; 32]> {
-        self.trust
-            .x25519_pubkey(node_id)
-            .or_else(|| self.bench.x25519_pubkey(node_id))
+        match self.trust.level(node_id) {
+            iris_core::identity::TrustLevel::Unknown => self.bench.x25519_pubkey(node_id),
+            // A known signed record is authoritative. KeyChanged and Revoked
+            // intentionally resolve to None and must never fall through to an
+            // old unsigned hardware-bench key.
+            _ => self.trust.resolve_x25519(node_id),
+        }
     }
 }
 
@@ -368,7 +372,7 @@ impl IrisEngine {
             // `iris_bench` hardware harness keeps working unchanged — see
             // `CompositeKeyDirectory`'s doc.
             engine.set_key_directory(Arc::new(CompositeKeyDirectory {
-                trust: iris_core::identity::TrustKeyDirectory::new((*trust_store).clone()),
+                trust: (*trust_store).clone(),
                 bench: keydir.clone(),
             }));
 
@@ -627,6 +631,19 @@ impl IrisEngine {
         self.trust_store
             .verify_peer(&id, &key)
             .map_err(|e| IrisFfiError::InvalidArgument(e.to_string()))
+    }
+
+    /// Forget a local peer binding immediately from both the signed trust
+    /// store and the legacy hardware-bench directory.
+    pub fn forget_peer(&self, identity_pubkey: Vec<u8>) -> Result<(), IrisFfiError> {
+        let id = crate::trust::to_arr32(&identity_pubkey, "identity_pubkey")?;
+        self.trust_store.forget_peer(&id);
+        self.keydir
+            .0
+            .lock()
+            .map_err(|_| IrisFfiError::IoError("keydir poisoned".into()))?
+            .remove(&id);
+        Ok(())
     }
 
     /// Trusted-peers: the 5-character order-independent Short Authentication
@@ -1120,6 +1137,10 @@ mod tests {
 
     use async_trait::async_trait;
 
+    use iris_core::crypto::key_directory::KeyDirectory;
+    use iris_core::crypto::keygen::{IdentityKeypair, X25519Keypair};
+    use iris_core::identity::KeyAdvertisementV1;
+
     use iris_core::message::{DiscoveryConfig, PeerInfo};
     use iris_core::transport::wifiaware::{
         NdpHandle, PeerHandle, PublishConfig, SimMeshCoordinator, SimulatedWifiAwareAdapter,
@@ -1136,6 +1157,40 @@ mod tests {
     use crate::ffi::IrisFfiError;
 
     use super::*;
+
+    #[test]
+    fn signed_trust_block_never_falls_back_to_unsigned_bench_key() {
+        let identity = IdentityKeypair::generate();
+        let signed_key = X25519Keypair::generate();
+        let bench_key = X25519Keypair::generate().public_bytes();
+        let peer = identity.verifying_bytes();
+        let trust = iris_core::identity::TrustStore::new();
+        let bench = Arc::new(BenchKeyDirectory(std::sync::Mutex::new(
+            std::collections::HashMap::from([(peer, bench_key)]),
+        )));
+        let directory = CompositeKeyDirectory {
+            trust: trust.clone(),
+            bench,
+        };
+
+        assert_eq!(directory.x25519_pubkey(&peer), Some(bench_key));
+        let ad = KeyAdvertisementV1::build(&identity, signed_key.public_bytes(), 0, 0).unwrap();
+        trust.adopt_advertisement(&ad, unix_now());
+        assert_eq!(
+            directory.x25519_pubkey(&peer),
+            Some(signed_key.public_bytes())
+        );
+
+        let conflicting =
+            KeyAdvertisementV1::build(&identity, X25519Keypair::generate().public_bytes(), 0, 0)
+                .unwrap();
+        trust.adopt_advertisement(&conflicting, unix_now());
+        assert_eq!(
+            trust.level(&peer),
+            iris_core::identity::TrustLevel::KeyChanged
+        );
+        assert_eq!(directory.x25519_pubkey(&peer), None);
+    }
 
     fn hex_node(b: [u8; 32]) -> String {
         b.iter().map(|x| format!("{x:02x}")).collect()

@@ -8,12 +8,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import iriscore.command.CommandExecutor
 import iriscore.command.CommandResult
 import iriscore.data.AppPreferences
+import iriscore.data.AliasPolicy
 import iriscore.data.ContactStore
 import iriscore.data.MeshRepository
 import iriscore.service.IrisBleService
 import iriscore.ui.state.ConsoleEntry
 import iriscore.ui.state.MeshStatus
 import iriscore.ui.state.MeshUiState
+import iriscore.ui.state.PairingUiState
 import iriscore.util.MeshPermissions
 import iriscore.worker.WorkScheduler
 import java.util.concurrent.atomic.AtomicBoolean
@@ -89,6 +91,12 @@ class MeshViewModel @Inject constructor(
     private val _recipient = MutableStateFlow<String?>(null)
     val recipient: StateFlow<String?> = _recipient.asStateFlow()
 
+    private val _pairing = MutableStateFlow<PairingUiState>(PairingUiState.Idle)
+    val pairing: StateFlow<PairingUiState> = _pairing.asStateFlow()
+
+    private val _myPairingCode = MutableStateFlow<String?>(null)
+    val myPairingCode: StateFlow<String?> = _myPairingCode.asStateFlow()
+
     /** Messages the user cleared with `/clear` stay hidden without being deleted. */
     private val _clearedBeforeMs = MutableStateFlow(0L)
 
@@ -133,7 +141,7 @@ class MeshViewModel @Inject constructor(
     private val started = AtomicBoolean(false)
 
     init {
-        _contacts.value = contactStore.all()
+        reloadVerifiedContacts()
         // HV-60: reset the retry counter whenever the engine comes back up so
         // the escalated "restart the app" guidance clears on a successful reconnect.
         viewModelScope.launch {
@@ -145,6 +153,93 @@ class MeshViewModel @Inject constructor(
         // NEARBY_WIFI_DEVICES yields a mesh that reports RUNNING while silently
         // carrying no traffic.
         if (MeshPermissions.allGranted(appContext)) ensureStarted()
+    }
+
+    fun loadMyPairingCode() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _myPairingCode.value = runCatching { repository.myPairingCode() }.getOrNull()
+        }
+    }
+
+    fun beginPairing(code: String) {
+        _pairing.value = PairingUiState.Working
+        viewModelScope.launch(Dispatchers.IO) {
+            _pairing.value = when (val result = repository.addTrustedPeer(code)) {
+                MeshRepository.AddPeerOutcome.InvalidBlob -> PairingUiState.Error("Invalid or damaged IRIS pairing code")
+                MeshRepository.AddPeerOutcome.SelfPairing -> PairingUiState.Error("This is this phone's own pairing code")
+                MeshRepository.AddPeerOutcome.PersistenceFailed -> PairingUiState.Error("Pairing was not saved; check device storage and try again")
+                is MeshRepository.AddPeerOutcome.Adopted -> when (result.outcome) {
+                    iriscode.FfiAdoptionOutcome.BOUND_UNVERIFIED,
+                    iriscode.FfiAdoptionOutcome.DUPLICATE,
+                    iriscode.FfiAdoptionOutcome.REFRESHED,
+                    iriscode.FfiAdoptionOutcome.ROTATION_ADOPTED -> {
+                        val sas = repository.fingerprintFor(result.peerIdHex)
+                        if (sas == null) PairingUiState.Error("Could not calculate verification code")
+                        else PairingUiState.Preview(result.peerIdHex, sas)
+                    }
+                    iriscode.FfiAdoptionOutcome.KEY_CHANGE_WARN -> PairingUiState.Error("Safety stop: this identity presented a different key")
+                    iriscode.FfiAdoptionOutcome.REVOKED -> PairingUiState.Error("This identity has been revoked")
+                    iriscode.FfiAdoptionOutcome.REJECTED -> PairingUiState.Error("The signed pairing code failed verification")
+                }
+            }
+        }
+    }
+
+    fun confirmPairing(alias: String) {
+        val preview = _pairing.value as? PairingUiState.Preview ?: return
+        val normalized = AliasPolicy.normalize(alias)
+        if (normalized == null) {
+            _pairing.value = PairingUiState.Error("Use a 1–32 character name without /, @, or control characters")
+            return
+        }
+        if (!contactStore.isAliasAvailable(preview.peerIdHex, normalized)) {
+            _pairing.value = PairingUiState.Error("That name is already used by another contact")
+            return
+        }
+        _pairing.value = PairingUiState.Working
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!repository.confirmPeer(preview.peerIdHex)) {
+                _pairing.value = PairingUiState.Error("Verification failed; scan or paste a fresh code")
+                return@launch
+            }
+            val saved = runCatching { contactStore.save(preview.peerIdHex, normalized) }.getOrDefault(false)
+            if (!saved) {
+                _pairing.value = PairingUiState.Error("Verified for this session, but the contact name could not be saved")
+                return@launch
+            }
+            reloadVerifiedContacts()
+            _pairing.value = PairingUiState.Saved(preview.peerIdHex, normalized)
+        }
+    }
+
+    fun resetPairing() {
+        _pairing.value = PairingUiState.Idle
+    }
+
+    fun selectContact(peerIdHex: String) {
+        if (!repository.isPersistedVerifiedPeer(peerIdHex)) return
+        _recipient.value = peerIdHex.lowercase()
+    }
+
+    fun renameContact(peerIdHex: String, alias: String): Boolean {
+        if (!repository.isPersistedVerifiedPeer(peerIdHex)) return false
+        val saved = runCatching { contactStore.save(peerIdHex, alias) }.getOrDefault(false)
+        if (saved) reloadVerifiedContacts()
+        return saved
+    }
+
+    fun forgetContact(peerIdHex: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            contactStore.remove(peerIdHex)
+            repository.forgetTrustedPeer(peerIdHex)
+            if (_recipient.value.equals(peerIdHex, ignoreCase = true)) _recipient.value = null
+            reloadVerifiedContacts()
+        }
+    }
+
+    private fun reloadVerifiedContacts() {
+        val verified = repository.persistedVerifiedPeerIds()
+        _contacts.value = contactStore.all().filterKeys { it in verified }
     }
 
     /**
@@ -256,12 +351,14 @@ class MeshViewModel @Inject constructor(
         // Echo commands and references so the transcript reads back; a plain
         // message needs no echo, it appears as a message.
         if (line.startsWith('/') || line.startsWith('@')) {
-            appendEvent(ConsoleEntry.echo(line))
+            appendEvent(ConsoleEntry.echo(if (line.startsWith("/addkey ", ignoreCase = true)) "/addkey •••" else line))
         }
 
         // HV-56: provide a contact resolver so /to and @ accept saved names.
         val contactResolver: (String) -> String? = { name ->
-            _contacts.value.entries.firstOrNull { it.value.lowercase() == name.lowercase() }?.key
+            _contacts.value.entries.firstOrNull {
+                AliasPolicy.comparisonKey(it.value) == AliasPolicy.comparisonKey(name)
+            }?.key
         }
         when (val result = CommandExecutor.execute(line, hasRecipient = _recipient.value != null, contactResolver = contactResolver)) {
             is CommandResult.Send -> send(_recipient.value.orEmpty(), result.text, result.priority)
@@ -291,6 +388,12 @@ class MeshViewModel @Inject constructor(
                                 ),
                                 status = "REJECTED",
                             ),
+                        )
+                        MeshRepository.AddPeerOutcome.SelfPairing -> appendEvent(
+                            ConsoleEntry.system("ADDKEY", listOf("error" to "this is this phone's own pairing code"), "REJECTED"),
+                        )
+                        MeshRepository.AddPeerOutcome.PersistenceFailed -> appendEvent(
+                            ConsoleEntry.system("ADDKEY", listOf("error" to "verified data could not be saved"), "FAILED"),
                         )
                         is MeshRepository.AddPeerOutcome.Adopted -> {
                             val peerShort = outcome.peerIdHex.take(16) + "…"
@@ -420,6 +523,16 @@ class MeshViewModel @Inject constructor(
 
             is CommandResult.SaveContact -> {
                 viewModelScope.launch(Dispatchers.IO) {
+                    if (!repository.isPersistedVerifiedPeer(result.peerIdHex)) {
+                        appendEvent(
+                            ConsoleEntry.system(
+                                title = "CONTACT",
+                                lines = listOf("reason" to "pair and verify this peer before assigning a name"),
+                                status = "REJECTED",
+                            ),
+                        )
+                        return@launch
+                    }
                     val saved = contactStore.save(result.peerIdHex, result.name)
                     if (!saved) {
                         appendEvent(

@@ -7,7 +7,7 @@ meta:
   version: "0.2.0"
   created: "2025-01-01"
   last_validated: "2026-08-19"
-  total_nodes: 32
+  total_nodes: 34
   description: "Directed dependency graph of all IRIS engineering capabilities"
   validation_status: "31 COMPLETE - GRAPH EXHAUSTED of eligible autonomous nodes (SAT-001 ACCEPTED iter ~175, evidence 8; LEGAL-001 RESEARCH_COMPLETE = human/legal carry per DEC-SAT-0006 context; BLK-0002 anticipates incremental additions) — AC-1..17 table, verifier APPROVE, live 720/0/1 clippy 0 fmt clean — AC-1..15 mapped, live 716/0/1 clippy 0 fmt clean - RQ-1..6 staged for RES-0028) then LEGAL-001 RESEARCH_COMPLETE carry (LORA-001 ACCEPTED iter ~167, evidence 8 — full pipeline DISCOVER~160..ACCEPT~167; AC-1..17 satisfied w/ AC-15 GATED/BLK-0005; verifier APPROVE; live 695/0/1 clippy 0 fmt clean) — AC-1..17 table, verifier APPROVE, live 695/0/1 clippy 0 fmt clean at recorded revision — RT-101 CRITICAL billing fix + RT-102..107/109/200 resolved, live 695/0/1 clippy 0 fmt clean) — AC-1..15 mapped, live 686/0/1 clippy 0 fmt clean, transient lib flake disclosed w/ deflake follow-up) — first OPERATIONS node PILOT-001 ACCEPTED (iter ~159). LORA-001 pipeline DISCOVER ~160 -> RESEARCH ~161 (RES-0027 PROCEED) -> DESIGN ~162 -> IMPLEMENT ~163 -> TEST ~164; SECURITY_REVIEW next (~165); SAT-001 remains DISCOVERED."
   note: "PROJECT_STATE.yaml must be generated from this graph, not maintained separately"
@@ -812,6 +812,28 @@ nodes:
       - "AC-15: VERIFY — independent verifier reproduction COMPLETE (iter 121): ANDROID-001_VERIFICATION.md v1.1, verdict APPROVE_WITH_NOTES all reconciled"
     stage_note: "ACCEPTED (iter 122) - VERIFY COMPLETE (iter 121): ANDROID-001_VERIFICATION.md v1.1 AC-1..15 evidence table + independent verifier (ses_fedd3858dffe3C0MMoxbmxjdt9) APPROVE_WITH_NOTES -> all 6 notes reconciled in-pass (AC-3 stale spike name -> current coverage; AC-8 KeystoreEd25519Test 9->8 total 40->39; AC-10 rustfmt made clean via cargo fmt --all + re-verify 613/0/1; committed -> working-tree status; wrapper properties-only; JVM rows labeled source-presence/env-gated). ACCEPTED with GATED AC-1 (cargo-ndk), AC-6 (gradlew), AC-13 (BLK-0005 hardware) + known_limitations (working-tree untracked pending operator commit, wrapper regeneration, JVM execution on toolchain host). SECURITY_REVIEW CLEARED (iter 120). Next: TRANSITION to TEST-001."
 
+  - id: "ANDROID-PAIR-001"
+    name: "Android Trusted-Peer Pairing UX"
+    type: PLATFORM
+    priority: P0
+    status: COMPLETE
+    description: "Offline QR and signed-code pairing, SAS verification, durable aliases, and contact-based messaging"
+    dependencies: ["ANDROID-001", "IDENT-001"]
+    acceptance_criteria:
+      - "Own signed advertisement renders as a scannable, copyable QR"
+      - "Bundled offline QR scanner and manual signed-code paste share one validated parser"
+      - "Alias is persisted only after signed advertisement adoption and explicit SAS confirmation"
+      - "Alias selection and /to alias resolve to the verified PeerId"
+      - "Rename, forget, duplicate alias, malformed input, key-change and revoked paths behave safely"
+      - "Focused Rust and Android tests, full Android JVM suite, assembleDebug, lint and two-device APK installation pass"
+    evidence:
+      - "engineering/memory/records/research/RES-0033.md — official Android/ML Kit research and signed-input decision"
+      - "docs/implementation/ANDROID_PAIRING_DESIGN.md — selected flow, failures, security behavior and AC-1..10"
+      - "engineering/memory/records/verification/ANDROID-PAIR-001_VERIFY.md — tests, APK install, cold launch, and user-confirmed original-peer QR validation"
+    known_limitations:
+      - "Physical bidirectional message observation remains a user-run hardware gate after installation"
+    stage_note: "ACCEPTED 2026-09-08: implementation, verification, APK deployment, and user-confirmed original-peer QR validation complete"
+
   - id: "IOS-001"
     name: "iOS Platform Integration"
     type: PLATFORM
@@ -1204,6 +1226,16 @@ edges:
 
   - from: "ANDROID-001"
     to: "PILOT-001"
+    relationship: enables
+    strength: strong
+
+  - from: "ANDROID-001"
+    to: "ANDROID-PAIR-001"
+    relationship: enables
+    strength: strong
+
+  - from: "IDENT-001"
+    to: "ANDROID-PAIR-001"
     relationship: enables
     strength: strong
 

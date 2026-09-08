@@ -67,6 +67,7 @@ import iriscore.ui.components.IrisStatusChip
 import iriscore.ui.components.IrisSystemEvent
 import iriscore.ui.components.StatusTone
 import iriscore.ui.components.Text
+import iriscore.ui.components.TrustedPeersDialog
 import iriscore.ui.state.ConsoleEntry
 import iriscore.ui.state.MeshStatus
 import iriscore.ui.state.MeshUiState
@@ -92,9 +93,30 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
     // HV-60: retry counter drives escalated help text in RetryNotice.
     val reconnectAttempts by viewModel.reconnectAttempts.collectAsStateWithLifecycle()
+    val pairing by viewModel.pairing.collectAsStateWithLifecycle()
+    val myPairingCode by viewModel.myPairingCode.collectAsStateWithLifecycle()
 
     var input by rememberSaveable { mutableStateOf("") }
     var selectedCommand by remember { mutableStateOf(0) }
+    var peersOpen by rememberSaveable { mutableStateOf(false) }
+
+    if (peersOpen) {
+        TrustedPeersDialog(
+            contacts = contacts,
+            pairing = pairing,
+            myPairingCode = myPairingCode,
+            onDismiss = {
+                peersOpen = false
+                viewModel.resetPairing()
+            },
+            onLoadMyCode = viewModel::loadMyPairingCode,
+            onBeginPairing = viewModel::beginPairing,
+            onConfirmPairing = viewModel::confirmPairing,
+            onResetPairing = viewModel::resetPairing,
+            onSelect = viewModel::selectContact,
+            onForget = viewModel::forgetContact,
+        )
+    }
 
     val mode = remember(input) { ConsoleInputParser.parse(input) }
     val matches = remember(mode) {
@@ -234,6 +256,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 contacts = contacts,
                 permissionsGranted = permissionsGranted,
                 transportStates = transportStates,
+                onOpenPeers = { peersOpen = true },
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
 
@@ -432,6 +455,7 @@ private fun StatusLine(
     contacts: Map<String, String>,
     permissionsGranted: Boolean,
     transportStates: List<TransportStatus>,
+    onOpenPeers: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -445,6 +469,12 @@ private fun StatusLine(
         Text(text = state.nodeIdShort, style = IrisType.Meta)
 
         Spacer(Modifier.weight(1f))
+
+        Text(
+            text = "PEERS",
+            style = IrisType.Label.copy(color = IrisColors.AccentPrimary),
+            modifier = Modifier.clickable(onClick = onOpenPeers).padding(IrisSpacing.XS),
+        )
 
         if (recipient != null) {
             Text(

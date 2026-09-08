@@ -110,6 +110,17 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
+    // --- Offline trusted-peer QR pairing ---
+    val cameraXVersion = "1.5.3"
+    implementation("androidx.camera:camera-core:$cameraXVersion")
+    implementation("androidx.camera:camera-camera2:$cameraXVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraXVersion")
+    implementation("androidx.camera:camera-view:$cameraXVersion")
+    // Bundled model: scanning works immediately after sideload/install with no
+    // Play Services or first-use network download.
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation("com.google.zxing:core:3.5.3")
+
     // --- Hilt (D-6 compile-time DI) ---
     implementation("com.google.dagger:hilt-android:2.57.2")
     ksp("com.google.dagger:hilt-android-compiler:2.57.2")
@@ -157,6 +168,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     testImplementation("com.google.truth:truth:1.4.4")
+    testImplementation("org.json:json:20240303")
 
     // --- HV-2: Mobly snippet (androidTest APK = the iris_bench device surface) ---
     androidTestImplementation("com.google.android.mobly:mobly-snippet-lib:1.4.0")

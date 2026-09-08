@@ -336,6 +336,18 @@ impl TrustStore {
             .unwrap_or_default()
     }
 
+    /// Remove a locally provisioned peer immediately.
+    ///
+    /// This is a local operator action, not a network revocation. Subsequent
+    /// addressed sends fail closed until a fresh signed advertisement is
+    /// adopted and confirmed again.
+    pub fn forget_peer(&self, identity_pubkey: &[u8; 32]) -> bool {
+        self.inner
+            .lock()
+            .map(|mut entries| entries.remove(identity_pubkey).is_some())
+            .unwrap_or(false)
+    }
+
     /// Whether the store has NO entries at all.
     /// Used to distinguish "security not configured / un-armed" (empty store →
     /// Noop permissive, AC-12) from "configured" (populated store → strict
@@ -471,6 +483,20 @@ mod tests {
             AdoptionOutcome::Duplicate
         );
         assert_eq!(store.level(&id.verifying_bytes()), TrustLevel::Unverified);
+    }
+
+    #[test]
+    fn forget_peer_removes_live_key_and_level() {
+        let (id, x) = (IdentityKeypair::generate(), X25519Keypair::generate());
+        let store = TrustStore::new();
+        let peer = id.verifying_bytes();
+        store.adopt_advertisement(&ad_for(&id, &x, 0, 0), now());
+        store.verify_peer(&peer, &x.public_bytes()).unwrap();
+
+        assert!(store.forget_peer(&peer));
+        assert_eq!(store.level(&peer), TrustLevel::Unknown);
+        assert_eq!(store.resolve_x25519(&peer), None);
+        assert!(!store.forget_peer(&peer));
     }
 
     #[test]

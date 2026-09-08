@@ -137,6 +137,7 @@
 
 ### Research additions
 - RES-0029: WIFIDIRECT-001 Mobly readiness/observation failure research — allocated 2026-09-06; Android Wi-Fi Direct lifecycle, Mobly asynchronous RPC guidance, and fresh two-phone logcat evidence; verdict ADOPT-WITH-CONDITION; harness must poll one message ID through the cycle budget rather than create new IDs while the application socket is attaching.
+- RES-0033: ANDROID-PAIR-001 trusted-peer QR/manual pairing and alias UX — allocated 2026-09-08; official CameraX + bundled ML Kit evidence, hostile-input validation, signed-advertisement/SAS design; verdict PROCEED-WITH-CONDITIONS.
 
 ### Decisions
 - DEC-0001: CBOR over Protocol Buffers (ADR-0001)

@@ -32,7 +32,10 @@ object AdvertisementCodec {
 
     /** `null` if `blob` isn't a valid hex string of exactly [TOTAL_LEN] bytes. */
     fun decode(blob: String): FfiPeerAdvertisement? {
-        val bytes = PeerIdCodec.fromHex(blob.trim()) ?: return null
+        val encoded = blob.trim()
+        // Bound before decoding: fromHex allocates in proportion to its input.
+        if (encoded.length != TOTAL_LEN * 2 || !PeerIdCodec.isHex(encoded)) return null
+        val bytes = PeerIdCodec.fromHex(encoded) ?: return null
         if (bytes.size != TOTAL_LEN) return null
         val buf = ByteBuffer.wrap(bytes)
         val identity = ByteArray(IDENTITY_LEN).also { buf.get(it) }

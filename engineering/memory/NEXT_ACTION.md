@@ -1,7 +1,12 @@
 # NEXT_ACTION.md
 
 **Schema version**: 1.0
-**Last updated**: 2026-09-07T15:20:00+05:30
+**Last updated**: 2026-09-08T06:30:00+05:30
+
+## Current action: ANDROID-PAIR-001 accepted; commit and push
+
+ANDROID-PAIR-001 is implemented and accepted after the user's original-peer QR
+validation. Commit the scoped implementation and push it to `origin/main`.
 
 ## Current action: Tier-5 authenticated relay and LAN listener build-out
 

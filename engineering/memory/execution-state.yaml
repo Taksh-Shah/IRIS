@@ -4,7 +4,7 @@
 # If this file conflicts with CURRENT_STATE.md, THIS file is authoritative for execution decisions.
 
 schema_version: "1.0"
-updated_at: "2026-09-07T15:20:00+05:30"
+updated_at: "2026-09-08T06:30:00+05:30"
 # === EXECUTION CONTROL ===
 execution_status: "ACTIVE"
 # ACTIVE | IDLE | STALLED | HUMAN_GATE | ERROR_RECOVERY | MISSION_COMPLETE | BLOCKED
@@ -22,11 +22,11 @@ mission_id: "IRIS-MAIN-001"
 mission_description: "Advance IRIS from documented state to production-grade resilient communication system"
 
 # === CURRENT POSITION ===
-active_node: "INTERNET-001"
-active_stage: "IMPLEMENT"
-active_action: "Tier-5 verified TLS configuration seam implemented and focused-tested; live TLS stream/pool conversion, relay server/client, LAN listener, NSD, and final APK remain."
-next_action: "Convert the live connection pool to verified TLS streams and implement relay server/client integration, then implement the local TCP listener and Android NSD adapter before the native/APK validation pass."
-last_transition: "STAGE_TRANSITION"
+active_node: "ANDROID-PAIR-001"
+active_stage: "ACCEPT"
+active_action: "ANDROID-PAIR-001 accepted after user-confirmed original-peer QR validation, focused tests, APK build/install, and cold-launch sanity."
+next_action: "Commit and push ANDROID-PAIR-001 to origin/main."
+last_transition: "ACCEPT"
 # NODE_TRANSITION | STAGE_TRANSITION | ACTION_COMPLETE | CHECKPOINT | FAILURE_RECOVERY | HUMAN_GATE
 last_transition_at: "2026-09-07T15:20:00+05:30"
 last_checkpoint: "CHK-0006"
