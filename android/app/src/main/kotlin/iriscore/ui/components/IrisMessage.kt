@@ -115,15 +115,16 @@ fun IrisMessage(
 
         Text(
             text = message.payloadUtf8,
-            style = IrisType.Body,
-            textAlign = textAlign,
+            // The custom Text primitive (IrisPrimitives.kt) has no textAlign
+            // parameter by design — it's built on BasicText, which takes
+            // alignment through TextStyle instead of as its own argument.
+            style = IrisType.Body.copy(textAlign = textAlign),
         )
 
         Spacer(Modifier.height(IrisSpacing.XXS))
         Text(
             text = formatTime(message.receivedAtMs),
-            style = IrisType.Meta,
-            textAlign = textAlign,
+            style = IrisType.Meta.copy(textAlign = textAlign),
         )
     }
 }
