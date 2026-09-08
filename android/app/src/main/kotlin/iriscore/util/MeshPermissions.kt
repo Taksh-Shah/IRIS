@@ -21,9 +21,13 @@ import androidx.core.content.ContextCompat
  *    results still require `ACCESS_FINE_LOCATION` at runtime.
  *  - API 31+: `BLUETOOTH_SCAN` (declared `neverForLocation`),
  *    `BLUETOOTH_ADVERTISE`, `BLUETOOTH_CONNECT`.
- *  - API 33+: `NEARBY_WIFI_DEVICES` for Wi-Fi Aware/Direct discovery, and
- *    `POST_NOTIFICATIONS` so the connectedDevice foreground service can show
- *    its mandatory notification.
+ *  - API 33+: `NEARBY_WIFI_DEVICES` for Wi-Fi Aware/Direct discovery.
+ *
+ * NOTE: `POST_NOTIFICATIONS` is intentionally excluded. Android does not
+ * require it to start a foreground service — the FGS system notification is
+ * shown regardless. Gating the entire mesh on notification permission violates
+ * Android policy and hides the app's core function from users who decline.
+ * POST_NOTIFICATIONS is requested separately by the notification channel setup.
  */
 object MeshPermissions {
 
@@ -39,9 +43,14 @@ object MeshPermissions {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.NEARBY_WIFI_DEVICES)
-            add(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
+
+    /** Notification permission — requested separately, never gates the mesh. */
+    val notificationPermission: String? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            Manifest.permission.POST_NOTIFICATIONS
+        else null
 
     /** True once every entry in [required] is granted. */
     fun allGranted(context: Context): Boolean =

@@ -1,6 +1,7 @@
 package iriscore.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import iriscore.designsystem.IrisColors
 import iriscore.designsystem.IrisSpacing
@@ -26,39 +28,37 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * A message.
+ * Direction-aware message row.
  *
- * Editorial rather than bubbled: sender, body, and a quiet timestamp, carried
- * by type and spacing. Chat bubbles would put a container around every line and
- * make IRIS read as a consumer messenger; here the only containers are the ones
- * that earn their place.
+ * Inbound (isOutbound=false): left-aligned, sender name or hex prefix as label.
+ * Outbound (isOutbound=true): right-aligned, "You" as label, delivery chip in header.
+ *
+ * Editorial rather than bubbled — type and spacing carry the distinction, not containers.
  */
 @Composable
 fun IrisMessage(
     message: InboxUiMessage,
     /**
-     * True when the previous message came from the same sender, in which case
-     * the name is dropped and the spacing tightens — a run of messages reads as
-     * one utterance rather than a repeated header.
+     * True when the previous message had the same sender and same direction,
+     * so the name header is suppressed and spacing tightens.
      */
     grouped: Boolean,
     modifier: Modifier = Modifier,
-    /** HV-56: resolved contact name for the sender; null shows the raw hex prefix. */
     contactName: String? = null,
-    /**
-     * HV-57: tapping a received message sets it as the reply recipient — the
-     * same effect as `/to <peerId>` by hand. Null keeps the row inert (e.g.
-     * an outgoing echo of your own sent message, if this composable is ever
-     * reused for that).
-     */
+    /** Tapping a received message sets it as the reply recipient. Null = inert row. */
     onReply: ((senderId: String) -> Unit)? = null,
 ) {
+    val outbound = message.isOutbound
+    val horizontalAlignment = if (outbound) Alignment.End else Alignment.Start
+    val textAlign = if (outbound) TextAlign.End else TextAlign.Start
+
     Column(
+        horizontalAlignment = horizontalAlignment,
         modifier = modifier
             .fillMaxWidth()
             .padding(top = if (grouped) IrisSpacing.XS else IrisSpacing.LG)
             .then(
-                if (onReply != null) {
+                if (!outbound && onReply != null) {
                     Modifier
                         .clickable(onClickLabel = "Reply") { onReply(message.senderId) }
                         .semantics {
@@ -71,38 +71,60 @@ fun IrisMessage(
             ),
     ) {
         if (!grouped) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if (outbound) Arrangement.End else Arrangement.Start,
+            ) {
+                if (!outbound && message.priority == PRIORITY_SOS) {
+                    IrisStatusChip(label = "P0", tone = StatusTone.Critical)
+                    Spacer(Modifier.width(IrisSpacing.SM))
+                }
+                if (outbound) {
+                    // Delivery chip before the "You" label for right-to-left read order.
+                    when (message.deliveryStatus) {
+                        DeliveryStatus.QUEUED -> {
+                            IrisStatusChip(label = "QUEUED", tone = StatusTone.Warning)
+                            Spacer(Modifier.width(IrisSpacing.SM))
+                        }
+                        DeliveryStatus.FAILED -> {
+                            IrisStatusChip(label = "FAILED", tone = StatusTone.Critical)
+                            Spacer(Modifier.width(IrisSpacing.SM))
+                        }
+                        DeliveryStatus.DELIVERED -> {
+                            IrisStatusChip(label = "SENT", tone = StatusTone.Active)
+                            Spacer(Modifier.width(IrisSpacing.SM))
+                        }
+                        else -> Unit
+                    }
+                    if (message.priority == PRIORITY_SOS) {
+                        IrisStatusChip(label = "P0", tone = StatusTone.Critical)
+                        Spacer(Modifier.width(IrisSpacing.SM))
+                    }
+                }
                 Text(
-                    text = contactName ?: message.senderId.take(12),
-                    style = IrisType.Sender,
+                    text = if (outbound) "You" else (contactName ?: message.senderId.take(12)),
+                    style = IrisType.Sender.let {
+                        if (outbound) it.copy(color = IrisColors.AccentPrimary) else it
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
                 )
-                if (message.priority == PRIORITY_SOS) {
-                    Spacer(Modifier.width(IrisSpacing.SM))
-                    IrisStatusChip(label = "P0", tone = StatusTone.Critical)
-                }
-                // HV-58: delivery status chip for outbound messages.
-                when (message.deliveryStatus) {
-                    DeliveryStatus.QUEUED -> {
-                        Spacer(Modifier.width(IrisSpacing.SM))
-                        IrisStatusChip(label = "QUEUED", tone = StatusTone.Warning)
-                    }
-                    DeliveryStatus.FAILED -> {
-                        Spacer(Modifier.width(IrisSpacing.SM))
-                        IrisStatusChip(label = "FAILED", tone = StatusTone.Critical)
-                    }
-                    else -> Unit
-                }
             }
             Spacer(Modifier.height(IrisSpacing.XS))
         }
 
-        Text(text = message.payloadUtf8, style = IrisType.Body)
+        Text(
+            text = message.payloadUtf8,
+            style = IrisType.Body,
+            textAlign = textAlign,
+        )
 
         Spacer(Modifier.height(IrisSpacing.XXS))
-        Text(text = formatTime(message.receivedAtMs), style = IrisType.Meta)
+        Text(
+            text = formatTime(message.receivedAtMs),
+            style = IrisType.Meta,
+            textAlign = textAlign,
+        )
     }
 }
 

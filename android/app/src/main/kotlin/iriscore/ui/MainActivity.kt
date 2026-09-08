@@ -1,10 +1,13 @@
 package iriscore.ui
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,10 +15,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import dagger.hilt.android.AndroidEntryPoint
 import iriscore.designsystem.IrisColors
+import iriscore.designsystem.IrisTheme
 import iriscore.ui.screens.ConsoleScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    // Notification permission is requested once on first run, independently of
+    // the mesh transport permissions. Denying it must not prevent the mesh from
+    // starting — the FGS system notification appears regardless.
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* result ignored: mesh start is not conditioned on this grant */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // HV-21 bench hook: `iris_bench` launches this Activity only to give
@@ -35,13 +46,20 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(IrisColors.BackgroundPrimary.toArgb()),
         )
         super.onCreate(savedInstanceState)
+        // Request notification permission separately from mesh permissions so
+        // a denial here does not gate the mesh bring-up.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
         setContent {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(IrisColors.BackgroundPrimary),
-            ) {
-                ConsoleScreen()
+            IrisTheme {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(IrisColors.BackgroundPrimary),
+                ) {
+                    ConsoleScreen()
+                }
             }
         }
     }

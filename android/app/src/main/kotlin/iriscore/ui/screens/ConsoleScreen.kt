@@ -19,11 +19,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -228,7 +227,11 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(IrisColors.BackgroundPrimary),
+            .background(IrisColors.BackgroundPrimary)
+            // imePadding() shrinks the entire layout when the IME opens so the
+            // LazyColumn and the floating composer both stay above the keyboard.
+            // The floating column only needs navigationBarsPadding() on top of this.
+            .imePadding(),
     ) {
         // Phase 6: the layout adapts by width rather than assuming a phone.
         // Past the tablet breakpoint the reading column is capped and centred
@@ -322,15 +325,13 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         }
 
         // Input and palette float above the transcript, pinned to the bottom.
+        // IME insets are already consumed by imePadding() on the root, so only
+        // the navigation-bar sliver needs to be cleared here.
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .then(contentWidth)
-                // One union, not two chained calls: the IME and navigation-bar
-                // insets overlap, and applying them separately makes the
-                // composer ride too high above the keyboard. `union` takes the
-                // larger of the two, which is what "clear both" actually means.
-                .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+                .navigationBarsPadding()
                 .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD)
                 .onGloballyPositioned { coords ->
                     val measured = with(density) { coords.size.height.toDp() }
@@ -418,13 +419,17 @@ private fun ConsoleRow(
     when (val entry = entries[index]) {
         is ConsoleEntry.Message -> {
             val previous = entries.getOrNull(index - 1)
+            // Group only when the previous row has the same sender AND the same
+            // direction — inbound from peer A and outbound to peer A must not merge.
             val grouped = previous is ConsoleEntry.Message &&
-                previous.message.senderId == entry.message.senderId
+                previous.message.senderId == entry.message.senderId &&
+                previous.message.isOutbound == entry.message.isOutbound
             IrisMessage(
                 message = entry.message,
                 grouped = grouped,
-                onReply = onReply,
-                contactName = contacts[entry.message.senderId],
+                // Reply is only meaningful for inbound messages.
+                onReply = if (!entry.message.isOutbound) onReply else null,
+                contactName = if (!entry.message.isOutbound) contacts[entry.message.senderId] else null,
             )
         }
 

@@ -6,11 +6,13 @@ import java.util.concurrent.atomic.AtomicLong
 enum class MeshStatus { IDLE, STARTING, RUNNING, UNAVAILABLE }
 
 /**
- * HV-58: three-state outbound delivery model shown in the message row.
- * RECEIVED is the inbound case; SENDING/QUEUED/FAILED are the outbound states.
- * DELIVERED is reserved for when the FFI ACK drain is wired (HV-49 follow-up).
+ * Delivery model for message rows.
+ * RECEIVED = inbound. DELIVERED = engine accepted the send (best-effort local
+ * evidence). QUEUED = spooled in RelayOutbox awaiting a future drain. FAILED =
+ * send rejected with no outbox fallback. SENDING is kept for in-flight cases
+ * where the engine call is still outstanding (should be very brief).
  */
-enum class DeliveryStatus { RECEIVED, SENDING, QUEUED, FAILED }
+enum class DeliveryStatus { RECEIVED, SENDING, DELIVERED, QUEUED, FAILED }
 
 /**
  * HV-59: per-transport presence in the status line.
@@ -38,17 +40,21 @@ data class InboxUiMessage(
      * rebuilds the row instead of updating it.
      */
     val uid: Long,
+    /**
+     * For inbound: the remote sender's peer-id hex.
+     * For outbound: the recipient's peer-id hex (or [MeshRepository.BROADCAST_LABEL]).
+     */
     val senderId: String,
     val payloadUtf8: String,
     val priority: UByte,
     val receivedAtMs: Long,
-    /** HV-58: delivery state for outbound messages; RECEIVED for inbound. */
     val deliveryStatus: DeliveryStatus = DeliveryStatus.RECEIVED,
+    /** True for messages this node sent; false for messages this node received. */
+    val isOutbound: Boolean = false,
 ) {
     companion object {
         private val uids = AtomicLong(1L)
 
-        /** Next process-unique row id. */
         fun nextUid(): Long = uids.getAndIncrement()
 
         fun received(
@@ -62,8 +68,22 @@ data class InboxUiMessage(
             payloadUtf8 = payloadUtf8,
             priority = priority,
             receivedAtMs = receivedAtMs,
+            isOutbound = false,
         )
 
+        /** Engine accepted the send — best-effort local delivery evidence. */
+        fun sent(recipientHex: String, payload: String, priority: UByte): InboxUiMessage =
+            InboxUiMessage(
+                uid = nextUid(),
+                senderId = recipientHex,
+                payloadUtf8 = payload,
+                priority = priority,
+                receivedAtMs = System.currentTimeMillis(),
+                deliveryStatus = DeliveryStatus.DELIVERED,
+                isOutbound = true,
+            )
+
+        /** Engine rejected the send; message spooled in RelayOutbox for a future drain. */
         fun pending(recipientHex: String, payload: String, priority: UByte): InboxUiMessage =
             InboxUiMessage(
                 uid = nextUid(),
@@ -72,24 +92,7 @@ data class InboxUiMessage(
                 priority = priority,
                 receivedAtMs = System.currentTimeMillis(),
                 deliveryStatus = DeliveryStatus.QUEUED,
-            )
-
-        /**
-         * HW-2: `MeshRepository.send()` only ever added a row on the FAILURE
-         * path (via [pending]) — a successful `engine.sendText()` returned
-         * `true` and nothing else happened. On real hardware this meant a
-         * sent message never appeared in the console at all: no error, no
-         * history entry, indistinguishable from a message that silently
-         * vanished, whether or not the transport actually delivered it.
-         */
-        fun sent(recipientHex: String, payload: String, priority: UByte): InboxUiMessage =
-            InboxUiMessage(
-                uid = nextUid(),
-                senderId = recipientHex,
-                payloadUtf8 = payload,
-                priority = priority,
-                receivedAtMs = System.currentTimeMillis(),
-                deliveryStatus = DeliveryStatus.SENDING,
+                isOutbound = true,
             )
     }
 }
