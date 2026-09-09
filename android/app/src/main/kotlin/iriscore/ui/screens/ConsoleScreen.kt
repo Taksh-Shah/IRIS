@@ -13,6 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -404,12 +406,20 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         }
 
         // Input and palette float above the transcript, pinned to the bottom.
-        // IME insets are already consumed by imePadding() on the root, so only
-        // the navigation-bar sliver needs to be cleared here.
+        // A vertical gradient fades from transparent at the top to the app
+        // background at the bottom so the last message is never obscured by
+        // the input bar (the same pattern used by WhatsApp / Messenger).
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .then(contentWidth)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.25f to IrisColors.BackgroundPrimary.copy(alpha = 0.92f),
+                        1f to IrisColors.BackgroundPrimary,
+                    ),
+                )
                 .navigationBarsPadding()
                 .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD)
                 .onGloballyPositioned { coords ->

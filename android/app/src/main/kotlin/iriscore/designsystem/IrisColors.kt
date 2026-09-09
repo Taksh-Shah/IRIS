@@ -90,9 +90,9 @@ object IrisColors {
     // legible without competing with the text or breaking the near-monochrome
     // design rule.
 
-    /** Outbound (sent by this node) — a shade above SurfaceRaised. */
-    val BubbleOutbound = Color(0xFF1A2020)
+    /** Outbound (sent by this node) — visible teal tint, clearly distinct from inbound. */
+    val BubbleOutbound = Color(0xFF1C2E2B)
 
-    /** Inbound (received from a peer) — neutral dark surface. */
-    val BubbleInbound = Color(0xFF111111)
+    /** Inbound (received from a peer) — elevated surface, just above the background. */
+    val BubbleInbound = Color(0xFF1A1A1A)
 }

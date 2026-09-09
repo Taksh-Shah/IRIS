@@ -1,5 +1,6 @@
 package iriscore.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,10 +20,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
 import iriscore.command.InputMode
 import iriscore.designsystem.IrisColors
 import iriscore.designsystem.IrisRadius
@@ -32,12 +36,8 @@ import iriscore.designsystem.glass.GlassProminence
 import iriscore.designsystem.glass.IrisGlassSurface
 
 /**
- * The console input — the single place a user types, whatever they mean.
- *
- * The leading sigil is the whole affordance: it shows `>` for a message, and
- * switches to `/` or `@` as the mode changes under the cursor. The user never
- * picks a mode; typing is the mode switch. Rendered on glass because this is
- * the one persistently floating surface in the app.
+ * The console input — message mode looks like a chat input; command/context
+ * modes expose the sigil and monospace style so they read as terminal tokens.
  */
 @Composable
 fun IrisConsoleInput(
@@ -47,18 +47,26 @@ fun IrisConsoleInput(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isMessage = mode is InputMode.Message
+
+    // Sigil is only shown for non-message modes — a plain chat input needs no prompt glyph.
     val sigil = when (mode) {
         is InputMode.Command -> "/"
         is InputMode.Context -> "@"
-        InputMode.Message -> ">"
+        InputMode.Message -> null
     }
-    // Only the machine modes are tinted; an ordinary message keeps the neutral
-    // prompt so writing to a person never looks like operating a terminal.
     val sigilColor = when (mode) {
         is InputMode.Command -> IrisColors.AccentPrimary
         is InputMode.Context -> IrisColors.AccentSuccess
         InputMode.Message -> IrisColors.TextTertiary
     }
+    val placeholder = when (mode) {
+        InputMode.Message -> "Type a message…"
+        is InputMode.Command -> "command"
+        is InputMode.Context -> "peer id or name"
+    }
+
+    val canSend = value.isNotBlank()
 
     IrisGlassSurface(
         modifier = modifier.fillMaxWidth(),
@@ -69,29 +77,29 @@ fun IrisConsoleInput(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = IrisSizing.InputHeight)
-                .padding(horizontal = IrisSpacing.LG, vertical = IrisSpacing.MD),
+                .padding(start = IrisSpacing.LG, end = IrisSpacing.XS, top = IrisSpacing.SM, bottom = IrisSpacing.SM),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = sigil, style = IrisType.Command.copy(color = sigilColor))
-            Spacer(Modifier.width(IrisSpacing.MD))
+            if (sigil != null) {
+                Text(text = sigil, style = IrisType.Command.copy(color = sigilColor))
+                Spacer(Modifier.width(IrisSpacing.SM))
+            }
 
             Box(Modifier.weight(1f)) {
                 if (value.isEmpty()) {
                     Text(
-                        text = "Message, /command, or @peer",
-                        style = IrisType.Command.copy(color = IrisColors.TextQuaternary),
+                        text = placeholder,
+                        style = if (isMessage) {
+                            IrisType.Body.copy(color = IrisColors.TextQuaternary)
+                        } else {
+                            IrisType.Command.copy(color = IrisColors.TextQuaternary)
+                        },
                     )
                 }
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    textStyle = if (mode is InputMode.Message) {
-                        // Human text is set in the human face; commands and
-                        // references stay monospace so they line up as tokens.
-                        IrisType.Body
-                    } else {
-                        IrisType.Command
-                    },
+                    textStyle = if (isMessage) IrisType.Body else IrisType.Command,
                     cursorBrush = SolidColor(IrisColors.AccentPrimary),
                     singleLine = false,
                     maxLines = 5,
@@ -101,26 +109,30 @@ fun IrisConsoleInput(
                 )
             }
 
-            // HV-55: the IME "Send" action key is the only way to send, but
-            // many keyboards (Gboard in some languages, third-party
-            // keyboards, hardware keyboards, some RTL layouts) render that
-            // key as a newline/"done" instead and onSend never fires, with
-            // no visible affordance to send and no accessible route for
-            // TalkBack / motor-impaired users. An explicit button is the
-            // fallback that always works; the IME action stays as a shortcut.
-            Spacer(Modifier.width(IrisSpacing.SM))
-            IconButton(
-                onClick = onSubmit,
-                enabled = value.isNotBlank(),
+            // Send button: filled accent circle when there is text (WhatsApp / Messenger pattern).
+            Spacer(Modifier.width(IrisSpacing.XS))
+            Box(
                 modifier = Modifier
-                    .size(IrisSizing.InputHeight)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (canSend) IrisColors.AccentPrimary else IrisColors.SurfaceRaised,
+                    )
                     .semantics { contentDescription = "Send" },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = null,
-                    tint = if (value.isNotBlank()) IrisColors.AccentPrimary else IrisColors.TextQuaternary,
-                )
+                IconButton(
+                    onClick = onSubmit,
+                    enabled = canSend,
+                    modifier = Modifier.size(40.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = null,
+                        tint = if (canSend) IrisColors.BackgroundPrimary else IrisColors.TextQuaternary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
     }
