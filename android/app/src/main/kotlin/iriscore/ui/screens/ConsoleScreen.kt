@@ -791,7 +791,7 @@ private fun TransportSheet(
             Text(
                 text = "Mesh not running — tap ENABLE to turn on a radio.",
                 style = IrisType.Secondary.copy(color = IrisColors.TextSecondary),
-                modifier = Modifier.padding(horizontal = IrisSpacing.MD, bottom = IrisSpacing.SM),
+                modifier = Modifier.padding(start = IrisSpacing.MD, end = IrisSpacing.MD, bottom = IrisSpacing.SM),
             )
         }
 
