@@ -26,10 +26,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -54,9 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -287,34 +284,10 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         if (atBottom) unseenCount = 0
     }
 
-    // HV-54: the composer floats over the transcript and grows upward as the
-    // user types a multi-line message (up to 5 lines), but the list used to
-    // reserve a fixed bottom padding sized for a one-line composer — so a
-    // longer message covered the newest 1-3 messages with no way to scroll
-    // them into view (the list believed it was already at the end). Measure
-    // the actual floating column's height and feed it into the list's
-    // bottom padding so the reserved space always matches what's really
-    // floating above it.
-    val density = LocalDensity.current
-    var floatingHeight by remember { mutableStateOf(IrisSizing.InputHeight + IrisSpacing.XXL) }
-    // Re-follow the tail as the composer grows/shrinks too, not just when a
-    // new entry arrives — otherwise the last message can still slide back
-    // under the composer as it expands without the list re-scrolling.
-    LaunchedEffect(floatingHeight) {
-        if (entries.isNotEmpty() && atBottom) listState.animateScrollToItem(entries.lastIndex)
-    }
-
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(IrisColors.BackgroundPrimary)
-            // safeDrawing.only(Bottom) = max(navBar, ime) at the bottom.
-            // When keyboard is closed it equals navBarHeight; when the keyboard
-            // is open it equals imeHeight (which already covers the nav bar on
-            // devices where the nav bar stays visible alongside the keyboard).
-            // Using one unified inset avoids the double-padding gap that comes
-            // from stacking imePadding() + navigationBarsPadding() separately.
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)),
+            .background(IrisColors.BackgroundPrimary),
     ) {
         // Phase 6: the layout adapts by width rather than assuming a phone.
         // Past the tablet breakpoint the reading column is capped and centred
@@ -329,12 +302,16 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 Modifier.fillMaxWidth()
             }
 
+        // navigationBarsPadding + imePadding on the outer Column is the only
+        // pattern where imePadding works correctly in Compose. When the keyboard
+        // opens, the Column shrinks; weight(1f) on the message Box absorbs the
+        // change, the input stays as the last child, and there is no gap.
         Column(
             Modifier
                 .fillMaxSize()
-                // The transcript recedes while the palette is open — this is the
-                // backdrop half of the glass effect.
-                .glassBackdrop(active = paletteVisible),
+                .navigationBarsPadding()
+                .imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             StatusLine(
                 state = state,
@@ -344,7 +321,9 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 transportStates = transportStates,
                 onOpenPeers = { peersOpen = true },
                 onOpenTransports = { transportSheetOpen = true },
-                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
+                modifier = Modifier
+                    .then(contentWidth)
+                    .windowInsetsPadding(WindowInsets.statusBars),
             )
 
             if (!permissionsGranted) {
@@ -380,119 +359,116 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 )
             }
 
-            LazyColumn(
-                state = listState,
+            // Message list + unseen pill. weight(1f) means this Box fills all
+            // vertical space not taken by the status line and input bar, and
+            // shrinks cleanly when the keyboard raises the input.
+            Box(
                 modifier = Modifier
                     .weight(1f)
-                    .align(Alignment.CenterHorizontally)
-                    .then(contentWidth),
-                // The composer floats OVER this list, so the transcript has to
-                // reserve room for it. Without this the newest entry — the one
-                // the user most wants to read — sits underneath the input and
-                // cannot be scrolled into view, because the list believes it is
-                // already at the end.
-                contentPadding = PaddingValues(
-                    start = gutter,
-                    end = gutter,
-                    bottom = floatingHeight + IrisSpacing.SM,
-                ),
+                    .then(contentWidth)
+                    .glassBackdrop(active = paletteVisible),
             ) {
-                items(count = entries.size, key = { entries[it].uid }) { index ->
-                    ConsoleRow(
-                        entries = entries,
-                        index = index,
-                        contacts = contacts,
-                        onReply = { senderId -> viewModel.replyTo(senderId) },
-                        onLongPress = { message -> actionSheetTarget = message },
-                    )
-                }
-            }
-        }
-
-        // Input and palette float above the transcript, pinned to the bottom.
-        // A vertical gradient fades from transparent at the top to the app
-        // background at the bottom so the last message is never obscured by
-        // the input bar (the same pattern used by WhatsApp / Messenger).
-        Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .then(contentWidth)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.25f to IrisColors.BackgroundPrimary.copy(alpha = 0.92f),
-                        1f to IrisColors.BackgroundPrimary,
-                    ),
-                )
-                .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD)
-                .onGloballyPositioned { coords ->
-                    val measured = with(density) { coords.size.height.toDp() }
-                    if (measured.value > 0f) floatingHeight = measured
-                },
-        ) {
-            // HV-63: when the user has scrolled up and new messages arrive, show
-            // a pill instead of force-scrolling them back to the bottom.
-            if (unseenCount > 0) {
-                Row(
-                    Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .clickable {
-                            scope.launch {
-                                if (entries.isNotEmpty()) {
-                                    listState.animateScrollToItem(entries.lastIndex)
-                                }
-                                unseenCount = 0
-                            }
-                        }
-                        .background(IrisColors.AccentPrimary.copy(alpha = 0.92f), iriscore.designsystem.IrisRadius.Full)
-                        .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.XS),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(IrisSpacing.XS),
-                ) {
-                    Text(
-                        text = "$unseenCount new  ↓",
-                        style = IrisType.Label.copy(color = IrisColors.BackgroundPrimary),
-                    )
-                }
-                Spacer(Modifier.height(IrisSpacing.SM))
-            }
-
-            IrisCommandPalette(
-                visible = paletteVisible,
-                commands = matches,
-                selectedIndex = selectedCommand,
-                onSelect = { command ->
-                    // Completing a command leaves the cursor ready for its
-                    // argument rather than running a command that needs one.
-                    input = if (command.argumentHint != null) "${command.invocation} " else command.invocation
-                },
-            )
-            if (paletteVisible) Spacer(Modifier.height(IrisSpacing.SM))
-
-            // Failures raised by the engine itself (rejected send, bad
-            // recipient) surface here; command-level errors already appear in
-            // the transcript as system events.
-            state.lastError?.let { error ->
-                Text(
-                    text = error,
-                    style = IrisType.SystemLine.copy(color = IrisColors.AccentCritical),
-                    modifier = Modifier.padding(
-                        start = IrisSpacing.SM,
-                        end = IrisSpacing.SM,
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = gutter,
+                        end = gutter,
                         bottom = IrisSpacing.SM,
                     ),
-                )
+                ) {
+                    items(count = entries.size, key = { entries[it].uid }) { index ->
+                        ConsoleRow(
+                            entries = entries,
+                            index = index,
+                            contacts = contacts,
+                            onReply = { senderId -> viewModel.replyTo(senderId) },
+                            onLongPress = { message -> actionSheetTarget = message },
+                        )
+                    }
+                }
+
+                // HV-63: when the user has scrolled up and new messages arrive,
+                // show a pill instead of force-scrolling them back to the bottom.
+                if (unseenCount > 0) {
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = IrisSpacing.SM)
+                            .clickable {
+                                scope.launch {
+                                    if (entries.isNotEmpty()) {
+                                        listState.animateScrollToItem(entries.lastIndex)
+                                    }
+                                    unseenCount = 0
+                                }
+                            }
+                            .background(IrisColors.AccentPrimary.copy(alpha = 0.92f), iriscore.designsystem.IrisRadius.Full)
+                            .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.XS),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(IrisSpacing.XS),
+                    ) {
+                        Text(
+                            text = "$unseenCount new  ↓",
+                            style = IrisType.Label.copy(color = IrisColors.BackgroundPrimary),
+                        )
+                    }
+                }
             }
 
-            IrisConsoleInput(
-                value = input,
-                mode = mode,
-                onValueChange = { input = it },
-                onSubmit = {
-                    viewModel.submit(input)
-                    input = ""
-                },
-            )
+            // Input bar is the LAST CHILD of the Column — not a floating
+            // overlay. This is what makes imePadding work: the Column shrinks,
+            // the Box above absorbs the space, and the input sits flush above
+            // the keyboard with no gap.
+            Column(
+                modifier = Modifier
+                    .then(contentWidth)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.25f to IrisColors.BackgroundPrimary.copy(alpha = 0.92f),
+                            1f to IrisColors.BackgroundPrimary,
+                        ),
+                    )
+                    .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD),
+            ) {
+                IrisCommandPalette(
+                    visible = paletteVisible,
+                    commands = matches,
+                    selectedIndex = selectedCommand,
+                    onSelect = { command ->
+                        // Completing a command leaves the cursor ready for its
+                        // argument rather than running a command that needs one.
+                        input = if (command.argumentHint != null) "${command.invocation} " else command.invocation
+                    },
+                )
+                if (paletteVisible) Spacer(Modifier.height(IrisSpacing.SM))
+
+                // Failures raised by the engine itself (rejected send, bad
+                // recipient) surface here; command-level errors already appear
+                // in the transcript as system events.
+                state.lastError?.let { error ->
+                    Text(
+                        text = error,
+                        style = IrisType.SystemLine.copy(color = IrisColors.AccentCritical),
+                        modifier = Modifier.padding(
+                            start = IrisSpacing.SM,
+                            end = IrisSpacing.SM,
+                            bottom = IrisSpacing.SM,
+                        ),
+                    )
+                }
+
+                IrisConsoleInput(
+                    value = input,
+                    mode = mode,
+                    onValueChange = { input = it },
+                    onSubmit = {
+                        viewModel.submit(input)
+                        input = ""
+                    },
+                )
+            }
         }
     }
 }
@@ -930,6 +906,6 @@ private fun enableTransportMedium(context: android.content.Context, label: Strin
         }
         else -> context.startActivity(
             Intent(Settings.ACTION_WIRELESS_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
-        )
+        )   
     }
 }
