@@ -787,69 +787,79 @@ private fun TransportSheet(
             modifier = Modifier.padding(start = IrisSpacing.MD, end = IrisSpacing.MD, bottom = IrisSpacing.SM),
         )
 
-        if (!meshRunning || transportStates.isEmpty()) {
+        if (!meshRunning) {
             Text(
-                text = "Mesh not running — start the mesh to see transport status.",
+                text = "Mesh not running — tap ENABLE to turn on a radio.",
                 style = IrisType.Secondary.copy(color = IrisColors.TextSecondary),
-                modifier = Modifier.padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.SM),
+                modifier = Modifier.padding(horizontal = IrisSpacing.MD, bottom = IrisSpacing.SM),
             )
+        }
+
+        // When the mesh is running use live state from the engine; otherwise
+        // fall back to a static list of all known transports so the user can
+        // still enable radios even before the mesh has started.
+        val knownLabels = listOf("BLE", "WD", "NAN", "NET", "LAN")
+        val items = if (meshRunning && transportStates.isNotEmpty()) {
+            transportStates
         } else {
-            transportStates.forEach { t ->
-                val isUnavailable = t.state == "Unavailable"
-                ListItem(
-                    headlineContent = {
+            knownLabels.map { label -> TransportStatus(label = label, connected = false, state = "Unavailable") }
+        }
+
+        items.forEach { t ->
+            val isUnavailable = t.state == "Unavailable"
+            ListItem(
+                headlineContent = {
+                    Text(
+                        text = transportFullName(t.label),
+                        style = IrisType.Body.copy(color = IrisColors.TextPrimary),
+                    )
+                },
+                supportingContent = if (!meshRunning) null else ({
+                    Text(
+                        text = t.state,
+                        style = IrisType.Meta.copy(
+                            color = when (t.state) {
+                                "Connected", "Available" -> IrisColors.AccentSuccess
+                                "Degraded"  -> IrisColors.AccentWarning
+                                else        -> IrisColors.TextSecondary
+                            },
+                        ),
+                    )
+                }),
+                trailingContent = {
+                    if (isUnavailable) {
+                        TextButton(onClick = {
+                            enableTransportMedium(context, t.label)
+                            onDismiss()
+                        }) {
+                            Text(
+                                text = "ENABLE",
+                                style = IrisType.Label.copy(color = IrisColors.AccentPrimary),
+                            )
+                        }
+                    } else {
                         Text(
-                            text = transportFullName(t.label),
-                            style = IrisType.Body.copy(color = IrisColors.TextPrimary),
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            text = t.state,
-                            style = IrisType.Meta.copy(
+                            text = when (t.state) {
+                                "Connected" -> "●"
+                                "Available" -> "◐"
+                                "Degraded"  -> "△"
+                                else        -> "○"
+                            },
+                            style = IrisType.Body.copy(
                                 color = when (t.state) {
                                     "Connected", "Available" -> IrisColors.AccentSuccess
-                                    "Degraded"  -> IrisColors.AccentWarning
-                                    else        -> IrisColors.TextSecondary
+                                    else -> IrisColors.AccentWarning
                                 },
                             ),
                         )
-                    },
-                    trailingContent = {
-                        if (isUnavailable) {
-                            TextButton(onClick = {
-                                enableTransportMedium(context, t.label)
-                                onDismiss()
-                            }) {
-                                Text(
-                                    text = "ENABLE",
-                                    style = IrisType.Label.copy(color = IrisColors.AccentPrimary),
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = when (t.state) {
-                                    "Connected" -> "●"
-                                    "Available" -> "◐"
-                                    "Degraded"  -> "△"
-                                    else        -> "○"
-                                },
-                                style = IrisType.Body.copy(
-                                    color = when (t.state) {
-                                        "Connected", "Available" -> IrisColors.AccentSuccess
-                                        else -> IrisColors.AccentWarning
-                                    },
-                                ),
-                            )
-                        }
-                    },
-                    modifier = if (isUnavailable) {
-                        Modifier.clickable { enableTransportMedium(context, t.label); onDismiss() }
-                    } else {
-                        Modifier
-                    },
-                )
-            }
+                    }
+                },
+                modifier = if (isUnavailable) {
+                    Modifier.clickable { enableTransportMedium(context, t.label); onDismiss() }
+                } else {
+                    Modifier
+                },
+            )
         }
 
         Spacer(Modifier.height(IrisSpacing.LG))
