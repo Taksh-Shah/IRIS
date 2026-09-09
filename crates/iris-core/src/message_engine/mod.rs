@@ -850,7 +850,7 @@ impl MessageEngine {
     async fn deliver_or_relay(
         &self,
         envelope: Envelope,
-        _via: PeerId,
+        via: PeerId,
     ) -> Result<InboundOutcome, MsgEngineError> {
         // Production unicast is always E2EE. A valid Ed25519 signature proves
         // only who authored a frame; without EncryptionHdr any self-created
@@ -962,7 +962,7 @@ impl MessageEngine {
             deliver_env.priority = sched_priority;
             let outcome = self.deliver_to_self(deliver_env).await?;
             // A relay failure must not mask a successful local delivery.
-            if let Err(e) = self.enqueue_relay(envelope, sched_priority).await {
+            if let Err(e) = self.enqueue_relay(envelope, sched_priority, via).await {
                 tracing::debug!(
                     event = event::MSG_QUEUED,
                     error = %e,
@@ -980,7 +980,7 @@ impl MessageEngine {
             deliver_env.priority = sched_priority;
             return self.deliver_to_self(deliver_env).await;
         }
-        self.enqueue_relay(envelope, sched_priority).await
+        self.enqueue_relay(envelope, sched_priority, via).await
     }
 
     /// Deliver an envelope addressed to this node.
@@ -1075,6 +1075,7 @@ impl MessageEngine {
         &self,
         envelope: Envelope,
         sched_priority: MessagePriority,
+        via: PeerId,
     ) -> Result<InboundOutcome, MsgEngineError> {
         // Nothing bounded hop count on this path before: the signed `max_hops`
         // field was decoded, stored and never read, and the per-priority flood
@@ -1157,7 +1158,9 @@ impl MessageEngine {
         {
             return Err(MsgEngineError::QueueFull);
         }
-        let mut item = QueuedMessage::new(e).with_scheduling_priority(sched_priority);
+        let mut item = QueuedMessage::new(e)
+            .with_scheduling_priority(sched_priority)
+            .with_via(via);
         item.local = false;
         q.push(item);
         let depth = q.len();
@@ -1394,9 +1397,20 @@ impl MessageEngine {
     /// available does not mean it has a link to the final recipient. Without
     /// this bridge, a three-phone A→B→C mesh always tried A→C directly and
     /// held the message in the queue while B never received a frame.
+    ///
+    /// Bug 3 fix: `via` is the peer that handed *this node* the message
+    /// (`QueuedMessage::via`, threaded from `deliver_or_relay`) — `None` for
+    /// a locally-originated send, `Some(previous_hop)` for a relay. The
+    /// routing engine's flood algorithm must exclude the previous hop, not
+    /// the original author (`sender`, constant across every hop) — otherwise
+    /// in A -> X -> B, B's flood decision excludes A instead of X and is
+    /// free to flood straight back to X. When `via` is `None` (we are the
+    /// origin), `sender` and "previous hop" are the same node, so falling
+    /// back to `sender` is correct, not just a placeholder.
     async fn routing_targets(
         &self,
         envelope: &Envelope,
+        via: Option<PeerId>,
     ) -> Option<(Arc<RoutingContext>, Vec<DeliveryTarget>)> {
         let recipient = recipient_peer(envelope)?;
         let context = self.routing.read().unwrap().clone()?;
@@ -1420,6 +1434,7 @@ impl MessageEngine {
                 envelope.timestamp,
                 envelope.ttl_seconds,
                 sender,
+                via.unwrap_or(sender),
                 recipient,
                 envelope.hop_count,
                 envelope.priority,
@@ -1532,7 +1547,7 @@ impl MessageEngine {
         // the final recipient. When routing is wired, choose next-hop peers
         // from the shared neighbor table first; retain the legacy selection
         // path for broadcasts and platforms that have not installed routing.
-        let routed = self.routing_targets(&item.envelope).await;
+        let routed = self.routing_targets(&item.envelope, item.via).await;
         let routing_context = routed.as_ref().map(|(context, _)| context.clone());
         let targets = if let Some((_, targets)) = routed {
             targets
@@ -2597,7 +2612,7 @@ mod tests {
         alice.set_routing_context(crate::routing::RoutingEngine::new(), neighbors);
 
         let (_, targets) = alice
-            .routing_targets(&envelope_for(BOB, MessagePriority::P4, b"via carol"))
+            .routing_targets(&envelope_for(BOB, MessagePriority::P4, b"via carol"), None)
             .await
             .expect("routing is installed");
         assert_eq!(targets.len(), 1);
@@ -2605,6 +2620,63 @@ mod tests {
         assert_eq!(
             targets[0].transport_id,
             crate::TransportId::from("sim-alice")
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn bug3_flood_excludes_previous_hop_not_original_sender() {
+        // Bug 3 regression: Origin -> Carol -> Alice, Alice floods onward
+        // (recipient Bob is unreachable, forcing Algorithm 3). The flood must
+        // exclude Carol (the peer that just handed Alice this copy), not
+        // Origin (the envelope's original author, constant across every
+        // hop). Before the fix, `routing_targets` passed `sender` (Origin)
+        // to the flood exclusion regardless of `via` — Origin is not even
+        // one of Alice's neighbors here, so excluding it excludes nothing
+        // real, and Carol (the actual previous hop) would incorrectly stay
+        // eligible to be flooded straight back to.
+        const ORIGIN: [u8; 32] = [0xFA; 32]; // original author — not a neighbor
+        const DAVE: [u8; 32] = [0xDD; 32]; // a second live neighbor, distinct from Carol
+
+        let (alice, _transport) = alice_engine().await;
+        let neighbors = Arc::new(crate::discovery::neighbor_table::NeighborTable::new(
+            Duration::from_secs(60),
+        ));
+        for (id, name) in [(CAROL, "carol"), (DAVE, "dave")] {
+            neighbors
+                .upsert(
+                    &PeerInfo {
+                        peer_id: PeerId(id),
+                        addresses: vec![],
+                        transport_addresses: vec![],
+                        last_seen: None,
+                    },
+                    &crate::TransportId::from(format!("sim-{name}").as_str()),
+                    LinkQuality::Good,
+                )
+                .await;
+        }
+        alice.set_routing_context(crate::routing::RoutingEngine::new(), neighbors);
+
+        let mut envelope = envelope_for(BOB, MessagePriority::P4, b"flood me");
+        envelope.sender_id = ORIGIN.to_vec(); // original author, distinct from the previous hop
+        let (_, targets) = alice
+            .routing_targets(&envelope, Some(PeerId(CAROL))) // Carol handed Alice this copy
+            .await
+            .expect("routing is installed");
+
+        let flooded: std::collections::HashSet<PeerId> =
+            targets.iter().map(|t| t.peer).collect();
+        assert!(
+            !flooded.contains(&PeerId(CAROL)),
+            "Bug 3: the previous hop (Carol) must be excluded from the flood \
+             — got targets {flooded:?}"
+        );
+        assert!(
+            flooded.contains(&PeerId(DAVE)),
+            "Dave is a live neighbor that is neither the previous hop nor the \
+             recipient — he must still receive the flood copy, proving Carol's \
+             absence is specifically because she is `via`, not because the \
+             flood algorithm excluded everyone — got targets {flooded:?}"
         );
     }
 

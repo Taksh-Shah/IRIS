@@ -210,13 +210,21 @@ impl RoutingEngine {
 
     /// Run the four-algorithm chain for a message addressed to `recipient`.
     ///
-    /// `already_flooded` tracks no-backtrack neighbors; `sender` is the
-    /// message source (excluded from flood). Hop count must not reach the
-    /// priority-based cap, shared with the flood module.
+    /// `sender` is the original message author, constant for the whole
+    /// path — used by [`Self::spray_fallback`]. `via` is the immediate
+    /// previous hop that hand-delivered this copy to us *right now* — it
+    /// changes at every hop, unlike `sender`. Bug 3 fix: the flood
+    /// algorithm excludes `via` (there is no point flooding a copy straight
+    /// back to whoever just gave it to us), not `sender` — in A → X → B,
+    /// when B floods onward it must exclude X, not A; excluding A instead
+    /// left B free to flood straight back to X. `already_flooded` tracks
+    /// no-backtrack neighbors *beyond* the immediate previous hop. Hop count
+    /// must not reach the priority-based cap, shared with the flood module.
     ///
     /// When the ROUTE-002 L2 layer is enabled, a single-copy opportunistic
     /// forward (best neighbor DP) is consulted between KnownPath and Flood —
     /// see [`RoutingEngine::decide_opportunistic`].
+    #[allow(clippy::too_many_arguments)]
     pub async fn decide(
         &mut self,
         message_id: MessageId,
@@ -224,6 +232,7 @@ impl RoutingEngine {
         timestamp: u64,
         ttl_seconds: u64,
         sender: PeerId,
+        via: PeerId,
         recipient: PeerId,
         hop_count: u8,
         priority: crate::message::MessagePriority,
@@ -236,6 +245,7 @@ impl RoutingEngine {
             timestamp,
             ttl_seconds,
             sender,
+            via,
             recipient,
             hop_count,
             priority,
@@ -250,6 +260,7 @@ impl RoutingEngine {
     /// cache. A live delivery path must commit only after a transport accepts
     /// the frame; otherwise a transient radio failure poisons every retry as a
     /// duplicate.
+    #[allow(clippy::too_many_arguments)]
     pub async fn decide_uncommitted(
         &mut self,
         message_id: MessageId,
@@ -257,6 +268,7 @@ impl RoutingEngine {
         timestamp: u64,
         ttl_seconds: u64,
         sender: PeerId,
+        via: PeerId,
         recipient: PeerId,
         hop_count: u8,
         priority: crate::message::MessagePriority,
@@ -269,6 +281,7 @@ impl RoutingEngine {
             timestamp,
             ttl_seconds,
             sender,
+            via,
             recipient,
             hop_count,
             priority,
@@ -293,6 +306,7 @@ impl RoutingEngine {
         timestamp: u64,
         ttl_seconds: u64,
         sender: PeerId,
+        via: PeerId,
         recipient: PeerId,
         hop_count: u8,
         priority: crate::message::MessagePriority,
@@ -313,6 +327,7 @@ impl RoutingEngine {
                 timestamp,
                 ttl_seconds,
                 sender,
+                via,
                 recipient,
                 hop_count,
                 priority,
@@ -348,6 +363,7 @@ impl RoutingEngine {
         timestamp: u64,
         ttl_seconds: u64,
         sender: PeerId,
+        via: PeerId,
         recipient: PeerId,
         hop_count: u8,
         priority: crate::message::MessagePriority,
@@ -432,10 +448,17 @@ impl RoutingEngine {
         }
         // Algorithm 3: Flood. hop_count < policy.max_hops is already
         // guaranteed by the ROUT-19 gate above.
+        //
+        // Bug 3 fix: exclude `via` (the peer that just handed us this copy),
+        // not `sender` (the original author, which stays constant across
+        // every hop). In A -> X -> B, when B decides whether to flood, B
+        // must not flood straight back to X — excluding A instead left that
+        // path open, since A is rarely a live neighbor of B at all past the
+        // first hop.
         {
             let recipients = recipients_for_flood(
                 neighbor_table,
-                sender,
+                via,
                 &already_flooded,
                 hop_count,
                 &recipient,
@@ -658,7 +681,7 @@ mod tests {
             )
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(7), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -685,6 +708,7 @@ mod tests {
                 0,
                 u64::MAX,
                 pid(1),
+                pid(1),
                 pid(7),
                 0,
                 MessagePriority::P4,
@@ -699,6 +723,7 @@ mod tests {
                 0,
                 0,
                 u64::MAX,
+                pid(1),
                 pid(1),
                 pid(7),
                 0,
@@ -715,6 +740,7 @@ mod tests {
                 0,
                 0,
                 u64::MAX,
+                pid(1),
                 pid(1),
                 pid(7),
                 0,
@@ -737,7 +763,7 @@ mod tests {
             .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(9), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(
             decision,
@@ -764,7 +790,7 @@ mod tests {
             .upsert(&peer_info(4), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(9), 3, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(9), 3, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(decision, ForwardingDecision::Store);
     }
@@ -779,7 +805,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         if let ForwardingDecision::Flood { recipients } = decision {
             assert_eq!(recipients.len(), 3);
@@ -806,7 +832,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P2, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(99), 0, MessagePriority::P2, vec![], &table)
             .await;
         assert!(
             matches!(
@@ -833,7 +859,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert!(
             matches!(decision, ForwardingDecision::Flood { .. }),
@@ -861,7 +887,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert!(
             matches!(decision, ForwardingDecision::Flood { .. }),
@@ -880,7 +906,7 @@ mod tests {
                 .await;
         }
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(99), 0, MessagePriority::P4, vec![], &table)
             .await;
         assert!(matches!(decision, ForwardingDecision::Flood { .. }));
         let snap = reg.snapshot();
@@ -893,7 +919,7 @@ mod tests {
             .upsert(&peer_info(7), &TransportId::from("sim"), LinkQuality::Excellent)
             .await;
         let direct = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(7), 0, MessagePriority::P4, vec![], &table2)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(7), 0, MessagePriority::P4, vec![], &table2)
             .await;
         assert!(matches!(direct, ForwardingDecision::Forward { .. }));
         let snap2 = reg.snapshot();
@@ -908,7 +934,7 @@ mod tests {
             .upsert(&peer_info(2), &TransportId::from("sim"), LinkQuality::Good)
             .await;
         let decision = engine
-            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
+            .decide(MessageId::new_v7(), 0, 0, u64::MAX, pid(1), pid(1), pid(99), 99, MessagePriority::P4, vec![], &table)
             .await;
         assert_eq!(decision, ForwardingDecision::Store);
     }
@@ -960,6 +986,7 @@ mod tests {
             .decide(
                 MessageId::new_v7(),
                 0, 0, u64::MAX,
+                pid(1),
                 pid(1),
                 pid(42),
                 0,
@@ -1053,6 +1080,7 @@ mod tests {
                 env.timestamp,
                 env.timestamp,
                 env.ttl_seconds,
+                crate::message::PeerId(alice),
                 crate::message::PeerId(alice),
                 crate::message::PeerId(bob),
                 env.hop_count,
