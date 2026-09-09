@@ -83,8 +83,12 @@ class IrisBleService : Service() {
         // repository) so repeated onStartCommand calls from START_STICKY restarts
         // or quick stop+start cycles (reconnect) are safe.
         serviceScope.launch {
-            repository.startMesh()
+            // Subscribe before startMesh so no inbound message arriving during
+            // engine startup is dropped. The Rust broadcast channel is created
+            // before transports start; a receiver installed afterwards only sees
+            // messages from that point forward — anything earlier is silently lost.
             repository.subscribeInbox()
+            repository.startMesh()
         }
         // WP9: ensure the message notification channel exists, then watch the
         // uiState flow for new inbound messages and post a notification for each.

@@ -814,6 +814,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // A revoked BLUETOOTH_SCAN throws SecurityException; map it to the
             // declared FFI error rather than letting it abort the Rust side.
 
+            // Register the BT state receiver here too, not only in
+            // startAdvertising. If the GATT server fails on first start,
+            // startAdvertising throws before reaching ensureBtStateReceiver(),
+            // leaving the receiver unregistered. Without it a BT-on event is
+            // invisible and BLE stays Unavailable forever.
+            ensureBtStateReceiver()
             val filters = buildScanFilters(filter)
             permitted { scanner.startScan(filters, scanSettings(), scanCallback) }
             val handle = nextHandle.getAndIncrement()
@@ -842,8 +848,12 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             val advertiser = bleManager?.adapter?.bluetoothLeAdvertiser
                 ?: throw AdapterOff()
             // HV-95: do NOT advertise a connectable beacon we cannot serve.
+            // Throw AdapterOff (not Transport) so demote_on_fatal() on the Rust
+            // side maps this to RadioDisabled and marks BLE Unavailable. A plain
+            // Transport error is not in demote_on_fatal's match list, so BLE
+            // would stay falsely "Available" in the UI while actually broken.
             if (!ensureGattServer()) {
-                throw Transport("BLE GATT server unavailable — the Bluetooth stack may be wedged; toggle Bluetooth")
+                throw AdapterOff()
             }
             val settings = AdvertiseSettings.Builder()
                 // HV-91: LOW_POWER advertises at a ~1 s interval, so a scanning
@@ -961,13 +971,15 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             // couldn't re-discover. HV-97's "second stale server" is now
             // impossible — there is only ever one. Only the advertiser stops.
             if (advertiseHandles.isEmpty()) {
-                // HV-10/HV-31: this transport is no longer advertising — drop
-                // the toggle receiver so a later STATE_ON does not try to
-                // resurrect an advertisement the core stopped.
                 advertiseRetries.clear()
-                if (btReceiverRegistered.compareAndSet(true, false)) {
-                    quietly { appContext.unregisterReceiver(btStateReceiver) }
-                }
+                // Do NOT unregister btStateReceiver here. The previous pattern
+                // caused a permanent BLE blackout: BT-off triggered EVT_BLUETOOTH_OFF
+                // → core called stopAdvertising → handles empty → receiver torn down
+                // → BT-on was invisible → EVT_BLUETOOTH_ON never fired → BLE stayed
+                // Unavailable even after BT was toggled back on.
+                // The receiver only calls enqueueAdapterEvent; the Rust core decides
+                // whether to re-advertise based on its own state — so keeping the
+                // receiver alive when the core has explicitly stopped advertising is safe.
             }
         }
     }
