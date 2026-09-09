@@ -307,9 +307,12 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         Modifier
             .fillMaxSize()
             .background(IrisColors.BackgroundPrimary)
-            // imePadding() shrinks the entire layout when the IME opens so the
-            // LazyColumn and the floating composer both stay above the keyboard.
-            // The floating column only needs navigationBarsPadding() on top of this.
+            // Consume BOTH the navigation-bar and IME insets at the root so the
+            // entire layout (message list + floating input) stays above the
+            // on-screen keyboard AND above the navigation bar. Handling them
+            // together avoids the double-padding gap that appears on devices
+            // where the nav bar remains visible alongside the keyboard.
+            .navigationBarsPadding()
             .imePadding(),
     ) {
         // Phase 6: the layout adapts by width rather than assuming a phone.
@@ -420,7 +423,6 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                         1f to IrisColors.BackgroundPrimary,
                     ),
                 )
-                .navigationBarsPadding()
                 .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.MD)
                 .onGloballyPositioned { coords ->
                     val measured = with(density) { coords.size.height.toDp() }
