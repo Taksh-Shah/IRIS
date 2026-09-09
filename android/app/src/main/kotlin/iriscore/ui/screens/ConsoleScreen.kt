@@ -723,16 +723,14 @@ private fun TransportMediaButton(
         if (active.isEmpty()) {
             Text(
                 text = "⋯",
-                style = IrisType.Label,
-                color = IrisColors.TextSecondary,
+                style = IrisType.Label.copy(color = IrisColors.TextSecondary),
             )
         } else {
             active.take(2).forEachIndexed { i, t ->
                 if (i > 0) {
                     Text(
                         text = "·",
-                        style = IrisType.Meta,
-                        color = IrisColors.TextSecondary,
+                        style = IrisType.Meta.copy(color = IrisColors.TextSecondary),
                     )
                 }
                 Text(
@@ -742,18 +740,18 @@ private fun TransportMediaButton(
                         "Degraded"  -> "${t.label} △"
                         else        -> "${t.label} ○"
                     },
-                    style = IrisType.Meta,
-                    color = when (t.state) {
-                        "Connected", "Available" -> IrisColors.AccentPrimary
-                        else -> IrisColors.AccentWarning
-                    },
+                    style = IrisType.Meta.copy(
+                        color = when (t.state) {
+                            "Connected", "Available" -> IrisColors.AccentPrimary
+                            else -> IrisColors.AccentWarning
+                        },
+                    ),
                 )
             }
             if (active.size > 2) {
                 Text(
                     text = "+${active.size - 2}",
-                    style = IrisType.Meta,
-                    color = IrisColors.TextSecondary,
+                    style = IrisType.Meta.copy(color = IrisColors.TextSecondary),
                 )
             }
         }
@@ -785,16 +783,14 @@ private fun TransportSheet(
     ) {
         Text(
             text = "TRANSPORT MEDIA",
-            style = IrisType.Label,
-            color = IrisColors.TextSecondary,
+            style = IrisType.Label.copy(color = IrisColors.TextSecondary),
             modifier = Modifier.padding(start = IrisSpacing.MD, end = IrisSpacing.MD, bottom = IrisSpacing.SM),
         )
 
         if (!meshRunning || transportStates.isEmpty()) {
             Text(
                 text = "Mesh not running — start the mesh to see transport status.",
-                style = IrisType.Secondary,
-                color = IrisColors.TextSecondary,
+                style = IrisType.Secondary.copy(color = IrisColors.TextSecondary),
                 modifier = Modifier.padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.SM),
             )
         } else {
@@ -804,19 +800,19 @@ private fun TransportSheet(
                     headlineContent = {
                         Text(
                             text = transportFullName(t.label),
-                            style = IrisType.Body,
-                            color = IrisColors.TextPrimary,
+                            style = IrisType.Body.copy(color = IrisColors.TextPrimary),
                         )
                     },
                     supportingContent = {
                         Text(
                             text = t.state,
-                            style = IrisType.Meta,
-                            color = when (t.state) {
-                                "Connected", "Available" -> IrisColors.AccentSuccess
-                                "Degraded"  -> IrisColors.AccentWarning
-                                else        -> IrisColors.TextSecondary
-                            },
+                            style = IrisType.Meta.copy(
+                                color = when (t.state) {
+                                    "Connected", "Available" -> IrisColors.AccentSuccess
+                                    "Degraded"  -> IrisColors.AccentWarning
+                                    else        -> IrisColors.TextSecondary
+                                },
+                            ),
                         )
                     },
                     trailingContent = {
@@ -827,8 +823,7 @@ private fun TransportSheet(
                             }) {
                                 Text(
                                     text = "ENABLE",
-                                    style = IrisType.Label,
-                                    color = IrisColors.AccentPrimary,
+                                    style = IrisType.Label.copy(color = IrisColors.AccentPrimary),
                                 )
                             }
                         } else {
@@ -839,11 +834,12 @@ private fun TransportSheet(
                                     "Degraded"  -> "△"
                                     else        -> "○"
                                 },
-                                style = IrisType.Body,
-                                color = when (t.state) {
-                                    "Connected", "Available" -> IrisColors.AccentSuccess
-                                    else -> IrisColors.AccentWarning
-                                },
+                                style = IrisType.Body.copy(
+                                    color = when (t.state) {
+                                        "Connected", "Available" -> IrisColors.AccentSuccess
+                                        else -> IrisColors.AccentWarning
+                                    },
+                                ),
                             )
                         }
                     },
