@@ -26,9 +26,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -307,13 +308,13 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
         Modifier
             .fillMaxSize()
             .background(IrisColors.BackgroundPrimary)
-            // Consume BOTH the navigation-bar and IME insets at the root so the
-            // entire layout (message list + floating input) stays above the
-            // on-screen keyboard AND above the navigation bar. Handling them
-            // together avoids the double-padding gap that appears on devices
-            // where the nav bar remains visible alongside the keyboard.
-            .navigationBarsPadding()
-            .imePadding(),
+            // safeDrawing.only(Bottom) = max(navBar, ime) at the bottom.
+            // When keyboard is closed it equals navBarHeight; when the keyboard
+            // is open it equals imeHeight (which already covers the nav bar on
+            // devices where the nav bar stays visible alongside the keyboard).
+            // Using one unified inset avoids the double-padding gap that comes
+            // from stacking imePadding() + navigationBarsPadding() separately.
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)),
     ) {
         // Phase 6: the layout adapts by width rather than assuming a phone.
         // Past the tablet breakpoint the reading column is capped and centred
