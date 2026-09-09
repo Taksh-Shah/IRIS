@@ -83,4 +83,16 @@ object IrisColors {
 
     /** Muted red — reserved for P0/SOS and hard failures. */
     val AccentCritical = Color(0xFFB4685F)
+
+    // -- message bubbles ---------------------------------------------------
+    //
+    // Kept close to the surface palette — just enough lift to make direction
+    // legible without competing with the text or breaking the near-monochrome
+    // design rule.
+
+    /** Outbound (sent by this node) — a shade above SurfaceRaised. */
+    val BubbleOutbound = Color(0xFF1A2020)
+
+    /** Inbound (received from a peer) — neutral dark surface. */
+    val BubbleInbound = Color(0xFF111111)
 }

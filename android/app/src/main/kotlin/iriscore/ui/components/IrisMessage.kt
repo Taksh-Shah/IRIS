@@ -1,6 +1,7 @@
 package iriscore.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -20,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import iriscore.designsystem.IrisColors
+import iriscore.designsystem.IrisRadius
 import iriscore.designsystem.IrisSpacing
 import iriscore.designsystem.IrisType
 import iriscore.ui.state.DeliveryStatus
@@ -58,114 +61,135 @@ fun IrisMessage(
     onLongPress: ((message: InboxUiMessage) -> Unit)? = null,
 ) {
     val outbound = message.isOutbound
-    val horizontalAlignment = if (outbound) Alignment.End else Alignment.Start
     val textAlign = if (outbound) TextAlign.End else TextAlign.Start
 
-    Column(
-        horizontalAlignment = horizontalAlignment,
+    // Interaction modifier applied to the bubble column so only the message
+    // content is the tap/long-press target, not the empty gutter on the other side.
+    val interactionModifier = if (onReply != null || onLongPress != null) {
+        Modifier
+            .combinedClickable(
+                onClickLabel = if (!outbound && onReply != null) "Reply" else null,
+                onClick = { if (!outbound) onReply?.invoke(message.senderId) },
+                onLongClickLabel = "Message actions",
+                onLongClick = { onLongPress?.invoke(message) },
+            )
+            .semantics {
+                role = Role.Button
+                contentDescription = if (!outbound) {
+                    "Reply to ${message.senderId.take(12)}"
+                } else {
+                    "Message actions"
+                }
+            }
+    } else {
+        Modifier
+    }
+
+    // Outer Row: pushes the bubble to the correct side.
+    // Content (weight 4) + gutter spacer (weight 1) = 80 / 20 split.
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = if (grouped) IrisSpacing.XS else IrisSpacing.LG)
-            .then(
-                if (onReply != null || onLongPress != null) {
-                    Modifier
-                        .combinedClickable(
-                            onClickLabel = if (!outbound && onReply != null) "Reply" else null,
-                            onClick = { if (!outbound) onReply?.invoke(message.senderId) },
-                            onLongClickLabel = "Message actions",
-                            onLongClick = { onLongPress?.invoke(message) },
-                        )
-                        .semantics {
-                            role = Role.Button
-                            contentDescription = if (!outbound) {
-                                "Reply to ${message.senderId.take(12)}"
-                            } else {
-                                "Message actions"
-                            }
-                        }
-                } else {
-                    Modifier
-                },
-            ),
+            .padding(top = if (grouped) IrisSpacing.XS else IrisSpacing.LG),
+        horizontalArrangement = if (outbound) Arrangement.End else Arrangement.Start,
     ) {
-        if (!grouped) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = if (outbound) Arrangement.End else Arrangement.Start,
-            ) {
-                if (!outbound && message.priority == PRIORITY_SOS) {
-                    IrisStatusChip(label = "P0", tone = StatusTone.Critical)
-                    Spacer(Modifier.width(IrisSpacing.SM))
-                }
-                if (outbound) {
-                    // Delivery chip before the "You" label for right-to-left read order.
-                    // WP11: the visible label stays a terse chip; semanticDescription
-                    // carries the plain-language meaning for TalkBack.
-                    when (message.deliveryStatus) {
-                        DeliveryStatus.QUEUED -> {
-                            IrisStatusChip(
-                                label = "QUEUED",
-                                tone = StatusTone.Warning,
-                                semanticDescription = message.deliveryStatus.plainLanguage(),
-                            )
-                            Spacer(Modifier.width(IrisSpacing.SM))
-                        }
-                        DeliveryStatus.FAILED -> {
-                            IrisStatusChip(
-                                label = "FAILED",
-                                tone = StatusTone.Critical,
-                                semanticDescription = message.deliveryStatus.plainLanguage(),
-                            )
-                            Spacer(Modifier.width(IrisSpacing.SM))
-                        }
-                        DeliveryStatus.EXPIRED -> {
-                            IrisStatusChip(
-                                label = "EXPIRED",
-                                tone = StatusTone.Critical,
-                                semanticDescription = message.deliveryStatus.plainLanguage(),
-                            )
-                            Spacer(Modifier.width(IrisSpacing.SM))
-                        }
-                        DeliveryStatus.DELIVERED -> {
-                            IrisStatusChip(
-                                label = "SENT",
-                                tone = StatusTone.Active,
-                                semanticDescription = message.deliveryStatus.plainLanguage(),
-                            )
-                            Spacer(Modifier.width(IrisSpacing.SM))
-                        }
-                        else -> Unit
-                    }
-                    if (message.priority == PRIORITY_SOS) {
+        // Left gutter for outbound — pushes bubble to the right.
+        if (outbound) Spacer(Modifier.weight(1f))
+
+        // Bubble column: header (sender / chips) + body + timestamp.
+        Column(
+            horizontalAlignment = if (outbound) Alignment.End else Alignment.Start,
+            modifier = Modifier
+                .weight(4f)
+                .clip(
+                    if (outbound) IrisRadius.OutboundBubble else IrisRadius.InboundBubble,
+                )
+                .background(
+                    if (outbound) IrisColors.BubbleOutbound else IrisColors.BubbleInbound,
+                )
+                .then(interactionModifier)
+                .padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.SM),
+        ) {
+            if (!grouped) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = if (outbound) Arrangement.End else Arrangement.Start,
+                ) {
+                    if (!outbound && message.priority == PRIORITY_SOS) {
                         IrisStatusChip(label = "P0", tone = StatusTone.Critical)
                         Spacer(Modifier.width(IrisSpacing.SM))
                     }
+                    if (outbound) {
+                        // Delivery chip sits before "You" for right-to-left read order.
+                        when (message.deliveryStatus) {
+                            DeliveryStatus.QUEUED -> {
+                                IrisStatusChip(
+                                    label = "QUEUED",
+                                    tone = StatusTone.Warning,
+                                    semanticDescription = message.deliveryStatus.plainLanguage(),
+                                )
+                                Spacer(Modifier.width(IrisSpacing.SM))
+                            }
+                            DeliveryStatus.FAILED -> {
+                                IrisStatusChip(
+                                    label = "FAILED",
+                                    tone = StatusTone.Critical,
+                                    semanticDescription = message.deliveryStatus.plainLanguage(),
+                                )
+                                Spacer(Modifier.width(IrisSpacing.SM))
+                            }
+                            DeliveryStatus.EXPIRED -> {
+                                IrisStatusChip(
+                                    label = "EXPIRED",
+                                    tone = StatusTone.Critical,
+                                    semanticDescription = message.deliveryStatus.plainLanguage(),
+                                )
+                                Spacer(Modifier.width(IrisSpacing.SM))
+                            }
+                            DeliveryStatus.DELIVERED -> {
+                                IrisStatusChip(
+                                    label = "SENT",
+                                    tone = StatusTone.Active,
+                                    semanticDescription = message.deliveryStatus.plainLanguage(),
+                                )
+                                Spacer(Modifier.width(IrisSpacing.SM))
+                            }
+                            else -> Unit
+                        }
+                        if (message.priority == PRIORITY_SOS) {
+                            IrisStatusChip(label = "P0", tone = StatusTone.Critical)
+                            Spacer(Modifier.width(IrisSpacing.SM))
+                        }
+                    }
+                    Text(
+                        text = if (outbound) "You" else (contactName ?: message.senderId.take(12)),
+                        style = IrisType.Sender.let {
+                            if (outbound) it.copy(color = IrisColors.AccentPrimary) else it
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Text(
-                    text = if (outbound) "You" else (contactName ?: message.senderId.take(12)),
-                    style = IrisType.Sender.let {
-                        if (outbound) it.copy(color = IrisColors.AccentPrimary) else it
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Spacer(Modifier.height(IrisSpacing.XS))
             }
-            Spacer(Modifier.height(IrisSpacing.XS))
+
+            Text(
+                text = message.payloadUtf8,
+                style = IrisType.Body.copy(textAlign = textAlign),
+            )
+
+            Spacer(Modifier.height(IrisSpacing.XXS))
+            Text(
+                text = formatTime(message.receivedAtMs),
+                style = IrisType.Meta.copy(
+                    textAlign = textAlign,
+                    color = IrisColors.TextSecondary,
+                ),
+            )
         }
 
-        Text(
-            text = message.payloadUtf8,
-            // The custom Text primitive (IrisPrimitives.kt) has no textAlign
-            // parameter by design — it's built on BasicText, which takes
-            // alignment through TextStyle instead of as its own argument.
-            style = IrisType.Body.copy(textAlign = textAlign),
-        )
-
-        Spacer(Modifier.height(IrisSpacing.XXS))
-        Text(
-            text = formatTime(message.receivedAtMs),
-            style = IrisType.Meta.copy(textAlign = textAlign),
-        )
+        // Right gutter for inbound — pushes bubble to the left.
+        if (!outbound) Spacer(Modifier.weight(1f))
     }
 }
 

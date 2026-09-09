@@ -38,6 +38,25 @@ object IrisRadius {
 
     /** Fully rounded — pills, the input capsule, status chips. */
     val Full = RoundedCornerShape(percent = 50)
+
+    // Chat bubble shapes: one corner is pinched to 4dp to anchor the bubble
+    // on its side (the "tail" corner), the others are fully rounded (18dp).
+
+    /** Outbound bubble — right side; bottom-right corner pinched. */
+    val OutboundBubble = RoundedCornerShape(
+        topStart = 18.dp,
+        topEnd = 18.dp,
+        bottomStart = 18.dp,
+        bottomEnd = 4.dp,
+    )
+
+    /** Inbound bubble — left side; bottom-left corner pinched. */
+    val InboundBubble = RoundedCornerShape(
+        topStart = 18.dp,
+        topEnd = 18.dp,
+        bottomStart = 4.dp,
+        bottomEnd = 18.dp,
+    )
 }
 
 /**
