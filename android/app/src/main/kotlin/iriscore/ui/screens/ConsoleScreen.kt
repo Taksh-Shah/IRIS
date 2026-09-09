@@ -1,12 +1,17 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package iriscore.ui.screens
 
 import android.app.Activity
+import android.bluetooth.BluetoothManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +33,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -40,6 +50,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -100,6 +111,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     var input by rememberSaveable { mutableStateOf("") }
     var selectedCommand by remember { mutableStateOf(0) }
     var peersOpen by rememberSaveable { mutableStateOf(false) }
+    var transportSheetOpen by rememberSaveable { mutableStateOf(false) }
 
     // WP12: which message (if any) has its long-press action sheet or info
     // panel open. Not rememberSaveable — an InboxUiMessage isn't a stable
@@ -153,6 +165,14 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
             // recipient for outbound) — the same contact lookup applies.
             fromLabel = contacts[target.senderId] ?: target.senderId.take(16),
             onDismiss = { infoDialogTarget = null },
+        )
+    }
+
+    if (transportSheetOpen) {
+        TransportSheet(
+            transportStates = transportStates,
+            meshRunning = state.status == MeshStatus.RUNNING,
+            onDismiss = { transportSheetOpen = false },
         )
     }
 
@@ -317,6 +337,7 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
                 permissionsGranted = permissionsGranted,
                 transportStates = transportStates,
                 onOpenPeers = { peersOpen = true },
+                onOpenTransports = { transportSheetOpen = true },
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
 
@@ -521,6 +542,7 @@ private fun StatusLine(
     permissionsGranted: Boolean,
     transportStates: List<TransportStatus>,
     onOpenPeers: () -> Unit,
+    onOpenTransports: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -556,24 +578,13 @@ private fun StatusLine(
                 semanticDescription = stringResource(iriscore.R.string.status_queued_fmt, state.relayQueued),
             )
         }
-        // HV-59: per-transport chips (BLE ●, WD ○, etc.) when running and the
-        // 5-s poll has populated the list. Chips are compact — just label + dot.
-        if (state.status == MeshStatus.RUNNING && transportStates.isNotEmpty()) {
-            transportStates.forEach { t ->
-                IrisStatusChip(
-                    label = when (t.state) {
-                        "Connected" -> "${t.label} ●"
-                        "Available" -> "${t.label} ◐"
-                        "Degraded" -> "${t.label} △"
-                        else -> "${t.label} ○"
-                    },
-                    tone = when (t.state) {
-                        "Connected", "Available" -> StatusTone.Active
-                        else -> StatusTone.Warning
-                    },
-                )
-            }
-        }
+        // HV-59: smart transport button — ⋯ when nothing is up, otherwise the
+        // active medium(s). Tapping always opens the full transport sheet.
+        TransportMediaButton(
+            transportStates = transportStates,
+            meshRunning = state.status == MeshStatus.RUNNING,
+            onClick = onOpenTransports,
+        )
         // HV-61: override the global status chip with "PERM" when permissions are
         // missing so the user immediately sees why the mesh is not carrying traffic
         // instead of a misleading IDLE/RUNNING chip.
@@ -674,5 +685,232 @@ private fun RetryNotice(isRetrying: Boolean, reconnectAttempts: Int, onRetry: ()
             Spacer(Modifier.width(IrisSpacing.MD))
             Text(text = "RETRY", style = IrisType.Label.copy(color = IrisColors.AccentPrimary))
         }
+    }
+}
+
+/**
+ * HV-59 replacement: smart transport button shown in the status bar.
+ *
+ * - No active transports → single ⋯ chip
+ * - 1 active transport  → that transport's label + state dot
+ * - 2+ active transports → first two labels + dots
+ *
+ * "Active" means Connected, Available, or Degraded (anything except Unavailable).
+ * Tapping always opens the full transport sheet.
+ */
+@Composable
+private fun TransportMediaButton(
+    transportStates: List<TransportStatus>,
+    meshRunning: Boolean,
+    onClick: () -> Unit,
+) {
+    val active = if (meshRunning) transportStates.filter { it.state != "Unavailable" } else emptyList()
+
+    val shape = iriscore.designsystem.IrisRadius.SM
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .border(
+                width = 1.dp,
+                color = if (active.isEmpty()) IrisColors.BorderSubtle else IrisColors.AccentPrimary.copy(alpha = 0.4f),
+                shape = shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = IrisSpacing.SM, vertical = IrisSpacing.XXS),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(IrisSpacing.XS),
+    ) {
+        if (active.isEmpty()) {
+            Text(
+                text = "⋯",
+                style = IrisType.Label,
+                color = IrisColors.TextSecondary,
+            )
+        } else {
+            active.take(2).forEachIndexed { i, t ->
+                if (i > 0) {
+                    Text(
+                        text = "·",
+                        style = IrisType.Meta,
+                        color = IrisColors.TextSecondary,
+                    )
+                }
+                Text(
+                    text = when (t.state) {
+                        "Connected" -> "${t.label} ●"
+                        "Available" -> "${t.label} ◐"
+                        "Degraded"  -> "${t.label} △"
+                        else        -> "${t.label} ○"
+                    },
+                    style = IrisType.Meta,
+                    color = when (t.state) {
+                        "Connected", "Available" -> IrisColors.AccentPrimary
+                        else -> IrisColors.AccentWarning
+                    },
+                )
+            }
+            if (active.size > 2) {
+                Text(
+                    text = "+${active.size - 2}",
+                    style = IrisType.Meta,
+                    color = IrisColors.TextSecondary,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bottom sheet listing all transport media.
+ *
+ * Each row shows the medium's name, current state, and — when Unavailable —
+ * an ENABLE action that fires the appropriate OS intent:
+ *   BLE  → system Bluetooth-enable dialog
+ *   WD / NAN → Wi-Fi settings panel
+ *   NET  → Wireless settings (relay is software — can't be toggled like a radio)
+ *   other → general wireless settings
+ */
+@Composable
+private fun TransportSheet(
+    transportStates: List<TransportStatus>,
+    meshRunning: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(),
+        containerColor = IrisColors.SurfacePrimary,
+    ) {
+        Text(
+            text = "TRANSPORT MEDIA",
+            style = IrisType.Label,
+            color = IrisColors.TextSecondary,
+            modifier = Modifier.padding(start = IrisSpacing.MD, end = IrisSpacing.MD, bottom = IrisSpacing.SM),
+        )
+
+        if (!meshRunning || transportStates.isEmpty()) {
+            Text(
+                text = "Mesh not running — start the mesh to see transport status.",
+                style = IrisType.Secondary,
+                color = IrisColors.TextSecondary,
+                modifier = Modifier.padding(horizontal = IrisSpacing.MD, vertical = IrisSpacing.SM),
+            )
+        } else {
+            transportStates.forEach { t ->
+                val isUnavailable = t.state == "Unavailable"
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = transportFullName(t.label),
+                            style = IrisType.Body,
+                            color = IrisColors.TextPrimary,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = t.state,
+                            style = IrisType.Meta,
+                            color = when (t.state) {
+                                "Connected", "Available" -> IrisColors.AccentSuccess
+                                "Degraded"  -> IrisColors.AccentWarning
+                                else        -> IrisColors.TextSecondary
+                            },
+                        )
+                    },
+                    trailingContent = {
+                        if (isUnavailable) {
+                            TextButton(onClick = {
+                                enableTransportMedium(context, t.label)
+                                onDismiss()
+                            }) {
+                                Text(
+                                    text = "ENABLE",
+                                    style = IrisType.Label,
+                                    color = IrisColors.AccentPrimary,
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = when (t.state) {
+                                    "Connected" -> "●"
+                                    "Available" -> "◐"
+                                    "Degraded"  -> "△"
+                                    else        -> "○"
+                                },
+                                style = IrisType.Body,
+                                color = when (t.state) {
+                                    "Connected", "Available" -> IrisColors.AccentSuccess
+                                    else -> IrisColors.AccentWarning
+                                },
+                            )
+                        }
+                    },
+                    modifier = if (isUnavailable) {
+                        Modifier.clickable { enableTransportMedium(context, t.label); onDismiss() }
+                    } else {
+                        Modifier
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(IrisSpacing.LG))
+    }
+}
+
+/** Map short label → human-readable name shown in the transport sheet. */
+private fun transportFullName(label: String): String = when (label.uppercase()) {
+    "BLE"  -> "Bluetooth Low Energy"
+    "WD"   -> "Wi-Fi Direct"
+    "NAN"  -> "Wi-Fi Aware (NAN)"
+    "NET"  -> "Internet Relay"
+    "LAN"  -> "Local Network (TCP)"
+    else   -> label
+}
+
+/**
+ * Fire the OS intent to enable the given transport medium.
+ * BLE  → ACTION_REQUEST_ENABLE system dialog
+ * WD / NAN / LAN → Wi-Fi settings (the radio gate for both)
+ * NET / other     → general wireless settings
+ */
+private fun enableTransportMedium(context: android.content.Context, label: String) {
+    when (label.uppercase()) {
+        "BLE" -> {
+            val btAdapter = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                context.getSystemService(BluetoothManager::class.java)?.adapter
+            } else {
+                @Suppress("DEPRECATION")
+                android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            }
+            if (btAdapter != null && !btAdapter.isEnabled) {
+                @Suppress("DEPRECATION")
+                context.startActivity(
+                    Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+            } else {
+                context.startActivity(
+                    Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+            }
+        }
+        "WD", "NAN", "LAN" -> {
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                Intent(Settings.Panel.ACTION_WIFI)
+            } else {
+                @Suppress("DEPRECATION")
+                Intent(Settings.ACTION_WIFI_SETTINGS)
+            }
+            context.startActivity(intent.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+        }
+        else -> context.startActivity(
+            Intent(Settings.ACTION_WIRELESS_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+        )
     }
 }
