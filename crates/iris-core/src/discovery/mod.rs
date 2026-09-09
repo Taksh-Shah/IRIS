@@ -289,12 +289,21 @@ impl DiscoveryManager {
             .any(|t| t.state() == crate::transport::TransportState::Connected);
         self.has_confirmed_link
             .store(any_connected, std::sync::atomic::Ordering::Relaxed);
-        // HV-15: with no live link, re-attempt `connect()` for every known peer
-        // whose beacon was NOT harvested this pass — a dropped GATT link's
-        // beacon can be out of the scan buffer for several passes, but the
-        // cached address is all `connect()` needs. Skipped while a link is up
-        // (the mesh is working; the per-beacon path covers the rest).
-        if !any_connected {
+        // HV-15: re-attempt `connect()` for every known peer whose beacon was
+        // NOT harvested this pass — a dropped GATT link's beacon can be out
+        // of the scan buffer for several passes, but the cached address is
+        // all `connect()` needs.
+        //
+        // Bug fix: this used to be gated on `!any_connected` (skip the whole
+        // block if ANY transport had a live link anywhere) — so one connected
+        // BLE peer suppressed Wi-Fi Direct's stale reconnects for every other
+        // peer, for the rest of the session, even though BLE being up says
+        // nothing about Wi-Fi Direct's own state. `any_connected` is still
+        // right for `has_confirmed_link` above (scan cadence is a legitimate
+        // whole-node concern); reconnect eligibility is not — it's checked
+        // per-transport in the inner loop below instead, so a transport that
+        // already has a live link is skipped without silencing the others.
+        {
             let seen: std::collections::HashSet<PeerId> = seen_peers.iter().copied().collect();
             // Only retry a known peer that is still in the neighbor table
             // (i.e. its beacon was seen within `neighbor_ttl` — the peer is
@@ -316,6 +325,12 @@ impl DiscoveryManager {
             }
             for peer in &stale {
                 for t in &transports {
+                    // Skip only this transport if it already has a live
+                    // link — not every transport just because one of them
+                    // does.
+                    if t.state() == crate::transport::TransportState::Connected {
+                        continue;
+                    }
                     self.attempt_connect(t, peer).await;
                 }
             }
@@ -982,6 +997,65 @@ mod tests {
              {stale_phase} calls after a beaconless pass, was {seen_phase} \
              (pre-HV-15 the beaconless pass yields nothing so connect() is \
              never called)"
+        );
+    }
+
+    #[tokio::test]
+    async fn bug2_one_connected_transport_does_not_suppress_another_transports_stale_reconnect() {
+        // Bug 2: scan_once() used to gate the ENTIRE stale-reconnect block on
+        // a single `any_connected` flag computed across ALL transports — so
+        // one transport with a live link (e.g. BLE) suppressed stale
+        // reconnects for every OTHER transport too (e.g. Wi-Fi Direct), even
+        // though that other transport had no live link of its own. This
+        // proves a transport with no live link still gets its own stale
+        // peer retried, even while a *different* transport is Connected.
+        let m = manager(30);
+
+        // Transport A: connects for real on pass 0 and stays Connected.
+        let a = Arc::new(CountingConnectTransport {
+            inner: crate::transport::simulated::SimulatedTransport::new(
+                "sim-bug2-a",
+                "Sim Bug2 A",
+                SimConfig::default(),
+            ),
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(31),
+            yield_passes: std::sync::atomic::AtomicUsize::new(usize::MAX),
+            fail_connect: std::sync::atomic::AtomicBool::new(false),
+        });
+        // Transport B: never has a live link of its own (fail_connect keeps
+        // state() at Available forever, mirroring HV-15's own technique),
+        // with a peer whose beacon is only seen on the first pass.
+        let b = Arc::new(CountingConnectTransport {
+            inner: crate::transport::simulated::SimulatedTransport::new(
+                "sim-bug2-b",
+                "Sim Bug2 B",
+                SimConfig::default(),
+            ),
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(32),
+            yield_passes: std::sync::atomic::AtomicUsize::new(1),
+            fail_connect: std::sync::atomic::AtomicBool::new(true),
+        });
+        m.register_transport(a.clone()).await;
+        m.register_transport(b.clone()).await;
+
+        m.scan_once().await; // pass 0: both beacons seen; A connects for real, B's connect fails.
+        assert_eq!(a.connect_calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+        assert_eq!(b.connect_calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+        assert_eq!(a.state(), crate::transport::TransportState::Connected);
+
+        m.scan_once().await; // pass 1: A's beacon still seen (no-op); B's beacon is gone —
+        // B's cached peer must still be retried, even though A is Connected.
+        let b_calls = b.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert!(
+            b_calls > 1,
+            "Bug 2: transport B's stale peer must still be retried while B itself \
+             has no live link, even though transport A does — got {b_calls} calls, \
+             expected > 1 (pre-fix: any_connected from A alone suppressed B's \
+             reconnect entirely, so this stayed at 1 forever)"
         );
     }
 
