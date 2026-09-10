@@ -932,6 +932,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // startScan threw Timeout unconditionally. syncCallOrThrow defers
         // the throw to where it belongs (AdapterLifecycle.kt).
         return FfiCallTimeout.syncCallOrThrow {
+            // Bug fix: Android's own docs say getBluetoothLeScanner() returns
+            // null when Bluetooth is off, so a null-check alone was assumed
+            // sufficient. Confirmed live (real device, Bluetooth off the
+            // entire time): it returned a non-null scanner anyway, and
+            // startScan() on it silently "succeeded" -- no onScanFailed, no
+            // exception -- so the transport reported Available/Connected
+            // with a scan that was never actually running. isEnabled() is
+            // the only reliable signal; check it explicitly rather than
+            // trusting the getter's nullability.
+            if (bleManager?.adapter?.isEnabled != true) throw AdapterOff()
             // A handle of 0 used to be returned for "no scanner", "throttled"
             // and "timed out". Rust wrapped that as Ok(ScanHandle(0)), so the
             // core believed a scan was live when nothing had started and never
@@ -977,6 +987,13 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // immediately with "transport protocol error: timeout", under 2s,
         // nowhere near the 30s budget - because the real operation never ran.
         return FfiCallTimeout.syncCallOrThrow {
+            // Bug fix: see startScan's identical check -- getBluetoothLeAdvertiser()
+            // is documented to return null when Bluetooth is off, but was
+            // confirmed live to return a usable, non-null advertiser anyway
+            // on real hardware, letting the transport report Available while
+            // Bluetooth was off the entire time. isEnabled() is checked
+            // explicitly instead of trusting the getter's nullability.
+            if (bleManager?.adapter?.isEnabled != true) throw AdapterOff()
             val advertiser = bleManager?.adapter?.bluetoothLeAdvertiser
                 ?: throw AdapterOff()
             // HV-95: do NOT advertise a connectable beacon we cannot serve.
@@ -1172,6 +1189,14 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // under. syncCallOrThrow surfaces the overrun as Timeout instead.
         return FfiCallTimeout.syncCallOrThrow(timeoutMs = CONNECT_READY_TIMEOUT_MS + 2_000L) {
             val adapter = bleManager?.adapter ?: throw AdapterOff()
+            // Bug fix: see startScan's identical check — adapter being
+            // non-null only means BLE hardware exists, not that it is
+            // currently on. getRemoteDevice()/connectGatt() below don't
+            // themselves fail just because Bluetooth is disabled; they
+            // build/attempt a GATT client against a radio that's off and
+            // hang or fail later, well past the point this transport should
+            // have already reported Unavailable.
+            if (!adapter.isEnabled) throw AdapterOff()
             // The Rust bridge emits a bare 12-hex address ("AABBCCDDEEFF"), but
             // getRemoteDevice demands "AA:BB:CC:DD:EE:FF" and throws
             // IllegalArgumentException otherwise — an untyped exception that
