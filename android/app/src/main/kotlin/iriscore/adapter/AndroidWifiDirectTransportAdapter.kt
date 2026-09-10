@@ -104,6 +104,15 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         /** Poll interval while awaiting the group snapshot (AND-RT-103). */
         private const val GROUP_INFO_POLL_MS = 100L
 
+        /**
+         * Bug fix: minimum gap between autonomous `connect()` attempts for
+         * the SAME stranger address (see [onPeersChanged]) — `onPeersChanged`
+         * re-fires on every `WIFI_P2P_PEERS_CHANGED_ACTION` broadcast, which
+         * can arrive every few seconds while a peer stays in range; without
+         * this, the same device would be redialed on every single tick.
+         */
+        private const val STRANGER_CONNECT_COOLDOWN_MS = 30_000L
+
         /** Bounded dial timeout for the GO socket; never blocks the callback scope. */
         private const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
 
@@ -226,6 +235,9 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     private val nextPeerHandle = AtomicLong(1L)
     private val deviceHandles = ConcurrentHashMap<String, Long>()
     private val peerDevices = ConcurrentHashMap<Long, String>() // handle -> P2P device address
+
+    /** Bug fix: address -> epoch ms of the last autonomous connect() attempt. See [onPeersChanged]. */
+    private val strangerConnectAttempts = ConcurrentHashMap<String, Long>()
 
     private val discoveredMatches = ConcurrentLinkedQueue<FfiDirectPeerDiscovery>()
     private val pendingTxtBeacons = ConcurrentHashMap<String, ByteArray>()
@@ -502,16 +514,20 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
     }
 
     /**
-     * Records the platform addresses of nearby P2P devices without initiating
-     * association. `WifiP2pManager.connect()` is deliberately not called from
-     * this unsolicited peer-list event: Android turns the same API call into
-     * an invitation whenever either side has a P2P group, and OEMs may show a
-     * Wi-Fi/Direct coexistence dialog while the STA interface is in use.
+     * Records the platform addresses of nearby P2P devices and, per the
+     * HV-21 "stranger discovery" design (connect first, verify after),
+     * autonomously dials each one — this was the missing half of that
+     * design: `matches()`'s DNS-SD path is confirmed dead on real hardware
+     * (see [startDiscovery]'s doc), and nothing else ever turned a
+     * passively-seen device into a connection attempt, so Wi-Fi Direct
+     * found peers by name here but never actually linked to any of them.
      *
-     * A normal app cannot accept either system-owned decision on the user's
-     * behalf. Keep discovery passive here so background IRIS operation never
-     * surfaces an OS prompt; a future explicitly authorized association flow
-     * must carry its own user-visible product decision and platform gate.
+     * `WifiP2pManager.connect()` can turn into an invitation (and surface an
+     * OEM coexistence dialog) when either side already has a P2P group —
+     * gated on [groupState] being empty so this never fires once a real
+     * group exists — and [strangerConnectAttempts] bounds retries to once
+     * per [STRANGER_CONNECT_COOLDOWN_MS] per address so a peer seen on every
+     * `onPeersChanged` tick is not redialed every time.
      */
     private suspend fun onPeersChanged() {
         val channel = startGate.ensureStarted() ?: return
@@ -521,8 +537,22 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 peerHandleFor(address)
                 iriscore.util.IrisLog.d(
                     "wd.passive",
-                    "onPeersChanged: cached nearby device $address (${device.deviceName}); automatic P2P association disabled",
+                    "onPeersChanged: cached nearby device $address (${device.deviceName})",
                 )
+                if (groupState.snapshot() != null) continue
+                val now = System.currentTimeMillis()
+                val last = strangerConnectAttempts[address]
+                if (last != null && now - last < STRANGER_CONNECT_COOLDOWN_MS) continue
+                strangerConnectAttempts[address] = now
+                callbackScope.launch {
+                    runCatching {
+                        val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
+                        awaitAction { p2pManagerOrThrow().connect(channel, wifiConfig, it) }
+                        iriscore.util.IrisLog.d("wd.stranger", "autonomous connect() initiated for $address")
+                    }.onFailure { e ->
+                        iriscore.util.IrisLog.w("wd.stranger", "autonomous connect() failed for $address: ${e.message}")
+                    }
+                }
             }
         }
     }
