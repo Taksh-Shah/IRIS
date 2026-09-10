@@ -105,6 +105,16 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         private const val GROUP_INFO_POLL_MS = 100L
 
         /**
+         * [pollForGroupFormationAfterConnect]'s retry budget: 8 attempts *
+         * 2s = 16s total, long enough to cover real GO negotiation latency
+         * (confirmed live at a few seconds) without the autonomous connect
+         * path hanging indefinitely on a peer that never actually forms a
+         * group with us.
+         */
+        private const val GROUP_FORMATION_POLL_ATTEMPTS = 8
+        private const val GROUP_FORMATION_POLL_INTERVAL_MS = 2_000L
+
+        /**
          * Bug fix: minimum gap between autonomous `connect()` attempts for
          * the SAME stranger address (see [onPeersChanged]) — `onPeersChanged`
          * re-fires on every `WIFI_P2P_PEERS_CHANGED_ACTION` broadcast, which
@@ -112,6 +122,37 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
          * this, the same device would be redialed on every single tick.
          */
         private const val STRANGER_CONNECT_COOLDOWN_MS = 30_000L
+
+        /**
+         * Bug fix: "stranger discovery" (see [onPeersChanged]) dialed ANY
+         * nearby Wi-Fi Direct device by address alone, with no way to tell
+         * an IRIS peer from an unrelated one -- confirmed live: a phone spent
+         * its entire connect() budget negotiating with a random Windows
+         * laptop's always-on Wi-Fi Direct virtual adapter (Miracast/wireless
+         * display support keeps it broadcasting by default), never once
+         * reaching the actual IRIS peer that was also in range the whole
+         * time. Android's connect() negotiation with a non-responsive or
+         * unrelated peer can occupy the P2P radio for its full ~120s
+         * platform timeout, and while that is in flight this node cannot
+         * discover or dial anyone else -- one irrelevant device in range is
+         * enough to block real pairing indefinitely.
+         *
+         * Windows auto-generates its P2P-visible device name as
+         * DESKTOP-XXXXXXX / LAPTOP-XXXXXXX (an uppercase alphanumeric
+         * suffix -- confirmed live as 8 characters on the actual laptop this
+         * bug was diagnosed against, "LAPTOP-L8E5720C"; Microsoft's own
+         * naming scheme is not documented as a fixed length, so this matches
+         * a range rather than one exact count) -- a pattern no Android
+         * phone's Wi-Fi Direct device name will ever match (confirmed
+         * against every real device name seen this session: "iQOO Neo 10",
+         * "Redmi 12 5G", "vivo Y35", "Tk's S24 ULTRA"). This is a
+         * best-effort filter, not an identity check -- IRIS's actual peer
+         * verification still happens after a group forms, exactly as HV-21
+         * already designed; this only stops the autonomous dial from
+         * wasting its one connection slot on a device that was never going
+         * to be an IRIS peer in the first place.
+         */
+        private val WINDOWS_PC_DEVICE_NAME = Regex("^(DESKTOP|LAPTOP)-[A-Z0-9]{6,15}$")
 
         /** Bounded dial timeout for the GO socket; never blocks the callback scope. */
         private const val SOCKET_CONNECT_TIMEOUT_MS = 10_000
@@ -562,6 +603,13 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                 )
                 if (groupState.snapshot() != null) continue
                 if (myAddress != null && myAddress >= address) continue
+                if (device.deviceName?.let { WINDOWS_PC_DEVICE_NAME.matches(it) } == true) {
+                    iriscore.util.IrisLog.d(
+                        "wd.stranger",
+                        "skipping autonomous connect() for $address (${device.deviceName}) -- looks like a PC, not a phone",
+                    )
+                    continue
+                }
                 val now = System.currentTimeMillis()
                 val last = strangerConnectAttempts[address]
                 if (last != null && now - last < STRANGER_CONNECT_COOLDOWN_MS) continue
@@ -571,6 +619,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                         val wifiConfig = WifiP2pConfig().apply { deviceAddress = address }
                         awaitAction { p2pManagerOrThrow().connect(channel, wifiConfig, it) }
                         iriscore.util.IrisLog.d("wd.stranger", "autonomous connect() initiated for $address")
+                        pollForGroupFormationAfterConnect(channel)
                     }.onFailure { e ->
                         iriscore.util.IrisLog.w("wd.stranger", "autonomous connect() failed for $address: ${e.message}")
                     }
@@ -1119,6 +1168,49 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
             delay(GROUP_INFO_POLL_MS)
         }
         return null
+    }
+
+    /**
+     * Bug fix: after an autonomous [onPeersChanged] `connect()` succeeds
+     * (the LOCAL request was dispatched), this device's own
+     * WIFI_P2P_CONNECTION_CHANGED_ACTION broadcast is the only thing that
+     * would otherwise ever populate [groupState] -- and [awaitCurrentGroupInfo]
+     * only polls that same cache, so it is blind to a group that formed
+     * without a broadcast. Confirmed live: a real P2P group formed (the peer
+     * device's own dumpsys showed a connected client), but the client side's
+     * CONNECTION_CHANGED broadcast never arrived at all -- no teardown, no
+     * onGroupFormed, nothing logged for it -- so the IRIS/Rust layer never
+     * learned the peer was reachable and messages sat requeued forever
+     * despite a working network-level connection underneath. This is the
+     * exact platform gap Android's own docs already push toward working
+     * around (see the CONNECTION_CHANGED receiver's own comment): querying
+     * `requestConnectionInfo()`/`requestGroupInfo()` directly does not
+     * depend on the broadcast having fired at all, only on the group
+     * actually existing at the platform level.
+     *
+     * Bounded to a few short retries rather than one query -- GO negotiation
+     * genuinely takes a few seconds after connect()'s local onSuccess, so an
+     * immediate single query would usually just see groupFormed=false.
+     */
+    private suspend fun pollForGroupFormationAfterConnect(channel: WifiP2pManager.Channel) {
+        repeat(GROUP_FORMATION_POLL_ATTEMPTS) {
+            delay(GROUP_FORMATION_POLL_INTERVAL_MS)
+            if (groupState.snapshot() != null) return // the broadcast beat us to it
+            val info = suspendCancellableCoroutine<WifiP2pInfo?> { cont ->
+                runCatching { p2pManagerOrThrow().requestConnectionInfo(channel) { cont.resume(it) } }
+                    .onFailure { cont.resume(null) }
+            }
+            if (info?.groupFormed == true) {
+                val group = suspendCancellableCoroutine<WifiP2pGroup?> { cont ->
+                    runCatching { p2pManagerOrThrow().requestGroupInfo(channel) { cont.resume(it) } }
+                        .onFailure { cont.resume(null) }
+                }
+                group?.let { groupState.update(it) }
+                iriscore.util.IrisLog.d("wd.stranger", "group formation confirmed by direct poll (no CONNECTION_CHANGED broadcast arrived)")
+                onGroupFormed(info, group)
+                return
+            }
+        }
     }
 
     // FFI-14: degradedGroupInfo() removed — see the throw Transport
