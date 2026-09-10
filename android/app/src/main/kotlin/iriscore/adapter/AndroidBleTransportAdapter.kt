@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
@@ -90,6 +91,18 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
 
         /** GATT write characteristic used by the core BLE-001 transport. */
         val IRIS_CHARACTERISTIC_UUID: UUID = UUID.fromString("3e5c6b1a-2a10-4f6e-9c31-5f3e5a0b0c0e")
+
+        /**
+         * Bug fix: standard Client Characteristic Configuration Descriptor
+         * (Bluetooth SIG-assigned UUID, not IRIS-specific) — required on
+         * [IRIS_CHARACTERISTIC_UUID] for a central to subscribe to its
+         * `PROPERTY_NOTIFY` and for [notifyGatt] to actually reach it. Without
+         * this descriptor a `BluetoothGattServer.notifyCharacteristicChanged`
+         * call can appear to succeed locally while never reaching the remote
+         * central's `onCharacteristicChanged`.
+         */
+        val CLIENT_CHARACTERISTIC_CONFIG_UUID: UUID =
+            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
         /**
          * Must byte-match `iris_core::transport::ble::IRIS_IDENTIFY_CHARACTERISTIC`
@@ -238,6 +251,27 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         val sharedGattWrites = ConcurrentLinkedQueue<FfiGattWriteEvent>()
 
         /**
+         * Bug fix: reverse lookup from [deviceHash] handle back to the
+         * connected [BluetoothDevice], needed by [notifyGatt] to know which
+         * device to push a notification to — everywhere else only ever
+         * needed the forward direction (device -> handle). Populated
+         * alongside [sharedAcceptedConnections] on the same two signals
+         * (connection-state change and the first characteristic write, since
+         * HV-93/HV-98 found the former unreliable on some OEM stacks);
+         * cleared with the rest of the server state on a real Bluetooth-off.
+         */
+        val sharedConnectedDevices = ConcurrentHashMap<ULong, BluetoothDevice>()
+
+        /**
+         * Bug fix: per-device completion future for an in-flight
+         * `notifyCharacteristicChanged` call, resolved by [onNotificationSent]
+         * — the peripheral-role mirror of [writeCompletion]'s client-role
+         * write serialization. The GATT server, like the client, only ever
+         * allows one outstanding operation per connection.
+         */
+        val notifyCompletion = ConcurrentHashMap<BluetoothDevice, java.util.concurrent.CompletableFuture<Unit>>()
+
+        /**
          * HV-21/DEC-BLE-0008: bytes served on a read of
          * [IRIS_IDENTIFY_CHARACTERISTIC_UUID] — set via [setIdentifyPayload],
          * called from Rust's `ble.rs::start_advertising` (and again from
@@ -268,6 +302,46 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     sharedAcceptedConnections.add(
                         FfiAcceptedConnection(handle = deviceHash(device), address = device.address),
                     )
+                    sharedConnectedDevices[deviceHash(device)] = device
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    sharedConnectedDevices.remove(deviceHash(device))
+                    notifyCompletion.remove(device)?.completeExceptionally(GattFailure("peer disconnected"))
+                }
+            }
+
+            override fun onNotificationSent(device: BluetoothDevice, status: Int) {
+                // Bug fix: this is what notifyGatt's completion future is
+                // actually waiting on, mirroring onCharacteristicWrite's role
+                // for the client-role writeCompletion future.
+                val pending = notifyCompletion.remove(device)
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    pending?.complete(Unit)
+                } else {
+                    pending?.completeExceptionally(GattFailure("notify failed status=$status"))
+                }
+            }
+
+            override fun onDescriptorWriteRequest(
+                device: BluetoothDevice,
+                requestId: Int,
+                descriptor: BluetoothGattDescriptor,
+                preparedWrite: Boolean,
+                responseNeeded: Boolean,
+                offset: Int,
+                value: ByteArray,
+            ) {
+                // Bug fix: a central enabling notifications writes this
+                // descriptor (setCharacteristicNotification + the CCCD write);
+                // Android's peripheral role does not track subscription state
+                // for us, but it does require a response to the write request
+                // or the central's own descriptor write hangs/fails. Always
+                // ack — this server only ever has the one characteristic
+                // worth subscribing to, so there is nothing to gate on.
+                if (responseNeeded) {
+                    try {
+                        sharedGattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+                    } catch (_: Throwable) {
+                    }
                 }
             }
 
@@ -295,6 +369,7 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                     val h = deviceHash(device)
                     while (sharedAcceptedConnections.size >= MAX_PENDING) sharedAcceptedConnections.poll()
                     sharedAcceptedConnections.add(FfiAcceptedConnection(handle = h, address = device.address))
+                    sharedConnectedDevices[h] = device
                     while (sharedGattWrites.size >= MAX_PENDING) sharedGattWrites.poll()
                     sharedGattWrites.add(
                         FfiGattWriteEvent(
@@ -358,7 +433,19 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                                 BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE or
                                 BluetoothGattCharacteristic.PROPERTY_NOTIFY,
                             BluetoothGattCharacteristic.PERMISSION_WRITE,
-                        ),
+                        ).apply {
+                            // Bug fix: required for a central to subscribe to
+                            // this characteristic's PROPERTY_NOTIFY — without
+                            // it a remote central's own setCharacteristicNotification
+                            // + descriptor write has nothing to write to, and
+                            // notifyCharacteristicChanged silently never reaches it.
+                            addDescriptor(
+                                BluetoothGattDescriptor(
+                                    CLIENT_CHARACTERISTIC_CONFIG_UUID,
+                                    BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE,
+                                ),
+                            )
+                        },
                     )
                     // HV-21/DEC-BLE-0008: read-only identify characteristic —
                     // see IRIS_IDENTIFY_CHARACTERISTIC_UUID's doc.
@@ -390,6 +477,9 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 sharedGattServer = null
                 sharedGattWrites.clear()
                 sharedAcceptedConnections.clear()
+                sharedConnectedDevices.clear()
+                notifyCompletion.values.forEach { it.completeExceptionally(GattFailure("Bluetooth turned off")) }
+                notifyCompletion.clear()
             }
         }
     }
@@ -594,6 +684,32 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             }
         }
 
+        /**
+         * Bug fix: receives a reply the peer sent via `notifyGatt` over the
+         * connection WE dialed to it, rather than one it dialed to us. Feeds
+         * straight into the SAME `sharedGattWrites` queue
+         * `onCharacteristicWriteRequest` uses — the Rust side's
+         * `drain_inbound_once` already demultiplexes that queue by handle
+         * for both `connections` and `inbound_handles` uniformly, so no Rust
+         * change is needed to consume this; it only needed a source.
+         */
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray,
+        ) {
+            if (characteristic.uuid != IRIS_CHARACTERISTIC_UUID) return
+            val handle = gattHandles.entries.find { it.value == gatt }?.key ?: return
+            while (sharedGattWrites.size >= MAX_PENDING) sharedGattWrites.poll()
+            sharedGattWrites.add(
+                FfiGattWriteEvent(
+                    handle = handle.toULong(),
+                    charUuid = characteristic.uuid.toString(),
+                    data = value,
+                ),
+            )
+        }
+
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             // AND-RT-111: track the negotiated MTU (setMtu returns it).
             if (status == BluetoothGatt.GATT_SUCCESS) {
@@ -627,6 +743,28 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             if (characteristic != null) {
                 serviceCharacteristics[gatt] = characteristic
                 serviceDiscoveryRetries.remove(gatt)
+                // Bug fix: subscribe to the peer's notify characteristic so it
+                // can reply to us even if ITS OWN outbound dial back to us
+                // never succeeds (the whole point of notifyGatt's fallback).
+                // Best-effort and non-blocking — connectionReady's readiness
+                // contract is unaffected either way; a peer that can't reply
+                // yet still gets discovered and written to as before.
+                try {
+                    gatt.setCharacteristicNotification(characteristic, true)
+                    val cccd = characteristic.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG_UUID)
+                    if (cccd != null) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            gatt.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                            @Suppress("DEPRECATION")
+                            gatt.writeDescriptor(cccd)
+                        }
+                    }
+                } catch (t: Throwable) {
+                    iriscore.util.IrisLog.w("ble.gatt", "notification subscribe failed (peer can still be written to): ${t.message}")
+                }
                 // HV-66: request a large ATT MTU before reporting the link usable.
                 // The first message must not fragment at the 23-byte BLE default.
                 // We defer completing connectionReady to onMtuChanged, with a 1-s
@@ -1168,6 +1306,59 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
                 throw GattFailure("gatt write initiated but onCharacteristicWrite never fired within ${GATT_WRITE_TIMEOUT_MS}ms")
             } catch (e: java.util.concurrent.ExecutionException) {
                 throw (e.cause as? Exception) ?: GattFailure("gatt write completion failed: ${e.cause}")
+            }
+        }
+    }
+
+    override fun notifyGatt(handle: ULong, charUuid: String, data: ByteArray) {
+        FfiCallTimeout.syncCallOrThrow(timeoutMs = GATT_WRITE_TIMEOUT_MS + 1000L) {
+            // Bug fix: peripheral-role counterpart to gattWrite — `handle`
+            // here is a deviceHash (AND-RT-113 scheme), not a gattHandles
+            // key, since this reaches a peer over the connection IT dialed
+            // to us, not one we dialed.
+            val device = sharedConnectedDevices[handle.toULong()]
+                ?: throw GattFailure("unknown gatt connection")
+            val server = sharedGattServer ?: throw GattFailure("gatt server not open")
+            val characteristic = server.getService(IRIS_SERVICE_UUID)?.getCharacteristic(IRIS_CHARACTERISTIC_UUID)
+                ?: throw GattFailure("characteristic $charUuid not available")
+
+            // HW-7's write serialization, mirrored: only one outstanding
+            // server operation per connection. Register before issuing so a
+            // fast onNotificationSent can never race ahead of the listener.
+            val completion = java.util.concurrent.CompletableFuture<Unit>()
+            notifyCompletion[device] = completion
+
+            var initiated = false
+            for (attempt in 1..GATT_WRITE_RETRY_ATTEMPTS) {
+                initiated = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    server.notifyCharacteristicChanged(device, characteristic, false, data) ==
+                        BluetoothStatusCodes.SUCCESS
+                } else {
+                    @Suppress("DEPRECATION")
+                    characteristic.value = data
+                    @Suppress("DEPRECATION")
+                    server.notifyCharacteristicChanged(device, characteristic, false)
+                }
+                if (initiated) break
+                if (attempt < GATT_WRITE_RETRY_ATTEMPTS) {
+                    Thread.sleep(GATT_WRITE_RETRY_DELAY_MS)
+                }
+            }
+            if (!initiated) {
+                notifyCompletion.remove(device)
+                throw GattFailure("notify not initiated after $GATT_WRITE_RETRY_ATTEMPTS attempts")
+            }
+
+            // Block until onNotificationSent actually fires — same reasoning
+            // as gattWrite's HW-7 wait: without it, the next fragment of this
+            // same reply could race a notify the controller hadn't finished.
+            try {
+                completion.get(GATT_WRITE_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            } catch (e: java.util.concurrent.TimeoutException) {
+                notifyCompletion.remove(device)
+                throw GattFailure("notify initiated but onNotificationSent never fired within ${GATT_WRITE_TIMEOUT_MS}ms")
+            } catch (e: java.util.concurrent.ExecutionException) {
+                throw (e.cause as? Exception) ?: GattFailure("notify completion failed: ${e.cause}")
             }
         }
     }

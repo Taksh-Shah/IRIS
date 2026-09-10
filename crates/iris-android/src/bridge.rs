@@ -213,6 +213,17 @@ impl BleAdapter for BleBridge {
             .map_err(ffi_err_to_ble)
     }
 
+    fn notify_gatt(
+        &self,
+        handle: GattHandle,
+        char_uuid: Uuid,
+        data: Vec<u8>,
+    ) -> Result<(), BleError> {
+        self.ffi
+            .notify_gatt(handle.0, uuid_to_hex(char_uuid), data)
+            .map_err(ffi_err_to_ble)
+    }
+
     fn gatt_read(&self, _handle: GattHandle, _char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
         // Android discovery skips the connect-to-identify read: IRIS beacons
         // ride in ad-carried service data on Android (DEC-BLE-002-0002).
@@ -649,6 +660,9 @@ mod tests {
         }
         fn disconnect_gatt(&self, _h: u64) {}
         fn gatt_write(&self, _h: u64, _c: String, _d: Vec<u8>) -> Result<(), IrisFfiError> {
+            Ok(())
+        }
+        fn notify_gatt(&self, _h: u64, _c: String, _d: Vec<u8>) -> Result<(), IrisFfiError> {
             Ok(())
         }
         fn set_mtu(&self, _h: u64, mtu: u16) -> Result<u16, IrisFfiError> {

@@ -72,6 +72,15 @@ pub trait FfiBleAdapter: Send + Sync + 'static {
     fn disconnect_gatt(&self, handle: u64);
     fn gatt_write(&self, handle: u64, char_uuid: String, data: Vec<u8>)
         -> Result<(), IrisFfiError>;
+    /// Push a GATT notification over an inbound (peripheral-role) connection
+    /// — `handle` here is the `deviceHash(BluetoothDevice)` scheme
+    /// `FfiAcceptedConnection`/`FfiGattWriteEvent` already use, not a
+    /// `gatt_write`-style central-role handle. Bug fix: the peripheral-role
+    /// counterpart to `gatt_write`, so a node can reply over a connection a
+    /// remote central dialed to it, instead of requiring its own outbound
+    /// dial to succeed first (see `ble::BleTransport::send`'s fallback).
+    fn notify_gatt(&self, handle: u64, char_uuid: String, data: Vec<u8>)
+        -> Result<(), IrisFfiError>;
     fn set_mtu(&self, handle: u64, mtu: u16) -> Result<u16, IrisFfiError>;
     /// HV-21/DEC-BLE-0008: bytes to serve on a read of
     /// `IRIS_IDENTIFY_CHARACTERISTIC` — this node's own beacon, rebuilt with
@@ -123,6 +132,9 @@ pub(crate) mod tests {
         fn disconnect_gatt(&self, _h: u64) {}
         fn gatt_write(&self, _h: u64, _c: String, data: Vec<u8>) -> Result<(), IrisFfiError> {
             assert_eq!(data, b"hi".to_vec());
+            Ok(())
+        }
+        fn notify_gatt(&self, _h: u64, _c: String, _data: Vec<u8>) -> Result<(), IrisFfiError> {
             Ok(())
         }
         fn set_mtu(&self, _h: u64, mtu: u16) -> Result<u16, IrisFfiError> {
