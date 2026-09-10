@@ -490,12 +490,29 @@ impl IrisEngine {
             // at least one live receiver and tx.send() stops returning Err.
             // Without this, every TransportStateChanged event sent by the
             // register() forwarder is silently discarded.
+            //
+            // Bug fix: a transport going wholesale `Unavailable` (Bluetooth
+            // turned off, Wi-Fi Direct torn down) used to only clear that
+            // transport's own connection state -- the neighbor table kept
+            // reporting every peer reached over it as `LinkedUp` until the
+            // 300s idle TTL finally swept them, so the UI showed "connected"
+            // for up to five minutes after the radio was actually off. Route
+            // the event into `DiscoveryManager::withdraw_transport` so those
+            // neighbors drop immediately.
             let mut topo_rx = manager.topology_events();
+            let discovery_for_topo = discovery.clone();
             tokio::spawn(async move {
                 loop {
                     match topo_rx.recv().await {
                         Ok(event) => {
                             tracing::debug!(event = ?event, "topology event");
+                            if let iris_core::transport::TopologyEvent::TransportStateChanged {
+                                transport_id,
+                                new_state: iris_core::transport::TransportState::Unavailable,
+                            } = &event
+                            {
+                                discovery_for_topo.withdraw_transport(transport_id).await;
+                            }
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                             tracing::warn!(skipped = n, "topology_events lagged");
