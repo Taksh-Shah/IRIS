@@ -987,6 +987,16 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
         // immediately with "transport protocol error: timeout", under 2s,
         // nowhere near the 30s budget - because the real operation never ran.
         return FfiCallTimeout.syncCallOrThrow {
+            // Bug fix: this used to run after the isEnabled check below, so
+            // when the mesh first started with Bluetooth already off, that
+            // check threw before the receiver was ever registered -- nothing
+            // was listening for the STATE_ON broadcast that fires when the
+            // user later turns Bluetooth on inside the app, so the transport
+            // stayed Unavailable until the whole app (and this call) was
+            // restarted fresh. Registering unconditionally, before any
+            // early-return, means a later STATE_ON is always heard regardless
+            // of whether this particular attempt succeeds.
+            ensureBtStateReceiver()
             // Bug fix: see startScan's identical check -- getBluetoothLeAdvertiser()
             // is documented to return null when Bluetooth is off, but was
             // confirmed live to return a usable, non-null advertiser anyway
@@ -1030,7 +1040,6 @@ class AndroidBleTransportAdapter(context: Context) : FfiBleAdapter {
             }
             val handle = nextHandle.getAndIncrement()
             advertiseRetries.remove(handle)
-            ensureBtStateReceiver()
             launchAdvertising(handle, settings, adData)
             handle.toULong()
         }
