@@ -528,9 +528,30 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
      * group exists — and [strangerConnectAttempts] bounds retries to once
      * per [STRANGER_CONNECT_COOLDOWN_MS] per address so a peer seen on every
      * `onPeersChanged` tick is not redialed every time.
+     *
+     * Bug fix: BOTH sides run this same callback, so without a tiebreak both
+     * devices call connect() on each other at roughly the same moment —
+     * confirmed live: the P2P channel went BUSY (reason=2) on both phones
+     * and never recovered for the rest of the session, exactly the
+     * documented Android behaviour for two simultaneous, uncoordinated
+     * connect() negotiations racing on the same radio. Only the device with
+     * the lexicographically lower MAC address dials; the other waits to be
+     * dialed. Both sides compute this identically from data they already
+     * have (their own address, the peer's), so it needs no round-trip and
+     * cannot itself disagree between the two sides.
+     *
+     * Does NOT call stopPeerDiscovery() before dialing (an earlier version
+     * of this fix did) — that turned out to invalidate the platform's own
+     * cached WifiP2pDevice entry for the target before connect() got to use
+     * it, so connect() failed with a generic internal error (reason=0)
+     * instead of the BUSY this tiebreak already fixes. The tiebreak alone
+     * is sufficient: it was two SIMULTANEOUS connect() calls racing each
+     * other that caused BUSY, not connect() running alongside this node's
+     * own still-active discovery.
      */
     private suspend fun onPeersChanged() {
         val channel = startGate.ensureStarted() ?: return
+        val myAddress = awaitMyDeviceAddress()
         p2pManagerOrThrow().requestPeers(channel) { peers ->
             for (device in peers.deviceList) {
                 val address = device.deviceAddress ?: continue
@@ -540,6 +561,7 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
                     "onPeersChanged: cached nearby device $address (${device.deviceName})",
                 )
                 if (groupState.snapshot() != null) continue
+                if (myAddress != null && myAddress >= address) continue
                 val now = System.currentTimeMillis()
                 val last = strangerConnectAttempts[address]
                 if (last != null && now - last < STRANGER_CONNECT_COOLDOWN_MS) continue
@@ -825,6 +847,33 @@ class AndroidWifiDirectTransportAdapter(context: Context) : FfiWifiDirectAdapter
         }
         registerStateReceiver()
         seedDeviceInfo(channel)
+        // Bug fix: a P2P group from a previous session (this process was
+        // killed/restarted without removeGroup() ever running, or the app
+        // crashed) can survive on the OS side across the restart. A stale
+        // group occupies the P2P interface exactly like a real one, so every
+        // later discoverPeers()/connect() call here returns BUSY (reason=2)
+        // forever — confirmed live: one phone showed a lingering
+        // wifi-direct-0 "Connected" from an earlier test run while its peer
+        // had already restarted and moved on, and the peer's own discovery
+        // never recovered from BUSY for the rest of that session. Clearing
+        // any leftover group on every fresh channel init gives every start
+        // a clean slate; a no-op (fails harmlessly) when there is nothing to
+        // remove.
+        runCatching {
+            manager.removeGroup(
+                channel,
+                object : WifiP2pManager.ActionListener {
+                    override fun onSuccess() {
+                        iriscore.util.IrisLog.d("wd.init", "initialize: cleared a stale P2P group from a previous session")
+                    }
+                    override fun onFailure(reason: Int) {
+                        // Expected/harmless: reason == NO_SERVICE_REQUESTS-style
+                        // "nothing to remove" is the common case (no stale group).
+                        iriscore.util.IrisLog.d("wd.init", "initialize: removeGroup no-op (reason=$reason, likely no stale group)")
+                    }
+                },
+            )
+        }
         availability.setAvailable(true)
         return channel
     }
