@@ -76,15 +76,26 @@ object MessageNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val contentText = context.getString(
-            R.string.msg_notification_text_template,
+        // Bug fix: the message preview used to live only in BigTextStyle's
+        // bigText, which Android shows only once a notification is expanded
+        // -- whether that happens by default is a per-OEM/per-version
+        // rendering choice (heads-up banners, MIUI's own style, and larger
+        // screens often auto-expand; plain collapsed notifications never
+        // do). That made the same code show the message body on some
+        // devices and just "From <sender>" on others. contentText is always
+        // visible in the collapsed form, so put the actual preview there on
+        // every device; BigTextStyle still carries the same preview so a
+        // long message just gets more room once expanded, not different
+        // content depending on rendering.
+        val title = context.getString(
+            R.string.msg_notification_title_template,
             senderName ?: senderHex.take(8),
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle(context.getString(R.string.msg_notification_title))
-            .setContentText(contentText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(preview))
+            .setContentTitle(title)
+            .setContentText(preview)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(preview).setBigContentTitle(title))
             .setSmallIcon(R.drawable.ic_stat_iris)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
