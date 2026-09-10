@@ -32,4 +32,12 @@ interface MessageDao {
     /** WP12: local-only deletion — never touches the sender's own copy. */
     @Query("DELETE FROM messages WHERE uid = :uid")
     suspend fun delete(uid: Long)
+
+    /**
+     * Highest persisted `uid`, or `null` if the table is empty. Used to reseed
+     * [iriscore.ui.state.InboxUiMessage]'s in-memory uid counter on startup —
+     * see that class's `seedUidCounter` for why this matters.
+     */
+    @Query("SELECT MAX(uid) FROM messages")
+    suspend fun maxUid(): Long?
 }

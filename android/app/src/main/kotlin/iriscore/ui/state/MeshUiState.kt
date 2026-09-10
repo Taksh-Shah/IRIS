@@ -95,6 +95,27 @@ data class InboxUiMessage(
 
         fun nextUid(): Long = uids.getAndIncrement()
 
+        /**
+         * Bug fix: this counter is in-memory only and used to start back at 1
+         * on every process restart, while [iriscore.data.db.MessageDao]'s rows
+         * (this uid's primary key) persist across restarts. A message sent
+         * after a restart could therefore be handed a uid that collides with
+         * an old persisted row; `MessageDao.insert`'s `OnConflictStrategy.IGNORE`
+         * then silently dropped the new row -- the send still went out over
+         * the wire (the receiver got it fine), but it never appeared in this
+         * device's own message list because its own DB row never landed.
+         *
+         * [iriscore.data.MeshRepository] calls this once at startup with the
+         * highest uid already in the database, before anything else can call
+         * [nextUid]. `updateAndGet` with `maxOf` makes this monotonic and safe
+         * to call more than once (e.g. a repeated call, or a race with an
+         * already-in-flight [nextUid] call) — it only ever moves the counter
+         * forward, never back.
+         */
+        fun seedUidCounter(persistedMax: Long) {
+            uids.updateAndGet { current -> maxOf(current, persistedMax + 1) }
+        }
+
         fun received(
             senderId: String,
             payloadUtf8: String,
