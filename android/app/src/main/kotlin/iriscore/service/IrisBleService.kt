@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import iriscore.R
+import iriscore.data.ContactStore
 import iriscore.data.MeshRepository
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +42,9 @@ class IrisBleService : Service() {
 
     @Inject
     lateinit var repository: MeshRepository
+
+    @Inject
+    lateinit var contactStore: ContactStore
 
     private var scanSession: BleScanSession? = null
 
@@ -96,9 +100,11 @@ class IrisBleService : Service() {
                 if (inboundCount > knownCount) {
                     val newest = state.messages.lastOrNull { !it.isOutbound }
                     if (newest != null) {
+                        val senderName = contactStore.resolve(newest.senderId)
                         MessageNotificationHelper.postMessageNotification(
                             this@IrisBleService,
                             newest.senderId,
+                            senderName,
                             newest.payloadUtf8.take(80),
                         )
                     }
