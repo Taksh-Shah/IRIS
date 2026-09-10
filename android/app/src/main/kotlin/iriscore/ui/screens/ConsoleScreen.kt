@@ -269,10 +269,25 @@ fun ConsoleScreen(viewModel: MeshViewModel = hiltViewModel()) = ProvideGlassTier
     }
     var unseenCount by remember { mutableIntStateOf(0) }
 
+    // Bug fix: opening the screen used to leave the list wherever a fresh
+    // LazyColumn defaults to (the top / oldest message) — this effect only
+    // ever auto-scrolled on a *new* entry arriving while already near the
+    // bottom, so a long history opened scrolled to the top with no jump to
+    // the latest message, unlike WhatsApp/Instagram, which always open on
+    // the newest message. `hasJumpedToBottom` fires that initial jump
+    // exactly once (a plain, unanimated scrollToItem — a visible scroll
+    // animation on open reads as janky, not as "arriving" at the bottom),
+    // the first time this composition sees any entries; after that, the
+    // existing "only scroll if already at bottom" behavior is unchanged.
+    var hasJumpedToBottom by remember { mutableStateOf(false) }
+
     // Scroll to tail when a new entry arrives — but only if already at the bottom.
     LaunchedEffect(entries.size) {
         if (entries.isNotEmpty()) {
-            if (atBottom) {
+            if (!hasJumpedToBottom) {
+                listState.scrollToItem(entries.lastIndex)
+                hasJumpedToBottom = true
+            } else if (atBottom) {
                 listState.animateScrollToItem(entries.lastIndex)
             } else {
                 unseenCount++
