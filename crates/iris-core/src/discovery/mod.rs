@@ -218,6 +218,17 @@ impl DiscoveryManager {
         }
     }
 
+    /// Withdraw every neighbor reached over `transport` at once — call this
+    /// when the transport itself reports `TransportState::Unavailable`
+    /// (radio turned off), not for an individual peer dropping. See
+    /// [`NeighborTable::mark_transport_down`] for why per-peer `withdraw_peer`
+    /// is not enough here.
+    pub async fn withdraw_transport(&self, transport: &TransportId) {
+        for event in self.table.mark_transport_down(transport).await {
+            self.events.send(event).ok();
+        }
+    }
+
     /// Ingest an inbound handshake envelope (CAPABILITY bundle or Bloom
     /// exchange). Updates the neighbor table with the peer's capabilities and
     /// records its dedup Bloom filter for the dispatch layer.

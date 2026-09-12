@@ -231,6 +231,20 @@ pub trait BleAdapter: Send + Sync + 'static {
         char_uuid: Uuid,
         data: Vec<u8>,
     ) -> Result<(), BleError>;
+    /// Push a GATT notification over `handle` — the peripheral-role
+    /// counterpart to `gatt_write`'s central-role write. `gatt_write`
+    /// requires `handle` to be a connection *we* dialed (`connections`);
+    /// `notify_gatt` is how this node replies over a connection a remote
+    /// central dialed *to us* instead (`inbound_handles`), where there is no
+    /// outbound link to write over — see `BleTransport::send`'s fallback.
+    ///
+    /// Default returns `GattFailure` so every existing `BleAdapter`
+    /// implementor (the many test-local delegating wrappers included) keeps
+    /// compiling unchanged; only adapters that can actually notify (the real
+    /// Android bridge, `SimulatedBleAdapter` for tests) need to override it.
+    fn notify_gatt(&self, _handle: GattHandle, _char_uuid: Uuid, _data: Vec<u8>) -> Result<(), BleError> {
+        Err(BleError::GattFailure("notify not supported by this adapter".to_string()))
+    }
     /// Read a GATT characteristic value (CoreBluetooth `readValue(for:)`).
     /// Used by connect-to-identify to fetch the discovery beacon from
     /// `IRIS_IDENTIFY_CHARACTERISTIC` (DEC-BLE-002-0002).
@@ -377,6 +391,10 @@ pub struct SimulatedBleAdapter {
     /// server) re-reported on every `accepted_connections()` drain until
     /// cleared — exactly how the Kotlin adapter re-announces on a write-gap.
     accepted: std::sync::Mutex<Vec<AcceptedConnection>>,
+    /// Bug fix regression coverage: every `notify_gatt` call, for tests to
+    /// assert `send()` actually falls back to notifying an inbound-only peer
+    /// instead of failing `NotConnected`.
+    notified: std::sync::Mutex<Vec<(GattHandle, Uuid, Vec<u8>)>>,
 }
 
 #[cfg(any(test, feature = "test-support"))]
@@ -418,6 +436,11 @@ impl SimulatedBleAdapter {
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .retain(|c| c.handle != handle);
+    }
+    /// Every `notify_gatt` call recorded so far, for assertions.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn notified_calls(&self) -> Vec<(GattHandle, Uuid, Vec<u8>)> {
+        self.notified.lock().unwrap_or_else(|p| p.into_inner()).clone()
     }
     #[cfg(any(test, feature = "test-support"))]
     pub fn simulate_disconnect(&self, handle: GattHandle) {
@@ -663,6 +686,13 @@ impl BleAdapter for SimulatedBleAdapter {
         ));
         Ok(())
     }
+    fn notify_gatt(&self, handle: GattHandle, char_uuid: Uuid, data: Vec<u8>) -> Result<(), BleError> {
+        self.notified
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push((handle, char_uuid, data));
+        Ok(())
+    }
     fn gatt_read(&self, handle: GattHandle, char_uuid: Uuid) -> Result<Vec<u8>, BleError> {
         // Only the IRIS identification characteristic exists on the simulated
         // server; reads of anything else fail like an absent characteristic.
@@ -827,6 +857,13 @@ pub struct BleTransport {
     dropped_inbound: std::sync::Arc<std::sync::atomic::AtomicU64>,
     /// MG-17: EWMA goodput tracker.
     ewma: EwmaGoodput,
+    /// Bug fix: per-message id counter for frames sent via `notify_gatt`
+    /// (the `inbound_handles` fallback in `send()`). `connections` carries
+    /// its own per-peer counter (BLE-25) because it needs one id space per
+    /// *peer*; an inbound-only reply has no such peer-scoped slot to live
+    /// in, so this is transport-wide instead — still enough to keep two
+    /// notified messages from colliding in the far side's reassembler.
+    notify_msg_id: std::sync::atomic::AtomicU16,
 }
 
 /// Scan-restart ceiling: max scan starts in the window.
@@ -909,6 +946,7 @@ impl BleTransport {
             ios_leg: false,
             dropped_inbound: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
             ewma: EwmaGoodput::new(),
+            notify_msg_id: std::sync::atomic::AtomicU16::new(0),
         }
     }
 
@@ -1986,11 +2024,54 @@ impl Transport for BleTransport {
                 connections.contains_key(&candidate).then_some(candidate)
             }
         };
+        // Bug fix: a peer we never dialled ourselves but who dialled INTO our
+        // GATT server (`inbound_handles` — HV-107) used to fail `NotConnected`
+        // here forever, on the theory that discovery would eventually complete
+        // this node's own outbound dial too. On real hardware that dial can
+        // fail indefinitely once this node is already busy holding an active
+        // peripheral-role connection — central scanning and an active GATT
+        // server connection contend for the same radio, and Android's BLE
+        // stack does not reliably time-share them (well-documented platform
+        // limitation, not something a retry loop here can fix). The result
+        // was a node that could receive forever but never reply. Falls back
+        // to notifying over the inbound link instead of writing over an
+        // outbound one that may never exist.
+        let via_notify = resolved_key.is_none()
+            && {
+                let inbound = self.inbound_handles.lock().unwrap_or_else(|p| p.into_inner());
+                inbound.contains_key(peer) || inbound.contains_key(&Self::candidate_key_for(peer))
+            };
+        let resolved_key = resolved_key.or_else(|| {
+            if !via_notify {
+                return None;
+            }
+            let inbound = self.inbound_handles.lock().unwrap_or_else(|p| p.into_inner());
+            if inbound.contains_key(peer) {
+                Some(*peer)
+            } else {
+                let candidate = Self::candidate_key_for(peer);
+                inbound.contains_key(&candidate).then_some(candidate)
+            }
+        });
         let resolved_key = resolved_key.ok_or(TransportError::NotConnected)?;
         // BLE-25: fetch handle+mtu and atomically increment the per-connection
         // msg_id counter in one lock hold so concurrent sends to different
         // peers use independent counters (was: one shared AtomicU16 on segmenter).
-        let (handle, mtu, msg_id) = {
+        //
+        // An inbound-only (notify) reply has no per-connection MTU/msg_id slot
+        // to draw from — `inbound_handles` only ever stored the bare handle
+        // (HV-107 never anticipated sending over it) — so it uses the
+        // conservative unnegotiated MTU_DEFAULT and this transport's shared
+        // notify_msg_id counter instead. Safe: a smaller-than-necessary MTU
+        // only means more fragments, never a protocol violation.
+        let (handle, mtu, msg_id) = if via_notify {
+            let inbound = self.inbound_handles.lock().unwrap_or_else(|p| p.into_inner());
+            let h = *inbound.get(&resolved_key).ok_or(TransportError::NotConnected)?;
+            let id = self
+                .notify_msg_id
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            (h, crate::transport::ble_att::MTU_DEFAULT, id)
+        } else {
             let mut conns = self.connections.lock().unwrap();
             let entry = conns.get_mut(&resolved_key).ok_or(TransportError::NotConnected)?;
             let h = entry.0;
@@ -2034,7 +2115,12 @@ impl Transport for BleTransport {
         for (fi, frame) in frames.iter().enumerate() {
             let mut attempt = 0u32;
             loop {
-                let e = match adapter.gatt_write(handle, char_uuid, frame.clone()) {
+                let write_result = if via_notify {
+                    adapter.notify_gatt(handle, char_uuid, frame.clone())
+                } else {
+                    adapter.gatt_write(handle, char_uuid, frame.clone())
+                };
+                let e = match write_result {
                     Ok(()) => break,
                     Err(e) => e,
                 };
@@ -2805,11 +2891,14 @@ mod tests {
     async fn hv107_inbound_accept_does_not_populate_connections_or_block_the_outbound_dial() {
         use crate::transport::ble_att::encode_frame;
         // HV-107: an inbound (peripheral-role) connection a remote central
-        // dialed to our GATT server must NOT land in `connections`. If it does,
-        // `connect()` treats the peer as "already connected" and never dials
-        // out, and `send()` resolves to a handle it cannot write — so after the
-        // peer restarts (RETRY / permission re-grant) this node keeps receiving
-        // but can never reply/ACK. The handle belongs in `inbound_handles`.
+        // dialed to our GATT server must NOT land in `connections`. If it did,
+        // `connect()` would treat the peer as "already connected" and never
+        // dial out. The handle belongs in `inbound_handles` instead — and
+        // `send()` now knows how to reply over it directly (notify_gatt),
+        // rather than requiring this node's own outbound dial to succeed
+        // first (that assumption is what used to leave a node able to
+        // receive forever but never reply, on hardware where an active
+        // peripheral connection starves out this node's own scan).
         let adapter = std::sync::Arc::new(SimulatedBleAdapter::new());
         let t = std::sync::Arc::new(BleTransport::new(Some(adapter.clone())));
         t.start_advertising(NodeAdvertisement {
@@ -2845,23 +2934,30 @@ mod tests {
             "the inbound handle is tracked in its own map",
         );
 
-        // So the peer's own PeerInfo still needs a real outbound dial:
-        // `send()` (addressed by any id resolving to that inbound peer) must
-        // report NotConnected, not resolve to the un-writable peripheral handle.
+        // Bug fix: a real outbound dial is no longer the only way to reply.
+        // `send()` to an inbound-only peer now falls back to *notifying* over
+        // the existing peripheral-role connection — necessary because on real
+        // hardware this node's own outbound dial to the peer can fail
+        // indefinitely (central scanning and an active GATT server connection
+        // contend for the same radio), which used to leave this node able to
+        // receive forever but never reply.
         let inbound_pid = *t.inbound_handles.lock().unwrap().keys().next().unwrap();
         let msg = SerializedMessage {
             message_id: crate::protocol::MessageId::from([73u8; 16]),
             priority: MessagePriority::P2,
             payload: b"ack".to_vec(),
         };
-        assert_eq!(
-            t.send(&inbound_pid, &msg).await.unwrap_err(),
-            TransportError::NotConnected,
-            "send to an inbound-only peer must be NotConnected so discovery dials a real client link",
+        assert!(
+            t.send(&inbound_pid, &msg).await.is_ok(),
+            "send to an inbound-only peer must succeed by notifying over the peripheral link",
         );
+        let notified = adapter.notified_calls();
+        assert_eq!(notified.len(), 1, "exactly one notify_gatt call for the single-frame message");
+        assert_eq!(notified[0].0, handle, "notified over the peer's actual inbound handle");
 
         // And a real `connect()` to that peer actually dials (does not no-op on
-        // the phantom entry) — after it, `send()` succeeds.
+        // the phantom entry) — once it exists, send() prefers the real
+        // outbound link over notifying.
         let peer = peer_with_mac(inbound_pid, "07:07:07:07:07:07");
         t.connect(&peer).await.unwrap();
         assert!(
@@ -2869,6 +2965,11 @@ mod tests {
             "connect() must establish a real outbound client link",
         );
         assert!(t.send(&inbound_pid, &msg).await.is_ok(), "reply path is live after the dial");
+        assert_eq!(
+            adapter.notified_calls().len(),
+            1,
+            "once a real outbound link exists, send() must use it (gatt_write), not notify again",
+        );
     }
 
     #[tokio::test]

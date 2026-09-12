@@ -461,20 +461,24 @@ impl IrisEngine {
             )));
 
             let all: [Arc<dyn Transport>; 4] = [ble_t, aware_t, direct_t, internet_t.clone()];
-            for t in &all {
-                Self::spawn_inbox_forwarder(engine.clone(), t.clone());
-            }
 
             // GAP-7: discovery is what actually calls `Transport::connect()`
             // on first contact — without it every send() fails NotConnected
             // forever. Register the same three transports it just registered
             // with the manager, then start its background scan loop.
+            //
+            // Constructed before spawn_inbox_forwarder below (was after) so
+            // each forwarder can report the peer a message actually arrived
+            // from.
             let discovery = Arc::new(DiscoveryManager::new(
                 PeerId::from_bytes(node_id),
                 DiscoveryConfig::default(),
             ));
             for t in &all {
                 discovery.register_transport(t.clone()).await;
+            }
+            for t in &all {
+                Self::spawn_inbox_forwarder(engine.clone(), t.clone(), discovery.clone());
             }
             // CROSS-006 / Tier-4: the message engine must choose an actual
             // linked neighbor as its next hop. Without this bridge it passed
@@ -490,12 +494,29 @@ impl IrisEngine {
             // at least one live receiver and tx.send() stops returning Err.
             // Without this, every TransportStateChanged event sent by the
             // register() forwarder is silently discarded.
+            //
+            // Bug fix: a transport going wholesale `Unavailable` (Bluetooth
+            // turned off, Wi-Fi Direct torn down) used to only clear that
+            // transport's own connection state -- the neighbor table kept
+            // reporting every peer reached over it as `LinkedUp` until the
+            // 300s idle TTL finally swept them, so the UI showed "connected"
+            // for up to five minutes after the radio was actually off. Route
+            // the event into `DiscoveryManager::withdraw_transport` so those
+            // neighbors drop immediately.
             let mut topo_rx = manager.topology_events();
+            let discovery_for_topo = discovery.clone();
             tokio::spawn(async move {
                 loop {
                     match topo_rx.recv().await {
                         Ok(event) => {
                             tracing::debug!(event = ?event, "topology event");
+                            if let iris_core::transport::TopologyEvent::TransportStateChanged {
+                                transport_id,
+                                new_state: iris_core::transport::TransportState::Unavailable,
+                            } = &event
+                            {
+                                discovery_for_topo.withdraw_transport(transport_id).await;
+                            }
                         }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                             tracing::warn!(skipped = n, "topology_events lagged");
@@ -1150,10 +1171,34 @@ impl IrisEngine {
 
 impl IrisEngine {
     /// Spawn a task forwarding one transport's inbound frames into the engine.
-    fn spawn_inbox_forwarder(engine: Arc<MessageEngine>, transport: Arc<dyn Transport>) {
+    ///
+    /// Bug fix: a peer that only ever dials INTO this node (BLE peripheral
+    /// role) never appeared in discovery's neighbor table at all — nothing
+    /// called `DiscoveryManager::report_peer` for an inbound-only accept, so
+    /// routing always saw it as unreachable (`NeighborState` never even
+    /// existed for it) and never attempted Direct/Flood to it, regardless of
+    /// whether the transport layer could actually send. A message arriving
+    /// from a peer is direct proof that peer is reachable over this
+    /// transport right now — exactly what `report_peer` exists for ("a
+    /// transport may push a discovered peer without the poll loop").
+    fn spawn_inbox_forwarder(
+        engine: Arc<MessageEngine>,
+        transport: Arc<dyn Transport>,
+        discovery: Arc<DiscoveryManager>,
+    ) {
         let mut incoming = transport.incoming_messages();
+        let transport_id = transport.transport_id().clone();
         tokio::spawn(async move {
             while let Some(msg) = incoming.next().await {
+                let peer_info = iris_core::message::PeerInfo {
+                    peer_id: msg.peer_id,
+                    addresses: Vec::new(),
+                    transport_addresses: Vec::new(),
+                    last_seen: None,
+                };
+                discovery
+                    .report_peer(&peer_info, &transport_id, LinkQuality::Good)
+                    .await;
                 match engine.process_incoming(msg).await {
                     Ok(InboundOutcome::Delivered) | Ok(InboundOutcome::ReassembledDelivered) => {
                         tracing::debug!("android: inbound delivered");

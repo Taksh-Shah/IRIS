@@ -219,6 +219,37 @@ impl NeighborTable {
         None
     }
 
+    /// Withdraw every neighbor's link over `transport` in one pass — for
+    /// when the transport itself goes wholesale `Unavailable` (radio turned
+    /// off), not a single peer dropping.
+    ///
+    /// Without this, a transport-wide loss (e.g. Bluetooth turned off) left
+    /// every neighbor reached only over BLE sitting at stale `LinkedUp`
+    /// until the 300 s neighbor TTL swept it — up to five minutes of the UI
+    /// and routing believing a peer is still reachable after the radio that
+    /// carried it is gone. Per-peer `mark_down` alone never runs here: the
+    /// transport has no per-peer disconnect signal to report, only "I am
+    /// gone" for everyone at once.
+    pub async fn mark_transport_down(&self, transport: &TransportId) -> Vec<TopologyEvent> {
+        let mut map = self.inner.lock().await;
+        let mut events = Vec::new();
+        for (peer_id, nb) in map.iter_mut() {
+            let had_link = nb.links.iter().any(|l| l.transport == *transport);
+            if !had_link {
+                continue;
+            }
+            nb.links.retain(|l| l.transport != *transport);
+            if nb.links.is_empty() {
+                nb.state = NeighborState::LinkedDown;
+                events.push(TopologyEvent::PeerLost {
+                    peer_id: *peer_id,
+                    via_transport: transport.clone(),
+                });
+            }
+        }
+        events
+    }
+
     /// Record capabilities exchanged during the first-contact handshake.
     pub async fn set_capabilities(&self, peer_id: &PeerId, caps: CapabilityBundle) {
         if let Some(nb) = self.inner.lock().await.get_mut(peer_id) {
@@ -368,6 +399,50 @@ mod tests {
         assert!(matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })));
         assert_eq!(t.len().await, 1);
         assert!(t.is_up(&peer(1).peer_id).await);
+    }
+
+    #[tokio::test]
+    async fn mark_transport_down_withdraws_every_neighbor_on_that_transport_only() {
+        // Bug fix: a whole transport going Unavailable (Bluetooth turned off)
+        // used to leave every neighbor reached over it stuck at LinkedUp
+        // until the neighbor TTL swept them minutes later -- there was no
+        // way to withdraw them all at once the moment the radio died.
+        let t = NeighborTable::new(Duration::from_secs(60));
+        let ble = TransportId::from("ble-android");
+        let wifi = TransportId::from("wifi-direct-0");
+        // peer 1: BLE only -- must go fully LinkedDown when BLE dies.
+        t.upsert(&peer(1), &ble, LinkQuality::Good).await;
+        // peer 2: BLE + Wi-Fi Direct -- must stay LinkedUp (Wi-Fi Direct link
+        // survives), just lose the BLE link record.
+        t.upsert(&peer(2), &ble, LinkQuality::Good).await;
+        t.upsert(&peer(2), &wifi, LinkQuality::Good).await;
+        // peer 3: Wi-Fi Direct only -- must be completely unaffected by a
+        // BLE-only outage.
+        t.upsert(&peer(3), &wifi, LinkQuality::Good).await;
+
+        let events = t.mark_transport_down(&ble).await;
+
+        assert!(!t.is_up(&peer(1).peer_id).await, "BLE-only peer must go LinkedDown");
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, TopologyEvent::PeerLost { peer_id, .. } if *peer_id == peer(1).peer_id)),
+            "BLE-only peer's loss must be reported"
+        );
+
+        assert!(
+            t.is_up(&peer(2).peer_id).await,
+            "dual-homed peer must stay LinkedUp on its surviving Wi-Fi Direct link"
+        );
+        let remaining_links = t.links_to(&peer(2).peer_id).await.unwrap();
+        assert_eq!(remaining_links.len(), 1);
+        assert_eq!(remaining_links[0].transport, wifi);
+
+        assert!(
+            t.is_up(&peer(3).peer_id).await,
+            "a peer never reached over BLE must be untouched by a BLE outage"
+        );
+        assert_eq!(t.links_to(&peer(3).peer_id).await.unwrap().len(), 1);
     }
 
     #[tokio::test]

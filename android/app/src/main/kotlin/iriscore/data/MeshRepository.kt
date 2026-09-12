@@ -108,6 +108,21 @@ class MeshRepository @Inject constructor(
     )
 
     init {
+        // Bug fix: InboxUiMessage's uid counter is in-memory and always
+        // starts at 1, while messageDao's rows (keyed by that same uid) are
+        // durable across process restarts. Without reseeding it here, a
+        // message sent after a restart could be assigned a uid that
+        // collides with an old persisted row -- messageDao.insert's
+        // OnConflictStrategy.IGNORE then silently dropped the new row. The
+        // send still went out over the wire (the recipient received it
+        // fine); it just never appeared in this device's own message list,
+        // because its own DB row never landed. Launched first, before
+        // anything else in this class can call send()/broadcast().
+        scope.launch {
+            val persistedMax = messageDao.maxUid() ?: 0L
+            InboxUiMessage.seedUidCounter(persistedMax)
+            Log.i(TAG, "seeded message uid counter from persisted max=$persistedMax")
+        }
         internetMonitor.onNetworkStateChanged = { state ->
             scope.launch {
                 synchronized(lifecycleLock) {

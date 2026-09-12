@@ -7,8 +7,7 @@
     <string name="service_notification_text">BLE control plane + Wi-Fi re-arm window</string>
     <string name="msg_channel_name">IRIS Messages</string>
     <string name="msg_channel_description">Notifications for incoming mesh messages</string>
-    <string name="msg_notification_title">New message</string>
-    <string name="msg_notification_text_template">From %1$s</string>
+    <string name="msg_notification_title_template">%1$s</string>
 
     <!-- WP11: plain-language mesh status, replacing raw LINK/INIT/IDLE/DOWN
          chips for screen readers and the fuller status surfaces (banners,
