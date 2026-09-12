@@ -118,8 +118,11 @@ pub struct DiscoveryManager {
     /// needs the cached address, not a fresh scan. `scan_once` re-attempts
     /// `connect()` for these when there is no live link, so a drop heals in a
     /// scan interval instead of waiting for the beacon to be re-harvested.
-    /// Bounded at `2 * max_peers`.
-    known_peers: tokio::sync::Mutex<HashMap<PeerId, PeerInfo>>,
+    /// Bounded at `2 * max_peers`. Bug 1 fix: carries its own last-beacon
+    /// timestamp — staleness eligibility below used to piggyback on
+    /// `NeighborTable` membership, which now only reflects a *confirmed*
+    /// live link, not a mere beacon sighting.
+    known_peers: tokio::sync::Mutex<HashMap<PeerId, (PeerInfo, Instant)>>,
     /// HV-97: interrupts the background loop's `sleep` so a `wake()` (a link
     /// just dropped, the RETRY button, `drop_all_links`) triggers a scan
     /// *immediately* instead of after up to `scan_interval` (30 s).
@@ -289,33 +292,60 @@ impl DiscoveryManager {
             .any(|t| t.state() == crate::transport::TransportState::Connected);
         self.has_confirmed_link
             .store(any_connected, std::sync::atomic::Ordering::Relaxed);
-        // HV-15: with no live link, re-attempt `connect()` for every known peer
-        // whose beacon was NOT harvested this pass — a dropped GATT link's
-        // beacon can be out of the scan buffer for several passes, but the
-        // cached address is all `connect()` needs. Skipped while a link is up
-        // (the mesh is working; the per-beacon path covers the rest).
-        if !any_connected {
+        // HV-15: re-attempt `connect()` for every known peer whose beacon was
+        // NOT harvested this pass — a dropped GATT link's beacon can be out
+        // of the scan buffer for several passes, but the cached address is
+        // all `connect()` needs.
+        //
+        // Bug fix: this used to be gated on `!any_connected` (skip the whole
+        // block if ANY transport had a live link anywhere) — so one connected
+        // BLE peer suppressed Wi-Fi Direct's stale reconnects for every other
+        // peer, for the rest of the session, even though BLE being up says
+        // nothing about Wi-Fi Direct's own state. `any_connected` is still
+        // right for `has_confirmed_link` above (scan cadence is a legitimate
+        // whole-node concern); reconnect eligibility is not — it's checked
+        // per-transport in the inner loop below instead, so a transport that
+        // already has a live link is skipped without silencing the others.
+        {
             let seen: std::collections::HashSet<PeerId> = seen_peers.iter().copied().collect();
-            // Only retry a known peer that is still in the neighbor table
-            // (i.e. its beacon was seen within `neighbor_ttl` — the peer is
-            // around, the link just dropped) — not one that has genuinely gone
-            // away. `connect_backoff` bounds the wasted `connect()` blocking
-            // after the 2nd consecutive failure. Cap per pass so one flapping
-            // peer cannot stall the loop.
+            // Only retry a known peer whose beacon was seen within
+            // `neighbor_ttl` (the peer is around, the link just dropped) —
+            // not one that has genuinely gone away. `connect_backoff` bounds
+            // the wasted `connect()` blocking after the 2nd consecutive
+            // failure. Cap per pass so one flapping peer cannot stall the
+            // loop.
+            //
+            // Bug 1 fix: this used to gate eligibility on
+            // `self.table.get(&p.peer_id).is_some()` — but the neighbor table
+            // now only holds peers with a *confirmed* live link (see
+            // `scan_transport`), not merely a recent beacon. A peer whose
+            // `connect()` keeps failing (exactly the case this stale-retry
+            // path exists to keep retrying) would never be in the table and
+            // so would silently stop being retried. `known_peers` now carries
+            // its own last-beacon timestamp, checked directly against
+            // `neighbor_ttl` instead.
+            let now = Instant::now();
+            let ttl = self.config.neighbor_ttl;
             let mut stale: Vec<PeerInfo> = Vec::new();
             {
                 let known = self.known_peers.lock().await;
-                for p in known.values() {
-                    if seen.contains(&p.peer_id) || stale.len() >= 3 {
+                for (info, last_seen) in known.values() {
+                    if seen.contains(&info.peer_id) || stale.len() >= 3 {
                         continue;
                     }
-                    if self.table.get(&p.peer_id).await.is_some() {
-                        stale.push(p.clone());
+                    if now.saturating_duration_since(*last_seen) < ttl {
+                        stale.push(info.clone());
                     }
                 }
             }
             for peer in &stale {
                 for t in &transports {
+                    // Skip only this transport if it already has a live
+                    // link — not every transport just because one of them
+                    // does.
+                    if t.state() == crate::transport::TransportState::Connected {
+                        continue;
+                    }
                     self.attempt_connect(t, peer).await;
                 }
             }
@@ -375,16 +405,10 @@ impl DiscoveryManager {
             let quality = transport
                 .link_quality(&peer.peer_id)
                 .unwrap_or(LinkQuality::Good);
-            let ev = self
-                .table
-                .upsert(&peer, transport.transport_id(), quality)
-                .await;
-            if matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })) {
-                new_peers.push(peer.peer_id);
-            }
             // HV-15: remember this peer (address included) so `scan_once` can
             // re-attempt `connect()` even on passes that do not re-harvest its
-            // beacon.
+            // beacon. Done unconditionally — this is address bookkeeping for
+            // retries, not a claim that the peer is reachable.
             {
                 let mut known = self.known_peers.lock().await;
                 if known.len() >= self.config.max_peers.saturating_mul(2)
@@ -396,14 +420,39 @@ impl DiscoveryManager {
                         known.remove(&k);
                     }
                 }
-                known.insert(peer.peer_id, peer.clone());
+                known.insert(peer.peer_id, (peer.clone(), Instant::now()));
             }
             // HW-3: attempt connect unconditionally each pass — `connect()`
             // is idempotent/no-op when the link already exists (AC-9), so
             // this retries dropped links without requiring a re-discovery.
-            self.attempt_connect(transport, &peer).await;
-            if let Some(ev) = ev {
-                self.events.send(ev).ok();
+            //
+            // Bug 1 fix: only upsert into the neighbor table (which sets
+            // `NeighborState::LinkedUp`) once `connect()` has actually
+            // confirmed a live link. Previously `upsert()` ran first, purely
+            // off this pass's beacon sighting — so a peer that is radio-visible
+            // but whose connect() never succeeds (permission denial, one-way
+            // discovery, a peer that never accepts) still got marked LinkedUp
+            // forever. `try_direct`, flood target selection, and
+            // `spray_fallback` all treat LinkedUp+links as "reachable right
+            // now" and commit to that peer without falling through to
+            // KnownPath/Flood/Store, so the phantom link caused messages to
+            // be repeatedly aimed at a peer that could never actually receive
+            // them. Skipping the beacon-only upsert also lets a peer whose
+            // connect() keeps failing eventually TTL-evict for real (its
+            // `last_seen` stops being refreshed by beacon sightings alone),
+            // instead of the table clock being reset every pass regardless of
+            // whether anything could actually be delivered.
+            if self.attempt_connect(transport, &peer).await {
+                let ev = self
+                    .table
+                    .upsert(&peer, transport.transport_id(), quality)
+                    .await;
+                if matches!(ev, Some(TopologyEvent::PeerDiscovered { .. })) {
+                    new_peers.push(peer.peer_id);
+                }
+                if let Some(ev) = ev {
+                    self.events.send(ev).ok();
+                }
             }
         }
         tracing::debug!(
@@ -420,7 +469,13 @@ impl DiscoveryManager {
     /// single reconnect path — used both for freshly-scanned peers and, via
     /// `scan_once`, for a known peer whose link dropped but whose beacon is not
     /// in the current scan buffer (HV-15).
-    async fn attempt_connect(&self, transport: &Arc<dyn Transport>, peer: &PeerInfo) {
+    ///
+    /// Returns `true` only when the link is actually confirmed live this
+    /// call (a real `connect()` success) — `false` on failure *and* when the
+    /// attempt was skipped for backoff, since in both cases nothing confirms
+    /// the peer is currently reachable (Bug 1: callers must not treat a mere
+    /// beacon sighting as a live link).
+    async fn attempt_connect(&self, transport: &Arc<dyn Transport>, peer: &PeerInfo) -> bool {
         let backoff_key = (transport.transport_id().clone(), peer.peer_id);
         if let Some(state) = self.connect_backoff.lock().await.get(&backoff_key) {
             if Instant::now() < state.next_attempt {
@@ -431,7 +486,7 @@ impl DiscoveryManager {
                     failures = state.failures,
                     "skipping connect() this pass — backing off after repeated failures"
                 );
-                return;
+                return false;
             }
         }
         let connect_started = std::time::Instant::now();
@@ -447,6 +502,7 @@ impl DiscoveryManager {
                     elapsed_ms = connect_started.elapsed().as_millis() as u64,
                     "link to known peer confirmed live (idempotent no-op if already connected)"
                 );
+                true
             }
             Err(e) => {
                 let mut backoff = self.connect_backoff.lock().await;
@@ -482,6 +538,7 @@ impl DiscoveryManager {
                     elapsed_ms = connect_started.elapsed().as_millis() as u64,
                     "failed to establish/confirm link with peer this scan pass — will retry next pass"
                 );
+                false
             }
         }
     }
@@ -982,6 +1039,111 @@ mod tests {
              {stale_phase} calls after a beaconless pass, was {seen_phase} \
              (pre-HV-15 the beaconless pass yields nothing so connect() is \
              never called)"
+        );
+    }
+
+    #[tokio::test]
+    async fn bug2_one_connected_transport_does_not_suppress_another_transports_stale_reconnect() {
+        // Bug 2: scan_once() used to gate the ENTIRE stale-reconnect block on
+        // a single `any_connected` flag computed across ALL transports — so
+        // one transport with a live link (e.g. BLE) suppressed stale
+        // reconnects for every OTHER transport too (e.g. Wi-Fi Direct), even
+        // though that other transport had no live link of its own. This
+        // proves a transport with no live link still gets its own stale
+        // peer retried, even while a *different* transport is Connected.
+        let m = manager(30);
+
+        // Transport A: connects for real on pass 0 and stays Connected.
+        let a = Arc::new(CountingConnectTransport {
+            inner: crate::transport::simulated::SimulatedTransport::new(
+                "sim-bug2-a",
+                "Sim Bug2 A",
+                SimConfig::default(),
+            ),
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(31),
+            yield_passes: std::sync::atomic::AtomicUsize::new(usize::MAX),
+            fail_connect: std::sync::atomic::AtomicBool::new(false),
+        });
+        // Transport B: never has a live link of its own (fail_connect keeps
+        // state() at Available forever, mirroring HV-15's own technique),
+        // with a peer whose beacon is only seen on the first pass.
+        let b = Arc::new(CountingConnectTransport {
+            inner: crate::transport::simulated::SimulatedTransport::new(
+                "sim-bug2-b",
+                "Sim Bug2 B",
+                SimConfig::default(),
+            ),
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(32),
+            yield_passes: std::sync::atomic::AtomicUsize::new(1),
+            fail_connect: std::sync::atomic::AtomicBool::new(true),
+        });
+        m.register_transport(a.clone()).await;
+        m.register_transport(b.clone()).await;
+
+        m.scan_once().await; // pass 0: both beacons seen; A connects for real, B's connect fails.
+        assert_eq!(a.connect_calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+        assert_eq!(b.connect_calls.load(std::sync::atomic::Ordering::Relaxed), 1);
+        assert_eq!(a.state(), crate::transport::TransportState::Connected);
+
+        m.scan_once().await; // pass 1: A's beacon still seen (no-op); B's beacon is gone —
+        // B's cached peer must still be retried, even though A is Connected.
+        let b_calls = b.connect_calls.load(std::sync::atomic::Ordering::Relaxed);
+        assert!(
+            b_calls > 1,
+            "Bug 2: transport B's stale peer must still be retried while B itself \
+             has no live link, even though transport A does — got {b_calls} calls, \
+             expected > 1 (pre-fix: any_connected from A alone suppressed B's \
+             reconnect entirely, so this stayed at 1 forever)"
+        );
+    }
+
+    #[tokio::test]
+    async fn bug1_beacon_alone_never_marks_a_peer_linked_up() {
+        // Bug 1: a peer whose beacon is radio-visible but whose connect()
+        // never succeeds (permission denial, one-way discovery, a peer that
+        // never accepts) used to be marked `NeighborState::LinkedUp` purely
+        // from `upsert()` running before `connect()` was even attempted.
+        // Routing (`try_direct`, flood, spray_fallback) treats LinkedUp as
+        // "reachable right now" and commits to it without falling through to
+        // KnownPath/Flood/Store — so a phantom link silently stalled real
+        // delivery. This proves a peer whose connect() always fails is never
+        // marked up, across several scan passes, even though its beacon is
+        // seen every single pass.
+        let m = manager(40);
+        let t = Arc::new(CountingConnectTransport {
+            inner: crate::transport::simulated::SimulatedTransport::new(
+                "sim-bug1",
+                "Sim Bug1",
+                SimConfig::default(),
+            ),
+            connect_calls: std::sync::atomic::AtomicUsize::new(0),
+            scan_calls: std::sync::atomic::AtomicUsize::new(0),
+            seeded_peer: peer_info(41),
+            // beacon visible on every pass, connect() never succeeds.
+            yield_passes: std::sync::atomic::AtomicUsize::new(usize::MAX),
+            fail_connect: std::sync::atomic::AtomicBool::new(true),
+        });
+        m.register_transport(t.clone()).await;
+
+        for _ in 0..4 {
+            m.scan_once().await;
+        }
+        assert!(
+            t.connect_calls.load(std::sync::atomic::Ordering::Relaxed) >= 2,
+            "connect() should have been attempted at least a couple of times \
+             before backoff started spacing out the retries"
+        );
+        assert!(
+            !m.neighbors().is_up(&peer_info(41).peer_id).await,
+            "Bug 1: a peer whose connect() always fails must never be marked \
+             LinkedUp, no matter how many times its beacon is seen — routing \
+             would otherwise commit to a Direct decision that can never \
+             actually be delivered instead of falling through to \
+             KnownPath/Flood/Store"
         );
     }
 

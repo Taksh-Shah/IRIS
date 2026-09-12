@@ -16,7 +16,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::time::Instant;
 
-use crate::message::MessagePriority;
+use crate::message::{MessagePriority, PeerId};
 use crate::protocol::Envelope;
 
 /// Number of consecutive P0 dispatches before the fairness gate admits one
@@ -45,6 +45,19 @@ pub struct QueuedMessage {
     /// this field drives queue ordering, so the relay carries a byte-identical
     /// and verifiable envelope.
     pub scheduling_priority: MessagePriority,
+    /// Bug 3 fix: the peer that handed us this exact copy, when this message
+    /// is a relay (`local == false`). `None` for a locally-originated
+    /// message — there is no previous hop, we *are* the origin.
+    ///
+    /// Before this field existed, the previous hop was captured in
+    /// `deliver_or_relay`'s `via` parameter but never carried past that
+    /// function — `enqueue_relay` built a `QueuedMessage` with nothing to
+    /// hold it, so by the time `routing_targets` ran the flood decision, only
+    /// `envelope.sender_id` (the *original author*, unchanged at every hop)
+    /// was available. The routing engine's own flood exclusion therefore
+    /// excluded the wrong peer: in A -> X -> B, B's flood decision excluded
+    /// A instead of X, leaving B free to flood straight back to X.
+    pub via: Option<PeerId>,
 }
 
 impl QueuedMessage {
@@ -64,12 +77,19 @@ impl QueuedMessage {
             next_retry: None,
             local: true,
             scheduling_priority,
+            via: None,
         }
     }
 
     /// Override the scheduling priority without touching the wire envelope.
     pub fn with_scheduling_priority(mut self, p: MessagePriority) -> Self {
         self.scheduling_priority = p;
+        self
+    }
+
+    /// Record the immediate previous hop for a relayed message (Bug 3 fix).
+    pub fn with_via(mut self, via: PeerId) -> Self {
+        self.via = Some(via);
         self
     }
 

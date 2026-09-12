@@ -18,10 +18,17 @@ import androidx.core.content.ContextCompat
  *
  * Split by SDK level:
  *  - API <= 30: legacy `BLUETOOTH`/`BLUETOOTH_ADMIN` are install-time; BLE scan
- *    results still require `ACCESS_FINE_LOCATION` at runtime.
+ *    results still require `ACCESS_FINE_LOCATION` at runtime. Wi-Fi Direct's
+ *    `discoverPeers()`/`connect()` also require it on these levels.
  *  - API 31+: `BLUETOOTH_SCAN` (declared `neverForLocation`),
  *    `BLUETOOTH_ADVERTISE`, `BLUETOOTH_CONNECT`.
- *  - API 33+: `NEARBY_WIFI_DEVICES` for Wi-Fi Aware/Direct discovery.
+ *  - API 31/32 specifically: `NEARBY_WIFI_DEVICES` does not exist yet, and
+ *    the API-31+ Bluetooth grants above do not cover Wi-Fi Direct — so
+ *    `ACCESS_FINE_LOCATION` is *also* required here, same as pre-31. Without
+ *    it, Wi-Fi Direct discovery silently never works on Android 12/12L (the
+ *    `SecurityException` is swallowed by the adapters' own `runCatching`).
+ *  - API 33+: `NEARBY_WIFI_DEVICES` for Wi-Fi Aware/Direct discovery,
+ *    replacing the location requirement from this level onward.
  *
  * NOTE: `POST_NOTIFICATIONS` is intentionally excluded. Android does not
  * require it to start a foreground service — the FGS system notification is
@@ -43,6 +50,18 @@ object MeshPermissions {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.NEARBY_WIFI_DEVICES)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Bug fix: API 31/32 (Android 12/12L) fell through both branches
+            // above with neither location nor NEARBY_WIFI_DEVICES requested.
+            // NEARBY_WIFI_DEVICES only exists from API 33 -- on 31/32,
+            // WifiP2pManager.discoverPeers()/connect() still require
+            // ACCESS_FINE_LOCATION, and the >= S branch above only requests
+            // the Bluetooth runtime grants, not location. Without it every
+            // Wi-Fi Direct discoverPeers()/connect() call on these two API
+            // levels throws a SecurityException that the adapters' own
+            // runCatching swallows -- Wi-Fi Direct silently never worked on
+            // Android 12/12L.
+            add(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
